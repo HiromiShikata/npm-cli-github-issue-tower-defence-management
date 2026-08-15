@@ -136,6 +136,9 @@ export interface IssueRepository {
   update: (issue: Issue, project: Project) => Promise<void>;
   findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
   getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
+  getOpenPullRequests: (
+    prUrls: string[],
+  ) => Promise<Map<string, RelatedPullRequest | null>>;
   getPullRequestChangedFilePaths: (prUrl: string) => Promise<string[]>;
   approvePullRequest: (prUrl: string) => Promise<void>;
   requestChangesWithInlineComment: (

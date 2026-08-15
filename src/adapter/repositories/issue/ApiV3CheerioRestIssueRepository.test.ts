@@ -2339,6 +2339,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       prNumber: number;
       reviewThreadsAfter: string | null;
     }) => Response | object;
+    slimPullRequestBatch?: (
+      variables: Record<string, unknown>,
+    ) => Response | object;
     branchRules?: (url: string) => Response | object;
     branchDetail?: (url: string) => Response | object;
     checkRuns?: (url: string) => Response | object;
@@ -2363,6 +2366,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       prNumber: number;
       reviewThreadsAfter: string | null;
     };
+    rawVariables: Record<string, unknown>;
   };
 
   const parseGraphqlRequestBody = (init?: RequestInit): GraphqlRequestBody => {
@@ -2401,6 +2405,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     return {
       query: parsed.query,
       variables: { owner, repo, prNumber, reviewThreadsAfter },
+      rawVariables: Object.fromEntries(Object.entries(variables)),
     };
   };
 
@@ -2420,6 +2425,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               routes.mergeability
             ) {
               return toResponse(routes.mergeability());
+            }
+            if (
+              body.query.includes('PullRequestSlimStatusBatch') &&
+              routes.slimPullRequestBatch
+            ) {
+              return toResponse(routes.slimPullRequestBatch(body.rawVariables));
             }
             if (body.query.includes('headRefOid') && routes.slimPullRequest) {
               return toResponse(routes.slimPullRequest(body.variables));
@@ -2472,6 +2483,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         body.includes('mergeStateStatus'),
     );
 
+  const countSlimPullRequestBatchQueries = (fetchSpy: FetchSpy): number =>
+    countCallsMatching(
+      fetchSpy,
+      (url, body) =>
+        url === 'https://api.github.com/graphql' &&
+        body.includes('PullRequestSlimStatusBatch'),
+    );
+
   const buildSlimPullRequestResponse = (
     overrides: {
       url?: string;
@@ -2506,6 +2525,162 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       },
     },
+  });
+
+  const buildSlimPullRequestNode = (
+    overrides: Parameters<typeof buildSlimPullRequestResponse>[0] = {},
+  ) => buildSlimPullRequestResponse(overrides).data.repository.pullRequest;
+
+  describe('getOpenPullRequests batched resolution', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const prUrlOf = (prNumber: number): string =>
+      `https://github.com/HiromiShikata/test-repository/pull/${prNumber}`;
+
+    it('resolves every pull request state in one GraphQL request', async () => {
+      const prNumbers = [31, 32, 33];
+      const capturedVariables: Record<string, unknown>[] = [];
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequestBatch: (variables) => {
+          capturedVariables.push(variables);
+          return {
+            data: Object.fromEntries(
+              prNumbers.map((prNumber, index) => [
+                `pullRequest${index}`,
+                {
+                  pullRequest: buildSlimPullRequestNode({
+                    url: prUrlOf(prNumber),
+                    headRefName: `feature-${prNumber}`,
+                  }),
+                },
+              ]),
+            ),
+          };
+        },
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'ci', conclusion: 'success' }],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.getOpenPullRequests(
+        prNumbers.map(prUrlOf),
+      );
+
+      expect(countSlimPullRequestBatchQueries(fetchSpy)).toBe(1);
+      expect(capturedVariables).toHaveLength(1);
+      expect(capturedVariables[0].prNumber0).toBe(31);
+      expect(capturedVariables[0].prNumber2).toBe(33);
+      expect(Array.from(resolved.keys())).toEqual(prNumbers.map(prUrlOf));
+      for (const prNumber of prNumbers) {
+        expect(resolved.get(prUrlOf(prNumber))?.branchName).toBe(
+          `feature-${prNumber}`,
+        );
+      }
+    });
+
+    it('resolves a pull request the batch reports as not found to an absent pull request', async () => {
+      mockFetchRoutes({
+        slimPullRequestBatch: () => ({
+          data: { pullRequest0: null },
+          errors: [
+            {
+              message: 'Could not resolve to a PullRequest',
+              type: 'NOT_FOUND',
+              path: ['pullRequest0', 'pullRequest'],
+            },
+          ],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.getOpenPullRequests([prUrlOf(31)]);
+
+      expect(resolved.has(prUrlOf(31))).toBe(true);
+      expect(resolved.get(prUrlOf(31))).toBeNull();
+    });
+
+    it('omits a pull request whose alias failed for a reason other than not found so an unknown state is not read as absent', async () => {
+      mockFetchRoutes({
+        slimPullRequestBatch: () => ({
+          data: { pullRequest0: null },
+          errors: [
+            {
+              message: 'Something went wrong while executing your query',
+              type: 'SERVICE_UNAVAILABLE',
+              path: ['pullRequest0', 'pullRequest'],
+            },
+          ],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.getOpenPullRequests([prUrlOf(31)]);
+
+      expect(resolved.has(prUrlOf(31))).toBe(false);
+    });
+
+    it('omits a pull request whose review threads do not fit one page so it is resolved by the paginating path', async () => {
+      mockFetchRoutes({
+        slimPullRequestBatch: () => ({
+          data: {
+            pullRequest0: {
+              pullRequest: buildSlimPullRequestNode({
+                reviewThreads: {
+                  pageInfo: { endCursor: 'cursor-1', hasNextPage: true },
+                  nodes: [{ isResolved: true }],
+                },
+              }),
+            },
+          },
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.getOpenPullRequests([prUrlOf(31)]);
+
+      expect(resolved.has(prUrlOf(31))).toBe(false);
+    });
+
+    it('resolves an issue url to an absent pull request without issuing any request', async () => {
+      const fetchSpy = mockFetchRoutes({});
+      const issueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/31';
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.getOpenPullRequests([issueUrl]);
+
+      expect(resolved.get(issueUrl)).toBeNull();
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('splits more pull requests than one batch holds into separate GraphQL requests', async () => {
+      const prNumbers = Array.from({ length: 101 }, (_, index) => 1000 + index);
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequestBatch: (variables) => ({
+          data: Object.fromEntries(
+            Object.keys(variables)
+              .filter((name) => name.startsWith('prNumber'))
+              .map((name) => [
+                `pullRequest${name.slice('prNumber'.length)}`,
+                { pullRequest: buildSlimPullRequestNode() },
+              ]),
+          ),
+        }),
+        checkRuns: () => ({ total_count: 0, check_runs: [] }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.getOpenPullRequests(
+        prNumbers.map(prUrlOf),
+      );
+
+      expect(countSlimPullRequestBatchQueries(fetchSpy)).toBe(2);
+      expect(resolved.size).toBe(prNumbers.length);
+    });
   });
 
   describe('getOpenPullRequest CI state computation', () => {

@@ -42,6 +42,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       | 'updateStory'
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
+      | 'getOpenPullRequests'
       | 'getPullRequestChangedFilePaths'
       | 'approvePullRequest'
       | 'requestChangesWithInlineComment'
@@ -95,6 +96,34 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     const relatedOpenPrUrlsByIssueUrl =
       this.buildRelatedOpenPrUrlsByIssueUrl(issues);
 
+    const unreadPullRequests = issues.filter(
+      (issue) => issue.status === DEFAULT_STATUS_NAME && issue.isPr,
+    );
+
+    const labelsNotRequiringPullRequest =
+      resolveLabelsNotRequiringPullRequest(params);
+    const willBeEvaluated = (item: Issue): boolean =>
+      isAuthorAuthorizedForAutoStatusCheck(item.author, allowedIssueAuthors) &&
+      this.issueRejectionEvaluator.requiresPullRequestEvaluation(
+        item,
+        labelsNotRequiringPullRequest,
+      );
+
+    const resolvedOpenPrByUrl = await this.issueRepository.getOpenPullRequests(
+      Array.from(
+        new Set([
+          ...awaitingQualityCheckIssues
+            .filter(willBeEvaluated)
+            .flatMap(
+              (issue) => relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
+            ),
+          ...unreadPullRequests
+            .filter(willBeEvaluated)
+            .map((pullRequest) => pullRequest.url),
+        ]),
+      ),
+    );
+
     for (const issue of awaitingQualityCheckIssues) {
       const hasLlmAgentLabel = issue.labels.some(
         (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
@@ -113,10 +142,11 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         const { rejections, approvedPrUrl } =
           await this.issueRejectionEvaluator.evaluate(
             issue,
-            resolveLabelsNotRequiringPullRequest(params),
+            labelsNotRequiringPullRequest,
             {
               relatedOpenPrUrls:
                 relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
+              resolvedOpenPrByUrl,
             },
           );
         if (
@@ -173,9 +203,6 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     }
 
     const projectStory = project.story;
-    const unreadPullRequests = issues.filter(
-      (issue) => issue.status === DEFAULT_STATUS_NAME && issue.isPr,
-    );
 
     for (const pullRequest of unreadPullRequests) {
       const hasLlmAgentLabel = pullRequest.labels.some(
@@ -197,7 +224,8 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       try {
         const { rejections } = await this.issueRejectionEvaluator.evaluate(
           pullRequest,
-          resolveLabelsNotRequiringPullRequest(params),
+          labelsNotRequiringPullRequest,
+          { resolvedOpenPrByUrl },
         );
         if (rejections.length > 0) {
           if (!pullRequest.assignees.includes(params.manager)) {
