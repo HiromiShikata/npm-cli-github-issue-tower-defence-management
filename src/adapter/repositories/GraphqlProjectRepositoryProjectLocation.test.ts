@@ -254,4 +254,43 @@ describe('GraphqlProjectRepository project location', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('disk full'));
     warn.mockRestore();
   });
+
+  it('should discard a recorded location that no longer resolves and re-read the project over GraphQL', async () => {
+    const projectCache = buildProjectCache();
+    projectCache.stored.set(`projectLocation-${projectId}`, {
+      owner: 'RenamedAway',
+      ownerType: 'users',
+      projectNumber: 48,
+    });
+    mockGet.mockImplementation(() => {
+      throw Object.assign(new Error('Not Found'), {
+        response: { status: 404 },
+      });
+    });
+    mockPostGithubGraphqlJson.mockResolvedValue(graphqlProjectResponse);
+    const warn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const repository = new GraphqlProjectRepository(
+      localStorageRepository,
+      'dummy-token',
+      projectCache,
+    );
+
+    const project = await repository.getProject(projectId);
+
+    expect(project?.id).toEqual(projectId);
+    expect(mockPostGithubGraphqlJson).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'the recorded project location no longer resolves over REST, re-reading the project over GraphQL',
+      ),
+    );
+    expect(projectCache.stored.get(`projectLocation-${projectId}`)).toEqual({
+      owner: 'HiromiShikata',
+      ownerType: 'users',
+      projectNumber: 48,
+    });
+    warn.mockRestore();
+  });
 });

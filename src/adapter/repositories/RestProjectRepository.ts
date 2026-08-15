@@ -32,6 +32,19 @@ type RestProjectFieldResponse = {
   }[];
 };
 
+const isNotFoundResponse = (error: unknown): boolean => {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return false;
+  }
+  const response = error.response;
+  return (
+    typeof response === 'object' &&
+    response !== null &&
+    'status' in response &&
+    response.status === 404
+  );
+};
+
 export const projectUrlFromLocation = (location: ProjectLocation): string =>
   `https://github.com/${location.ownerType}/${location.owner}/projects/${location.projectNumber}`;
 
@@ -88,13 +101,22 @@ export class RestProjectRepository extends BaseGitHubRepository {
     return fields.map((field) => field.name);
   };
 
-  getProject = async (location: ProjectLocation): Promise<Project> => {
-    const [project, fields] = await Promise.all([
-      ky
-        .get(this.projectApiUrl(location), { headers: this.requestHeaders() })
-        .json<RestProjectResponse>(),
-      this.listFieldDefinitions(location),
-    ]);
+  getProject = async (location: ProjectLocation): Promise<Project | null> => {
+    let project: RestProjectResponse;
+    let fields: ProjectFieldDefinition[];
+    try {
+      [project, fields] = await Promise.all([
+        ky
+          .get(this.projectApiUrl(location), { headers: this.requestHeaders() })
+          .json<RestProjectResponse>(),
+        this.listFieldDefinitions(location),
+      ]);
+    } catch (error) {
+      if (isNotFoundResponse(error)) {
+        return null;
+      }
+      throw error;
+    }
     const definition: ProjectDefinition = {
       id: project.node_id,
       url: projectUrlFromLocation(location),

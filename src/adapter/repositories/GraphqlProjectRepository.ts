@@ -321,7 +321,14 @@ export class GraphqlProjectRepository
   getProject = async (projectId: Project['id']): Promise<Project | null> => {
     const location = await this.findProjectLocation(projectId);
     if (location) {
-      return await this.restProjectRepository.getProject(location);
+      const project = await this.restProjectRepository.getProject(location);
+      if (project) {
+        return project;
+      }
+      console.warn(
+        `GraphqlProjectRepository: the recorded project location no longer resolves over REST, re-reading the project over GraphQL. projectId: ${projectId}, owner: ${location.owner}, projectNumber: ${location.projectNumber}`,
+      );
+      this.projectLocationCache.delete(projectId);
     }
     return await this.fetchProjectByGraphql(projectId);
   };

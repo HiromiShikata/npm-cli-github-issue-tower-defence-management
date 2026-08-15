@@ -185,27 +185,49 @@ describe('RestProjectRepository', () => {
 
       const project = await repository.getProject(location);
 
-      expect(project.id).toEqual('PVT_kwHOAGJHa84AFWnr');
-      expect(project.databaseId).toEqual(1403371);
-      expect(project.name).toEqual('UMINO');
-      expect(project.url).toEqual(
+      expect(project?.id).toEqual('PVT_kwHOAGJHa84AFWnr');
+      expect(project?.databaseId).toEqual(1403371);
+      expect(project?.name).toEqual('UMINO');
+      expect(project?.url).toEqual(
         'https://github.com/users/HiromiShikata/projects/48',
       );
-      expect(project.status.fieldId).toEqual('PVTSSF_status');
-      expect(project.status.statuses.map((status) => status.name)).toEqual([
+      expect(project?.status.fieldId).toEqual('PVTSSF_status');
+      expect(project?.status.statuses.map((status) => status.name)).toEqual([
         'Unread',
         'Todo by human',
       ]);
-      expect(project.story?.workflowManagementStory).toEqual({
+      expect(project?.story?.workflowManagementStory).toEqual({
         id: '6dc26727',
         name: 'regular / workflow management',
         color: 'BLUE',
         description: '',
       });
-      expect(project.nextActionDate).toEqual({
+      expect(project?.nextActionDate).toEqual({
         name: 'nextactiondate',
         fieldId: 'PVTF_nextactiondate',
       });
+    });
+
+    it('should return null when the project no longer exists at that owner and number', async () => {
+      mockGet.mockImplementation(() => {
+        throw Object.assign(new Error('Not Found'), {
+          response: { status: 404 },
+        });
+      });
+
+      expect(await repository.getProject(location)).toBeNull();
+    });
+
+    it('should rethrow a failure that is not a not found response', async () => {
+      mockGet.mockImplementation(() => {
+        throw Object.assign(new Error('Bad Gateway'), {
+          response: { status: 502 },
+        });
+      });
+
+      await expect(repository.getProject(location)).rejects.toThrow(
+        'Bad Gateway',
+      );
     });
   });
 });
