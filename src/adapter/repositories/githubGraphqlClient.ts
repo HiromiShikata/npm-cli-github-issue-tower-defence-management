@@ -70,38 +70,49 @@ export const UNKNOWN_GRAPHQL_CALL_SITE = 'unknown';
 
 const GRAPHQL_CLIENT_MODULE_NAME = 'githubGraphqlClient';
 
-const frameFunctionName = (frame: string): string | null => {
-  const match = frame.match(/^at (?:async )?([^\s(]+)/);
+const FRAME_LOCATION_PATTERN = /\(?([^()\s]+):\d+:\d+\)?$/;
+
+const MODULE_FILE_EXTENSION_PATTERN = /\.(?:[cm]?[jt]sx?)$/;
+
+const TEST_MODULE_SUFFIX_PATTERN = /\.(?:test|spec)$/;
+
+export const frameModuleName = (frame: string): string | null => {
+  const match = frame.match(FRAME_LOCATION_PATTERN);
   if (!match) {
     return null;
   }
-  const name = match[1];
-  if (name.startsWith('/') || name.startsWith('file:') || name.includes(':')) {
+  const location = match[1];
+  if (location.startsWith('node:') || location.includes('/node_modules/')) {
     return null;
   }
-  return name;
+  const fileName = location.split('/').slice(-1)[0];
+  const moduleName = fileName
+    .replace(MODULE_FILE_EXTENSION_PATTERN, '')
+    .replace(TEST_MODULE_SUFFIX_PATTERN, '');
+  if (moduleName.length === 0 || moduleName === GRAPHQL_CLIENT_MODULE_NAME) {
+    return null;
+  }
+  return moduleName;
 };
-
-const isOwnedMethodName = (name: string): boolean =>
-  name.includes('.') && !name.includes('<') && !name.startsWith('Object.');
 
 export const extractGraphqlCallSite = (stack: string | undefined): string => {
   if (!stack) {
     return UNKNOWN_GRAPHQL_CALL_SITE;
   }
-  const names = stack
+  const moduleNames = stack
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.startsWith('at '))
-    .filter((line) => !line.includes(GRAPHQL_CLIENT_MODULE_NAME))
-    .map(frameFunctionName)
-    .filter((name): name is string => name !== null);
-  const ownedMethodNames = names.filter(isOwnedMethodName);
-  const attributable = ownedMethodNames.length > 0 ? ownedMethodNames : names;
-  if (attributable.length === 0) {
+    .map(frameModuleName)
+    .filter((moduleName): moduleName is string => moduleName !== null)
+    .filter(
+      (moduleName, index, allModuleNames) =>
+        allModuleNames[index - 1] !== moduleName,
+    );
+  if (moduleNames.length === 0) {
     return UNKNOWN_GRAPHQL_CALL_SITE;
   }
-  return attributable
+  return moduleNames
     .slice(0, GRAPHQL_CALL_SITE_FRAME_COUNT)
     .join(GRAPHQL_CALL_SITE_SEPARATOR);
 };

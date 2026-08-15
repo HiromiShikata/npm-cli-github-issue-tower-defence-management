@@ -119,7 +119,7 @@ describe('githubGraphqlClient', () => {
   });
 
   describe('extractGraphqlCallSite', () => {
-    it('names the nearest frames outside the graphql client', () => {
+    it('names the nearest modules outside the graphql client', () => {
       const stack = [
         'Error',
         '    at captureGraphqlCallSite (/app/bin/adapter/repositories/githubGraphqlClient.js:80:20)',
@@ -131,11 +131,11 @@ describe('githubGraphqlClient', () => {
       ].join('\n');
 
       expect(extractGraphqlCallSite(stack)).toBe(
-        'GraphqlProjectItemRepository.fetchProjectItemByUrl<-ApiV3CheerioRestIssueRepository.getIssueByUrl<-ConvertCheckboxToIssueInStoryIssueUseCase.run',
+        'GraphqlProjectItemRepository<-ApiV3CheerioRestIssueRepository<-ConvertCheckboxToIssueInStoryIssueUseCase',
       );
     });
 
-    it('skips the module level retry and fallback wrappers so the owning repository and use case are named', () => {
+    it('collapses the retry and fallback wrappers into their own module so the owning repository and use case are named', () => {
       const stack = [
         'Error',
         '    at postGithubGraphqlJson (/app/bin/adapter/repositories/githubGraphqlClient.js:120:22)',
@@ -147,11 +147,31 @@ describe('githubGraphqlClient', () => {
       ].join('\n');
 
       expect(extractGraphqlCallSite(stack)).toBe(
-        'GraphqlProjectItemRepository.fetchProjectItems<-StartPreparationUseCase.run',
+        'GraphqlProjectItemRepository<-StartPreparationUseCase',
       );
     });
 
-    it('skips a frame that carries a file location instead of a function name', () => {
+    it('names the same call site whether or not the engine qualifies a nested helper with its class name', () => {
+      const frames = (nestedHelperFrameName: string): string =>
+        [
+          'Error',
+          '    at postGithubGraphqlJson (/app/bin/adapter/repositories/githubGraphqlClient.js:120:22)',
+          `    at ${nestedHelperFrameName} (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:310:12)`,
+          '    at GraphqlProjectItemRepository.fetchProjectItems (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:410:11)',
+          '    at async StartPreparationUseCase.run (/app/bin/domain/usecases/StartPreparationUseCase.js:456:11)',
+        ].join('\n');
+
+      expect(
+        extractGraphqlCallSite(frames('callGraphqlWithHalvingFallback')),
+      ).toBe('GraphqlProjectItemRepository<-StartPreparationUseCase');
+      expect(
+        extractGraphqlCallSite(
+          frames('GraphqlProjectItemRepository.callGraphqlWithHalvingFallback'),
+        ),
+      ).toBe('GraphqlProjectItemRepository<-StartPreparationUseCase');
+    });
+
+    it('names the module of a frame that carries a file location instead of a function name', () => {
       const stack = [
         'Error',
         '    at postGithubGraphqlJson (/app/bin/adapter/repositories/githubGraphqlClient.js:120:22)',
@@ -159,7 +179,25 @@ describe('githubGraphqlClient', () => {
         '    at StartPreparationUseCase.run (/app/bin/domain/usecases/StartPreparationUseCase.js:456:11)',
       ].join('\n');
 
-      expect(extractGraphqlCallSite(stack)).toBe('StartPreparationUseCase.run');
+      expect(extractGraphqlCallSite(stack)).toBe(
+        'AnonymousCaller<-StartPreparationUseCase',
+      );
+    });
+
+    it('skips test runner and node internal frames so the caller of a test run is still named', () => {
+      const stack = [
+        'Error',
+        '    at postGithubGraphqlJson (/app/src/adapter/repositories/githubGraphqlClient.ts:139:42)',
+        '    at GraphqlProjectItemRepository.fetchProjectItems (/app/src/adapter/repositories/issue/GraphqlProjectItemRepository.ts:566:26)',
+        '    at Object.<anonymous> (/app/src/adapter/repositories/issue/GraphqlProjectItemRepository.test.ts:288:26)',
+        '    at Promise.finally.completed (/app/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)',
+        '    at new Promise (<anonymous>)',
+        '    at processTicksAndRejections (node:internal/process/task_queues:104:5)',
+      ].join('\n');
+
+      expect(extractGraphqlCallSite(stack)).toBe(
+        'GraphqlProjectItemRepository',
+      );
     });
 
     it('returns unknown when no stack is available', () => {
@@ -181,12 +219,12 @@ describe('githubGraphqlClient', () => {
       logGithubGraphqlCost({
         query: 'query GetProjectItems { x }',
         responseBody: { data: { rateLimit: { cost: 3, remaining: 4200 } } },
-        callSite: 'StartPreparationUseCase.run',
+        callSite: 'GraphqlProjectItemRepository<-StartPreparationUseCase',
         now: () => new Date('2026-08-14T09:00:00.000Z'),
       });
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        '2026-08-14T09:00:00.000Z githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200 caller=StartPreparationUseCase.run',
+        '2026-08-14T09:00:00.000Z githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200 caller=GraphqlProjectItemRepository<-StartPreparationUseCase',
       );
     });
 
@@ -194,11 +232,11 @@ describe('githubGraphqlClient', () => {
       logGithubGraphqlCost({
         query: 'query GetProjectItems { x }',
         responseBody: { data: { rateLimit: { cost: 4, remaining: 4200 } } },
-        callSite: 'StartPreparationUseCase.run',
+        callSite: 'GraphqlProjectItemRepository<-StartPreparationUseCase',
         now: () => new Date('2026-08-14T23:45:12.345Z'),
       });
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        '2026-08-14T23:45:12.345Z githubGraphqlClient: query=GetProjectItems cost=4 remaining=4200 caller=StartPreparationUseCase.run',
+        '2026-08-14T23:45:12.345Z githubGraphqlClient: query=GetProjectItems cost=4 remaining=4200 caller=GraphqlProjectItemRepository<-StartPreparationUseCase',
       );
     });
 
