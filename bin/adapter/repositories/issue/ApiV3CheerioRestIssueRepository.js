@@ -336,9 +336,6 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.updateIssue = async (issue) => {
             await this.restIssueRepository.updateIssue(issue);
         };
-        this.updateIssueBody = async (issue, body) => {
-            await this.restIssueRepository.updateIssueBody(issue, body);
-        };
         this.getIssueByUrl = async (url) => {
             const projectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(url);
             if (!projectItem) {
@@ -1342,41 +1339,24 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.createCommentByUrl = async (issueOrPrUrl, commentBody) => {
             await this.restIssueRepository.createComment(issueOrPrUrl, commentBody);
         };
-        this.fetchIssueBodyResponse = (url) => {
+        this.getIssueOrPullRequestBody = async (url) => {
             const { owner, repo, issueNumber } = this.parseIssueUrl(url);
-            return this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`, {
+            const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`, {
                 method: 'GET',
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
                     Accept: 'application/vnd.github+json',
                 },
             }));
-        };
-        this.parseIssueBodyResponse = async (url, response) => {
+            if (!response.ok) {
+                const reason = await this.formatGitHubErrorWithStatus(response);
+                throw new Error(`Failed to fetch body for ${url}: ${reason}`);
+            }
             const body = await response.json();
             if (!isIssueOrPullRequestBodyResponse(body)) {
                 throw new Error(`Unexpected response shape when fetching body for ${url}`);
             }
             return body.body ?? '';
-        };
-        this.getIssueOrPullRequestBody = async (url) => {
-            const response = await this.fetchIssueBodyResponse(url);
-            if (!response.ok) {
-                const reason = await this.formatGitHubErrorWithStatus(response);
-                throw new Error(`Failed to fetch body for ${url}: ${reason}`);
-            }
-            return this.parseIssueBodyResponse(url, response);
-        };
-        this.getIssueBodyByUrl = async (url) => {
-            const response = await this.fetchIssueBodyResponse(url);
-            if (response.status === 404) {
-                return null;
-            }
-            if (!response.ok) {
-                const reason = await this.formatGitHubErrorWithStatus(response);
-                throw new Error(`Failed to fetch body for ${url}: ${reason}`);
-            }
-            return this.parseIssueBodyResponse(url, response);
         };
         this.getIssueOrPullRequestComments = async (url) => {
             const { owner, repo, issueNumber } = this.parseIssueUrl(url);

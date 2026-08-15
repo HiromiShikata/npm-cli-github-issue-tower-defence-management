@@ -18,7 +18,7 @@ export declare const INCREMENTAL_FETCH_SKEW_BUFFER_MS: number;
 export declare const REQUIRED_CHECKS_CACHE_TTL_MS: number;
 export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository implements IssueRepository {
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>;
-    readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'updateIssueBody' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>;
+    readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>;
     readonly graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>;
     readonly localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>;
     readonly projectRepository: Pick<ProjectRepository, 'getProject'>;
@@ -26,7 +26,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     readonly localStorageRepository: LocalStorageRepository;
     readonly ghToken: string;
     readonly sleep: Sleep;
-    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'updateIssueBody' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
+    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
     private readonly projectIssuesCacheRepository;
     private readonly getAllIssuesRefreshMemo;
     private readonly lastIssuesFetchedAtByProjectId;
@@ -59,7 +59,6 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
         number: string;
     }[]>;
     updateIssue: (issue: Issue) => Promise<void>;
-    updateIssueBody: (issue: Pick<Issue, "org" | "repo" | "number">, body: string) => Promise<void>;
     getIssueByUrl: (url: string) => Promise<Issue | null>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
     setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) => Promise<void>;
@@ -107,10 +106,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     private formatGitHubErrorWithStatus;
     deletePullRequestBranch: (prUrl: string, branchName: string) => Promise<void>;
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) => Promise<void>;
-    private fetchIssueBodyResponse;
-    private parseIssueBodyResponse;
     getIssueOrPullRequestBody: (url: string) => Promise<string>;
-    getIssueBodyByUrl: (url: string) => Promise<string | null>;
     getIssueOrPullRequestComments: (url: string) => Promise<IssueComment[]>;
     getPullRequestDetail: (prUrl: string) => Promise<PullRequestDetail | null>;
     private fetchPullRequestFiles;

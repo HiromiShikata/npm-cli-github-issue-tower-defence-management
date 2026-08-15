@@ -33,14 +33,17 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                 if (noCheckboxWorkFollows && storyViewLinkAlreadyOnFirstLine) {
                     continue;
                 }
-                const freshStoryBody = await this.issueRepository.getIssueBodyByUrl(storyIssue.url);
-                if (freshStoryBody === null) {
+                const freshStoryIssue = await this.issueRepository.getIssueByUrl(storyIssue.url);
+                if (!freshStoryIssue) {
                     console.warn(`ConvertCheckboxToIssueInStoryIssueUseCase: story issue not found by URL (possibly deleted), skipping story. storyIssueUrl: ${storyIssue.url}`);
                     continue;
                 }
-                let newBody = this.bodyWithStoryViewLinkOnFirstLine(freshStoryBody, input.urlOfStoryView, storyOption.name);
-                if (newBody !== freshStoryBody) {
-                    await this.issueRepository.updateIssueBody(storyIssue, newBody);
+                let newBody = this.bodyWithStoryViewLinkOnFirstLine(freshStoryIssue.body, input.urlOfStoryView, storyOption.name);
+                if (newBody !== freshStoryIssue.body) {
+                    await this.issueRepository.updateIssue({
+                        ...freshStoryIssue,
+                        body: newBody,
+                    });
                 }
                 if (iced || !input.createTaskFromStoryBodyCheckboxEnabled) {
                     continue;
@@ -50,12 +53,15 @@ class ConvertCheckboxToIssueInStoryIssueUseCase {
                 }
                 const checkboxTextsNotCreatedIssue = this.findCheckboxTextsNotCreatedIssue(newBody);
                 for (const checkboxText of checkboxTextsNotCreatedIssue) {
-                    const issueTitle = checkboxText.replace('STORYNAME', `${storyOption.name} #${storyIssue.number}`);
-                    const newIssueBody = `- Parent issue: ${storyIssue.url}`;
-                    const newIssueNumber = await this.issueRepository.createNewIssue(storyIssue.org, storyIssue.repo, issueTitle, newIssueBody, [input.manager], []);
-                    const newIssueUrl = `https://github.com/${storyIssue.org}/${storyIssue.repo}/issues/${newIssueNumber}`;
+                    const issueTitle = checkboxText.replace('STORYNAME', `${storyOption.name} #${freshStoryIssue.number}`);
+                    const newIssueBody = `- Parent issue: ${freshStoryIssue.url}`;
+                    const newIssueNumber = await this.issueRepository.createNewIssue(freshStoryIssue.org, freshStoryIssue.repo, issueTitle, newIssueBody, [input.manager], []);
+                    const newIssueUrl = `https://github.com/${freshStoryIssue.org}/${freshStoryIssue.repo}/issues/${newIssueNumber}`;
                     newBody = newBody.replace(`- [ ] ${checkboxText}`, `- [ ] ${newIssueUrl}`);
-                    await this.issueRepository.updateIssueBody(storyIssue, newBody);
+                    await this.issueRepository.updateIssue({
+                        ...freshStoryIssue,
+                        body: newBody,
+                    });
                     await this.issueRepository.addIssueToProject(input.project, newIssueUrl);
                     const newIssue = await this.issueRepository.getIssueByUrl(newIssueUrl);
                     if (!newIssue) {

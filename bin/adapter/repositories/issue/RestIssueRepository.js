@@ -87,12 +87,6 @@ class RestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
                 headers: { Authorization: `token ${this.ghToken}` },
             });
         };
-        this.updateIssueBody = async (issue, body) => {
-            await ky_1.default.patch(`https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`, {
-                json: { body },
-                headers: { Authorization: `token ${this.ghToken}` },
-            });
-        };
         this.updateLabels = async (issue, labels) => {
             await ky_1.default.put(`https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels`, {
                 json: { labels },
