@@ -62,17 +62,78 @@ const extractRateLimit = (
   return { cost, remaining };
 };
 
-export const logGithubGraphqlCost = (
-  query: string,
-  responseBody: unknown,
-  now: () => Date = () => new Date(),
-): void => {
-  const rateLimit = extractRateLimit(responseBody);
+export const GRAPHQL_CALL_SITE_FRAME_COUNT = 3;
+
+export const GRAPHQL_CALL_SITE_SEPARATOR = '<-';
+
+export const UNKNOWN_GRAPHQL_CALL_SITE = 'unknown';
+
+const GRAPHQL_CLIENT_MODULE_NAME = 'githubGraphqlClient';
+
+const FRAME_LOCATION_PATTERN = /\(?([^()\s]+):\d+:\d+\)?$/;
+
+const MODULE_FILE_EXTENSION_PATTERN = /\.(?:[cm]?[jt]sx?)$/;
+
+const TEST_MODULE_SUFFIX_PATTERN = /\.(?:test|spec)$/;
+
+const frameModuleName = (frame: string): string | null => {
+  const match = frame.match(FRAME_LOCATION_PATTERN);
+  if (!match) {
+    return null;
+  }
+  const location = match[1];
+  if (location.startsWith('node:') || location.includes('/node_modules/')) {
+    return null;
+  }
+  const fileName = location.split('/').slice(-1)[0];
+  const moduleName = fileName
+    .replace(MODULE_FILE_EXTENSION_PATTERN, '')
+    .replace(TEST_MODULE_SUFFIX_PATTERN, '');
+  if (moduleName.length === 0 || moduleName === GRAPHQL_CLIENT_MODULE_NAME) {
+    return null;
+  }
+  return moduleName;
+};
+
+export const extractGraphqlCallSite = (stack: string | undefined): string => {
+  if (!stack) {
+    return UNKNOWN_GRAPHQL_CALL_SITE;
+  }
+  const moduleNames = stack
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('at '))
+    .map(frameModuleName)
+    .filter((moduleName): moduleName is string => moduleName !== null)
+    .filter(
+      (moduleName, index, allModuleNames) =>
+        allModuleNames[index - 1] !== moduleName,
+    );
+  if (moduleNames.length === 0) {
+    return UNKNOWN_GRAPHQL_CALL_SITE;
+  }
+  return moduleNames
+    .slice(0, GRAPHQL_CALL_SITE_FRAME_COUNT)
+    .join(GRAPHQL_CALL_SITE_SEPARATOR);
+};
+
+export const captureGraphqlCallSite = (): string =>
+  extractGraphqlCallSite(new Error().stack);
+
+export const logGithubGraphqlCost = (params: {
+  query: string;
+  responseBody: unknown;
+  callSite?: string;
+  now?: () => Date;
+}): void => {
+  const rateLimit = extractRateLimit(params.responseBody);
   if (!rateLimit) {
     return;
   }
+  const now = params.now ?? (() => new Date());
+  const callSite = params.callSite ?? UNKNOWN_GRAPHQL_CALL_SITE;
   console.log(
-    `${now().toISOString()} githubGraphqlClient: query=${extractGraphqlOperationName(query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining}`,
+    `${now().toISOString()} githubGraphqlClient: query=${extractGraphqlOperationName(params.query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining} caller=${callSite}`,
   );
 };
 
@@ -81,6 +142,7 @@ export const postGithubGraphqlJson = async <T>(params: {
   query: string;
   variables?: Record<string, unknown>;
 }): Promise<T> => {
+  const callSite = captureGraphqlCallSite();
   const response = await ky
     .post(GITHUB_GRAPHQL_ENDPOINT, {
       json: {
@@ -94,7 +156,11 @@ export const postGithubGraphqlJson = async <T>(params: {
       },
     })
     .json<T>();
-  logGithubGraphqlCost(params.query, response);
+  logGithubGraphqlCost({
+    query: params.query,
+    responseBody: response,
+    callSite,
+  });
   return response;
 };
 
@@ -104,6 +170,7 @@ export const fetchGithubGraphql = async (params: {
   variables?: Record<string, unknown>;
   timeoutMs?: number;
 }): Promise<Response> => {
+  const callSite = captureGraphqlCallSite();
   const response = await fetch(GITHUB_GRAPHQL_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -123,7 +190,11 @@ export const fetchGithubGraphql = async (params: {
       .clone()
       .json()
       .catch((): null => null);
-    logGithubGraphqlCost(params.query, responseBody);
+    logGithubGraphqlCost({
+      query: params.query,
+      responseBody,
+      callSite,
+    });
   }
   return response;
 };

@@ -19,6 +19,7 @@ import {
   GITHUB_GRAPHQL_ENDPOINT,
   GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
   RATE_LIMIT_SELECTION,
+  extractGraphqlCallSite,
   extractGraphqlOperationName,
   fetchGithubGraphql,
   injectRateLimitSelection,
@@ -117,39 +118,141 @@ describe('githubGraphqlClient', () => {
     });
   });
 
+  describe('extractGraphqlCallSite', () => {
+    it('names the nearest modules outside the graphql client', () => {
+      const stack = [
+        'Error',
+        '    at captureGraphqlCallSite (/app/bin/adapter/repositories/githubGraphqlClient.js:80:20)',
+        '    at postGithubGraphqlJson (/app/bin/adapter/repositories/githubGraphqlClient.js:120:22)',
+        '    at GraphqlProjectItemRepository.fetchProjectItemByUrl (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:1042:11)',
+        '    at ApiV3CheerioRestIssueRepository.getIssueByUrl (/app/bin/adapter/repositories/issue/ApiV3CheerioRestIssueRepository.js:813:11)',
+        '    at async ConvertCheckboxToIssueInStoryIssueUseCase.run (/app/bin/domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase.js:63:31)',
+        '    at async HandleScheduledEventUseCase.runSlowSweepUseCases (/app/bin/domain/usecases/HandleScheduledEventUseCase.js:552:5)',
+      ].join('\n');
+
+      expect(extractGraphqlCallSite(stack)).toBe(
+        'GraphqlProjectItemRepository<-ApiV3CheerioRestIssueRepository<-ConvertCheckboxToIssueInStoryIssueUseCase',
+      );
+    });
+
+    it('collapses the retry and fallback wrappers into their own module so the owning repository and use case are named', () => {
+      const stack = [
+        'Error',
+        '    at postGithubGraphqlJson (/app/bin/adapter/repositories/githubGraphqlClient.js:120:22)',
+        '    at callWithRateLimitRetry (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:255:15)',
+        '    at callGraphql (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:280:12)',
+        '    at callGraphqlWithHalvingFallback (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:310:12)',
+        '    at GraphqlProjectItemRepository.fetchProjectItems (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:410:11)',
+        '    at async StartPreparationUseCase.run (/app/bin/domain/usecases/StartPreparationUseCase.js:456:11)',
+      ].join('\n');
+
+      expect(extractGraphqlCallSite(stack)).toBe(
+        'GraphqlProjectItemRepository<-StartPreparationUseCase',
+      );
+    });
+
+    it('names the same call site whether or not the engine qualifies a nested helper with its class name', () => {
+      const frames = (nestedHelperFrameName: string): string =>
+        [
+          'Error',
+          '    at postGithubGraphqlJson (/app/bin/adapter/repositories/githubGraphqlClient.js:120:22)',
+          `    at ${nestedHelperFrameName} (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:310:12)`,
+          '    at GraphqlProjectItemRepository.fetchProjectItems (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:410:11)',
+          '    at async StartPreparationUseCase.run (/app/bin/domain/usecases/StartPreparationUseCase.js:456:11)',
+        ].join('\n');
+
+      expect(
+        extractGraphqlCallSite(frames('callGraphqlWithHalvingFallback')),
+      ).toBe('GraphqlProjectItemRepository<-StartPreparationUseCase');
+      expect(
+        extractGraphqlCallSite(
+          frames('GraphqlProjectItemRepository.callGraphqlWithHalvingFallback'),
+        ),
+      ).toBe('GraphqlProjectItemRepository<-StartPreparationUseCase');
+    });
+
+    it('names the module of a frame that carries a file location instead of a function name', () => {
+      const stack = [
+        'Error',
+        '    at postGithubGraphqlJson (/app/bin/adapter/repositories/githubGraphqlClient.js:120:22)',
+        '    at /app/bin/domain/usecases/AnonymousCaller.js:12:9',
+        '    at StartPreparationUseCase.run (/app/bin/domain/usecases/StartPreparationUseCase.js:456:11)',
+      ].join('\n');
+
+      expect(extractGraphqlCallSite(stack)).toBe(
+        'AnonymousCaller<-StartPreparationUseCase',
+      );
+    });
+
+    it('skips test runner and node internal frames so the caller of a test run is still named', () => {
+      const stack = [
+        'Error',
+        '    at postGithubGraphqlJson (/app/src/adapter/repositories/githubGraphqlClient.ts:139:42)',
+        '    at GraphqlProjectItemRepository.fetchProjectItems (/app/src/adapter/repositories/issue/GraphqlProjectItemRepository.ts:566:26)',
+        '    at Object.<anonymous> (/app/src/adapter/repositories/issue/GraphqlProjectItemRepository.test.ts:288:26)',
+        '    at Promise.finally.completed (/app/node_modules/jest-circus/build/jestAdapterInit.js:1561:28)',
+        '    at new Promise (<anonymous>)',
+        '    at processTicksAndRejections (node:internal/process/task_queues:104:5)',
+      ].join('\n');
+
+      expect(extractGraphqlCallSite(stack)).toBe(
+        'GraphqlProjectItemRepository',
+      );
+    });
+
+    it('returns unknown when no stack is available', () => {
+      expect(extractGraphqlCallSite(undefined)).toBe('unknown');
+    });
+
+    it('returns unknown when every frame is inside the graphql client', () => {
+      const stack = [
+        'Error',
+        '    at postGithubGraphqlJson (/app/bin/adapter/repositories/githubGraphqlClient.js:120:22)',
+      ].join('\n');
+
+      expect(extractGraphqlCallSite(stack)).toBe('unknown');
+    });
+  });
+
   describe('logGithubGraphqlCost', () => {
     it('logs one line with query name, cost and remaining', () => {
-      logGithubGraphqlCost(
-        'query GetProjectItems { x }',
-        { data: { rateLimit: { cost: 3, remaining: 4200 } } },
-        () => new Date('2026-08-14T09:00:00.000Z'),
-      );
+      logGithubGraphqlCost({
+        query: 'query GetProjectItems { x }',
+        responseBody: { data: { rateLimit: { cost: 3, remaining: 4200 } } },
+        callSite: 'GraphqlProjectItemRepository<-StartPreparationUseCase',
+        now: () => new Date('2026-08-14T09:00:00.000Z'),
+      });
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        '2026-08-14T09:00:00.000Z githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200',
+        '2026-08-14T09:00:00.000Z githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200 caller=GraphqlProjectItemRepository<-StartPreparationUseCase',
       );
     });
 
     it('opens the line with the time the cost was charged, so a point maps to a rate-limit window', () => {
-      logGithubGraphqlCost(
-        'query GetProjectItems { x }',
-        { data: { rateLimit: { cost: 4, remaining: 4200 } } },
-        () => new Date('2026-08-14T23:45:12.345Z'),
-      );
+      logGithubGraphqlCost({
+        query: 'query GetProjectItems { x }',
+        responseBody: { data: { rateLimit: { cost: 4, remaining: 4200 } } },
+        callSite: 'GraphqlProjectItemRepository<-StartPreparationUseCase',
+        now: () => new Date('2026-08-14T23:45:12.345Z'),
+      });
       expect(consoleLogSpy).toHaveBeenCalledWith(
-        '2026-08-14T23:45:12.345Z githubGraphqlClient: query=GetProjectItems cost=4 remaining=4200',
+        '2026-08-14T23:45:12.345Z githubGraphqlClient: query=GetProjectItems cost=4 remaining=4200 caller=GraphqlProjectItemRepository<-StartPreparationUseCase',
       );
     });
 
     it('does not log when rateLimit is absent', () => {
-      logGithubGraphqlCost('query GetProjectItems { x }', {
-        data: { node: null },
+      logGithubGraphqlCost({
+        query: 'query GetProjectItems { x }',
+        responseBody: { data: { node: null } },
       });
       expect(consoleLogSpy).not.toHaveBeenCalled();
     });
 
     it('does not log when the body is not an object', () => {
-      logGithubGraphqlCost('query GetProjectItems { x }', undefined);
+      logGithubGraphqlCost({
+        query: 'query GetProjectItems { x }',
+        responseBody: undefined,
+      });
       expect(consoleLogSpy).not.toHaveBeenCalled();
     });
   });
@@ -183,7 +286,7 @@ describe('githubGraphqlClient', () => {
       expect(headers.Authorization).toBe('Bearer token-a');
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringMatching(
-          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z githubGraphqlClient: query=GetItem cost=1 remaining=4999$/,
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z githubGraphqlClient: query=GetItem cost=1 remaining=4999 caller=\S+$/,
         ),
       );
     });
@@ -249,7 +352,7 @@ describe('githubGraphqlClient', () => {
       expect(sentBody.variables).toEqual({ a: 1 });
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringMatching(
-          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z githubGraphqlClient: query=PullRequestStatus cost=2 remaining=4321$/,
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z githubGraphqlClient: query=PullRequestStatus cost=2 remaining=4321 caller=\S+$/,
         ),
       );
     });
