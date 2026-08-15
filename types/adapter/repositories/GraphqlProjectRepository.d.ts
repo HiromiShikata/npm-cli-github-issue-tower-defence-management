@@ -4,13 +4,17 @@ import { LocalStorageRepository } from './LocalStorageRepository';
 import { ProjectRepository } from '../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../domain/entities/Project';
 import { RequiredProjectFieldDefinition } from '../../domain/entities/RequiredProjectField';
-export declare const convertToFieldOptionColor: (color: string) => FieldOption["color"];
 export declare class GraphqlProjectRepository extends BaseGitHubRepository implements Pick<ProjectRepository, 'getProject' | 'findProjectIdByUrl' | 'getByUrl' | 'updateStoryList' | 'updateStatusList' | 'listFieldNames' | 'createField'> {
     private readonly projectIdCache;
     private readonly fetchProjectIdFailedAt;
+    private readonly projectLocationCache;
     private readonly projectCache?;
     private readonly projectIssuesCacheRepository;
+    private readonly restProjectRepository;
     constructor(localStorageRepository: LocalStorageRepository, ghToken?: string, projectCache?: Pick<LocalStorageCacheRepository, 'getLatest' | 'set' | 'getSingle' | 'setSingle'>);
+    private readProjectLocationFromDiskCache;
+    private rememberProjectLocation;
+    private findProjectLocation;
     private readProjectIdFromDiskCache;
     private writeProjectIdToDiskCache;
     extractProjectFromUrl: (projectUrl: string) => {
@@ -20,6 +24,7 @@ export declare class GraphqlProjectRepository extends BaseGitHubRepository imple
     fetchProjectId: (login: string, projectNumber: number) => Promise<string>;
     findProjectIdByUrl: (projectUrl: string) => Promise<Project["id"] | null>;
     getProject: (projectId: Project["id"]) => Promise<Project | null>;
+    private fetchProjectByGraphql;
     getByUrl: (url: string) => Promise<Project>;
     listFieldNames: (project: Project) => Promise<string[]>;
     createField: (project: Project, field: RequiredProjectFieldDefinition) => Promise<void>;

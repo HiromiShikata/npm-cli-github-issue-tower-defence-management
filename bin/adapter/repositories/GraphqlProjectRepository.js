@@ -1,34 +1,76 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GraphqlProjectRepository = exports.convertToFieldOptionColor = void 0;
+exports.GraphqlProjectRepository = void 0;
 const BaseGitHubRepository_1 = require("./BaseGitHubRepository");
 const githubGraphqlClient_1 = require("./githubGraphqlClient");
 const ProjectIssuesCacheRepository_1 = require("./ProjectIssuesCacheRepository");
-const RequiredProjectField_1 = require("../../domain/entities/RequiredProjectField");
-const utils_1 = require("./utils");
+const projectFieldDefinition_1 = require("./projectFieldDefinition");
+const RestProjectRepository_1 = require("./RestProjectRepository");
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const PROJECT_ID_DISK_CACHE_KEY_PREFIX = 'projectId';
-const convertToFieldOptionColor = (color) => {
-    switch (color) {
-        case 'RED':
-        case 'YELLOW':
-        case 'GREEN':
-        case 'BLUE':
-        case 'PURPLE':
-        case 'ORANGE':
-        case 'PINK':
-        case 'GRAY':
-            return color;
-        default:
-            return 'GRAY';
-    }
-};
-exports.convertToFieldOptionColor = convertToFieldOptionColor;
+const PROJECT_LOCATION_DISK_CACHE_KEY_PREFIX = 'projectLocation';
 class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
     constructor(localStorageRepository, ghToken = process.env.GH_TOKEN || 'dummy', projectCache) {
         super(localStorageRepository, ghToken);
         this.projectIdCache = new Map();
         this.fetchProjectIdFailedAt = new Map();
+        this.projectLocationCache = new Map();
+        this.readProjectLocationFromDiskCache = async (projectId) => {
+            if (!this.projectCache) {
+                return null;
+            }
+            let cache;
+            try {
+                cache = await this.projectCache.getLatest(`${PROJECT_LOCATION_DISK_CACHE_KEY_PREFIX}-${projectId}`);
+            }
+            catch (error) {
+                console.warn(`GraphqlProjectRepository: reading the project location disk cache failed, falling back to the GraphQL project query. projectId: ${projectId}, error: ${String(error)}`);
+                return null;
+            }
+            if (!cache) {
+                return null;
+            }
+            const value = cache.value;
+            if (typeof value !== 'object' ||
+                value === null ||
+                !('owner' in value) ||
+                !('ownerType' in value) ||
+                !('projectNumber' in value) ||
+                typeof value.owner !== 'string' ||
+                typeof value.projectNumber !== 'number' ||
+                (value.ownerType !== 'users' && value.ownerType !== 'orgs')) {
+                return null;
+            }
+            return {
+                owner: value.owner,
+                ownerType: value.ownerType,
+                projectNumber: value.projectNumber,
+            };
+        };
+        this.rememberProjectLocation = async (projectId, location) => {
+            this.projectLocationCache.set(projectId, location);
+            if (!this.projectCache) {
+                return;
+            }
+            try {
+                await this.projectCache.set(`${PROJECT_LOCATION_DISK_CACHE_KEY_PREFIX}-${projectId}`, location);
+            }
+            catch (error) {
+                console.warn(`GraphqlProjectRepository: writing the project location disk cache failed, every later process will fall back to the GraphQL project query. projectId: ${projectId}, error: ${String(error)}`);
+            }
+        };
+        this.findProjectLocation = async (projectId) => {
+            const cached = this.projectLocationCache.get(projectId);
+            if (cached) {
+                return cached;
+            }
+            const diskCached = await this.readProjectLocationFromDiskCache(projectId);
+            if (diskCached) {
+                this.projectLocationCache.set(projectId, diskCached);
+                return diskCached;
+            }
+            return null;
+        };
         this.readProjectIdFromDiskCache = async (cacheKey) => {
             if (!this.projectCache) {
                 return null;
@@ -129,6 +171,11 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             }
             this.projectIdCache.set(cacheKey, projectId);
             await this.writeProjectIdToDiskCache(cacheKey, projectId);
+            await this.rememberProjectLocation(projectId, {
+                owner: login,
+                ownerType: response.data.organization?.projectV2?.id ? 'orgs' : 'users',
+                projectNumber,
+            });
             return projectId;
         };
         this.findProjectIdByUrl = async (projectUrl) => {
@@ -136,6 +183,18 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             return await this.fetchProjectId(owner, projectNumber);
         };
         this.getProject = async (projectId) => {
+            const location = await this.findProjectLocation(projectId);
+            if (location) {
+                const project = await this.restProjectRepository.getProject(location);
+                if (project) {
+                    return project;
+                }
+                console.warn(`GraphqlProjectRepository: the recorded project location no longer resolves over REST, re-reading the project over GraphQL. projectId: ${projectId}, owner: ${location.owner}, projectNumber: ${location.projectNumber}`);
+                this.projectLocationCache.delete(projectId);
+            }
+            return await this.fetchProjectByGraphql(projectId);
+        };
+        this.fetchProjectByGraphql = async (projectId) => {
             const query = `query GetProjectV2($projectId: ID!) {
   node(id: $projectId) {
     ... on ProjectV2 {
@@ -207,79 +266,28 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             if (!project) {
                 return null;
             }
-            const nextActionDate = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) ===
-                (0, utils_1.normalizeFieldName)(RequiredProjectField_1.NEXT_ACTION_DATE_FIELD_NAME));
-            const nextActionHour = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) ===
-                (0, utils_1.normalizeFieldName)(RequiredProjectField_1.NEXT_ACTION_HOUR_FIELD_NAME));
-            const status = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'status');
-            if (!status) {
-                throw new Error('status field is not found');
+            const fields = project.fields.nodes.map((field) => ({
+                fieldId: field.id,
+                databaseId: field.databaseId,
+                name: field.name,
+                options: (field.options ?? []).map((option) => ({
+                    id: option.id,
+                    name: option.name,
+                    color: (0, projectFieldDefinition_1.convertToFieldOptionColor)(option.color),
+                    description: option.description,
+                })),
+            }));
+            const location = (0, RestProjectRepository_1.projectLocationFromUrl)(project.url);
+            if (location) {
+                await this.rememberProjectLocation(project.id, location);
             }
-            const story = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === (0, utils_1.normalizeFieldName)(RequiredProjectField_1.STORY_FIELD_NAME));
-            const workflowManagementStory = story?.options.find((option) => (0, utils_1.normalizeFieldName)(option.name).includes('workflowmanagement'));
-            const remainignEstimationMinutes = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'remainingestimationminutes');
-            const dependedIssueUrlSeparatedByComma = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith((0, utils_1.normalizeFieldName)(RequiredProjectField_1.DEPENDED_ISSUE_URL_FIELD_NAME)));
-            const completionDate50PercentConfidence = project.fields.nodes.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('completiondate'));
-            return {
+            return (0, projectFieldDefinition_1.projectFromDefinition)({
                 id: project.id,
                 url: project.url,
                 databaseId: project.databaseId,
                 name: project.title,
-                status: {
-                    name: status.name,
-                    fieldId: status.id,
-                    statuses: status.options.map((option) => ({
-                        id: option.id,
-                        name: option.name,
-                        color: (0, exports.convertToFieldOptionColor)(option.color),
-                        description: option.description,
-                    })),
-                },
-                nextActionDate: nextActionDate
-                    ? {
-                        name: nextActionDate.name,
-                        fieldId: nextActionDate.id,
-                    }
-                    : null,
-                nextActionHour: nextActionHour
-                    ? {
-                        name: nextActionHour.name,
-                        fieldId: nextActionHour.id,
-                    }
-                    : null,
-                story: story && workflowManagementStory
-                    ? {
-                        name: story.name,
-                        fieldId: story.id,
-                        databaseId: story.databaseId,
-                        stories: story.options.map((option) => ({
-                            id: option.id,
-                            name: option.name,
-                            color: (0, exports.convertToFieldOptionColor)(option.color),
-                            description: option.description,
-                        })),
-                        workflowManagementStory,
-                    }
-                    : null,
-                remainingEstimationMinutes: remainignEstimationMinutes
-                    ? {
-                        name: remainignEstimationMinutes.name,
-                        fieldId: remainignEstimationMinutes.id,
-                    }
-                    : null,
-                dependedIssueUrlSeparatedByComma: dependedIssueUrlSeparatedByComma
-                    ? {
-                        name: dependedIssueUrlSeparatedByComma.name,
-                        fieldId: dependedIssueUrlSeparatedByComma.id,
-                    }
-                    : null,
-                completionDate50PercentConfidence: completionDate50PercentConfidence
-                    ? {
-                        name: completionDate50PercentConfidence.name,
-                        fieldId: completionDate50PercentConfidence.id,
-                    }
-                    : null,
-            };
+                fields,
+            });
         };
         this.getByUrl = async (url) => {
             const projectId = await this.findProjectIdByUrl(url);
@@ -293,33 +301,12 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             return project;
         };
         this.listFieldNames = async (project) => {
-            const query = `query ListProjectV2FieldNames($projectId: ID!) {
-  node(id: $projectId) {
-    ... on ProjectV2 {
-      fields(first: 100) {
-        nodes {
-          ... on ProjectV2FieldCommon {
-            name
-          }
-        }
-      }
-    }
-  }
-}`;
-            const response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
-                ghToken: this.ghToken,
-                query,
-                variables: { projectId: project.id },
-            });
-            if (!response.data || !response.data.node) {
-                const errorMessages = response.errors
-                    ? response.errors.map((e) => e.message).join('; ')
-                    : 'no data field in response';
-                throw new Error(`GitHub GraphQL API returned no data for listFieldNames: ${errorMessages}`);
+            const location = (0, RestProjectRepository_1.projectLocationFromUrl)(project.url) ??
+                (await this.findProjectLocation(project.id));
+            if (!location) {
+                throw new Error(`listFieldNames: project location is unknown for ${project.id}`);
             }
-            return response.data.node.fields.nodes
-                .map((field) => field.name)
-                .filter((name) => typeof name === 'string');
+            return await this.restProjectRepository.listFieldNames(location);
         };
         this.createField = async (project, field) => {
             const mutation = `mutation CreateProjectV2Field($projectId: ID!, $dataType: ProjectV2CustomFieldType!, $name: String!, $singleSelectOptions: [ProjectV2SingleSelectFieldOptionInput!]) {
@@ -440,6 +427,7 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             projectCache === undefined
                 ? null
                 : new ProjectIssuesCacheRepository_1.ProjectIssuesCacheRepository(projectCache);
+        this.restProjectRepository = new RestProjectRepository_1.RestProjectRepository(localStorageRepository, ghToken);
     }
 }
 exports.GraphqlProjectRepository = GraphqlProjectRepository;

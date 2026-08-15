@@ -1,3 +1,10 @@
+## [1.154.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.154.0...v1.154.1) (2026-08-15)
+
+
+### Performance Improvements
+
+* read the project field metadata over REST instead of the GraphQL project query ([#1579](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1579)) ([ebee44d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ebee44dadd6b16ec1600a0a86b164d093db6dadf)), closes [#1578](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1578) [#1018](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1018) [#1018](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1018)
+
 # [1.154.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.6...v1.154.0) (2026-08-15)
 
 
