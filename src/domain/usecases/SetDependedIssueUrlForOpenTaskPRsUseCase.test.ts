@@ -43,6 +43,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
     ...mock<Issue>(),
     url: 'https://github.com/owner/repo/pull/100',
     isPr: true,
+    dependedIssueUrls: [],
     isClosed: false,
     state: 'OPEN',
     closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
@@ -56,6 +57,53 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
     await useCase.run({
       project: projectWithField,
       issues: [openTaskIssue, openPrClosingIssue1],
+    });
+
+    expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
+      'https://github.com/owner/repo/pull/100',
+      projectWithField,
+      openTaskIssue.url,
+    );
+  });
+
+  it('does not touch a pull request whose depended issue url is already set, so no project item is read for it', async () => {
+    const openPrWithDependedIssueUrlAlreadySet: Issue = {
+      ...mock<Issue>(),
+      url: 'https://github.com/owner/repo/pull/101',
+      isPr: true,
+      dependedIssueUrls: ['https://github.com/owner/repo/issues/1'],
+      isClosed: false,
+      state: 'OPEN',
+      closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
+    };
+
+    await useCase.run({
+      project: projectWithField,
+      issues: [openTaskIssue, openPrWithDependedIssueUrlAlreadySet],
+    });
+
+    expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+  });
+
+  it('still sets the depended issue url on a pull request that has none, when another pull request already has one', async () => {
+    const openPrWithDependedIssueUrlAlreadySet: Issue = {
+      ...mock<Issue>(),
+      url: 'https://github.com/owner/repo/pull/101',
+      isPr: true,
+      dependedIssueUrls: ['https://github.com/owner/repo/issues/1'],
+      isClosed: false,
+      state: 'OPEN',
+      closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
+    };
+
+    await useCase.run({
+      project: projectWithField,
+      issues: [
+        openTaskIssue,
+        openPrWithDependedIssueUrlAlreadySet,
+        openPrClosingIssue1,
+      ],
     });
 
     expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledTimes(1);
@@ -80,6 +128,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       ...mock<Issue>(),
       url: 'https://github.com/owner/repo/pull/101',
       isPr: true,
+      dependedIssueUrls: [],
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/2'],
@@ -98,6 +147,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       ...mock<Issue>(),
       url: 'https://github.com/owner/repo/pull/102',
       isPr: true,
+      dependedIssueUrls: [],
       isClosed: true,
       state: 'CLOSED',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
@@ -116,6 +166,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       ...mock<Issue>(),
       url: 'https://github.com/owner/repo/pull/103',
       isPr: true,
+      dependedIssueUrls: [],
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: [],
@@ -142,6 +193,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       ...mock<Issue>(),
       url: 'https://github.com/owner/repo/pull/104',
       isPr: true,
+      dependedIssueUrls: [],
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: [
@@ -198,6 +250,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       ...mock<Issue>(),
       url: 'https://github.com/owner/repo/pull/200',
       isPr: true,
+      dependedIssueUrls: [],
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/3'],
@@ -232,6 +285,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       ...mock<Issue>(),
       url: 'https://github.com/owner/repo/pull/105',
       isPr: true,
+      dependedIssueUrls: [],
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
@@ -263,6 +317,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       ...mock<Issue>(),
       url: failingPrUrl,
       isPr: true,
+      dependedIssueUrls: [],
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],
@@ -271,6 +326,7 @@ describe('SetDependedIssueUrlForOpenTaskPRsUseCase', () => {
       ...mock<Issue>(),
       url: succeedingPrUrl,
       isPr: true,
+      dependedIssueUrls: [],
       isClosed: false,
       state: 'OPEN',
       closingIssueReferenceUrls: ['https://github.com/owner/repo/issues/1'],

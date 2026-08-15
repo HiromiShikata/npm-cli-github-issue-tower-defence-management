@@ -49,6 +49,9 @@ export class SetDependedIssueUrlForOpenTaskPRsUseCase {
       if (!issue.isPr || issue.isClosed) {
         continue;
       }
+      if (issue.dependedIssueUrls.length > 0) {
+        continue;
+      }
       for (const closedIssueUrl of issue.closingIssueReferenceUrls) {
         const existing = openPrUrlsByClosedIssueUrl.get(closedIssueUrl);
         if (existing) {
