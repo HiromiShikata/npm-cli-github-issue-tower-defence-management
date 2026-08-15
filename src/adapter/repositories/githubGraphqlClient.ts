@@ -76,7 +76,7 @@ const MODULE_FILE_EXTENSION_PATTERN = /\.(?:[cm]?[jt]sx?)$/;
 
 const TEST_MODULE_SUFFIX_PATTERN = /\.(?:test|spec)$/;
 
-export const frameModuleName = (frame: string): string | null => {
+const frameModuleName = (frame: string): string | null => {
   const match = frame.match(FRAME_LOCATION_PATTERN);
   if (!match) {
     return null;
