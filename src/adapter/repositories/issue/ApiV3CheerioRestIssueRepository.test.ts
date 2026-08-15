@@ -2645,6 +2645,25 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(resolved.has(prUrlOf(31))).toBe(false);
     });
 
+    it('leaves every url of a failed batch unresolved so the caller falls back to the single query', async () => {
+      mockFetchRoutes({
+        slimPullRequestBatch: () => ({
+          data: null,
+          errors: [
+            { message: 'Something went wrong while executing your query' },
+          ],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.getOpenPullRequests([
+        prUrlOf(31),
+        prUrlOf(32),
+      ]);
+
+      expect(resolved.size).toBe(0);
+    });
+
     it('resolves an issue url to an absent pull request without issuing any request', async () => {
       const fetchSpy = mockFetchRoutes({});
       const issueUrl =
