@@ -48,6 +48,12 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
       repo: 'repo',
     };
 
+    const storyIssue1WithStoryNamePlaceholder = {
+      ...basicStoryIssue1,
+      body: `- [ ] Task 1
+- [ ] Task 2 for \`STORYNAME\``,
+    };
+
     const basicStoryObject1: StoryObject = {
       story: { ...mock<StoryOption>(), id: 'story1', name: 'Story 1' },
       storyIssue: basicStoryIssue1,
@@ -127,9 +133,9 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         string[],
         string[],
       ][];
-      expectedUpdateIssueCalls: [Issue][];
+      expectedUpdateIssueBodyCalls: [Issue, string][];
       expectedUpdateStoryCalls: [Project, Issue, string][];
-      expectedGetIssueByUrlCalls: [string][];
+      expectedIssueUrlReads: [string][];
       expectedAddIssueToProjectCalls: [Project, string][];
     }[] = [
       {
@@ -144,9 +150,9 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [],
+        expectedUpdateIssueBodyCalls: [],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [],
+        expectedIssueUrlReads: [],
         expectedAddIssueToProjectCalls: [],
       },
       {
@@ -194,60 +200,48 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             [],
           ],
         ],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] Task 1
 - [ ] Task 2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] https://github.com/org/repo/issues/1
 - [ ] Task 2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] https://github.com/org/repo/issues/1
 - [ ] https://github.com/org/repo/issues/2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] Task 3
 - [ ] Task 4`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] https://github.com/org/repo/issues/3
 - [ ] Task 4`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] https://github.com/org/repo/issues/3
 - [ ] https://github.com/org/repo/issues/4`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [
@@ -284,7 +278,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'story2',
           ],
         ],
-        expectedGetIssueByUrlCalls: [
+        expectedIssueUrlReads: [
           ['https://github.com/org/repo/issues/123'],
           ['https://github.com/org/repo/issues/1'],
           ['https://github.com/org/repo/issues/2'],
@@ -311,9 +305,9 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [],
+        expectedUpdateIssueBodyCalls: [],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [],
+        expectedIssueUrlReads: [],
         expectedAddIssueToProjectCalls: [],
       },
       {
@@ -329,9 +323,9 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
         },
         expectedThrowError: new Error('Story issue not found: Story 1'),
         expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [],
+        expectedUpdateIssueBodyCalls: [],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [],
+        expectedIssueUrlReads: [],
         expectedAddIssueToProjectCalls: [],
       },
 
@@ -357,22 +351,20 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
             {
               ...basicStoryIssue2,
               status: 'Icebox',
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            },
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] Task 3
 - [ ] Task 4`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [
-          ['https://github.com/org/repo/issues/456'],
-        ],
+        expectedIssueUrlReads: [['https://github.com/org/repo/issues/456']],
         expectedAddIssueToProjectCalls: [],
       },
       {
@@ -400,24 +392,22 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           createTaskFromStoryBodyCheckboxEnabled: false,
         },
         expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
             {
               ...basicStoryIssue1,
               title: 'Story 1',
               number: 901,
               url: 'https://github.com/org/repo/issues/901',
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            },
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] Task 1
 - [ ] Task 2`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [
-          ['https://github.com/org/repo/issues/901'],
-        ],
+        expectedIssueUrlReads: [['https://github.com/org/repo/issues/901']],
         expectedAddIssueToProjectCalls: [],
       },
       {
@@ -445,24 +435,22 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           createTaskFromStoryBodyCheckboxEnabled: false,
         },
         expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
             {
               ...basicStoryIssue1,
               title: 'Story 1',
               number: 901,
               url: 'https://github.com/org/repo/issues/901',
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            },
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] Task 1
 - [ ] Task 2`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [
-          ['https://github.com/org/repo/issues/901'],
-        ],
+        expectedIssueUrlReads: [['https://github.com/org/repo/issues/901']],
         expectedAddIssueToProjectCalls: [],
       },
       {
@@ -486,9 +474,9 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [],
+        expectedUpdateIssueBodyCalls: [],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [],
+        expectedIssueUrlReads: [],
         expectedAddIssueToProjectCalls: [],
       },
       {
@@ -536,60 +524,48 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             [],
           ],
         ],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] Task 1
 - [ ] Task 2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] https://github.com/org/repo/issues/1
 - [ ] Task 2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] https://github.com/org/repo/issues/1
 - [ ] https://github.com/org/repo/issues/2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] Task 3
 - [ ] Task 4`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] https://github.com/org/repo/issues/3
 - [ ] Task 4`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] https://github.com/org/repo/issues/3
 - [ ] https://github.com/org/repo/issues/4`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [
@@ -626,7 +602,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'story2',
           ],
         ],
-        expectedGetIssueByUrlCalls: [
+        expectedIssueUrlReads: [
           ['https://github.com/org/repo/issues/123'],
           ['https://github.com/org/repo/issues/1'],
           ['https://github.com/org/repo/issues/2'],
@@ -677,14 +653,17 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             [],
           ],
         ],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
             {
               ...basicStoryIssue1,
               body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
-- [ ] https://github.com/org/repo/issues/1`,
+- [ ] Task 1`,
             },
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
+
+- [ ] https://github.com/org/repo/issues/1`,
           ],
         ],
         expectedUpdateStoryCalls: [
@@ -705,7 +684,7 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
             'story1',
           ],
         ],
-        expectedGetIssueByUrlCalls: [
+        expectedIssueUrlReads: [
           ['https://github.com/org/repo/issues/123'],
           ['https://github.com/org/repo/issues/1'],
         ],
@@ -760,34 +739,26 @@ describe('ConvertCheckboxToIssueInStoryIssueUseCase', () => {
           createTaskFromStoryBodyCheckboxEnabled: true,
         },
         expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
             {
               ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+              body: 'Some description without checkboxes',
+            },
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 Some description without checkboxes`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [
-          ['https://github.com/org/repo/issues/123'],
-        ],
+        expectedIssueUrlReads: [['https://github.com/org/repo/issues/123']],
         expectedAddIssueToProjectCalls: [],
       },
       {
         name: 'should create new issues with replaced STORYNAME for checkboxes and update story issue',
         input: {
           project: basicProject,
-          issues: [
-            {
-              ...basicStoryIssue1,
-              body: `- [ ] Task 1
-- [ ] Task 2 for \`STORYNAME\``,
-            },
-            basicStoryIssue2,
-          ],
+          issues: [storyIssue1WithStoryNamePlaceholder, basicStoryIssue2],
           cacheUsed: false,
           urlOfStoryView: 'https://example.com',
           storyObjectMap: basicStoryObjectMap,
@@ -828,60 +799,48 @@ Some description without checkboxes`,
             [],
           ],
         ],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            storyIssue1WithStoryNamePlaceholder,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] Task 1
 - [ ] Task 2 for \`STORYNAME\``,
-            },
           ],
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            storyIssue1WithStoryNamePlaceholder,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] https://github.com/org/repo/issues/1
 - [ ] Task 2 for \`STORYNAME\``,
-            },
           ],
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            storyIssue1WithStoryNamePlaceholder,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] https://github.com/org/repo/issues/1
 - [ ] https://github.com/org/repo/issues/2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] Task 3
 - [ ] Task 4`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] https://github.com/org/repo/issues/3
 - [ ] Task 4`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] https://github.com/org/repo/issues/3
 - [ ] https://github.com/org/repo/issues/4`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [
@@ -918,7 +877,7 @@ Some description without checkboxes`,
             'story2',
           ],
         ],
-        expectedGetIssueByUrlCalls: [
+        expectedIssueUrlReads: [
           ['https://github.com/org/repo/issues/123'],
           ['https://github.com/org/repo/issues/1'],
           ['https://github.com/org/repo/issues/2'],
@@ -1010,46 +969,50 @@ Some description without checkboxes`,
             [],
           ],
         ],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
             {
               ...basicStoryIssue1,
               org: 'orgA',
               repo: 'repoA',
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+              body: `- [ ] Task 1`,
+            },
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] Task 1`,
-            },
           ],
           [
             {
               ...basicStoryIssue1,
               org: 'orgA',
               repo: 'repoA',
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+              body: `- [ ] Task 1`,
+            },
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] https://github.com/orgA/repoA/issues/1`,
-            },
           ],
           [
             {
               ...basicStoryIssue2,
               org: 'orgB',
               repo: 'repoB',
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+              body: `- [ ] Task 2`,
+            },
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] Task 2`,
-            },
           ],
           [
             {
               ...basicStoryIssue2,
               org: 'orgB',
               repo: 'repoB',
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+              body: `- [ ] Task 2`,
+            },
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] https://github.com/orgB/repoB/issues/2`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [
@@ -1070,7 +1033,7 @@ Some description without checkboxes`,
             'story2',
           ],
         ],
-        expectedGetIssueByUrlCalls: [
+        expectedIssueUrlReads: [
           ['https://github.com/org/repo/issues/123'],
           ['https://github.com/orgA/repoA/issues/1'],
           ['https://github.com/org/repo/issues/456'],
@@ -1093,28 +1056,24 @@ Some description without checkboxes`,
           createTaskFromStoryBodyCheckboxEnabled: false,
         },
         expectedCreateNewIssueCalls: [],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] Task 1
 - [ ] Task 2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue2,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+            basicStoryIssue2,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] Task 3
 - [ ] Task 4`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [],
-        expectedGetIssueByUrlCalls: [
+        expectedIssueUrlReads: [
           ['https://github.com/org/repo/issues/123'],
           ['https://github.com/org/repo/issues/456'],
         ],
@@ -1149,33 +1108,27 @@ Some description without checkboxes`,
             [],
           ],
         ],
-        expectedUpdateIssueCalls: [
+        expectedUpdateIssueBodyCalls: [
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] Task 1
 - [ ] Task 2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] https://github.com/org/repo/issues/1
 - [ ] Task 2`,
-            },
           ],
           [
-            {
-              ...basicStoryIssue1,
-              body: `https://example.com?sliceBy%5Bvalue%5D=Story%201
+            basicStoryIssue1,
+            `https://example.com?sliceBy%5Bvalue%5D=Story%201
 
 - [ ] https://github.com/org/repo/issues/1
 - [ ] https://github.com/org/repo/issues/2`,
-            },
           ],
         ],
         expectedUpdateStoryCalls: [
@@ -1196,7 +1149,7 @@ Some description without checkboxes`,
             'story1',
           ],
         ],
-        expectedGetIssueByUrlCalls: [
+        expectedIssueUrlReads: [
           ['https://github.com/org/repo/issues/123'],
           ['https://github.com/org/repo/issues/1'],
           ['https://github.com/org/repo/issues/2'],
@@ -1214,9 +1167,9 @@ Some description without checkboxes`,
         input,
         expectedThrowError,
         expectedCreateNewIssueCalls,
-        expectedUpdateIssueCalls,
+        expectedUpdateIssueBodyCalls,
         expectedUpdateStoryCalls,
-        expectedGetIssueByUrlCalls,
+        expectedIssueUrlReads,
         expectedAddIssueToProjectCalls,
       }) => {
         it(name, async () => {
@@ -1239,6 +1192,9 @@ Some description without checkboxes`,
               url,
             };
           });
+          mockIssueRepository.getIssueBodyByUrl.mockImplementation(
+            async (url) => storyIssuesByUrl.get(url)?.body ?? null,
+          );
 
           const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
             mockIssueRepository,
@@ -1257,14 +1213,18 @@ Some description without checkboxes`,
           expect(mockIssueRepository.createNewIssue.mock.calls).toEqual(
             expectedCreateNewIssueCalls,
           );
-          expect(mockIssueRepository.updateIssue.mock.calls).toEqual(
-            expectedUpdateIssueCalls,
+          expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
+          expect(mockIssueRepository.updateIssueBody.mock.calls).toEqual(
+            expectedUpdateIssueBodyCalls,
           );
           expect(mockIssueRepository.updateStory.mock.calls).toEqual(
             expectedUpdateStoryCalls,
           );
+          expect(mockIssueRepository.getIssueBodyByUrl.mock.calls).toEqual(
+            expectedIssueUrlReads.filter(([url]) => storyIssuesByUrl.has(url)),
+          );
           expect(mockIssueRepository.getIssueByUrl.mock.calls).toEqual(
-            expectedGetIssueByUrlCalls,
+            expectedIssueUrlReads.filter(([url]) => !storyIssuesByUrl.has(url)),
           );
           expect(mockIssueRepository.addIssueToProject.mock.calls).toEqual(
             expectedAddIssueToProjectCalls,
@@ -1276,11 +1236,11 @@ Some description without checkboxes`,
     it('skips a story whose story issue was deleted on GitHub and continues with the remaining stories', async () => {
       jest.clearAllMocks();
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-      mockIssueRepository.getIssueByUrl.mockImplementation(async (url) => {
+      mockIssueRepository.getIssueBodyByUrl.mockImplementation(async (url) => {
         if (url === basicStoryIssue1.url) {
           return null;
         }
-        return basicStoryIssue2;
+        return basicStoryIssue2.body;
       });
       const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
         mockIssueRepository,
@@ -1299,28 +1259,26 @@ Some description without checkboxes`,
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining(basicStoryIssue1.url),
       );
-      expect(mockIssueRepository.getIssueByUrl.mock.calls).toEqual([
+      expect(mockIssueRepository.getIssueBodyByUrl.mock.calls).toEqual([
         [basicStoryIssue1.url],
         [basicStoryIssue2.url],
       ]);
-      expect(mockIssueRepository.updateIssue.mock.calls).toEqual([
+      expect(mockIssueRepository.updateIssueBody.mock.calls).toEqual([
         [
-          {
-            ...basicStoryIssue2,
-            body: `https://example.com?sliceBy%5Bvalue%5D=Story%202
+          basicStoryIssue2,
+          `https://example.com?sliceBy%5Bvalue%5D=Story%202
 
 - [ ] Task 3
 - [ ] Task 4`,
-          },
         ],
       ]);
       warnSpy.mockRestore();
     });
 
-    it('propagates errors thrown while fetching the story issue by URL', async () => {
+    it('propagates errors thrown while fetching the story issue body by URL', async () => {
       jest.clearAllMocks();
-      const fetchError = new Error('GraphQL request failed');
-      mockIssueRepository.getIssueByUrl.mockRejectedValue(fetchError);
+      const fetchError = new Error('Failed to fetch body: 502 Bad Gateway');
+      mockIssueRepository.getIssueBodyByUrl.mockRejectedValue(fetchError);
       const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
         mockIssueRepository,
       );
@@ -1335,7 +1293,7 @@ Some description without checkboxes`,
           manager: 'ManagerName',
           createTaskFromStoryBodyCheckboxEnabled: false,
         }),
-      ).rejects.toThrow('GraphQL request failed');
+      ).rejects.toThrow('502 Bad Gateway');
     });
 
     describe('story view link position', () => {
@@ -1343,10 +1301,7 @@ Some description without checkboxes`,
 
       const runWithBody = async (body: string): Promise<void> => {
         jest.clearAllMocks();
-        mockIssueRepository.getIssueByUrl.mockResolvedValue({
-          ...basicStoryIssue1,
-          body,
-        });
+        mockIssueRepository.getIssueBodyByUrl.mockResolvedValue(body);
         const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
           mockIssueRepository,
         );
@@ -1368,8 +1323,8 @@ ${storyViewLink}
 
 - [ ] Task 1`);
 
-        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
-        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+        expect(mockIssueRepository.updateIssueBody.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssueBody.mock.calls[0][1])
           .toBe(`${storyViewLink}
 
 Background text
@@ -1384,8 +1339,8 @@ Background text
 
 ${storyViewLink}`);
 
-        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
-        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+        expect(mockIssueRepository.updateIssueBody.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssueBody.mock.calls[0][1])
           .toBe(`${storyViewLink}
 
 Background text
@@ -1400,8 +1355,8 @@ Background text
 
 ${storyViewLink}`);
 
-        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
-        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+        expect(mockIssueRepository.updateIssueBody.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssueBody.mock.calls[0][1])
           .toBe(`${storyViewLink}
 
 Background text`);
@@ -1412,7 +1367,7 @@ Background text`);
 
 - [ ] Task 1`);
 
-        expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateIssueBody).not.toHaveBeenCalled();
       });
     });
 
@@ -1426,10 +1381,7 @@ Background text`);
 
       const runWithBody = async (body: string): Promise<void> => {
         jest.clearAllMocks();
-        mockIssueRepository.getIssueByUrl.mockResolvedValue({
-          ...basicStoryIssue1,
-          body,
-        });
+        mockIssueRepository.getIssueBodyByUrl.mockResolvedValue(body);
         const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
           mockIssueRepository,
         );
@@ -1451,8 +1403,8 @@ ${earlierStoryViewLink}
 
 - [ ] Task 1`);
 
-        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
-        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+        expect(mockIssueRepository.updateIssueBody.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssueBody.mock.calls[0][1])
           .toBe(`${currentStoryViewLink}
 
 - [ ] Task 1`);
@@ -1463,8 +1415,8 @@ ${earlierStoryViewLink}
 
 ${earlierStoryViewLink}`);
 
-        expect(mockIssueRepository.updateIssue.mock.calls).toHaveLength(1);
-        expect(mockIssueRepository.updateIssue.mock.calls[0][0].body)
+        expect(mockIssueRepository.updateIssueBody.mock.calls).toHaveLength(1);
+        expect(mockIssueRepository.updateIssueBody.mock.calls[0][1])
           .toBe(`${currentStoryViewLink}
 
 Background text`);
@@ -1475,7 +1427,7 @@ Background text`);
 
 ${otherStoryViewLink}`);
 
-        expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateIssueBody).not.toHaveBeenCalled();
       });
     });
 
@@ -1493,8 +1445,8 @@ ${otherStoryViewLink}`);
         createTaskFromStoryBodyCheckboxEnabled: boolean,
       ): Promise<void> => {
         jest.clearAllMocks();
-        mockIssueRepository.getIssueByUrl.mockResolvedValue(
-          storyIssueWithLinkOnFirstLine,
+        mockIssueRepository.getIssueBodyByUrl.mockResolvedValue(
+          storyIssueWithLinkOnFirstLine.body,
         );
         const useCase = new ConvertCheckboxToIssueInStoryIssueUseCase(
           mockIssueRepository,
@@ -1513,14 +1465,14 @@ ${otherStoryViewLink}`);
       it('does not fetch the story issue again when task creation from story body checkboxes is disabled and the story view link is already the first line', async () => {
         await runWithBoardIssue(storyIssueWithLinkOnFirstLine, false);
 
-        expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
-        expect(mockIssueRepository.updateIssue).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getIssueBodyByUrl).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateIssueBody).not.toHaveBeenCalled();
       });
 
       it('fetches the story issue when task creation from story body checkboxes is enabled', async () => {
         await runWithBoardIssue(storyIssueWithLinkOnFirstLine, true);
 
-        expect(mockIssueRepository.getIssueByUrl.mock.calls[0]).toEqual([
+        expect(mockIssueRepository.getIssueBodyByUrl.mock.calls[0]).toEqual([
           storyIssueWithLinkOnFirstLine.url,
         ]);
       });
@@ -1528,7 +1480,7 @@ ${otherStoryViewLink}`);
       it('fetches the story issue when the story view link is missing from the body', async () => {
         await runWithBoardIssue(basicStoryIssue1, false);
 
-        expect(mockIssueRepository.getIssueByUrl.mock.calls).toEqual([
+        expect(mockIssueRepository.getIssueBodyByUrl.mock.calls).toEqual([
           [basicStoryIssue1.url],
         ]);
       });
@@ -1590,29 +1542,6 @@ ${otherStoryViewLink}`);
 - [ ] Task 1`,
           ],
         ]);
-      });
-
-      it('skips the story when its issue no longer exists', async () => {
-        jest.clearAllMocks();
-        mockIssueRepository.getIssueBodyByUrl.mockResolvedValue(null);
-
-        await runSingleStory();
-
-        expect(mockIssueRepository.getIssueBodyByUrl).toHaveBeenCalledWith(
-          basicStoryIssue1.url,
-        );
-        expect(mockIssueRepository.updateIssueBody).not.toHaveBeenCalled();
-        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
-      });
-
-      it('propagates a transient read failure instead of treating it as a deleted issue', async () => {
-        jest.clearAllMocks();
-        mockIssueRepository.getIssueBodyByUrl.mockRejectedValue(
-          new Error('Failed to fetch body: 502 Bad Gateway'),
-        );
-
-        await expect(runSingleStory()).rejects.toThrow('502 Bad Gateway');
-        expect(mockIssueRepository.updateIssueBody).not.toHaveBeenCalled();
       });
     });
   });

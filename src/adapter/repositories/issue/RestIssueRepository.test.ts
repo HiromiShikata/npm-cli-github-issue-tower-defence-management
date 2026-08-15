@@ -263,6 +263,25 @@ describe('RestIssueRepository', () => {
     });
   });
 
+  describe('updateIssueBody', () => {
+    it('sends only the body so the title, labels, assignees and state are left untouched', async () => {
+      const issue = buildIssue();
+
+      mockPatch.mockResolvedValue(undefined);
+
+      await restIssueRepository.updateIssueBody(issue, 'rewritten body');
+
+      expect(mockPatch).toHaveBeenCalledTimes(1);
+      expect(mockPatch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/40',
+        {
+          json: { body: 'rewritten body' },
+          headers: { Authorization: 'token dummy-token' },
+        },
+      );
+    });
+  });
+
   describe('searchIssues', () => {
     const buildSearchItem = (
       overrides: Partial<{

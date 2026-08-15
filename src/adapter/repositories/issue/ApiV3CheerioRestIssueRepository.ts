@@ -467,6 +467,7 @@ export class ApiV3CheerioRestIssueRepository
       RestIssueRepository,
       | 'createNewIssue'
       | 'updateIssue'
+      | 'updateIssueBody'
       | 'createComment'
       | 'getIssue'
       | 'updateLabels'
