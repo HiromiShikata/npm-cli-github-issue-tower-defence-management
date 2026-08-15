@@ -1,3 +1,10 @@
+## [1.156.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.3...v1.156.4) (2026-08-15)
+
+
+### Bug Fixes
+
+* **sub-agent-monitoring:** restore fail-open behavior when liveness record file is absent ([#1548](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1548)) ([db19f99](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/db19f996bb10afb1565dc7f10752e8be7fb834f7)), closes [#1517](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1517)
+
 ## [1.156.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.2...v1.156.3) (2026-08-15)
 
 
