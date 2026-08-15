@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { FileSystemKevReportWatermarkRepository } from './FileSystemKevReportWatermarkRepository';
+import {
+  defaultKevReportWatermarkFilePath,
+  FileSystemKevReportWatermarkRepository,
+} from './FileSystemKevReportWatermarkRepository';
 
 describe('FileSystemKevReportWatermarkRepository', () => {
   let temporaryDirectory: string;
@@ -249,5 +252,33 @@ describe('FileSystemKevReportWatermarkRepository', () => {
           message.includes('Unable to write the KEV report watermark'),
       ),
     ).toBe(true);
+  });
+});
+
+describe('defaultKevReportWatermarkFilePath', () => {
+  const originalXdgCacheHome = process.env.XDG_CACHE_HOME;
+
+  afterEach(() => {
+    if (originalXdgCacheHome === undefined) {
+      delete process.env.XDG_CACHE_HOME;
+    } else {
+      process.env.XDG_CACHE_HOME = originalXdgCacheHome;
+    }
+  });
+
+  it('places the watermark file at tdpm/kev-report-watermark.json below XDG_CACHE_HOME when set', () => {
+    process.env.XDG_CACHE_HOME = '/custom/cache';
+
+    expect(defaultKevReportWatermarkFilePath()).toBe(
+      '/custom/cache/tdpm/kev-report-watermark.json',
+    );
+  });
+
+  it('places the watermark file at tdpm/kev-report-watermark.json below the home cache directory when XDG_CACHE_HOME is absent', () => {
+    delete process.env.XDG_CACHE_HOME;
+
+    expect(defaultKevReportWatermarkFilePath()).toBe(
+      path.join(os.homedir(), '.cache', 'tdpm', 'kev-report-watermark.json'),
+    );
   });
 });

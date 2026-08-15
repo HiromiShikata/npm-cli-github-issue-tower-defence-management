@@ -1,11 +1,11 @@
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import { KevReportWatermark } from '../../domain/entities/KevReportWatermark';
 import {
   KevReportWatermarkLoadResult,
   KevReportWatermarkRepository,
 } from '../../domain/usecases/adapter-interfaces/KevReportWatermarkRepository';
+import { tdpmCacheDirectory } from './localStorageCacheDirectory';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -29,14 +29,12 @@ const isCalendarYmd = (value: string): boolean => {
   );
 };
 
-const defaultStateFilePath = (): string => {
-  const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-  return path.join(base, 'tdpm', 'kev-report-watermark.json');
-};
+export const defaultKevReportWatermarkFilePath = (): string =>
+  path.join(tdpmCacheDirectory(), 'kev-report-watermark.json');
 
 export class FileSystemKevReportWatermarkRepository implements KevReportWatermarkRepository {
   constructor(
-    private readonly stateFilePath: string = defaultStateFilePath(),
+    private readonly stateFilePath: string = defaultKevReportWatermarkFilePath(),
   ) {}
 
   load = async (): Promise<KevReportWatermarkLoadResult> => {

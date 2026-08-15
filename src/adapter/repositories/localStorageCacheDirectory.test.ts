@@ -3,6 +3,7 @@ import path from 'node:path';
 import {
   localStorageCacheBaseDirectory,
   projectCacheDirectory,
+  tdpmCacheDirectory,
 } from './localStorageCacheDirectory';
 
 describe('localStorageCacheBaseDirectory', () => {
@@ -49,6 +50,32 @@ describe('projectCacheDirectory', () => {
   test('places the project below the shared base directory', () => {
     expect(projectCacheDirectory('acme')).toBe(
       path.join(localStorageCacheBaseDirectory(), 'acme'),
+    );
+  });
+});
+
+describe('tdpmCacheDirectory', () => {
+  const originalXdgCacheHome = process.env.XDG_CACHE_HOME;
+
+  afterEach(() => {
+    if (originalXdgCacheHome === undefined) {
+      delete process.env.XDG_CACHE_HOME;
+    } else {
+      process.env.XDG_CACHE_HOME = originalXdgCacheHome;
+    }
+  });
+
+  test('places the tdpm directory below XDG_CACHE_HOME when it is set', () => {
+    process.env.XDG_CACHE_HOME = '/var/tmp/xdg-cache-home-for-test';
+
+    expect(tdpmCacheDirectory()).toBe('/var/tmp/xdg-cache-home-for-test/tdpm');
+  });
+
+  test('places the tdpm directory below the home cache directory when XDG_CACHE_HOME is absent', () => {
+    delete process.env.XDG_CACHE_HOME;
+
+    expect(tdpmCacheDirectory()).toBe(
+      path.join(os.homedir(), '.cache', 'tdpm'),
     );
   });
 });

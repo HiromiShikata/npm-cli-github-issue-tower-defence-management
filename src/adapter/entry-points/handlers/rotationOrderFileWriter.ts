@@ -1,12 +1,10 @@
 import fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
 import type { RotationOrderEntry } from '../../../domain/usecases/StartPreparationUseCase';
+import { tdpmCacheDirectory } from '../../repositories/localStorageCacheDirectory';
 
-const rotationOrderFilePath = (): string => {
-  const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-  return path.join(base, 'tdpm', 'rotation-order.json');
-};
+const rotationOrderFilePath = (): string =>
+  path.join(tdpmCacheDirectory(), 'rotation-order.json');
 
 export const writeRotationOrderFile = (
   rotationOrder: RotationOrderEntry[],

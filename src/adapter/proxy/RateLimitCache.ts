@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import * as os from 'os';
 import * as path from 'path';
+import { tdpmCacheDirectory } from '../repositories/localStorageCacheDirectory';
 
 export interface ModelWeeklyLimit {
   rejected: boolean;
@@ -44,10 +44,8 @@ const SEVEN_DAY_STATUS_HEADER = 'anthropic-ratelimit-unified-7d-status';
 
 const SEVEN_DAY_RESET_HEADER = 'anthropic-ratelimit-unified-7d-reset';
 
-export const cacheDir = (): string => {
-  const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-  return path.join(base, 'tdpm', 'ratelimit');
-};
+export const cacheDir = (): string =>
+  path.join(tdpmCacheDirectory(), 'ratelimit');
 
 export const hashToken = (token: string): string =>
   crypto.createHash(HASH_ALGORITHM).update(token).digest('hex');
