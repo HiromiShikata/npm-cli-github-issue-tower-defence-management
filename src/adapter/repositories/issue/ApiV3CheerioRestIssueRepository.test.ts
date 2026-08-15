@@ -1668,6 +1668,64 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getIssueBodyByUrl', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('reads the body over the REST issue endpoint', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ body: 'story issue body' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getIssueBodyByUrl(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+
+      expect(result).toBe('story issue body');
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/42',
+        expect.objectContaining({ method: 'GET' }),
+      );
+    });
+
+    it('returns null when the issue no longer exists', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Not Found', {
+          status: 404,
+          statusText: 'Not Found',
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.getIssueBodyByUrl(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+
+      expect(result).toBeNull();
+    });
+
+    it('throws when the API fails for a reason other than the issue being absent', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Bad Gateway', {
+          status: 502,
+          statusText: 'Bad Gateway',
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.getIssueBodyByUrl(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+        ),
+      ).rejects.toThrow('502');
+    });
+  });
+
   describe('getIssueOrPullRequestComments', () => {
     afterEach(() => {
       jest.restoreAllMocks();

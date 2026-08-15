@@ -66,6 +66,7 @@ export interface IssueRepository {
     projectId: Project['id'],
   ) => Promise<{ issues: Issue[]; project: Project; cacheUsed: boolean }>;
   getIssueByUrl: (url: string) => Promise<Issue | null>;
+  getIssueBodyByUrl: (url: string) => Promise<string | null>;
   createNewIssue: (
     org: string,
     repo: string,
@@ -90,6 +91,10 @@ export interface IssueRepository {
     }[]
   >;
   updateIssue: (issue: Issue) => Promise<void>;
+  updateIssueBody: (
+    issue: Pick<Issue, 'org' | 'repo' | 'number'>,
+    body: string,
+  ) => Promise<void>;
   updateNextActionDate: (
     issueUrl: string,
     project: Project,

@@ -467,6 +467,7 @@ export class ApiV3CheerioRestIssueRepository
       RestIssueRepository,
       | 'createNewIssue'
       | 'updateIssue'
+      | 'updateIssueBody'
       | 'createComment'
       | 'getIssue'
       | 'updateLabels'
@@ -802,6 +803,12 @@ export class ApiV3CheerioRestIssueRepository
   };
   updateIssue = async (issue: Issue): Promise<void> => {
     await this.restIssueRepository.updateIssue(issue);
+  };
+  updateIssueBody = async (
+    issue: Pick<Issue, 'org' | 'repo' | 'number'>,
+    body: string,
+  ): Promise<void> => {
+    await this.restIssueRepository.updateIssueBody(issue, body);
   };
   getIssueByUrl = async (url: string): Promise<Issue | null> => {
     const projectItem =
@@ -2296,9 +2303,9 @@ export class ApiV3CheerioRestIssueRepository
     await this.restIssueRepository.createComment(issueOrPrUrl, commentBody);
   };
 
-  getIssueOrPullRequestBody = async (url: string): Promise<string> => {
+  private fetchIssueBodyResponse = (url: string): Promise<Response> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(url);
-    const response = await this.fetchWithRateLimitRetry(() =>
+    return this.fetchWithRateLimitRetry(() =>
       fetch(
         `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
         {
@@ -2310,10 +2317,12 @@ export class ApiV3CheerioRestIssueRepository
         },
       ),
     );
-    if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to fetch body for ${url}: ${reason}`);
-    }
+  };
+
+  private parseIssueBodyResponse = async (
+    url: string,
+    response: Response,
+  ): Promise<string> => {
     const body: unknown = await response.json();
     if (!isIssueOrPullRequestBodyResponse(body)) {
       throw new Error(
@@ -2321,6 +2330,27 @@ export class ApiV3CheerioRestIssueRepository
       );
     }
     return body.body ?? '';
+  };
+
+  getIssueOrPullRequestBody = async (url: string): Promise<string> => {
+    const response = await this.fetchIssueBodyResponse(url);
+    if (!response.ok) {
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch body for ${url}: ${reason}`);
+    }
+    return this.parseIssueBodyResponse(url, response);
+  };
+
+  getIssueBodyByUrl = async (url: string): Promise<string | null> => {
+    const response = await this.fetchIssueBodyResponse(url);
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      const reason = await this.formatGitHubErrorWithStatus(response);
+      throw new Error(`Failed to fetch body for ${url}: ${reason}`);
+    }
+    return this.parseIssueBodyResponse(url, response);
   };
 
   getIssueOrPullRequestComments = async (
