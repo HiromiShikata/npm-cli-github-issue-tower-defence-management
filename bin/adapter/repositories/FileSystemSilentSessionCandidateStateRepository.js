@@ -33,16 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FileSystemSilentSessionCandidateStateRepository = exports.DEFAULT_STATE_RETENTION_WINDOW_SECONDS = void 0;
+exports.FileSystemSilentSessionCandidateStateRepository = exports.defaultSilentSessionCandidateStateFilePath = exports.DEFAULT_STATE_RETENTION_WINDOW_SECONDS = void 0;
 const fs = __importStar(require("fs"));
-const os = __importStar(require("os"));
 const path = __importStar(require("path"));
+const localStorageCacheDirectory_1 = require("./localStorageCacheDirectory");
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 exports.DEFAULT_STATE_RETENTION_WINDOW_SECONDS = 60 * 60;
-const defaultStateFilePath = () => {
-    const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-    return path.join(base, 'tdpm', 'silent-session-candidates.json');
-};
+const defaultSilentSessionCandidateStateFilePath = () => path.join((0, localStorageCacheDirectory_1.tdpmCacheDirectory)(), 'silent-session-candidates.json');
+exports.defaultSilentSessionCandidateStateFilePath = defaultSilentSessionCandidateStateFilePath;
 // Persists only the candidate set used by the two-consecutive-cycle
 // debounce. The formerly persisted announced-running-sub-agent labels
 // (fire-once state for the long-running advisory) were removed: the
@@ -52,7 +50,7 @@ const defaultStateFilePath = () => {
 // error (unknown keys are ignored) and the key is dropped on the next
 // write.
 class FileSystemSilentSessionCandidateStateRepository {
-    constructor(stateFilePath = defaultStateFilePath(), retentionWindowSeconds = exports.DEFAULT_STATE_RETENTION_WINDOW_SECONDS) {
+    constructor(stateFilePath = (0, exports.defaultSilentSessionCandidateStateFilePath)(), retentionWindowSeconds = exports.DEFAULT_STATE_RETENTION_WINDOW_SECONDS) {
         this.stateFilePath = stateFilePath;
         this.retentionWindowSeconds = retentionWindowSeconds;
         this.loadRecentCandidateSessionNames = async (params) => {

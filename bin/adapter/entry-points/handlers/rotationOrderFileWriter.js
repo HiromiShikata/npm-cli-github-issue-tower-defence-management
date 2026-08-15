@@ -38,12 +38,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeRotationOrderFile = void 0;
 const fs_1 = __importDefault(require("fs"));
-const os = __importStar(require("os"));
 const path = __importStar(require("path"));
-const rotationOrderFilePath = () => {
-    const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-    return path.join(base, 'tdpm', 'rotation-order.json');
-};
+const localStorageCacheDirectory_1 = require("../../repositories/localStorageCacheDirectory");
+const rotationOrderFilePath = () => path.join((0, localStorageCacheDirectory_1.tdpmCacheDirectory)(), 'rotation-order.json');
 const writeRotationOrderFile = (rotationOrder) => {
     const filePath = rotationOrderFilePath();
     const dir = path.dirname(filePath);

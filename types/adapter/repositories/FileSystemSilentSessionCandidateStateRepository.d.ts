@@ -1,5 +1,6 @@
 import { SilentSessionCandidateStateRepository } from '../../domain/usecases/adapter-interfaces/SilentSessionCandidateStateRepository';
 export declare const DEFAULT_STATE_RETENTION_WINDOW_SECONDS: number;
+export declare const defaultSilentSessionCandidateStateFilePath: () => string;
 export declare class FileSystemSilentSessionCandidateStateRepository implements SilentSessionCandidateStateRepository {
     private readonly stateFilePath;
     private readonly retentionWindowSeconds;

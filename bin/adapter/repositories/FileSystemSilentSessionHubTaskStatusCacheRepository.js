@@ -33,19 +33,17 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FileSystemSilentSessionHubTaskStatusCacheRepository = exports.DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS = void 0;
+exports.FileSystemSilentSessionHubTaskStatusCacheRepository = exports.defaultSilentSessionHubTaskStatusCacheFilePath = exports.DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS = void 0;
 const fs = __importStar(require("fs"));
-const os = __importStar(require("os"));
 const path = __importStar(require("path"));
+const localStorageCacheDirectory_1 = require("./localStorageCacheDirectory");
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 const isIssueState = (value) => value === 'OPEN' || value === 'CLOSED' || value === 'MERGED';
 exports.DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS = 60 * 60;
-const defaultStateFilePath = () => {
-    const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-    return path.join(base, 'tdpm', 'silent-session-hub-task-status.json');
-};
+const defaultSilentSessionHubTaskStatusCacheFilePath = () => path.join((0, localStorageCacheDirectory_1.tdpmCacheDirectory)(), 'silent-session-hub-task-status.json');
+exports.defaultSilentSessionHubTaskStatusCacheFilePath = defaultSilentSessionHubTaskStatusCacheFilePath;
 class FileSystemSilentSessionHubTaskStatusCacheRepository {
-    constructor(stateFilePath = defaultStateFilePath(), retentionWindowSeconds = exports.DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS) {
+    constructor(stateFilePath = (0, exports.defaultSilentSessionHubTaskStatusCacheFilePath)(), retentionWindowSeconds = exports.DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS) {
         this.stateFilePath = stateFilePath;
         this.retentionWindowSeconds = retentionWindowSeconds;
         this.loadHubTaskStatus = async (params) => {

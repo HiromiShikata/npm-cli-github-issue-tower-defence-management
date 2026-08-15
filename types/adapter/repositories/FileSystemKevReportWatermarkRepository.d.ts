@@ -1,5 +1,6 @@
 import { KevReportWatermark } from '../../domain/entities/KevReportWatermark';
 import { KevReportWatermarkLoadResult, KevReportWatermarkRepository } from '../../domain/usecases/adapter-interfaces/KevReportWatermarkRepository';
+export declare const defaultKevReportWatermarkFilePath: () => string;
 export declare class FileSystemKevReportWatermarkRepository implements KevReportWatermarkRepository {
     private readonly stateFilePath;
     constructor(stateFilePath?: string);

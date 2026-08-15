@@ -33,10 +33,10 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FileSystemKevReportWatermarkRepository = void 0;
+exports.FileSystemKevReportWatermarkRepository = exports.defaultKevReportWatermarkFilePath = void 0;
 const fs = __importStar(require("fs"));
-const os = __importStar(require("os"));
 const path = __importStar(require("path"));
+const localStorageCacheDirectory_1 = require("./localStorageCacheDirectory");
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 const errorCode = (error) => {
     if (!isRecord(error)) {
@@ -53,12 +53,10 @@ const isCalendarYmd = (value) => {
     return (!Number.isNaN(parsed.getTime()) &&
         parsed.toISOString().slice(0, 10) === value);
 };
-const defaultStateFilePath = () => {
-    const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-    return path.join(base, 'tdpm', 'kev-report-watermark.json');
-};
+const defaultKevReportWatermarkFilePath = () => path.join((0, localStorageCacheDirectory_1.tdpmCacheDirectory)(), 'kev-report-watermark.json');
+exports.defaultKevReportWatermarkFilePath = defaultKevReportWatermarkFilePath;
 class FileSystemKevReportWatermarkRepository {
-    constructor(stateFilePath = defaultStateFilePath()) {
+    constructor(stateFilePath = (0, exports.defaultKevReportWatermarkFilePath)()) {
         this.stateFilePath = stateFilePath;
         this.load = async () => {
             let raw;

@@ -33,18 +33,16 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FileSystemSessionDegenerationCooldownStateRepository = exports.DEFAULT_RESET_RETENTION_WINDOW_SECONDS = void 0;
+exports.FileSystemSessionDegenerationCooldownStateRepository = exports.defaultSessionDegenerationCooldownStateFilePath = exports.DEFAULT_RESET_RETENTION_WINDOW_SECONDS = void 0;
 const fs = __importStar(require("fs"));
-const os = __importStar(require("os"));
 const path = __importStar(require("path"));
+const localStorageCacheDirectory_1 = require("./localStorageCacheDirectory");
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 exports.DEFAULT_RESET_RETENTION_WINDOW_SECONDS = 60 * 60;
-const defaultStateFilePath = () => {
-    const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-    return path.join(base, 'tdpm', 'output-degeneration-cooldown.json');
-};
+const defaultSessionDegenerationCooldownStateFilePath = () => path.join((0, localStorageCacheDirectory_1.tdpmCacheDirectory)(), 'output-degeneration-cooldown.json');
+exports.defaultSessionDegenerationCooldownStateFilePath = defaultSessionDegenerationCooldownStateFilePath;
 class FileSystemSessionDegenerationCooldownStateRepository {
-    constructor(stateFilePath = defaultStateFilePath(), retentionWindowSeconds = exports.DEFAULT_RESET_RETENTION_WINDOW_SECONDS) {
+    constructor(stateFilePath = (0, exports.defaultSessionDegenerationCooldownStateFilePath)(), retentionWindowSeconds = exports.DEFAULT_RESET_RETENTION_WINDOW_SECONDS) {
         this.stateFilePath = stateFilePath;
         this.retentionWindowSeconds = retentionWindowSeconds;
         this.loadLastResetEpochSecondsBySessionName = async () => {

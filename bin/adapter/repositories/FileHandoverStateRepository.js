@@ -35,12 +35,9 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FileHandoverStateRepository = exports.defaultHandoverStateFilePath = void 0;
 const fs = __importStar(require("fs"));
-const os = __importStar(require("os"));
 const path = __importStar(require("path"));
-const defaultHandoverStateFilePath = () => {
-    const base = process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache');
-    return path.join(base, 'tdpm', 'token-exhaustion-handover-state-tdpm-native.json');
-};
+const localStorageCacheDirectory_1 = require("./localStorageCacheDirectory");
+const defaultHandoverStateFilePath = () => path.join((0, localStorageCacheDirectory_1.tdpmCacheDirectory)(), 'token-exhaustion-handover-state-tdpm-native.json');
 exports.defaultHandoverStateFilePath = defaultHandoverStateFilePath;
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 class FileHandoverStateRepository {

@@ -114,6 +114,7 @@ const knownProjectReadmeConfigKeys = [
     'awLogDirectoryPath',
     'awLogStaleThresholdMinutes',
     'labelsAsLlmAgentName',
+    'labelsNotRequiringPullRequest',
     'changeTargetPathAliases',
 ];
 const loadConfigFile = (configFilePath) => {
@@ -197,6 +198,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             awLogDirectoryPath: getStringValue(parsed, 'awLogDirectoryPath'),
             awLogStaleThresholdMinutes: getNumberValue(parsed, 'awLogStaleThresholdMinutes'),
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
+            labelsNotRequiringPullRequest: getStringArrayValue(parsed, 'labelsNotRequiringPullRequest'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
         };
     }

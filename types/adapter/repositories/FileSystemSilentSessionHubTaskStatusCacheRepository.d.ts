@@ -1,6 +1,7 @@
 import { Issue } from '../../domain/entities/Issue';
 import { SilentSessionHubTaskStatusCacheEntry, SilentSessionHubTaskStatusCacheRepository } from '../../domain/usecases/adapter-interfaces/SilentSessionHubTaskStatusCacheRepository';
 export declare const DEFAULT_HUB_TASK_STATUS_RETENTION_WINDOW_SECONDS: number;
+export declare const defaultSilentSessionHubTaskStatusCacheFilePath: () => string;
 export declare class FileSystemSilentSessionHubTaskStatusCacheRepository implements SilentSessionHubTaskStatusCacheRepository {
     private readonly stateFilePath;
     private readonly retentionWindowSeconds;

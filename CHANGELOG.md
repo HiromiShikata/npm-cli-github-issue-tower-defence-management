@@ -1,3 +1,10 @@
+## [1.156.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.2...v1.156.3) (2026-08-15)
+
+
+### Bug Fixes
+
+* **config:** add labelsNotRequiringPullRequest to project README config known keys and parser ([#1588](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1588)) ([c289021](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c289021db201ce6f7eb16b20ca6028231ed19974))
+
 ## [1.156.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.1...v1.156.2) (2026-08-15)
 
 
