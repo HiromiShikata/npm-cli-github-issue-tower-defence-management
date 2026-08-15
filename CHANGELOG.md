@@ -1,3 +1,10 @@
+## [1.156.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.0...v1.156.1) (2026-08-15)
+
+
+### Performance Improvements
+
+* skip the project item read for pull requests whose depended issue url is set ([#1587](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1587)) ([e8addbb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e8addbb78ccbb77ead3eb9d499a9e4fcee0aa62d)), closes [#1586](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1586)
+
 # [1.156.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.155.0...v1.156.0) (2026-08-15)
 
 
