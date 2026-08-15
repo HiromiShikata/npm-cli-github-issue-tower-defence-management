@@ -62,17 +62,67 @@ const extractRateLimit = (
   return { cost, remaining };
 };
 
-export const logGithubGraphqlCost = (
-  query: string,
-  responseBody: unknown,
-  now: () => Date = () => new Date(),
-): void => {
-  const rateLimit = extractRateLimit(responseBody);
+export const GRAPHQL_CALL_SITE_FRAME_COUNT = 3;
+
+export const GRAPHQL_CALL_SITE_SEPARATOR = '<-';
+
+export const UNKNOWN_GRAPHQL_CALL_SITE = 'unknown';
+
+const GRAPHQL_CLIENT_MODULE_NAME = 'githubGraphqlClient';
+
+const frameFunctionName = (frame: string): string | null => {
+  const match = frame.match(/^at (?:async )?([^\s(]+)/);
+  if (!match) {
+    return null;
+  }
+  const name = match[1];
+  if (name.startsWith('/') || name.startsWith('file:') || name.includes(':')) {
+    return null;
+  }
+  return name;
+};
+
+const isOwnedMethodName = (name: string): boolean =>
+  name.includes('.') && !name.includes('<') && !name.startsWith('Object.');
+
+export const extractGraphqlCallSite = (stack: string | undefined): string => {
+  if (!stack) {
+    return UNKNOWN_GRAPHQL_CALL_SITE;
+  }
+  const names = stack
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('at '))
+    .filter((line) => !line.includes(GRAPHQL_CLIENT_MODULE_NAME))
+    .map(frameFunctionName)
+    .filter((name): name is string => name !== null);
+  const ownedMethodNames = names.filter(isOwnedMethodName);
+  const attributable = ownedMethodNames.length > 0 ? ownedMethodNames : names;
+  if (attributable.length === 0) {
+    return UNKNOWN_GRAPHQL_CALL_SITE;
+  }
+  return attributable
+    .slice(0, GRAPHQL_CALL_SITE_FRAME_COUNT)
+    .join(GRAPHQL_CALL_SITE_SEPARATOR);
+};
+
+export const captureGraphqlCallSite = (): string =>
+  extractGraphqlCallSite(new Error().stack);
+
+export const logGithubGraphqlCost = (params: {
+  query: string;
+  responseBody: unknown;
+  callSite?: string;
+  now?: () => Date;
+}): void => {
+  const rateLimit = extractRateLimit(params.responseBody);
   if (!rateLimit) {
     return;
   }
+  const now = params.now ?? (() => new Date());
+  const callSite = params.callSite ?? UNKNOWN_GRAPHQL_CALL_SITE;
   console.log(
-    `${now().toISOString()} githubGraphqlClient: query=${extractGraphqlOperationName(query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining}`,
+    `${now().toISOString()} githubGraphqlClient: query=${extractGraphqlOperationName(params.query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining} caller=${callSite}`,
   );
 };
 
@@ -81,6 +131,7 @@ export const postGithubGraphqlJson = async <T>(params: {
   query: string;
   variables?: Record<string, unknown>;
 }): Promise<T> => {
+  const callSite = captureGraphqlCallSite();
   const response = await ky
     .post(GITHUB_GRAPHQL_ENDPOINT, {
       json: {
@@ -94,7 +145,11 @@ export const postGithubGraphqlJson = async <T>(params: {
       },
     })
     .json<T>();
-  logGithubGraphqlCost(params.query, response);
+  logGithubGraphqlCost({
+    query: params.query,
+    responseBody: response,
+    callSite,
+  });
   return response;
 };
 
@@ -104,6 +159,7 @@ export const fetchGithubGraphql = async (params: {
   variables?: Record<string, unknown>;
   timeoutMs?: number;
 }): Promise<Response> => {
+  const callSite = captureGraphqlCallSite();
   const response = await fetch(GITHUB_GRAPHQL_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -123,7 +179,11 @@ export const fetchGithubGraphql = async (params: {
       .clone()
       .json()
       .catch((): null => null);
-    logGithubGraphqlCost(params.query, responseBody);
+    logGithubGraphqlCost({
+      query: params.query,
+      responseBody,
+      callSite,
+    });
   }
   return response;
 };

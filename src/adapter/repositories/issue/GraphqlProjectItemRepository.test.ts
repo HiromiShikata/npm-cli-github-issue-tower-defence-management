@@ -288,7 +288,7 @@ describe('GraphqlProjectItemRepository', () => {
         await repository.fetchProjectItems('test-project-id');
         expect(consoleLogSpy).toHaveBeenCalledWith(
           expect.stringMatching(
-            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200$/,
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z githubGraphqlClient: query=GetProjectItems cost=3 remaining=4200 caller=GraphqlProjectItemRepository\.fetchProjectItems\S*$/,
           ),
         );
       } finally {
