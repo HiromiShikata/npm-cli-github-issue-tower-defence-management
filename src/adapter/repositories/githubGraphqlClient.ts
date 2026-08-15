@@ -76,13 +76,52 @@ const MODULE_FILE_EXTENSION_PATTERN = /\.(?:[cm]?[jt]sx?)$/;
 
 const TEST_MODULE_SUFFIX_PATTERN = /\.(?:test|spec)$/;
 
-const frameModuleName = (frame: string): string | null => {
+const NODE_MODULES_SEGMENT = '/node_modules/';
+
+const ownPackagePathPrefix = (modulePath: string): string | null => {
+  const segmentIndex = modulePath.lastIndexOf(NODE_MODULES_SEGMENT);
+  if (segmentIndex === -1) {
+    return null;
+  }
+  const packageRootIndex = segmentIndex + NODE_MODULES_SEGMENT.length;
+  const segments = modulePath.slice(packageRootIndex).split('/');
+  const nameSegmentCount = segments[0].startsWith('@') ? 2 : 1;
+  if (segments.length <= nameSegmentCount) {
+    return null;
+  }
+  return modulePath.slice(
+    0,
+    packageRootIndex + segments.slice(0, nameSegmentCount).join('/').length + 1,
+  );
+};
+
+const isInsideOwnPackage = (
+  location: string,
+  ownPackagePrefix: string | null,
+): boolean => {
+  if (ownPackagePrefix === null || !location.startsWith(ownPackagePrefix)) {
+    return false;
+  }
+  const pathBelowPackageRoot = `/${location.slice(ownPackagePrefix.length)}`;
+  return !pathBelowPackageRoot.includes(NODE_MODULES_SEGMENT);
+};
+
+const frameModuleName = (
+  frame: string,
+  ownPackagePrefix: string | null,
+): string | null => {
   const match = frame.match(FRAME_LOCATION_PATTERN);
   if (!match) {
     return null;
   }
   const location = match[1];
-  if (location.startsWith('node:') || location.includes('/node_modules/')) {
+  if (location.startsWith('node:')) {
+    return null;
+  }
+  if (
+    location.includes(NODE_MODULES_SEGMENT) &&
+    !isInsideOwnPackage(location, ownPackagePrefix)
+  ) {
     return null;
   }
   const fileName = location.split('/').slice(-1)[0];
@@ -95,15 +134,19 @@ const frameModuleName = (frame: string): string | null => {
   return moduleName;
 };
 
-export const extractGraphqlCallSite = (stack: string | undefined): string => {
+export const extractGraphqlCallSite = (
+  stack: string | undefined,
+  modulePath: string = __filename,
+): string => {
   if (!stack) {
     return UNKNOWN_GRAPHQL_CALL_SITE;
   }
+  const ownPackagePrefix = ownPackagePathPrefix(modulePath);
   const moduleNames = stack
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.startsWith('at '))
-    .map(frameModuleName)
+    .map((frame) => frameModuleName(frame, ownPackagePrefix))
     .filter((moduleName): moduleName is string => moduleName !== null)
     .filter(
       (moduleName, index, allModuleNames) =>

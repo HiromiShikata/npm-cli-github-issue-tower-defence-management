@@ -200,6 +200,59 @@ describe('githubGraphqlClient', () => {
       );
     });
 
+    it('names the caller when the package runs from inside node_modules, as the published build does', () => {
+      const packageRoot =
+        '/home/user/.local/share/tdpm/current/node_modules/github-issue-tower-defence-management';
+      const stack = [
+        'Error',
+        `    at captureGraphqlCallSite (${packageRoot}/bin/adapter/repositories/githubGraphqlClient.js:80:20)`,
+        `    at postGithubGraphqlJson (${packageRoot}/bin/adapter/repositories/githubGraphqlClient.js:120:22)`,
+        `    at GraphqlProjectItemRepository.fetchProjectItems (${packageRoot}/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:410:11)`,
+        `    at async StartPreparationUseCase.run (${packageRoot}/bin/domain/usecases/StartPreparationUseCase.js:456:11)`,
+      ].join('\n');
+
+      expect(
+        extractGraphqlCallSite(
+          stack,
+          `${packageRoot}/bin/adapter/repositories/githubGraphqlClient.js`,
+        ),
+      ).toBe('GraphqlProjectItemRepository<-StartPreparationUseCase');
+    });
+
+    it('names the caller when the published package sits under a scoped directory', () => {
+      const packageRoot = '/srv/app/node_modules/@hiromishikata/tdpm';
+      const stack = [
+        'Error',
+        `    at postGithubGraphqlJson (${packageRoot}/bin/adapter/repositories/githubGraphqlClient.js:120:22)`,
+        `    at GraphqlProjectItemRepository.fetchProjectItems (${packageRoot}/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:410:11)`,
+      ].join('\n');
+
+      expect(
+        extractGraphqlCallSite(
+          stack,
+          `${packageRoot}/bin/adapter/repositories/githubGraphqlClient.js`,
+        ),
+      ).toBe('GraphqlProjectItemRepository');
+    });
+
+    it('skips a dependency nested inside the installed package so no third party module is named', () => {
+      const packageRoot =
+        '/home/user/.local/share/tdpm/current/node_modules/github-issue-tower-defence-management';
+      const stack = [
+        'Error',
+        `    at postGithubGraphqlJson (${packageRoot}/bin/adapter/repositories/githubGraphqlClient.js:120:22)`,
+        `    at Object.ky (${packageRoot}/node_modules/ky/distribution/index.js:44:9)`,
+        `    at GraphqlProjectItemRepository.fetchProjectItems (${packageRoot}/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:410:11)`,
+      ].join('\n');
+
+      expect(
+        extractGraphqlCallSite(
+          stack,
+          `${packageRoot}/bin/adapter/repositories/githubGraphqlClient.js`,
+        ),
+      ).toBe('GraphqlProjectItemRepository');
+    });
+
     it('returns unknown when no stack is available', () => {
       expect(extractGraphqlCallSite(undefined)).toBe('unknown');
     });
