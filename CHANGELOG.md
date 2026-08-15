@@ -1,3 +1,10 @@
+# [1.155.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.154.1...v1.155.0) (2026-08-15)
+
+
+### Features
+
+* name the calling repository and use case on the GraphQL cost log line ([#1581](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1581)) ([8efd497](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8efd4979fc7be18ab25c74540f5bf185c71cb13b)), closes [#1580](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1580)
+
 ## [1.154.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.154.0...v1.154.1) (2026-08-15)
 
 

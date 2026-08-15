@@ -8,7 +8,17 @@ export type GithubGraphqlRateLimit = {
 export declare const isMutationOperation: (query: string) => boolean;
 export declare const extractGraphqlOperationName: (query: string) => string;
 export declare const injectRateLimitSelection: (query: string) => string;
-export declare const logGithubGraphqlCost: (query: string, responseBody: unknown, now?: () => Date) => void;
+export declare const GRAPHQL_CALL_SITE_FRAME_COUNT = 3;
+export declare const GRAPHQL_CALL_SITE_SEPARATOR = "<-";
+export declare const UNKNOWN_GRAPHQL_CALL_SITE = "unknown";
+export declare const extractGraphqlCallSite: (stack: string | undefined) => string;
+export declare const captureGraphqlCallSite: () => string;
+export declare const logGithubGraphqlCost: (params: {
+    query: string;
+    responseBody: unknown;
+    callSite?: string;
+    now?: () => Date;
+}) => void;
 export declare const postGithubGraphqlJson: <T>(params: {
     ghToken: string;
     query: string;
