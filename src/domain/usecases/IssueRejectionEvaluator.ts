@@ -27,6 +27,12 @@ export type EvaluateOptions = {
   // closingIssueReferenceUrls, eliminating the per-issue timeline fan-out.
   // When null or undefined, behaviour is unchanged: findRelatedOpenPRs runs.
   relatedOpenPrUrls?: string[] | null;
+  // Pull request states the caller already resolved in one batched query for
+  // the whole cycle. A URL present as a key is taken from here and costs no
+  // further request; a URL absent from the map falls back to the per-URL
+  // getOpenPullRequest call, which keeps the transient-failure handling that
+  // distinguishes an unknown state from an absent pull request.
+  resolvedOpenPrByUrl?: ReadonlyMap<string, RelatedPullRequest | null> | null;
 };
 
 export class IssueRejectionEvaluator {
@@ -53,26 +59,16 @@ export class IssueRejectionEvaluator {
     const rejections: { type: PrRejectedReasonType; detail: string }[] = [];
     let approvedPrUrl: string | null = null;
 
-    const categoryLabels = issue.labels.filter((label) =>
-      label.startsWith('category:'),
-    );
-    const hasLlmAgentLabel = issue.labels.some(
-      (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
-    );
-    const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
-      labelsNotRequiringPullRequest.includes(label),
-    );
-
     if (
-      !hasLlmAgentLabel &&
-      !hasLabelNotRequiringPullRequest &&
-      this.isPullRequestRequiredByBody(issue.body) &&
-      (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))
+      this.requiresPullRequestEvaluation(issue, labelsNotRequiringPullRequest)
     ) {
       let prsToCheck: RelatedPullRequest[];
       let anyPrResolutionFailed = false;
       if (issue.isPr) {
-        const resolved = await this.resolveOpenPrsForPrItem(issue.url);
+        const resolved = await this.resolveOpenPrsForPrItem(
+          issue.url,
+          options.resolvedOpenPrByUrl ?? null,
+        );
         if (resolved === null) {
           // getOpenPullRequest failed transiently: the PR's state is unknown
           // for this cycle, so skip it without emitting any rejection.
@@ -82,6 +78,7 @@ export class IssueRejectionEvaluator {
       } else if (options.relatedOpenPrUrls != null) {
         const resolved = await this.resolveOpenPrsFromUrls(
           options.relatedOpenPrUrls,
+          options.resolvedOpenPrByUrl ?? null,
         );
         prsToCheck = resolved.prs;
         anyPrResolutionFailed = resolved.anyResolutionFailed;
@@ -185,12 +182,41 @@ export class IssueRejectionEvaluator {
     return { rejections, approvedPrUrl };
   };
 
+  // Whether this item's pull requests are looked at at all. A caller that
+  // resolves pull request state in one batch for a whole cycle asks this first,
+  // so the batch covers exactly the items evaluate would have resolved.
+  requiresPullRequestEvaluation = (
+    issue: { labels: string[]; body?: string | null },
+    labelsNotRequiringPullRequest: string[] = [],
+  ): boolean => {
+    const categoryLabels = issue.labels.filter((label) =>
+      label.startsWith('category:'),
+    );
+    const hasLlmAgentLabel = issue.labels.some(
+      (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
+    );
+    const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
+      labelsNotRequiringPullRequest.includes(label),
+    );
+    return (
+      !hasLlmAgentLabel &&
+      !hasLabelNotRequiringPullRequest &&
+      this.isPullRequestRequiredByBody(issue.body) &&
+      (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))
+    );
+  };
+
   // Returns null when getOpenPullRequest throws (e.g. a transient GitHub
   // GraphQL server error): the PR's state is unknown for this cycle and the
   // caller skips it instead of letting the error abort the schedule cycle.
   private resolveOpenPrsForPrItem = async (
     prUrl: string,
+    resolvedOpenPrByUrl: ReadonlyMap<string, RelatedPullRequest | null> | null,
   ): Promise<RelatedPullRequest[] | null> => {
+    if (resolvedOpenPrByUrl?.has(prUrl)) {
+      const alreadyResolved = resolvedOpenPrByUrl.get(prUrl) ?? null;
+      return alreadyResolved === null ? [] : [alreadyResolved];
+    }
     let pr: RelatedPullRequest | null;
     try {
       pr = await this.issueRepository.getOpenPullRequest(prUrl);
@@ -220,11 +246,19 @@ export class IssueRejectionEvaluator {
   // PULL_REQUEST_NOT_FOUND.
   private resolveOpenPrsFromUrls = async (
     prUrls: string[],
+    resolvedOpenPrByUrl: ReadonlyMap<string, RelatedPullRequest | null> | null,
   ): Promise<{ prs: RelatedPullRequest[]; anyResolutionFailed: boolean }> => {
     const uniquePrUrls = Array.from(new Set(prUrls));
     const resolvedPrs: RelatedPullRequest[] = [];
     let anyResolutionFailed = false;
     for (const prUrl of uniquePrUrls) {
+      if (resolvedOpenPrByUrl?.has(prUrl)) {
+        const alreadyResolved = resolvedOpenPrByUrl.get(prUrl) ?? null;
+        if (alreadyResolved !== null) {
+          resolvedPrs.push(alreadyResolved);
+        }
+        continue;
+      }
       let pr: RelatedPullRequest | null;
       try {
         pr = await this.issueRepository.getOpenPullRequest(prUrl);

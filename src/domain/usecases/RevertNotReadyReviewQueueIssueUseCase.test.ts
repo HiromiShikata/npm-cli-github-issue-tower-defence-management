@@ -160,6 +160,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     updateStory: jest.Mock;
     findRelatedOpenPRs: jest.Mock;
     getOpenPullRequest: jest.Mock;
+    getOpenPullRequests: jest.Mock;
     getPullRequestChangedFilePaths: jest.Mock;
     approvePullRequest: jest.Mock;
     requestChangesWithInlineComment: jest.Mock;
@@ -191,6 +192,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       updateStory: jest.fn().mockResolvedValue(undefined),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
+      getOpenPullRequests: jest.fn().mockResolvedValue(new Map()),
       getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
       approvePullRequest: jest.fn().mockResolvedValue(undefined),
       requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
@@ -2197,6 +2199,158 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         pullRequest,
         expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+    });
+  });
+
+  describe('batched pull request state resolution', () => {
+    const projectUrl = 'https://github.com/users/user/projects/1';
+
+    const buildAwaitingQualityCheckBoard = (
+      issueCount: number,
+    ): { boardIssues: Issue[]; relatedPrs: RelatedPrLike[] } => {
+      const boardIssues: Issue[] = [];
+      const relatedPrs: RelatedPrLike[] = [];
+      for (let index = 0; index < issueCount; index += 1) {
+        const issueUrl = `https://github.com/user/repo/issues/${200 + index}`;
+        const prUrl = `https://github.com/user/repo/pull/${300 + index}`;
+        boardIssues.push(
+          createMockIssue({
+            url: issueUrl,
+            number: 200 + index,
+            itemId: `item-issue-${index}`,
+          }),
+        );
+        boardIssues.push(
+          createMockPullRequest({
+            url: prUrl,
+            number: 300 + index,
+            itemId: `item-pr-${index}`,
+            status: 'In Progress',
+            closingIssueReferenceUrls: [issueUrl],
+          }),
+        );
+        relatedPrs.push(createReadyPr(prUrl));
+      }
+      return { boardIssues, relatedPrs };
+    };
+
+    const resolveBatchFrom = (relatedPrs: RelatedPrLike[]): void => {
+      const prByUrl = new Map(relatedPrs.map((pr) => [pr.url, pr]));
+      mockIssueRepository.getOpenPullRequests.mockImplementation(
+        (prUrls: string[]) =>
+          Promise.resolve(
+            new Map(prUrls.map((prUrl) => [prUrl, prByUrl.get(prUrl) ?? null])),
+          ),
+      );
+    };
+
+    it('resolves every related pull request in one batched call and makes no per-pull-request call', async () => {
+      const { boardIssues, relatedPrs } = buildAwaitingQualityCheckBoard(3);
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: boardIssues,
+        cacheUsed: false,
+      });
+      resolveBatchFrom(relatedPrs);
+
+      await useCase.run({
+        projectUrl,
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledWith(
+        relatedPrs.map((pr) => pr.url),
+      );
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('includes the unread pull requests in the same batched call', async () => {
+      const unreadPrUrl = 'https://github.com/user/repo/pull/400';
+      const { boardIssues, relatedPrs } = buildAwaitingQualityCheckBoard(1);
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [
+          ...boardIssues,
+          createMockPullRequest({
+            url: unreadPrUrl,
+            number: 400,
+            itemId: 'item-pr-unread',
+          }),
+        ],
+        cacheUsed: false,
+      });
+      resolveBatchFrom([...relatedPrs, createReadyPr(unreadPrUrl)]);
+
+      await useCase.run({
+        projectUrl,
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledWith([
+        relatedPrs[0].url,
+        unreadPrUrl,
+      ]);
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the single pull request query only for a url the batch left unresolved', async () => {
+      const { boardIssues, relatedPrs } = buildAwaitingQualityCheckBoard(2);
+      const resolvedPr = relatedPrs[0];
+      const omittedPr = relatedPrs[1];
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: boardIssues,
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[resolvedPr.url, resolvedPr]]),
+      );
+      mockIssueRepository.getOpenPullRequest.mockImplementation(
+        (prUrl: string) =>
+          Promise.resolve(prUrl === omittedPr.url ? omittedPr : null),
+      );
+
+      await useCase.run({
+        projectUrl,
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+        omittedPr.url,
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('reverts the issue whose pull request the batch resolved as absent', async () => {
+      const { boardIssues, relatedPrs } = buildAwaitingQualityCheckBoard(1);
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: boardIssues,
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[relatedPrs[0].url, null]]),
+      );
+
+      await useCase.run({
+        projectUrl,
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ url: boardIssues[0].url }),
+        'awaiting-workspace-id',
       );
     });
   });

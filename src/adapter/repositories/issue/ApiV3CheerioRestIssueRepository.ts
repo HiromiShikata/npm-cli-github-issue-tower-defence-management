@@ -108,6 +108,43 @@ type PrStatusComputationData = {
   }>;
 };
 
+// One GraphQL query carrying this many aliased pull requests costs the same
+// single rate-limit point as a query carrying one, measured against the live
+// API by reading the rateLimit cost field it returns.
+const SLIM_PULL_REQUEST_BATCH_SIZE = 100;
+const SLIM_PULL_REQUEST_REVIEW_THREADS_PAGE_SIZE = 100;
+
+type SlimPullRequestNodeResponse = {
+  url: string;
+  state: string;
+  isDraft?: boolean;
+  headRefName?: string;
+  baseRefName?: string;
+  mergeable?: string;
+  headRefOid?: string;
+  reviewThreads?: {
+    pageInfo: {
+      endCursor: string | null;
+      hasNextPage: boolean;
+    };
+    nodes: Array<{
+      isResolved: boolean;
+    }>;
+  };
+};
+
+type SlimPullRequestBatchResponse = {
+  data?: Record<
+    string,
+    { pullRequest?: SlimPullRequestNodeResponse | null } | null
+  > | null;
+  errors?: Array<{
+    message: string;
+    type?: string;
+    path?: Array<string | number>;
+  }>;
+};
+
 type SlimPullRequestResponse = {
   data?: {
     repository?: {
@@ -202,6 +239,13 @@ function isIssueTimelineResponse(
 function isSlimPullRequestResponse(
   value: unknown,
 ): value is SlimPullRequestResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
+}
+
+function isSlimPullRequestBatchResponse(
+  value: unknown,
+): value is SlimPullRequestBatchResponse {
   if (typeof value !== 'object' || value === null) return false;
   return true;
 }
@@ -1689,6 +1733,214 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     return this.buildRelatedPullRequestFromSlim(owner, repo, slimPullRequest);
+  };
+
+  // Resolves many pull requests with one GraphQL query per hundred instead of
+  // one query per pull request. A URL this cannot settle is left out of the
+  // returned map rather than mapped to null, so the caller falls back to
+  // getOpenPullRequest for it and an unknown state is never mistaken for an
+  // absent pull request.
+  getOpenPullRequests = async (
+    prUrls: string[],
+  ): Promise<Map<string, RelatedPullRequest | null>> => {
+    const resolved = new Map<string, RelatedPullRequest | null>();
+    const parsedByUrl = new Map<
+      string,
+      { owner: string; repo: string; prNumber: number }
+    >();
+    for (const prUrl of Array.from(new Set(prUrls))) {
+      const parsedUrl = this.parseIssueUrl(prUrl);
+      if (!parsedUrl.isPr) {
+        resolved.set(prUrl, null);
+        continue;
+      }
+      parsedByUrl.set(prUrl, {
+        owner: parsedUrl.owner,
+        repo: parsedUrl.repo,
+        prNumber: parsedUrl.issueNumber,
+      });
+    }
+
+    const urlsToFetch = Array.from(parsedByUrl.keys());
+    for (
+      let start = 0;
+      start < urlsToFetch.length;
+      start += SLIM_PULL_REQUEST_BATCH_SIZE
+    ) {
+      const batchUrls = urlsToFetch.slice(
+        start,
+        start + SLIM_PULL_REQUEST_BATCH_SIZE,
+      );
+      let slimByUrl: Map<string, SlimPullRequest | null>;
+      try {
+        slimByUrl = await this.fetchSlimPullRequestsInOneQuery(
+          batchUrls.map((prUrl) => ({
+            prUrl,
+            ...this.requireParsedPullRequest(parsedByUrl, prUrl),
+          })),
+        );
+      } catch (error) {
+        console.warn(
+          `ApiV3CheerioRestIssueRepository: batched pull request status query failed, leaving ${batchUrls.length} pull request(s) to per-request resolution. error: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        continue;
+      }
+      for (const prUrl of batchUrls) {
+        if (!slimByUrl.has(prUrl)) {
+          continue;
+        }
+        const slimPullRequest = slimByUrl.get(prUrl) ?? null;
+        if (!slimPullRequest || slimPullRequest.state !== 'OPEN') {
+          resolved.set(prUrl, null);
+          continue;
+        }
+        const parsed = this.requireParsedPullRequest(parsedByUrl, prUrl);
+        try {
+          resolved.set(
+            prUrl,
+            await this.buildRelatedPullRequestFromSlim(
+              parsed.owner,
+              parsed.repo,
+              slimPullRequest,
+            ),
+          );
+        } catch (error) {
+          console.warn(
+            `ApiV3CheerioRestIssueRepository: building the pull request status failed, leaving it to per-request resolution. prUrl: ${prUrl} error: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+    }
+    return resolved;
+  };
+
+  private requireParsedPullRequest = (
+    parsedByUrl: Map<string, { owner: string; repo: string; prNumber: number }>,
+    prUrl: string,
+  ): { owner: string; repo: string; prNumber: number } => {
+    const parsed = parsedByUrl.get(prUrl);
+    if (!parsed) {
+      throw new Error(`Pull request URL was not parsed: ${prUrl}`);
+    }
+    return parsed;
+  };
+
+  // A pull request whose review threads do not fit the first page is omitted
+  // from the returned map, so the caller resolves it through the paginating
+  // single-pull-request path and the resolved-thread state stays complete.
+  private fetchSlimPullRequestsInOneQuery = async (
+    references: {
+      prUrl: string;
+      owner: string;
+      repo: string;
+      prNumber: number;
+    }[],
+  ): Promise<Map<string, SlimPullRequest | null>> => {
+    const aliasOf = (index: number): string => `pullRequest${index}`;
+    const variableDeclarations = references
+      .map(
+        (_, index) =>
+          `$owner${index}: String!, $repo${index}: String!, $prNumber${index}: Int!`,
+      )
+      .join(', ');
+    const selections = references
+      .map(
+        (
+          _,
+          index,
+        ) => `  ${aliasOf(index)}: repository(owner: $owner${index}, name: $repo${index}) {
+    pullRequest(number: $prNumber${index}) {
+      url
+      state
+      isDraft
+      headRefName
+      baseRefName
+      mergeable
+      headRefOid
+      reviewThreads(first: ${SLIM_PULL_REQUEST_REVIEW_THREADS_PAGE_SIZE}) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          isResolved
+        }
+      }
+    }
+  }`,
+      )
+      .join('\n');
+    const query = `query PullRequestSlimStatusBatch(${variableDeclarations}) {\n${selections}\n}`;
+    const variables: Record<string, string | number> = {};
+    references.forEach((reference, index) => {
+      variables[`owner${index}`] = reference.owner;
+      variables[`repo${index}`] = reference.repo;
+      variables[`prNumber${index}`] = reference.prNumber;
+    });
+
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetchGithubGraphql({ ghToken: this.ghToken, query, variables }),
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch pull requests from GitHub GraphQL API: HTTP ${response.status}`,
+      );
+    }
+    const responseData: unknown = await response.json();
+    if (!isSlimPullRequestBatchResponse(responseData)) {
+      throw new Error('Unexpected response shape when fetching pull requests');
+    }
+    const errors = responseData.errors || [];
+    const notFoundAliases = new Set(
+      errors
+        .filter((error) => error.type === 'NOT_FOUND')
+        .map((error) => String(error.path?.[0] ?? '')),
+    );
+    const otherErrorAliases = new Set(
+      errors
+        .filter((error) => error.type !== 'NOT_FOUND')
+        .map((error) => String(error.path?.[0] ?? '')),
+    );
+    if (!responseData.data) {
+      throw new Error(`GraphQL errors: ${JSON.stringify(errors)}`);
+    }
+    const unattributedError = errors.some(
+      (error) => error.type !== 'NOT_FOUND' && !error.path,
+    );
+    if (unattributedError) {
+      throw new Error(`GraphQL errors: ${JSON.stringify(errors)}`);
+    }
+
+    const slimByUrl = new Map<string, SlimPullRequest | null>();
+    references.forEach((reference, index) => {
+      const alias = aliasOf(index);
+      if (otherErrorAliases.has(alias)) {
+        return;
+      }
+      const node = responseData.data?.[alias]?.pullRequest ?? null;
+      if (!node) {
+        if (notFoundAliases.has(alias) || !errors.length) {
+          slimByUrl.set(reference.prUrl, null);
+        }
+        return;
+      }
+      if (node.reviewThreads?.pageInfo.hasNextPage === true) {
+        return;
+      }
+      slimByUrl.set(reference.prUrl, {
+        url: node.url,
+        state: node.state,
+        isDraft: node.isDraft,
+        headRefName: node.headRefName,
+        baseRefName: node.baseRefName,
+        mergeable: node.mergeable,
+        headRefOid: node.headRefOid,
+        reviewThreads: (node.reviewThreads?.nodes || []).map((thread) => ({
+          isResolved: thread.isResolved,
+        })),
+      });
+    });
+    return slimByUrl;
   };
 
   closePullRequest = async (prUrl: string): Promise<void> => {
