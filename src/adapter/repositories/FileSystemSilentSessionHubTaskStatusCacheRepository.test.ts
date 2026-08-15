@@ -274,7 +274,12 @@ describe('defaultSilentSessionHubTaskStatusCacheFilePath', () => {
     delete process.env.XDG_CACHE_HOME;
 
     expect(defaultSilentSessionHubTaskStatusCacheFilePath()).toBe(
-      path.join(os.homedir(), '.cache', 'tdpm', 'silent-session-hub-task-status.json'),
+      path.join(
+        os.homedir(),
+        '.cache',
+        'tdpm',
+        'silent-session-hub-task-status.json',
+      ),
     );
   });
 });

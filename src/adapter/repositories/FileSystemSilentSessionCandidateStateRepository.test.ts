@@ -276,7 +276,12 @@ describe('defaultSilentSessionCandidateStateFilePath', () => {
     delete process.env.XDG_CACHE_HOME;
 
     expect(defaultSilentSessionCandidateStateFilePath()).toBe(
-      path.join(os.homedir(), '.cache', 'tdpm', 'silent-session-candidates.json'),
+      path.join(
+        os.homedir(),
+        '.cache',
+        'tdpm',
+        'silent-session-candidates.json',
+      ),
     );
   });
 });

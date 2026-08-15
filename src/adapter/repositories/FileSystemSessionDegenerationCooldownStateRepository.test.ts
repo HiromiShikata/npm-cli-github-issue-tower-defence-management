@@ -110,7 +110,12 @@ describe('defaultSessionDegenerationCooldownStateFilePath', () => {
     delete process.env.XDG_CACHE_HOME;
 
     expect(defaultSessionDegenerationCooldownStateFilePath()).toBe(
-      path.join(os.homedir(), '.cache', 'tdpm', 'output-degeneration-cooldown.json'),
+      path.join(
+        os.homedir(),
+        '.cache',
+        'tdpm',
+        'output-degeneration-cooldown.json',
+      ),
     );
   });
 });
