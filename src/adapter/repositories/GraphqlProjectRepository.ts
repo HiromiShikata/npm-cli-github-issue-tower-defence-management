@@ -78,7 +78,10 @@ export class GraphqlProjectRepository
       cache = await this.projectCache.getLatest(
         `${PROJECT_LOCATION_DISK_CACHE_KEY_PREFIX}-${projectId}`,
       );
-    } catch {
+    } catch (error) {
+      console.warn(
+        `GraphqlProjectRepository: reading the project location disk cache failed, falling back to the GraphQL project query. projectId: ${projectId}, error: ${String(error)}`,
+      );
       return null;
     }
     if (!cache) {
@@ -117,8 +120,10 @@ export class GraphqlProjectRepository
         `${PROJECT_LOCATION_DISK_CACHE_KEY_PREFIX}-${projectId}`,
         location,
       );
-    } catch {
-      return;
+    } catch (error) {
+      console.warn(
+        `GraphqlProjectRepository: writing the project location disk cache failed, every later process will fall back to the GraphQL project query. projectId: ${projectId}, error: ${String(error)}`,
+      );
     }
   };
 

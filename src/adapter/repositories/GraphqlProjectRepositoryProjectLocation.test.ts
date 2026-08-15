@@ -201,4 +201,57 @@ describe('GraphqlProjectRepository project location', () => {
     );
     expect(names).toEqual(['Status']);
   });
+
+  it('should warn and fall back to the GraphQL project query when the location cache read throws', async () => {
+    const projectCache = buildProjectCache();
+    projectCache.getLatest.mockRejectedValue(new Error('corrupted file'));
+    mockPostGithubGraphqlJson.mockResolvedValue(graphqlProjectResponse);
+    const warn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const repository = new GraphqlProjectRepository(
+      localStorageRepository,
+      'dummy-token',
+      projectCache,
+    );
+
+    const project = await repository.getProject(projectId);
+
+    expect(project?.id).toEqual(projectId);
+    expect(mockPostGithubGraphqlJson).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'reading the project location disk cache failed, falling back to the GraphQL project query',
+      ),
+    );
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('corrupted file'),
+    );
+    warn.mockRestore();
+  });
+
+  it('should warn and still return the project when the location cache write throws', async () => {
+    const projectCache = buildProjectCache();
+    projectCache.set.mockRejectedValue(new Error('disk full'));
+    mockPostGithubGraphqlJson.mockResolvedValue(graphqlProjectResponse);
+    const warn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const repository = new GraphqlProjectRepository(
+      localStorageRepository,
+      'dummy-token',
+      projectCache,
+    );
+
+    const project = await repository.getProject(projectId);
+
+    expect(project?.id).toEqual(projectId);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'writing the project location disk cache failed, every later process will fall back to the GraphQL project query',
+      ),
+    );
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('disk full'));
+    warn.mockRestore();
+  });
 });
