@@ -37,10 +37,6 @@ exports.FileSystemSubAgentLivenessResolver = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const RUNNING_SUBAGENTS_FILE_NAME = 'running-subagents.txt';
-const isMissingFileError = (error) => typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === 'ENOENT';
 class FileSystemSubAgentLivenessResolver {
     constructor(runtimeRootDirectory) {
         this.runtimeRootDirectory = runtimeRootDirectory;
@@ -53,10 +49,7 @@ class FileSystemSubAgentLivenessResolver {
             try {
                 content = fs.readFileSync(runningFilePath, 'utf8');
             }
-            catch (error) {
-                if (isMissingFileError(error) && this.hasReadableRuntimeRootDirectory()) {
-                    return new Set();
-                }
+            catch {
                 return null;
             }
             const liveIds = new Set();
@@ -67,17 +60,6 @@ class FileSystemSubAgentLivenessResolver {
                 }
             }
             return liveIds;
-        };
-        this.hasReadableRuntimeRootDirectory = () => {
-            if (this.runtimeRootDirectory === null) {
-                return false;
-            }
-            try {
-                return fs.statSync(this.runtimeRootDirectory).isDirectory();
-            }
-            catch {
-                return false;
-            }
         };
         this.resolveRunningSubAgentsFilePath = (mainTranscriptPath) => {
             if (this.runtimeRootDirectory === null || mainTranscriptPath === null) {

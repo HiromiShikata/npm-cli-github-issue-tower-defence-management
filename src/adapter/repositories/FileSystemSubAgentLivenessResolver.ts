@@ -4,12 +4,6 @@ import { SubAgentLivenessResolver } from '../../domain/usecases/adapter-interfac
 
 const RUNNING_SUBAGENTS_FILE_NAME = 'running-subagents.txt';
 
-const isMissingFileError = (error: unknown): boolean =>
-  typeof error === 'object' &&
-  error !== null &&
-  'code' in error &&
-  error.code === 'ENOENT';
-
 export class FileSystemSubAgentLivenessResolver implements SubAgentLivenessResolver {
   constructor(private readonly runtimeRootDirectory: string | null) {}
 
@@ -26,10 +20,7 @@ export class FileSystemSubAgentLivenessResolver implements SubAgentLivenessResol
     let content: string;
     try {
       content = fs.readFileSync(runningFilePath, 'utf8');
-    } catch (error) {
-      if (isMissingFileError(error) && this.hasReadableRuntimeRootDirectory()) {
-        return new Set();
-      }
+    } catch {
       return null;
     }
     const liveIds = new Set<string>();
@@ -40,17 +31,6 @@ export class FileSystemSubAgentLivenessResolver implements SubAgentLivenessResol
       }
     }
     return liveIds;
-  };
-
-  private hasReadableRuntimeRootDirectory = (): boolean => {
-    if (this.runtimeRootDirectory === null) {
-      return false;
-    }
-    try {
-      return fs.statSync(this.runtimeRootDirectory).isDirectory();
-    } catch {
-      return false;
-    }
   };
 
   private resolveRunningSubAgentsFilePath = (
