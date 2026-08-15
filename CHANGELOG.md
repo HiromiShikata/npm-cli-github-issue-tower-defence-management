@@ -1,3 +1,10 @@
+## [1.156.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.1...v1.156.2) (2026-08-15)
+
+
+### Bug Fixes
+
+* **config:** add labelsAsLlmAgentName to project README config known keys and parser ([#1562](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1562)) ([170746f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/170746f969f14b0f8af3f4b91f1c591b7b191f8f)), closes [#1561](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1561)
+
 ## [1.156.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.0...v1.156.1) (2026-08-15)
 
 
