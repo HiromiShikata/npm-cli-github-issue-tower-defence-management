@@ -428,10 +428,10 @@ When `consoleAccessToken` is unset, no console server is started automatically; 
 
 ## Project ID Cache
 
-The mapping from `owner/projectNumber` to the immutable GitHub Project node ID that `GraphqlProjectRepository.fetchProjectId` resolves is cached on disk so it is shared across processes. Because every TDPM invocation is a fresh process, an in-memory cache alone would re-resolve this mapping over GraphQL on every loop and every worker start; the on-disk cache eliminates that repeated GraphQL traffic. The cache reuses the same `./tmp/cache/{projectName}/` directory convention as the issue cache and writes each entry atomically (to a `.tmp` file then renamed) so concurrent processes never corrupt or read a partial file.
+The mapping from `owner/projectNumber` to the immutable GitHub Project node ID that `GraphqlProjectRepository.fetchProjectId` resolves is cached on disk so it is shared across processes. Because every TDPM invocation is a fresh process, an in-memory cache alone would re-resolve this mapping over GraphQL on every loop and every worker start; the on-disk cache eliminates that repeated GraphQL traffic. The cache reuses the same `${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/cache/{projectName}/` directory convention as the issue cache and writes each entry atomically (to a `.tmp` file then renamed) so concurrent processes never corrupt or read a partial file.
 
 ```
-./tmp/cache/{projectName}/projectId-{owner}:{projectNumber}/{timestamp}.json
+${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/cache/{projectName}/projectId-{owner}:{projectNumber}/{timestamp}.json
 ```
 
 - The `projectId` mapping (`owner/projectNumber` to project node ID) is permanently static, so it is reused with no time-to-live.
@@ -443,7 +443,7 @@ The mapping from `owner/projectNumber` to the immutable GitHub Project node ID t
 After each schedule cycle, TDPM writes a per-project situation snapshot to:
 
 ```
-./tmp/cache/{projectName}/situation-{projectId}.json
+${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/cache/{projectName}/situation-{projectId}.json
 ```
 
 This file is written atomically (written to a `.tmp` file then renamed) so external readers never see a partial write.
@@ -721,7 +721,7 @@ The timestamp of the last slow sweep is stored in the `HandleScheduledEvent` Goo
 
 On each access the repository chooses between a full fetch (when the cache is absent or stale) and a two-phase, time-precise incremental fetch (when the cache is fresh). The incremental path separates a lightweight day-scan phase from a targeted detail-fetch phase, keeping per-cycle GitHub API usage proportional to the number of items updated since the last fetch rather than proportional to total project size.
 
-The issue repository keeps a single always-latest JSON file per project at `./tmp/cache/{projectName}/allIssues-{projectId}/latest.json` and refreshes it on access. Each refresh writes the file atomically (to a `.tmp` file then renamed) and records `lastFetchedAt`, `lastFullFetchAt`, the cached `project`, and the `issues` array in the same file.
+The issue repository keeps a single always-latest JSON file per project at `${XDG_CACHE_HOME:-$HOME/.cache}/tdpm/cache/{projectName}/allIssues-{projectId}/latest.json` and refreshes it on access. That base directory is resolved from the user's cache home rather than from the process working directory, so a worker session started inside its own worktree reads the same cache the daemon and every other session write, instead of finding an empty directory and paginating the whole project board again. Each refresh writes the file atomically (to a `.tmp` file then renamed) and records `lastFetchedAt`, `lastFullFetchAt`, the cached `project`, and the `issues` array in the same file.
 
 - When the cache file is missing or its `lastFullFetchAt` is at least one hour old, the repository fetches every project item, replaces the whole issue list, refreshes the cached `project`, and sets both `lastFullFetchAt` and `lastFetchedAt` to now (`cacheUsed` is `false`).
 - Otherwise the repository performs a two-phase, time-precise incremental fetch, reusing the cached `project` and setting `lastFetchedAt` to now while leaving `lastFullFetchAt` untouched (`cacheUsed` is `true`). Phase 1 (light day scan): it queries `items(query: "updated:>=<YYYY-MM-DD>")` for the UTC day of the previous `lastFetchedAt` with no previous-day overlap, requesting only each `ProjectV2Item` `id` and `updatedAt` plus the content `url` and `number` (no `fieldValues`), paginating all pages. Because the GitHub ProjectV2 `updated:` filter is day-granular, the results are then filtered client-side to only items whose `ProjectV2Item.updatedAt` is greater than or equal to a cutoff equal to the previous `lastFetchedAt` timestamp minus a small clock-skew buffer (5 minutes), giving time precision while absorbing realistic clock skew between the daemon host and GitHub; the same cutoff date drives the phase-1 query, so the UTC-midnight boundary is handled by construction. The re-included buffer window is idempotent because upserts are keyed by issue URL. Phase 2 (detail fetch): only when that filtered set is non-empty, it fetches the full item detail for those items by node id via `nodes(ids: [...])` in batches of up to 100, converts each to an issue, and upserts them into the cached list keyed by issue URL; when the filtered set is empty phase 2 is skipped entirely.

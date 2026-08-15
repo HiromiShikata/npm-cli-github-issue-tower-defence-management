@@ -27,6 +27,7 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
 import { LocalCommandIssueAttachmentRepository } from '../../repositories/LocalCommandIssueAttachmentRepository';
@@ -357,7 +358,7 @@ program
 
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
+    const cachePath = projectCacheDirectory(projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,
@@ -559,7 +560,7 @@ program
 
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
+    const cachePath = projectCacheDirectory(projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,
@@ -664,7 +665,7 @@ program
 
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
+    const cachePath = projectCacheDirectory(projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,
@@ -769,7 +770,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
 
   const projectName = config.projectName ?? 'default';
   const localStorageRepository = new LocalStorageRepository();
-  const cachePath = `./tmp/cache/${projectName}`;
+  const cachePath = projectCacheDirectory(projectName);
   const localStorageCacheRepository = new LocalStorageCacheRepository(
     localStorageRepository,
     cachePath,
@@ -1077,7 +1078,7 @@ program
 
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository();
-    const cachePath = `./tmp/cache/${projectName}`;
+    const cachePath = projectCacheDirectory(projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,

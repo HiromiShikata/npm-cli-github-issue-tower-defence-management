@@ -124,6 +124,7 @@ describe('CLI', () => {
   const originalEnv = process.env;
   const tmpDir = path.join(__dirname, '../../../../tmp/test-cli');
   const configFilePath = path.join(tmpDir, 'config.yml');
+  const cacheHomeDir = path.join(tmpDir, 'cache-home');
 
   const defaultConfig = {
     projectUrl: 'https://github.com/orgs/test/projects/1',
@@ -159,12 +160,11 @@ describe('CLI', () => {
     if (fs.existsSync(configFilePath)) {
       fs.unlinkSync(configFilePath);
     }
+    if (fs.existsSync(cacheHomeDir)) {
+      fs.rmSync(cacheHomeDir, { recursive: true, force: true });
+    }
     if (fs.existsSync(tmpDir)) {
       fs.rmdirSync(tmpDir);
-    }
-    const cacheDir = path.join(process.cwd(), 'tmp/cache');
-    if (fs.existsSync(cacheDir)) {
-      fs.rmSync(cacheDir, { recursive: true, force: true });
     }
   });
 
@@ -172,7 +172,11 @@ describe('CLI', () => {
     jest.clearAllMocks();
     mockFetchReturningReadme(null);
     mockRunCommand.mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
-    process.env = { ...originalEnv, GH_TOKEN: 'test-token' };
+    process.env = {
+      ...originalEnv,
+      GH_TOKEN: 'test-token',
+      XDG_CACHE_HOME: cacheHomeDir,
+    };
     writeConfig(defaultConfig);
   });
 

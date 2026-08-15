@@ -42,6 +42,7 @@ import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlPr
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleScheduledEventUseCase';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
 import { ActionAnnouncementUseCase } from '../../../domain/usecases/ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from '../../../domain/usecases/SetWorkflowManagementIssueToStoryUseCase';
 import { ClearPastNextActionDateHourUseCase } from '../../../domain/usecases/ClearPastNextActionDateHourUseCase';
@@ -380,7 +381,7 @@ export class HandleScheduledEventUseCaseHandler {
       localStorageRepository,
       input.credentials.manager.googleServiceAccount.serviceAccountKey,
     );
-    const cachePath = `./tmp/cache/${input.projectName}`;
+    const cachePath = projectCacheDirectory(input.projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,

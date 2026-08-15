@@ -7,6 +7,7 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
@@ -72,7 +73,7 @@ export class GetStoryObjectMapUseCaseHandler {
       );
     }
     const localStorageRepository = new LocalStorageRepository();
-    const cachePath = `./tmp/cache/${input.projectName}`;
+    const cachePath = projectCacheDirectory(input.projectName);
     const localStorageCacheRepository = new LocalStorageCacheRepository(
       localStorageRepository,
       cachePath,
