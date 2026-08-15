@@ -11,12 +11,22 @@ exports.FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 exports.REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 const SELF_AUTHORED_REVIEW_REFUSAL = 'Can not request changes on your own pull request';
+// One GraphQL query carrying this many aliased pull requests costs the same
+// single rate-limit point as a query carrying one, measured against the live
+// API by reading the rateLimit cost field it returns.
+const SLIM_PULL_REQUEST_BATCH_SIZE = 100;
+const SLIM_PULL_REQUEST_REVIEW_THREADS_PAGE_SIZE = 100;
 function isIssueTimelineResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
     return true;
 }
 function isSlimPullRequestResponse(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    return true;
+}
+function isSlimPullRequestBatchResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
     return true;
@@ -939,6 +949,157 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 return null;
             }
             return this.buildRelatedPullRequestFromSlim(owner, repo, slimPullRequest);
+        };
+        // Resolves many pull requests with one GraphQL query per hundred instead of
+        // one query per pull request. A URL this cannot settle is left out of the
+        // returned map rather than mapped to null, so the caller falls back to
+        // getOpenPullRequest for it and an unknown state is never mistaken for an
+        // absent pull request.
+        this.getOpenPullRequests = async (prUrls) => {
+            const resolved = new Map();
+            const parsedByUrl = new Map();
+            for (const prUrl of Array.from(new Set(prUrls))) {
+                const parsedUrl = this.parseIssueUrl(prUrl);
+                if (!parsedUrl.isPr) {
+                    resolved.set(prUrl, null);
+                    continue;
+                }
+                parsedByUrl.set(prUrl, {
+                    owner: parsedUrl.owner,
+                    repo: parsedUrl.repo,
+                    prNumber: parsedUrl.issueNumber,
+                });
+            }
+            const urlsToFetch = Array.from(parsedByUrl.keys());
+            for (let start = 0; start < urlsToFetch.length; start += SLIM_PULL_REQUEST_BATCH_SIZE) {
+                const batchUrls = urlsToFetch.slice(start, start + SLIM_PULL_REQUEST_BATCH_SIZE);
+                let slimByUrl;
+                try {
+                    slimByUrl = await this.fetchSlimPullRequestsInOneQuery(batchUrls.map((prUrl) => ({
+                        prUrl,
+                        ...this.requireParsedPullRequest(parsedByUrl, prUrl),
+                    })));
+                }
+                catch (error) {
+                    console.warn(`ApiV3CheerioRestIssueRepository: batched pull request status query failed, leaving ${batchUrls.length} pull request(s) to per-request resolution. error: ${error instanceof Error ? error.message : String(error)}`);
+                    continue;
+                }
+                for (const prUrl of batchUrls) {
+                    if (!slimByUrl.has(prUrl)) {
+                        continue;
+                    }
+                    const slimPullRequest = slimByUrl.get(prUrl) ?? null;
+                    if (!slimPullRequest || slimPullRequest.state !== 'OPEN') {
+                        resolved.set(prUrl, null);
+                        continue;
+                    }
+                    const parsed = this.requireParsedPullRequest(parsedByUrl, prUrl);
+                    try {
+                        resolved.set(prUrl, await this.buildRelatedPullRequestFromSlim(parsed.owner, parsed.repo, slimPullRequest));
+                    }
+                    catch (error) {
+                        console.warn(`ApiV3CheerioRestIssueRepository: building the pull request status failed, leaving it to per-request resolution. prUrl: ${prUrl} error: ${error instanceof Error ? error.message : String(error)}`);
+                    }
+                }
+            }
+            return resolved;
+        };
+        this.requireParsedPullRequest = (parsedByUrl, prUrl) => {
+            const parsed = parsedByUrl.get(prUrl);
+            if (!parsed) {
+                throw new Error(`Pull request URL was not parsed: ${prUrl}`);
+            }
+            return parsed;
+        };
+        // A pull request whose review threads do not fit the first page is omitted
+        // from the returned map, so the caller resolves it through the paginating
+        // single-pull-request path and the resolved-thread state stays complete.
+        this.fetchSlimPullRequestsInOneQuery = async (references) => {
+            const aliasOf = (index) => `pullRequest${index}`;
+            const variableDeclarations = references
+                .map((_, index) => `$owner${index}: String!, $repo${index}: String!, $prNumber${index}: Int!`)
+                .join(', ');
+            const selections = references
+                .map((_, index) => `  ${aliasOf(index)}: repository(owner: $owner${index}, name: $repo${index}) {
+    pullRequest(number: $prNumber${index}) {
+      url
+      state
+      isDraft
+      headRefName
+      baseRefName
+      mergeable
+      headRefOid
+      reviewThreads(first: ${SLIM_PULL_REQUEST_REVIEW_THREADS_PAGE_SIZE}) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          isResolved
+        }
+      }
+    }
+  }`)
+                .join('\n');
+            const query = `query PullRequestSlimStatusBatch(${variableDeclarations}) {\n${selections}\n}`;
+            const variables = {};
+            references.forEach((reference, index) => {
+                variables[`owner${index}`] = reference.owner;
+                variables[`repo${index}`] = reference.repo;
+                variables[`prNumber${index}`] = reference.prNumber;
+            });
+            const response = await this.fetchWithRateLimitRetry(() => (0, githubGraphqlClient_1.fetchGithubGraphql)({ ghToken: this.ghToken, query, variables }));
+            if (!response.ok) {
+                throw new Error(`Failed to fetch pull requests from GitHub GraphQL API: HTTP ${response.status}`);
+            }
+            const responseData = await response.json();
+            if (!isSlimPullRequestBatchResponse(responseData)) {
+                throw new Error('Unexpected response shape when fetching pull requests');
+            }
+            const errors = responseData.errors || [];
+            const notFoundAliases = new Set(errors
+                .filter((error) => error.type === 'NOT_FOUND')
+                .map((error) => String(error.path?.[0] ?? '')));
+            const otherErrorAliases = new Set(errors
+                .filter((error) => error.type !== 'NOT_FOUND')
+                .map((error) => String(error.path?.[0] ?? '')));
+            if (!responseData.data) {
+                throw new Error(`GraphQL errors: ${JSON.stringify(errors)}`);
+            }
+            const unattributedError = errors.some((error) => error.type !== 'NOT_FOUND' && !error.path);
+            if (unattributedError) {
+                throw new Error(`GraphQL errors: ${JSON.stringify(errors)}`);
+            }
+            const slimByUrl = new Map();
+            references.forEach((reference, index) => {
+                const alias = aliasOf(index);
+                if (otherErrorAliases.has(alias)) {
+                    return;
+                }
+                const node = responseData.data?.[alias]?.pullRequest ?? null;
+                if (!node) {
+                    if (notFoundAliases.has(alias) || !errors.length) {
+                        slimByUrl.set(reference.prUrl, null);
+                    }
+                    return;
+                }
+                if (node.reviewThreads?.pageInfo.hasNextPage === true) {
+                    return;
+                }
+                slimByUrl.set(reference.prUrl, {
+                    url: node.url,
+                    state: node.state,
+                    isDraft: node.isDraft,
+                    headRefName: node.headRefName,
+                    baseRefName: node.baseRefName,
+                    mergeable: node.mergeable,
+                    headRefOid: node.headRefOid,
+                    reviewThreads: (node.reviewThreads?.nodes || []).map((thread) => ({
+                        isResolved: thread.isResolved,
+                    })),
+                });
+            });
+            return slimByUrl;
         };
         this.closePullRequest = async (prUrl) => {
             const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);

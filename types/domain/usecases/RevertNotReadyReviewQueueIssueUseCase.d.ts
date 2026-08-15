@@ -7,7 +7,7 @@ export declare class RevertNotReadyReviewQueueIssueUseCase {
     private readonly issueCommentRepository;
     private readonly issueRejectionEvaluator;
     private readonly changeTargetPullRequestApprover;
-    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'updateStory' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment'>, issueCommentRepository: Pick<IssueCommentRepository, 'createComment' | 'getCommentsFromIssue'>);
+    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'updateStory' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'getOpenPullRequests' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment'>, issueCommentRepository: Pick<IssueCommentRepository, 'createComment' | 'getCommentsFromIssue'>);
     run: (params: {
         projectUrl: string;
         manager: string;

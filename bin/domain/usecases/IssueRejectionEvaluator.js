@@ -7,17 +7,11 @@ class IssueRejectionEvaluator {
         this.evaluate = async (issue, labelsNotRequiringPullRequest = [], options = {}) => {
             const rejections = [];
             let approvedPrUrl = null;
-            const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
-            const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
-            const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
-            if (!hasLlmAgentLabel &&
-                !hasLabelNotRequiringPullRequest &&
-                this.isPullRequestRequiredByBody(issue.body) &&
-                (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))) {
+            if (this.requiresPullRequestEvaluation(issue, labelsNotRequiringPullRequest)) {
                 let prsToCheck;
                 let anyPrResolutionFailed = false;
                 if (issue.isPr) {
-                    const resolved = await this.resolveOpenPrsForPrItem(issue.url);
+                    const resolved = await this.resolveOpenPrsForPrItem(issue.url, options.resolvedOpenPrByUrl ?? null);
                     if (resolved === null) {
                         // getOpenPullRequest failed transiently: the PR's state is unknown
                         // for this cycle, so skip it without emitting any rejection.
@@ -26,7 +20,7 @@ class IssueRejectionEvaluator {
                     prsToCheck = resolved;
                 }
                 else if (options.relatedOpenPrUrls != null) {
-                    const resolved = await this.resolveOpenPrsFromUrls(options.relatedOpenPrUrls);
+                    const resolved = await this.resolveOpenPrsFromUrls(options.relatedOpenPrUrls, options.resolvedOpenPrByUrl ?? null);
                     prsToCheck = resolved.prs;
                     anyPrResolutionFailed = resolved.anyResolutionFailed;
                 }
@@ -115,10 +109,26 @@ class IssueRejectionEvaluator {
             }
             return { rejections, approvedPrUrl };
         };
+        // Whether this item's pull requests are looked at at all. A caller that
+        // resolves pull request state in one batch for a whole cycle asks this first,
+        // so the batch covers exactly the items evaluate would have resolved.
+        this.requiresPullRequestEvaluation = (issue, labelsNotRequiringPullRequest = []) => {
+            const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
+            const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
+            const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
+            return (!hasLlmAgentLabel &&
+                !hasLabelNotRequiringPullRequest &&
+                this.isPullRequestRequiredByBody(issue.body) &&
+                (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e')));
+        };
         // Returns null when getOpenPullRequest throws (e.g. a transient GitHub
         // GraphQL server error): the PR's state is unknown for this cycle and the
         // caller skips it instead of letting the error abort the schedule cycle.
-        this.resolveOpenPrsForPrItem = async (prUrl) => {
+        this.resolveOpenPrsForPrItem = async (prUrl, resolvedOpenPrByUrl) => {
+            if (resolvedOpenPrByUrl?.has(prUrl)) {
+                const alreadyResolved = resolvedOpenPrByUrl.get(prUrl) ?? null;
+                return alreadyResolved === null ? [] : [alreadyResolved];
+            }
             let pr;
             try {
                 pr = await this.issueRepository.getOpenPullRequest(prUrl);
@@ -144,11 +154,18 @@ class IssueRejectionEvaluator {
         // remaining URLs are still resolved; anyResolutionFailed reports whether at
         // least one URL failed so the caller can avoid treating an unknown state as
         // PULL_REQUEST_NOT_FOUND.
-        this.resolveOpenPrsFromUrls = async (prUrls) => {
+        this.resolveOpenPrsFromUrls = async (prUrls, resolvedOpenPrByUrl) => {
             const uniquePrUrls = Array.from(new Set(prUrls));
             const resolvedPrs = [];
             let anyResolutionFailed = false;
             for (const prUrl of uniquePrUrls) {
+                if (resolvedOpenPrByUrl?.has(prUrl)) {
+                    const alreadyResolved = resolvedOpenPrByUrl.get(prUrl) ?? null;
+                    if (alreadyResolved !== null) {
+                        resolvedPrs.push(alreadyResolved);
+                    }
+                    continue;
+                }
                 let pr;
                 try {
                     pr = await this.issueRepository.getOpenPullRequest(prUrl);

@@ -39,6 +39,18 @@ class RevertNotReadyReviewQueueIssueUseCase {
             const { issues } = await this.issueRepository.getAllIssues(projectId);
             const awaitingQualityCheckIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME);
             const relatedOpenPrUrlsByIssueUrl = this.buildRelatedOpenPrUrlsByIssueUrl(issues);
+            const unreadPullRequests = issues.filter((issue) => issue.status === WorkflowStatus_1.DEFAULT_STATUS_NAME && issue.isPr);
+            const labelsNotRequiringPullRequest = (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params);
+            const willBeEvaluated = (item) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(item.author, allowedIssueAuthors) &&
+                this.issueRejectionEvaluator.requiresPullRequestEvaluation(item, labelsNotRequiringPullRequest);
+            const resolvedOpenPrByUrl = await this.issueRepository.getOpenPullRequests(Array.from(new Set([
+                ...awaitingQualityCheckIssues
+                    .filter(willBeEvaluated)
+                    .flatMap((issue) => relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? []),
+                ...unreadPullRequests
+                    .filter(willBeEvaluated)
+                    .map((pullRequest) => pullRequest.url),
+            ])));
             for (const issue of awaitingQualityCheckIssues) {
                 const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
                 if (hasLlmAgentLabel) {
@@ -48,8 +60,9 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     continue;
                 }
                 try {
-                    const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), {
+                    const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsNotRequiringPullRequest, {
                         relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
+                        resolvedOpenPrByUrl,
                     });
                     if (rejections.length === 1 &&
                         rejections[0].type === 'PULL_REQUEST_NOT_FOUND' &&
@@ -84,7 +97,6 @@ class RevertNotReadyReviewQueueIssueUseCase {
                 }
             }
             const projectStory = project.story;
-            const unreadPullRequests = issues.filter((issue) => issue.status === WorkflowStatus_1.DEFAULT_STATUS_NAME && issue.isPr);
             for (const pullRequest of unreadPullRequests) {
                 const hasLlmAgentLabel = pullRequest.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
                 if (hasLlmAgentLabel) {
@@ -94,7 +106,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     continue;
                 }
                 try {
-                    const { rejections } = await this.issueRejectionEvaluator.evaluate(pullRequest, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
+                    const { rejections } = await this.issueRejectionEvaluator.evaluate(pullRequest, labelsNotRequiringPullRequest, { resolvedOpenPrByUrl });
                     if (rejections.length > 0) {
                         if (!pullRequest.assignees.includes(params.manager)) {
                             continue;

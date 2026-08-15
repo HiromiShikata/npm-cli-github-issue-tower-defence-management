@@ -1,3 +1,10 @@
+## [1.153.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.5...v1.153.6) (2026-08-15)
+
+
+### Bug Fixes
+
+* resolve the review-readiness pull request states in one batched GraphQL query ([#1575](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1575)) ([156284c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/156284c06fb34344f53c897e28feb51ed57711f5))
+
 ## [1.153.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.153.4...v1.153.5) (2026-08-15)
 
 

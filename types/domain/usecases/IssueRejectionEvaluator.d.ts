@@ -1,4 +1,4 @@
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { IssueRepository, RelatedPullRequest } from './adapter-interfaces/IssueRepository';
 export type PrRejectedReasonType = 'PULL_REQUEST_NOT_FOUND' | 'MULTIPLE_PULL_REQUESTS_FOUND' | 'PULL_REQUEST_IS_DRAFT' | 'PULL_REQUEST_CONFLICTED' | 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS' | 'REQUIRED_CI_JOB_NEVER_STARTED' | 'ANY_REVIEW_COMMENT_NOT_RESOLVED' | 'CHANGE_TARGET_MUST_PATH_NOT_CHANGED';
 export type PrRejectionResult = {
     rejections: {
@@ -9,6 +9,7 @@ export type PrRejectionResult = {
 };
 export type EvaluateOptions = {
     relatedOpenPrUrls?: string[] | null;
+    resolvedOpenPrByUrl?: ReadonlyMap<string, RelatedPullRequest | null> | null;
 };
 export declare class IssueRejectionEvaluator {
     private readonly issueRepository;
@@ -19,6 +20,10 @@ export declare class IssueRejectionEvaluator {
         isPr: boolean;
         body?: string | null;
     }, labelsNotRequiringPullRequest?: string[], options?: EvaluateOptions) => Promise<PrRejectionResult>;
+    requiresPullRequestEvaluation: (issue: {
+        labels: string[];
+        body?: string | null;
+    }, labelsNotRequiringPullRequest?: string[]) => boolean;
     private resolveOpenPrsForPrItem;
     private resolveOpenPrsFromUrls;
     private extractChangeTargetMustPaths;
