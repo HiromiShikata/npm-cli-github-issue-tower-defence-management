@@ -87,7 +87,10 @@ describe('parseProjectReadmeConfig labelsNotRequiringPullRequest', () => {
       'labelsNotRequiringPullRequest:\n  - chore\n  - accounting\n',
     );
     const result = parseProjectReadmeConfig(readme);
-    expect(result.labelsNotRequiringPullRequest).toEqual(['chore', 'accounting']);
+    expect(result.labelsNotRequiringPullRequest).toEqual([
+      'chore',
+      'accounting',
+    ]);
   });
 
   it('does not emit a warning for labelsNotRequiringPullRequest', () => {
