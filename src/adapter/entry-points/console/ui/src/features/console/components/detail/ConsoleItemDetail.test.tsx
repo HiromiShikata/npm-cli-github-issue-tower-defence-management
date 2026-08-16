@@ -385,4 +385,41 @@ describe('ConsoleItemDetail', () => {
     expect(queryByText('CI passing')).toBeNull();
     expect(queryByText('CI failing')).toBeNull();
   });
+
+  it('renders the CI badge for a linked pull request inside .console-detail-topline when the item is an issue', () => {
+    const { container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{
+          state: 'open',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+        }}
+        relatedPullRequests={[
+          {
+            pullRequest: {
+              ...consoleRelatedPullRequestsFixture[0],
+              isPassedAllCiJob: false,
+              isCiStateSuccess: false,
+              isBranchOutOfDate: true,
+              missingRequiredCheckNames: ['ci'],
+            },
+            files: [],
+            filesAreLoading: false,
+            filesError: null,
+            commits: [],
+            commitsAreLoading: false,
+            commitsError: null,
+          },
+        ]}
+      />,
+    );
+    const topline = container.querySelector('.console-detail-topline');
+    expect(topline).not.toBeNull();
+    expect(
+      within(topline as HTMLElement).getByText('CI failing'),
+    ).toBeInTheDocument();
+  });
 });

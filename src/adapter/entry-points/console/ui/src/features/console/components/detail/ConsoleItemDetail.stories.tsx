@@ -230,6 +230,54 @@ export const IssueWithLinkedPullRequest: Story = {
   },
 };
 
+export const IssueWithLinkedPullRequestFailingCi: Story = {
+  args: {
+    item: consoleListItemsFixture[2],
+    storyName: 'TDPM Console port',
+    storyColorEnum: 'BLUE',
+    overlayStatus: null,
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Scaffold React console UI under entry-points with build bundling',
+    },
+    body: '## Issue body\n\nThis issue has a linked pull request with failing CI.',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [
+      {
+        pullRequest: {
+          ...consoleRelatedPullRequestsFixture[0],
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isBranchOutOfDate: true,
+          missingRequiredCheckNames: ['build', 'test'],
+        },
+        files: [],
+        filesAreLoading: false,
+        filesError: null,
+        commits: [],
+        commitsAreLoading: false,
+        commitsError: null,
+      },
+    ],
+  },
+};
+
 export const IssueWithEveryReadFailedByOneCause: Story = {
   args: {
     item: consoleListItemsFixture[2],

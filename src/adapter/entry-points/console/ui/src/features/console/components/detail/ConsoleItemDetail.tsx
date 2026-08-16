@@ -188,6 +188,18 @@ export const ConsoleItemDetail = ({
             }
           />
         )}
+        {!item.isPr &&
+          relatedPullRequests.map((related) => (
+            <ConsolePullRequestStatusBadges
+              key={related.pullRequest.url}
+              isPassedAllCiJob={related.pullRequest.isPassedAllCiJob}
+              isCiStateSuccess={related.pullRequest.isCiStateSuccess}
+              isBranchOutOfDate={related.pullRequest.isBranchOutOfDate}
+              missingRequiredCheckNames={
+                related.pullRequest.missingRequiredCheckNames
+              }
+            />
+          ))}
         {mergeableChips.map((chip) => (
           <ConsolePullRequestMergeableChip
             key={chip.url}
