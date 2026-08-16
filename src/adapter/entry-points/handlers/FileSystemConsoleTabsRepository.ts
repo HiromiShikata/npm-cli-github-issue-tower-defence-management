@@ -29,30 +29,34 @@ const writeJsonAtomic = (filePath: string, data: unknown): void => {
 };
 
 const sortByStoryOrder = (
-  items: ConsoleListItem[],
+  items: unknown[],
   storyOrder: string[],
-): ConsoleListItem[] => {
+): unknown[] => {
   const indexByStory = new Map(storyOrder.map((name, index) => [name, index]));
   return items
-    .map((item, position) => ({
-      item,
-      position,
-      sortKey: indexByStory.get(item.story) ?? UNKNOWN_STORY_SORT_INDEX,
-    }))
+    .map((item, position) => {
+      const storyValue = isRecord(item) ? item.story : undefined;
+      const story = typeof storyValue === 'string' ? storyValue : undefined;
+      return {
+        item,
+        position,
+        sortKey:
+          (story !== undefined ? indexByStory.get(story) : undefined) ??
+          UNKNOWN_STORY_SORT_INDEX,
+      };
+    })
     .sort((a, b) => a.sortKey - b.sortKey || a.position - b.position)
     .map((entry) => entry.item);
 };
 
-const readTabListJson = (
-  filePath: string,
-): (Record<string, unknown> & { items: ConsoleListItem[] }) | null => {
+const readTabListJson = (filePath: string): Record<string, unknown> | null => {
   try {
     const raw = fs.readFileSync(filePath, 'utf-8');
     const parsed: unknown = JSON.parse(raw);
     if (!isRecord(parsed) || !Array.isArray(parsed.items)) {
       return null;
     }
-    return parsed as Record<string, unknown> & { items: ConsoleListItem[] };
+    return parsed;
   } catch {
     return null;
   }
@@ -62,26 +66,22 @@ const clearProjectItemIdFromDoneJson = (
   doneFilePath: string,
   projectItemId: string,
 ): void => {
-  let existing: { projectItemIds: string[] } = { projectItemIds: [] };
+  let existingIds: string[] = [];
   try {
     const raw = fs.readFileSync(doneFilePath, 'utf-8');
     const parsed: unknown = JSON.parse(raw);
-    if (isRecord(parsed) && Array.isArray(parsed.projectItemIds)) {
-      existing = {
-        projectItemIds: (parsed.projectItemIds as unknown[]).filter(
-          (id): id is string => typeof id === 'string',
-        ),
-      };
+    if (isRecord(parsed)) {
+      const rawIds = parsed.projectItemIds;
+      if (Array.isArray(rawIds)) {
+        existingIds = rawIds.filter((id): id is string => typeof id === 'string');
+      }
     }
   } catch {
-    // File does not exist; start with empty record
+    // File does not exist; start with empty list
   }
-  const updated = {
-    projectItemIds: existing.projectItemIds.filter(
-      (id) => id !== projectItemId,
-    ),
-  };
-  writeJsonAtomic(doneFilePath, updated);
+  writeJsonAtomic(doneFilePath, {
+    projectItemIds: existingIds.filter((id) => id !== projectItemId),
+  });
 };
 
 export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
@@ -109,14 +109,16 @@ export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
         continue;
       }
 
-      const items = existing.items;
+      const rawItems = existing.items;
+      const items: unknown[] = Array.isArray(rawItems) ? rawItems : [];
       const withoutThisItem = items.filter(
-        (i) => i.projectItemId !== projectItemId,
+        (i) => !(isRecord(i) && i.projectItemId === projectItemId),
       );
 
       if (tabName === targetTabName) {
-        const storyOrder = Array.isArray(existing.storyOrder)
-          ? (existing.storyOrder as string[])
+        const rawStoryOrder = existing.storyOrder;
+        const storyOrder = Array.isArray(rawStoryOrder)
+          ? rawStoryOrder.filter((s): s is string => typeof s === 'string')
           : [];
         const newItems = sortByStoryOrder([...withoutThisItem, item], storyOrder);
         writeJsonAtomic(filePath, { ...existing, items: newItems });

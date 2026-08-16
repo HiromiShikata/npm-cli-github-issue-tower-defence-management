@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { FileSystemConsoleTabsRepository } from './FileSystemConsoleTabsRepository';
+import { readDoneProjectItemIds } from '../console/consoleDoneStore';
 import type { ConsoleListItem } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 
 const makeItem = (overrides: Partial<ConsoleListItem> = {}): ConsoleListItem => ({
@@ -59,16 +60,8 @@ describe('FileSystemConsoleTabsRepository', () => {
 
   const readTabFile = (tab: string): unknown => {
     const filePath = path.join(dir, PJCODE, tab, 'list.json');
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  };
-
-  const readDoneFile = (tab: string): { projectItemIds: string[] } => {
-    const filePath = path.join(dir, PJCODE, tab, '.done.json');
-    try {
-      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    } catch {
-      return { projectItemIds: [] };
-    }
+    const data: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    return data;
   };
 
   it('inserts the item into the prs tab when transitioning to Awaiting Quality Check', () => {
@@ -82,13 +75,12 @@ describe('FileSystemConsoleTabsRepository', () => {
       targetTabName: 'prs',
     });
 
-    const result = readTabFile('prs') as ReturnType<typeof makeStatusTab>;
-    expect(result.items).toHaveLength(1);
-    expect(result.items[0].projectItemId).toBe('item-1');
+    expect(readTabFile('prs')).toMatchObject({
+      items: [{ projectItemId: 'item-1' }],
+    });
   });
 
   it('preserves generatedAt in the patched tab file', () => {
-    const expectedGeneratedAt = '2026-08-16T04:19:32Z';
     writeTabFile('prs', makeStatusTab(PJCODE, []));
     const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
     const item = makeItem();
@@ -99,8 +91,10 @@ describe('FileSystemConsoleTabsRepository', () => {
       targetTabName: 'prs',
     });
 
-    const result = readTabFile('prs') as ReturnType<typeof makeStatusTab>;
-    expect(result.generatedAt).toBe(expectedGeneratedAt);
+    expect(readTabFile('prs')).toHaveProperty(
+      'generatedAt',
+      '2026-08-16T04:19:32Z',
+    );
   });
 
   it('removes the item from any tab it previously appeared in', () => {
@@ -116,13 +110,10 @@ describe('FileSystemConsoleTabsRepository', () => {
       targetTabName: 'prs',
     });
 
-    const prevTab = readTabFile('todo-by-human') as ReturnType<
-      typeof makeStatusTab
-    >;
-    expect(prevTab.items).toHaveLength(0);
-
-    const nextTab = readTabFile('prs') as ReturnType<typeof makeStatusTab>;
-    expect(nextTab.items).toHaveLength(1);
+    expect(readTabFile('todo-by-human')).toMatchObject({ items: [] });
+    expect(readTabFile('prs')).toMatchObject({
+      items: [{ projectItemId: 'item-1' }],
+    });
   });
 
   it('removes the projectItemId from the target tab .done.json', () => {
@@ -141,9 +132,9 @@ describe('FileSystemConsoleTabsRepository', () => {
       targetTabName: 'prs',
     });
 
-    const done = readDoneFile('prs');
-    expect(done.projectItemIds).not.toContain('item-1');
-    expect(done.projectItemIds).toContain('item-2');
+    const ids = readDoneProjectItemIds(dir, PJCODE, 'prs');
+    expect(ids).not.toContain('item-1');
+    expect(ids).toContain('item-2');
   });
 
   it('is a no-op when the target tab file does not exist', () => {
@@ -174,8 +165,7 @@ describe('FileSystemConsoleTabsRepository', () => {
       targetTabName: null,
     });
 
-    const result = readTabFile('prs') as ReturnType<typeof makeStatusTab>;
-    expect(result.items).toHaveLength(0);
+    expect(readTabFile('prs')).toMatchObject({ items: [] });
   });
 
   it('maintains story order after inserting the new item', () => {
@@ -197,10 +187,9 @@ describe('FileSystemConsoleTabsRepository', () => {
       targetTabName: 'prs',
     });
 
-    const result = readTabFile('prs') as ReturnType<typeof makeStatusTab>;
-    expect(result.items).toHaveLength(2);
-    expect(result.items[0].story).toBe('Story A');
-    expect(result.items[1].story).toBe('Story B');
+    expect(readTabFile('prs')).toMatchObject({
+      items: [{ story: 'Story A' }, { story: 'Story B' }],
+    });
   });
 
   it('does not write to tab files that do not contain the item when targetTabName is null', () => {
