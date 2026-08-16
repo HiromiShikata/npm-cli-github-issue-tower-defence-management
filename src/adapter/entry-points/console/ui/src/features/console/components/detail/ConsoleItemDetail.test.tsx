@@ -386,6 +386,64 @@ describe('ConsoleItemDetail', () => {
     expect(queryByText('CI failing')).toBeNull();
   });
 
+  it('groups each related pull request label with its own CI badge and mergeable chip so two-PR rows are readable', () => {
+    const pr849 = consoleRelatedPullRequestsFixture[0];
+    const pr850: typeof pr849 = {
+      ...pr849,
+      url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/850',
+      branchName: 'feature/850-other-change',
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isBranchOutOfDate: false,
+      isConflicted: true,
+      mergeableStatus: 'CONFLICTING',
+      missingRequiredCheckNames: [],
+    };
+    const { container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{
+          state: 'open',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+        }}
+        relatedPullRequests={[pr849, pr850].map((pullRequest) => ({
+          pullRequest,
+          files: [],
+          filesAreLoading: false,
+          filesError: null,
+          commits: [],
+          commitsAreLoading: false,
+          commitsError: null,
+        }))}
+      />,
+    );
+    const groups = container.querySelectorAll('.console-related-pr-group');
+    expect(groups).toHaveLength(2);
+    const group849 = groups[0];
+    const group850 = groups[1];
+    expect(
+      within(group849 as HTMLElement).getByText('PR #849'),
+    ).toBeInTheDocument();
+    expect(
+      within(group849 as HTMLElement).getByText('CI passing'),
+    ).toBeInTheDocument();
+    expect(
+      within(group849 as HTMLElement).getByText('No conflict'),
+    ).toBeInTheDocument();
+    expect(
+      within(group850 as HTMLElement).getByText('PR #850'),
+    ).toBeInTheDocument();
+    expect(
+      within(group850 as HTMLElement).getByText('CI failing'),
+    ).toBeInTheDocument();
+    expect(
+      within(group850 as HTMLElement).getByText('Conflict'),
+    ).toBeInTheDocument();
+  });
+
   it('renders the CI badge for a linked pull request inside .console-detail-topline when the item is an issue', () => {
     const { container } = render(
       <ConsoleItemDetail

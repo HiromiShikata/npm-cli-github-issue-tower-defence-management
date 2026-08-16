@@ -278,6 +278,67 @@ export const IssueWithLinkedPullRequestFailingCi: Story = {
   },
 };
 
+export const IssueWithTwoLinkedPullRequests: Story = {
+  args: {
+    item: consoleListItemsFixture[2],
+    storyName: 'TDPM Console port',
+    storyColorEnum: 'BLUE',
+    overlayStatus: null,
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Scaffold React console UI under entry-points with build bundling',
+    },
+    body: '## Issue body\n\nThis issue has two linked pull requests.',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [
+      {
+        pullRequest: consoleRelatedPullRequestsFixture[0],
+        files: [],
+        filesAreLoading: false,
+        filesError: null,
+        commits: [],
+        commitsAreLoading: false,
+        commitsError: null,
+      },
+      {
+        pullRequest: {
+          ...consoleRelatedPullRequestsFixture[0],
+          url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/850',
+          branchName: 'feature/850-other-change',
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isBranchOutOfDate: false,
+          isConflicted: true,
+          mergeableStatus: 'CONFLICTING',
+          missingRequiredCheckNames: ['build'],
+        },
+        files: [],
+        filesAreLoading: false,
+        filesError: null,
+        commits: [],
+        commitsAreLoading: false,
+        commitsError: null,
+      },
+    ],
+  },
+};
+
 export const IssueWithEveryReadFailedByOneCause: Story = {
   args: {
     item: consoleListItemsFixture[2],

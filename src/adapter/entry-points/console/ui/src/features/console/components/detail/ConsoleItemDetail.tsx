@@ -161,10 +161,7 @@ export const ConsoleItemDetail = ({
   }[] =
     item.isPr && pullRequestStatus?.found
       ? [{ url: item.url, mergeableStatus: pullRequestStatus.mergeableStatus }]
-      : relatedPullRequests.map((view) => ({
-          url: view.pullRequest.url,
-          mergeableStatus: view.pullRequest.mergeableStatus,
-        }));
+      : [];
 
   return (
     <article className="console-detail">
@@ -190,15 +187,27 @@ export const ConsoleItemDetail = ({
         )}
         {!item.isPr &&
           relatedPullRequests.map((related) => (
-            <ConsolePullRequestStatusBadges
+            <span
               key={related.pullRequest.url}
-              isPassedAllCiJob={related.pullRequest.isPassedAllCiJob}
-              isCiStateSuccess={related.pullRequest.isCiStateSuccess}
-              isBranchOutOfDate={related.pullRequest.isBranchOutOfDate}
-              missingRequiredCheckNames={
-                related.pullRequest.missingRequiredCheckNames
-              }
-            />
+              className="console-related-pr-group"
+            >
+              {relatedPullRequests.length > 1 && (
+                <span className="console-related-pr-label">
+                  {relatedPullRequestLabel(related.pullRequest.url)}
+                </span>
+              )}
+              <ConsolePullRequestStatusBadges
+                isPassedAllCiJob={related.pullRequest.isPassedAllCiJob}
+                isCiStateSuccess={related.pullRequest.isCiStateSuccess}
+                isBranchOutOfDate={related.pullRequest.isBranchOutOfDate}
+                missingRequiredCheckNames={
+                  related.pullRequest.missingRequiredCheckNames
+                }
+              />
+              <ConsolePullRequestMergeableChip
+                mergeableStatus={related.pullRequest.mergeableStatus}
+              />
+            </span>
           ))}
         {mergeableChips.map((chip) => (
           <ConsolePullRequestMergeableChip
