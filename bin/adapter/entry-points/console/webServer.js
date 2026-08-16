@@ -106,7 +106,7 @@ const isConsoleAppRoute = (requestPath) => {
         return false;
     }
     const tab = segments[2];
-    return consoleDataDelivery_1.CONSOLE_LIST_TAB_NAMES.includes(tab);
+    return consoleDataDelivery_1.CONSOLE_LIST_TAB_NAMES.some((name) => name === tab);
 };
 exports.isConsoleAppRoute = isConsoleAppRoute;
 const isTokenValid = (expectedToken, providedToken) => providedToken !== null && providedToken === expectedToken;

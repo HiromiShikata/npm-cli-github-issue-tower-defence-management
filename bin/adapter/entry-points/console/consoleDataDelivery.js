@@ -37,15 +37,8 @@ exports.buildConsoleDataResponse = exports.parseConsoleDataRoute = exports.CONSO
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const consoleDoneStore_1 = require("./consoleDoneStore");
-exports.CONSOLE_LIST_TAB_NAMES = [
-    'workflow-blocker',
-    'prs',
-    'triage',
-    'unread',
-    'failed-preparation',
-    'todo-by-human',
-    'todo-by-agent',
-];
+const consoleTabNames_1 = require("./consoleTabNames");
+Object.defineProperty(exports, "CONSOLE_LIST_TAB_NAMES", { enumerable: true, get: function () { return consoleTabNames_1.CONSOLE_LIST_TAB_NAMES; } });
 const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
 const isSafeSegment = (segment) => SAFE_SEGMENT.test(segment) && !segment.startsWith('.');
 const parseConsoleDataRoute = (requestPath) => {
@@ -70,7 +63,7 @@ const parseConsoleDataRoute = (requestPath) => {
         }
         return { kind: 'in-tmux', pjcode, relativePath: rest.join('/') };
     }
-    if (!exports.CONSOLE_LIST_TAB_NAMES.includes(tab)) {
+    if (!consoleTabNames_1.CONSOLE_LIST_TAB_NAMES.some((name) => name === tab)) {
         return null;
     }
     if (segments.length === 4 && segments[3] === 'list.json') {

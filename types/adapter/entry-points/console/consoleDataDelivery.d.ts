@@ -1,4 +1,5 @@
-export declare const CONSOLE_LIST_TAB_NAMES: string[];
+import { CONSOLE_LIST_TAB_NAMES } from './consoleTabNames';
+export { CONSOLE_LIST_TAB_NAMES };
 export type ConsoleDataRoute = {
     kind: 'list';
     pjcode: string;

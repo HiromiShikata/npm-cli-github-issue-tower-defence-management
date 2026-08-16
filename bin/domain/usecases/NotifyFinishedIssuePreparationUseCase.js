@@ -22,11 +22,12 @@ class IllegalIssueStatusError extends Error {
 }
 exports.IllegalIssueStatusError = IllegalIssueStatusError;
 class NotifyFinishedIssuePreparationUseCase {
-    constructor(projectRepository, issueRepository, issueCommentRepository, webhookRepository) {
+    constructor(projectRepository, issueRepository, issueCommentRepository, webhookRepository, consoleTabsRepository) {
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
         this.issueCommentRepository = issueCommentRepository;
         this.webhookRepository = webhookRepository;
+        this.consoleTabsRepository = consoleTabsRepository;
         this.run = async (params) => {
             const project = await this.projectRepository.getByUrl(params.projectUrl);
             const awaitingWorkspaceStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME);
@@ -70,6 +71,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                await this.patchConsoleTab(issue);
                 await this.issueCommentRepository.createComment(issue, `Issue has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 return;
             }
@@ -77,6 +79,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                await this.patchConsoleTab(issue);
                 await this.issueCommentRepository.createComment(issue, `Issue has next action date or hour set: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`);
                 return;
             }
@@ -97,6 +100,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                await this.patchConsoleTab(issue);
                 await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
                 await this.issueCommentRepository.createComment(issue, `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`);
                 await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
@@ -109,6 +113,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                await this.patchConsoleTab(issue);
                 await this.issueCommentRepository.createComment(issue, returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE);
                 return;
             }
@@ -117,6 +122,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 issue.status = WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
+                await this.patchConsoleTab(issue);
                 await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
                 await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
                 return;
@@ -124,6 +130,7 @@ class NotifyFinishedIssuePreparationUseCase {
             issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
             await this.issueRepository.update(issue, project);
             await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+            await this.patchConsoleTab(issue);
             await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
             await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
         };
@@ -218,6 +225,47 @@ class NotifyFinishedIssuePreparationUseCase {
             catch (error) {
                 console.warn('Failed to send workflow blocker notification:', error);
             }
+        };
+        this.resolveConsoleTargetTab = (status) => {
+            const lower = status.toLowerCase();
+            if (lower === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME.toLowerCase())
+                return 'prs';
+            if (lower === WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME.toLowerCase())
+                return 'failed-preparation';
+            return null;
+        };
+        this.patchConsoleTab = async (issue) => {
+            if (!this.consoleTabsRepository)
+                return;
+            const targetTabName = this.resolveConsoleTargetTab(issue.status ?? '');
+            const relatedOpenPullRequestUrls = !issue.isPr && targetTabName !== null
+                ? (await this.issueRepository.findRelatedOpenPRs(issue.url)).map((pr) => pr.url)
+                : [];
+            const item = {
+                number: issue.number,
+                title: issue.title,
+                url: issue.url,
+                repo: issue.nameWithOwner,
+                nameWithOwner: issue.nameWithOwner,
+                projectItemId: issue.itemId,
+                itemId: issue.itemId,
+                isPr: issue.isPr,
+                story: issue.story ?? '',
+                status: issue.status,
+                nextActionDate: issue.nextActionDate === null
+                    ? null
+                    : issue.nextActionDate.toISOString(),
+                nextActionHour: issue.nextActionHour,
+                dependedIssueUrls: issue.dependedIssueUrls,
+                labels: issue.labels,
+                createdAt: issue.createdAt.toISOString(),
+                relatedOpenPullRequestUrls,
+            };
+            this.consoleTabsRepository.patchIssueTabTransition({
+                projectItemId: issue.itemId,
+                item,
+                targetTabName,
+            });
         };
         this.issueRejectionEvaluator = new IssueRejectionEvaluator_1.IssueRejectionEvaluator(issueRepository);
         this.changeTargetPullRequestApprover = new ChangeTargetPullRequestApprover_1.ChangeTargetPullRequestApprover(issueRepository);

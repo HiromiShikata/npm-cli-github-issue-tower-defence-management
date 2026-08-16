@@ -2,6 +2,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
+import { ConsoleTabsRepository } from './adapter-interfaces/ConsoleTabsRepository';
 export declare class IssueNotFoundError extends Error {
     constructor(issueUrl: string);
 }
@@ -13,9 +14,10 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private readonly issueRepository;
     private readonly issueCommentRepository;
     private readonly webhookRepository;
+    private readonly consoleTabsRepository?;
     private readonly issueRejectionEvaluator;
     private readonly changeTargetPullRequestApprover;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment' | 'setDependedIssueUrl'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment' | 'setDependedIssueUrl'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>, consoleTabsRepository?: (ConsoleTabsRepository | null) | undefined);
     run: (params: {
         projectUrl: string;
         issueUrl: string;
@@ -32,5 +34,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private setDependedIssueUrlForAllOpenPRs;
     private resolveOpenPrsForPrItem;
     private sendWorkflowBlockerNotification;
+    private resolveConsoleTargetTab;
+    private patchConsoleTab;
 }
 //# sourceMappingURL=NotifyFinishedIssuePreparationUseCase.d.ts.map

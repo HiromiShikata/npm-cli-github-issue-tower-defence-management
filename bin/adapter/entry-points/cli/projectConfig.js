@@ -116,6 +116,7 @@ const knownProjectReadmeConfigKeys = [
     'labelsAsLlmAgentName',
     'labelsNotRequiringPullRequest',
     'changeTargetPathAliases',
+    'consoleDataOutputDir',
 ];
 const loadConfigFile = (configFilePath) => {
     try {
@@ -146,6 +147,7 @@ const loadConfigFile = (configFilePath) => {
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
             labelsNotRequiringPullRequest: getStringArrayValue(parsed, 'labelsNotRequiringPullRequest'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
+            consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
             consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
             consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
             consoleGithubTokenFilesByRepositoryOwner: getStringRecordValue(parsed, 'consoleGithubTokenFilesByRepositoryOwner'),
@@ -200,6 +202,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
             labelsNotRequiringPullRequest: getStringArrayValue(parsed, 'labelsNotRequiringPullRequest'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
+            consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
         };
     }
     catch {
@@ -266,6 +269,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     changeTargetPathAliases: readmeOverrides.changeTargetPathAliases ??
         cliOverrides.changeTargetPathAliases ??
         configFile.changeTargetPathAliases,
+    consoleDataOutputDir: readmeOverrides.consoleDataOutputDir ??
+        cliOverrides.consoleDataOutputDir ??
+        configFile.consoleDataOutputDir,
     consoleAccessToken: cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
     consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
     consoleGithubTokenFilesByRepositoryOwner: cliOverrides.consoleGithubTokenFilesByRepositoryOwner ??

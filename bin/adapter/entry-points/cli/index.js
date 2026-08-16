@@ -66,6 +66,7 @@ const NodeTmuxSessionRepository_1 = require("../../repositories/NodeTmuxSessionR
 const ProcTakeOwnershipSpawnRepository_1 = require("../../repositories/ProcTakeOwnershipSpawnRepository");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
+const FileSystemConsoleTabsRepository_1 = require("../handlers/FileSystemConsoleTabsRepository");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const path = __importStar(require("path"));
 const webServer_1 = require("../console/webServer");
@@ -340,7 +341,11 @@ exports.program
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, new SystemDateRepository_1.SystemDateRepository(), ...githubRepositoryParams);
     const issueCommentRepository = new GitHubIssueCommentRepository_1.GitHubIssueCommentRepository(token);
     const webhookRepository = new FetchWebhookRepository_1.FetchWebhookRepository();
-    const useCase = new NotifyFinishedIssuePreparationUseCase_1.NotifyFinishedIssuePreparationUseCase(projectRepository, issueRepository, issueCommentRepository, webhookRepository);
+    const consoleDataOutputDir = config.consoleDataOutputDir ?? null;
+    const consoleTabsRepository = consoleDataOutputDir !== null
+        ? new FileSystemConsoleTabsRepository_1.FileSystemConsoleTabsRepository(consoleDataOutputDir, projectName)
+        : null;
+    const useCase = new NotifyFinishedIssuePreparationUseCase_1.NotifyFinishedIssuePreparationUseCase(projectRepository, issueRepository, issueCommentRepository, webhookRepository, consoleTabsRepository);
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;
     const allowedIssueAuthors = rawAllowedIssueAuthors
         ? rawAllowedIssueAuthors

@@ -20,6 +20,7 @@ export type ConfigFile = {
     labelsAsLlmAgentName?: string[];
     labelsNotRequiringPullRequest?: string[];
     changeTargetPathAliases?: Record<string, string>;
+    consoleDataOutputDir?: string;
     consoleAccessToken?: string;
     consoleProjects?: Record<string, string>;
     consoleGithubTokenFilesByRepositoryOwner?: Record<string, string>;

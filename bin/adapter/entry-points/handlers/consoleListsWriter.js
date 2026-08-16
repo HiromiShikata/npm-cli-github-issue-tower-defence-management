@@ -8,15 +8,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const GenerateConsoleListsUseCase_1 = require("../../../domain/usecases/console/GenerateConsoleListsUseCase");
 const consoleDoneStore_1 = require("../console/consoleDoneStore");
-const CONSOLE_TAB_NAMES = [
-    'workflow-blocker',
-    'prs',
-    'triage',
-    'unread',
-    'failed-preparation',
-    'todo-by-human',
-    'todo-by-agent',
-];
+const consoleTabNames_1 = require("../console/consoleTabNames");
 const formatConsoleGeneratedAt = (date) => date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 exports.formatConsoleGeneratedAt = formatConsoleGeneratedAt;
 const writeJsonAtomic = (filePath, data) => {
@@ -40,7 +32,7 @@ const writeConsoleLists = (params) => {
         generatedAt,
         workflowBlockerStoryName: params.workflowBlockerStoryName ?? null,
     });
-    for (const tab of CONSOLE_TAB_NAMES) {
+    for (const tab of consoleTabNames_1.CONSOLE_LIST_TAB_NAMES) {
         writeJsonAtomic(path_1.default.join(consoleDataOutputDir, pjcode, tab, 'list.json'), lists[tab]);
     }
     (0, consoleDoneStore_1.resetDoneProjectItemIdsAcrossTabs)(consoleDataOutputDir, pjcode);

@@ -1,3 +1,10 @@
+# [1.157.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.4...v1.157.0) (2026-08-16)
+
+
+### Features
+
+* **console-tabs:** patch console tab files immediately after status transition in notifyFinishedIssuePreparation ([#1594](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1594)) ([f2dde55](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f2dde559f5eefafa056170274b19efe37fd252fa)), closes [#1593](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1593)
+
 ## [1.156.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.3...v1.156.4) (2026-08-15)
 
 
