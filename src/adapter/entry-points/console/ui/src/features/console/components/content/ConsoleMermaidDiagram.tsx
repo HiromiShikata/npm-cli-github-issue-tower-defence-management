@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { renderMermaidToSvg } from '../../lib/mermaidLoader';
+import { ConsoleMermaidDiagramModalScreen } from './ConsoleMermaidDiagramModalScreen';
 
 export type ConsoleMermaidDiagramProps = {
   code: string;
@@ -12,6 +13,7 @@ type MermaidRenderState =
 
 export const ConsoleMermaidDiagram = ({ code }: ConsoleMermaidDiagramProps) => {
   const [state, setState] = useState<MermaidRenderState>({ status: 'loading' });
+  const [isEnlarged, setIsEnlarged] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,5 +63,22 @@ export const ConsoleMermaidDiagram = ({ code }: ConsoleMermaidDiagramProps) => {
     );
   }
 
-  return <div ref={containerRef} className="console-mermaid-rendered" />;
+  return (
+    <div className="console-mermaid">
+      <div ref={containerRef} className="console-mermaid-rendered" />
+      <button
+        type="button"
+        className="console-mermaid-enlarge"
+        onClick={() => setIsEnlarged(true)}
+      >
+        Enlarge diagram
+      </button>
+      {isEnlarged && (
+        <ConsoleMermaidDiagramModalScreen
+          svg={state.svg}
+          onClose={() => setIsEnlarged(false)}
+        />
+      )}
+    </div>
+  );
 };
