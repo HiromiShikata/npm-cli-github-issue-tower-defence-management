@@ -5,7 +5,9 @@ import { FileSystemConsoleTabsRepository } from './FileSystemConsoleTabsReposito
 import { readDoneProjectItemIds } from '../console/consoleDoneStore';
 import type { ConsoleListItem } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 
-const makeItem = (overrides: Partial<ConsoleListItem> = {}): ConsoleListItem => ({
+const makeItem = (
+  overrides: Partial<ConsoleListItem> = {},
+): ConsoleListItem => ({
   number: 1,
   title: 'Test Issue',
   url: 'https://github.com/user/repo/issues/1',
@@ -148,9 +150,9 @@ describe('FileSystemConsoleTabsRepository', () => {
         targetTabName: 'prs',
       }),
     ).not.toThrow();
-    expect(
-      fs.existsSync(path.join(dir, PJCODE, 'prs', 'list.json')),
-    ).toBe(false);
+    expect(fs.existsSync(path.join(dir, PJCODE, 'prs', 'list.json'))).toBe(
+      false,
+    );
   });
 
   it('removes the item from any tab and writes nothing when targetTabName is null', () => {

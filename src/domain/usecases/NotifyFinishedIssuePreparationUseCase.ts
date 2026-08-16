@@ -473,7 +473,8 @@ export class NotifyFinishedIssuePreparationUseCase {
 
   private resolveConsoleTargetTab = (status: string): ConsoleTabName | null => {
     const lower = status.toLowerCase();
-    if (lower === AWAITING_QUALITY_CHECK_STATUS_NAME.toLowerCase()) return 'prs';
+    if (lower === AWAITING_QUALITY_CHECK_STATUS_NAME.toLowerCase())
+      return 'prs';
     if (lower === FAILED_PREPARATION_STATUS_NAME.toLowerCase())
       return 'failed-preparation';
     return null;

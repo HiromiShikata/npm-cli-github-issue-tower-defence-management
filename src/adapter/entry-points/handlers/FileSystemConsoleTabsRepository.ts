@@ -73,7 +73,9 @@ const clearProjectItemIdFromDoneJson = (
     if (isRecord(parsed)) {
       const rawIds = parsed.projectItemIds;
       if (Array.isArray(rawIds)) {
-        existingIds = rawIds.filter((id): id is string => typeof id === 'string');
+        existingIds = rawIds.filter(
+          (id): id is string => typeof id === 'string',
+        );
       }
     }
   } catch {
@@ -120,7 +122,10 @@ export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
         const storyOrder = Array.isArray(rawStoryOrder)
           ? rawStoryOrder.filter((s): s is string => typeof s === 'string')
           : [];
-        const newItems = sortByStoryOrder([...withoutThisItem, item], storyOrder);
+        const newItems = sortByStoryOrder(
+          [...withoutThisItem, item],
+          storyOrder,
+        );
         writeJsonAtomic(filePath, { ...existing, items: newItems });
         const doneFilePath = path.join(
           this.consoleDataOutputDir,

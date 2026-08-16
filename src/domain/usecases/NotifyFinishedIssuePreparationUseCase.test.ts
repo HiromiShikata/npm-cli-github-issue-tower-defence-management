@@ -3383,7 +3383,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it('calls patchIssueTabTransition with prs tab when issue transitions to Awaiting Quality Check', async () => {
-      const issue = createMockIssue({ status: 'Preparation', itemId: 'item-1' });
+      const issue = createMockIssue({
+        status: 'Preparation',
+        itemId: 'item-1',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([

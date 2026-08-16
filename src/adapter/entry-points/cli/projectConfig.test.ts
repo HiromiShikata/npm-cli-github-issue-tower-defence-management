@@ -181,9 +181,7 @@ describe('parseProjectReadmeConfig consoleDataOutputDir', () => {
 
   it('does not emit a warning for consoleDataOutputDir', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const readme = makeReadme(
-      "consoleDataOutputDir: '/tmp/console-data'\n",
-    );
+    const readme = makeReadme("consoleDataOutputDir: '/tmp/console-data'\n");
     parseProjectReadmeConfig(readme, 'https://example.com/project');
     expect(warnSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('consoleDataOutputDir'),
