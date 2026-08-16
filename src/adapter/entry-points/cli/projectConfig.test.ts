@@ -140,3 +140,59 @@ describe('parseProjectReadmeConfig labelsAsLlmAgentName', () => {
     ).toBeUndefined();
   });
 });
+
+describe('loadConfigFile consoleDataOutputDir', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-console-data-output-dir-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('parses consoleDataOutputDir from the config file', () => {
+    const filePath = writeConfig(
+      "projectName: 'demo'\nconsoleDataOutputDir: '/tmp/console-data'\n",
+    );
+    expect(loadConfigFile(filePath).consoleDataOutputDir).toBe(
+      '/tmp/console-data',
+    );
+  });
+
+  it('yields undefined consoleDataOutputDir when the key is absent', () => {
+    const filePath = writeConfig("projectName: 'demo'\n");
+    expect(loadConfigFile(filePath).consoleDataOutputDir).toBeUndefined();
+  });
+});
+
+describe('parseProjectReadmeConfig consoleDataOutputDir', () => {
+  const makeReadme = (yaml: string) =>
+    `<details>\n<summary>config</summary>\n${yaml}\n</details>`;
+
+  it('does not emit a warning for consoleDataOutputDir', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const readme = makeReadme("consoleDataOutputDir: '/tmp/console-data'\n");
+    parseProjectReadmeConfig(readme, 'https://example.com/project');
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('consoleDataOutputDir'),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('yields undefined consoleDataOutputDir when the key is absent', () => {
+    const readme = makeReadme('defaultAgentName: impl\n');
+    expect(
+      parseProjectReadmeConfig(readme).consoleDataOutputDir,
+    ).toBeUndefined();
+  });
+});

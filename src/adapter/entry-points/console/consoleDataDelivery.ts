@@ -1,16 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { readDoneProjectItemIds } from './consoleDoneStore';
+import { CONSOLE_LIST_TAB_NAMES } from './consoleTabNames';
 
-export const CONSOLE_LIST_TAB_NAMES: string[] = [
-  'workflow-blocker',
-  'prs',
-  'triage',
-  'unread',
-  'failed-preparation',
-  'todo-by-human',
-  'todo-by-agent',
-];
+export { CONSOLE_LIST_TAB_NAMES };
 
 export type ConsoleDataRoute =
   | { kind: 'list'; pjcode: string; tab: string }
@@ -46,7 +39,7 @@ export const parseConsoleDataRoute = (
     }
     return { kind: 'in-tmux', pjcode, relativePath: rest.join('/') };
   }
-  if (!CONSOLE_LIST_TAB_NAMES.includes(tab)) {
+  if (!CONSOLE_LIST_TAB_NAMES.some((name) => name === tab)) {
     return null;
   }
   if (segments.length === 4 && segments[3] === 'list.json') {
