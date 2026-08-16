@@ -1,3 +1,10 @@
+# [1.158.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.157.0...v1.158.0) (2026-08-16)
+
+
+### Features
+
+* **console:** show CI badge in topline for issue with linked pull request ([#1599](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1599)) ([a62bfde](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a62bfde163b1aa3347bdc747bdad86284ae41d1a)), closes [#1596](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1596) [0.75rem/#8b949e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/8b949e)
+
 # [1.157.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.156.4...v1.157.0) (2026-08-16)
 
 
