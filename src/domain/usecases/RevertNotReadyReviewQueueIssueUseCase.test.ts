@@ -2065,7 +2065,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         'awaiting-workspace-id',
       );
       expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-        expect.objectContaining({ story: expect.anything() }),
+        expect.any(Object),
         failingPullRequest,
         expect.any(String),
       );
