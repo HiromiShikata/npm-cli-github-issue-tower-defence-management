@@ -4,10 +4,10 @@ import type { Issue } from '../../../domain/entities/Issue';
 import type { Project } from '../../../domain/entities/Project';
 import {
   ConsoleLists,
-  ConsoleTabName,
   GenerateConsoleListsUseCase,
 } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 import { resetDoneProjectItemIdsAcrossTabs } from '../console/consoleDoneStore';
+import { CONSOLE_LIST_TAB_NAMES } from '../console/consoleTabNames';
 
 export type ConsoleListsWriterParams = {
   consoleDataOutputDir: string | null | undefined;
@@ -18,16 +18,6 @@ export type ConsoleListsWriterParams = {
   workflowBlockerStoryName?: string | null | undefined;
   generatedAt?: string;
 };
-
-const CONSOLE_TAB_NAMES: ConsoleTabName[] = [
-  'workflow-blocker',
-  'prs',
-  'triage',
-  'unread',
-  'failed-preparation',
-  'todo-by-human',
-  'todo-by-agent',
-];
 
 export const formatConsoleGeneratedAt = (date: Date): string =>
   date.toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -57,7 +47,7 @@ export const writeConsoleLists = (params: ConsoleListsWriterParams): void => {
     workflowBlockerStoryName: params.workflowBlockerStoryName ?? null,
   });
 
-  for (const tab of CONSOLE_TAB_NAMES) {
+  for (const tab of CONSOLE_LIST_TAB_NAMES) {
     writeJsonAtomic(
       path.join(consoleDataOutputDir, pjcode, tab, 'list.json'),
       lists[tab],

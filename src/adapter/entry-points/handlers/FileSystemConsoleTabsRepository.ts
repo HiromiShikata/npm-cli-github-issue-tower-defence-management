@@ -5,18 +5,7 @@ import type {
   ConsoleTabName,
 } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 import type { ConsoleTabsRepository } from '../../../domain/usecases/adapter-interfaces/ConsoleTabsRepository';
-
-const CONSOLE_LIST_TAB_NAMES: ConsoleTabName[] = [
-  'workflow-blocker',
-  'prs',
-  'triage',
-  'unread',
-  'failed-preparation',
-  'todo-by-human',
-  'todo-by-agent',
-];
-
-const UNKNOWN_STORY_SORT_INDEX = 999999;
+import { CONSOLE_LIST_TAB_NAMES, sortByStoryOrder } from '../console/consoleTabNames';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -26,27 +15,6 @@ const writeJsonAtomic = (filePath: string, data: unknown): void => {
   const tmpPath = `${filePath}.tmp`;
   fs.writeFileSync(tmpPath, JSON.stringify(data));
   fs.renameSync(tmpPath, filePath);
-};
-
-const sortByStoryOrder = (
-  items: unknown[],
-  storyOrder: string[],
-): unknown[] => {
-  const indexByStory = new Map(storyOrder.map((name, index) => [name, index]));
-  return items
-    .map((item, position) => {
-      const storyValue = isRecord(item) ? item.story : undefined;
-      const story = typeof storyValue === 'string' ? storyValue : undefined;
-      return {
-        item,
-        position,
-        sortKey:
-          (story !== undefined ? indexByStory.get(story) : undefined) ??
-          UNKNOWN_STORY_SORT_INDEX,
-      };
-    })
-    .sort((a, b) => a.sortKey - b.sortKey || a.position - b.position)
-    .map((entry) => entry.item);
 };
 
 const readTabListJson = (filePath: string): Record<string, unknown> | null => {

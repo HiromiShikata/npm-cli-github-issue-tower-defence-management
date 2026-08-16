@@ -3449,6 +3449,49 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
+    it('passes relatedOpenPullRequestUrls from findRelatedOpenPRs into the prs tab item', async () => {
+      const issue = createMockIssue({
+        status: 'Preparation',
+        itemId: 'item-1',
+        isPr: false,
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/42',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+      let capturedArg: unknown = undefined;
+      mockConsoleTabsRepository.patchIssueTabTransition.mockImplementation(
+        (arg: unknown) => {
+          capturedArg = arg;
+        },
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(capturedArg).toMatchObject({
+        targetTabName: 'prs',
+        item: { relatedOpenPullRequestUrls: ['https://github.com/user/repo/pull/42'] },
+      });
+    });
+
     it('does not call patchIssueTabTransition when consoleTabsRepository is not provided', async () => {
       useCase = new NotifyFinishedIssuePreparationUseCase(
         mockProjectRepository,

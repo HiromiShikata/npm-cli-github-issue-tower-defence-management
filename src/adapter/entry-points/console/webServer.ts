@@ -112,7 +112,7 @@ export const isConsoleAppRoute = (requestPath: string): boolean => {
     return false;
   }
   const tab = segments[2];
-  return CONSOLE_LIST_TAB_NAMES.includes(tab);
+  return CONSOLE_LIST_TAB_NAMES.some((name) => name === tab);
 };
 
 export const isTokenValid = (

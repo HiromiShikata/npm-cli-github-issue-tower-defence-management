@@ -163,7 +163,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         awaitingWorkspaceStatusOption.id,
       );
-      this.patchConsoleTab(issue);
+      await this.patchConsoleTab(issue);
       await this.issueCommentRepository.createComment(
         issue,
         `Issue has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
@@ -179,7 +179,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         awaitingWorkspaceStatusOption.id,
       );
-      this.patchConsoleTab(issue);
+      await this.patchConsoleTab(issue);
       await this.issueCommentRepository.createComment(
         issue,
         `Issue has next action date or hour set: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`,
@@ -230,7 +230,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         failedPreparationStatusOption.id,
       );
-      this.patchConsoleTab(issue);
+      await this.patchConsoleTab(issue);
       await this.setDependedIssueUrlForAllOpenPRs(
         issue,
         params.issueUrl,
@@ -266,7 +266,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         awaitingWorkspaceStatusOption.id,
       );
-      this.patchConsoleTab(issue);
+      await this.patchConsoleTab(issue);
       await this.issueCommentRepository.createComment(
         issue,
         RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
@@ -287,7 +287,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         awaitingQualityCheckStatusOption.id,
       );
-      this.patchConsoleTab(issue);
+      await this.patchConsoleTab(issue);
       await this.setDependedIssueUrlForAllOpenPRs(
         issue,
         params.issueUrl,
@@ -308,7 +308,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       issue,
       awaitingWorkspaceStatusOption.id,
     );
-    this.patchConsoleTab(issue);
+    await this.patchConsoleTab(issue);
 
     await this.setDependedIssueUrlForAllOpenPRs(
       issue,
@@ -480,9 +480,15 @@ export class NotifyFinishedIssuePreparationUseCase {
     return null;
   };
 
-  private patchConsoleTab = (issue: Issue): void => {
+  private patchConsoleTab = async (issue: Issue): Promise<void> => {
     if (!this.consoleTabsRepository) return;
     const targetTabName = this.resolveConsoleTargetTab(issue.status ?? '');
+    const relatedOpenPullRequestUrls: string[] =
+      !issue.isPr && targetTabName !== null
+        ? (await this.issueRepository.findRelatedOpenPRs(issue.url)).map(
+            (pr) => pr.url,
+          )
+        : [];
     const item: ConsoleListItem = {
       number: issue.number,
       title: issue.title,
@@ -502,7 +508,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       dependedIssueUrls: issue.dependedIssueUrls,
       labels: issue.labels,
       createdAt: issue.createdAt.toISOString(),
-      relatedOpenPullRequestUrls: [],
+      relatedOpenPullRequestUrls,
     };
     this.consoleTabsRepository.patchIssueTabTransition({
       projectItemId: issue.itemId,
