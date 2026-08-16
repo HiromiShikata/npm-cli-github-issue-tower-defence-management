@@ -165,6 +165,7 @@ export const ConsoleItemDetailContainer = ({
       storyName={resolvedStoryName}
       storyColorEnum={storyColorEnum}
       overlayStatus={overlayStatus}
+      statusOptions={statusOptions}
       state={detail.state}
       stateError={detail.stateError}
       body={detail.body}
