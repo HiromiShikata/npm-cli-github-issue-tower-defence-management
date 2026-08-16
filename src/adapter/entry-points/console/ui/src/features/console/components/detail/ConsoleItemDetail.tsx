@@ -14,6 +14,7 @@ import type {
   ConsoleColor,
   ConsoleComment,
   ConsoleCommit,
+  ConsoleFieldOption,
   ConsoleIssueState,
   ConsoleListItem,
   ConsoleMergeableStatus,
@@ -51,6 +52,7 @@ export type ConsoleItemDetailProps = {
   storyName: string | null;
   storyColorEnum: ConsoleColor | null;
   overlayStatus: ConsoleOverlayStatus | null;
+  statusOptions: ConsoleFieldOption[];
   state: ConsoleIssueState | null;
   body: string;
   bodyIsLoading: boolean;
@@ -82,6 +84,7 @@ export const ConsoleItemDetail = ({
   storyName,
   storyColorEnum,
   overlayStatus,
+  statusOptions,
   state,
   body,
   bodyIsLoading,
@@ -113,9 +116,19 @@ export const ConsoleItemDetail = ({
     !item.isPr && resolvedState === 'closed' ? 'Closed' : null;
   const repoContext = parseNameWithOwner(item.nameWithOwner) ?? undefined;
   const storyPalette = colorFromEnum(storyColorEnum);
-  const statusPalette = overlayStatus
-    ? colorFromEnum(overlayStatus.color)
-    : null;
+  const displayStatus: ConsoleOverlayStatus | null =
+    overlayStatus !== null
+      ? overlayStatus
+      : item.status !== null
+        ? {
+            name: item.status,
+            color:
+              statusOptions.find((o) => o.name === item.status)?.color ??
+              'GRAY',
+          }
+        : null;
+  const statusPalette =
+    displayStatus !== null ? colorFromEnum(displayStatus.color) : null;
   const filesCount =
     filesAreLoading || filesError !== null ? null : files.length;
   const commentsCount =
@@ -218,7 +231,7 @@ export const ConsoleItemDetail = ({
       </div>
 
       <h2 className="console-detail-title">
-        {overlayStatus !== null && statusPalette !== null && (
+        {displayStatus !== null && statusPalette !== null && (
           <span
             className="console-detail-status-chip"
             style={{
@@ -227,7 +240,7 @@ export const ConsoleItemDetail = ({
               backgroundColor: statusPalette.bg,
             }}
           >
-            {overlayStatus.name}
+            {displayStatus.name}
           </span>
         )}
         <ConsoleItemIcon

@@ -5,6 +5,7 @@ import {
   consoleCommitsFixture,
   consoleListItemsFixture,
   consoleRelatedPullRequestsFixture,
+  consoleStatusOptionsFixture,
 } from '../../testing/fixtures';
 import { ConsoleItemDetail } from './ConsoleItemDetail';
 
@@ -20,6 +21,7 @@ const baseProps = {
   storyName: 'TDPM Console port',
   storyColorEnum: 'BLUE' as const,
   overlayStatus: null,
+  statusOptions: consoleStatusOptionsFixture,
   state: { state: 'open', merged: false, isPullRequest: true, title: '' },
   body: '## Body heading',
   bodyIsLoading: false,
@@ -479,5 +481,46 @@ describe('ConsoleItemDetail', () => {
     expect(
       within(topline as HTMLElement).getByText('CI failing'),
     ).toBeInTheDocument();
+  });
+
+  it('shows the snapshot status chip in the header when the item has a status and no overlay entry applies', () => {
+    const { getByText, container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        overlayStatus={null}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    expect(title).not.toBeNull();
+    expect(title?.contains(getByText(issueItem.status as string))).toBe(true);
+  });
+
+  it('shows the overlay status in the header when the overlay entry is newer than the snapshot', () => {
+    const { getByText, queryByText, container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        overlayStatus={{ name: 'In Progress', color: 'GREEN' }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    expect(title).not.toBeNull();
+    expect(title?.contains(getByText('In Progress'))).toBe(true);
+    expect(queryByText(issueItem.status as string)).toBeNull();
+  });
+
+  it('renders no status chip when the item has no status and no overlay applies', () => {
+    const noStatusItem = consoleListItemsFixture[3];
+    expect(noStatusItem.status).toBeNull();
+    const { container } = render(
+      <ConsoleItemDetail
+        item={noStatusItem}
+        {...baseProps}
+        overlayStatus={null}
+      />,
+    );
+    const chip = container.querySelector('.console-detail-status-chip');
+    expect(chip).toBeNull();
   });
 });

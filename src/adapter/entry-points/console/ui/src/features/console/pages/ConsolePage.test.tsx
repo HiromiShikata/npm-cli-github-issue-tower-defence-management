@@ -106,7 +106,7 @@ describe('ConsolePage', () => {
     ).toContain('TDPM Console port');
   });
 
-  it('keeps a status the snapshot already superseded out of the detail header', async () => {
+  it('keeps a stale overlay status out of the detail header and shows the snapshot status instead', async () => {
     localStorage.setItem(
       'pv_overlay_acme',
       JSON.stringify({
@@ -117,13 +117,17 @@ describe('ConsolePage', () => {
         },
       }),
     );
-    const { getByText, findByText, container } = render(<ConsolePage />);
+    const { getByText, findByText, queryByText, container } = render(
+      <ConsolePage />,
+    );
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     fireEvent.click(getByText('Add serveConsole subcommand'));
     expect(await findByText('Approve')).toBeInTheDocument();
-    expect(container.querySelector('.console-detail-status-chip')).toBeNull();
+    expect(queryByText('In Tmux by human')).toBeNull();
+    const chip = container.querySelector('.console-detail-status-chip');
+    expect(chip?.textContent).toBe('Awaiting Quality Check');
   });
 
   it('shows a status the owner set after the snapshot was generated in the detail header', async () => {
