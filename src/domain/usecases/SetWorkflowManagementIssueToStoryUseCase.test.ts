@@ -671,5 +671,140 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
         [issue2, 'story:middle-bug'],
       ]);
     });
+
+    describe('UpdateProjectV2ItemFieldValue permission error containment', () => {
+      const permissionError = new Error(
+        'umino-bot does not have the correct permissions to execute `UpdateProjectV2ItemFieldValue`',
+      );
+      let warnSpy: jest.SpyInstance;
+
+      beforeEach(() => {
+        warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        warnSpy.mockRestore();
+      });
+
+      it('should skip a story-labeled issue on updateStory permission error and continue with remaining issues', async () => {
+        const failingIssue: Issue = {
+          ...mock<Issue>(),
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['story:high-priority'],
+          story: null,
+          state: 'OPEN',
+          nextActionDate: null,
+          nextActionHour: null,
+          isPr: false,
+        };
+        const normalIssue: Issue = {
+          ...mock<Issue>(),
+          url: 'https://github.com/user/repo/issues/2',
+          labels: ['story:middle-bug'],
+          story: null,
+          state: 'OPEN',
+          nextActionDate: null,
+          nextActionHour: null,
+          isPr: false,
+        };
+        mockIssueRepository.updateStory.mockImplementation(
+          (_project: unknown, issue: Issue) =>
+            issue.url === failingIssue.url
+              ? Promise.reject(permissionError)
+              : Promise.resolve(undefined),
+        );
+
+        const promise = useCase.run({
+          targetDates: [targetDate],
+          project: basicProject,
+          issues: [failingIssue, normalIssue],
+          cacheUsed: false,
+        });
+        await jest.runAllTimersAsync();
+        await promise;
+
+        expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+          expect.anything(),
+          failingIssue,
+          'highPriorityId',
+        );
+        expect(mockIssueRepository.removeLabel).not.toHaveBeenCalledWith(
+          failingIssue,
+          expect.anything(),
+        );
+        expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+          expect.anything(),
+          normalIssue,
+          'middleBugId',
+        );
+        expect(mockIssueRepository.removeLabel).toHaveBeenCalledWith(
+          normalIssue,
+          'story:middle-bug',
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(failingIssue.url),
+        );
+      });
+
+      it('should skip a workflow-management issue on updateStory permission error and continue with remaining issues', async () => {
+        const failingIssue: Issue = {
+          ...mock<Issue>(),
+          url: 'https://github.com/user/repo/issues/10',
+          labels: ['story:workflow-management'],
+          story: null,
+          state: 'OPEN',
+          nextActionDate: null,
+          nextActionHour: null,
+          isPr: false,
+        };
+        const normalIssue: Issue = {
+          ...mock<Issue>(),
+          url: 'https://github.com/user/repo/issues/11',
+          labels: ['story:high-priority'],
+          story: null,
+          state: 'OPEN',
+          nextActionDate: null,
+          nextActionHour: null,
+          isPr: false,
+        };
+        mockIssueRepository.updateStory.mockImplementation(
+          (_project: unknown, issue: Issue) =>
+            issue.url === failingIssue.url
+              ? Promise.reject(permissionError)
+              : Promise.resolve(undefined),
+        );
+
+        const promise = useCase.run({
+          targetDates: [targetDate],
+          project: basicProject,
+          issues: [failingIssue, normalIssue],
+          cacheUsed: false,
+        });
+        await jest.runAllTimersAsync();
+        await promise;
+
+        expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+          expect.anything(),
+          failingIssue,
+          'workflowManagementStoryId',
+        );
+        expect(mockIssueRepository.removeLabel).not.toHaveBeenCalledWith(
+          failingIssue,
+          expect.anything(),
+        );
+        expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+          expect.anything(),
+          normalIssue,
+          'highPriorityId',
+        );
+        expect(mockIssueRepository.removeLabel).toHaveBeenCalledWith(
+          normalIssue,
+          'story:high-priority',
+        );
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(failingIssue.url),
+        );
+      });
+    });
   });
 });

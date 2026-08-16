@@ -23,6 +23,16 @@ const isArchivedProjectItemError = (error: unknown): boolean => {
   return message.toLowerCase().includes('archived');
 };
 
+// GitHub occasionally returns a permission error for UpdateProjectV2ItemFieldValue
+// even when the token has project write access — observed when targeting a specific
+// project item. The failure is per-item, so it must not abort the whole schedule cycle.
+const isPermissionError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .toLowerCase()
+    .includes('does not have the correct permissions to execute');
+};
+
 const isTimeoutError = (error: unknown): boolean =>
   error instanceof Error && error.name === 'TimeoutError';
 
@@ -177,6 +187,12 @@ export class RevertNotReadyReviewQueueIssueUseCase {
               );
               continue;
             }
+            if (isPermissionError(error)) {
+              console.warn(
+                `RevertNotReadyReviewQueueIssueUseCase: permission denied for UpdateProjectV2ItemFieldValue, skipping revert. issueUrl: ${issue.url}`,
+              );
+              continue;
+            }
             throw error;
           }
           await this.issueCommentRepository.createComment(
@@ -244,14 +260,30 @@ export class RevertNotReadyReviewQueueIssueUseCase {
               );
               continue;
             }
+            if (isPermissionError(error)) {
+              console.warn(
+                `RevertNotReadyReviewQueueIssueUseCase: permission denied for UpdateProjectV2ItemFieldValue, skipping revert. prUrl: ${pullRequest.url}`,
+              );
+              continue;
+            }
             throw error;
           }
           if (projectStory) {
-            await this.issueRepository.updateStory(
-              { ...project, story: projectStory },
-              pullRequest,
-              projectStory.workflowManagementStory.id,
-            );
+            try {
+              await this.issueRepository.updateStory(
+                { ...project, story: projectStory },
+                pullRequest,
+                projectStory.workflowManagementStory.id,
+              );
+            } catch (error) {
+              if (isPermissionError(error)) {
+                console.warn(
+                  `RevertNotReadyReviewQueueIssueUseCase: permission denied for UpdateProjectV2ItemFieldValue on updateStory, skipping. prUrl: ${pullRequest.url}`,
+                );
+                continue;
+              }
+              throw error;
+            }
           }
           await this.issueCommentRepository.createComment(
             pullRequest,

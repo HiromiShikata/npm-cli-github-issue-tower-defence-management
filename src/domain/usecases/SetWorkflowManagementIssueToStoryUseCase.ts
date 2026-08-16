@@ -2,6 +2,16 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 
+// GitHub occasionally returns a permission error for UpdateProjectV2ItemFieldValue
+// even when the token has project write access — observed when targeting a specific
+// project item. The failure is per-item, so it must not abort the whole schedule cycle.
+const isPermissionError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .toLowerCase()
+    .includes('does not have the correct permissions to execute');
+};
+
 export class SetWorkflowManagementIssueToStoryUseCase {
   constructor(
     readonly issueRepository: Pick<
@@ -43,11 +53,21 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         issue.isPr;
 
       if (isWorkflowManagementIssue) {
-        await this.issueRepository.updateStory(
-          { ...input.project, story },
-          issue,
-          story.workflowManagementStory.id,
-        );
+        try {
+          await this.issueRepository.updateStory(
+            { ...input.project, story },
+            issue,
+            story.workflowManagementStory.id,
+          );
+        } catch (error) {
+          if (isPermissionError(error)) {
+            console.warn(
+              `SetWorkflowManagementIssueToStoryUseCase: permission denied for UpdateProjectV2ItemFieldValue, skipping story update. issueUrl: ${issue.url}`,
+            );
+            continue;
+          }
+          throw error;
+        }
         const workflowLabel = issue.labels.find(
           (label) =>
             label.toLowerCase() ===
@@ -103,11 +123,21 @@ export class SetWorkflowManagementIssueToStoryUseCase {
         continue;
       }
 
-      await this.issueRepository.updateStory(
-        { ...input.project, story },
-        issue,
-        matchingStory.id,
-      );
+      try {
+        await this.issueRepository.updateStory(
+          { ...input.project, story },
+          issue,
+          matchingStory.id,
+        );
+      } catch (error) {
+        if (isPermissionError(error)) {
+          console.warn(
+            `SetWorkflowManagementIssueToStoryUseCase: permission denied for UpdateProjectV2ItemFieldValue, skipping story update. issueUrl: ${issue.url}`,
+          );
+          continue;
+        }
+        throw error;
+      }
       await this.issueRepository.removeLabel(issue, storyLabel);
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }

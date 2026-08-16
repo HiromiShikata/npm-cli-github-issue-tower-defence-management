@@ -1887,6 +1887,141 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     });
   });
 
+  describe('UpdateProjectV2ItemFieldValue permission error containment', () => {
+    const permissionError = new Error(
+      'umino-bot does not have the correct permissions to execute `UpdateProjectV2ItemFieldValue`',
+    );
+    let warnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it('should skip an AQC issue on updateStatus permission error and continue with remaining issues', async () => {
+      const failingIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'failing-item',
+        status: 'Awaiting Quality Check',
+      });
+      const normalIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'normal-item',
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [failingIssue, normalIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === failingIssue.url
+            ? Promise.reject(permissionError)
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        failingIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalIssue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        failingIssue,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalIssue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(failingIssue.url),
+      );
+    });
+
+    it('should skip an Unread pull request on updateStatus permission error and continue with remaining pull requests', async () => {
+      const failingPullRequest = createMockPullRequest({
+        number: 1,
+        url: 'https://github.com/user/repo/pull/1',
+        itemId: 'failing-pr-item',
+        status: 'Unread',
+      });
+      const normalPullRequest = createMockPullRequest({
+        number: 2,
+        url: 'https://github.com/user/repo/pull/2',
+        itemId: 'normal-pr-item',
+        status: 'Unread',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [failingPullRequest, normalPullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockImplementation(
+        (prUrl: string) =>
+          Promise.resolve({
+            ...createReadyPr(prUrl),
+            isConflicted: true,
+          }),
+      );
+      mockIssueRepository.updateStatus.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === failingPullRequest.url
+            ? Promise.reject(permissionError)
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        failingPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalledWith(
+        expect.anything(),
+        failingPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        failingPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalPullRequest,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(failingPullRequest.url),
+      );
+    });
+  });
+
   describe('ky TimeoutError containment', () => {
     let warnSpy: jest.SpyInstance;
 
