@@ -2020,6 +2020,72 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         expect.stringContaining(failingPullRequest.url),
       );
     });
+
+    it('should skip an Unread pull request on updateStory permission error and continue with remaining pull requests', async () => {
+      const failingPullRequest = createMockPullRequest({
+        number: 1,
+        url: 'https://github.com/user/repo/pull/1',
+        itemId: 'failing-pr-item',
+        status: 'Unread',
+      });
+      const normalPullRequest = createMockPullRequest({
+        number: 2,
+        url: 'https://github.com/user/repo/pull/2',
+        itemId: 'normal-pr-item',
+        status: 'Unread',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [failingPullRequest, normalPullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockImplementation(
+        (prUrl: string) =>
+          Promise.resolve({
+            ...createReadyPr(prUrl),
+            isConflicted: true,
+          }),
+      );
+      mockIssueRepository.updateStory.mockImplementation(
+        (_project: Project, issue: Issue) =>
+          issue.url === failingPullRequest.url
+            ? Promise.reject(permissionError)
+            : Promise.resolve(undefined),
+      );
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        failingPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: expect.anything() }),
+        failingPullRequest,
+        expect.any(String),
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        failingPullRequest,
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalPullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        normalPullRequest,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(failingPullRequest.url),
+      );
+    });
   });
 
   describe('ky TimeoutError containment', () => {
