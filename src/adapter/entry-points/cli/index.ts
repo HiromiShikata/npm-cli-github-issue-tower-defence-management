@@ -36,6 +36,7 @@ import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRep
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
+import { FileSystemConsoleTabsRepository } from '../handlers/FileSystemConsoleTabsRepository';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import * as path from 'path';
 import { DEFAULT_WEB_PORT, startWebServer } from '../console/webServer';
@@ -594,11 +595,18 @@ program
     const issueCommentRepository = new GitHubIssueCommentRepository(token);
     const webhookRepository = new FetchWebhookRepository();
 
+    const consoleDataOutputDir = config.consoleDataOutputDir ?? null;
+    const consoleTabsRepository =
+      consoleDataOutputDir !== null
+        ? new FileSystemConsoleTabsRepository(consoleDataOutputDir, projectName)
+        : null;
+
     const useCase = new NotifyFinishedIssuePreparationUseCase(
       projectRepository,
       issueRepository,
       issueCommentRepository,
       webhookRepository,
+      consoleTabsRepository,
     );
 
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;

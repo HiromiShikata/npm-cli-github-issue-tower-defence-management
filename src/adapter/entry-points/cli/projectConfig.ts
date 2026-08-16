@@ -24,6 +24,7 @@ export type ConfigFile = {
   labelsAsLlmAgentName?: string[];
   labelsNotRequiringPullRequest?: string[];
   changeTargetPathAliases?: Record<string, string>;
+  consoleDataOutputDir?: string;
   consoleAccessToken?: string;
   consoleProjects?: Record<string, string>;
   consoleGithubTokenFilesByRepositoryOwner?: Record<string, string>;
@@ -132,6 +133,7 @@ const knownProjectReadmeConfigKeys = [
   'labelsAsLlmAgentName',
   'labelsNotRequiringPullRequest',
   'changeTargetPathAliases',
+  'consoleDataOutputDir',
 ] as const;
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
@@ -190,6 +192,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'changeTargetPathAliases',
       ),
+      consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
       consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
       consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
       consoleGithubTokenFilesByRepositoryOwner: getStringRecordValue(
@@ -281,6 +284,7 @@ export const parseProjectReadmeConfig = (
         parsed,
         'changeTargetPathAliases',
       ),
+      consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
     };
   } catch {
     console.warn('Failed to parse YAML from project README config section');
@@ -368,6 +372,10 @@ export const mergeConfigs = (
     readmeOverrides.changeTargetPathAliases ??
     cliOverrides.changeTargetPathAliases ??
     configFile.changeTargetPathAliases,
+  consoleDataOutputDir:
+    readmeOverrides.consoleDataOutputDir ??
+    cliOverrides.consoleDataOutputDir ??
+    configFile.consoleDataOutputDir,
   consoleAccessToken:
     cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
   consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
