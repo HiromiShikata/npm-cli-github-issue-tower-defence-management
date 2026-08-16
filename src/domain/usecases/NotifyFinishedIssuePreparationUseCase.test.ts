@@ -3488,7 +3488,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(capturedArg).toMatchObject({
         targetTabName: 'prs',
-        item: { relatedOpenPullRequestUrls: ['https://github.com/user/repo/pull/42'] },
+        item: {
+          relatedOpenPullRequestUrls: ['https://github.com/user/repo/pull/42'],
+        },
       });
     });
 

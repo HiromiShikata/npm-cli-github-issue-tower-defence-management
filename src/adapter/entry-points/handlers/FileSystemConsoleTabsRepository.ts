@@ -5,7 +5,10 @@ import type {
   ConsoleTabName,
 } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 import type { ConsoleTabsRepository } from '../../../domain/usecases/adapter-interfaces/ConsoleTabsRepository';
-import { CONSOLE_LIST_TAB_NAMES, sortByStoryOrder } from '../console/consoleTabNames';
+import {
+  CONSOLE_LIST_TAB_NAMES,
+  sortByStoryOrder,
+} from '../console/consoleTabNames';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
