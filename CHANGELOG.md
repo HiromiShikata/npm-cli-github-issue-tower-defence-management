@@ -1,3 +1,10 @@
+# [1.159.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.158.0...v1.159.0) (2026-08-16)
+
+
+### Features
+
+* **console-detail:** show item status in top header of console item detail ([#1598](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1598)) ([285cbb6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/285cbb6029b205b34c90ac5144ba59b433706639)), closes [#1597](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1597)
+
 # [1.158.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.157.0...v1.158.0) (2026-08-16)
 
 
