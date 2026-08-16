@@ -353,6 +353,17 @@ body {
   gap: 6px;
 }
 
+.console-related-pr-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.console-related-pr-label {
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
 .console-detail-ci-missing {
   font-weight: 400;
   opacity: 0.85;
