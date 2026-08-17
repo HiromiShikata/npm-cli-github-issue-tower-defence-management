@@ -241,7 +241,9 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
 
     await useCase.run(params);
 
-    expect(mockTmuxSessionRepository.listLiveSessionNames).not.toHaveBeenCalled();
+    expect(
+      mockTmuxSessionRepository.listLiveSessionNames,
+    ).not.toHaveBeenCalled();
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
   });
 
