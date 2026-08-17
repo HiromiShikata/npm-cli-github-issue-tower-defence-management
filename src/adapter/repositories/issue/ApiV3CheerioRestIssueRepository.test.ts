@@ -4039,7 +4039,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               headers: { 'Content-Type': 'application/json' },
             });
           }
-          return { total_count: 1, check_runs: [{ id: 1, name: 'ci', conclusion: 'success' }] };
+          return {
+            total_count: 1,
+            check_runs: [{ id: 1, name: 'ci', conclusion: 'success' }],
+          };
         },
         checkSuites: () => ({
           total_count: 1,
