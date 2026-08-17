@@ -63,11 +63,13 @@ import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/
 import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
+import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimitCacheRepository';
 import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import { RevertOrphanedInTmuxByAgentIssueUseCase } from '../../../domain/usecases/RevertOrphanedInTmuxByAgentIssueUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from '../../../domain/usecases/RevertNotReadyReviewQueueIssueUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { ProjectRequiredFieldCreateUseCase } from '../../../domain/usecases/ProjectRequiredFieldCreateUseCase';
@@ -488,6 +490,12 @@ export class HandleScheduledEventUseCaseHandler {
         issueCommentRepository,
         nodeLocalCommandRunner,
       );
+    const revertOrphanedInTmuxByAgentIssueUseCase =
+      new RevertOrphanedInTmuxByAgentIssueUseCase(
+        projectRepository,
+        issueRepository,
+        new NodeTmuxSessionRepository(nodeLocalCommandRunner),
+      );
     const revertNotReadyReviewQueueIssueUseCase =
       new RevertNotReadyReviewQueueIssueUseCase(
         projectRepository,
@@ -524,6 +532,7 @@ export class HandleScheduledEventUseCaseHandler {
       updateIssueStatusByLabelUseCase,
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
+      revertOrphanedInTmuxByAgentIssueUseCase,
       revertNotReadyReviewQueueIssueUseCase,
       updateRateLimitCacheUseCase,
       dailySecurityScanUseCase,

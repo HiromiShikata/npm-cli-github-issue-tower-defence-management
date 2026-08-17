@@ -26,6 +26,7 @@ import {
   StartPreparationUseCase,
 } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { RevertOrphanedInTmuxByAgentIssueUseCase } from './RevertOrphanedInTmuxByAgentIssueUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
@@ -134,6 +135,7 @@ export class HandleScheduledEventUseCase {
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
+    readonly revertOrphanedInTmuxByAgentIssueUseCase: RevertOrphanedInTmuxByAgentIssueUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
@@ -431,6 +433,9 @@ ${JSON.stringify(e)}
         dailySecurityScan: input.dailySecurityScan,
       });
     }
+    await this.revertOrphanedInTmuxByAgentIssueUseCase.run({
+      projectUrl: input.projectUrl,
+    });
     if (input.startPreparation) {
       if (this.updateRateLimitCacheUseCase !== null) {
         await this.updateRateLimitCacheUseCase.run({
