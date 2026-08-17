@@ -88,4 +88,58 @@ describe('FileSystemAgentHeartbeatRepository', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('writeOrphanCandidate / readOrphanCandidateEpochSeconds / deleteOrphanCandidate', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/200';
+
+    it('writes and reads back an orphan candidate epoch', async () => {
+      await repository.writeOrphanCandidate(issueUrl, 1800000000);
+
+      const result = await repository.readOrphanCandidateEpochSeconds(issueUrl);
+      expect(result).toBe(1800000000);
+    });
+
+    it('returns null when no orphan candidate file exists', async () => {
+      const result = await repository.readOrphanCandidateEpochSeconds(issueUrl);
+      expect(result).toBeNull();
+    });
+
+    it('stores orphan candidates in a subdirectory separate from heartbeats', async () => {
+      await repository.writeHeartbeat(issueUrl, 1700000001);
+      await repository.writeOrphanCandidate(issueUrl, 1800000001);
+
+      const heartbeat = await repository.readHeartbeatEpochSeconds(issueUrl);
+      const candidate =
+        await repository.readOrphanCandidateEpochSeconds(issueUrl);
+
+      expect(heartbeat).toBe(1700000001);
+      expect(candidate).toBe(1800000001);
+    });
+
+    it('deletes the orphan candidate file', async () => {
+      await repository.writeOrphanCandidate(issueUrl, 1800000000);
+      await repository.deleteOrphanCandidate(issueUrl);
+
+      const result = await repository.readOrphanCandidateEpochSeconds(issueUrl);
+      expect(result).toBeNull();
+    });
+
+    it('does not throw when deleting a non-existent orphan candidate', async () => {
+      await expect(
+        repository.deleteOrphanCandidate(
+          'https://github.com/user/repo/issues/999',
+        ),
+      ).resolves.not.toThrow();
+    });
+
+    it('creates the orphan-candidate subdirectory when it does not exist', async () => {
+      const nestedDir = path.join(tmpDir, 'sub2', 'nested2');
+      const repo = new FileSystemAgentHeartbeatRepository(nestedDir);
+
+      await repo.writeOrphanCandidate(issueUrl, 1800000000);
+
+      const result = await repo.readOrphanCandidateEpochSeconds(issueUrl);
+      expect(result).toBe(1800000000);
+    });
+  });
 });

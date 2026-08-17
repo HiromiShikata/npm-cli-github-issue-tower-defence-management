@@ -74,6 +74,7 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
           issue.url,
           nowSeconds,
         );
+        await this.agentHeartbeatRepository.deleteOrphanCandidate(issue.url);
         continue;
       }
       if (processCommandLines.some((cmd) => cmd.includes(issue.url))) {
@@ -81,8 +82,33 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
           issue.url,
           nowSeconds,
         );
+        await this.agentHeartbeatRepository.deleteOrphanCandidate(issue.url);
         continue;
       }
+
+      // No direct live-agent evidence. Use the orphan-candidate timestamp — a
+      // value this sweep writes itself — so the reclaim decision never rests on
+      // the absence of a signal that external code is supposed to write.
+      const orphanCandidateSeconds =
+        await this.agentHeartbeatRepository.readOrphanCandidateEpochSeconds(
+          issue.url,
+        );
+      if (orphanCandidateSeconds === null) {
+        // First time this sweep notices a potential orphan. Record the time and
+        // give the agent a full grace period before reconsidering.
+        await this.agentHeartbeatRepository.writeOrphanCandidate(
+          issue.url,
+          nowSeconds,
+        );
+        continue;
+      }
+      if (orphanCandidateSeconds >= nowSeconds - params.minOrphanAgeSeconds) {
+        // Within grace period — do not reclaim yet.
+        continue;
+      }
+
+      // Orphan candidate is old. A fresh heartbeat (voluntarily written by a
+      // workspace-leader agent) still prevents reclaim.
       const heartbeatSeconds =
         await this.agentHeartbeatRepository.readHeartbeatEpochSeconds(
           issue.url,
@@ -91,8 +117,10 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
         heartbeatSeconds !== null &&
         heartbeatSeconds >= nowSeconds - params.minOrphanAgeSeconds
       ) {
+        await this.agentHeartbeatRepository.deleteOrphanCandidate(issue.url);
         continue;
       }
+
       const isStillInTmuxByAgent = await this.isStillInTmuxByAgent(
         issue,
         project,
@@ -105,6 +133,7 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
         issue,
         awaitingWorkspaceStatusOption.id,
       );
+      await this.agentHeartbeatRepository.deleteOrphanCandidate(issue.url);
     }
   };
 
