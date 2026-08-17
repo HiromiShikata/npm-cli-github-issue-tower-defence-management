@@ -623,10 +623,6 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
   });
 
   // ── Threshold calibrated to real work duration ───────────────────────────────
-  // On this machine the longest observed live session was 45.9 hours.  The
-  // default threshold of 7 days (604800 s) must not reclaim an issue whose
-  // orphan candidate is only 2 days old, and must reclaim one whose candidate
-  // is 8 days old with no other liveness evidence.
 
   it('does not reclaim an issue whose orphan candidate is two days old under the seven-day threshold', async () => {
     const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
