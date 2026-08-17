@@ -248,6 +248,40 @@ describe('ConsoleCommentComposer', () => {
     expect(onUploadFile).toHaveBeenCalledWith(file);
   });
 
+  it('removes the placeholder when text was typed into a reserved empty line and the upload fails', async () => {
+    let rejectUpload!: (error: Error) => void;
+    const onUploadFile = jest.fn(
+      () =>
+        new Promise<string>((_, reject) => {
+          rejectUpload = reject;
+        }),
+    );
+    const { getByPlaceholderText, getByLabelText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onUploadFile={onUploadFile}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toContain('![uploading shot.png]()');
+    });
+    fireEvent.change(textarea, {
+      target: { value: '\n見てください\n\n![uploading shot.png]()\n' },
+    });
+    rejectUpload(new Error('network error'));
+    await waitFor(() => {
+      expect(textarea.value).not.toContain('![uploading shot.png]()');
+    });
+  });
+
   it('shows the upload failure reason when the upload rejects', async () => {
     const { getByLabelText, findByRole } = render(
       <ConsoleCommentComposer
@@ -334,6 +368,20 @@ describe('removePlaceholder', () => {
 
   it('returns the draft unchanged when the placeholder is absent', () => {
     expect(removePlaceholder('text\n', 'shot.png')).toBe('text\n');
+  });
+
+  it('removes the placeholder when text was typed into the second reserved empty line', () => {
+    const draft = '\n見てください\n\n![uploading shot.png]()\n';
+    expect(removePlaceholder(draft, 'shot.png')).not.toContain(
+      '![uploading shot.png]()',
+    );
+  });
+
+  it('removes the placeholder when text was typed into the third reserved empty line', () => {
+    const draft = '\n\n見てください\n![uploading shot.png]()\n';
+    expect(removePlaceholder(draft, 'shot.png')).not.toContain(
+      '![uploading shot.png]()',
+    );
   });
 });
 

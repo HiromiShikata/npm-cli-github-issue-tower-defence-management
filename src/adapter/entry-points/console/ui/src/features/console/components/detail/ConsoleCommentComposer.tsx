@@ -56,7 +56,19 @@ export const replacePlaceholderWithMarkdown = (
 
 export const removePlaceholder = (draft: string, fileName: string): string => {
   const placeholder = `![uploading ${fileName}]()`;
-  return draft.replace(`\n\n\n${placeholder}\n`, '');
+  const index = draft.indexOf(placeholder);
+  if (index === -1) {
+    return draft;
+  }
+  let start = index;
+  let newlinesRemoved = 0;
+  while (newlinesRemoved < 3 && start > 0 && draft[start - 1] === '\n') {
+    start--;
+    newlinesRemoved++;
+  }
+  const trailingNewline = draft[index + placeholder.length] === '\n' ? 1 : 0;
+  const end = index + placeholder.length + trailingNewline;
+  return draft.slice(0, start) + draft.slice(end);
 };
 
 export const ConsoleCommentComposer = ({
