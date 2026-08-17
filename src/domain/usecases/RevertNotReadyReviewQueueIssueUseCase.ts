@@ -76,6 +76,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
   }): Promise<void> => {
+    const permissionErrorItems: string[] = [];
     const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -191,6 +192,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
               console.warn(
                 `RevertNotReadyReviewQueueIssueUseCase: permission denied for UpdateProjectV2ItemFieldValue, skipping revert. issueUrl: ${issue.url}`,
               );
+              permissionErrorItems.push(issue.url);
               continue;
             }
             throw error;
@@ -264,6 +266,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
               console.warn(
                 `RevertNotReadyReviewQueueIssueUseCase: permission denied for UpdateProjectV2ItemFieldValue, skipping revert. prUrl: ${pullRequest.url}`,
               );
+              permissionErrorItems.push(pullRequest.url);
               continue;
             }
             throw error;
@@ -280,6 +283,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 console.warn(
                   `RevertNotReadyReviewQueueIssueUseCase: permission denied for UpdateProjectV2ItemFieldValue on updateStory, skipping. prUrl: ${pullRequest.url}`,
                 );
+                permissionErrorItems.push(pullRequest.url);
                 continue;
               }
               throw error;
@@ -299,6 +303,12 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         }
         throw error;
       }
+    }
+
+    if (permissionErrorItems.length > 0) {
+      throw new Error(
+        `UpdateProjectV2ItemFieldValue permission denied for ${permissionErrorItems.length} item(s): ${permissionErrorItems.join(', ')}`,
+      );
     }
   };
 

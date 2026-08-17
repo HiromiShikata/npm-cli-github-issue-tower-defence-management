@@ -1926,11 +1926,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
             : Promise.resolve(undefined),
       );
 
-      await useCase.run({
-        manager: 'manager-user',
-        projectUrl: 'https://github.com/users/user/projects/1',
-        allowedIssueAuthors: ['owner'],
-      });
+      await expect(
+        useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        }),
+      ).rejects.toThrow('UpdateProjectV2ItemFieldValue permission denied');
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
@@ -1987,11 +1989,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
             : Promise.resolve(undefined),
       );
 
-      await useCase.run({
-        manager: 'manager-user',
-        projectUrl: 'https://github.com/users/user/projects/1',
-        allowedIssueAuthors: ['owner'],
-      });
+      await expect(
+        useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        }),
+      ).rejects.toThrow('UpdateProjectV2ItemFieldValue permission denied');
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
@@ -2053,11 +2057,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
             : Promise.resolve(undefined),
       );
 
-      await useCase.run({
-        manager: 'manager-user',
-        projectUrl: 'https://github.com/users/user/projects/1',
-        allowedIssueAuthors: ['owner'],
-      });
+      await expect(
+        useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        }),
+      ).rejects.toThrow('UpdateProjectV2ItemFieldValue permission denied');
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,

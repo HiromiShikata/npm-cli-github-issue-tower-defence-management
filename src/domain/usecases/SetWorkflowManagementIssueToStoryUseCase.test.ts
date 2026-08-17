@@ -720,8 +720,11 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
           issues: [failingIssue, normalIssue],
           cacheUsed: false,
         });
+        promise.catch(() => {});
         await jest.runAllTimersAsync();
-        await promise;
+        await expect(promise).rejects.toThrow(
+          'UpdateProjectV2ItemFieldValue permission denied',
+        );
 
         expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
           expect.anything(),
@@ -780,8 +783,11 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
           issues: [failingIssue, normalIssue],
           cacheUsed: false,
         });
+        promise.catch(() => {});
         await jest.runAllTimersAsync();
-        await promise;
+        await expect(promise).rejects.toThrow(
+          'UpdateProjectV2ItemFieldValue permission denied',
+        );
 
         expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
           expect.anything(),

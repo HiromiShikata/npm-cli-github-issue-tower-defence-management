@@ -38,6 +38,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
     if (!story) {
       return;
     }
+    const permissionErrorItems: string[] = [];
     for (const issue of input.issues) {
       if (!this.isEligibleIssue(issue, input.targetDates)) {
         continue;
@@ -64,6 +65,7 @@ export class SetWorkflowManagementIssueToStoryUseCase {
             console.warn(
               `SetWorkflowManagementIssueToStoryUseCase: permission denied for UpdateProjectV2ItemFieldValue, skipping story update. issueUrl: ${issue.url}`,
             );
+            permissionErrorItems.push(issue.url);
             continue;
           }
           throw error;
@@ -134,12 +136,19 @@ export class SetWorkflowManagementIssueToStoryUseCase {
           console.warn(
             `SetWorkflowManagementIssueToStoryUseCase: permission denied for UpdateProjectV2ItemFieldValue, skipping story update. issueUrl: ${issue.url}`,
           );
+          permissionErrorItems.push(issue.url);
           continue;
         }
         throw error;
       }
       await this.issueRepository.removeLabel(issue, storyLabel);
       await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+
+    if (permissionErrorItems.length > 0) {
+      throw new Error(
+        `UpdateProjectV2ItemFieldValue permission denied for ${permissionErrorItems.length} item(s): ${permissionErrorItems.join(', ')}`,
+      );
     }
   };
 
