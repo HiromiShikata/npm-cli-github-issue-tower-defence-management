@@ -285,7 +285,7 @@ describe('ConsoleItemDetail', () => {
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
   });
 
-  it('renders the overlay status chip inside the title header', () => {
+  it('renders the overlay status chip in the subline below the title, not inside the title line', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
         item={issueItem}
@@ -294,20 +294,14 @@ describe('ConsoleItemDetail', () => {
       />,
     );
     const title = container.querySelector('.console-detail-title');
+    const subline = container.querySelector('.console-detail-topline');
     expect(title).not.toBeNull();
-    expect(title?.contains(getByText('Awaiting Workspace'))).toBe(true);
+    expect(subline).not.toBeNull();
+    expect(title?.contains(getByText('Awaiting Workspace'))).toBe(false);
+    expect(subline?.contains(getByText('Awaiting Workspace'))).toBe(true);
   });
 
-  const firstRowOfDetail = (container: HTMLElement): Element => {
-    const detail = container.querySelector('.console-detail');
-    const firstRow = detail?.firstElementChild ?? null;
-    if (firstRow === null) {
-      throw new Error('the item detail must render a first row');
-    }
-    return firstRow;
-  };
-
-  it('renders the merge conflict state on the first row of the detail', () => {
+  it('renders the merge conflict state in the subline below the title, not inside the title line', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
         item={prItem}
@@ -323,14 +317,13 @@ describe('ConsoleItemDetail', () => {
         }}
       />,
     );
-    expect(firstRowOfDetail(container).contains(getByText('Conflict'))).toBe(
-      true,
-    );
     const title = container.querySelector('.console-detail-title');
+    const subline = container.querySelector('.console-detail-topline');
+    expect(subline?.contains(getByText('Conflict'))).toBe(true);
     expect(title?.contains(getByText('Conflict'))).toBe(false);
   });
 
-  it('renders the absence of a merge conflict on the first row of the detail', () => {
+  it('renders the absence of a merge conflict in the subline below the title', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
         item={prItem}
@@ -346,12 +339,11 @@ describe('ConsoleItemDetail', () => {
         }}
       />,
     );
-    expect(firstRowOfDetail(container).contains(getByText('No conflict'))).toBe(
-      true,
-    );
+    const subline = container.querySelector('.console-detail-topline');
+    expect(subline?.contains(getByText('No conflict'))).toBe(true);
   });
 
-  it('renders the related pull request merge state on the first row when the item is an issue', () => {
+  it('renders the related pull request merge state in the subline below the title when the item is an issue', () => {
     const { container } = render(
       <ConsoleItemDetail
         item={issueItem}
@@ -375,14 +367,13 @@ describe('ConsoleItemDetail', () => {
         )}
       />,
     );
+    const subline = container.querySelector('.console-detail-topline');
     expect(
-      within(firstRowOfDetail(container) as HTMLElement).getByText(
-        'No conflict',
-      ),
+      within(subline as HTMLElement).getByText('No conflict'),
     ).toBeInTheDocument();
   });
 
-  it('renders failing CI, missing checks, and conflict badges on the top line above the title', () => {
+  it('renders failing CI, missing checks, and conflict badges in the subline below the title, not inside the title line', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
         item={prItem}
@@ -401,13 +392,13 @@ describe('ConsoleItemDetail', () => {
     const title = container.querySelector('.console-detail-title');
     const topline = container.querySelector('.console-detail-topline');
     if (title === null || topline === null) {
-      throw new Error('title and top line must both render');
+      throw new Error('title and subline must both render');
     }
     expect(title.contains(getByText('CI failing'))).toBe(false);
     expect(topline.contains(getByText('CI failing'))).toBe(true);
     expect(topline.contains(getByText('Conflict'))).toBe(true);
     expect(
-      topline.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING,
+      title.compareDocumentPosition(topline) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(getByText(/missing: build, test/)).toBeInTheDocument();
     expect(getByText('Conflict')).toBeInTheDocument();
@@ -548,7 +539,7 @@ describe('ConsoleItemDetail', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows the snapshot status chip in the header when the item has a status and no overlay entry applies', () => {
+  it('shows the snapshot status chip in the subline below the title when the item has a status and no overlay entry applies', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
         item={issueItem}
@@ -557,11 +548,14 @@ describe('ConsoleItemDetail', () => {
       />,
     );
     const title = container.querySelector('.console-detail-title');
+    const subline = container.querySelector('.console-detail-topline');
     expect(title).not.toBeNull();
-    expect(title?.contains(getByText(issueItem.status as string))).toBe(true);
+    expect(subline).not.toBeNull();
+    expect(title?.contains(getByText(issueItem.status as string))).toBe(false);
+    expect(subline?.contains(getByText(issueItem.status as string))).toBe(true);
   });
 
-  it('shows the overlay status in the header when the overlay entry is newer than the snapshot', () => {
+  it('shows the overlay status in the subline below the title when the overlay entry is newer than the snapshot', () => {
     const { getByText, queryByText, container } = render(
       <ConsoleItemDetail
         item={issueItem}
@@ -570,8 +564,11 @@ describe('ConsoleItemDetail', () => {
       />,
     );
     const title = container.querySelector('.console-detail-title');
+    const subline = container.querySelector('.console-detail-topline');
     expect(title).not.toBeNull();
-    expect(title?.contains(getByText('In Progress'))).toBe(true);
+    expect(subline).not.toBeNull();
+    expect(title?.contains(getByText('In Progress'))).toBe(false);
+    expect(subline?.contains(getByText('In Progress'))).toBe(true);
     expect(queryByText(issueItem.status as string)).toBeNull();
   });
 
