@@ -21,11 +21,15 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
     >,
     readonly tmuxSessionRepository: Pick<
       TmuxSessionRepository,
-      'listLiveSessionNames'
+      'listLiveSessionsWithActivity' | 'listInteractiveProcessCommandLines'
     >,
   ) {}
 
-  run = async (params: { projectUrl: string }): Promise<void> => {
+  run = async (params: {
+    projectUrl: string;
+    now: Date;
+    minOrphanAgeSeconds: number;
+  }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
     );
@@ -54,13 +58,34 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
       return;
     }
 
+    const liveSessionsWithActivity =
+      await this.tmuxSessionRepository.listLiveSessionsWithActivity();
     const liveSessionNames = new Set(
-      await this.tmuxSessionRepository.listLiveSessionNames(),
+      liveSessionsWithActivity.map((s) => s.sessionName),
     );
+    const processCommandLines =
+      await this.tmuxSessionRepository.listInteractiveProcessCommandLines();
+    const nowSeconds = Math.floor(params.now.getTime() / 1000);
+
+    const issueSessionNames = new Set(
+      inTmuxByAgentIssues.map((issue) => toTmuxSessionName(issue.url)),
+    );
+    const mostRecentWorkspaceSessionActivity = liveSessionsWithActivity
+      .filter((s) => !issueSessionNames.has(s.sessionName))
+      .reduce((max, s) => Math.max(max, s.activityEpochSeconds), 0);
 
     for (const issue of inTmuxByAgentIssues) {
       const sessionName = toTmuxSessionName(issue.url);
       if (liveSessionNames.has(sessionName)) {
+        continue;
+      }
+      if (processCommandLines.some((cmd) => cmd.includes(issue.url))) {
+        continue;
+      }
+      if (
+        mostRecentWorkspaceSessionActivity >=
+        nowSeconds - params.minOrphanAgeSeconds
+      ) {
         continue;
       }
       const isStillInTmuxByAgent = await this.isStillInTmuxByAgent(

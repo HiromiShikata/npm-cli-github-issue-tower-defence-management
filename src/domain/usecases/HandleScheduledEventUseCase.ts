@@ -179,6 +179,7 @@ export class HandleScheduledEventUseCase {
       labelsAsLlmAgentName?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
+    minOrphanAgeSeconds?: number;
     createTaskFromStoryBodyCheckboxEnabled?: boolean;
     queryToAddProjectEnabled?: boolean;
     queryToAddProject?: string | null;
@@ -331,6 +332,7 @@ export class HandleScheduledEventUseCase {
         targetDateTimes,
         storyIssues,
         runSlowSweep,
+        now,
       );
       rotationOrder = useCaseResult.rotationOrder;
     } catch (e) {
@@ -390,6 +392,7 @@ ${JSON.stringify(e)}
     targetDateTimes: Date[],
     storyObjectMap: StoryObjectMap,
     runSlowSweep: boolean,
+    now: Date,
   ): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     if (runSlowSweep) {
       await this.runSlowSweepUseCases(
@@ -435,6 +438,8 @@ ${JSON.stringify(e)}
     }
     await this.revertOrphanedInTmuxByAgentIssueUseCase.run({
       projectUrl: input.projectUrl,
+      now,
+      minOrphanAgeSeconds: input.minOrphanAgeSeconds ?? 300,
     });
     if (input.startPreparation) {
       if (this.updateRateLimitCacheUseCase !== null) {
