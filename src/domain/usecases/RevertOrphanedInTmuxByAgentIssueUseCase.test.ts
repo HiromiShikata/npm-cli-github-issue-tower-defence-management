@@ -621,4 +621,79 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
 
     await expect(useCase.run(params)).rejects.toThrow('Project not found.');
   });
+
+  // ── Threshold calibrated to real work duration ───────────────────────────────
+  // On this machine the longest observed live session was 45.9 hours.  The
+  // default threshold of 7 days (604800 s) must not reclaim an issue whose
+  // orphan candidate is only 2 days old, and must reclaim one whose candidate
+  // is 8 days old with no other liveness evidence.
+
+  it('does not reclaim an issue whose orphan candidate is two days old under the seven-day threshold', async () => {
+    const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
+    const TWO_DAYS_SECONDS = 2 * 24 * 60 * 60;
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/200',
+      status: IN_TMUX_BY_AGENT_STATUS_NAME,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [issue],
+      project: mockProject,
+      cacheUsed: false,
+    });
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
+    mockTmuxSessionRepository.listInteractiveProcessCommandLines.mockResolvedValue(
+      [],
+    );
+    mockAgentHeartbeatRepository.readOrphanCandidateEpochSeconds.mockResolvedValue(
+      NOW_SECONDS - TWO_DAYS_SECONDS,
+    );
+
+    await useCase.run({
+      projectUrl: params.projectUrl,
+      now: NOW,
+      minOrphanAgeSeconds: SEVEN_DAYS_SECONDS,
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('reclaims an issue whose orphan candidate is eight days old under the seven-day threshold', async () => {
+    const SEVEN_DAYS_SECONDS = 7 * 24 * 60 * 60;
+    const EIGHT_DAYS_SECONDS = 8 * 24 * 60 * 60;
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/201',
+      status: IN_TMUX_BY_AGENT_STATUS_NAME,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [issue],
+      project: mockProject,
+      cacheUsed: false,
+    });
+    mockIssueRepository.get.mockResolvedValue({
+      ...issue,
+      status: IN_TMUX_BY_AGENT_STATUS_NAME,
+    });
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
+    mockTmuxSessionRepository.listInteractiveProcessCommandLines.mockResolvedValue(
+      [],
+    );
+    mockAgentHeartbeatRepository.readOrphanCandidateEpochSeconds.mockResolvedValue(
+      NOW_SECONDS - EIGHT_DAYS_SECONDS,
+    );
+    mockAgentHeartbeatRepository.readHeartbeatEpochSeconds.mockResolvedValue(
+      null,
+    );
+
+    await useCase.run({
+      projectUrl: params.projectUrl,
+      now: NOW,
+      minOrphanAgeSeconds: SEVEN_DAYS_SECONDS,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      issue,
+      AWAITING_WORKSPACE_STATUS_ID,
+    );
+  });
 });

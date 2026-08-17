@@ -439,7 +439,7 @@ ${JSON.stringify(e)}
     await this.revertOrphanedInTmuxByAgentIssueUseCase.run({
       projectUrl: input.projectUrl,
       now,
-      minOrphanAgeSeconds: input.minOrphanAgeSeconds ?? 300,
+      minOrphanAgeSeconds: input.minOrphanAgeSeconds ?? 604800,
     });
     if (input.startPreparation) {
       if (this.updateRateLimitCacheUseCase !== null) {

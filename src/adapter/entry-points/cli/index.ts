@@ -1236,7 +1236,7 @@ program
 program
   .command('writeAgentHeartbeat')
   .description(
-    'Write a heartbeat for the given issue URL to signal that an agent is actively working on it. The orphan-revert sweep skips issues whose heartbeat was written within minOrphanAgeSeconds (default 300) of the sweep time.',
+    'Write a heartbeat for the given issue URL to signal that an agent is actively working on it. The orphan-revert sweep skips issues whose heartbeat was written within minOrphanAgeSeconds (default 604800, i.e. 7 days) of the sweep time.',
   )
   .requiredOption(
     '--issueUrl <url>',
