@@ -3,37 +3,32 @@ import type { ConsoleComment } from '../../logic/types';
 import {
   appendAttachmentMarkdown,
   ConsoleCommentComposer,
+  insertUploadPlaceholder,
+  removePlaceholder,
+  replacePlaceholderWithMarkdown,
 } from './ConsoleCommentComposer';
 
 jest.mock('../../lib/mermaidLoader', () => ({
   renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
 }));
 
+const stubSubmit = async (body: string): Promise<ConsoleComment> => ({
+  author: 'HiromiShikata',
+  body,
+  createdAt: '2026-06-19T11:58:00.000Z',
+});
+
 describe('ConsoleCommentComposer', () => {
   it('shows the form when it starts open', () => {
     const { getByPlaceholderText } = render(
-      <ConsoleCommentComposer
-        initiallyOpen
-        onSubmit={async (body) => ({
-          author: 'HiromiShikata',
-          body,
-          createdAt: '2026-06-19T11:58:00.000Z',
-        })}
-      />,
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
     );
     expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
   });
 
   it('offers the opening control and hides the form when it starts closed', () => {
     const { queryByPlaceholderText, getByText } = render(
-      <ConsoleCommentComposer
-        initiallyOpen={false}
-        onSubmit={async (body) => ({
-          author: 'HiromiShikata',
-          body,
-          createdAt: '2026-06-19T11:58:00.000Z',
-        })}
-      />,
+      <ConsoleCommentComposer initiallyOpen={false} onSubmit={stubSubmit} />,
     );
     expect(queryByPlaceholderText('Leave a comment…')).toBeNull();
     expect(getByText('💬 Add a comment')).toBeInTheDocument();
@@ -41,14 +36,7 @@ describe('ConsoleCommentComposer', () => {
 
   it('opens the form on the control and closes it again so the body regains the height', () => {
     const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
-      <ConsoleCommentComposer
-        initiallyOpen={false}
-        onSubmit={async (body) => ({
-          author: 'HiromiShikata',
-          body,
-          createdAt: '2026-06-19T11:58:00.000Z',
-        })}
-      />,
+      <ConsoleCommentComposer initiallyOpen={false} onSubmit={stubSubmit} />,
     );
     fireEvent.click(getByText('💬 Add a comment'));
     expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
@@ -98,30 +86,23 @@ describe('ConsoleCommentComposer', () => {
 
   it('does not render the attach control when no upload handler is given', () => {
     const { queryByText } = render(
-      <ConsoleCommentComposer
-        initiallyOpen
-        onSubmit={async (body) => ({
-          author: 'HiromiShikata',
-          body,
-          createdAt: '2026-06-19T11:58:00.000Z',
-        })}
-      />,
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
     );
     expect(queryByText('📎 Attach files')).toBeNull();
   });
 
-  it('uploads a selected file and inserts the returned markdown into the draft', async () => {
+  it('inserts a placeholder when a file upload starts and replaces it on success', async () => {
+    let resolveUpload!: (markdown: string) => void;
     const onUploadFile = jest.fn(
-      async () => '![shot](https://github.com/user-attachments/assets/abc)',
+      () =>
+        new Promise<string>((resolve) => {
+          resolveUpload = resolve;
+        }),
     );
     const { getByPlaceholderText, getByLabelText } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        onSubmit={async (body) => ({
-          author: 'HiromiShikata',
-          body,
-          createdAt: '2026-06-19T11:58:00.000Z',
-        })}
+        onSubmit={stubSubmit}
         onUploadFile={onUploadFile}
       />,
     );
@@ -135,24 +116,98 @@ describe('ConsoleCommentComposer', () => {
     });
     await waitFor(() => {
       expect(textarea.value).toBe(
-        'See the screen:\n![shot](https://github.com/user-attachments/assets/abc)\n',
+        'See the screen:\n\n\n\n![uploading shot.png]()\n',
+      );
+    });
+    resolveUpload('![shot](https://github.com/user-attachments/assets/abc)');
+    await waitFor(() => {
+      expect(textarea.value).toBe(
+        'See the screen:\n\n\n\n![shot](https://github.com/user-attachments/assets/abc)\n',
       );
     });
     expect(onUploadFile).toHaveBeenCalledWith(file);
   });
 
-  it('uploads a pasted file', async () => {
+  it('removes the placeholder and the three empty lines when an upload fails', async () => {
+    let rejectUpload!: (error: Error) => void;
+    const onUploadFile = jest.fn(
+      () =>
+        new Promise<string>((_, reject) => {
+          rejectUpload = reject;
+        }),
+    );
+    const { getByPlaceholderText, getByLabelText, findByRole } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onUploadFile={onUploadFile}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'See the screen:' } });
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toContain('![uploading shot.png]()');
+    });
+    rejectUpload(new Error('No GitHub web session is available'));
+    await waitFor(() => {
+      expect(textarea.value).toBe('See the screen:\n');
+    });
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toContain('No GitHub web session is available');
+  });
+
+  it('preserves text typed in the draft while an upload is in flight', async () => {
+    let resolveUpload!: (markdown: string) => void;
+    const onUploadFile = jest.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    const { getByPlaceholderText, getByLabelText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onUploadFile={onUploadFile}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toContain('![uploading shot.png]()');
+    });
+    fireEvent.change(textarea, {
+      target: {
+        value: 'The fix works:\n\n\n\n![uploading shot.png]()\n',
+      },
+    });
+    resolveUpload('![shot](https://github.com/user-attachments/assets/abc)');
+    await waitFor(() => {
+      expect(textarea.value).toBe(
+        'The fix works:\n\n\n\n![shot](https://github.com/user-attachments/assets/abc)\n',
+      );
+    });
+  });
+
+  it('uploads a pasted file and reserves position with a placeholder', async () => {
     const onUploadFile = jest.fn(
       async () => '![pasted](https://github.com/user-attachments/assets/def)',
     );
     const { getByPlaceholderText } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        onSubmit={async (body) => ({
-          author: 'HiromiShikata',
-          body,
-          createdAt: '2026-06-19T11:58:00.000Z',
-        })}
+        onSubmit={stubSubmit}
         onUploadFile={onUploadFile}
       />,
     );
@@ -163,24 +218,20 @@ describe('ConsoleCommentComposer', () => {
     fireEvent.paste(textarea, { clipboardData: { files: [file] } });
     await waitFor(() => {
       expect(textarea.value).toBe(
-        '![pasted](https://github.com/user-attachments/assets/def)\n',
+        '\n\n\n![pasted](https://github.com/user-attachments/assets/def)\n',
       );
     });
     expect(onUploadFile).toHaveBeenCalledWith(file);
   });
 
-  it('uploads a dropped file', async () => {
+  it('uploads a dropped file and reserves position with a placeholder', async () => {
     const onUploadFile = jest.fn(
       async () => '![dropped](https://github.com/user-attachments/assets/ghi)',
     );
     const { getByPlaceholderText } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        onSubmit={async (body) => ({
-          author: 'HiromiShikata',
-          body,
-          createdAt: '2026-06-19T11:58:00.000Z',
-        })}
+        onSubmit={stubSubmit}
         onUploadFile={onUploadFile}
       />,
     );
@@ -191,7 +242,7 @@ describe('ConsoleCommentComposer', () => {
     fireEvent.drop(textarea, { dataTransfer: { files: [file] } });
     await waitFor(() => {
       expect(textarea.value).toBe(
-        '![dropped](https://github.com/user-attachments/assets/ghi)\n',
+        '\n\n\n![dropped](https://github.com/user-attachments/assets/ghi)\n',
       );
     });
     expect(onUploadFile).toHaveBeenCalledWith(file);
@@ -201,11 +252,7 @@ describe('ConsoleCommentComposer', () => {
     const { getByLabelText, findByRole } = render(
       <ConsoleCommentComposer
         initiallyOpen
-        onSubmit={async (body) => ({
-          author: 'HiromiShikata',
-          body,
-          createdAt: '2026-06-19T11:58:00.000Z',
-        })}
+        onSubmit={stubSubmit}
         onUploadFile={async () => {
           throw new Error('No GitHub web session is available');
         }}
@@ -216,6 +263,77 @@ describe('ConsoleCommentComposer', () => {
     });
     const alert = await findByRole('alert');
     expect(alert.textContent).toContain('No GitHub web session is available');
+  });
+});
+
+describe('insertUploadPlaceholder', () => {
+  it('writes the placeholder with three empty lines when the draft is empty', () => {
+    expect(insertUploadPlaceholder('', 'shot.png')).toBe(
+      '\n\n\n![uploading shot.png]()\n',
+    );
+  });
+
+  it('normalizes the draft to end with one newline then adds three empty lines before the placeholder', () => {
+    expect(insertUploadPlaceholder('See the screen:', 'shot.png')).toBe(
+      'See the screen:\n\n\n\n![uploading shot.png]()\n',
+    );
+  });
+
+  it('does not double the trailing newline when the draft already ends with one', () => {
+    expect(insertUploadPlaceholder('See the screen:\n', 'shot.png')).toBe(
+      'See the screen:\n\n\n\n![uploading shot.png]()\n',
+    );
+  });
+
+  it('strips multiple trailing newlines before normalizing', () => {
+    expect(insertUploadPlaceholder('See the screen:\n\n', 'shot.png')).toBe(
+      'See the screen:\n\n\n\n![uploading shot.png]()\n',
+    );
+  });
+});
+
+describe('replacePlaceholderWithMarkdown', () => {
+  it('replaces the placeholder line with the returned markdown', () => {
+    const draft = 'See the screen:\n\n\n\n![uploading shot.png]()\n';
+    expect(
+      replacePlaceholderWithMarkdown(
+        draft,
+        'shot.png',
+        '![shot](https://github.com/user-attachments/assets/abc)',
+      ),
+    ).toBe(
+      'See the screen:\n\n\n\n![shot](https://github.com/user-attachments/assets/abc)\n',
+    );
+  });
+
+  it('replaces only the first occurrence when two uploads share the same file name', () => {
+    const draft =
+      'text\n\n\n\n![uploading file.png]()\n\n\n\n![uploading file.png]()\n';
+    expect(
+      replacePlaceholderWithMarkdown(draft, 'file.png', '![img](url)'),
+    ).toBe('text\n\n\n\n![img](url)\n\n\n\n![uploading file.png]()\n');
+  });
+
+  it('falls back to appending when the placeholder is absent', () => {
+    expect(
+      replacePlaceholderWithMarkdown('text\n', 'shot.png', '![shot](url)'),
+    ).toBe('text\n![shot](url)\n');
+  });
+});
+
+describe('removePlaceholder', () => {
+  it('removes the placeholder and the three empty lines added with it', () => {
+    const draft = 'See the screen:\n\n\n\n![uploading shot.png]()\n';
+    expect(removePlaceholder(draft, 'shot.png')).toBe('See the screen:\n');
+  });
+
+  it('leaves the draft empty when the placeholder was inserted into an empty draft', () => {
+    const draft = '\n\n\n![uploading shot.png]()\n';
+    expect(removePlaceholder(draft, 'shot.png')).toBe('');
+  });
+
+  it('returns the draft unchanged when the placeholder is absent', () => {
+    expect(removePlaceholder('text\n', 'shot.png')).toBe('text\n');
   });
 });
 
