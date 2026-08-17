@@ -1,3 +1,10 @@
+# [1.160.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.159.0...v1.160.0) (2026-08-17)
+
+
+### Features
+
+* **console-composer:** reserve image position at upload start with placeholder ([#1608](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1608)) ([40064c6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/40064c68efb66979d2ee7b85cf01e409eff40414)), closes [#1605](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1605)
+
 # [1.159.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.158.0...v1.159.0) (2026-08-16)
 
 
