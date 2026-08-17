@@ -209,6 +209,71 @@ describe('ConsoleItemDetail', () => {
     expect(getByRole('button', { name: 'Copy URL' })).toBeInTheDocument();
   });
 
+  it('puts the type mark, title text and number in the title line and moves the status chip, story tag and CI state to the row below the title for a pull request item', () => {
+    const { getByText, container } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        overlayStatus={{ name: 'Awaiting Workspace', color: 'BLUE' }}
+        pullRequestStatus={{
+          found: true,
+          isConflicted: false,
+          mergeableStatus: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    const subline = container.querySelector('.console-detail-topline');
+    if (title === null || subline === null) {
+      throw new Error('title and subline must both render');
+    }
+    expect(title.contains(getByText('Awaiting Workspace'))).toBe(false);
+    expect(title.contains(getByText('TDPM Console port'))).toBe(false);
+    expect(title.contains(getByText('CI passing'))).toBe(false);
+    expect(
+      title.compareDocumentPosition(subline) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(subline.contains(getByText('Awaiting Workspace'))).toBe(true);
+    expect(subline.contains(getByText('TDPM Console port'))).toBe(true);
+    expect(subline.contains(getByText('CI passing'))).toBe(true);
+  });
+
+  it('puts CI badges, related pull request groups and conflict chips in the row below the title for a task item with related pull requests', () => {
+    const { container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{ state: 'open', merged: false, isPullRequest: false, title: '' }}
+        relatedPullRequests={consoleRelatedPullRequestsFixture.map(
+          (pullRequest) => ({
+            pullRequest,
+            files: [],
+            filesAreLoading: false,
+            filesError: null,
+            commits: [],
+            commitsAreLoading: false,
+            commitsError: null,
+          }),
+        )}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    const subline = container.querySelector('.console-detail-topline');
+    if (title === null || subline === null) {
+      throw new Error('title and subline must both render');
+    }
+    expect(
+      title.compareDocumentPosition(subline) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      within(subline as HTMLElement).getByText('No conflict'),
+    ).toBeInTheDocument();
+  });
+
   it('renders the overlay status chip when set', () => {
     const { getByText } = render(
       <ConsoleItemDetail
