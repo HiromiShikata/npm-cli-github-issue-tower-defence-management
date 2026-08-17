@@ -1,6 +1,7 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
+import { AgentHeartbeatRepository } from './adapter-interfaces/AgentHeartbeatRepository';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import {
@@ -21,8 +22,9 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
     >,
     readonly tmuxSessionRepository: Pick<
       TmuxSessionRepository,
-      'listLiveSessionsWithActivity' | 'listInteractiveProcessCommandLines'
+      'listLiveSessionNames' | 'listInteractiveProcessCommandLines'
     >,
+    readonly agentHeartbeatRepository: AgentHeartbeatRepository,
   ) {}
 
   run = async (params: {
@@ -58,21 +60,12 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
       return;
     }
 
-    const liveSessionsWithActivity =
-      await this.tmuxSessionRepository.listLiveSessionsWithActivity();
     const liveSessionNames = new Set(
-      liveSessionsWithActivity.map((s) => s.sessionName),
+      await this.tmuxSessionRepository.listLiveSessionNames(),
     );
     const processCommandLines =
       await this.tmuxSessionRepository.listInteractiveProcessCommandLines();
     const nowSeconds = Math.floor(params.now.getTime() / 1000);
-
-    const issueSessionNames = new Set(
-      inTmuxByAgentIssues.map((issue) => toTmuxSessionName(issue.url)),
-    );
-    const mostRecentWorkspaceSessionActivity = liveSessionsWithActivity
-      .filter((s) => !issueSessionNames.has(s.sessionName))
-      .reduce((max, s) => Math.max(max, s.activityEpochSeconds), 0);
 
     for (const issue of inTmuxByAgentIssues) {
       const sessionName = toTmuxSessionName(issue.url);
@@ -82,9 +75,13 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
       if (processCommandLines.some((cmd) => cmd.includes(issue.url))) {
         continue;
       }
+      const heartbeatSeconds =
+        await this.agentHeartbeatRepository.readHeartbeatEpochSeconds(
+          issue.url,
+        );
       if (
-        mostRecentWorkspaceSessionActivity >=
-        nowSeconds - params.minOrphanAgeSeconds
+        heartbeatSeconds !== null &&
+        heartbeatSeconds >= nowSeconds - params.minOrphanAgeSeconds
       ) {
         continue;
       }

@@ -2,6 +2,7 @@ import { RevertOrphanedInTmuxByAgentIssueUseCase } from './RevertOrphanedInTmuxB
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
+import { AgentHeartbeatRepository } from './adapter-interfaces/AgentHeartbeatRepository';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { toTmuxSessionName } from './intmux/InTmuxByHumanSessionReconcileUseCase';
@@ -86,9 +87,10 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
   let mockTmuxSessionRepository: Mocked<
     Pick<
       TmuxSessionRepository,
-      'listLiveSessionsWithActivity' | 'listInteractiveProcessCommandLines'
+      'listLiveSessionNames' | 'listInteractiveProcessCommandLines'
     >
   >;
+  let mockAgentHeartbeatRepository: Mocked<AgentHeartbeatRepository>;
   let mockProject: Project;
 
   beforeEach(() => {
@@ -107,14 +109,19 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       get: jest.fn(),
     };
     mockTmuxSessionRepository = {
-      listLiveSessionsWithActivity: jest.fn().mockResolvedValue([]),
+      listLiveSessionNames: jest.fn().mockResolvedValue([]),
       listInteractiveProcessCommandLines: jest.fn().mockResolvedValue([]),
+    };
+    mockAgentHeartbeatRepository = {
+      readHeartbeatEpochSeconds: jest.fn().mockResolvedValue(null),
+      writeHeartbeat: jest.fn().mockResolvedValue(undefined),
     };
 
     useCase = new RevertOrphanedInTmuxByAgentIssueUseCase(
       mockProjectRepository,
       mockIssueRepository,
       mockTmuxSessionRepository,
+      mockAgentHeartbeatRepository,
     );
   });
 
@@ -138,9 +145,7 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       ...issue,
       status: IN_TMUX_BY_AGENT_STATUS_NAME,
     });
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue(
-      [],
-    );
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
     mockTmuxSessionRepository.listInteractiveProcessCommandLines.mockResolvedValue(
       [],
     );
@@ -165,8 +170,8 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       cacheUsed: false,
     });
     const liveSessionName = toTmuxSessionName(issue.url);
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue([
-      { sessionName: liveSessionName, activityEpochSeconds: NOW_SECONDS - 10 },
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      liveSessionName,
     ]);
 
     await useCase.run(params);
@@ -183,9 +188,7 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       project: mockProject,
       cacheUsed: false,
     });
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue(
-      [],
-    );
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
 
     await useCase.run(params);
 
@@ -206,9 +209,7 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       ...issue,
       status: 'Awaiting Workspace',
     });
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue(
-      [],
-    );
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
 
     await useCase.run(params);
 
@@ -239,11 +240,8 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       }
       return null;
     });
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue([
-      {
-        sessionName: toTmuxSessionName(activeIssue.url),
-        activityEpochSeconds: NOW_SECONDS - 10,
-      },
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      toTmuxSessionName(activeIssue.url),
     ]);
 
     await useCase.run(params);
@@ -266,7 +264,7 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
     await useCase.run(params);
 
     expect(
-      mockTmuxSessionRepository.listLiveSessionsWithActivity,
+      mockTmuxSessionRepository.listLiveSessionNames,
     ).not.toHaveBeenCalled();
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
   });
@@ -290,9 +288,7 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       project: projectWithoutAwaitingWorkspace,
       cacheUsed: false,
     });
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue(
-      [],
-    );
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
 
     await useCase.run(params);
 
@@ -324,9 +320,7 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       cacheUsed: false,
     });
     mockIssueRepository.get.mockRejectedValue(new Error('network error'));
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue(
-      [],
-    );
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
 
     await useCase.run(params);
 
@@ -344,16 +338,14 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       cacheUsed: false,
     });
     mockIssueRepository.get.mockResolvedValue(null);
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue(
-      [],
-    );
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
 
     await useCase.run(params);
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('reverts an issue worked from a workspace session not named after the issue URL (confirming bug without fix)', async () => {
+  it('reverts an issue worked from a workspace session with no heartbeat', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/300',
       status: IN_TMUX_BY_AGENT_STATUS_NAME,
@@ -367,11 +359,14 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       ...issue,
       status: IN_TMUX_BY_AGENT_STATUS_NAME,
     });
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue([
-      { sessionName: 'tdpm-cli', activityEpochSeconds: NOW_SECONDS - 600 },
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      'tdpm-cli',
     ]);
     mockTmuxSessionRepository.listInteractiveProcessCommandLines.mockResolvedValue(
       [],
+    );
+    mockAgentHeartbeatRepository.readHeartbeatEpochSeconds.mockResolvedValue(
+      null,
     );
 
     await useCase.run(params);
@@ -393,8 +388,8 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       project: mockProject,
       cacheUsed: false,
     });
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue([
-      { sessionName: 'tdpm-cli', activityEpochSeconds: NOW_SECONDS - 600 },
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      'tdpm-cli',
     ]);
     mockTmuxSessionRepository.listInteractiveProcessCommandLines.mockResolvedValue(
       [`claude https://github.com/user/repo/issues/301`, 'bash -l'],
@@ -405,7 +400,7 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('does not revert when any live session was active within the orphan age threshold', async () => {
+  it('does not revert when a fresh heartbeat exists for the issue', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/302',
       status: IN_TMUX_BY_AGENT_STATUS_NAME,
@@ -415,14 +410,14 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       project: mockProject,
       cacheUsed: false,
     });
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue([
-      {
-        sessionName: 'tdpm-cli',
-        activityEpochSeconds: NOW_SECONDS - MIN_ORPHAN_AGE_SECONDS + 30,
-      },
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      'tdpm-cli',
     ]);
     mockTmuxSessionRepository.listInteractiveProcessCommandLines.mockResolvedValue(
       [],
+    );
+    mockAgentHeartbeatRepository.readHeartbeatEpochSeconds.mockResolvedValue(
+      NOW_SECONDS - MIN_ORPHAN_AGE_SECONDS + 30,
     );
 
     await useCase.run(params);
@@ -430,7 +425,7 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('reverts when all live sessions have been idle beyond the orphan age threshold', async () => {
+  it('reverts when the heartbeat for the issue is stale', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/303',
       status: IN_TMUX_BY_AGENT_STATUS_NAME,
@@ -444,14 +439,14 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       ...issue,
       status: IN_TMUX_BY_AGENT_STATUS_NAME,
     });
-    mockTmuxSessionRepository.listLiveSessionsWithActivity.mockResolvedValue([
-      {
-        sessionName: 'tdpm-cli',
-        activityEpochSeconds: NOW_SECONDS - MIN_ORPHAN_AGE_SECONDS - 60,
-      },
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      'tdpm-cli',
     ]);
     mockTmuxSessionRepository.listInteractiveProcessCommandLines.mockResolvedValue(
       [],
+    );
+    mockAgentHeartbeatRepository.readHeartbeatEpochSeconds.mockResolvedValue(
+      NOW_SECONDS - MIN_ORPHAN_AGE_SECONDS - 60,
     );
 
     await useCase.run(params);

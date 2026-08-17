@@ -70,6 +70,7 @@ import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimit
 import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { RevertOrphanedInTmuxByAgentIssueUseCase } from '../../../domain/usecases/RevertOrphanedInTmuxByAgentIssueUseCase';
+import { FileSystemAgentHeartbeatRepository } from '../../repositories/FileSystemAgentHeartbeatRepository';
 import { RevertNotReadyReviewQueueIssueUseCase } from '../../../domain/usecases/RevertNotReadyReviewQueueIssueUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { ProjectRequiredFieldCreateUseCase } from '../../../domain/usecases/ProjectRequiredFieldCreateUseCase';
@@ -495,6 +496,7 @@ export class HandleScheduledEventUseCaseHandler {
         projectRepository,
         issueRepository,
         new NodeTmuxSessionRepository(nodeLocalCommandRunner),
+        new FileSystemAgentHeartbeatRepository(),
       );
     const revertNotReadyReviewQueueIssueUseCase =
       new RevertNotReadyReviewQueueIssueUseCase(
