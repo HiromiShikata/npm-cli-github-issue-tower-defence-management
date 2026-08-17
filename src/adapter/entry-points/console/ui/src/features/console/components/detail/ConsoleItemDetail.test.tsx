@@ -242,6 +242,58 @@ describe('ConsoleItemDetail', () => {
     expect(subline.contains(getByText('CI passing'))).toBe(true);
   });
 
+  it('title line contains exactly the type mark then title text then number and no other children for a pull request item', () => {
+    const { container } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        overlayStatus={{ name: 'Awaiting Workspace', color: 'BLUE' }}
+        pullRequestStatus={{
+          found: true,
+          isConflicted: false,
+          mergeableStatus: 'MERGEABLE',
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    if (title === null) {
+      throw new Error('title must render');
+    }
+    expect(title.childElementCount).toBe(3);
+    expect(title.children[0]).toHaveClass('console-item-icon');
+    expect(title.children[1]).toHaveClass('console-detail-title-text');
+    expect(title.children[2]).toHaveClass('console-detail-number');
+    expect(title.children[2]).toHaveTextContent(`PR #${prItem.number}`);
+  });
+
+  it('title line contains exactly the type mark then title text then number and no other children for a closed task item', () => {
+    const { container } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        state={{
+          state: 'closed',
+          merged: false,
+          isPullRequest: false,
+          title: '',
+        }}
+      />,
+    );
+    const title = container.querySelector('.console-detail-title');
+    if (title === null) {
+      throw new Error('title must render');
+    }
+    expect(title.childElementCount).toBe(3);
+    expect(title.children[0]).toHaveClass('console-item-icon');
+    expect(title.children[1]).toHaveClass('console-detail-title-text');
+    expect(title.children[2]).toHaveClass('console-detail-number');
+    expect(title.children[2]).toHaveTextContent(`#${issueItem.number}`);
+  });
+
   it('puts CI badges, related pull request groups and conflict chips in the row below the title for a task item with related pull requests', () => {
     const { container } = render(
       <ConsoleItemDetail
