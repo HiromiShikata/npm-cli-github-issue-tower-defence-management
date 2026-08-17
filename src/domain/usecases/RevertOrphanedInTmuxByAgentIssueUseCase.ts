@@ -70,9 +70,17 @@ export class RevertOrphanedInTmuxByAgentIssueUseCase {
     for (const issue of inTmuxByAgentIssues) {
       const sessionName = toTmuxSessionName(issue.url);
       if (liveSessionNames.has(sessionName)) {
+        await this.agentHeartbeatRepository.writeHeartbeat(
+          issue.url,
+          nowSeconds,
+        );
         continue;
       }
       if (processCommandLines.some((cmd) => cmd.includes(issue.url))) {
+        await this.agentHeartbeatRepository.writeHeartbeat(
+          issue.url,
+          nowSeconds,
+        );
         continue;
       }
       const heartbeatSeconds =

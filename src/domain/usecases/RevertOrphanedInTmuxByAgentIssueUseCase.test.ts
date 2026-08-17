@@ -177,6 +177,37 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
     await useCase.run(params);
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockAgentHeartbeatRepository.writeHeartbeat).toHaveBeenCalledWith(
+      issue.url,
+      NOW_SECONDS,
+    );
+  });
+
+  it('does not revert an issue with a live named session even when its previous heartbeat is stale', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/99',
+      status: IN_TMUX_BY_AGENT_STATUS_NAME,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      issues: [issue],
+      project: mockProject,
+      cacheUsed: false,
+    });
+    const liveSessionName = toTmuxSessionName(issue.url);
+    mockTmuxSessionRepository.listLiveSessionNames.mockResolvedValue([
+      liveSessionName,
+    ]);
+    mockAgentHeartbeatRepository.readHeartbeatEpochSeconds.mockResolvedValue(
+      NOW_SECONDS - MIN_ORPHAN_AGE_SECONDS - 600,
+    );
+
+    await useCase.run(params);
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockAgentHeartbeatRepository.writeHeartbeat).toHaveBeenCalledWith(
+      issue.url,
+      NOW_SECONDS,
+    );
   });
 
   it('does not revert an issue whose status is not In Tmux by agent', async () => {
@@ -252,6 +283,13 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
       orphanedIssue,
       AWAITING_WORKSPACE_STATUS_ID,
     );
+    expect(mockAgentHeartbeatRepository.writeHeartbeat).toHaveBeenCalledWith(
+      activeIssue.url,
+      NOW_SECONDS,
+    );
+    expect(
+      mockAgentHeartbeatRepository.writeHeartbeat,
+    ).not.toHaveBeenCalledWith(orphanedIssue.url, expect.anything());
   });
 
   it('does nothing when there are no In Tmux by agent issues', async () => {
@@ -398,6 +436,10 @@ describe('RevertOrphanedInTmuxByAgentIssueUseCase', () => {
     await useCase.run(params);
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockAgentHeartbeatRepository.writeHeartbeat).toHaveBeenCalledWith(
+      issue.url,
+      NOW_SECONDS,
+    );
   });
 
   it('does not revert when a fresh heartbeat exists for the issue', async () => {
