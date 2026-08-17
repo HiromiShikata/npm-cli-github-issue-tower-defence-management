@@ -30,6 +30,47 @@ export const appendAttachmentMarkdown = (
   return `${draft}\n${markdown}\n`;
 };
 
+export const insertUploadPlaceholder = (
+  draft: string,
+  fileName: string,
+): string => {
+  const placeholder = `![uploading ${fileName}]()`;
+  const prefix = draft.length === 0 ? '' : draft.replace(/\n*$/, '\n');
+  return `${prefix}\n\n\n${placeholder}\n`;
+};
+
+export const replacePlaceholderWithMarkdown = (
+  draft: string,
+  fileName: string,
+  markdown: string,
+): string => {
+  const placeholder = `![uploading ${fileName}]()`;
+  const index = draft.indexOf(placeholder);
+  if (index === -1) {
+    return appendAttachmentMarkdown(draft, markdown);
+  }
+  return (
+    draft.slice(0, index) + markdown + draft.slice(index + placeholder.length)
+  );
+};
+
+export const removePlaceholder = (draft: string, fileName: string): string => {
+  const placeholder = `![uploading ${fileName}]()`;
+  const index = draft.indexOf(placeholder);
+  if (index === -1) {
+    return draft;
+  }
+  let start = index;
+  let newlinesRemoved = 0;
+  while (newlinesRemoved < 3 && start > 0 && draft[start - 1] === '\n') {
+    start--;
+    newlinesRemoved++;
+  }
+  const trailingNewline = draft[index + placeholder.length] === '\n' ? 1 : 0;
+  const end = index + placeholder.length + trailingNewline;
+  return draft.slice(0, start) + draft.slice(end);
+};
+
 export const ConsoleCommentComposer = ({
   initiallyOpen,
   onSubmit,
@@ -66,12 +107,16 @@ export const ConsoleCommentComposer = ({
       return;
     }
     for (const file of files) {
+      setDraft((previous) => insertUploadPlaceholder(previous, file.name));
       setUploadStatus({ kind: 'uploading', fileName: file.name });
       try {
         const markdown = await onUploadFile(file);
-        setDraft((previous) => appendAttachmentMarkdown(previous, markdown));
+        setDraft((previous) =>
+          replacePlaceholderWithMarkdown(previous, file.name, markdown),
+        );
         setUploadStatus({ kind: 'idle' });
       } catch (error) {
+        setDraft((previous) => removePlaceholder(previous, file.name));
         setUploadStatus({
           kind: 'error',
           message:
