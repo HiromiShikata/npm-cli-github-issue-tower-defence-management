@@ -1,6 +1,80 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { colorFromEnum } from '../../logic/colors';
 import type { ConsoleStoryEntry } from '../../logic/types';
+
+type StoryCreateFormProps = {
+  storyOptionId: string;
+  onSubmit: (storyOptionId: string, title: string) => Promise<void>;
+  onCancel: () => void;
+};
+
+const StoryCreateForm = ({
+  storyOptionId,
+  onSubmit,
+  onCancel,
+}: StoryCreateFormProps) => {
+  const [titleInput, setTitleInput] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleSubmit = async (): Promise<void> => {
+    const trimmed = titleInput.trim();
+    if (trimmed.length === 0) {
+      setSubmitError('Title is required');
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onSubmit(storyOptionId, trimmed);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form
+      className="console-story-create-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void handleSubmit();
+      }}
+    >
+      <input
+        ref={inputRef}
+        type="text"
+        className="console-story-create-input"
+        placeholder="Issue title"
+        value={titleInput}
+        onChange={(e) => setTitleInput(e.target.value)}
+        disabled={submitting}
+      />
+      <button type="submit" className="console-op-button" disabled={submitting}>
+        {submitting ? 'Creating…' : 'Create'}
+      </button>
+      <button
+        type="button"
+        className="console-op-button"
+        onClick={onCancel}
+        disabled={submitting}
+      >
+        Cancel
+      </button>
+      {submitError !== null && (
+        <p role="alert" className="console-list-error">
+          {submitError}
+        </p>
+      )}
+    </form>
+  );
+};
 
 export type ConsoleStoryListProps = {
   stories: ConsoleStoryEntry[];
@@ -16,9 +90,6 @@ export const ConsoleStoryList = ({
   onCreateIssue,
 }: ConsoleStoryListProps) => {
   const [expandedOptionId, setExpandedOptionId] = useState<string | null>(null);
-  const [titleInput, setTitleInput] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (error !== null) {
     return (
@@ -37,34 +108,17 @@ export const ConsoleStoryList = ({
   }
 
   const handleAddClick = (storyOptionId: string): void => {
-    if (expandedOptionId === storyOptionId) {
-      setExpandedOptionId(null);
-      setTitleInput('');
-      setSubmitError(null);
-    } else {
-      setExpandedOptionId(storyOptionId);
-      setTitleInput('');
-      setSubmitError(null);
-    }
+    setExpandedOptionId(
+      expandedOptionId === storyOptionId ? null : storyOptionId,
+    );
   };
 
-  const handleSubmit = async (storyOptionId: string): Promise<void> => {
-    const trimmed = titleInput.trim();
-    if (trimmed.length === 0) {
-      setSubmitError('Title is required');
-      return;
-    }
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      await onCreateIssue(storyOptionId, trimmed);
-      setExpandedOptionId(null);
-      setTitleInput('');
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
-    }
+  const handleSubmit = async (
+    storyOptionId: string,
+    title: string,
+  ): Promise<void> => {
+    await onCreateIssue(storyOptionId, title);
+    setExpandedOptionId(null);
   };
 
   return (
@@ -95,47 +149,11 @@ export const ConsoleStoryList = ({
               </button>
             </div>
             {isExpanded && (
-              <form
-                className="console-story-create-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void handleSubmit(entry.storyOptionId);
-                }}
-              >
-                <input
-                  type="text"
-                  className="console-story-create-input"
-                  placeholder="Issue title"
-                  value={titleInput}
-                  onChange={(e) => setTitleInput(e.target.value)}
-                  disabled={submitting}
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  className="console-op-button"
-                  disabled={submitting}
-                >
-                  {submitting ? 'Creating…' : 'Create'}
-                </button>
-                <button
-                  type="button"
-                  className="console-op-button"
-                  onClick={() => {
-                    setExpandedOptionId(null);
-                    setTitleInput('');
-                    setSubmitError(null);
-                  }}
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-                {submitError !== null && (
-                  <p role="alert" className="console-list-error">
-                    {submitError}
-                  </p>
-                )}
-              </form>
+              <StoryCreateForm
+                storyOptionId={entry.storyOptionId}
+                onSubmit={handleSubmit}
+                onCancel={() => setExpandedOptionId(null)}
+              />
             )}
           </li>
         );

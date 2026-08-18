@@ -15,6 +15,7 @@ import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
 import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
+import { postConsoleCreateIssue } from '../lib/consoleApi';
 import {
   actionAdvances,
   actionToastColor,
@@ -41,7 +42,6 @@ import type {
   ConsoleTabName,
 } from '../logic/types';
 import { CONSOLE_TABS } from '../logic/types';
-import { postConsoleCreateIssue } from '../lib/consoleApi';
 import {
   ConsoleItemDetailContainer,
   type ConsoleQueueActionInput,
@@ -230,7 +230,7 @@ export const ConsolePage = () => {
 
   const detailScreenRef = useConsoleSwipeNavigation(handleSwipe);
 
-  const storiesSnapshot = snapshots['stories'];
+  const storiesSnapshot = snapshots.stories;
   const storyEntries = storiesSnapshot?.stories ?? [];
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
 

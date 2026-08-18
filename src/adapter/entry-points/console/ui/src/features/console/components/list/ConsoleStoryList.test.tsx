@@ -114,15 +114,19 @@ describe('ConsoleStoryList', () => {
 
   it('closes the form and clears the input after a successful create', async () => {
     const onCreateIssue = jest.fn().mockResolvedValue(undefined);
-    const { getAllByRole, getByPlaceholderText, getByRole, queryByPlaceholderText } =
-      render(
-        <ConsoleStoryList
-          stories={storyEntries}
-          isLoading={false}
-          error={null}
-          onCreateIssue={onCreateIssue}
-        />,
-      );
+    const {
+      getAllByRole,
+      getByPlaceholderText,
+      getByRole,
+      queryByPlaceholderText,
+    } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        onCreateIssue={onCreateIssue}
+      />,
+    );
     fireEvent.click(getAllByRole('button', { name: 'Add task' })[0]);
     fireEvent.change(getByPlaceholderText('Issue title'), {
       target: { value: 'My task' },
