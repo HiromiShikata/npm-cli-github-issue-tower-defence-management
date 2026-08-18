@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
+import {
+  type ConsoleOfflinePendingActionItem,
+  ConsoleOfflinePendingActionsPanel,
+} from '../components/operations/ConsoleOfflinePendingActionsPanel';
 import {
   ConsoleErrorToast,
   ConsoleUndoToast,
@@ -37,6 +41,7 @@ import {
 import type { ConsoleSwipeDirection } from '../logic/swipe';
 import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
 import type {
+  ConsoleIssueState,
   ConsoleListItem,
   ConsoleOverlayStatus,
   ConsoleTabName,
@@ -97,6 +102,72 @@ export const ConsolePage = () => {
   );
   const actionQueue = useConsoleActionQueue();
   const now = Date.now();
+
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const handleOnline = (): void => setIsOnline(true);
+    const handleOffline = (): void => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const [offlineItemStates, setOfflineItemStates] = useState<
+    Map<string, ConsoleIssueState | null>
+  >(new Map());
+
+  useEffect(() => {
+    if (!isOnline || actionQueue.offlineActions.length === 0) return;
+    for (const action of actionQueue.offlineActions) {
+      if (offlineItemStates.has(action.id)) continue;
+      setOfflineItemStates((prev) => new Map(prev).set(action.id, null));
+      caches.client
+        .fetchIssueState(action.itemUrl)
+        .then((state) => {
+          setOfflineItemStates((prev) => new Map(prev).set(action.id, state));
+        })
+        .catch(() => {});
+    }
+  }, [isOnline, actionQueue.offlineActions, caches.client, offlineItemStates]);
+
+  const [isConfirmingOffline, setIsConfirmingOffline] = useState(false);
+
+  const handleConfirmOffline = useCallback(
+    async (id: string): Promise<void> => {
+      setIsConfirmingOffline(true);
+      try {
+        await actionQueue.confirmOfflineAction(id);
+      } finally {
+        setIsConfirmingOffline(false);
+      }
+    },
+    [actionQueue],
+  );
+
+  const offlinePanelActions = useMemo(
+    (): ConsoleOfflinePendingActionItem[] =>
+      actionQueue.offlineActions.map((a) => {
+        const state = offlineItemStates.get(a.id) ?? null;
+        return {
+          id: a.id,
+          message: a.message,
+          color: a.color,
+          itemNumber: a.itemNumber,
+          isPr: a.isPr,
+          currentTitle: state?.title ?? null,
+          currentState:
+            state === null
+              ? null
+              : state.merged
+                ? 'closed'
+                : (state.state as 'open' | 'closed'),
+        };
+      }),
+    [actionQueue.offlineActions, offlineItemStates],
+  );
 
   const activeSnapshot = snapshots[activeTab];
   const pendingItems = useMemo(() => {
@@ -272,6 +343,13 @@ export const ConsolePage = () => {
           onDismiss={actionQueue.dismissError}
         />
       )}
+      <ConsoleOfflinePendingActionsPanel
+        actions={offlinePanelActions}
+        isOnline={isOnline}
+        isConfirming={isConfirmingOffline}
+        onConfirm={handleConfirmOffline}
+        onDiscard={actionQueue.discardOfflineAction}
+      />
       <ConsoleTabList
         activeTab={activeTab}
         counts={counts}
@@ -306,6 +384,7 @@ export const ConsolePage = () => {
             item={selectedItem}
             caches={caches}
             operations={operations}
+            pjcode={pjcode}
             statusOptions={statusOptions}
             storyOptions={storyOptions}
             storyColors={storyColors}
