@@ -184,8 +184,7 @@ export class GenerateConsoleListsUseCase {
       'in-tmux-by-agent': buildStatusTabFromSource(
         issues.filter(
           (issue) =>
-            issue.isClosed === false &&
-            issue.assignees.includes(assigneeLogin),
+            issue.isClosed === false && issue.assignees.includes(assigneeLogin),
         ),
         (issue) =>
           issue.status?.toLowerCase() ===

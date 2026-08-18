@@ -499,7 +499,9 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ status: 'Unread' }),
       ]);
       expect(result['in-tmux-by-agent'].items).toHaveLength(1);
-      expect(result['in-tmux-by-agent'].items[0].status).toBe('In Tmux by agent');
+      expect(result['in-tmux-by-agent'].items[0].status).toBe(
+        'In Tmux by agent',
+      );
     });
 
     it('matches In Tmux by agent case-insensitively', () => {
@@ -543,7 +545,9 @@ describe('GenerateConsoleListsUseCase', () => {
     });
 
     it('excludes in tmux by agent and done from status options', () => {
-      const names = run([])['in-tmux-by-agent'].statusOptions.map((o) => o.name);
+      const names = run([])['in-tmux-by-agent'].statusOptions.map(
+        (o) => o.name,
+      );
       expect(names).not.toContain('In Tmux by agent');
       expect(names).not.toContain('Done');
       expect(names).toContain('Awaiting Workspace');
