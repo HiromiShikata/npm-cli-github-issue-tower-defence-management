@@ -219,8 +219,7 @@ export class RevertOrphanedPreparationUseCase {
     }
     let comments: Comment[];
     try {
-      comments =
-        await this.issueCommentRepository.getCommentsFromIssue(issue);
+      comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
     } catch (error) {
       console.error(
         `Failed to fetch comments for orphaned preparation issue ${issue.url}, reverting to Awaiting Workspace:`,
