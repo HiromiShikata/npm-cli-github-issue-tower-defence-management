@@ -327,7 +327,9 @@ export const handleReview = async (
     const issueRepository = context.resolveIssueRepository(prUrl);
     const prStatus = await issueRepository.getOpenPullRequest(prUrl);
     if (prStatus === null) {
-      return badRequest('Cannot merge: pull request not found or already closed');
+      return badRequest(
+        'Cannot merge: pull request not found or already closed',
+      );
     }
     if (prStatus.isConflicted) {
       return badRequest('Cannot merge: pull request has a merge conflict');
