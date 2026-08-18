@@ -42,6 +42,7 @@ module.exports = {
       displayName: 'console-ui',
       rootDir: consoleUiRoot,
       testEnvironment: 'jsdom',
+      setupFiles: ['<rootDir>/jest-globals.cjs'],
       setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
       transform: {
         '^.+\\.(ts|tsx)$': [

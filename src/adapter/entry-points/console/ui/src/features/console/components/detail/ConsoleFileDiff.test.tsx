@@ -40,6 +40,16 @@ describe('ConsoleFileDiff', () => {
     expect(queryByText('(no diff / binary or too large)')).toBeNull();
   });
 
+  it('renders an image directly from a data URL without the proxy when rawUrl is a data URI', () => {
+    const dataUrl =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const { getByAltText, queryByText } = render(
+      <ConsoleFileDiff patch={null} path="assets/logo.png" rawUrl={dataUrl} />,
+    );
+    expect(getByAltText('assets/logo.png')).toHaveAttribute('src', dataUrl);
+    expect(queryByText('(no diff / binary or too large)')).toBeNull();
+  });
+
   it('keeps the placeholder for a binary file that is not an image', () => {
     const { getByText } = render(
       <ConsoleFileDiff
