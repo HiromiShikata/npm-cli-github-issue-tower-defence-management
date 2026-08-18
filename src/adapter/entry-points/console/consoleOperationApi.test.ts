@@ -1438,8 +1438,18 @@ describe('consoleOperationApi', () => {
         fieldId: 'storyField',
         databaseId: 1,
         stories: [
-          { id: 'opt_blue', name: 'Portal redesign', color: 'BLUE', description: '' },
-          { id: 'opt_green', name: 'Move to Okinawa', color: 'GREEN', description: '' },
+          {
+            id: 'opt_blue',
+            name: 'Portal redesign',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'opt_green',
+            name: 'Move to Okinawa',
+            color: 'GREEN',
+            description: '',
+          },
         ],
         workflowManagementStory: { id: 'wms', name: 'workflow' },
       },
@@ -1511,7 +1521,9 @@ describe('consoleOperationApi', () => {
         nameWithOwner: 'acme-labs/portal',
       });
 
-      expect(resolvedUrls).toContain('https://github.com/acme-labs/portal/issues/0');
+      expect(resolvedUrls).toContain(
+        'https://github.com/acme-labs/portal/issues/0',
+      );
     });
 
     it('skips updateStory when get returns null after addIssueToProject', async () => {
