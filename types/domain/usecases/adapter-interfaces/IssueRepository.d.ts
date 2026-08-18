@@ -108,7 +108,9 @@ export interface IssueRepository {
     getOpenPullRequestCiStatus: (prUrl: string) => Promise<OpenPullRequestCiStatus | null>;
     getOpenPullRequests: (prUrls: string[]) => Promise<Map<string, RelatedPullRequest | null>>;
     getPullRequestChangedFilePaths: (prUrl: string) => Promise<string[]>;
+    getAuthenticatedUserLogin: () => Promise<string>;
     approvePullRequest: (prUrl: string) => Promise<void>;
+    mergePullRequest: (prUrl: string) => Promise<void>;
     requestChangesWithInlineComment: (prUrl: string, changedFilePath: string | null, commentBody: string, inlineCommentLocation?: PullRequestReviewInlineLocation | null) => Promise<void>;
     createPullRequestReviewComment: (prUrl: string, path: string, line: number, side: PullRequestReviewCommentSide, commentBody: string) => Promise<void>;
     closePullRequest: (prUrl: string) => Promise<void>;

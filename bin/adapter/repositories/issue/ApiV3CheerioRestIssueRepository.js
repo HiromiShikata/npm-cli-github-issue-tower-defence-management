@@ -49,6 +49,13 @@ function isCombinedStatusResponse(value) {
         return false;
     return 'statuses' in value && Array.isArray(value.statuses);
 }
+function isAuthenticatedUserResponse(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    if (!('login' in value))
+        return false;
+    return typeof value.login === 'string';
+}
 function isPullRequestMergeabilityResponse(value) {
     if (typeof value !== 'object' || value === null)
         return false;
@@ -1257,6 +1264,24 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             return collectedPaths;
         };
+        this.getAuthenticatedUserLogin = async () => {
+            const response = await this.fetchWithRateLimitRetry(() => fetch('https://api.github.com/user', {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+            }));
+            if (!response.ok) {
+                const reason = await this.formatGitHubErrorWithStatus(response);
+                throw new Error(`Failed to fetch authenticated user: ${reason}`);
+            }
+            const body = await response.json();
+            if (!isAuthenticatedUserResponse(body)) {
+                throw new Error('Unexpected response shape when fetching authenticated user');
+            }
+            return body.login;
+        };
         this.approvePullRequest = async (prUrl) => {
             const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
             const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`, {
@@ -1271,6 +1296,22 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             if (!response.ok) {
                 const reason = await this.formatGitHubErrorWithStatus(response);
                 throw new Error(`Failed to approve PR ${prUrl}: ${reason}`);
+            }
+        };
+        this.mergePullRequest = async (prUrl) => {
+            const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+            const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/merge`, {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    'Content-Type': 'application/json',
+                    Accept: 'application/vnd.github+json',
+                },
+                body: JSON.stringify({}),
+            }));
+            if (!response.ok) {
+                const reason = await this.formatGitHubErrorWithStatus(response);
+                throw new Error(`Failed to merge PR ${prUrl}: ${reason}`);
             }
         };
         this.requestChangesWithInlineComment = async (prUrl, changedFilePath, commentBody, inlineCommentLocation = null) => {

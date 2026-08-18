@@ -1,3 +1,10 @@
+# [1.162.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.161.0...v1.162.0) (2026-08-18)
+
+
+### Features
+
+* **console:** replace Approve with Approve & Merge action ([#1617](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1617)) ([eb5b768](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/eb5b76851d8fd223e6e8e928352433724a01a239)), closes [#1612](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1612)
+
 # [1.161.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.160.0...v1.161.0) (2026-08-18)
 
 

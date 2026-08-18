@@ -185,9 +185,28 @@ const handleReview = async (context, body) => {
         recordDone(context, pjcode, projectItemId);
         return ok();
     }
-    if (action === 'approve') {
-        await context.resolveIssueRepository(prUrl).approvePullRequest(prUrl);
-        const failure = await updateStatusByName(context.resolveIssueRepository(prUrl), project, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
+    if (action === 'approve_and_merge') {
+        const issueRepository = context.resolveIssueRepository(prUrl);
+        const prStatus = await issueRepository.getOpenPullRequest(prUrl);
+        if (prStatus === null) {
+            return badRequest('Cannot merge: pull request not found or already closed');
+        }
+        if (prStatus.isConflicted) {
+            return badRequest('Cannot merge: pull request has a merge conflict');
+        }
+        if (!prStatus.isPassedAllCiJob) {
+            const missing = prStatus.missingRequiredCheckNames;
+            const detail = missing.length > 0 ? `: ${missing.join(', ')}` : '';
+            return badRequest(`Cannot merge: required checks are not green${detail}`);
+        }
+        const prDetail = await issueRepository.getPullRequestDetail(prUrl);
+        const authenticatedUser = await issueRepository.getAuthenticatedUserLogin();
+        const isSelfAuthored = prDetail !== null && prDetail.author === authenticatedUser;
+        if (!isSelfAuthored) {
+            await issueRepository.approvePullRequest(prUrl);
+        }
+        await issueRepository.mergePullRequest(prUrl);
+        const failure = await updateStatusByName(issueRepository, project, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
         if (failure !== null) {
             return failure;
         }
