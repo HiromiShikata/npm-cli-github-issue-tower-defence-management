@@ -26,6 +26,7 @@ const counts: Record<ConsoleTabName, number> = {
   'failed-preparation': 2,
   'todo-by-human': 66,
   'todo-by-agent': 24,
+  stories: 3,
 };
 
 export const AllTabsWithCounts: Story = {
@@ -46,6 +47,7 @@ export const ZeroCountTabsHidden: Story = {
       'failed-preparation': 0,
       'todo-by-human': 0,
       'todo-by-agent': 0,
+      stories: 0,
     },
   },
 };
@@ -61,6 +63,7 @@ export const ZeroCountActiveTabStaysVisible: Story = {
       'failed-preparation': 0,
       'todo-by-human': 0,
       'todo-by-agent': 0,
+      stories: 0,
     },
   },
 };
@@ -76,6 +79,7 @@ export const AfterAutoAdvanceToNextTab: Story = {
       'failed-preparation': 2,
       'todo-by-human': 4,
       'todo-by-agent': 0,
+      stories: 0,
     },
     onSelectTab: () => {},
   },
