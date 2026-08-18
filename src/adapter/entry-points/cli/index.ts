@@ -1233,27 +1233,6 @@ program
     });
   });
 
-program
-  .command('writeAgentHeartbeat')
-  .description(
-    'Write a heartbeat for the given issue URL to signal that an agent is actively working on it. The orphan-revert sweep skips issues whose heartbeat was written within minOrphanAgeSeconds (default 604800, i.e. 7 days) of the sweep time.',
-  )
-  .requiredOption(
-    '--issueUrl <url>',
-    'GitHub issue URL that the calling agent is working on',
-  )
-  .option(
-    '--heartbeatDir <path>',
-    'Directory for heartbeat files (default: /tmp/tdpm-agent-heartbeats)',
-  )
-  .action(async (options: { issueUrl: string; heartbeatDir?: string }) => {
-    const { FileSystemAgentHeartbeatRepository } =
-      await import('../../repositories/FileSystemAgentHeartbeatRepository');
-    const repo = new FileSystemAgentHeartbeatRepository(options.heartbeatDir);
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    await repo.writeHeartbeat(options.issueUrl, nowEpochSeconds);
-  });
-
 export const reportFatalErrorAndExit = (error: unknown): void => {
   console.error(error);
   process.exit(1);

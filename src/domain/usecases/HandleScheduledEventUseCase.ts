@@ -26,7 +26,6 @@ import {
   StartPreparationUseCase,
 } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
-import { RevertOrphanedInTmuxByAgentIssueUseCase } from './RevertOrphanedInTmuxByAgentIssueUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
@@ -135,7 +134,6 @@ export class HandleScheduledEventUseCase {
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
-    readonly revertOrphanedInTmuxByAgentIssueUseCase: RevertOrphanedInTmuxByAgentIssueUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
@@ -179,7 +177,6 @@ export class HandleScheduledEventUseCase {
       labelsAsLlmAgentName?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
-    minOrphanAgeSeconds?: number;
     createTaskFromStoryBodyCheckboxEnabled?: boolean;
     queryToAddProjectEnabled?: boolean;
     queryToAddProject?: string | null;
@@ -332,7 +329,6 @@ export class HandleScheduledEventUseCase {
         targetDateTimes,
         storyIssues,
         runSlowSweep,
-        now,
       );
       rotationOrder = useCaseResult.rotationOrder;
     } catch (e) {
@@ -392,7 +388,6 @@ ${JSON.stringify(e)}
     targetDateTimes: Date[],
     storyObjectMap: StoryObjectMap,
     runSlowSweep: boolean,
-    now: Date,
   ): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     if (runSlowSweep) {
       await this.runSlowSweepUseCases(
@@ -436,11 +431,6 @@ ${JSON.stringify(e)}
         dailySecurityScan: input.dailySecurityScan,
       });
     }
-    await this.revertOrphanedInTmuxByAgentIssueUseCase.run({
-      projectUrl: input.projectUrl,
-      now,
-      minOrphanAgeSeconds: input.minOrphanAgeSeconds ?? 604800,
-    });
     if (input.startPreparation) {
       if (this.updateRateLimitCacheUseCase !== null) {
         await this.updateRateLimitCacheUseCase.run({

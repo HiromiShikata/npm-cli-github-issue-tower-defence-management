@@ -42,7 +42,7 @@ export type ConsoleTriageTab = {
     storyColors: Record<string, ConsoleColor>;
     items: ConsoleListItem[];
 };
-export type ConsoleTabName = 'workflow-blocker' | 'prs' | 'triage' | 'unread' | 'failed-preparation' | 'todo-by-human' | 'todo-by-agent';
+export type ConsoleTabName = 'workflow-blocker' | 'prs' | 'triage' | 'unread' | 'failed-preparation' | 'todo-by-human' | 'todo-by-agent' | 'in-tmux-by-agent';
 export type ConsoleLists = {
     'workflow-blocker': ConsoleStatusTab;
     prs: ConsoleStatusTab;
@@ -51,6 +51,7 @@ export type ConsoleLists = {
     'failed-preparation': ConsoleStatusTab;
     'todo-by-human': ConsoleStatusTab;
     'todo-by-agent': ConsoleStatusTab;
+    'in-tmux-by-agent': ConsoleStatusTab;
 };
 export type GenerateConsoleListsInput = {
     project: Project;

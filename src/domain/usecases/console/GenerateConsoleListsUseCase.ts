@@ -59,7 +59,8 @@ export type ConsoleTabName =
   | 'unread'
   | 'failed-preparation'
   | 'todo-by-human'
-  | 'todo-by-agent';
+  | 'todo-by-agent'
+  | 'in-tmux-by-agent';
 
 export type ConsoleLists = {
   'workflow-blocker': ConsoleStatusTab;
@@ -69,6 +70,7 @@ export type ConsoleLists = {
   'failed-preparation': ConsoleStatusTab;
   'todo-by-human': ConsoleStatusTab;
   'todo-by-agent': ConsoleStatusTab;
+  'in-tmux-by-agent': ConsoleStatusTab;
 };
 
 export type GenerateConsoleListsInput = {
@@ -179,6 +181,17 @@ export class GenerateConsoleListsUseCase {
         (issue) => issue.status === TODO_BY_AGENT_STATUS_NAME,
         [TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done'],
       ),
+      'in-tmux-by-agent': buildStatusTabFromSource(
+        issues.filter(
+          (issue) =>
+            issue.isClosed === false &&
+            issue.assignees.includes(assigneeLogin),
+        ),
+        (issue) =>
+          issue.status?.toLowerCase() ===
+          IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(),
+        [IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(), 'done'],
+      ),
       triage: {
         pjcode,
         generatedAt,
@@ -186,7 +199,7 @@ export class GenerateConsoleListsUseCase {
         storyOrder,
         storyColors: this.buildStoryColorsString(storyOptions),
         items: this.sortByStoryOrder(
-          issues
+          visibleIssues
             .filter((issue) => this.needsStory(issue, assigneeLogin))
             .map((issue) =>
               this.projectItem(

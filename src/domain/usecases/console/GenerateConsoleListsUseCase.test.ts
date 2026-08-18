@@ -419,8 +419,8 @@ describe('GenerateConsoleListsUseCase', () => {
     });
   });
 
-  describe('In Tmux by agent shared exclusion', () => {
-    const allTabItems = (
+  describe('In Tmux by agent shared exclusion from non-agent tabs', () => {
+    const nonAgentTabItems = (
       result: ReturnType<GenerateConsoleListsUseCase['run']>,
     ) => [
       ...result['workflow-blocker'].items,
@@ -431,7 +431,7 @@ describe('GenerateConsoleListsUseCase', () => {
       ...result['todo-by-human'].items,
     ];
 
-    it('shows a workflow-blocker-story In Tmux by agent issue on the workflow blocker tab and nowhere else', () => {
+    it('shows a workflow-blocker-story In Tmux by agent issue on the workflow blocker tab and nowhere in other non-agent tabs', () => {
       const result = run([
         makeIssue({
           story: 'regular / WORKFLOW BLOCKER',
@@ -441,21 +441,20 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(
         result['workflow-blocker'].items.map((item) => item.status),
       ).toEqual(['In Tmux by agent']);
-      expect(allTabItems(result)).toHaveLength(1);
+      expect(nonAgentTabItems(result)).toHaveLength(1);
     });
 
-    it('shows a no-story In Tmux by agent issue on the triage tab and nowhere else', () => {
+    it('hides a no-story In Tmux by agent issue from all non-agent tabs', () => {
       const result = run([
         makeIssue({
           story: 'no story',
           status: 'In Tmux by agent',
         }),
       ]);
-      expect(result.triage.items).toHaveLength(1);
-      expect(allTabItems(result)).toHaveLength(1);
+      expect(nonAgentTabItems(result)).toHaveLength(0);
     });
 
-    it('hides In Tmux by agent case-insensitively from every tab other than the workflow blocker tab', () => {
+    it('hides In Tmux by agent case-insensitively from non-agent tabs other than workflow blocker', () => {
       const result = run([
         makeIssue({
           story: 'regular / WORKFLOW BLOCKER',
@@ -463,7 +462,7 @@ describe('GenerateConsoleListsUseCase', () => {
         }),
       ]);
       expect(result['workflow-blocker'].items).toHaveLength(1);
-      expect(allTabItems(result)).toHaveLength(1);
+      expect(nonAgentTabItems(result)).toHaveLength(1);
     });
 
     it('keeps sibling issues with other statuses displaying as before', () => {
@@ -490,6 +489,64 @@ describe('GenerateConsoleListsUseCase', () => {
           .concat(result['todo-by-human'].items)
           .some((item) => item.status === 'In Tmux by agent'),
       ).toBe(false);
+    });
+  });
+
+  describe('in-tmux-by-agent tab', () => {
+    it('shows open assigned issues with In Tmux by agent status', () => {
+      const result = run([
+        makeIssue({ status: 'In Tmux by agent' }),
+        makeIssue({ status: 'Unread' }),
+      ]);
+      expect(result['in-tmux-by-agent'].items).toHaveLength(1);
+      expect(result['in-tmux-by-agent'].items[0].status).toBe('In Tmux by agent');
+    });
+
+    it('matches In Tmux by agent case-insensitively', () => {
+      const result = run([
+        makeIssue({ status: 'IN TMUX BY AGENT' }),
+        makeIssue({ status: 'in tmux by agent' }),
+        makeIssue({ status: 'In Tmux by agent' }),
+      ]);
+      expect(result['in-tmux-by-agent'].items).toHaveLength(3);
+    });
+
+    it('excludes closed issues', () => {
+      const result = run([
+        makeIssue({ status: 'In Tmux by agent', isClosed: true }),
+        makeIssue({ status: 'In Tmux by agent', isClosed: false }),
+      ]);
+      expect(result['in-tmux-by-agent'].items).toHaveLength(1);
+    });
+
+    it('excludes issues not assigned to the configured user', () => {
+      const result = run([
+        makeIssue({ status: 'In Tmux by agent', assignees: ['other-person'] }),
+        makeIssue({ status: 'In Tmux by agent' }),
+      ]);
+      expect(result['in-tmux-by-agent'].items).toHaveLength(1);
+    });
+
+    it('includes issues regardless of next action date or depended urls', () => {
+      const result = run([
+        makeIssue({
+          status: 'In Tmux by agent',
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+        }),
+        makeIssue({
+          status: 'In Tmux by agent',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+        makeIssue({ status: 'In Tmux by agent', nextActionHour: 9 }),
+      ]);
+      expect(result['in-tmux-by-agent'].items).toHaveLength(3);
+    });
+
+    it('excludes in tmux by agent and done from status options', () => {
+      const names = run([])['in-tmux-by-agent'].statusOptions.map((o) => o.name);
+      expect(names).not.toContain('In Tmux by agent');
+      expect(names).not.toContain('Done');
+      expect(names).toContain('Awaiting Workspace');
     });
   });
 
