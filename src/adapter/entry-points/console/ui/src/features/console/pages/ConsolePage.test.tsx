@@ -854,7 +854,7 @@ describe('ConsolePage comment composer isolation', () => {
       });
 
       fireEvent.click(getByText('Add serveConsole subcommand'));
-      fireEvent.click(await findByText('Approve'));
+      fireEvent.click(await findByText('Approve & Merge'));
 
       await act(async () => {
         jest.advanceTimersByTime(5100);
