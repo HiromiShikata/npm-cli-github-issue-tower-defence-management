@@ -60,7 +60,24 @@ export type ConsoleTabName =
   | 'unread'
   | 'failed-preparation'
   | 'todo-by-human'
-  | 'todo-by-agent';
+  | 'todo-by-agent'
+  | 'stories';
+
+export type ConsoleStoryEntry = {
+  storyName: string;
+  storyOptionId: string;
+  color: ConsoleColor;
+  openItemCount: number;
+};
+
+export type ConsoleStoriesTab = {
+  pjcode: string;
+  generatedAt: string;
+  stories: ConsoleStoryEntry[];
+  storyOrder: string[];
+  storyColors: Record<string, { color: ConsoleColor }>;
+  defaultNameWithOwner: string | null;
+};
 
 export type ConsoleLists = {
   'workflow-blocker': ConsoleStatusTab;
@@ -70,6 +87,7 @@ export type ConsoleLists = {
   'failed-preparation': ConsoleStatusTab;
   'todo-by-human': ConsoleStatusTab;
   'todo-by-agent': ConsoleStatusTab;
+  stories: ConsoleStoriesTab;
 };
 
 export type GenerateConsoleListsInput = {
@@ -140,6 +158,28 @@ export class GenerateConsoleListsUseCase {
     ): ConsoleStatusTab =>
       buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
 
+    const openItemCountByStory = new Map<string, number>();
+    for (const issue of issues) {
+      if (!issue.isClosed && issue.story !== null) {
+        openItemCountByStory.set(
+          issue.story,
+          (openItemCountByStory.get(issue.story) ?? 0) + 1,
+        );
+      }
+    }
+
+    const defaultNameWithOwner =
+      issues.find((issue) => issue.nameWithOwner !== '')?.nameWithOwner ?? null;
+
+    const storyEntries: ConsoleStoryEntry[] = storyOptions
+      .filter((option) => option.color !== 'GRAY')
+      .map((option) => ({
+        storyName: option.name,
+        storyOptionId: option.id,
+        color: option.color,
+        openItemCount: openItemCountByStory.get(option.name) ?? 0,
+      }));
+
     return {
       'workflow-blocker': buildStatusTabFromSource(
         issues.filter((issue) => issue.isClosed === false),
@@ -202,6 +242,14 @@ export class GenerateConsoleListsUseCase {
             ),
           storyOrder,
         ),
+      },
+      stories: {
+        pjcode,
+        generatedAt,
+        stories: storyEntries,
+        storyOrder,
+        storyColors: this.buildStoryColorsObject(storyOptions),
+        defaultNameWithOwner,
       },
     };
   };

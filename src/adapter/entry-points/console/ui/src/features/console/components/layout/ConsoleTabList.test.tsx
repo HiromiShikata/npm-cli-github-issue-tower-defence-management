@@ -10,6 +10,7 @@ const counts: Record<ConsoleTabName, number> = {
   'failed-preparation': 0,
   'todo-by-human': 2,
   'todo-by-agent': 3,
+  stories: 0,
 };
 
 const baseProps = {

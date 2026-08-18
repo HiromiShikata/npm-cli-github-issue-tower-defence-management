@@ -581,6 +581,69 @@ export const handleAttachmentUpload = async (
   };
 };
 
+export const handleCreateIssue = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const title = body.title;
+  const storyOptionId = body.storyOptionId;
+  const nameWithOwner = body.nameWithOwner;
+  if (!isNonEmptyString(title)) {
+    return badRequest('title is required');
+  }
+  if (!isNonEmptyString(storyOptionId)) {
+    return badRequest('storyOptionId is required');
+  }
+  if (!isNonEmptyString(nameWithOwner)) {
+    return badRequest('nameWithOwner is required');
+  }
+  const slashIndex = nameWithOwner.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === nameWithOwner.length - 1) {
+    return badRequest('nameWithOwner must be in owner/repo format');
+  }
+  const org = nameWithOwner.slice(0, slashIndex);
+  const repo = nameWithOwner.slice(slashIndex + 1);
+
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { project } = binding;
+
+  if (project.story === null) {
+    return badRequest('project does not have a story field');
+  }
+  const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
+  if (storyOption === undefined) {
+    return badRequest(`story option "${storyOptionId}" not found in project`);
+  }
+
+  const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
+  const issueRepository = context.resolveIssueRepository(proxyUrl);
+  const issueNumber = await issueRepository.createNewIssue(
+    org,
+    repo,
+    title,
+    '',
+    [],
+    [],
+  );
+  const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
+
+  await issueRepository.addIssueToProject(project, issueUrl);
+
+  const addedIssue = await issueRepository.get(issueUrl, project);
+  if (addedIssue !== null) {
+    await issueRepository.updateStory(
+      { ...project, story: project.story },
+      addedIssue,
+      storyOptionId,
+    );
+  }
+
+  return { statusCode: 200, body: { ok: true, issueUrl } };
+};
+
 export const handleReviewComment = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
+import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
 import {
   ConsoleErrorToast,
   ConsoleUndoToast,
@@ -40,6 +41,7 @@ import type {
   ConsoleTabName,
 } from '../logic/types';
 import { CONSOLE_TABS } from '../logic/types';
+import { postConsoleCreateIssue } from '../lib/consoleApi';
 import {
   ConsoleItemDetailContainer,
   type ConsoleQueueActionInput,
@@ -67,13 +69,17 @@ export const ConsolePage = () => {
       if (snapshot === null) {
         continue;
       }
-      result[tab.name] = countPendingItems(
-        snapshot.items,
-        overlayEntriesActedSinceSnapshot(
-          overlayState.overlay,
-          snapshot.generatedAt,
-        ),
-      );
+      if (tab.name === 'stories') {
+        result[tab.name] = snapshot.stories.length;
+      } else {
+        result[tab.name] = countPendingItems(
+          snapshot.items,
+          overlayEntriesActedSinceSnapshot(
+            overlayState.overlay,
+            snapshot.generatedAt,
+          ),
+        );
+      }
     }
     return result;
   }, [snapshots, overlayState.overlay]);
@@ -224,6 +230,28 @@ export const ConsolePage = () => {
 
   const detailScreenRef = useConsoleSwipeNavigation(handleSwipe);
 
+  const storiesSnapshot = snapshots['stories'];
+  const storyEntries = storiesSnapshot?.stories ?? [];
+  const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
+
+  const handleCreateIssue = useCallback(
+    async (storyOptionId: string, title: string): Promise<void> => {
+      if (pjcode === null) {
+        throw new Error('No project specified in the URL path.');
+      }
+      if (defaultNameWithOwner === null) {
+        throw new Error('No repository configured for this project.');
+      }
+      await postConsoleCreateIssue({
+        pjcode,
+        title,
+        storyOptionId,
+        nameWithOwner: defaultNameWithOwner,
+      });
+    },
+    [pjcode, defaultNameWithOwner],
+  );
+
   return (
     <main className="console-app">
       {actionQueue.pending !== null && (
@@ -249,7 +277,14 @@ export const ConsolePage = () => {
         tabHref={navigation.tabHref}
         onSelectTab={navigation.selectTab}
       />
-      {selectedItem === null ? (
+      {activeTab === 'stories' ? (
+        <ConsoleStoryList
+          stories={storyEntries}
+          isLoading={isLoading}
+          error={error}
+          onCreateIssue={handleCreateIssue}
+        />
+      ) : selectedItem === null ? (
         <ConsoleItemList
           rows={rows}
           storyColors={storyColors}

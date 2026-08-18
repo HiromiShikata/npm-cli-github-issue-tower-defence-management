@@ -339,3 +339,32 @@ export const postConsoleReviewComment = async (
     throw new Error(await readOperationErrorReason(response));
   }
 };
+
+export const CREATE_ISSUE_OPERATION_PATH = '/api/createissue';
+
+export type ConsoleCreateIssueRequest = {
+  pjcode: string;
+  title: string;
+  storyOptionId: string;
+  nameWithOwner: string;
+};
+
+export const postConsoleCreateIssue = async (
+  request: ConsoleCreateIssueRequest,
+): Promise<string> => {
+  const response = await fetch(CREATE_ISSUE_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+  const payload: unknown = await response.json();
+  const isRecord = (v: unknown): v is Record<string, unknown> =>
+    v !== null && typeof v === 'object' && !Array.isArray(v);
+  if (!isRecord(payload) || typeof payload.issueUrl !== 'string') {
+    throw new Error('issueUrl was not returned');
+  }
+  return payload.issueUrl;
+};

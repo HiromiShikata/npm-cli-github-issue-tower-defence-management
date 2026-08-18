@@ -26,6 +26,7 @@ import {
   ConsoleProjectResolver,
   handleAttachmentUpload,
   handleComment,
+  handleCreateIssue,
   handleIntmux,
   handleReview,
   handleReviewComment,
@@ -507,6 +508,8 @@ const dispatchOperation = (
       return handleReviewComment(context, body);
     case '/api/upload':
       return handleAttachmentUpload(context, body);
+    case '/api/createissue':
+      return handleCreateIssue(context, body);
     default:
       return null;
   }
