@@ -457,7 +457,9 @@ const createStubIssueRepository = (
       ]),
     ),
   getPullRequestChangedFilePaths: async (): Promise<string[]> => [],
+  getAuthenticatedUserLogin: async (): Promise<string> => 'test-user',
   approvePullRequest: async (): Promise<void> => undefined,
+  mergePullRequest: async (): Promise<void> => undefined,
   requestChangesWithInlineComment: async (
     prUrl: string,
     changedFilePath: string | null,

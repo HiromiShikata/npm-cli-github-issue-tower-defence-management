@@ -32,7 +32,7 @@ describe('ConsoleOperationMenu', () => {
         handlers={handlers}
       />,
     );
-    expect(getByText('Approve')).toBeInTheDocument();
+    expect(getByText('Approve & Merge')).toBeInTheDocument();
     expect(getByText('+1 day')).toBeInTheDocument();
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
     expect(getByText('Close')).toBeInTheDocument();
@@ -100,7 +100,7 @@ describe('ConsoleOperationMenu', () => {
         handlers={handlers}
       />,
     );
-    expect(queryByText('Approve')).toBeNull();
+    expect(queryByText('Approve & Merge')).toBeNull();
     expect(queryByText('Close')).not.toBeNull();
   });
 
@@ -121,7 +121,7 @@ describe('ConsoleOperationMenu', () => {
     expect(getByText('Close as not planned')).toBeInTheDocument();
     expect(getByText('+1 day')).toBeInTheDocument();
     expect(queryByText('Move to Okinawa')).toBeNull();
-    expect(queryByText('Approve')).toBeNull();
+    expect(queryByText('Approve & Merge')).toBeNull();
   });
 
   it('shows the review group on the workflow-blocker tab when the item has a pull request', () => {
@@ -136,7 +136,7 @@ describe('ConsoleOperationMenu', () => {
         handlers={handlers}
       />,
     );
-    expect(getByText('Approve')).toBeInTheDocument();
+    expect(getByText('Approve & Merge')).toBeInTheDocument();
     expect(getByText('Close')).toBeInTheDocument();
   });
 
