@@ -276,6 +276,7 @@ export const ConsolePage = () => {
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
         commit: input.commit,
+        offline: input.offline,
         advance: () => {
           if (actionAdvances(input.kind, activeTab)) {
             advanceToNext(actedKey);
