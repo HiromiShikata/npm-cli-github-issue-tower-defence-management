@@ -147,22 +147,29 @@ export const ConsoleFileDiff = ({
     useState<ConsoleInlineCommentTarget | null>(null);
 
   if (patch === null || patch === '') {
-    if (
-      path !== undefined &&
-      isImageFilePath(path) &&
-      rawUrl !== undefined &&
-      rawUrl !== null &&
-      buildImageProxyUrl !== undefined
-    ) {
-      return (
-        <div className="console-file-diff-image">
-          <img
-            className="console-file-diff-image-content"
-            src={buildImageProxyUrl(rawUrl)}
-            alt={path}
-          />
-        </div>
-      );
+    if (path !== undefined && rawUrl !== undefined && rawUrl !== null) {
+      if (rawUrl.startsWith('data:image/')) {
+        return (
+          <div className="console-file-diff-image">
+            <img
+              className="console-file-diff-image-content"
+              src={rawUrl}
+              alt={path}
+            />
+          </div>
+        );
+      }
+      if (isImageFilePath(path) && buildImageProxyUrl !== undefined) {
+        return (
+          <div className="console-file-diff-image">
+            <img
+              className="console-file-diff-image-content"
+              src={buildImageProxyUrl(rawUrl)}
+              alt={path}
+            />
+          </div>
+        );
+      }
     }
     return (
       <p className="console-file-diff-empty">(no diff / binary or too large)</p>

@@ -20,6 +20,7 @@ import {
   handlePullRequestStatus,
   handleRelatedPrs,
 } from './consoleReadApi';
+import { handleAirplaneSync } from './consoleAirplaneSnapshotApi';
 import {
   ConsoleIssueRepositoryResolver,
   ConsoleOperationContext,
@@ -660,6 +661,30 @@ const handleTokenedRequest = async (
     if (method === 'GET') {
       if (requestPath === IMAGE_PROXY_REQUEST_PATH) {
         await handleImageProxy(options, response, searchParams);
+        return;
+      }
+      if (requestPath === '/api/airplanesync') {
+        const issueRepository = options.issueRepository ?? null;
+        const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+        const issueTitleStateCache = options.issueTitleStateCache ?? null;
+        const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
+        if (
+          issueRepository === null ||
+          consoleDataOutputDir === null ||
+          issueTitleStateCache === null ||
+          pullRequestStatusCache === null
+        ) {
+          sendNotFound(response);
+          return;
+        }
+        await handleAirplaneSync(
+          response,
+          consoleDataOutputDir,
+          issueRepository,
+          issueTitleStateCache,
+          pullRequestStatusCache,
+          options.githubToken ?? null,
+        );
         return;
       }
       const readResult = await handleReadApi(

@@ -16,6 +16,12 @@ const meta: Meta<typeof ConsoleTabList> = {
     tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
     onSelectTab: () => {},
     onSelectProject: () => {},
+    airplaneModeStatus: 'off',
+    airplaneModeProgress: null,
+    airplaneModeCapturedAt: null,
+    airplaneModeFailures: [],
+    onAirplaneModeStartSync: () => {},
+    onAirplaneModeTurnOff: () => {},
   },
 };
 

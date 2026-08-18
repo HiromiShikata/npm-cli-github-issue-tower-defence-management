@@ -7,6 +7,7 @@ import {
   ConsoleErrorToast,
   ConsoleUndoToast,
 } from '../components/operations/ConsoleUndoToast';
+import { useAirplaneMode } from '../hooks/useAirplaneMode';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
@@ -72,7 +73,13 @@ const OVERLAY_NAMESPACE_FALLBACK = 'console';
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
-  const { snapshots, isLoading, error } = useConsoleTabData(pjcode);
+  const airplaneMode = useAirplaneMode();
+  const airplaneSnapshot =
+    airplaneMode.status === 'on' ? airplaneMode.snapshot : null;
+  const { snapshots, isLoading, error } = useConsoleTabData(
+    pjcode,
+    airplaneSnapshot,
+  );
   const {
     timerMode,
     projectMinutes,
@@ -131,7 +138,7 @@ export const ConsolePage = () => {
     [selectedItemKey],
   );
 
-  const caches = useConsoleCaches();
+  const caches = useConsoleCaches(airplaneSnapshot);
   const operations = useConsoleOperations(
     pjcode,
     activeTab,
@@ -510,6 +517,12 @@ export const ConsolePage = () => {
             onClose={closeSettings}
           />
         }
+        airplaneModeStatus={airplaneMode.status}
+        airplaneModeProgress={airplaneMode.progress}
+        airplaneModeCapturedAt={airplaneSnapshot?.capturedAt ?? null}
+        airplaneModeFailures={airplaneMode.failures}
+        onAirplaneModeStartSync={airplaneMode.startSync}
+        onAirplaneModeTurnOff={airplaneMode.turnOff}
       />
       {activeTab === 'stories' ? (
         <ConsoleStoryList
