@@ -38,6 +38,12 @@ export type ConsoleE2eRequestChangesCall = {
   inlineCommentLocation: { line: number; side: string } | null;
 };
 
+export type ConsoleE2eCreateIssueCall = {
+  org: string;
+  repo: string;
+  title: string;
+};
+
 type ConsoleFixtureListItem = {
   number: number;
   title: string;
@@ -275,6 +281,39 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
   ],
 };
 
+const CONSOLE_E2E_STORIES_SNAPSHOT = {
+  pjcode: CONSOLE_E2E_PJCODE,
+  generatedAt: '2026-06-18T01:22:09.000Z',
+  stories: [
+    {
+      storyName: 'TDPM Console port',
+      storyOptionId: '1491051e',
+      color: 'BLUE',
+      openItemCount: 6,
+    },
+    {
+      storyName: 'Publish product documentation site',
+      storyOptionId: 'f7cd5cbc',
+      color: 'GREEN',
+      openItemCount: 1,
+    },
+    {
+      storyName: 'regular / WORKFLOW BLOCKER',
+      storyOptionId: 'a3b9c4d2',
+      color: 'RED',
+      openItemCount: 1,
+    },
+  ],
+  storyOrder: [
+    'TDPM Console port',
+    'regular / workflow improvement',
+    'Publish product documentation site',
+    'regular / WORKFLOW BLOCKER',
+  ],
+  storyColors: STORY_COLORS,
+  defaultNameWithOwner: REPO_NAME_WITH_OWNER,
+};
+
 const writeFixtureData = (consoleDataOutputDir: string): void => {
   for (const [tab, items] of Object.entries(CONSOLE_E2E_TAB_ITEMS)) {
     const tabDir = path.join(consoleDataOutputDir, CONSOLE_E2E_PJCODE, tab);
@@ -284,6 +323,16 @@ const writeFixtureData = (consoleDataOutputDir: string): void => {
       JSON.stringify(buildSnapshot(items)),
     );
   }
+  const storiesTabDir = path.join(
+    consoleDataOutputDir,
+    CONSOLE_E2E_PJCODE,
+    'stories',
+  );
+  fs.mkdirSync(storiesTabDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(storiesTabDir, 'list.json'),
+    JSON.stringify(CONSOLE_E2E_STORIES_SNAPSHOT),
+  );
 };
 
 const buildE2eProject = (): Project => ({
@@ -406,13 +455,21 @@ const inlineCommentPullRequestDetail: PullRequestDetail = {
 const createStubIssueRepository = (
   reviewCommentCalls: ConsoleE2eReviewCommentCall[],
   requestChangesCalls: ConsoleE2eRequestChangesCall[],
+  createIssueCalls: ConsoleE2eCreateIssueCall[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
     buildIssueForUrl(url),
   getIssueBodyByUrl: async (url: string): Promise<string | null> =>
     buildIssueForUrl(url)?.body ?? null,
-  createNewIssue: () => notImplemented('createNewIssue'),
+  createNewIssue: async (
+    org: string,
+    repo: string,
+    title: string,
+  ): Promise<number> => {
+    createIssueCalls.push({ org, repo, title });
+    return 9001;
+  },
   searchIssue: () => notImplemented('searchIssue'),
   updateIssue: () => notImplemented('updateIssue'),
   updateIssueBody: () => notImplemented('updateIssueBody'),
@@ -504,7 +561,7 @@ const createStubIssueRepository = (
   createCommentByUrl: async (): Promise<void> => undefined,
   getAllOpened: () => notImplemented('getAllOpened'),
   getStoryObjectMap: () => notImplemented('getStoryObjectMap'),
-  addIssueToProject: () => notImplemented('addIssueToProject'),
+  addIssueToProject: async (): Promise<void> => undefined,
   setDependedIssueUrl: () => notImplemented('setDependedIssueUrl'),
   getIssueOrPullRequestBody: async (): Promise<string> =>
     [
@@ -568,6 +625,7 @@ export type ConsoleE2eHarness = {
   consoleDataOutputDir: string;
   reviewCommentCalls: ConsoleE2eReviewCommentCall[];
   requestChangesCalls: ConsoleE2eRequestChangesCall[];
+  createIssueCalls: ConsoleE2eCreateIssueCall[];
   stop: () => Promise<void>;
 };
 
@@ -588,6 +646,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
 
   const reviewCommentCalls: ConsoleE2eReviewCommentCall[] = [];
   const requestChangesCalls: ConsoleE2eRequestChangesCall[] = [];
+  const createIssueCalls: ConsoleE2eCreateIssueCall[] = [];
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
@@ -596,6 +655,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     issueRepository: createStubIssueRepository(
       reviewCommentCalls,
       requestChangesCalls,
+      createIssueCalls,
     ),
     resolveProject,
     isPjcodeConfigured,
@@ -625,6 +685,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     consoleDataOutputDir,
     reviewCommentCalls,
     requestChangesCalls,
+    createIssueCalls,
     stop: async (): Promise<void> => {
       await closeServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });
