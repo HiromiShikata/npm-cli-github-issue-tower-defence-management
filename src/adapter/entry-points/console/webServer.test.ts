@@ -782,6 +782,35 @@ describe('webServer new routes integration', () => {
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
     });
+    issueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/o/r/pull/1',
+      branchName: null,
+      createdAt: new Date(0),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: 'MERGEABLE',
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isResolvedAllReviewComments: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    });
+    issueRepository.getPullRequestDetail.mockResolvedValue({
+      title: 'Test PR',
+      state: 'open',
+      merged: false,
+      isDraft: false,
+      additions: 0,
+      deletions: 0,
+      changedFiles: 0,
+      headRefName: 'feature',
+      baseRefName: 'main',
+      author: 'other-user',
+      files: [],
+    });
+    issueRepository.getAuthenticatedUserLogin.mockResolvedValue(
+      'authenticated-user',
+    );
     const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
@@ -803,13 +832,16 @@ describe('webServer new routes integration', () => {
         `/api/review?k=${testToken}`,
         {
           pjcode: 'acme',
-          action: 'approve',
+          action: 'approve_and_merge',
           prUrl: 'https://github.com/o/r/pull/1',
           projectItemId: 'PVTI_op',
         },
       );
       expect(response.statusCode).toBe(200);
       expect(issueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(issueRepository.mergePullRequest).toHaveBeenCalledWith(
         'https://github.com/o/r/pull/1',
       );
       expect(readDoneProjectItemIds(dataDir, 'acme', 'prs')).toContain(
@@ -828,8 +860,37 @@ describe('webServer new routes integration', () => {
       ...mock<Issue>(),
       itemId: 'PVTI_loaded',
     });
-    issueRepository.approvePullRequest.mockRejectedValue(
-      new Error('Failed to approve PR https://github.com/o/r/pull/1: HTTP 422'),
+    issueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/o/r/pull/1',
+      branchName: null,
+      createdAt: new Date(0),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: 'MERGEABLE',
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isResolvedAllReviewComments: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    });
+    issueRepository.getPullRequestDetail.mockResolvedValue({
+      title: 'Test PR',
+      state: 'open',
+      merged: false,
+      isDraft: false,
+      additions: 0,
+      deletions: 0,
+      changedFiles: 0,
+      headRefName: 'feature',
+      baseRefName: 'main',
+      author: 'other-user',
+      files: [],
+    });
+    issueRepository.getAuthenticatedUserLogin.mockResolvedValue(
+      'authenticated-user',
+    );
+    issueRepository.mergePullRequest.mockRejectedValue(
+      new Error('Failed to merge PR https://github.com/o/r/pull/1: HTTP 405'),
     );
     const server = await startWebServer({
       accessToken: testToken,
@@ -852,14 +913,14 @@ describe('webServer new routes integration', () => {
         `/api/review?k=${testToken}`,
         {
           pjcode: 'acme',
-          action: 'approve',
+          action: 'approve_and_merge',
           prUrl: 'https://github.com/o/r/pull/1',
           projectItemId: 'PVTI_op',
         },
       );
       expect(response.statusCode).toBe(502);
       expect(JSON.parse(response.body)).toEqual({
-        error: 'Failed to approve PR https://github.com/o/r/pull/1: HTTP 422',
+        error: 'Failed to merge PR https://github.com/o/r/pull/1: HTTP 405',
       });
     } finally {
       await closeServer(server);

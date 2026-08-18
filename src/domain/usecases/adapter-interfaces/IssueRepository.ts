@@ -158,7 +158,9 @@ export interface IssueRepository {
     prUrls: string[],
   ) => Promise<Map<string, RelatedPullRequest | null>>;
   getPullRequestChangedFilePaths: (prUrl: string) => Promise<string[]>;
+  getAuthenticatedUserLogin: () => Promise<string>;
   approvePullRequest: (prUrl: string) => Promise<void>;
+  mergePullRequest: (prUrl: string) => Promise<void>;
   requestChangesWithInlineComment: (
     prUrl: string,
     changedFilePath: string | null,

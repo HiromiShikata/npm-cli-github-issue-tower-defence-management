@@ -13,7 +13,7 @@ const REVIEW_BUTTONS: {
   { action: 'unnecessary', label: 'Unnecessary', variant: 'unneeded' },
   { action: 'totally_wrong', label: 'Totally wrong', variant: 'wrong' },
   { action: 'request_changes', label: 'Reject', variant: 'reject' },
-  { action: 'approve', label: 'Approve', variant: 'approve' },
+  { action: 'approve_and_merge', label: 'Approve & Merge', variant: 'approve' },
 ];
 
 const REJECT_REQUIREMENT_MESSAGE =

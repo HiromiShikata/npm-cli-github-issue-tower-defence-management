@@ -38,6 +38,35 @@ describe('consoleOperationApi', () => {
     baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-op-'));
     issueRepository = mock<IssueRepository>();
     issueRepository.get.mockResolvedValue(issue);
+    issueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/o/r/pull/1',
+      branchName: null,
+      createdAt: new Date(0),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: 'MERGEABLE',
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isResolvedAllReviewComments: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    });
+    issueRepository.getPullRequestDetail.mockResolvedValue({
+      title: 'Test PR',
+      state: 'open',
+      merged: false,
+      isDraft: false,
+      additions: 0,
+      deletions: 0,
+      changedFiles: 0,
+      headRefName: 'feature',
+      baseRefName: 'main',
+      author: 'other-user',
+      files: [],
+    });
+    issueRepository.getAuthenticatedUserLogin.mockResolvedValue(
+      'authenticated-user',
+    );
     project = {
       ...mock<Project>(),
       id: 'PVT_1',
@@ -124,15 +153,18 @@ describe('consoleOperationApi', () => {
   };
 
   describe('handleReview', () => {
-    it('approves and sets Awaiting workspace then records done', async () => {
+    it('approves and merges, sets Awaiting workspace then records done', async () => {
       const response = await handleReview(context, {
         pjcode: 'acme',
-        action: 'approve',
+        action: 'approve_and_merge',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_a',
       });
       expect(response.statusCode).toBe(200);
       expect(issueRepository.approvePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(issueRepository.mergePullRequest).toHaveBeenCalledWith(
         'https://github.com/o/r/pull/1',
       );
       expect(issueRepository.updateStatus).toHaveBeenCalledWith(
@@ -159,7 +191,7 @@ describe('consoleOperationApi', () => {
 
       await handleReview(contextRecordingResolvedUrls, {
         pjcode: 'acme',
-        action: 'approve',
+        action: 'approve_and_merge',
         prUrl: 'https://github.com/acme-labs/acme-portal-mock/pull/178',
         projectItemId: 'PVTI_resolver',
       });
@@ -374,7 +406,7 @@ describe('consoleOperationApi', () => {
     it('rejects a missing prUrl', async () => {
       const response = await handleReview(context, {
         pjcode: 'acme',
-        action: 'approve',
+        action: 'approve_and_merge',
         projectItemId: 'PVTI_c',
       });
       expect(response.statusCode).toBe(400);
@@ -392,17 +424,17 @@ describe('consoleOperationApi', () => {
     it('rejects a missing projectItemId', async () => {
       const response = await handleReview(context, {
         pjcode: 'acme',
-        action: 'approve',
+        action: 'approve_and_merge',
         prUrl: 'https://github.com/o/r/pull/1',
       });
       expect(response.statusCode).toBe(400);
     });
 
-    it('approves using the request project item id without a GraphQL item fetch', async () => {
+    it('merges without approving using the request project item id without a GraphQL item fetch', async () => {
       issueRepository.get.mockResolvedValue(null);
       const response = await handleReview(context, {
         pjcode: 'acme',
-        action: 'approve',
+        action: 'approve_and_merge',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_c',
       });
@@ -422,11 +454,107 @@ describe('consoleOperationApi', () => {
       });
       const response = await handleReview(contextWithoutStatus, {
         pjcode: 'acme',
-        action: 'approve',
+        action: 'approve_and_merge',
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_c',
       });
       expect(response.statusCode).toBe(400);
+    });
+
+    it('skips approval and merges directly when the pull request author matches the authenticated account', async () => {
+      issueRepository.getPullRequestDetail.mockResolvedValue({
+        title: 'Self PR',
+        state: 'open',
+        merged: false,
+        isDraft: false,
+        additions: 0,
+        deletions: 0,
+        changedFiles: 0,
+        headRefName: 'feature',
+        baseRefName: 'main',
+        author: 'authenticated-user',
+        files: [],
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_self',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.approvePullRequest).not.toHaveBeenCalled();
+      expect(issueRepository.mergePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+    });
+
+    it('returns 400 when the pull request has a merge conflict', async () => {
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_conflict',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toMatchObject({
+        error: 'Cannot merge: pull request has a merge conflict',
+      });
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 with check names when required checks are not green', async () => {
+      issueRepository.getOpenPullRequest.mockResolvedValue({
+        url: 'https://github.com/o/r/pull/1',
+        branchName: null,
+        createdAt: new Date(0),
+        isDraft: false,
+        isConflicted: false,
+        mergeable: 'MERGEABLE',
+        isPassedAllCiJob: false,
+        isCiStateSuccess: false,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: ['test', 'lint'],
+      });
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_ci',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toMatchObject({
+        error: 'Cannot merge: required checks are not green: test, lint',
+      });
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when the pull request is not found or already closed', async () => {
+      issueRepository.getOpenPullRequest.mockResolvedValue(null);
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_gone',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toMatchObject({
+        error: 'Cannot merge: pull request not found or already closed',
+      });
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
     });
   });
 

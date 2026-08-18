@@ -257,7 +257,7 @@ describe('postConsoleOperation', () => {
     const fetchMock = mockFetchOnce({ ok: true });
     await postConsoleOperation('/api/review', {
       pjcode: 'acme',
-      action: 'approve',
+      action: 'approve_and_merge',
       prUrl: 'https://github.com/o/r/pull/1',
       projectItemId: 'PVTI_1',
     });
@@ -269,7 +269,7 @@ describe('postConsoleOperation', () => {
   const failingReview = (): Promise<void> =>
     postConsoleOperation('/api/review', {
       pjcode: 'acme',
-      action: 'approve',
+      action: 'approve_and_merge',
       prUrl: 'https://github.com/o/r/pull/1',
       projectItemId: 'PVTI_1',
     });

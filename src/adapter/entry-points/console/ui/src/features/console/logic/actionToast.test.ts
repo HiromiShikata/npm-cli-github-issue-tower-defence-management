@@ -31,8 +31,8 @@ describe('itemToastLabel', () => {
 describe('actionToastMessage', () => {
   it('labels review actions', () => {
     expect(
-      actionToastMessage({ type: 'review', action: 'approve' }, 'prs'),
-    ).toBe('Approved');
+      actionToastMessage({ type: 'review', action: 'approve_and_merge' }, 'prs'),
+    ).toBe('Approved & Merged');
     expect(
       actionToastMessage({ type: 'review', action: 'request_changes' }, 'prs'),
     ).toBe('Rejected');
@@ -105,7 +105,7 @@ describe('actionToastMessage', () => {
 
 describe('actionToastColor', () => {
   it('colors each action group like the reference', () => {
-    expect(actionToastColor({ type: 'review', action: 'approve' })).toBe(
+    expect(actionToastColor({ type: 'review', action: 'approve_and_merge' })).toBe(
       'green',
     );
     expect(
@@ -129,7 +129,7 @@ describe('actionToastColor', () => {
 
 describe('actionAdvances', () => {
   it('advances every non-snooze action in every tab', () => {
-    expect(actionAdvances({ type: 'review', action: 'approve' }, 'prs')).toBe(
+    expect(actionAdvances({ type: 'review', action: 'approve_and_merge' }, 'prs')).toBe(
       true,
     );
     expect(actionAdvances({ type: 'set_status', optionName: 'x' }, 'prs')).toBe(
@@ -151,7 +151,7 @@ describe('actionAdvances', () => {
 describe('formatActionToast', () => {
   it('combines the message and the item label', () => {
     expect(
-      formatActionToast({ type: 'review', action: 'approve' }, prItem, 'prs'),
-    ).toBe(`Approved — PR #${prItem.number}`);
+      formatActionToast({ type: 'review', action: 'approve_and_merge' }, prItem, 'prs'),
+    ).toBe(`Approved & Merged — PR #${prItem.number}`);
   });
 });
