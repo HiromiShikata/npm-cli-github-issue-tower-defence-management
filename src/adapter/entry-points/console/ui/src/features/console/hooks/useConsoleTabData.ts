@@ -16,6 +16,7 @@ export type ConsoleTabSnapshot = {
   storyColors: ConsoleStoryColorSource;
   stories: ConsoleStoryEntry[];
   defaultNameWithOwner: string | null;
+  fromCache: boolean;
 };
 
 export type ConsoleTabDataState = {
@@ -61,7 +62,9 @@ const parseStoryEntries = (value: unknown): ConsoleStoryEntry[] => {
   return value.filter(isRecord) as unknown as ConsoleStoryEntry[];
 };
 
-const parseSnapshot = (payload: unknown): ConsoleTabSnapshot => ({
+const parseSnapshotData = (
+  payload: unknown,
+): Omit<ConsoleTabSnapshot, 'fromCache'> => ({
   items: parseItems(payload),
   generatedAt:
     isRecord(payload) && typeof payload.generatedAt === 'string'
@@ -96,24 +99,106 @@ const buildListUrl = (pjcode: string, tab: ConsoleTabName): string =>
 
 export const CONSOLE_TAB_REFRESH_INTERVAL_MS = 60000;
 
+const CONSOLE_LIST_CACHE_NAME = 'console-list-v1';
+
+const persistListSnapshot = (url: string, payload: unknown): void => {
+  try {
+    if (!('caches' in globalThis)) {
+      return;
+    }
+    globalThis.caches
+      .open(CONSOLE_LIST_CACHE_NAME)
+      .then((cache) =>
+        cache.put(
+          url,
+          new Response(JSON.stringify(payload), {
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      )
+      .catch((e: unknown) => {
+        console.warn('Failed to persist tab snapshot to cache:', e);
+      });
+  } catch (e: unknown) {
+    console.warn('Failed to access cache storage:', e);
+  }
+};
+
+const loadListSnapshotFromCache = async (
+  url: string,
+): Promise<ConsoleTabSnapshot | null> => {
+  if (!('caches' in globalThis)) {
+    return null;
+  }
+  try {
+    const cache = await globalThis.caches.open(CONSOLE_LIST_CACHE_NAME);
+    const cached = await cache.match(url);
+    if (cached === undefined) {
+      return null;
+    }
+    const payload: unknown = await cached.json();
+    return { ...parseSnapshotData(payload), fromCache: true };
+  } catch {
+    return null;
+  }
+};
+
+const fetchSingleSnapshot = async (
+  pjcode: string,
+  tabName: ConsoleTabName,
+): Promise<{ snapshot: ConsoleTabSnapshot | null; error: Error | null }> => {
+  const url = buildListUrl(pjcode, tabName);
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload: unknown = await response.json();
+    persistListSnapshot(url, payload);
+    return {
+      snapshot: { ...parseSnapshotData(payload), fromCache: false },
+      error: null,
+    };
+  } catch (e: unknown) {
+    const cached = await loadListSnapshotFromCache(url);
+    if (cached !== null) {
+      return { snapshot: cached, error: null };
+    }
+    return {
+      snapshot: null,
+      error: e instanceof Error ? e : new Error(String(e)),
+    };
+  }
+};
+
 const fetchSnapshots = async (
   pjcode: string,
-): Promise<Record<ConsoleTabName, ConsoleTabSnapshot | null>> => {
-  const entries = await Promise.all(
+): Promise<{
+  snapshots: Record<ConsoleTabName, ConsoleTabSnapshot | null>;
+  firstError: Error | null;
+}> => {
+  const results = await Promise.all(
     CONSOLE_TABS.map(async (tab) => {
-      const response = await fetch(buildListUrl(pjcode, tab.name));
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      const payload: unknown = await response.json();
-      return [tab.name, parseSnapshot(payload)] as const;
+      const { snapshot, error } = await fetchSingleSnapshot(pjcode, tab.name);
+      return { tabName: tab.name, snapshot, error };
     }),
   );
-  const next = emptySnapshots();
-  for (const [name, snapshot] of entries) {
-    next[name] = snapshot;
+
+  const snapshots = emptySnapshots();
+  let firstError: Error | null = null;
+
+  for (const { tabName, snapshot, error } of results) {
+    snapshots[tabName] = snapshot;
+    if (error !== null && firstError === null) {
+      firstError = error;
+    }
   }
-  return next;
+
+  const allNull = Object.values(snapshots).every((s) => s === null);
+  return {
+    snapshots,
+    firstError: allNull ? firstError : null,
+  };
 };
 
 export const useConsoleTabData = (
@@ -140,12 +225,12 @@ export const useConsoleTabData = (
 
     const load = (): void => {
       fetchSnapshots(pjcode)
-        .then((next) => {
+        .then(({ snapshots: next, firstError }) => {
           if (cancelled) {
             return;
           }
           setSnapshots(next);
-          setError(null);
+          setError(firstError !== null ? firstError.message : null);
           setIsLoading(false);
         })
         .catch((cause: unknown) => {

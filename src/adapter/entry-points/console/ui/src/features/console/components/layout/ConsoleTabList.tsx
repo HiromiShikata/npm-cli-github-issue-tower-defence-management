@@ -5,6 +5,7 @@ export type ConsoleTabBarProps = {
   counts: Record<ConsoleTabName, number>;
   pjcode: string | null;
   generatedAt: string | null;
+  fromCache: boolean;
   tabHref: (tab: ConsoleTabName) => string;
   onSelectTab: (tab: ConsoleTabName) => void;
 };
@@ -14,6 +15,7 @@ export const ConsoleTabList = ({
   counts,
   pjcode,
   generatedAt,
+  fromCache,
   tabHref,
   onSelectTab,
 }: ConsoleTabBarProps) => {
@@ -59,7 +61,12 @@ export const ConsoleTabList = ({
       })}
       {pjcode !== null && <span className="console-tab-pjname">{pjcode}</span>}
       {generatedAt !== null && (
-        <span className="console-tab-geninfo">snapshot: {generatedAt}</span>
+        <span
+          className="console-tab-geninfo"
+          data-from-cache={fromCache ? 'true' : undefined}
+        >
+          {fromCache ? '(cached) ' : ''}snapshot: {generatedAt}
+        </span>
       )}
     </nav>
   );

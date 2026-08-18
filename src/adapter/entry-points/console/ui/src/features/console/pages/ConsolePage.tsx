@@ -126,6 +126,7 @@ export const ConsolePage = () => {
   const statusOptions = activeSnapshot?.statusOptions ?? [];
   const storyOptions = activeSnapshot?.storyOptions ?? [];
   const generatedAt = activeSnapshot?.generatedAt ?? null;
+  const fromCache = activeSnapshot?.fromCache ?? false;
 
   const selectedItem = useMemo<ConsoleListItem | null>(() => {
     if (selectedItemKey === null || activeSnapshot === null) {
@@ -274,6 +275,7 @@ export const ConsolePage = () => {
         counts={counts}
         pjcode={pjcode}
         generatedAt={generatedAt}
+        fromCache={fromCache}
         tabHref={navigation.tabHref}
         onSelectTab={navigation.selectTab}
       />

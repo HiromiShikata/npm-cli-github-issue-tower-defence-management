@@ -9,6 +9,7 @@ const meta: Meta<typeof ConsoleTabList> = {
   args: {
     pjcode: 'acme',
     generatedAt: '2026-06-19T08:42:11.000Z',
+    fromCache: false,
     tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
     onSelectTab: () => {},
   },
@@ -82,6 +83,14 @@ export const AfterAutoAdvanceToNextTab: Story = {
       stories: 0,
     },
     onSelectTab: () => {},
+  },
+};
+
+export const CachedSnapshot: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    fromCache: true,
   },
 };
 

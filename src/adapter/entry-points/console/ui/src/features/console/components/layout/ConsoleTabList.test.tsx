@@ -16,6 +16,7 @@ const counts: Record<ConsoleTabName, number> = {
 const baseProps = {
   pjcode: 'acme',
   generatedAt: '2026-06-19T08:42:11.000Z',
+  fromCache: false,
   tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
   onSelectTab: () => {},
 };
@@ -115,5 +116,35 @@ describe('ConsoleTabList', () => {
     );
     fireEvent.click(getByText('Unread'));
     expect(onSelectTab).toHaveBeenCalledWith('unread');
+  });
+
+  it('prefixes the snapshot info with "(cached)" and sets data-from-cache when data is from cache', () => {
+    const { getByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        fromCache={true}
+      />,
+    );
+    const genInfo = getByText('(cached) snapshot: 2026-06-19T08:42:11.000Z');
+    expect(genInfo).toBeInTheDocument();
+    expect(genInfo).toHaveAttribute('data-from-cache', 'true');
+  });
+
+  it('omits the cache prefix and data-from-cache attribute when data is from the network', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        fromCache={false}
+      />,
+    );
+    expect(getByText('snapshot: 2026-06-19T08:42:11.000Z')).toBeInTheDocument();
+    expect(
+      queryByText('(cached) snapshot: 2026-06-19T08:42:11.000Z'),
+    ).toBeNull();
+    expect(document.querySelector('[data-from-cache]')).toBeNull();
   });
 });

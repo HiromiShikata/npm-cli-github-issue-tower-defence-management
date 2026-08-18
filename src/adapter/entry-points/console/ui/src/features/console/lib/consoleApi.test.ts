@@ -25,7 +25,40 @@ const mockFetchFailureOnce = (status: number, rawBody: string): jest.Mock => {
   return fetchMock;
 };
 
+type MockCacheEntry = { json: jest.Mock };
+type MockCache = {
+  match: jest.Mock<Promise<MockCacheEntry | undefined>>;
+  put: jest.Mock<Promise<void>>;
+};
+
+const installMockCaches = (
+  matchResult: MockCacheEntry | undefined,
+): MockCache => {
+  const mockCache: MockCache = {
+    match: jest.fn(async () => matchResult),
+    put: jest.fn(async () => undefined),
+  };
+  Object.defineProperty(global, 'caches', {
+    value: { open: jest.fn(async () => mockCache) },
+    writable: true,
+    configurable: true,
+  });
+  return mockCache;
+};
+
+const removeMockCaches = (): void => {
+  Reflect.deleteProperty(global as Record<string, unknown>, 'caches');
+};
+
 describe('createConsoleApiClient', () => {
+  beforeEach(() => {
+    removeMockCaches();
+  });
+
+  afterEach(() => {
+    removeMockCaches();
+  });
+
   it('reads the item body from the api root without a token query', async () => {
     const fetchMock = mockFetchOnce({ body: '# Title' });
     const client = createConsoleApiClient();
@@ -243,12 +276,48 @@ describe('createConsoleApiClient', () => {
     });
   });
 
-  it('throws on a non-ok response', async () => {
+  it('throws on a non-ok response when no cache is available', async () => {
     mockFetchOnce({}, false);
     const client = createConsoleApiClient();
     await expect(
       client.fetchComments('https://github.com/o/r/issues/1'),
     ).rejects.toThrow('HTTP 500');
+  });
+
+  it('returns cached comments when the network fetch rejects', async () => {
+    const cachedBody = {
+      comments: [
+        {
+          author: 'alice',
+          body: 'hello',
+          createdAt: '2026-06-19T00:00:00.000Z',
+        },
+      ],
+    };
+    installMockCaches({ json: jest.fn(async () => cachedBody) });
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new Error('offline')) as unknown as typeof fetch;
+
+    const client = createConsoleApiClient();
+    const comments = await client.fetchComments(
+      'https://github.com/o/r/issues/1',
+    );
+    expect(comments).toEqual([
+      { author: 'alice', body: 'hello', createdAt: '2026-06-19T00:00:00.000Z' },
+    ]);
+  });
+
+  it('throws when the network fails and no cache entry exists', async () => {
+    installMockCaches(undefined);
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new Error('offline')) as unknown as typeof fetch;
+
+    const client = createConsoleApiClient();
+    await expect(
+      client.fetchComments('https://github.com/o/r/issues/1'),
+    ).rejects.toThrow('offline');
   });
 });
 
