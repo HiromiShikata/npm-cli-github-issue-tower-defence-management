@@ -37,8 +37,9 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       databaseId: 42,
       stories,
       workflowManagementStory: {
-        id: stories.find((s) => s.name === 'regular / workflow management')
-          ?.id ?? 'opt_wfm',
+        id:
+          stories.find((s) => s.name === 'regular / workflow management')?.id ??
+          'opt_wfm',
         name: 'regular / workflow management',
       },
     },
@@ -228,7 +229,12 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         color: 'GRAY',
         description: '',
       },
-      { id: 'opt8', name: 'regular / refactor', color: 'GRAY', description: '' },
+      {
+        id: 'opt8',
+        name: 'regular / refactor',
+        color: 'GRAY',
+        description: '',
+      },
       { id: 'opt9', name: 'regular / backlog', color: 'GRAY', description: '' },
     ];
 
@@ -276,7 +282,12 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         color: 'GRAY',
         description: '',
       },
-      { id: 'opt8', name: 'regular / refactor', color: 'GRAY', description: '' },
+      {
+        id: 'opt8',
+        name: 'regular / refactor',
+        color: 'GRAY',
+        description: '',
+      },
       { id: 'opt9', name: 'regular / backlog', color: 'GRAY', description: '' },
     ];
 
@@ -352,7 +363,8 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
 
       await useCase.run({ projectUrl });
 
-      const submittedOptions = projectRepository.updateStoryList.mock.calls[0][1];
+      const submittedOptions =
+        projectRepository.updateStoryList.mock.calls[0][1];
       const names = submittedOptions.map((o) => o.name);
       const workflowBlockerIndex = names.indexOf('regular / WORKFLOW BLOCKER');
       const inquiryIndex = names.indexOf('regular / inquiry');
@@ -375,7 +387,8 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
 
       await useCase.run({ projectUrl });
 
-      const submittedOptions = projectRepository.updateStoryList.mock.calls[0][1];
+      const submittedOptions =
+        projectRepository.updateStoryList.mock.calls[0][1];
       const inquiryOption = submittedOptions.find(
         (o) => o.name === 'regular / inquiry',
       );
@@ -398,9 +411,12 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
 
       await useCase.run({ projectUrl });
 
-      const submittedOptions = projectRepository.updateStoryList.mock.calls[0][1];
+      const submittedOptions =
+        projectRepository.updateStoryList.mock.calls[0][1];
       for (const original of existingStoriesWithoutInquiry) {
-        const submitted = submittedOptions.find((o) => o.name === original.name);
+        const submitted = submittedOptions.find(
+          (o) => o.name === original.name,
+        );
         expect(submitted?.id).toBe(original.id);
       }
     });
@@ -428,7 +444,8 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
 
       await useCase.run({ projectUrl });
 
-      const submittedOptions = projectRepository.updateStoryList.mock.calls[0][1];
+      const submittedOptions =
+        projectRepository.updateStoryList.mock.calls[0][1];
       const submittedExtra = submittedOptions.find(
         (o) => o.name === 'regular / special project',
       );
@@ -451,7 +468,8 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
 
       await useCase.run({ projectUrl });
 
-      const submittedOptions = projectRepository.updateStoryList.mock.calls[0][1];
+      const submittedOptions =
+        projectRepository.updateStoryList.mock.calls[0][1];
       const inquiryOption = submittedOptions.find(
         (o) => o.name === 'regular / inquiry',
       );
