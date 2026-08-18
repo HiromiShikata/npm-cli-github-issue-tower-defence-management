@@ -1,3 +1,15 @@
+# [1.161.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.160.0...v1.161.0) (2026-08-18)
+
+
+### Bug Fixes
+
+* **console:** keep only pre-work items on the triage tab ([#1603](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1603)) ([3c57e5d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3c57e5dcf41315584601b6ff9325bba8e7ab7ec8))
+
+
+### Features
+
+* **console:** let the reader enlarge and zoom a mermaid diagram ([#1592](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1592)) ([44be0be](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/44be0befa0805b88f6b198fa6b1ae1c0537be4c2))
+
 # [1.160.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.159.0...v1.160.0) (2026-08-17)
 
 
