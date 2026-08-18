@@ -239,6 +239,37 @@ describe('GenerateConsoleListsUseCase', () => {
       const statuses = result.triage.items.map((item) => item.status);
       expect(statuses).toEqual(['Unread']);
     });
+
+    it('keeps only no-story items whose status has not reached preparation', () => {
+      const result = run([
+        makeIssue({ story: 'no story', status: 'Unread' }),
+        makeIssue({ story: 'no story', status: 'Awaiting Workspace' }),
+        makeIssue({ story: 'no story', status: null }),
+        makeIssue({ story: 'no story', status: 'Preparation' }),
+        makeIssue({ story: 'no story', status: 'Failed Preparation' }),
+        makeIssue({ story: 'no story', status: 'Awaiting Quality Check' }),
+        makeIssue({ story: 'no story', status: 'Todo by human' }),
+        makeIssue({ story: 'no story', status: 'Todo by agent' }),
+        makeIssue({ story: 'no story', status: 'In Tmux by human' }),
+      ]);
+      expect(result.triage.items.map((item) => item.status)).toEqual([
+        'Unread',
+        'Awaiting Workspace',
+        null,
+      ]);
+    });
+
+    it('keeps a no-story item whose status matches a kept name in a different case', () => {
+      const result = run([
+        makeIssue({ story: 'no story', status: 'unread' }),
+        makeIssue({ story: 'no story', status: 'awaiting workspace' }),
+        makeIssue({ story: 'no story', status: 'failed preparation' }),
+      ]);
+      expect(result.triage.items.map((item) => item.status)).toEqual([
+        'unread',
+        'awaiting workspace',
+      ]);
+    });
   });
 
   describe('workflow-blocker tab', () => {
