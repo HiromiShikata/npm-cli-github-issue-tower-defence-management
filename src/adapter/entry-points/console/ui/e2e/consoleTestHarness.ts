@@ -379,6 +379,16 @@ const awaitingQualityCheckPullRequest: RelatedPullRequest = {
   missingRequiredCheckNames: ['build', 'test'],
 };
 
+const awaitingQualityCheckPullRequestMergeReady: RelatedPullRequest = {
+  ...awaitingQualityCheckPullRequest,
+  isConflicted: false,
+  mergeable: 'MERGEABLE',
+  isPassedAllCiJob: true,
+  isCiStateSuccess: true,
+  isBranchOutOfDate: false,
+  missingRequiredCheckNames: [],
+};
+
 const inlineCommentPullRequestDetail: PullRequestDetail = {
   title: 'Add inline review comments on the related pull request diff',
   state: 'open',
@@ -428,7 +438,7 @@ const createStubIssueRepository = (
     url: string,
   ): Promise<RelatedPullRequest | null> =>
     url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
-      ? awaitingQualityCheckPullRequest
+      ? awaitingQualityCheckPullRequestMergeReady
       : null,
   getOpenPullRequestCiStatus: async (
     url: string,
@@ -457,7 +467,9 @@ const createStubIssueRepository = (
       ]),
     ),
   getPullRequestChangedFilePaths: async (): Promise<string[]> => [],
+  getAuthenticatedUserLogin: async (): Promise<string> => 'test-user',
   approvePullRequest: async (): Promise<void> => undefined,
+  mergePullRequest: async (): Promise<void> => undefined,
   requestChangesWithInlineComment: async (
     prUrl: string,
     changedFilePath: string | null,

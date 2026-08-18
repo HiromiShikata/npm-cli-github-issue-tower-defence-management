@@ -33,8 +33,8 @@ export const actionToastMessage = (
 ): string => {
   switch (kind.type) {
     case 'review':
-      if (kind.action === 'approve') {
-        return 'Approved';
+      if (kind.action === 'approve_and_merge') {
+        return 'Approved & Merged';
       }
       if (kind.action === 'request_changes') {
         return 'Rejected';
@@ -66,7 +66,7 @@ export const actionToastColor = (
 ): ConsoleToastColor => {
   switch (kind.type) {
     case 'review':
-      if (kind.action === 'approve') {
+      if (kind.action === 'approve_and_merge') {
         return 'green';
       }
       if (kind.action === 'request_changes') {

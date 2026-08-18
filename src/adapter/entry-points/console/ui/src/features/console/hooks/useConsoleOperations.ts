@@ -79,10 +79,10 @@ const reviewRequest = (
   action: ConsoleReviewAction,
   pendingReviewComments: ConsolePendingReviewComment[],
 ): ConsoleReviewRequest => {
-  if (action === 'approve') {
+  if (action === 'approve_and_merge') {
     return {
       pjcode,
-      action: 'approve',
+      action: 'approve_and_merge',
       prUrl,
       projectItemId: item.projectItemId,
     };

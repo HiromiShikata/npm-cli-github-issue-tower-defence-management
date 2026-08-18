@@ -22,7 +22,7 @@ export const buildRequestChangesBody = (
     .join('\n\n');
 
 export type ConsoleReviewAction =
-  | 'approve'
+  | 'approve_and_merge'
   | 'request_changes'
   | 'unnecessary'
   | 'totally_wrong';

@@ -111,7 +111,7 @@ describe('useConsoleOperations', () => {
       await result.current.operations.reviewPullRequest(
         prItem,
         prItem.url,
-        'approve',
+        'approve_and_merge',
       );
     });
     const stored = JSON.parse(
@@ -362,7 +362,7 @@ describe('useConsoleOperations', () => {
       await result.current.operations.reviewPullRequest(
         prItem,
         prItem.url,
-        'approve',
+        'approve_and_merge',
       );
     });
     const key = `${prItem.repo}#${prItem.number}`;
@@ -410,7 +410,7 @@ describe('useConsoleOperations', () => {
       result.current.operations.reviewPullRequest(
         prItem,
         prItem.url,
-        'approve',
+        'approve_and_merge',
       ),
     ).rejects.toThrow('No project specified in the URL path.');
     expect(fetchMock).not.toHaveBeenCalled();

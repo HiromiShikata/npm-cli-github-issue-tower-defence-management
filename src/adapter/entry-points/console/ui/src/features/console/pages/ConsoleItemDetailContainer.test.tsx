@@ -117,19 +117,19 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
     await waitFor(() => {
-      expect(getByText('Approve')).toBeInTheDocument();
+      expect(getByText('Approve & Merge')).toBeInTheDocument();
     });
-    fireEvent.click(getByText('Approve'));
+    fireEvent.click(getByText('Approve & Merge'));
     expect(onQueueAction).toHaveBeenCalledTimes(1);
     const input = onQueueAction.mock.calls[0][0];
-    expect(input.kind).toEqual({ type: 'review', action: 'approve' });
+    expect(input.kind).toEqual({ type: 'review', action: 'approve_and_merge' });
     expect(input.item).toBe(prItem);
     expect(operations.reviewPullRequest).not.toHaveBeenCalled();
     input.commit();
     expect(operations.reviewPullRequest).toHaveBeenCalledWith(
       prItem,
       prItem.url,
-      'approve',
+      'approve_and_merge',
       [],
     );
   });
@@ -318,14 +318,14 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
 
-    expect(getByText('Approve')).toBeInTheDocument();
-    fireEvent.click(getByText('Approve'));
+    expect(getByText('Approve & Merge')).toBeInTheDocument();
+    fireEvent.click(getByText('Approve & Merge'));
     const input = onQueueAction.mock.calls[0][0];
     input.commit();
     expect(operations.reviewPullRequest).toHaveBeenCalledWith(
       itemWithBakedPullRequest,
       bakedPullRequestUrl,
-      'approve',
+      'approve_and_merge',
       [],
     );
   });

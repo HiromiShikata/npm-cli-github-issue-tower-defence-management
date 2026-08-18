@@ -13,7 +13,7 @@ describe('ConsolePullRequestReviewActions', () => {
       'Unnecessary',
       'Totally wrong',
       'Reject',
-      'Approve',
+      'Approve & Merge',
     ]);
   });
 
@@ -25,7 +25,7 @@ describe('ConsolePullRequestReviewActions', () => {
       />,
     );
     expect(getByText('Reject')).toBeDisabled();
-    expect(getByText('Approve')).not.toBeDisabled();
+    expect(getByText('Approve & Merge')).not.toBeDisabled();
     rerender(
       <ConsolePullRequestReviewActions
         onReview={() => {}}
@@ -82,12 +82,12 @@ describe('ConsolePullRequestReviewActions', () => {
     fireEvent.click(getByText('Unnecessary'));
     fireEvent.click(getByText('Totally wrong'));
     fireEvent.click(getByText('Reject'));
-    fireEvent.click(getByText('Approve'));
+    fireEvent.click(getByText('Approve & Merge'));
     expect(onReview.mock.calls.map((call) => call[0])).toEqual([
       'unnecessary',
       'totally_wrong',
       'request_changes',
-      'approve',
+      'approve_and_merge',
     ]);
   });
 });

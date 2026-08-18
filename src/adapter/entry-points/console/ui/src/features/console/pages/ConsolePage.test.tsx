@@ -124,7 +124,7 @@ describe('ConsolePage', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
     expect(queryByText('In Tmux by human')).toBeNull();
     const chip = container.querySelector('.console-detail-status-chip');
     expect(chip?.textContent).toBe('Awaiting Quality Check');
@@ -146,7 +146,7 @@ describe('ConsolePage', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
     expect(
       container.querySelector('.console-detail-status-chip')?.textContent,
     ).toBe('In Tmux by human');
@@ -158,7 +158,7 @@ describe('ConsolePage', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
     expect(window.location.hash).toBe('#item/PVTI_1');
   });
 
@@ -186,10 +186,10 @@ describe('ConsolePage', () => {
       ).toBe('1');
 
       fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve & Merge'));
 
-      expect(getByText('Approved — PR #851')).toBeInTheDocument();
+      expect(getByText('Approved & Merged — PR #851')).toBeInTheDocument();
       expect(getByText('Undo')).toBeInTheDocument();
       expect(
         within(tabBar())
@@ -242,8 +242,8 @@ describe('ConsolePage', () => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
       fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve & Merge'));
 
       fireEvent.click(getByText('Undo'));
       act(() => {
@@ -486,7 +486,7 @@ describe('ConsolePage', () => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
       fireEvent.click(getByText('Add serveConsole subcommand'));
-      fireEvent.click(await findByText('Approve'));
+      fireEvent.click(await findByText('Approve & Merge'));
 
       await act(async () => {
         jest.advanceTimersByTime(5100);
@@ -603,7 +603,7 @@ describe('ConsolePage swipe navigation', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
     expect(window.location.hash).toBe('#item/PVTI_1');
 
     const detailScreen = container.querySelector('.console-detail-screen');
@@ -627,7 +627,7 @@ describe('ConsolePage swipe navigation', () => {
       ).toBeInTheDocument();
     });
     fireEvent.click(getByText('Add server-side console API handlers'));
-    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
     expect(window.location.hash).toBe('#item/PVTI_2');
 
     const detailScreen = container.querySelector('.console-detail-screen');
@@ -673,10 +673,10 @@ describe('ConsolePage auto-advance', () => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
       fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve')).toBeInTheDocument();
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
       expect(window.location.hash).toBe('#item/PVTI_1');
 
-      fireEvent.click(getByText('Approve'));
+      fireEvent.click(getByText('Approve & Merge'));
 
       await waitFor(() => {
         expect(window.location.hash).toBe('#item/PVTI_2');
@@ -717,7 +717,7 @@ describe('ConsolePage scroll reset', () => {
     });
 
     fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
 
     expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
   });
@@ -731,7 +731,7 @@ describe('ConsolePage scroll reset', () => {
     });
 
     fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
     scrollTo.mockClear();
 
     const detailScreen = container.querySelector('.console-detail-screen');
@@ -800,7 +800,7 @@ describe('ConsolePage comment composer isolation', () => {
     });
 
     fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve')).toBeInTheDocument();
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
 
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
       target: { value: 'first item only comment' },
@@ -842,7 +842,7 @@ describe('ConsolePage auto-advance tab', () => {
       });
 
       fireEvent.click(getByText('Add serveConsole subcommand'));
-      fireEvent.click(await findByText('Approve'));
+      fireEvent.click(await findByText('Approve & Merge'));
 
       act(() => {
         jest.advanceTimersByTime(5100);
