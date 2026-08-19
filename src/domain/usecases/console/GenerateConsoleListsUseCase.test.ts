@@ -251,6 +251,8 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ story: 'no story', status: 'Todo by human' }),
         makeIssue({ story: 'no story', status: 'Todo by agent' }),
         makeIssue({ story: 'no story', status: 'In Tmux by human' }),
+        makeIssue({ story: 'no story', status: 'Done' }),
+        makeIssue({ story: 'no story', status: 'Icebox' }),
       ]);
       expect(result.triage.items.map((item) => item.status)).toEqual([
         'Unread',
@@ -262,7 +264,26 @@ describe('GenerateConsoleListsUseCase', () => {
         'Todo by human',
         'Todo by agent',
         'In Tmux by human',
+        'Done',
+        'Icebox',
       ]);
+    });
+
+    it('keeps an item whose story is not a no-story name off the triage tab at every status', () => {
+      const result = run([
+        makeIssue({ story: 'Story Alpha', status: 'Unread' }),
+        makeIssue({ story: 'Story Alpha', status: 'Awaiting Workspace' }),
+        makeIssue({ story: 'Story Alpha', status: null }),
+        makeIssue({ story: 'Story Alpha', status: 'Preparation' }),
+        makeIssue({ story: 'Story Alpha', status: 'Failed Preparation' }),
+        makeIssue({ story: 'Story Alpha', status: 'Awaiting Quality Check' }),
+        makeIssue({ story: 'Story Alpha', status: 'Todo by human' }),
+        makeIssue({ story: 'Story Alpha', status: 'Todo by agent' }),
+        makeIssue({ story: 'Story Alpha', status: 'In Tmux by human' }),
+        makeIssue({ story: 'Story Alpha', status: 'Done' }),
+        makeIssue({ story: 'Story Alpha', status: 'Icebox' }),
+      ]);
+      expect(result.triage.items).toHaveLength(0);
     });
 
     it('keeps a no-story item whose status is written in a different case', () => {
