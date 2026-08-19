@@ -43,8 +43,7 @@ class GenerateConsoleListsUseCase {
                 'todo-by-human': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_STATUS_NAME ||
                     issue.status === WorkflowStatus_1.LEGACY_TODO_STATUS_NAME, [WorkflowStatus_1.TODO_STATUS_NAME.toLowerCase(), 'done']),
                 'todo-by-agent': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_BY_AGENT_STATUS_NAME, [WorkflowStatus_1.TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done']),
-                'in-tmux-by-agent': buildStatusTabFromSource(issues.filter((issue) => issue.isClosed === false &&
-                    issue.assignees.includes(assigneeLogin)), (issue) => issue.status?.toLowerCase() ===
+                'in-tmux-by-agent': buildStatusTabFromSource(issues.filter((issue) => issue.isClosed === false && issue.assignees.includes(assigneeLogin)), (issue) => issue.status?.toLowerCase() ===
                     WorkflowStatus_1.IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(), [WorkflowStatus_1.IN_TMUX_BY_AGENT_STATUS_NAME.toLowerCase(), 'done']),
                 triage: {
                     pjcode,
@@ -52,7 +51,7 @@ class GenerateConsoleListsUseCase {
                     storyOptions: this.buildFieldOptions(storyOptions, []),
                     storyOrder,
                     storyColors: this.buildStoryColorsString(storyOptions),
-                    items: this.sortByStoryOrder(issues
+                    items: this.sortByStoryOrder(visibleIssues
                         .filter((issue) => this.needsStory(issue, assigneeLogin))
                         .map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
                 },

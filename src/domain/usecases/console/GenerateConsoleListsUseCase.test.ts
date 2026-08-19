@@ -230,18 +230,14 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.triage.items).toHaveLength(3);
     });
 
-    it('keeps no-story items whose status is In Tmux by agent', () => {
+    it('excludes no-story items whose status is In Tmux by agent from triage', () => {
       const result = run([
         makeIssue({ story: 'no story', status: 'In Tmux by agent' }),
         makeIssue({ story: 'no story', status: 'in tmux by agent' }),
         makeIssue({ story: 'no story', status: 'Unread' }),
       ]);
       const statuses = result.triage.items.map((item) => item.status);
-      expect(statuses).toEqual([
-        'In Tmux by agent',
-        'in tmux by agent',
-        'Unread',
-      ]);
+      expect(statuses).toEqual(['Unread']);
     });
 
     it('keeps a no-story item that is blocked or scheduled to resume later', () => {
