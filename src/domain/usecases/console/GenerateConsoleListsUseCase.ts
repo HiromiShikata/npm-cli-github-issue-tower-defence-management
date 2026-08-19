@@ -316,7 +316,12 @@ export class GenerateConsoleListsUseCase {
         position,
         sortKey: indexByStory.get(item.story) ?? UNKNOWN_STORY_SORT_INDEX,
       }))
-      .sort((a, b) => a.sortKey - b.sortKey || a.position - b.position)
+      .sort((a, b) => {
+        if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
+        if (a.item.story !== b.item.story)
+          return a.item.story.localeCompare(b.item.story);
+        return a.position - b.position;
+      })
       .map((entry) => entry.item);
   };
 }
