@@ -1,3 +1,10 @@
+## [1.162.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.162.4...v1.162.5) (2026-08-19)
+
+
+### Bug Fixes
+
+* **use-case:** run SetNoStoryIssueToStoryUseCase regardless of cacheUsed ([#1618](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1618)) ([3cee86d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3cee86d7dde60afb9f0bab841672a127ffe249ce)), closes [#1614](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1614)
+
 ## [1.162.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.162.3...v1.162.4) (2026-08-19)
 
 

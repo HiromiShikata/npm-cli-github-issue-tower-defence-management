@@ -6,7 +6,7 @@ class SetNoStoryIssueToStoryUseCase {
         this.issueRepository = issueRepository;
         this.run = async (input) => {
             const story = input.project.story;
-            if (!story || input.cacheUsed) {
+            if (!story) {
                 return;
             }
             const earliestTargetDate = input.targetDates[0] ?? null;
