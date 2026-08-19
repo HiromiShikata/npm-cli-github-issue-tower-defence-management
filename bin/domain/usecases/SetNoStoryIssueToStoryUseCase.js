@@ -9,11 +9,13 @@ class SetNoStoryIssueToStoryUseCase {
             if (!story || input.cacheUsed) {
                 return;
             }
+            const earliestTargetDate = input.targetDates[0] ?? null;
             const isTargetIssue = (issue) => {
                 return (issue.story === null &&
                     !issue.labels.some((label) => label.toLowerCase().startsWith('story:')) &&
                     (issue.nextActionDate === null ||
-                        issue.nextActionDate.getTime() <= input.targetDates[0].getTime()) &&
+                        (earliestTargetDate !== null &&
+                            issue.nextActionDate.getTime() <= earliestTargetDate.getTime())) &&
                     issue.nextActionHour === null &&
                     issue.state === 'OPEN');
             };

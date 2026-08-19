@@ -86,9 +86,11 @@ class SetWorkflowManagementIssueToStoryUseCase {
                 .startsWith(SetWorkflowManagementIssueToStoryUseCase.STORY_LABEL_PREFIX)) ||
                 issue.labels.includes(SetWorkflowManagementIssueToStoryUseCase.DAILY_ROUTINE_LABEL) ||
                 issue.isPr;
+            const earliestTargetDate = targetDates[0] ?? null;
             return (hasStoryOrWorkflowTrigger &&
                 (issue.nextActionDate === null ||
-                    issue.nextActionDate.getTime() <= targetDates[0].getTime()) &&
+                    (earliestTargetDate !== null &&
+                        issue.nextActionDate.getTime() <= earliestTargetDate.getTime())) &&
                 issue.nextActionHour === null &&
                 issue.state === 'OPEN' &&
                 issue.story === null);

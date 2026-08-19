@@ -1,3 +1,10 @@
+## [1.162.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.162.3...v1.162.4) (2026-08-19)
+
+
+### Bug Fixes
+
+* **schedule:** keep the cycle running when the target date list is empty ([#1639](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1639)) ([94b102b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/94b102b5038a4b3fabfc02187b68840954205d65))
+
 ## [1.162.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.162.2...v1.162.3) (2026-08-19)
 
 
