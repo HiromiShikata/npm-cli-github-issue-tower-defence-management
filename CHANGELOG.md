@@ -1,3 +1,10 @@
+# [1.163.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.162.5...v1.163.0) (2026-08-19)
+
+
+### Features
+
+* **project:** add regular / inquiry story option below WORKFLOW BLOCKER on every TDPM project ([#1622](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1622)) ([41275d3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/41275d34f6ff673c3f559439ca77c705fb91965c)), closes [#1621](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1621)
+
 ## [1.162.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.162.4...v1.162.5) (2026-08-19)
 
 
