@@ -58,8 +58,7 @@ class GenerateConsoleListsUseCase {
         this.needsStory = (issue, assigneeLogin) => issue.isClosed === false &&
             issue.isPr === false &&
             issue.assignees.includes(assigneeLogin) &&
-            issue.story !== null &&
-            issue.story.toLowerCase().includes('no story');
+            (issue.story === null || issue.story.toLowerCase().includes('no story'));
         this.isActionable = (issue, assigneeLogin) => issue.isClosed === false &&
             issue.assignees.includes(assigneeLogin) &&
             issue.dependedIssueUrls.length === 0 &&
