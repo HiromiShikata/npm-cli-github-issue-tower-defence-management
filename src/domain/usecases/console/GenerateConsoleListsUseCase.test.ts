@@ -240,7 +240,7 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(statuses).toEqual(['Unread']);
     });
 
-    it('keeps only no-story items whose status has not reached preparation', () => {
+    it('keeps every no-story item whatever status it carries', () => {
       const result = run([
         makeIssue({ story: 'no story', status: 'Unread' }),
         makeIssue({ story: 'no story', status: 'Awaiting Workspace' }),
@@ -251,15 +251,42 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ story: 'no story', status: 'Todo by human' }),
         makeIssue({ story: 'no story', status: 'Todo by agent' }),
         makeIssue({ story: 'no story', status: 'In Tmux by human' }),
+        makeIssue({ story: 'no story', status: 'Done' }),
+        makeIssue({ story: 'no story', status: 'Icebox' }),
       ]);
       expect(result.triage.items.map((item) => item.status)).toEqual([
         'Unread',
         'Awaiting Workspace',
         null,
+        'Preparation',
+        'Failed Preparation',
+        'Awaiting Quality Check',
+        'Todo by human',
+        'Todo by agent',
+        'In Tmux by human',
+        'Done',
+        'Icebox',
       ]);
     });
 
-    it('keeps a no-story item whose status matches a kept name in a different case', () => {
+    it('keeps an item whose story is not a no-story name off the triage tab at every status', () => {
+      const result = run([
+        makeIssue({ story: 'Story Alpha', status: 'Unread' }),
+        makeIssue({ story: 'Story Alpha', status: 'Awaiting Workspace' }),
+        makeIssue({ story: 'Story Alpha', status: null }),
+        makeIssue({ story: 'Story Alpha', status: 'Preparation' }),
+        makeIssue({ story: 'Story Alpha', status: 'Failed Preparation' }),
+        makeIssue({ story: 'Story Alpha', status: 'Awaiting Quality Check' }),
+        makeIssue({ story: 'Story Alpha', status: 'Todo by human' }),
+        makeIssue({ story: 'Story Alpha', status: 'Todo by agent' }),
+        makeIssue({ story: 'Story Alpha', status: 'In Tmux by human' }),
+        makeIssue({ story: 'Story Alpha', status: 'Done' }),
+        makeIssue({ story: 'Story Alpha', status: 'Icebox' }),
+      ]);
+      expect(result.triage.items).toHaveLength(0);
+    });
+
+    it('keeps a no-story item whose status is written in a different case', () => {
       const result = run([
         makeIssue({ story: 'no story', status: 'unread' }),
         makeIssue({ story: 'no story', status: 'awaiting workspace' }),
@@ -268,6 +295,19 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.triage.items.map((item) => item.status)).toEqual([
         'unread',
         'awaiting workspace',
+        'failed preparation',
+      ]);
+    });
+
+    it('keeps an item carrying the story option this tool assigns automatically once its status has advanced', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / NO STORY; SET STORY FIELD',
+          status: 'Awaiting Quality Check',
+        }),
+      ]);
+      expect(result.triage.items.map((item) => item.status)).toEqual([
+        'Awaiting Quality Check',
       ]);
     });
   });

@@ -3,7 +3,6 @@ import { FieldOption, Project } from '../../entities/Project';
 import {
   IN_TMUX_BY_AGENT_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
-  STATUS_NAMES_BEFORE_WORK_STARTS,
   TODO_BY_AGENT_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
@@ -191,8 +190,7 @@ export class GenerateConsoleListsUseCase {
             .filter(
               (issue) =>
                 issue.story !== null &&
-                issue.story.toLowerCase().includes('no story') &&
-                this.isBeforeWorkStarts(issue.status),
+                issue.story.toLowerCase().includes('no story'),
             )
             .map((issue) =>
               this.projectItem(
@@ -205,12 +203,6 @@ export class GenerateConsoleListsUseCase {
       },
     };
   };
-
-  private isBeforeWorkStarts = (status: string | null): boolean =>
-    status === null ||
-    STATUS_NAMES_BEFORE_WORK_STARTS.some(
-      (name) => name.toLowerCase() === status.toLowerCase(),
-    );
 
   private isActionable = (issue: Issue, assigneeLogin: string): boolean =>
     issue.isClosed === false &&
