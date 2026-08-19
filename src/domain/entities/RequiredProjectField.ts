@@ -16,6 +16,7 @@ const storyOption = (
 const REQUIRED_STORY_OPTIONS: Omit<FieldOption, 'id'>[] = [
   storyOption('regular / NO STORY', 'RED'),
   storyOption('regular / WORKFLOW BLOCKER', 'RED'),
+  storyOption('regular / inquiry', 'RED'),
   storyOption('regular / high priority', 'RED'),
   storyOption('regular / workflow management', 'YELLOW'),
   storyOption('regular / routine management', 'YELLOW'),

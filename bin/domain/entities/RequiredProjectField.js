@@ -5,6 +5,7 @@ const storyOption = (name, color) => ({ name, color, description: '' });
 const REQUIRED_STORY_OPTIONS = [
     storyOption('regular / NO STORY', 'RED'),
     storyOption('regular / WORKFLOW BLOCKER', 'RED'),
+    storyOption('regular / inquiry', 'RED'),
     storyOption('regular / high priority', 'RED'),
     storyOption('regular / workflow management', 'YELLOW'),
     storyOption('regular / routine management', 'YELLOW'),
