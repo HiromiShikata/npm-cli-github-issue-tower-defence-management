@@ -227,7 +227,7 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ story: 'Story Alpha' }),
         makeIssue({ story: null }),
       ]);
-      expect(result.triage.items).toHaveLength(2);
+      expect(result.triage.items).toHaveLength(3);
     });
 
     it('keeps no-story items whose status is In Tmux by agent', () => {
@@ -264,6 +264,25 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ story: 'no story', isPr: true }),
         makeIssue({ story: 'no story', assignees: ['someone-else'] }),
         makeIssue({ story: 'no story', isClosed: true }),
+      ]);
+      expect(result.triage.items).toHaveLength(0);
+    });
+
+    it('keeps an item whose story field is empty on the triage tab', () => {
+      const result = run([
+        makeIssue({ story: null, status: 'Awaiting Workspace' }),
+        makeIssue({ story: null, status: null }),
+        makeIssue({ story: 'regular / NO STORY' }),
+        makeIssue({ story: 'Story Alpha' }),
+      ]);
+      expect(result.triage.items).toHaveLength(3);
+    });
+
+    it('keeps a pull request, another person’s item and a closed item off the triage tab when the story field is empty', () => {
+      const result = run([
+        makeIssue({ story: null, isPr: true }),
+        makeIssue({ story: null, assignees: ['someone-else'] }),
+        makeIssue({ story: null, isClosed: true }),
       ]);
       expect(result.triage.items).toHaveLength(0);
     });
