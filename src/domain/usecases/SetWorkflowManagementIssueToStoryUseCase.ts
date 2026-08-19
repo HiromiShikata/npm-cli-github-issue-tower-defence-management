@@ -186,10 +186,13 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       ) ||
       issue.isPr;
 
+    const earliestTargetDate: Date | null = targetDates[0] ?? null;
+
     return (
       hasStoryOrWorkflowTrigger &&
       (issue.nextActionDate === null ||
-        issue.nextActionDate.getTime() <= targetDates[0].getTime()) &&
+        (earliestTargetDate !== null &&
+          issue.nextActionDate.getTime() <= earliestTargetDate.getTime())) &&
       issue.nextActionHour === null &&
       issue.state === 'OPEN' &&
       issue.story === null

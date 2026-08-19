@@ -87,19 +87,11 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
               nextActionDate: new Date('2000-01-01T00:00:00Z'),
               nextActionHour: null,
             },
-            {
-              ...mock<Issue>(),
-              labels: [],
-              story: null,
-              state: 'OPEN',
-              nextActionDate: null,
-              nextActionHour: null,
-            },
           ],
           cacheUsed: false,
         }),
       ).resolves.toBeUndefined();
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
 
     it('should do nothing when cacheUsed is true', async () => {
