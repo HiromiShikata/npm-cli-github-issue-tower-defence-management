@@ -12,7 +12,7 @@ export class SetNoStoryIssueToStoryUseCase {
     cacheUsed: boolean;
   }): Promise<void> => {
     const story = input.project.story;
-    if (!story || input.cacheUsed) {
+    if (!story) {
       return;
     }
     const earliestTargetDate: Date | null = input.targetDates[0] ?? null;

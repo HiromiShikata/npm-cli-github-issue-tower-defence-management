@@ -94,24 +94,28 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
 
-    it('should do nothing when cacheUsed is true', async () => {
-      await useCase.run({
+    it('should assign first story to eligible issue when cacheUsed is true', async () => {
+      const issue: Issue = {
+        ...mock<Issue>(),
+        labels: [],
+        story: null,
+        state: 'OPEN',
+        nextActionDate: null,
+        nextActionHour: null,
+      };
+
+      const promise = useCase.run({
         targetDates: [targetDate],
         project: basicProject,
-        issues: [
-          {
-            ...mock<Issue>(),
-            labels: [],
-            story: null,
-            state: 'OPEN',
-            nextActionDate: null,
-            nextActionHour: null,
-          },
-        ],
+        issues: [issue],
         cacheUsed: true,
       });
+      await jest.runAllTimersAsync();
+      await promise;
 
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([
+        [{ ...basicProject, story: basicProject.story }, issue, 'noStoryId'],
+      ]);
     });
 
     it('should assign first story to eligible issue on non-minute-0 target date', async () => {
