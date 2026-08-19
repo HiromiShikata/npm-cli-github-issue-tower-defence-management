@@ -524,7 +524,7 @@ Most tabs apply a common actionable filter to the project's issues: the issue is
 - `failed-preparation`: status equals `Failed Preparation` (exact case)
 - `todo-by-human`: status equals `Todo by human` or the legacy value `Todo` (exact case)
 - `todo-by-agent`: status equals `Todo by agent` (exact case)
-- `triage`: story name contains `no story` (case-insensitive), keeping only issues whose status is unset or equals `Unread` or `Awaiting Workspace` (case-insensitive), because every later status means work on the issue has already started and no triage decision is left
+- `triage`: story name contains `no story` (case-insensitive), whatever status the issue carries, because the `NO STORY` story option is assigned by this tool rather than chosen by a person, so the triage decision is still open however far the status has advanced
 
 The `workflow-blocker` tab is the one exception to the common actionable filter: it lists every issue whose story name equals the configured `workflowBlockerStoryName` (case-insensitive) and whose issue state is not closed, regardless of its status, next action date, next action hour, or depended issue URLs. When `workflowBlockerStoryName` is unset, the `workflow-blocker` list is always empty.
 

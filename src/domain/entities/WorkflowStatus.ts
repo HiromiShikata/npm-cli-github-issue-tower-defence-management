@@ -18,11 +18,6 @@ export const LEGACY_IN_TMUX_STATUS_NAME = 'In Tmux';
 export const LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME =
   'Awaiting Task Breakdown';
 
-export const STATUS_NAMES_BEFORE_WORK_STARTS: string[] = [
-  DEFAULT_STATUS_NAME,
-  AWAITING_WORKSPACE_STATUS_NAME,
-];
-
 export type WorkflowStatusDefinition = {
   name: string;
   color: FieldOption['color'];
