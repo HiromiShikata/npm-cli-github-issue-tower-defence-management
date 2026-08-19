@@ -147,7 +147,8 @@ export type ConsoleTabName =
   | 'unread'
   | 'failed-preparation'
   | 'todo-by-human'
-  | 'todo-by-agent';
+  | 'todo-by-agent'
+  | 'in-tmux-by-agent';
 
 export type ConsoleTab = {
   name: ConsoleTabName;
@@ -162,4 +163,5 @@ export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'failed-preparation', label: 'Failed Preparation' },
   { name: 'todo-by-human', label: 'Todo by human' },
   { name: 'todo-by-agent', label: 'Todo by agent' },
+  { name: 'in-tmux-by-agent', label: 'In Tmux by agent' },
 ];

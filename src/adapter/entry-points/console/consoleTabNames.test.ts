@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import type { Project } from '../../../domain/entities/Project';
 import { writeConsoleLists } from '../handlers/consoleListsWriter';
+import { CONSOLE_TABS } from './ui/src/features/console/logic/types';
 import { parseConsoleDataRoute } from './consoleDataDelivery';
 import { CONSOLE_LIST_TAB_NAMES } from './consoleTabNames';
 
@@ -18,6 +19,14 @@ const createMinimalProject = (): Project => ({
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+});
+
+describe('writer-UI tab name contract', () => {
+  it('CONSOLE_LIST_TAB_NAMES and CONSOLE_TABS cover the same set of tab names', () => {
+    const writerSet = new Set(CONSOLE_LIST_TAB_NAMES);
+    const uiSet = new Set(CONSOLE_TABS.map((tab) => tab.name));
+    expect(writerSet).toEqual(uiSet);
+  });
 });
 
 describe('consoleTabNames cross-component contract', () => {

@@ -10,6 +10,7 @@ const counts: Record<ConsoleTabName, number> = {
   'failed-preparation': 0,
   'todo-by-human': 2,
   'todo-by-agent': 3,
+  'in-tmux-by-agent': 0,
 };
 
 const baseProps = {
@@ -114,5 +115,23 @@ describe('ConsoleTabList', () => {
     );
     fireEvent.click(getByText('Unread'));
     expect(onSelectTab).toHaveBeenCalledWith('unread');
+  });
+
+  it('shows the In Tmux by agent tab when it has items', () => {
+    const { getByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={{ ...counts, 'in-tmux-by-agent': 7 }}
+      />,
+    );
+    expect(getByText('In Tmux by agent')).toBeInTheDocument();
+  });
+
+  it('hides the In Tmux by agent tab when its count is zero', () => {
+    const { queryByText } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(queryByText('In Tmux by agent')).toBeNull();
   });
 });

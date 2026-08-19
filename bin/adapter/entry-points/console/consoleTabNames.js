@@ -9,6 +9,7 @@ exports.CONSOLE_LIST_TAB_NAMES = [
     'failed-preparation',
     'todo-by-human',
     'todo-by-agent',
+    'in-tmux-by-agent',
 ];
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);

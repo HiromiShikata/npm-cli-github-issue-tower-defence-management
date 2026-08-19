@@ -16,6 +16,7 @@ const counts = (
   'failed-preparation': 0,
   'todo-by-human': 0,
   'todo-by-agent': 0,
+  'in-tmux-by-agent': 0,
   ...overrides,
 });
 
