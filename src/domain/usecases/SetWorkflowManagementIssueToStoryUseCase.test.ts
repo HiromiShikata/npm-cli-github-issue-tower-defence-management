@@ -99,6 +99,27 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
   });
 
   describe('run', () => {
+    it('should not throw when the target date list is empty', async () => {
+      await expect(
+        useCase.run({
+          targetDates: [],
+          project: basicProject,
+          issues: [
+            {
+              ...mock<Issue>(),
+              labels: ['daily-routine'],
+              story: null,
+              state: 'OPEN',
+              isPr: false,
+              nextActionDate: new Date('2000-01-01T00:00:00Z'),
+              nextActionHour: null,
+            },
+          ],
+          cacheUsed: false,
+        }),
+      ).resolves.toBeUndefined();
+    });
+
     it('should do nothing when project has no story field', async () => {
       const projectWithoutStory: Project = { ...basicProject, story: null };
 
