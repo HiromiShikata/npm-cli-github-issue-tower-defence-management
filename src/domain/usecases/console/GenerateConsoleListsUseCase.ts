@@ -204,8 +204,7 @@ export class GenerateConsoleListsUseCase {
     issue.isClosed === false &&
     issue.isPr === false &&
     issue.assignees.includes(assigneeLogin) &&
-    issue.story !== null &&
-    issue.story.toLowerCase().includes('no story');
+    (issue.story === null || issue.story.toLowerCase().includes('no story'));
 
   private isActionable = (issue: Issue, assigneeLogin: string): boolean =>
     issue.isClosed === false &&
