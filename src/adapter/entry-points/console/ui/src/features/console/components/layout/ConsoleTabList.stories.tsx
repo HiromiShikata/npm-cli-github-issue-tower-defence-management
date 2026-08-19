@@ -26,7 +26,7 @@ const counts: Record<ConsoleTabName, number> = {
   'failed-preparation': 2,
   'todo-by-human': 66,
   'todo-by-agent': 24,
-  'in-tmux-by-agent': 0,
+  'in-tmux-by-agent': 42,
 };
 
 export const AllTabsWithCounts: Story = {
