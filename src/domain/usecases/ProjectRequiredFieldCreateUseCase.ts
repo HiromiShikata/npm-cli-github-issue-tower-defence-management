@@ -6,6 +6,10 @@ import {
 } from '../entities/RequiredProjectField';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 
+type StoryOptionToSubmit = Omit<FieldOption, 'id'> & {
+  id: FieldOption['id'] | null;
+};
+
 export class ProjectRequiredFieldCreateUseCase {
   constructor(
     private readonly projectRepository: Pick<
@@ -47,31 +51,35 @@ export class ProjectRequiredFieldCreateUseCase {
       return;
     }
     const requiredOptions = storyFieldDefinition.options;
-    const currentOptions = project.story.stories;
-    const currentByName = new Map(
-      currentOptions.map((o) => [normalizeProjectFieldName(o.name), o]),
+    const mergedOptions: StoryOptionToSubmit[] = project.story.stories.map(
+      (o) => ({ ...o }),
     );
-    const missingRequired = requiredOptions.filter(
-      (r) => !currentByName.has(normalizeProjectFieldName(r.name)),
-    );
-    if (missingRequired.length === 0) {
+    let addedCount = 0;
+    let previousRequiredIndex = -1;
+    for (const required of requiredOptions) {
+      const existingIndex = mergedOptions.findIndex((o) =>
+        this.optionNameSatisfies(o.name, required.name),
+      );
+      if (existingIndex >= 0) {
+        previousRequiredIndex = existingIndex;
+        continue;
+      }
+      const insertIndex = previousRequiredIndex + 1;
+      mergedOptions.splice(insertIndex, 0, { ...required, id: null });
+      previousRequiredIndex = insertIndex;
+      addedCount += 1;
+    }
+    if (addedCount === 0) {
       return;
     }
-    const requiredByName = new Set(
-      requiredOptions.map((r) => normalizeProjectFieldName(r.name)),
-    );
-    const extraCurrentOptions = currentOptions.filter(
-      (o) => !requiredByName.has(normalizeProjectFieldName(o.name)),
-    );
-    const mergedOptions: (Omit<FieldOption, 'id'> & {
-      id: FieldOption['id'] | null;
-    })[] = [
-      ...requiredOptions.map((r) => {
-        const existing = currentByName.get(normalizeProjectFieldName(r.name));
-        return existing ? { ...r, id: existing.id } : { ...r, id: null };
-      }),
-      ...extraCurrentOptions.map((o) => ({ ...o })),
-    ];
     await this.projectRepository.updateStoryList(project, mergedOptions);
   };
+
+  private optionNameSatisfies = (
+    currentName: string,
+    requiredName: string,
+  ): boolean =>
+    normalizeProjectFieldName(currentName).startsWith(
+      normalizeProjectFieldName(requiredName),
+    );
 }

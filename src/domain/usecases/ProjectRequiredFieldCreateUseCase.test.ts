@@ -475,5 +475,121 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       );
       expect(inquiryOption?.color).toBe('RED');
     });
+
+    const storiesWithDescriptiveNoStoryAndInterleavedExtras: FieldOption[] = [
+      {
+        id: 'opt1',
+        name: "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+        color: 'RED',
+        description: '',
+      },
+      {
+        id: 'opt_extra_a',
+        name: 'acme / rebuild the billing screen',
+        color: 'BLUE',
+        description: '',
+      },
+      {
+        id: 'opt2',
+        name: 'regular / WORKFLOW BLOCKER',
+        color: 'RED',
+        description: '',
+      },
+      {
+        id: 'opt_extra_b',
+        name: 'acme / migrate the search index',
+        color: 'GREEN',
+        description: '',
+      },
+      {
+        id: 'opt4',
+        name: 'regular / workflow management',
+        color: 'YELLOW',
+        description: '',
+      },
+      {
+        id: 'opt5',
+        name: 'regular / routine management',
+        color: 'YELLOW',
+        description: '',
+      },
+      { id: 'opt9', name: 'regular / backlog', color: 'GRAY', description: '' },
+    ];
+
+    const runWithStories = async (stories: FieldOption[]) => {
+      const project = buildProjectWithStory(stories);
+      const { projectRepository, useCase } = createUseCase(
+        [
+          'Title',
+          'Status',
+          'Story',
+          'Next Action Date',
+          'Next Action Hour',
+          'Depended Issue URL separated by comma',
+        ],
+        project,
+      );
+
+      await useCase.run({ projectUrl });
+
+      return projectRepository.updateStoryList.mock.calls[0]?.[1];
+    };
+
+    it('should treat an existing option whose name extends a required name as that required option', async () => {
+      const submittedOptions = await runWithStories(
+        storiesWithDescriptiveNoStoryAndInterleavedExtras,
+      );
+
+      const noStoryNames = (submittedOptions ?? [])
+        .map((o) => o.name)
+        .filter((name) => name.toLowerCase().includes('no story'));
+      expect(noStoryNames).toEqual([
+        "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+      ]);
+    });
+
+    it('should add only the options that are genuinely absent', async () => {
+      const submittedOptions = await runWithStories(
+        storiesWithDescriptiveNoStoryAndInterleavedExtras,
+      );
+
+      const addedNames = (submittedOptions ?? [])
+        .filter((o) => o.id === null)
+        .map((o) => o.name);
+      expect(addedNames).toEqual([
+        'regular / inquiry',
+        'regular / high priority',
+        'regular / middle bug',
+        'regular / minor bug',
+        'regular / refactor',
+      ]);
+    });
+
+    it('should keep the relative order of every option that already exists', async () => {
+      const submittedOptions = await runWithStories(
+        storiesWithDescriptiveNoStoryAndInterleavedExtras,
+      );
+
+      const submittedNames = (submittedOptions ?? []).map((o) => o.name);
+      const existingNamesInSubmittedOrder = submittedNames.filter((name) =>
+        storiesWithDescriptiveNoStoryAndInterleavedExtras.some(
+          (existing) => existing.name === name,
+        ),
+      );
+      expect(existingNamesInSubmittedOrder).toEqual(
+        storiesWithDescriptiveNoStoryAndInterleavedExtras.map((o) => o.name),
+      );
+    });
+
+    it('should insert regular / inquiry directly below regular / WORKFLOW BLOCKER when extras are interleaved', async () => {
+      const submittedOptions = await runWithStories(
+        storiesWithDescriptiveNoStoryAndInterleavedExtras,
+      );
+
+      const submittedNames = (submittedOptions ?? []).map((o) => o.name);
+      expect(submittedNames.indexOf('regular / inquiry')).toBe(
+        submittedNames.indexOf('regular / WORKFLOW BLOCKER') + 1,
+      );
+    });
   });
 });

@@ -7,5 +7,6 @@ export declare class ProjectRequiredFieldCreateUseCase {
     }) => Promise<void>;
     private createMissingFields;
     private reconcileStoryOptions;
+    private optionNameSatisfies;
 }
 //# sourceMappingURL=ProjectRequiredFieldCreateUseCase.d.ts.map
