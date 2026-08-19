@@ -73,6 +73,35 @@ describe('SetNoStoryIssueToStoryUseCase', () => {
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
 
+    it('should not throw when the target date list is empty', async () => {
+      await expect(
+        useCase.run({
+          targetDates: [],
+          project: basicProject,
+          issues: [
+            {
+              ...mock<Issue>(),
+              labels: [],
+              story: null,
+              state: 'OPEN',
+              nextActionDate: new Date('2000-01-01T00:00:00Z'),
+              nextActionHour: null,
+            },
+            {
+              ...mock<Issue>(),
+              labels: [],
+              story: null,
+              state: 'OPEN',
+              nextActionDate: null,
+              nextActionHour: null,
+            },
+          ],
+          cacheUsed: false,
+        }),
+      ).resolves.toBeUndefined();
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledTimes(1);
+    });
+
     it('should do nothing when cacheUsed is true', async () => {
       await useCase.run({
         targetDates: [targetDate],
