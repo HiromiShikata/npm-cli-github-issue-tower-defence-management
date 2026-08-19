@@ -273,6 +273,7 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
       '2026-06-18T00:41:27.000Z',
     ),
   ],
+  'in-tmux-by-agent': [],
 };
 
 const writeFixtureData = (consoleDataOutputDir: string): void => {
