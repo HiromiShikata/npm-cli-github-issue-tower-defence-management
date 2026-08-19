@@ -230,14 +230,42 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.triage.items).toHaveLength(2);
     });
 
-    it('excludes no-story items whose status is In Tmux by agent', () => {
+    it('keeps no-story items whose status is In Tmux by agent', () => {
       const result = run([
         makeIssue({ story: 'no story', status: 'In Tmux by agent' }),
         makeIssue({ story: 'no story', status: 'in tmux by agent' }),
         makeIssue({ story: 'no story', status: 'Unread' }),
       ]);
       const statuses = result.triage.items.map((item) => item.status);
-      expect(statuses).toEqual(['Unread']);
+      expect(statuses).toEqual([
+        'In Tmux by agent',
+        'in tmux by agent',
+        'Unread',
+      ]);
+    });
+
+    it('keeps a no-story item that is blocked or scheduled to resume later', () => {
+      const result = run([
+        makeIssue({
+          story: 'no story',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+        makeIssue({
+          story: 'no story',
+          nextActionDate: new Date('2026-08-20T00:00:00.000Z'),
+        }),
+        makeIssue({ story: 'no story', nextActionHour: 9 }),
+      ]);
+      expect(result.triage.items).toHaveLength(3);
+    });
+
+    it('keeps a pull request and another person’s item off the triage tab', () => {
+      const result = run([
+        makeIssue({ story: 'no story', isPr: true }),
+        makeIssue({ story: 'no story', assignees: ['someone-else'] }),
+        makeIssue({ story: 'no story', isClosed: true }),
+      ]);
+      expect(result.triage.items).toHaveLength(0);
     });
 
     it('keeps every no-story item whatever status it carries', () => {
@@ -397,14 +425,15 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(allTabItems(result)).toHaveLength(1);
     });
 
-    it('hides a no-story In Tmux by agent issue from every tab', () => {
+    it('shows a no-story In Tmux by agent issue on the triage tab and nowhere else', () => {
       const result = run([
         makeIssue({
           story: 'no story',
           status: 'In Tmux by agent',
         }),
       ]);
-      expect(allTabItems(result)).toHaveLength(0);
+      expect(result.triage.items).toHaveLength(1);
+      expect(allTabItems(result)).toHaveLength(1);
     });
 
     it('hides In Tmux by agent case-insensitively from every tab other than the workflow blocker tab', () => {
