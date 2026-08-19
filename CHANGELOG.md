@@ -1,3 +1,10 @@
+## [1.162.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.162.1...v1.162.2) (2026-08-19)
+
+
+### Bug Fixes
+
+* **console:** list every item still needing a story on the triage tab ([#1633](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1633)) ([94b49b0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/94b49b0d6aa21dd7e98c6b39761d3068307fe809))
+
 ## [1.162.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.162.0...v1.162.1) (2026-08-19)
 
 

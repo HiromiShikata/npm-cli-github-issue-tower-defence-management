@@ -49,13 +49,17 @@ class GenerateConsoleListsUseCase {
                     storyOptions: this.buildFieldOptions(storyOptions, []),
                     storyOrder,
                     storyColors: this.buildStoryColorsString(storyOptions),
-                    items: this.sortByStoryOrder(actionableIssues
-                        .filter((issue) => issue.story !== null &&
-                        issue.story.toLowerCase().includes('no story'))
+                    items: this.sortByStoryOrder(issues
+                        .filter((issue) => this.needsStory(issue, assigneeLogin))
                         .map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
                 },
             };
         };
+        this.needsStory = (issue, assigneeLogin) => issue.isClosed === false &&
+            issue.isPr === false &&
+            issue.assignees.includes(assigneeLogin) &&
+            issue.story !== null &&
+            issue.story.toLowerCase().includes('no story');
         this.isActionable = (issue, assigneeLogin) => issue.isClosed === false &&
             issue.assignees.includes(assigneeLogin) &&
             issue.dependedIssueUrls.length === 0 &&
