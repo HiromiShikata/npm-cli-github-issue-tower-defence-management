@@ -14,7 +14,6 @@ export declare const ICEBOX_STATUS_NAME = "Icebox";
 export declare const LEGACY_TODO_STATUS_NAME = "Todo";
 export declare const LEGACY_IN_TMUX_STATUS_NAME = "In Tmux";
 export declare const LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME = "Awaiting Task Breakdown";
-export declare const STATUS_NAMES_BEFORE_WORK_STARTS: string[];
 export type WorkflowStatusDefinition = {
     name: string;
     color: FieldOption['color'];

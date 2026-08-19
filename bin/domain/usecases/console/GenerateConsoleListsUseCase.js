@@ -51,14 +51,11 @@ class GenerateConsoleListsUseCase {
                     storyColors: this.buildStoryColorsString(storyOptions),
                     items: this.sortByStoryOrder(actionableIssues
                         .filter((issue) => issue.story !== null &&
-                        issue.story.toLowerCase().includes('no story') &&
-                        this.isBeforeWorkStarts(issue.status))
+                        issue.story.toLowerCase().includes('no story'))
                         .map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
                 },
             };
         };
-        this.isBeforeWorkStarts = (status) => status === null ||
-            WorkflowStatus_1.STATUS_NAMES_BEFORE_WORK_STARTS.some((name) => name.toLowerCase() === status.toLowerCase());
         this.isActionable = (issue, assigneeLogin) => issue.isClosed === false &&
             issue.assignees.includes(assigneeLogin) &&
             issue.dependedIssueUrls.length === 0 &&
