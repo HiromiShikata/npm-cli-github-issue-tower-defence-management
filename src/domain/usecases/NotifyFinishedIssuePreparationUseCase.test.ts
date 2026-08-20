@@ -876,9 +876,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.updateLabels).toHaveBeenCalledWith(
       expect.objectContaining({
-        labels: expect.arrayContaining(['existing-label', 'llm-agent:impl']),
+        labels: ['existing-label', 'llm-agent:impl'],
       }),
-      expect.arrayContaining(['existing-label', 'llm-agent:impl']),
+      ['existing-label', 'llm-agent:impl'],
     );
   });
 
