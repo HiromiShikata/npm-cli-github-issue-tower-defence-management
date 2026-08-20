@@ -1177,9 +1177,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('should PUT to the GitHub merge API with no merge_method when the repository allows merge commits', async () => {
-      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(null, { status: 204 }),
-      );
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 204 }));
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       await repository.mergePullRequest(
@@ -1202,8 +1202,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({
-              message:
-                'Merge commits are not allowed on this repository.',
+              message: 'Merge commits are not allowed on this repository.',
             }),
             { status: 405, headers: { 'Content-Type': 'application/json' } },
           ),
@@ -1241,8 +1240,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({
-              message:
-                'Merge commits are not allowed on this repository.',
+              message: 'Merge commits are not allowed on this repository.',
             }),
             { status: 405, headers: { 'Content-Type': 'application/json' } },
           ),
@@ -1280,8 +1278,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify({
-              message:
-                'Merge commits are not allowed on this repository.',
+              message: 'Merge commits are not allowed on this repository.',
             }),
             { status: 405, headers: { 'Content-Type': 'application/json' } },
           ),

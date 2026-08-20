@@ -2258,7 +2258,9 @@ export class ApiV3CheerioRestIssueRepository
         fetch(mergeUrl, {
           method: 'PUT',
           headers,
-          body: JSON.stringify(mergeMethod ? { merge_method: mergeMethod } : {}),
+          body: JSON.stringify(
+            mergeMethod ? { merge_method: mergeMethod } : {},
+          ),
         }),
       );
     const response = await mergeWith();
@@ -2272,7 +2274,8 @@ export class ApiV3CheerioRestIssueRepository
         if (retryResponse.ok) {
           return;
         }
-        const retryReason = await this.formatGitHubErrorWithStatus(retryResponse);
+        const retryReason =
+          await this.formatGitHubErrorWithStatus(retryResponse);
         throw new Error(`Failed to merge PR ${prUrl}: ${retryReason}`);
       }
     }
