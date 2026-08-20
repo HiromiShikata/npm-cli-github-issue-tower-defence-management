@@ -615,9 +615,10 @@ export class ApiV3CheerioRestIssueRepository
     const status = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'status',
     )?.value;
-    const agent = item.customFields.find(
-      (field) => normalizeFieldName(field.name) === 'agent',
-    )?.value ?? null;
+    const agent =
+      item.customFields.find(
+        (field) => normalizeFieldName(field.name) === 'agent',
+      )?.value ?? null;
     const { owner, repo } = this.extractIssueFromUrl(item.url);
 
     return {

@@ -620,9 +620,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
     });
 
     it('adds missing agent names as GRAY options and calls updateAgentList', async () => {
-      const project = buildProjectWithAgent([
-        { id: 'opt-impl', name: 'impl' },
-      ]);
+      const project = buildProjectWithAgent([{ id: 'opt-impl', name: 'impl' }]);
       const { projectRepository, useCase } = createUseCase([], project);
 
       await useCase.reconcileAgentOptions(project, ['impl', 'chore']);

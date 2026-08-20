@@ -63,9 +63,9 @@ export class ProjectRequiredFieldCreateUseCase {
       return;
     }
     const requiredOptions = storyFieldDefinition.options;
-    const mergedOptions: OptionToSubmit[] = project.story.stories.map(
-      (o) => ({ ...o }),
-    );
+    const mergedOptions: OptionToSubmit[] = project.story.stories.map((o) => ({
+      ...o,
+    }));
     let addedCount = 0;
     let previousRequiredIndex = -1;
     for (const required of requiredOptions) {
