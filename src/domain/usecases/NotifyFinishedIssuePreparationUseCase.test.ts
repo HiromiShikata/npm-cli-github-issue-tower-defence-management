@@ -92,6 +92,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     get: jest.Mock;
     update: jest.Mock;
     updateStatus: jest.Mock;
+    updateLabels: jest.Mock;
+    getOrCreateLabel: jest.Mock;
     findRelatedOpenPRs: jest.Mock;
     getStoryObjectMap: jest.Mock;
     getOpenPullRequest: jest.Mock;
@@ -128,6 +130,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       get: jest.fn(),
       update: jest.fn(),
       updateStatus: jest.fn(),
+      updateLabels: jest.fn().mockResolvedValue(undefined),
+      getOrCreateLabel: jest.fn().mockResolvedValue(undefined),
       findRelatedOpenPRs: jest.fn(),
       getOpenPullRequest: jest.fn(),
       getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
@@ -793,6 +797,202 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       allowedIssueAuthors: null,
     });
 
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+  });
+
+  it('should add nextStepAgent label and return to Awaiting Workspace when report has nextStepAgent', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      org: 'user',
+      repo: 'repo',
+      labels: [],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: Agent report\n```json\n{"nextStepAgent": "llm-agent:chore", "nextStep": null}\n```',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.getOrCreateLabel).toHaveBeenCalledWith(
+      'user',
+      'repo',
+      'llm-agent:chore',
+    );
+    expect(mockIssueRepository.updateLabels).toHaveBeenCalledWith(
+      expect.objectContaining({ labels: ['llm-agent:chore'] }),
+      ['llm-agent:chore'],
+    );
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      mockProject,
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      expect.stringContaining('llm-agent:chore'),
+    );
+  });
+
+  it('should preserve existing labels when adding nextStepAgent label', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      org: 'user',
+      repo: 'repo',
+      labels: ['existing-label'],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: Agent report\n```json\n{"nextStepAgent": "llm-agent:impl", "nextStep": null}\n```',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.updateLabels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        labels: expect.arrayContaining(['existing-label', 'llm-agent:impl']),
+      }),
+      expect.arrayContaining(['existing-label', 'llm-agent:impl']),
+    );
+  });
+
+  it('should not add nextStepAgent label when nextStepAgent is null', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: Agent report\n```json\n{"nextStepAgent": null, "nextStep": null}\n```',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      mockProject,
+    );
+  });
+
+  it('should create label when nextStepAgent label does not exist in repo', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      org: 'user',
+      repo: 'repo',
+      labels: [],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: Agent report\n```json\n{"nextStepAgent": "llm-agent:new-agent", "nextStep": null}\n```',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.getOrCreateLabel).toHaveBeenCalledWith(
+      'user',
+      'repo',
+      'llm-agent:new-agent',
+    );
+  });
+
+  it('should not add nextStepAgent label when nextStepAgent is an empty string', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: Agent report\n```json\n{"nextStepAgent": "", "nextStep": null}\n```',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'Awaiting Quality Check' }),
       mockProject,

@@ -58,6 +58,8 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'get'
       | 'update'
       | 'updateStatus'
+      | 'updateLabels'
+      | 'getOrCreateLabel'
       | 'findRelatedOpenPRs'
       | 'getStoryObjectMap'
       | 'getOpenPullRequest'
@@ -192,6 +194,38 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     const isTrustedAuthor = (author: string): boolean =>
       this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
+
+    const lastComment = comments[comments.length - 1];
+    if (
+      lastComment &&
+      isTrustedAuthor(lastComment.author) &&
+      lastComment.content.startsWith('From: :robot:')
+    ) {
+      const nextStepAgent = this.extractNextStepAgent(lastComment.content);
+      if (nextStepAgent !== null) {
+        await this.issueRepository.getOrCreateLabel(
+          issue.org,
+          issue.repo,
+          nextStepAgent,
+        );
+        const updatedLabels = [...new Set([...issue.labels, nextStepAgent])];
+        issue.labels = updatedLabels;
+        issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.issueRepository.updateLabels(issue, updatedLabels);
+        await this.patchConsoleTab(issue);
+        await this.issueCommentRepository.createComment(
+          issue,
+          `Next step agent: ${nextStepAgent}`,
+        );
+        return;
+      }
+    }
 
     const { rejections, approvedPrUrl } = await this.collectRejections(
       issue,
@@ -403,6 +437,37 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
     const nextStepValue = Reflect.get(reportJson, 'nextStep');
     return nextStepValue !== null && nextStepValue !== undefined;
+  };
+
+  private extractNextStepAgent = (body: string): string | null => {
+    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+    if (!reportMatch || reportMatch.length < 2) {
+      return null;
+    }
+    let reportJson: unknown;
+    try {
+      reportJson = JSON.parse(reportMatch[1]);
+    } catch (error) {
+      console.warn(
+        'Invalid JSON in report body while checking nextStepAgent:',
+        error,
+      );
+      return null;
+    }
+    if (typeof reportJson !== 'object' || reportJson === null) {
+      return null;
+    }
+    if (!('nextStepAgent' in reportJson)) {
+      return null;
+    }
+    const nextStepAgentValue = Reflect.get(reportJson, 'nextStepAgent');
+    if (
+      typeof nextStepAgentValue !== 'string' ||
+      nextStepAgentValue.trim() === ''
+    ) {
+      return null;
+    }
+    return nextStepAgentValue;
   };
 
   private setDependedIssueUrlForAllOpenPRs = async (
