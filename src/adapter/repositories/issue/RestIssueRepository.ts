@@ -154,6 +154,36 @@ export class RestIssueRepository
     }
   };
 
+  getOrCreateLabel = async (
+    org: string,
+    repo: string,
+    labelName: string,
+  ): Promise<void> => {
+    try {
+      await ky.get(
+        `https://api.github.com/repos/${org}/${repo}/labels/${encodeURIComponent(labelName)}`,
+        {
+          headers: {
+            Authorization: `token ${this.ghToken}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        },
+      );
+    } catch (e) {
+      if (e instanceof HTTPError && e.response.status === 404) {
+        await ky.post(`https://api.github.com/repos/${org}/${repo}/labels`, {
+          json: { name: labelName, color: 'ededed' },
+          headers: {
+            Authorization: `token ${this.ghToken}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        });
+      } else {
+        throw e;
+      }
+    }
+  };
+
   updateAssigneeList = async (
     issue: Pick<Issue, 'org' | 'repo' | 'number'>,
     assigneeList: Member['name'][],

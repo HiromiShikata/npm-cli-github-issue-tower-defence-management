@@ -425,6 +425,7 @@ const createStubIssueRepository = (
   createComment: () => notImplemented('createComment'),
   updateLabels: () => notImplemented('updateLabels'),
   removeLabel: () => notImplemented('removeLabel'),
+  getOrCreateLabel: () => notImplemented('getOrCreateLabel'),
   updateAssigneeList: () => notImplemented('updateAssigneeList'),
   searchIssues: () => notImplemented('searchIssues'),
   get: async (issueUrl: string): Promise<Issue | null> =>

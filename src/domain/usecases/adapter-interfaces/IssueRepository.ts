@@ -142,6 +142,11 @@ export interface IssueRepository {
   createComment: (issue: Issue, commentBody: string) => Promise<void>;
   updateLabels: (issue: Issue, labels: Issue['labels']) => Promise<void>;
   removeLabel: (issue: Issue, label: Label) => Promise<void>;
+  getOrCreateLabel: (
+    org: string,
+    repo: string,
+    labelName: string,
+  ) => Promise<void>;
   updateAssigneeList: (
     issue: Pick<Issue, 'org' | 'repo' | 'number'>,
     assigneeList: Member['name'][],

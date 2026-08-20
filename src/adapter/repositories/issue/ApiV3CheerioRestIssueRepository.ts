@@ -527,6 +527,7 @@ export class ApiV3CheerioRestIssueRepository
       | 'removeLabel'
       | 'updateAssigneeList'
       | 'searchIssues'
+      | 'getOrCreateLabel'
     >,
     readonly graphqlProjectItemRepository: Pick<
       GraphqlProjectItemRepository,
@@ -1005,6 +1006,13 @@ export class ApiV3CheerioRestIssueRepository
   };
   removeLabel = (issue: Issue, label: string): Promise<void> => {
     return this.restIssueRepository.removeLabel(issue, label);
+  };
+  getOrCreateLabel = (
+    org: string,
+    repo: string,
+    labelName: string,
+  ): Promise<void> => {
+    return this.restIssueRepository.getOrCreateLabel(org, repo, labelName);
   };
   updateAssigneeList = (
     issue: Pick<Issue, 'org' | 'repo' | 'number'>,
