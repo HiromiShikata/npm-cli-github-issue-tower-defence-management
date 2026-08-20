@@ -19,5 +19,11 @@ export interface ProjectRepository {
       id: FieldOption['id'] | null;
     })[],
   ) => Promise<FieldOption[]>;
+  updateAgentList: (
+    project: Project,
+    agentOptions: (Omit<FieldOption, 'id'> & {
+      id: FieldOption['id'] | null;
+    })[],
+  ) => Promise<FieldOption[]>;
   getByUrl: (url: string) => Promise<Project>;
 }

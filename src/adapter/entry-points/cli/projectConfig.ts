@@ -24,6 +24,7 @@ export type ConfigFile = {
   labelsAsLlmAgentName?: string[];
   labelsNotRequiringPullRequest?: string[];
   changeTargetPathAliases?: Record<string, string>;
+  agents?: string[];
   consoleDataOutputDir?: string;
   consoleAccessToken?: string;
   consoleProjects?: Record<string, string>;
@@ -192,6 +193,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'changeTargetPathAliases',
       ),
+      agents: getStringArrayValue(parsed, 'agents'),
       consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
       consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
       consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
@@ -372,6 +374,7 @@ export const mergeConfigs = (
     readmeOverrides.changeTargetPathAliases ??
     cliOverrides.changeTargetPathAliases ??
     configFile.changeTargetPathAliases,
+  agents: cliOverrides.agents ?? configFile.agents,
   consoleDataOutputDir:
     readmeOverrides.consoleDataOutputDir ??
     cliOverrides.consoleDataOutputDir ??

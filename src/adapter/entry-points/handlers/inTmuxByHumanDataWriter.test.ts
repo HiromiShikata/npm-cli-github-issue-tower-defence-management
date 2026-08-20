@@ -38,6 +38,7 @@ const project: Project = {
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+  agent: null,
 };
 
 const makeIssue = (overrides: Partial<Issue>): Issue => ({
@@ -65,6 +66,7 @@ const makeIssue = (overrides: Partial<Issue>): Issue => ({
   createdAt: new Date('2026-06-13T08:18:45.000Z'),
   author: 'someone',
   closingIssueReferenceUrls: [],
+  agent: null,
   ...overrides,
 });
 

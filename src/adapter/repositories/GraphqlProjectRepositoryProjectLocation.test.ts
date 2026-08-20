@@ -186,6 +186,7 @@ describe('GraphqlProjectRepository project location', () => {
       remainingEstimationMinutes: null,
       dependedIssueUrlSeparatedByComma: null,
       completionDate50PercentConfidence: null,
+      agent: null,
     });
 
     expect(mockPostGithubGraphqlJson).not.toHaveBeenCalled();

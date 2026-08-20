@@ -1482,6 +1482,7 @@ mysteryKey: 'value'
         labelsAsLlmAgentName: null,
         labelsNotRequiringPullRequest: null,
         changeTargetPathAliases: null,
+        agents: null,
       });
     });
 
@@ -1519,6 +1520,7 @@ mysteryKey: 'value'
         labelsAsLlmAgentName: null,
         labelsNotRequiringPullRequest: null,
         changeTargetPathAliases: null,
+        agents: null,
       });
     });
 

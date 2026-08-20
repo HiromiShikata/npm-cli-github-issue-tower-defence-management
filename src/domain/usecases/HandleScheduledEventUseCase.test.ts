@@ -683,6 +683,7 @@ describe('HandleScheduledEventUseCase', () => {
         remainingEstimationMinutes: null,
         dependedIssueUrlSeparatedByComma: null,
         completionDate50PercentConfidence: null,
+        agent: null,
       };
 
       const capturedLogs: string[] = [];

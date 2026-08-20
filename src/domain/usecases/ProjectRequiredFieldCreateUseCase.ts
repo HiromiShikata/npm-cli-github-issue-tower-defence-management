@@ -1,12 +1,13 @@
 import { FieldOption, Project } from '../entities/Project';
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import {
+  AGENT_FIELD_NAME,
   REQUIRED_PROJECT_FIELDS,
   STORY_FIELD_NAME,
 } from '../entities/RequiredProjectField';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 
-type StoryOptionToSubmit = Omit<FieldOption, 'id'> & {
+type OptionToSubmit = Omit<FieldOption, 'id'> & {
   id: FieldOption['id'] | null;
 };
 
@@ -14,14 +15,25 @@ export class ProjectRequiredFieldCreateUseCase {
   constructor(
     private readonly projectRepository: Pick<
       ProjectRepository,
-      'getByUrl' | 'listFieldNames' | 'createField' | 'updateStoryList'
+      | 'getByUrl'
+      | 'listFieldNames'
+      | 'createField'
+      | 'updateStoryList'
+      | 'updateAgentList'
     >,
   ) {}
 
-  run = async (params: { projectUrl: string }): Promise<void> => {
+  run = async (params: {
+    projectUrl: string;
+    agents?: string[] | null;
+  }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
     await this.createMissingFields(project);
-    await this.reconcileStoryOptions(project);
+    const updatedProject = await this.projectRepository.getByUrl(
+      params.projectUrl,
+    );
+    await this.reconcileStoryOptions(updatedProject);
+    await this.reconcileAgentOptions(updatedProject, params.agents ?? null);
   };
 
   private createMissingFields = async (project: Project): Promise<void> => {
@@ -51,7 +63,7 @@ export class ProjectRequiredFieldCreateUseCase {
       return;
     }
     const requiredOptions = storyFieldDefinition.options;
-    const mergedOptions: StoryOptionToSubmit[] = project.story.stories.map(
+    const mergedOptions: OptionToSubmit[] = project.story.stories.map(
       (o) => ({ ...o }),
     );
     let addedCount = 0;
@@ -75,6 +87,35 @@ export class ProjectRequiredFieldCreateUseCase {
     await this.projectRepository.updateStoryList(project, mergedOptions);
   };
 
+  reconcileAgentOptions = async (
+    project: Project,
+    agentNames: string[] | null,
+  ): Promise<void> => {
+    if (!project.agent || !agentNames || agentNames.length === 0) {
+      return;
+    }
+    const existingOptions = project.agent.options;
+    const existingNames = new Set(
+      existingOptions.map((o) => normalizeProjectFieldName(o.name)),
+    );
+    const toAdd = agentNames.filter(
+      (name) => !existingNames.has(normalizeProjectFieldName(name)),
+    );
+    if (toAdd.length === 0) {
+      return;
+    }
+    const mergedOptions: OptionToSubmit[] = [
+      ...existingOptions.map((o) => ({ ...o })),
+      ...toAdd.map((name) => ({
+        id: null,
+        name,
+        color: 'GRAY' as const,
+        description: '',
+      })),
+    ];
+    await this.projectRepository.updateAgentList(project, mergedOptions);
+  };
+
   private optionNameSatisfies = (
     currentName: string,
     requiredName: string,
@@ -82,4 +123,6 @@ export class ProjectRequiredFieldCreateUseCase {
     normalizeProjectFieldName(currentName).startsWith(
       normalizeProjectFieldName(requiredName),
     );
+
+  static readonly AGENT_FIELD_NAME = AGENT_FIELD_NAME;
 }

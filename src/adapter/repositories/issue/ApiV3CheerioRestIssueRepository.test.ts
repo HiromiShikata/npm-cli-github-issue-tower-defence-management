@@ -28,6 +28,7 @@ const buildTestProject = (id: string): Project => ({
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+  agent: null,
 });
 
 const buildCachedIssueRecord = (url: string, title: string) => ({
@@ -151,6 +152,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           closingIssueReferenceUrls: [
             'https://github.com/HiromiShikata/test-repository/issues/7',
           ],
+          agent: null,
         },
       },
       {
@@ -207,6 +209,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           createdAt: new Date('2024-01-01T00:00:00Z'),
           author: '',
           closingIssueReferenceUrls: [],
+          agent: null,
         },
       },
     ];
@@ -716,6 +719,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         remainingEstimationMinutes: null,
         dependedIssueUrlSeparatedByComma: null,
         completionDate50PercentConfidence: null,
+        agent: null,
       };
       const issue = {
         nameWithOwner: 'HiromiShikata/test-repository',
@@ -742,6 +746,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         createdAt: new Date('2024-01-01'),
         author: '',
         closingIssueReferenceUrls: [],
+        agent: null,
       };
       const statusId = 'new-status-id';
 

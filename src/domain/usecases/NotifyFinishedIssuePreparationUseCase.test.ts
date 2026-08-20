@@ -45,6 +45,7 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+  agent: null,
   ...overrides,
 });
 
@@ -73,6 +74,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   createdAt: new Date(),
   author: '',
   closingIssueReferenceUrls: [],
+  agent: null,
   ...overrides,
 });
 
@@ -87,6 +89,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   let useCase: NotifyFinishedIssuePreparationUseCase;
   let mockProjectRepository: {
     getByUrl: jest.Mock;
+    updateAgentList: jest.Mock;
   };
   let mockIssueRepository: {
     get: jest.Mock;
@@ -101,6 +104,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     approvePullRequest: jest.Mock;
     requestChangesWithInlineComment: jest.Mock;
     setDependedIssueUrl: jest.Mock;
+    setIssueAgentField: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -123,6 +127,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     mockProjectRepository = {
       getByUrl: jest.fn(),
+      updateAgentList: jest.fn().mockResolvedValue([]),
     };
 
     mockIssueRepository = {
@@ -138,6 +143,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       approvePullRequest: jest.fn().mockResolvedValue(undefined),
       requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
       setDependedIssueUrl: jest.fn(),
+      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
     };
 
     mockIssueCommentRepository = {
@@ -3596,6 +3602,145 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('nextStepAgent handling', () => {
+    const makeProjectWithAgent = () =>
+      createMockProject({
+        agent: {
+          name: 'Agent',
+          fieldId: 'agent-field-id',
+          options: [
+            { id: 'opt-impl', name: 'impl', color: 'GRAY', description: '' },
+          ],
+        },
+      });
+
+    it('calls setIssueAgentField with existing option ID when nextStepAgent is in last comment', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      const projectWithAgent = makeProjectWithAgent();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": "do something", "nextStepAgent": "impl"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'https://github.com/user/repo/issues/1',
+        projectWithAgent,
+        'opt-impl',
+      );
+    });
+
+    it('creates a new agent option and calls setIssueAgentField when nextStepAgent is not an existing option', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      const projectWithAgent = makeProjectWithAgent();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": "review", "nextStepAgent": "chore"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+      mockProjectRepository.updateAgentList.mockResolvedValue([
+        { id: 'opt-impl', name: 'impl', color: 'GRAY', description: '' },
+        { id: 'opt-chore-new', name: 'chore', color: 'GRAY', description: '' },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockProjectRepository.updateAgentList).toHaveBeenCalledWith(
+        projectWithAgent,
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'impl' }),
+          expect.objectContaining({ id: null, name: 'chore', color: 'GRAY' }),
+        ]),
+      );
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'https://github.com/user/repo/issues/1',
+        projectWithAgent,
+        'opt-chore-new',
+      );
+    });
+
+    it('does not call setIssueAgentField when nextStepAgent is absent from the last comment', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      const projectWithAgent = makeProjectWithAgent();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content: 'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/1',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockProjectRepository.updateAgentList).not.toHaveBeenCalled();
+    });
+
+    it('does not call setIssueAgentField when project has no agent field', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        createMockProject({ agent: null }),
+      );
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": "go", "nextStepAgent": "impl"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });
 

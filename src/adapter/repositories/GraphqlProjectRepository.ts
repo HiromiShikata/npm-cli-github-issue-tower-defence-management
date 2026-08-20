@@ -601,6 +601,56 @@ export class GraphqlProjectRepository
     );
     return options;
   };
+  updateAgentList = async (
+    project: Project,
+    newAgentList: (Omit<FieldOption, 'id'> & {
+      id: FieldOption['id'] | null;
+    })[],
+  ): Promise<FieldOption[]> => {
+    if (!project.agent) {
+      throw new Error('Project has no agent field');
+    }
+    const mutation = `mutation UpdateAgentOptions($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    singleSelectOptions: $options
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        options {
+          id
+          name
+          color
+          description
+        }
+      }
+    }
+  }
+}`;
+    const variables = {
+      fieldId: project.agent.fieldId,
+      options: newAgentList.map(({ id, name, color, description }) => ({
+        ...(id !== null ? { id } : {}),
+        name,
+        color,
+        description,
+      })),
+    };
+    const response = await postGithubGraphqlJson<{
+      data: {
+        updateProjectV2Field: {
+          projectV2Field: {
+            options: FieldOption[];
+          };
+        };
+      };
+    }>({
+      ghToken: this.ghToken,
+      query: mutation,
+      variables,
+    });
+    return response.data.updateProjectV2Field.projectV2Field.options;
+  };
   updateStatusList = async (
     project: Project,
     newStatusList: (Omit<FieldOption, 'id'> & {

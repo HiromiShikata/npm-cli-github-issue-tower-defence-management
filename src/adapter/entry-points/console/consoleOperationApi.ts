@@ -123,6 +123,7 @@ const projectItemReference = (
   createdAt: new Date(0),
   author: '',
   closingIssueReferenceUrls: [],
+  agent: null,
 });
 
 const recordDone = (

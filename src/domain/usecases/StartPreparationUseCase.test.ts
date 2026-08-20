@@ -53,6 +53,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   createdAt: new Date(),
   author: 'testuser',
   closingIssueReferenceUrls: [],
+  agent: null,
   ...overrides,
 });
 
@@ -76,6 +77,7 @@ const createMockProject = (): Project => ({
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+  agent: null,
 });
 
 describe('StartPreparationUseCase', () => {

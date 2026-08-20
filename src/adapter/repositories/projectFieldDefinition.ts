@@ -1,5 +1,6 @@
 import { FieldOption, Project } from '../../domain/entities/Project';
 import {
+  AGENT_FIELD_NAME,
   DEPENDED_ISSUE_URL_FIELD_NAME,
   NEXT_ACTION_DATE_FIELD_NAME,
   NEXT_ACTION_HOUR_FIELD_NAME,
@@ -77,6 +78,10 @@ export const projectFromDefinition = (
   const completionDate50PercentConfidence = definition.fields.find((field) =>
     normalizeFieldName(field.name).startsWith('completiondate'),
   );
+  const agentField = definition.fields.find(
+    (field) =>
+      normalizeFieldName(field.name) === normalizeFieldName(AGENT_FIELD_NAME),
+  );
   return {
     id: definition.id,
     url: definition.url,
@@ -125,6 +130,13 @@ export const projectFromDefinition = (
       ? {
           name: completionDate50PercentConfidence.name,
           fieldId: completionDate50PercentConfidence.fieldId,
+        }
+      : null,
+    agent: agentField
+      ? {
+          name: agentField.name,
+          fieldId: agentField.fieldId,
+          options: agentField.options,
         }
       : null,
   };

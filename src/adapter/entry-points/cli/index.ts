@@ -627,6 +627,7 @@ program
       labelsNotRequiringPullRequest:
         config.labelsNotRequiringPullRequest ?? null,
       changeTargetPathAliases: config.changeTargetPathAliases ?? null,
+      agents: config.agents ?? null,
     });
   });
 

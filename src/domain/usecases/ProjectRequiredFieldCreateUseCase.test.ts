@@ -1,6 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import { FieldOption, Project } from '../entities/Project';
 import {
+  AGENT_FIELD_NAME,
   DEPENDED_ISSUE_URL_FIELD_NAME,
   NEXT_ACTION_DATE_FIELD_NAME,
   NEXT_ACTION_HOUR_FIELD_NAME,
@@ -27,6 +28,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
     remainingEstimationMinutes: null,
     dependedIssueUrlSeparatedByComma: null,
     completionDate50PercentConfidence: null,
+    agent: null,
   };
 
   const buildProjectWithStory = (stories: FieldOption[]): Project => ({
@@ -50,13 +52,18 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       mock<
         Pick<
           ProjectRepository,
-          'getByUrl' | 'listFieldNames' | 'createField' | 'updateStoryList'
+          | 'getByUrl'
+          | 'listFieldNames'
+          | 'createField'
+          | 'updateStoryList'
+          | 'updateAgentList'
         >
       >();
     projectRepository.getByUrl.mockResolvedValue(project);
     projectRepository.listFieldNames.mockResolvedValue(existingFieldNames);
     projectRepository.createField.mockResolvedValue(undefined);
     projectRepository.updateStoryList.mockResolvedValue([]);
+    projectRepository.updateAgentList.mockResolvedValue([]);
     return {
       projectRepository,
       useCase: new ProjectRequiredFieldCreateUseCase(projectRepository),
@@ -79,6 +86,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       NEXT_ACTION_DATE_FIELD_NAME,
       NEXT_ACTION_HOUR_FIELD_NAME,
       DEPENDED_ISSUE_URL_FIELD_NAME,
+      AGENT_FIELD_NAME,
     ]);
   });
 
@@ -91,6 +99,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         'nextactiondate',
         'nextactionhour',
         'Depended Issue URL separated by comma',
+        'Agent',
       ],
       projectWithoutStory,
     );
@@ -114,6 +123,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
     expect(createdFieldNames).toEqual([
       NEXT_ACTION_HOUR_FIELD_NAME,
       DEPENDED_ISSUE_URL_FIELD_NAME,
+      AGENT_FIELD_NAME,
     ]);
   });
 
@@ -590,6 +600,72 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       expect(submittedNames.indexOf('regular / inquiry')).toBe(
         submittedNames.indexOf('regular / WORKFLOW BLOCKER') + 1,
       );
+    });
+  });
+
+  describe('reconcileAgentOptions', () => {
+    const buildProjectWithAgent = (
+      existingOptions: { id: string; name: string }[],
+    ): Project => ({
+      ...projectWithoutStory,
+      agent: {
+        name: 'Agent',
+        fieldId: 'agent-field-id',
+        options: existingOptions.map((o) => ({
+          ...o,
+          color: 'GRAY' as const,
+          description: '',
+        })),
+      },
+    });
+
+    it('adds missing agent names as GRAY options and calls updateAgentList', async () => {
+      const project = buildProjectWithAgent([
+        { id: 'opt-impl', name: 'impl' },
+      ]);
+      const { projectRepository, useCase } = createUseCase([], project);
+
+      await useCase.reconcileAgentOptions(project, ['impl', 'chore']);
+
+      expect(projectRepository.updateAgentList).toHaveBeenCalledWith(
+        project,
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'opt-impl', name: 'impl' }),
+          expect.objectContaining({ id: null, name: 'chore', color: 'GRAY' }),
+        ]),
+      );
+    });
+
+    it('does not call updateAgentList when all agents already exist', async () => {
+      const project = buildProjectWithAgent([
+        { id: 'opt-impl', name: 'impl' },
+        { id: 'opt-chore', name: 'chore' },
+      ]);
+      const { projectRepository, useCase } = createUseCase([], project);
+
+      await useCase.reconcileAgentOptions(project, ['impl', 'chore']);
+
+      expect(projectRepository.updateAgentList).not.toHaveBeenCalled();
+    });
+
+    it('does not call updateAgentList when agentNames is null', async () => {
+      const project = buildProjectWithAgent([]);
+      const { projectRepository, useCase } = createUseCase([], project);
+
+      await useCase.reconcileAgentOptions(project, null);
+
+      expect(projectRepository.updateAgentList).not.toHaveBeenCalled();
+    });
+
+    it('does not call updateAgentList when project has no agent field', async () => {
+      const { projectRepository, useCase } = createUseCase(
+        [],
+        projectWithoutStory,
+      );
+
+      await useCase.reconcileAgentOptions(projectWithoutStory, ['impl']);
+
+      expect(projectRepository.updateAgentList).not.toHaveBeenCalled();
     });
   });
 });

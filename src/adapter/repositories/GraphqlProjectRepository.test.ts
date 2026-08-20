@@ -72,6 +72,7 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
           name: 'Workflow Management',
         },
       },
+      agent: null,
     };
 
     it('should add a new option while preserving all existing options', async () => {
@@ -151,6 +152,7 @@ describeWhenCredentials('GraphqlProjectRepository', () => {
         },
         completionDate50PercentConfidence: null,
         dependedIssueUrlSeparatedByComma: null,
+        agent: null,
 
         status: {
           fieldId: 'PVTSSF_lAHOAGJHa84AFhgFzgDLt0c',

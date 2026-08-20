@@ -479,6 +479,7 @@ export class StartPreparationUseCase {
             )
           : undefined;
       const agent =
+        issue.agent ||
         issue.labels
           .find((label: string) => label.startsWith('llm-agent:'))
           ?.replace('llm-agent:', '')
