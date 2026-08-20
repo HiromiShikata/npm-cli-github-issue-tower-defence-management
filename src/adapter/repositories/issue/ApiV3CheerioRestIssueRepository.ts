@@ -362,6 +362,12 @@ function isRefContainer(value: unknown): value is { ref: string } {
   return isRecord(value) && typeof value.ref === 'string';
 }
 
+function isRepoMergeSettings(
+  value: unknown,
+): value is { allow_squash_merge?: boolean; allow_rebase_merge?: boolean } {
+  return isRecord(value);
+}
+
 type IssueOrPullRequestBodyResponse = {
   body: string | null;
 };
@@ -2302,17 +2308,13 @@ export class ApiV3CheerioRestIssueRepository
       return null;
     }
     const data: unknown = await response.json();
-    if (typeof data !== 'object' || data === null) {
+    if (!isRepoMergeSettings(data)) {
       return null;
     }
-    const settings = data as {
-      allow_squash_merge?: boolean;
-      allow_rebase_merge?: boolean;
-    };
-    if (settings.allow_squash_merge === true) {
+    if (data.allow_squash_merge === true) {
       return 'squash';
     }
-    if (settings.allow_rebase_merge === true) {
+    if (data.allow_rebase_merge === true) {
       return 'rebase';
     }
     return null;
