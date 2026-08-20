@@ -208,7 +208,12 @@ export class NotifyFinishedIssuePreparationUseCase {
           issue.repo,
           nextStepAgent,
         );
-        const updatedLabels = [...new Set([...issue.labels, nextStepAgent])];
+        const agentLabels = params.labelsAsLlmAgentName ?? [];
+        const filteredLabels = issue.labels.filter(
+          (label) =>
+            !label.startsWith('llm-agent:') && !agentLabels.includes(label),
+        );
+        const updatedLabels = [...new Set([...filteredLabels, nextStepAgent])];
         issue.labels = updatedLabels;
         issue.status = AWAITING_WORKSPACE_STATUS_NAME;
         await this.issueRepository.update(issue, project);

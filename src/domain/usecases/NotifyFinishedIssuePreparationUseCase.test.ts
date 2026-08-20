@@ -957,6 +957,41 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should remove existing llm-agent labels and labelsAsLlmAgentName labels when adding nextStepAgent label', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      org: 'user',
+      repo: 'repo',
+      labels: ['llm-agent:chore', 'chore', 'feature-flag'],
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: Agent report\n```json\n{"nextStepAgent": "llm-agent:impl", "nextStep": null}\n```',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+      labelsAsLlmAgentName: ['chore', 'accounting'],
+    });
+
+    expect(mockIssueRepository.updateLabels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        labels: ['feature-flag', 'llm-agent:impl'],
+      }),
+      ['feature-flag', 'llm-agent:impl'],
+    );
+  });
+
   it('should not add nextStepAgent label when nextStepAgent is an empty string', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
