@@ -17,7 +17,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private readonly consoleTabsRepository?;
     private readonly issueRejectionEvaluator;
     private readonly changeTargetPullRequestApprover;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment' | 'setDependedIssueUrl'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>, consoleTabsRepository?: (ConsoleTabsRepository | null) | undefined);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateLabels' | 'getOrCreateLabel' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment' | 'setDependedIssueUrl'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>, consoleTabsRepository?: (ConsoleTabsRepository | null) | undefined);
     run: (params: {
         projectUrl: string;
         issueUrl: string;
@@ -31,6 +31,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private isAuthorTrusted;
     private collectRejections;
     private reportBodyHasNextStep;
+    private extractNextStepAgent;
     private setDependedIssueUrlForAllOpenPRs;
     private resolveOpenPrsForPrItem;
     private sendWorkflowBlockerNotification;

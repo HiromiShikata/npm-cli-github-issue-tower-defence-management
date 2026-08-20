@@ -119,6 +119,30 @@ class RestIssueRepository extends BaseGitHubRepository_1.BaseGitHubRepository {
                 throw e;
             }
         };
+        this.getOrCreateLabel = async (org, repo, labelName) => {
+            try {
+                await ky_1.default.get(`https://api.github.com/repos/${org}/${repo}/labels/${encodeURIComponent(labelName)}`, {
+                    headers: {
+                        Authorization: `token ${this.ghToken}`,
+                        Accept: 'application/vnd.github.v3+json',
+                    },
+                });
+            }
+            catch (e) {
+                if (e instanceof ky_1.HTTPError && e.response.status === 404) {
+                    await ky_1.default.post(`https://api.github.com/repos/${org}/${repo}/labels`, {
+                        json: { name: labelName, color: 'ededed' },
+                        headers: {
+                            Authorization: `token ${this.ghToken}`,
+                            Accept: 'application/vnd.github.v3+json',
+                        },
+                    });
+                }
+                else {
+                    throw e;
+                }
+            }
+        };
         this.updateAssigneeList = async (issue, assigneeList) => {
             await ky_1.default.patch(`https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`, {
                 json: { assignees: assigneeList },

@@ -19,6 +19,7 @@ export declare class RestIssueRepository extends BaseGitHubRepository implements
     updateIssueBody: (issue: Pick<Issue, "org" | "repo" | "number">, body: string) => Promise<void>;
     updateLabels: (issue: Issue, labels: Issue["labels"]) => Promise<void>;
     removeLabel: (issue: Issue, label: string) => Promise<void>;
+    getOrCreateLabel: (org: string, repo: string, labelName: string) => Promise<void>;
     updateAssigneeList: (issue: Pick<Issue, "org" | "repo" | "number">, assigneeList: Member["name"][]) => Promise<void>;
     searchIssues: (query: string) => Promise<SearchedIssue[]>;
     private parseSearchedIssue;

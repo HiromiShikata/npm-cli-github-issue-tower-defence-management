@@ -1,3 +1,15 @@
+# [1.164.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.163.0...v1.164.0) (2026-08-20)
+
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies ([#1568](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1568)) ([90177f8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/90177f85f5dcc9ad31217255d61b342c31835711))
+
+
+### Features
+
+* **NotifyFinishedIssuePreparationUseCase:** agentからのレポートにネクストステップ追加 ([#1643](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1643)) ([9fa9446](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9fa94469457433590e1347177a04a8fd03ce30b3)), closes [HiromiShikata/umino-corporait-operation#30678](https://github.com/HiromiShikata/umino-corporait-operation/issues/30678)
+
 # [1.163.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.162.5...v1.163.0) (2026-08-19)
 
 

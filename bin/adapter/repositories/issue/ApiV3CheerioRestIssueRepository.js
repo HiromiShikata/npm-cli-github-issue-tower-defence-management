@@ -432,6 +432,9 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.removeLabel = (issue, label) => {
             return this.restIssueRepository.removeLabel(issue, label);
         };
+        this.getOrCreateLabel = (org, repo, labelName) => {
+            return this.restIssueRepository.getOrCreateLabel(org, repo, labelName);
+        };
         this.updateAssigneeList = (issue, assigneeList) => {
             return this.restIssueRepository.updateAssigneeList(issue, assigneeList);
         };

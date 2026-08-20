@@ -19,7 +19,7 @@ export declare const REQUIRED_CHECKS_CACHE_TTL_MS: number;
 export declare const graphqlMergeableFromRestMergeable: (mergeable: boolean | null) => string;
 export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository implements IssueRepository {
     readonly apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>;
-    readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'updateIssueBody' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>;
+    readonly restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'updateIssueBody' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues' | 'getOrCreateLabel'>;
     readonly graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>;
     readonly localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>;
     readonly projectRepository: Pick<ProjectRepository, 'getProject'>;
@@ -27,7 +27,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     readonly localStorageRepository: LocalStorageRepository;
     readonly ghToken: string;
     readonly sleep: Sleep;
-    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'updateIssueBody' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
+    constructor(apiV3IssueRepository: Pick<ApiV3IssueRepository, 'searchIssue'>, restIssueRepository: Pick<RestIssueRepository, 'createNewIssue' | 'updateIssue' | 'updateIssueBody' | 'createComment' | 'getIssue' | 'updateLabels' | 'removeLabel' | 'updateAssigneeList' | 'searchIssues' | 'getOrCreateLabel'>, graphqlProjectItemRepository: Pick<GraphqlProjectItemRepository, 'fetchProjectItems' | 'fetchProjectItemsLight' | 'fetchProjectItemsByIds' | 'fetchProjectItemByUrl' | 'updateProjectField' | 'clearProjectField' | 'updateProjectTextField' | 'addIssueToProject'>, localStorageCacheRepository: Pick<LocalStorageCacheRepository, 'getSingle' | 'setSingle'>, projectRepository: Pick<ProjectRepository, 'getProject'>, dateRepository: DateRepository, localStorageRepository: LocalStorageRepository, ghToken?: string, sleep?: Sleep);
     private readonly projectIssuesCacheRepository;
     private readonly getAllIssuesRefreshMemo;
     private readonly lastIssuesFetchedAtByProjectId;
@@ -76,6 +76,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     updateProjectTextField: (project: Project, fieldId: string, issue: Issue, text: string) => Promise<void>;
     updateLabels: (issue: Issue, labels: Issue["labels"]) => Promise<void>;
     removeLabel: (issue: Issue, label: string) => Promise<void>;
+    getOrCreateLabel: (org: string, repo: string, labelName: string) => Promise<void>;
     updateAssigneeList: (issue: Pick<Issue, "org" | "repo" | "number">, assigneeList: Member["name"][]) => Promise<void>;
     searchIssues: (query: string) => Promise<SearchedIssue[]>;
     get: (issueUrl: string, project: Project) => Promise<Issue | null>;
