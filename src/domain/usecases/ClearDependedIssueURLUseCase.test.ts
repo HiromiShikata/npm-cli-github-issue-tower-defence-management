@@ -259,15 +259,28 @@ describe('ClearDependedIssueURLUseCase', () => {
         ],
       },
       {
-        name: 'should not call clearProjectField and createComment when dependedIssue is closed and cacheUsed is true',
+        name: 'should call clearProjectField and createComment when dependedIssue is closed and the issue list came from the incremental cache',
         input: {
           project: basicProject,
           issues: [basicIssueOne, basicIssueTwo, basicIssueThree],
           cacheUsed: true,
         },
-        expectedIssueRepositoryClearProjectFieldCalls: [],
-        expectedIssueRepositoryUpdateTextFieldCalls: [],
-        expectedIssueRepositoryCreateCommentCalls: [],
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [basicProject, 'fieldId', basicIssueTwo],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [basicProject, 'fieldId', basicIssueThree, 'url2'],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            basicIssueTwo,
+            'All depended issues are already closed, dependency field cleared:\n- url1',
+          ],
+          [
+            basicIssueThree,
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+        ],
       },
       {
         name: 'should not call clearProjectField and createComment when target issue is closed',
