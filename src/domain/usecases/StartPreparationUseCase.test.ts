@@ -9,7 +9,7 @@ import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsag
 import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import { Issue } from '../entities/Issue';
-import { Project } from '../entities/Project';
+import { FieldOption, Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -82,7 +82,9 @@ const createMockProject = (): Project => ({
 
 describe('StartPreparationUseCase', () => {
   let useCase: StartPreparationUseCase;
-  let mockProjectRepository: Mocked<Pick<ProjectRepository, 'getByUrl'>>;
+  let mockProjectRepository: Mocked<
+    Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
+  >;
   let mockIssueRepository: Mocked<
     Pick<
       IssueRepository,
@@ -94,6 +96,8 @@ describe('StartPreparationUseCase', () => {
       | 'closePullRequest'
       | 'deletePullRequestBranch'
       | 'createCommentByUrl'
+      | 'setIssueAgentField'
+      | 'removeLabel'
     >
   >;
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
@@ -105,6 +109,8 @@ describe('StartPreparationUseCase', () => {
     mockProject = createMockProject();
     mockProjectRepository = {
       getByUrl: jest.fn(),
+      createField: jest.fn().mockResolvedValue(undefined),
+      updateAgentList: jest.fn().mockResolvedValue([]),
     };
     mockIssueRepository = {
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
@@ -115,6 +121,8 @@ describe('StartPreparationUseCase', () => {
       closePullRequest: jest.fn().mockResolvedValue(undefined),
       deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+      removeLabel: jest.fn().mockResolvedValue(undefined),
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
@@ -189,6 +197,181 @@ describe('StartPreparationUseCase', () => {
         'i1',
       ],
     ]);
+  });
+
+  describe('agent designation label migration to the Agent project field', () => {
+    const projectWithAgentField = (options: FieldOption[]): Project => ({
+      ...createMockProject(),
+      agent: { name: 'Agent', fieldId: 'agent-field-id', options },
+    });
+    const runWithAgents = async (agents: string[] | null): Promise<void> => {
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents,
+      });
+    };
+    const arrangeIssue = (project: Project, labels: string[]): void => {
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          createMockIssue({
+            url: 'url1',
+            title: 'Issue 1',
+            labels,
+            status: 'Awaiting Workspace',
+          }),
+        ]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+    };
+
+    it('sets the existing Agent field option and removes the label when a label matches a configured agent definition', async () => {
+      const project = projectWithAgentField([
+        {
+          id: 'agent-option-impl',
+          name: 'impl',
+          color: 'GRAY',
+          description: '',
+        },
+        {
+          id: 'agent-option-chore',
+          name: 'chore',
+          color: 'GRAY',
+          description: '',
+        },
+      ]);
+      arrangeIssue(project, ['chore']);
+
+      await runWithAgents(['impl', 'chore', 'accounting']);
+
+      expect(mockProjectRepository.updateAgentList.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+        ['url1', project, 'agent-option-chore'],
+      ]);
+      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.removeLabel.mock.calls[0][0]).toMatchObject({
+        url: 'url1',
+      });
+      expect(mockIssueRepository.removeLabel.mock.calls[0][1]).toBe('chore');
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'chore',
+      );
+    });
+
+    it('creates the missing Agent field option before setting it on the issue', async () => {
+      const project = projectWithAgentField([]);
+      arrangeIssue(project, ['impl']);
+      mockProjectRepository.updateAgentList.mockResolvedValue([
+        {
+          id: 'agent-option-impl',
+          name: 'impl',
+          color: 'GRAY',
+          description: '',
+        },
+      ]);
+
+      await runWithAgents(['impl']);
+
+      expect(mockProjectRepository.updateAgentList.mock.calls).toHaveLength(1);
+      expect(mockProjectRepository.updateAgentList.mock.calls[0][1]).toEqual([
+        { id: null, name: 'impl', color: 'GRAY', description: '' },
+      ]);
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+        ['url1', project, 'agent-option-impl'],
+      ]);
+      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
+    });
+
+    it('creates the Agent field when the project has none, then sets it and removes the label', async () => {
+      const project = createMockProject();
+      arrangeIssue(project, ['chore']);
+      mockProjectRepository.getByUrl.mockResolvedValueOnce(project);
+      mockProjectRepository.getByUrl.mockResolvedValueOnce(
+        projectWithAgentField([
+          {
+            id: 'agent-option-chore',
+            name: 'chore',
+            color: 'GRAY',
+            description: '',
+          },
+        ]),
+      );
+
+      await runWithAgents(['chore']);
+
+      expect(mockProjectRepository.createField.mock.calls).toHaveLength(1);
+      expect(mockProjectRepository.createField.mock.calls[0][1]).toEqual({
+        name: 'Agent',
+        dataType: 'SINGLE_SELECT',
+        options: [{ name: 'chore', color: 'GRAY', description: '' }],
+      });
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+        ['url1', project, 'agent-option-chore'],
+      ]);
+      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'chore',
+      );
+    });
+
+    it('keeps the label and still uses it as the agent when the Agent field option cannot be resolved', async () => {
+      const project = createMockProject();
+      arrangeIssue(project, ['chore']);
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+
+      await runWithAgents(['chore']);
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'chore',
+      );
+    });
+
+    it('leaves the labels untouched when no label matches a configured agent definition', async () => {
+      const project = projectWithAgentField([
+        {
+          id: 'agent-option-impl',
+          name: 'impl',
+          color: 'GRAY',
+          description: '',
+        },
+      ]);
+      arrangeIssue(project, ['category:triager']);
+
+      await runWithAgents(['impl']);
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'triager',
+      );
+    });
+
+    it('leaves the labels untouched when no agent definition is configured', async () => {
+      const project = projectWithAgentField([]);
+      arrangeIssue(project, ['chore']);
+
+      await runWithAgents(null);
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
+    });
   });
 
   it('keeps an issue out of Preparation when the aw command exits non-zero', async () => {
@@ -6349,9 +6532,11 @@ describe('StartPreparationUseCase', () => {
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
   const mockProjectRepositoryForRotation: Mocked<
-    Pick<ProjectRepository, 'getByUrl'>
+    Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
   > = {
     getByUrl: jest.fn(),
+    createField: jest.fn(),
+    updateAgentList: jest.fn(),
   };
   const mockIssueRepositoryForRotation: Mocked<
     Pick<
@@ -6364,6 +6549,8 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       | 'closePullRequest'
       | 'deletePullRequestBranch'
       | 'createCommentByUrl'
+      | 'setIssueAgentField'
+      | 'removeLabel'
     >
   > = {
     getStoryObjectMap: jest.fn(),
@@ -6374,6 +6561,8 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     closePullRequest: jest.fn(),
     deletePullRequestBranch: jest.fn(),
     createCommentByUrl: jest.fn(),
+    setIssueAgentField: jest.fn(),
+    removeLabel: jest.fn(),
   };
   const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
     runCommand: jest.fn(),
@@ -6666,7 +6855,11 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
   let useCase: StartPreparationUseCase;
   beforeEach(() => {
     useCase = new StartPreparationUseCase(
-      { getByUrl: jest.fn() },
+      {
+        getByUrl: jest.fn(),
+        createField: jest.fn(),
+        updateAgentList: jest.fn(),
+      },
       {
         getStoryObjectMap: jest.fn(),
         getAllOpened: jest.fn(),
@@ -6676,6 +6869,8 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         closePullRequest: jest.fn(),
         deletePullRequestBranch: jest.fn(),
         createCommentByUrl: jest.fn(),
+        setIssueAgentField: jest.fn(),
+        removeLabel: jest.fn(),
       },
       { runCommand: jest.fn() },
       {

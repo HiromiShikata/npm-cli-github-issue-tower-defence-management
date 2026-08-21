@@ -472,6 +472,7 @@ program
       manager,
       codexHomeCandidates,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+      agents: config.agents ?? null,
     });
     if (preparationResult.rotationOrder !== null) {
       writeRotationOrderFile(preparationResult.rotationOrder);
