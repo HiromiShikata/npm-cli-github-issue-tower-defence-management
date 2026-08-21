@@ -224,18 +224,6 @@ export class NotifyFinishedIssuePreparationUseCase {
           agentOptionId,
         );
       }
-      await this.issueRepository.getOrCreateLabel(
-        issue.org,
-        issue.repo,
-        nextStepAgent,
-      );
-      const agentLabels = params.labelsAsLlmAgentName ?? [];
-      const filteredLabels = issue.labels.filter(
-        (label) =>
-          !label.startsWith('llm-agent:') && !agentLabels.includes(label),
-      );
-      const updatedLabels = [...new Set([...filteredLabels, nextStepAgent])];
-      issue.labels = updatedLabels;
       issue.status = AWAITING_WORKSPACE_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -243,7 +231,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         awaitingWorkspaceStatusOption.id,
       );
-      await this.issueRepository.updateLabels(issue, updatedLabels);
       await this.patchConsoleTab(issue);
       return;
     }

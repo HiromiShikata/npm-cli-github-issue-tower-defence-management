@@ -812,7 +812,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should add nextStepAgent label and return to Awaiting Workspace when report has nextStepAgent', async () => {
+  it('should set agent custom field and return to Awaiting Workspace when report has nextStepAgent', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -838,15 +838,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       allowedIssueAuthors: null,
     });
 
-    expect(mockIssueRepository.getOrCreateLabel).toHaveBeenCalledWith(
-      'user',
-      'repo',
-      'llm-agent:chore',
-    );
-    expect(mockIssueRepository.updateLabels).toHaveBeenCalledWith(
-      expect.objectContaining({ labels: ['llm-agent:chore'] }),
-      ['llm-agent:chore'],
-    );
+    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
@@ -854,7 +847,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
-  it('should preserve existing labels when adding nextStepAgent label', async () => {
+  it('should not modify labels when nextStepAgent is specified', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -880,12 +873,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       allowedIssueAuthors: null,
     });
 
-    expect(mockIssueRepository.updateLabels).toHaveBeenCalledWith(
-      expect.objectContaining({
-        labels: ['existing-label', 'llm-agent:impl'],
-      }),
-      ['existing-label', 'llm-agent:impl'],
-    );
+    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
   });
 
   it('should not add nextStepAgent label when nextStepAgent is null', async () => {
@@ -930,7 +919,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should create label when nextStepAgent label does not exist in repo', async () => {
+  it('should not create label when nextStepAgent is specified', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -956,14 +945,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       allowedIssueAuthors: null,
     });
 
-    expect(mockIssueRepository.getOrCreateLabel).toHaveBeenCalledWith(
-      'user',
-      'repo',
-      'llm-agent:new-agent',
-    );
+    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
   });
 
-  it('should remove existing llm-agent labels and labelsAsLlmAgentName labels when adding nextStepAgent label', async () => {
+  it('should not modify or remove labels when nextStepAgent is specified', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -990,12 +975,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       labelsAsLlmAgentName: ['chore', 'accounting'],
     });
 
-    expect(mockIssueRepository.updateLabels).toHaveBeenCalledWith(
-      expect.objectContaining({
-        labels: ['feature-flag', 'llm-agent:impl'],
-      }),
-      ['feature-flag', 'llm-agent:impl'],
-    );
+    expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
   });
 
   it('should not add nextStepAgent label when nextStepAgent is an empty string', async () => {
