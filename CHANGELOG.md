@@ -1,3 +1,10 @@
+## [1.168.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.168.0...v1.168.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **notify-preparation:** stop adding labels when nextStepAgent is specified ([#1657](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1657)) ([6e7a5fd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6e7a5fde2c780d70039b0fec44771a0641f11edf)), closes [HiromiShikata/umino-corporait-operation#30712](https://github.com/HiromiShikata/umino-corporait-operation/issues/30712)
+
 # [1.168.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.167.0...v1.168.0) (2026-08-21)
 
 
