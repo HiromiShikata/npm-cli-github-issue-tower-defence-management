@@ -178,7 +178,33 @@ export const ConsoleItemDetail = ({
 
   return (
     <article className="console-detail">
+      <h2 className="console-detail-title">
+        <ConsoleItemIcon
+          isPr={item.isPr}
+          state={resolvedState}
+          merged={merged}
+          isDraft={false}
+          stateReason=""
+        />
+        <span className="console-detail-title-text">{item.title}</span>
+        <span className="console-detail-number">
+          {item.isPr ? `PR #${item.number}` : `#${item.number}`}
+        </span>
+      </h2>
+
       <div className="console-detail-topline">
+        {displayStatus !== null && statusPalette !== null && (
+          <span
+            className="console-detail-status-chip"
+            style={{
+              color: statusPalette.fg,
+              borderColor: statusPalette.border,
+              backgroundColor: statusPalette.bg,
+            }}
+          >
+            {displayStatus.name}
+          </span>
+        )}
         {storyName !== null && (
           <span className="console-storytag">
             <span
@@ -228,38 +254,12 @@ export const ConsoleItemDetail = ({
             mergeableStatus={chip.mergeableStatus}
           />
         ))}
-      </div>
-
-      <h2 className="console-detail-title">
-        {displayStatus !== null && statusPalette !== null && (
-          <span
-            className="console-detail-status-chip"
-            style={{
-              color: statusPalette.fg,
-              borderColor: statusPalette.border,
-              backgroundColor: statusPalette.bg,
-            }}
-          >
-            {displayStatus.name}
-          </span>
-        )}
-        <ConsoleItemIcon
-          isPr={item.isPr}
-          state={resolvedState}
-          merged={merged}
-          isDraft={false}
-          stateReason=""
-        />
-        <span className="console-detail-title-text">{item.title}</span>
-        <span className="console-detail-number">
-          {item.isPr ? `PR #${item.number}` : `#${item.number}`}
-        </span>
         {closedStateLabel !== null && (
           <span className="console-detail-closed-label">
             {closedStateLabel}
           </span>
         )}
-      </h2>
+      </div>
 
       <ConsoleFetchFailureAlert failures={fetchFailures} />
 

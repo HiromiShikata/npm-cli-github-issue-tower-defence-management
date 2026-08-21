@@ -63,6 +63,88 @@ export default meta;
 
 type Story = StoryObj<typeof ConsoleItemDetail>;
 
+export const PullRequestItemHeadArrangement: Story = {
+  args: {
+    item: consoleListItemsFixture[0],
+    storyName: 'TDPM Console port',
+    storyColorEnum: 'BLUE',
+    overlayStatus: { name: 'Awaiting Workspace', color: 'BLUE' },
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: true,
+      title: 'Add serveConsole subcommand under entry-points',
+    },
+    body: '',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: {
+      found: true,
+      isConflicted: false,
+      mergeableStatus: 'MERGEABLE',
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    },
+    relatedPullRequests: [],
+  },
+};
+
+export const IssueItemWithLinkedPrHeadArrangement: Story = {
+  args: {
+    item: consoleListItemsFixture[2],
+    storyName: 'TDPM Console port',
+    storyColorEnum: 'BLUE',
+    overlayStatus: { name: 'In Progress', color: 'GREEN' },
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Scaffold React console UI under entry-points with build bundling',
+    },
+    body: '',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [
+      {
+        pullRequest: consoleRelatedPullRequestsFixture[0],
+        files: [],
+        filesAreLoading: false,
+        filesError: null,
+        commits: [],
+        commitsAreLoading: false,
+        commitsError: null,
+      },
+    ],
+  },
+};
+
 export const PullRequestItem: Story = {
   args: {
     item: consoleListItemsFixture[0],
