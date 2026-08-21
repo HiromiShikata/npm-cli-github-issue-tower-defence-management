@@ -851,10 +851,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({ status: 'Awaiting Workspace' }),
       mockProject,
     );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      expect.stringContaining('llm-agent:chore'),
-    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
   it('should preserve existing labels when adding nextStepAgent label', async () => {

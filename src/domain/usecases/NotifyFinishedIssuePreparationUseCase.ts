@@ -245,10 +245,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
       await this.issueRepository.updateLabels(issue, updatedLabels);
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
-        issue,
-        `Next step agent: ${nextStepAgent}`,
-      );
       return;
     }
 
