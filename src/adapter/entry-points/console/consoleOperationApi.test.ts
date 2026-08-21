@@ -489,6 +489,44 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('merges the pull request when approvePullRequest returns HTTP 422', async () => {
+      issueRepository.getPullRequestDetail.mockResolvedValue(null);
+      issueRepository.approvePullRequest.mockRejectedValue(
+        new Error(
+          'Failed to approve PR https://github.com/o/r/pull/1: HTTP 422 Review Can not approve your own pull request',
+        ),
+      );
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_422',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.mergePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(issueRepository.updateStatus).toHaveBeenCalled();
+    });
+
+    it('re-throws errors other than HTTP 422 from approvePullRequest', async () => {
+      issueRepository.getPullRequestDetail.mockResolvedValue(null);
+      issueRepository.approvePullRequest.mockRejectedValue(
+        new Error(
+          'Failed to approve PR https://github.com/o/r/pull/1: HTTP 500 Internal Server Error',
+        ),
+      );
+      await expect(
+        handleReview(context, {
+          pjcode: 'acme',
+          action: 'approve_and_merge',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_500',
+        }),
+      ).rejects.toThrow('HTTP 500');
+      expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
+
     it('returns 400 when the pull request has a merge conflict', async () => {
       issueRepository.getOpenPullRequest.mockResolvedValue({
         url: 'https://github.com/o/r/pull/1',

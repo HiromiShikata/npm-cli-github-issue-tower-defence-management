@@ -345,7 +345,13 @@ export const handleReview = async (
     const isSelfAuthored =
       prDetail !== null && prDetail.author === authenticatedUser;
     if (!isSelfAuthored) {
-      await issueRepository.approvePullRequest(prUrl);
+      try {
+        await issueRepository.approvePullRequest(prUrl);
+      } catch (error) {
+        if (!(error instanceof Error && error.message.includes('HTTP 422'))) {
+          throw error;
+        }
+      }
     }
     await issueRepository.mergePullRequest(prUrl);
     const failure = await updateStatusByName(
