@@ -2047,11 +2047,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should skip PR checks and update to Awaiting Quality Check when issue has llm-agent label', async () => {
+  it('should skip PR checks and update to Awaiting Quality Check when issue has non-developer agent field', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
-      labels: ['llm-agent'],
+      labels: [],
+      agent: 'chore',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -2075,11 +2076,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should skip PR checks when issue has llm-agent: prefixed label', async () => {
+  it('should skip PR checks when issue has non-developer agent field value', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
-      labels: ['llm-agent:claude'],
+      labels: [],
+      agent: 'accounting',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);

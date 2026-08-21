@@ -132,11 +132,70 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.approvedPrUrl).toBeNull();
     });
 
-    it('should not reject for draft state when issue has llm-agent label', async () => {
+    it('should not require PR evaluation when issue has a non-developer agent field value', async () => {
       const result = await evaluator.evaluate({
         url: 'https://github.com/user/repo/issues/1',
-        labels: ['llm-agent'],
+        labels: [],
         isPr: false,
+        agent: 'chore',
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(0);
+      expect(result.approvedPrUrl).toBeNull();
+    });
+
+    it('should require PR evaluation when issue has agent field set to developer', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+        agent: 'developer',
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+    });
+
+    it('should require PR evaluation when issue has null agent field (default developer)', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+        agent: null,
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+    });
+
+    it('should require PR evaluation when issue has agent field set to developer even with llm-agent:developer label', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: ['llm-agent:developer'],
+        isPr: false,
+        agent: 'developer',
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+    });
+
+    it('should not require PR evaluation when issue has accounting agent field value', async () => {
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+        agent: 'accounting',
       });
 
       expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();

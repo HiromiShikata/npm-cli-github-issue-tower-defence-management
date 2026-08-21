@@ -52,6 +52,7 @@ export class IssueRejectionEvaluator {
       labels: string[];
       isPr: boolean;
       body?: string | null;
+      agent?: string | null;
     },
     labelsNotRequiringPullRequest: string[] = [],
     options: EvaluateOptions = {},
@@ -186,20 +187,19 @@ export class IssueRejectionEvaluator {
   // resolves pull request state in one batch for a whole cycle asks this first,
   // so the batch covers exactly the items evaluate would have resolved.
   requiresPullRequestEvaluation = (
-    issue: { labels: string[]; body?: string | null },
+    issue: { labels: string[]; body?: string | null; agent?: string | null },
     labelsNotRequiringPullRequest: string[] = [],
   ): boolean => {
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
     );
-    const hasLlmAgentLabel = issue.labels.some(
-      (l) => l === 'llm-agent' || l.startsWith('llm-agent:'),
-    );
+    const isNonDeveloperAgent =
+      issue.agent != null && issue.agent !== 'developer';
     const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
       labelsNotRequiringPullRequest.includes(label),
     );
     return (
-      !hasLlmAgentLabel &&
+      !isNonDeveloperAgent &&
       !hasLabelNotRequiringPullRequest &&
       this.isPullRequestRequiredByBody(issue.body) &&
       (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))
