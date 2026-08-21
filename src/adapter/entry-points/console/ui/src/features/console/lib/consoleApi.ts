@@ -70,17 +70,53 @@ const getNumber = (value: unknown): number =>
 
 const getBoolean = (value: unknown): boolean => value === true;
 
+const CONSOLE_API_CACHE_NAME = 'console-api-v1';
+
 const requestJson = async (
   apiPath: string,
   resourceUrl: string,
 ): Promise<unknown> => {
-  const response = await fetch(
-    `${apiPath}?url=${encodeURIComponent(resourceUrl)}`,
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+  const url = `${apiPath}?url=${encodeURIComponent(resourceUrl)}`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload: unknown = await response.json();
+    try {
+      if ('caches' in globalThis) {
+        globalThis.caches
+          .open(CONSOLE_API_CACHE_NAME)
+          .then((cache) =>
+            cache.put(
+              url,
+              new Response(JSON.stringify(payload), {
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            ),
+          )
+          .catch((e: unknown) => {
+            console.warn('Failed to persist API response to cache:', e);
+          });
+      }
+    } catch (e: unknown) {
+      console.warn('Failed to access cache storage:', e);
+    }
+    return payload;
+  } catch (e: unknown) {
+    try {
+      if ('caches' in globalThis) {
+        const cache = await globalThis.caches.open(CONSOLE_API_CACHE_NAME);
+        const cached = await cache.match(url);
+        if (cached !== undefined) {
+          return cached.json();
+        }
+      }
+    } catch {
+      // cache read failure, fall through to original error
+    }
+    throw e;
   }
-  return response.json();
 };
 
 const parseComments = (payload: unknown): ConsoleComment[] => {
