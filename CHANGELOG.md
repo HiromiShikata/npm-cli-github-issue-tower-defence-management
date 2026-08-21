@@ -1,3 +1,16 @@
+# [1.168.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.167.0...v1.168.0) (2026-08-21)
+
+
+### Bug Fixes
+
+* **ci:** bound the console-ui Playwright browser installation so an apt stall cannot hold the check pending for hours ([#1641](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1641)) ([8c0fa06](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8c0fa061139f6fd1ae190003dacba7bc57287559)), closes [#1634](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1634)
+* group unknown-story items contiguously in sortByStoryOrder ([#1642](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1642)) ([8f56eea](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8f56eeaa0d08065ccbba9b7bf12482e28b802f47)), closes [HiromiShikata/umino-corporait-operation#30663](https://github.com/HiromiShikata/umino-corporait-operation/issues/30663)
+
+
+### Features
+
+* **console:** cache app shell and board data in a service worker ([#1627](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1627)) ([d2b3849](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d2b3849e3d6a5e60880866d0d9c60b3ad5d8c264)), closes [#1619](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1619)
+
 # [1.167.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.6...v1.167.0) (2026-08-21)
 
 
