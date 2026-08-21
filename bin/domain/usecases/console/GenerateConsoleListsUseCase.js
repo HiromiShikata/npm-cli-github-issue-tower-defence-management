@@ -25,6 +25,21 @@ class GenerateConsoleListsUseCase {
                     .map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
             });
             const buildStatusTab = (selector, excludedStatusNames) => buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
+            const openItemCountByStory = new Map();
+            for (const issue of issues) {
+                if (!issue.isClosed && issue.story !== null) {
+                    openItemCountByStory.set(issue.story, (openItemCountByStory.get(issue.story) ?? 0) + 1);
+                }
+            }
+            const defaultNameWithOwner = issues.find((issue) => issue.nameWithOwner !== '')?.nameWithOwner ?? null;
+            const storyEntries = storyOptions
+                .filter((option) => option.color !== 'GRAY')
+                .map((option) => ({
+                storyName: option.name,
+                storyOptionId: option.id,
+                color: option.color,
+                openItemCount: openItemCountByStory.get(option.name) ?? 0,
+            }));
             return {
                 'workflow-blocker': buildStatusTabFromSource(issues.filter((issue) => issue.isClosed === false), this.workflowBlockerSelector(workflowBlockerStoryName), ['done']),
                 prs: buildStatusTab((issue) => issue.status !== null &&
@@ -52,6 +67,14 @@ class GenerateConsoleListsUseCase {
                     items: this.sortByStoryOrder(issues
                         .filter((issue) => this.needsStory(issue, assigneeLogin))
                         .map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
+                },
+                stories: {
+                    pjcode,
+                    generatedAt,
+                    stories: storyEntries,
+                    storyOrder,
+                    storyColors: this.buildStoryColorsObject(storyOptions),
+                    defaultNameWithOwner,
                 },
             };
         };

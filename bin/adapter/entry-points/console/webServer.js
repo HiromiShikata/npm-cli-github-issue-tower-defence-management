@@ -388,6 +388,8 @@ const dispatchOperation = (context, requestPath, body) => {
             return (0, consoleOperationApi_1.handleReviewComment)(context, body);
         case '/api/upload':
             return (0, consoleOperationApi_1.handleAttachmentUpload)(context, body);
+        case '/api/createissue':
+            return (0, consoleOperationApi_1.handleCreateIssue)(context, body);
         default:
             return null;
     }

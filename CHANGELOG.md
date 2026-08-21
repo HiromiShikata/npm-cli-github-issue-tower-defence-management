@@ -1,3 +1,10 @@
+# [1.166.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.165.1...v1.166.0) (2026-08-21)
+
+
+### Features
+
+* **console:** add stories tab listing non-gray stories with open task counts ([#1629](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1629)) ([b61d120](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b61d120f525c50ada4dc2675c8bb66de7781acb4)), closes [#1623](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1623)
+
 ## [1.165.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.165.0...v1.165.1) (2026-08-21)
 
 

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleIntmux = exports.handleReviewComment = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleIntmux = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
@@ -389,6 +389,49 @@ const handleAttachmentUpload = async (context, body) => {
     };
 };
 exports.handleAttachmentUpload = handleAttachmentUpload;
+const handleCreateIssue = async (context, body) => {
+    const title = body.title;
+    const storyOptionId = body.storyOptionId;
+    const nameWithOwner = body.nameWithOwner;
+    if (!isNonEmptyString(title)) {
+        return badRequest('title is required');
+    }
+    if (!isNonEmptyString(storyOptionId)) {
+        return badRequest('storyOptionId is required');
+    }
+    if (!isNonEmptyString(nameWithOwner)) {
+        return badRequest('nameWithOwner is required');
+    }
+    const slashIndex = nameWithOwner.indexOf('/');
+    if (slashIndex <= 0 || slashIndex === nameWithOwner.length - 1) {
+        return badRequest('nameWithOwner must be in owner/repo format');
+    }
+    const org = nameWithOwner.slice(0, slashIndex);
+    const repo = nameWithOwner.slice(slashIndex + 1);
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+        return binding;
+    }
+    const { project } = binding;
+    if (project.story === null) {
+        return badRequest('project does not have a story field');
+    }
+    const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
+    if (storyOption === undefined) {
+        return badRequest(`story option "${storyOptionId}" not found in project`);
+    }
+    const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
+    const issueRepository = context.resolveIssueRepository(proxyUrl);
+    const issueNumber = await issueRepository.createNewIssue(org, repo, title, '', [], []);
+    const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
+    await issueRepository.addIssueToProject(project, issueUrl);
+    const addedIssue = await issueRepository.get(issueUrl, project);
+    if (addedIssue !== null) {
+        await issueRepository.updateStory({ ...project, story: project.story }, addedIssue, storyOptionId);
+    }
+    return { statusCode: 200, body: { ok: true, issueUrl } };
+};
+exports.handleCreateIssue = handleCreateIssue;
 const handleReviewComment = async (context, body) => {
     const url = body.url;
     const path = body.path;
