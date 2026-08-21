@@ -1,3 +1,10 @@
+## [1.168.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.168.1...v1.168.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **console-ui:** sort story groups by storyOrder definition order ([#1650](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1650)) ([b40629e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b40629eff2a2cfb37ce5fd3a5aef7a30ce48da3f)), closes [HiromiShikata/umino-corporait-operation#30700](https://github.com/HiromiShikata/umino-corporait-operation/issues/30700)
+
 ## [1.168.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.168.0...v1.168.1) (2026-08-21)
 
 
