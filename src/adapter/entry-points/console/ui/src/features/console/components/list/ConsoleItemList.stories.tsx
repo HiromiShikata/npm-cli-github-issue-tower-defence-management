@@ -18,7 +18,7 @@ type Story = StoryObj<typeof ConsoleItemList>;
 
 export const WithStoryGroups: Story = {
   args: {
-    rows: buildConsoleListRows(consoleListItemsFixture, {}),
+    rows: buildConsoleListRows(consoleListItemsFixture, {}, []),
     storyColors: consoleStoryColorsFixture,
     activeItemId: null,
     isLoading: false,

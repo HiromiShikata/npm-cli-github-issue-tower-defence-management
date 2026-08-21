@@ -225,6 +225,28 @@ describe('useConsoleTabData', () => {
     ).toBe(true);
   });
 
+  it('parses storyOrder from the snapshot payload', async () => {
+    const fetchMock = jest.fn(async (url: string) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcode: 'acme',
+        generatedAt: '2026-06-19T00:00:00.000Z',
+        statusOptions: [],
+        storyColors: {},
+        storyOrder: url.includes('/prs/') ? ['Alpha', 'Beta'] : [],
+        items: [],
+      }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.snapshots.prs?.storyOrder).toEqual(['Alpha', 'Beta']);
+  });
+
   it('reports an error and fetches nothing when no pjcode is in the URL', async () => {
     const fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;

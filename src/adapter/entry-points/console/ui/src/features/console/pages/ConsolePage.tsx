@@ -117,9 +117,11 @@ export const ConsolePage = () => {
     [pendingItems],
   );
 
+  const storyOrder = activeSnapshot?.storyOrder ?? [];
+
   const rows = useMemo(
-    () => buildConsoleListRows(pendingItems, overlayState.overlay),
-    [pendingItems, overlayState.overlay],
+    () => buildConsoleListRows(pendingItems, overlayState.overlay, storyOrder),
+    [pendingItems, overlayState.overlay, storyOrder],
   );
 
   const storyColors = activeSnapshot?.storyColors ?? {};

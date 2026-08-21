@@ -6,7 +6,7 @@ import {
 } from '../../testing/fixtures';
 import { ConsoleItemList } from './ConsoleItemList';
 
-const rows = buildConsoleListRows(consoleListItemsFixture, {});
+const rows = buildConsoleListRows(consoleListItemsFixture, {}, []);
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 
 describe('ConsoleItemList', () => {
