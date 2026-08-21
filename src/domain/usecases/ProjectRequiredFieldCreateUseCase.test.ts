@@ -658,7 +658,10 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         projectWithoutStory,
       );
 
-      await useCase.reconcileAgentOptions(projectWithoutStory, ['impl', 'chore']);
+      await useCase.reconcileAgentOptions(projectWithoutStory, [
+        'impl',
+        'chore',
+      ]);
 
       expect(projectRepository.updateAgentList).not.toHaveBeenCalled();
       expect(projectRepository.createField).toHaveBeenCalledWith(
