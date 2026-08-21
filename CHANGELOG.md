@@ -1,3 +1,10 @@
+## [1.166.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.3...v1.166.4) (2026-08-21)
+
+
+### Bug Fixes
+
+* **RevertOrphanedPreparationUseCase:** handle 404 when fetching orphaned preparation comments ([#1613](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1613)) ([fe39240](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fe39240bf21b2d4160bed76adb4ac2055e880d22)), closes [meta-site/hr-audit-mock#323](https://github.com/meta-site/hr-audit-mock/issues/323)
+
 ## [1.166.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.2...v1.166.3) (2026-08-21)
 
 

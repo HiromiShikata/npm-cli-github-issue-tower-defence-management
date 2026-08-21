@@ -92,7 +92,14 @@ class RevertOrphanedPreparationUseCase {
             if (issue.isClosed) {
                 return { outcome: 'advanceToQualityCheck', comments: [] };
             }
-            const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
+            let comments;
+            try {
+                comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
+            }
+            catch (error) {
+                console.error(`Failed to fetch comments for orphaned preparation issue ${issue.url}, reverting to Awaiting Workspace:`, error);
+                return { outcome: 'reject', comments: [] };
+            }
             const isTrustedAuthor = (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors);
             const commentsBeforeOwnStatusComments = (0, autoStatusCheckComments_1.dropTrailingAutoStatusCheckComments)(comments, isTrustedAuthor);
             const lastReport = commentsBeforeOwnStatusComments[commentsBeforeOwnStatusComments.length - 1] ?? null;
