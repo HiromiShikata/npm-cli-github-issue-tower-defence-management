@@ -2559,6 +2559,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     branchRules?: (url: string) => Response | object;
     branchDetail?: (url: string) => Response | object;
     checkRuns?: (url: string) => Response | object;
+    checkSuites?: (url: string) => Response | object;
     combinedStatus?: (url: string) => Response | object;
   };
 
@@ -2659,6 +2660,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           if (/\/branches\/[^/?]+$/.test(url)) {
             return toResponse(
               routes.branchDetail ? routes.branchDetail(url) : {},
+            );
+          }
+          if (url.includes('/check-suites') && !url.includes('/check-runs')) {
+            return toResponse(
+              routes.checkSuites
+                ? routes.checkSuites(url)
+                : { total_count: 0, check_suites: [] },
             );
           }
           if (url.includes('/check-runs')) {
@@ -4164,6 +4172,51 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'https://github.com/HiromiShikata/repositories-management/pull/427',
       );
     });
+
+    it('includes the PR when commits/{sha}/check-runs returns 404 and check-suites fallback succeeds', async () => {
+      mockFetchRoutes({
+        timeline: () =>
+          buildTimelineResponse([
+            buildCrossReferencedEventNode({
+              willCloseTarget: true,
+              prUrl: 'https://github.com/HiromiShikata/secretary/pull/100',
+              prState: 'OPEN',
+            }),
+          ]),
+        slimPullRequest: () =>
+          buildSlimPullRequestResponse({
+            url: 'https://github.com/HiromiShikata/secretary/pull/100',
+            headRefOid: 'sha-fork-commit',
+          }),
+        checkRuns: (url) => {
+          if (url.includes('/commits/sha-fork-commit/check-runs')) {
+            return new Response(JSON.stringify({ message: 'Not Found' }), {
+              status: 404,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+          return {
+            total_count: 1,
+            check_runs: [{ id: 1, name: 'ci', conclusion: 'success' }],
+          };
+        },
+        checkSuites: () => ({
+          total_count: 1,
+          check_suites: [{ id: 55 }],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/2380',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/secretary/pull/100',
+      );
+      expect(result[0].isPassedAllCiJob).toBe(true);
+    });
   });
 
   describe('getOpenPullRequestCiStatus', () => {
@@ -4328,6 +4381,166 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       ).toBeNull();
       expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('falls back to check-suites when commits/{sha}/check-runs returns 404', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      jest
+        .spyOn(global, 'fetch')
+        .mockImplementation((input: RequestInfo | URL): Promise<Response> => {
+          const url =
+            typeof input === 'string'
+              ? input
+              : input instanceof URL
+                ? input.href
+                : input.url;
+          if (url.includes('/pulls/42')) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  html_url: prUrl,
+                  state: 'open',
+                  draft: false,
+                  mergeable: true,
+                  head: { ref: 'feature/x', sha: 'sha-1' },
+                  base: { ref: 'main' },
+                }),
+                {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' },
+                },
+              ),
+            );
+          }
+          if (url.includes('/rules/branches/')) {
+            return Promise.resolve(
+              new Response(JSON.stringify([]), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            );
+          }
+          if (/\/branches\/[^/?]+$/.test(url)) {
+            return Promise.resolve(
+              new Response(JSON.stringify({}), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            );
+          }
+          if (url.includes('/commits/sha-1/check-runs')) {
+            return Promise.resolve(
+              new Response(JSON.stringify({ message: 'Not Found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            );
+          }
+          if (url.includes('/commits/sha-1/check-suites')) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  total_count: 1,
+                  check_suites: [{ id: 99 }],
+                }),
+                {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' },
+                },
+              ),
+            );
+          }
+          if (url.includes('/check-suites/99/check-runs')) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  total_count: 1,
+                  check_runs: [
+                    { id: 1, name: 'unit-test', conclusion: 'success' },
+                  ],
+                }),
+                {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' },
+                },
+              ),
+            );
+          }
+          return Promise.reject(new Error(`unexpected request: ${url}`));
+        });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const status = await repository.getOpenPullRequestCiStatus(prUrl);
+
+      expect(status).not.toBeNull();
+      expect(status?.isPassedAllCiJob).toBe(true);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('logs a warning and treats as no check runs when both commits/{sha}/check-runs and commits/{sha}/check-suites return 404', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      jest
+        .spyOn(global, 'fetch')
+        .mockImplementation((input: RequestInfo | URL): Promise<Response> => {
+          const url =
+            typeof input === 'string'
+              ? input
+              : input instanceof URL
+                ? input.href
+                : input.url;
+          if (url.includes('/pulls/42')) {
+            return Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  html_url: prUrl,
+                  state: 'open',
+                  draft: false,
+                  mergeable: true,
+                  head: { ref: 'feature/x', sha: 'sha-1' },
+                  base: { ref: 'main' },
+                }),
+                {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' },
+                },
+              ),
+            );
+          }
+          if (url.includes('/rules/branches/')) {
+            return Promise.resolve(
+              new Response(JSON.stringify([]), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            );
+          }
+          if (/\/branches\/[^/?]+$/.test(url)) {
+            return Promise.resolve(
+              new Response(JSON.stringify({}), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            );
+          }
+          if (url.includes('/check-runs') || url.includes('/check-suites')) {
+            return Promise.resolve(
+              new Response(JSON.stringify({ message: 'Not Found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' },
+              }),
+            );
+          }
+          return Promise.reject(new Error(`unexpected request: ${url}`));
+        });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const status = await repository.getOpenPullRequestCiStatus(prUrl);
+
+      expect(status).not.toBeNull();
+      expect(status?.isCiStateSuccess).toBe(false);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('check-suites returned 404'),
+      );
     });
   });
 

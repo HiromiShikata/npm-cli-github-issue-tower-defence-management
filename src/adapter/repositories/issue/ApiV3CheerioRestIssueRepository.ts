@@ -211,6 +211,13 @@ type CheckRunsResponse = {
   }>;
 };
 
+type CheckSuitesResponse = {
+  total_count: number;
+  check_suites: Array<{
+    id: number;
+  }>;
+};
+
 type CombinedStatusResponse = {
   statuses: Array<{
     context: string;
@@ -265,6 +272,11 @@ function isBranchDetailResponse(value: unknown): value is BranchDetailResponse {
 function isCheckRunsResponse(value: unknown): value is CheckRunsResponse {
   if (typeof value !== 'object' || value === null) return false;
   return 'check_runs' in value && Array.isArray(value.check_runs);
+}
+
+function isCheckSuitesResponse(value: unknown): value is CheckSuitesResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return 'check_suites' in value && Array.isArray(value.check_suites);
 }
 
 function isCombinedStatusResponse(
@@ -1314,6 +1326,102 @@ export class ApiV3CheerioRestIssueRepository
     return names;
   };
 
+  private getCheckRunsViaCheckSuitesFallback = async (
+    owner: string,
+    repo: string,
+    commitSha: string,
+  ): Promise<CiContextNode[]> => {
+    const ownerSegment = encodeURIComponent(owner);
+    const repoSegment = encodeURIComponent(repo);
+    const shaSegment = encodeURIComponent(commitSha);
+
+    const checkSuitesResponse = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-suites`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      ),
+    );
+
+    if (!checkSuitesResponse.ok) {
+      if (checkSuitesResponse.status === 404) {
+        console.warn(
+          `ApiV3CheerioRestIssueRepository: commits/${commitSha}/check-suites returned 404 for ${owner}/${repo}, treating as no check runs.`,
+        );
+        return [];
+      }
+      const reason =
+        await this.formatGitHubErrorWithStatus(checkSuitesResponse);
+      throw new Error(
+        `Failed to fetch check suites for ${owner}/${repo}@${commitSha}: ${reason}`,
+      );
+    }
+
+    const checkSuitesBody: unknown = await checkSuitesResponse.json();
+    if (!isCheckSuitesResponse(checkSuitesBody)) {
+      throw new Error(
+        `Unexpected response shape when fetching check suites: ${owner}/${repo}@${commitSha}`,
+      );
+    }
+
+    const contexts: CiContextNode[] = [];
+    const perPage = 100;
+    for (const suite of checkSuitesBody.check_suites) {
+      let page = 1;
+      let hasMore = true;
+      while (hasMore) {
+        const runsResponse = await this.fetchWithRateLimitRetry(() =>
+          fetch(
+            `https://api.github.com/repos/${ownerSegment}/${repoSegment}/check-suites/${suite.id}/check-runs?per_page=${perPage}&page=${page}`,
+            {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${this.ghToken}`,
+                Accept: 'application/vnd.github+json',
+              },
+            },
+          ),
+        );
+        if (!runsResponse.ok) {
+          const reason = await this.formatGitHubErrorWithStatus(runsResponse);
+          throw new Error(
+            `Failed to fetch check runs for suite ${suite.id} in ${owner}/${repo}: ${reason}`,
+          );
+        }
+        const runsBody: unknown = await runsResponse.json();
+        if (!isCheckRunsResponse(runsBody)) {
+          throw new Error(
+            `Unexpected response shape when fetching check runs for suite ${suite.id}: ${owner}/${repo}@${commitSha}`,
+          );
+        }
+        for (const checkRun of runsBody.check_runs) {
+          contexts.push({
+            __typename: 'CheckRun',
+            name: checkRun.name,
+            conclusion: checkRun.conclusion
+              ? checkRun.conclusion.toUpperCase()
+              : null,
+            databaseId: checkRun.id,
+          });
+        }
+        if (
+          runsBody.check_runs.length < perPage ||
+          page * perPage >= runsBody.total_count
+        ) {
+          hasMore = false;
+        } else {
+          page += 1;
+        }
+      }
+    }
+    return contexts;
+  };
+
   private getCommitCiContexts = async (
     owner: string,
     repo: string,
@@ -1327,6 +1435,7 @@ export class ApiV3CheerioRestIssueRepository
     const perPage = 100;
     let page = 1;
     let hasMore = true;
+    let usedCheckSuitesFallback = false;
     while (hasMore) {
       const checkRunsResponse = await this.fetchWithRateLimitRetry(() =>
         fetch(
@@ -1341,6 +1450,17 @@ export class ApiV3CheerioRestIssueRepository
         ),
       );
       if (!checkRunsResponse.ok) {
+        if (checkRunsResponse.status === 404 && page === 1) {
+          const fallbackContexts =
+            await this.getCheckRunsViaCheckSuitesFallback(
+              owner,
+              repo,
+              commitSha,
+            );
+          contexts.push(...fallbackContexts);
+          usedCheckSuitesFallback = true;
+          break;
+        }
         const reason =
           await this.formatGitHubErrorWithStatus(checkRunsResponse);
         throw new Error(
@@ -1373,38 +1493,40 @@ export class ApiV3CheerioRestIssueRepository
       }
     }
 
-    const combinedStatusResponse = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/status?per_page=100`,
-        {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
+    if (!usedCheckSuitesFallback) {
+      const combinedStatusResponse = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/status?per_page=100`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
           },
-        },
-      ),
-    );
-    if (!combinedStatusResponse.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(
-        combinedStatusResponse,
+        ),
       );
-      throw new Error(
-        `Failed to fetch combined status for ${owner}/${repo}@${commitSha}: ${reason}`,
-      );
-    }
-    const combinedStatusBody: unknown = await combinedStatusResponse.json();
-    if (!isCombinedStatusResponse(combinedStatusBody)) {
-      throw new Error(
-        `Unexpected response shape when fetching combined status: ${owner}/${repo}@${commitSha}`,
-      );
-    }
-    for (const status of combinedStatusBody.statuses) {
-      contexts.push({
-        __typename: 'StatusContext',
-        context: status.context,
-        state: status.state.toUpperCase(),
-      });
+      if (!combinedStatusResponse.ok) {
+        const reason = await this.formatGitHubErrorWithStatus(
+          combinedStatusResponse,
+        );
+        throw new Error(
+          `Failed to fetch combined status for ${owner}/${repo}@${commitSha}: ${reason}`,
+        );
+      }
+      const combinedStatusBody: unknown = await combinedStatusResponse.json();
+      if (!isCombinedStatusResponse(combinedStatusBody)) {
+        throw new Error(
+          `Unexpected response shape when fetching combined status: ${owner}/${repo}@${commitSha}`,
+        );
+      }
+      for (const status of combinedStatusBody.statuses) {
+        contexts.push({
+          __typename: 'StatusContext',
+          context: status.context,
+          state: status.state.toUpperCase(),
+        });
+      }
     }
 
     return contexts;
