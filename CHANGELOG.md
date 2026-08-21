@@ -1,3 +1,10 @@
+## [1.165.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.165.0...v1.165.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **project:** create Agent field with initial options instead of silently failing ([#1649](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1649)) ([17215bc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/17215bc848c5fd263012bc42245baf4d4a54e3e5)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#1648](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1648)
+
 # [1.165.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.164.0...v1.165.0) (2026-08-21)
 
 

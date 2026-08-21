@@ -45,10 +45,5 @@ exports.REQUIRED_PROJECT_FIELDS = [
         dataType: 'TEXT',
         options: [],
     },
-    {
-        name: exports.AGENT_FIELD_NAME,
-        dataType: 'SINGLE_SELECT',
-        options: [],
-    },
 ];
 //# sourceMappingURL=RequiredProjectField.js.map

@@ -17,7 +17,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private readonly consoleTabsRepository?;
     private readonly issueRejectionEvaluator;
     private readonly changeTargetPullRequestApprover;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'updateAgentList'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateLabels' | 'getOrCreateLabel' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment' | 'setDependedIssueUrl' | 'setIssueAgentField'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>, consoleTabsRepository?: (ConsoleTabsRepository | null) | undefined);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'updateAgentList' | 'createField'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateLabels' | 'getOrCreateLabel' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment' | 'setDependedIssueUrl' | 'setIssueAgentField'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>, consoleTabsRepository?: (ConsoleTabsRepository | null) | undefined);
     run: (params: {
         projectUrl: string;
         issueUrl: string;

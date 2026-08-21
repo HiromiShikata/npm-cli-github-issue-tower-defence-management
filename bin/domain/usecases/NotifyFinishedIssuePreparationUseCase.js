@@ -8,6 +8,7 @@ const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequir
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
 const ProjectFieldName_1 = require("../entities/ProjectFieldName");
+const RequiredProjectField_1 = require("../entities/RequiredProjectField");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -285,10 +286,17 @@ class NotifyFinishedIssuePreparationUseCase {
             return value.trim();
         };
         this.ensureAgentOptionAndGetId = async (project, agentName) => {
-            if (!project.agent) {
-                return null;
-            }
             const normalizedTarget = (0, ProjectFieldName_1.normalizeProjectFieldName)(agentName);
+            if (!project.agent) {
+                await this.projectRepository.createField(project, {
+                    name: RequiredProjectField_1.AGENT_FIELD_NAME,
+                    dataType: 'SINGLE_SELECT',
+                    options: [{ name: agentName, color: 'GRAY', description: '' }],
+                });
+                const refreshed = await this.projectRepository.getByUrl(project.url);
+                const created = refreshed.agent?.options.find((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name) === normalizedTarget);
+                return created?.id ?? null;
+            }
             const existing = project.agent.options.find((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name) === normalizedTarget);
             if (existing) {
                 return existing.id;
@@ -298,8 +306,8 @@ class NotifyFinishedIssuePreparationUseCase {
                 { id: null, name: agentName, color: 'GRAY', description: '' },
             ];
             const updatedOptions = await this.projectRepository.updateAgentList(project, mergedOptions);
-            const created = updatedOptions.find((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name) === normalizedTarget);
-            return created?.id ?? null;
+            const added = updatedOptions.find((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name) === normalizedTarget);
+            return added?.id ?? null;
         };
         this.patchConsoleTab = async (issue) => {
             if (!this.consoleTabsRepository)
