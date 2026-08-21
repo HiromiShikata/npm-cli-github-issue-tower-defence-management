@@ -9,5 +9,6 @@ export declare class ClearDependedIssueURLUseCase {
         issues: Issue[];
         cacheUsed: boolean;
     }) => Promise<void>;
+    private findCircularDependedIssueUrls;
 }
 //# sourceMappingURL=ClearDependedIssueURLUseCase.d.ts.map

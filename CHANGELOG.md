@@ -1,3 +1,10 @@
+## [1.166.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.0...v1.166.1) (2026-08-21)
+
+
+### Bug Fixes
+
+* **depended-issue:** clear closed depended issue urls on every slow sweep ([#1647](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1647)) ([e796a40](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e796a40514f53380c504e62930df9343fdfac2e2))
+
 # [1.166.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.165.1...v1.166.0) (2026-08-21)
 
 
