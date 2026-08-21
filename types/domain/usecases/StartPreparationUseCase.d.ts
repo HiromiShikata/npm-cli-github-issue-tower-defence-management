@@ -20,7 +20,7 @@ export declare class StartPreparationUseCase {
     private readonly localCommandRunner;
     private readonly claudeTokenUsageRepository;
     private readonly takeOwnershipSpawnRepository;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'getAllOpened' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository, takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'getAllOpened' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl' | 'setIssueAgentField' | 'removeLabel'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository, takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository);
     private weeklyLimitTypeForModel;
     private isWithinCooldown;
     private isModelWeeklyLimitRejected;
@@ -31,6 +31,7 @@ export declare class StartPreparationUseCase {
     getTokenConcurrentLimit: (fiveHourUtilization: number, sevenDayUtilization: number, selectionWeight?: number) => number;
     private selectRotationTokens;
     buildRotationOrder: (tokenUsages: ClaudeTokenUsage[], utilizationPercentageThreshold: number, modelName: string | null) => RotationOrderEntry[];
+    private migrateAgentDesignationLabelToProjectField;
     run: (params: {
         projectUrl: string;
         defaultAgentName: string;
@@ -44,6 +45,7 @@ export declare class StartPreparationUseCase {
         manager: string;
         codexHomeCandidates: string[] | null;
         labelsAsLlmAgentName: string[] | null;
+        agents?: string[] | null;
     }) => Promise<{
         rotationOrder: RotationOrderEntry[] | null;
     }>;

@@ -275,6 +275,7 @@ exports.program
         manager,
         codexHomeCandidates,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+        agents: config.agents ?? null,
     });
     if (preparationResult.rotationOrder !== null) {
         (0, rotationOrderFileWriter_1.writeRotationOrderFile)(preparationResult.rotationOrder);

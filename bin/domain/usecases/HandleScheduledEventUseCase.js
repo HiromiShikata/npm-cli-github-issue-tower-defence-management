@@ -285,6 +285,7 @@ ${JSON.stringify(e)}
                     manager: input.manager,
                     codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
                     labelsAsLlmAgentName,
+                    agents: input.agents ?? null,
                 });
                 return { rotationOrder: preparationResult.rotationOrder };
             }

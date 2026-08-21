@@ -1,3 +1,10 @@
+# [1.167.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.6...v1.167.0) (2026-08-21)
+
+
+### Features
+
+* **start-preparation:** move an agent designation label into the Agent project field ([#1655](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1655)) ([643ea89](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/643ea89362604d3cf075e229ab68770ad4d12b08))
+
 ## [1.166.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.5...v1.166.6) (2026-08-21)
 
 

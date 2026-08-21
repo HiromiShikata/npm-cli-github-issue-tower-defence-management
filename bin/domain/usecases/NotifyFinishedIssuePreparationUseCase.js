@@ -7,8 +7,7 @@ const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestAppr
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
-const ProjectFieldName_1 = require("../entities/ProjectFieldName");
-const RequiredProjectField_1 = require("../entities/RequiredProjectField");
+const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -284,30 +283,7 @@ class NotifyFinishedIssuePreparationUseCase {
             }
             return value.trim();
         };
-        this.ensureAgentOptionAndGetId = async (project, agentName) => {
-            const normalizedTarget = (0, ProjectFieldName_1.normalizeProjectFieldName)(agentName);
-            if (!project.agent) {
-                await this.projectRepository.createField(project, {
-                    name: RequiredProjectField_1.AGENT_FIELD_NAME,
-                    dataType: 'SINGLE_SELECT',
-                    options: [{ name: agentName, color: 'GRAY', description: '' }],
-                });
-                const refreshed = await this.projectRepository.getByUrl(project.url);
-                const created = refreshed.agent?.options.find((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name) === normalizedTarget);
-                return created?.id ?? null;
-            }
-            const existing = project.agent.options.find((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name) === normalizedTarget);
-            if (existing) {
-                return existing.id;
-            }
-            const mergedOptions = [
-                ...project.agent.options.map((o) => ({ ...o })),
-                { id: null, name: agentName, color: 'GRAY', description: '' },
-            ];
-            const updatedOptions = await this.projectRepository.updateAgentList(project, mergedOptions);
-            const added = updatedOptions.find((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name) === normalizedTarget);
-            return added?.id ?? null;
-        };
+        this.ensureAgentOptionAndGetId = async (project, agentName) => (0, ensureAgentOptionAndGetId_1.ensureAgentOptionAndGetId)(this.projectRepository, project, agentName);
         this.patchConsoleTab = async (issue) => {
             if (!this.consoleTabsRepository)
                 return;
