@@ -33,6 +33,7 @@ const projectFromDefinition = (definition) => {
     const remainingEstimationMinutes = definition.fields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'remainingestimationminutes');
     const dependedIssueUrlSeparatedByComma = definition.fields.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith((0, utils_1.normalizeFieldName)(RequiredProjectField_1.DEPENDED_ISSUE_URL_FIELD_NAME)));
     const completionDate50PercentConfidence = definition.fields.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('completiondate'));
+    const agentField = definition.fields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === (0, utils_1.normalizeFieldName)(RequiredProjectField_1.AGENT_FIELD_NAME));
     return {
         id: definition.id,
         url: definition.url,
@@ -80,6 +81,13 @@ const projectFromDefinition = (definition) => {
             ? {
                 name: completionDate50PercentConfidence.name,
                 fieldId: completionDate50PercentConfidence.fieldId,
+            }
+            : null,
+        agent: agentField
+            ? {
+                name: agentField.name,
+                fieldId: agentField.fieldId,
+                options: agentField.options,
             }
             : null,
     };

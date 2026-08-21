@@ -147,6 +147,7 @@ const loadConfigFile = (configFilePath) => {
             labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
             labelsNotRequiringPullRequest: getStringArrayValue(parsed, 'labelsNotRequiringPullRequest'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
+            agents: getStringArrayValue(parsed, 'agents'),
             consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
             consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
             consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
@@ -269,6 +270,7 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     changeTargetPathAliases: readmeOverrides.changeTargetPathAliases ??
         cliOverrides.changeTargetPathAliases ??
         configFile.changeTargetPathAliases,
+    agents: cliOverrides.agents ?? configFile.agents,
     consoleDataOutputDir: readmeOverrides.consoleDataOutputDir ??
         cliOverrides.consoleDataOutputDir ??
         configFile.consoleDataOutputDir,

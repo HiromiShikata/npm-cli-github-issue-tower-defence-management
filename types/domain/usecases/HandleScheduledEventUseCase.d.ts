@@ -76,6 +76,7 @@ export declare class HandleScheduledEventUseCase {
         changeTargetPathAliases?: Record<string, string> | null;
         allowedIssueAuthors?: string[] | null;
         autoAssignManagerAuthors?: string[] | null;
+        agents?: string[] | null;
         startPreparation?: {
             defaultAgentName: string;
             defaultLlmModelName?: string | null;

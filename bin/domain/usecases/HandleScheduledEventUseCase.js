@@ -96,6 +96,7 @@ class HandleScheduledEventUseCase {
             }
             await this.projectRequiredFieldCreateUseCase.run({
                 projectUrl: input.projectUrl,
+                agents: input.agents ?? null,
             });
             await this.setupTowerDefenceProjectUseCase.run({
                 projectUrl: input.projectUrl,

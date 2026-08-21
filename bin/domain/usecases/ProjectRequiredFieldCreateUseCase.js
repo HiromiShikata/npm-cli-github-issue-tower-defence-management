@@ -9,7 +9,9 @@ class ProjectRequiredFieldCreateUseCase {
         this.run = async (params) => {
             const project = await this.projectRepository.getByUrl(params.projectUrl);
             await this.createMissingFields(project);
-            await this.reconcileStoryOptions(project);
+            const updatedProject = await this.projectRepository.getByUrl(params.projectUrl);
+            await this.reconcileStoryOptions(updatedProject);
+            await this.reconcileAgentOptions(updatedProject, params.agents ?? null);
         };
         this.createMissingFields = async (project) => {
             const existingFieldNames = (await this.projectRepository.listFieldNames(project)).map(ProjectFieldName_1.normalizeProjectFieldName);
@@ -30,7 +32,9 @@ class ProjectRequiredFieldCreateUseCase {
                 return;
             }
             const requiredOptions = storyFieldDefinition.options;
-            const mergedOptions = project.story.stories.map((o) => ({ ...o }));
+            const mergedOptions = project.story.stories.map((o) => ({
+                ...o,
+            }));
             let addedCount = 0;
             let previousRequiredIndex = -1;
             for (const required of requiredOptions) {
@@ -49,8 +53,30 @@ class ProjectRequiredFieldCreateUseCase {
             }
             await this.projectRepository.updateStoryList(project, mergedOptions);
         };
+        this.reconcileAgentOptions = async (project, agentNames) => {
+            if (!project.agent || !agentNames || agentNames.length === 0) {
+                return;
+            }
+            const existingOptions = project.agent.options;
+            const existingNames = new Set(existingOptions.map((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name)));
+            const toAdd = agentNames.filter((name) => !existingNames.has((0, ProjectFieldName_1.normalizeProjectFieldName)(name)));
+            if (toAdd.length === 0) {
+                return;
+            }
+            const mergedOptions = [
+                ...existingOptions.map((o) => ({ ...o })),
+                ...toAdd.map((name) => ({
+                    id: null,
+                    name,
+                    color: 'GRAY',
+                    description: '',
+                })),
+            ];
+            await this.projectRepository.updateAgentList(project, mergedOptions);
+        };
         this.optionNameSatisfies = (currentName, requiredName) => (0, ProjectFieldName_1.normalizeProjectFieldName)(currentName).startsWith((0, ProjectFieldName_1.normalizeProjectFieldName)(requiredName));
     }
 }
 exports.ProjectRequiredFieldCreateUseCase = ProjectRequiredFieldCreateUseCase;
+ProjectRequiredFieldCreateUseCase.AGENT_FIELD_NAME = RequiredProjectField_1.AGENT_FIELD_NAME;
 //# sourceMappingURL=ProjectRequiredFieldCreateUseCase.js.map

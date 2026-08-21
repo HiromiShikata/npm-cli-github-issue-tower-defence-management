@@ -45,5 +45,10 @@ export type Project = {
         name: string;
         fieldId: string;
     } | null;
+    agent: {
+        name: string;
+        fieldId: string;
+        options: FieldOption[];
+    } | null;
 };
 //# sourceMappingURL=Project.d.ts.map

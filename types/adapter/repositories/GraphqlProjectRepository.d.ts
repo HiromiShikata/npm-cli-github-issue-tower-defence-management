@@ -31,6 +31,9 @@ export declare class GraphqlProjectRepository extends BaseGitHubRepository imple
     updateStoryList: (project: Project, newStoryList: (Omit<FieldOption, "id"> & {
         id: FieldOption["id"] | null;
     })[]) => Promise<FieldOption[]>;
+    updateAgentList: (project: Project, newAgentList: (Omit<FieldOption, "id"> & {
+        id: FieldOption["id"] | null;
+    })[]) => Promise<FieldOption[]>;
     updateStatusList: (project: Project, newStatusList: (Omit<FieldOption, "id"> & {
         id: FieldOption["id"] | null;
     })[]) => Promise<FieldOption[]>;

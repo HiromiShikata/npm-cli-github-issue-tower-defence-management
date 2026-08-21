@@ -362,6 +362,7 @@ exports.program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         labelsNotRequiringPullRequest: config.labelsNotRequiringPullRequest ?? null,
         changeTargetPathAliases: config.changeTargetPathAliases ?? null,
+        agents: config.agents ?? null,
     });
 });
 exports.program

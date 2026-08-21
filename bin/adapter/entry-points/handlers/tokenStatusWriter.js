@@ -165,6 +165,7 @@ const writeTokenStatus = (params) => {
         createdAt: now,
         author: '',
         closingIssueReferenceUrls: [],
+        agent: null,
     }));
     const humResult = new InTmuxByHumanSessionTokenCountUseCase_1.InTmuxByHumanSessionTokenCountUseCase().run(candidates, interactiveSessionRepository.listInteractiveSessions(), machineWideInTmuxByHumanIssues);
     const humCountByToken = new Map(humResult.counts.map((count) => [count.token, count.count]));

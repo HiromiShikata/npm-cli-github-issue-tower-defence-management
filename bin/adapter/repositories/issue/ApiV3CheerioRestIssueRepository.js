@@ -103,6 +103,9 @@ function isLoginContainer(value) {
 function isRefContainer(value) {
     return isRecord(value) && typeof value.ref === 'string';
 }
+function isRepoMergeSettings(value) {
+    return isRecord(value);
+}
 function isIssueOrPullRequestBodyResponse(value) {
     return isRecord(value) && isNullableString(value.body);
 }
@@ -201,6 +204,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             const completionDate50PercentConfidence = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name).startsWith('completiondate50'))?.value;
             const story = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'story')?.value;
             const status = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'status')?.value;
+            const agent = item.customFields.find((field) => (0, utils_1.normalizeFieldName)(field.name) === 'agent')?.value ?? null;
             const { owner, repo } = this.extractIssueFromUrl(item.url);
             return {
                 nameWithOwner: item.nameWithOwner,
@@ -229,6 +233,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 createdAt: new Date(item.createdAt || '2000-01-01'),
                 author: item.author,
                 closingIssueReferenceUrls: item.closingIssueReferenceUrls,
+                agent,
             };
         };
         this.restoreIssuesFromCache = (rawIssues) => {
@@ -394,6 +399,15 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             const projectItemId = existingProjectItem?.id ??
                 (await this.graphqlProjectItemRepository.addIssueToProject(project.id, prUrl));
             await this.graphqlProjectItemRepository.updateProjectTextField(project.id, dependedIssueUrlField.fieldId, projectItemId, issueUrl);
+        };
+        this.setIssueAgentField = async (issueUrl, project, agentOptionId) => {
+            if (!project.agent) {
+                return;
+            }
+            const existingProjectItem = await this.graphqlProjectItemRepository.fetchProjectItemByUrl(issueUrl, project.id);
+            const projectItemId = existingProjectItem?.id ??
+                (await this.graphqlProjectItemRepository.addIssueToProject(project.id, issueUrl));
+            await this.graphqlProjectItemRepository.updateProjectField(project.id, project.agent.fieldId, projectItemId, { singleSelectOptionId: agentOptionId });
         };
         this.updateNextActionDate = async (issueUrl, project, date, projectItemId) => {
             if (!project.nextActionDate) {
@@ -1303,19 +1317,56 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         };
         this.mergePullRequest = async (prUrl) => {
             const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-            const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/merge`, {
+            const mergeUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/merge`;
+            const headers = {
+                Authorization: `Bearer ${this.ghToken}`,
+                'Content-Type': 'application/json',
+                Accept: 'application/vnd.github+json',
+            };
+            const mergeWith = (mergeMethod) => this.fetchWithRateLimitRetry(() => fetch(mergeUrl, {
                 method: 'PUT',
+                headers,
+                body: JSON.stringify(mergeMethod ? { merge_method: mergeMethod } : {}),
+            }));
+            const response = await mergeWith();
+            if (response.ok) {
+                return;
+            }
+            if (response.status === 405) {
+                const fallbackMethod = await this.resolveAllowedMergeMethod(owner, repo);
+                if (fallbackMethod !== null) {
+                    const retryResponse = await mergeWith(fallbackMethod);
+                    if (retryResponse.ok) {
+                        return;
+                    }
+                    const retryReason = await this.formatGitHubErrorWithStatus(retryResponse);
+                    throw new Error(`Failed to merge PR ${prUrl}: ${retryReason}`);
+                }
+            }
+            const reason = await this.formatGitHubErrorWithStatus(response);
+            throw new Error(`Failed to merge PR ${prUrl}: ${reason}`);
+        };
+        this.resolveAllowedMergeMethod = async (owner, repo) => {
+            const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`, {
                 headers: {
                     Authorization: `Bearer ${this.ghToken}`,
-                    'Content-Type': 'application/json',
                     Accept: 'application/vnd.github+json',
                 },
-                body: JSON.stringify({}),
             }));
             if (!response.ok) {
-                const reason = await this.formatGitHubErrorWithStatus(response);
-                throw new Error(`Failed to merge PR ${prUrl}: ${reason}`);
+                return null;
             }
+            const data = await response.json();
+            if (!isRepoMergeSettings(data)) {
+                return null;
+            }
+            if (data.allow_squash_merge === true) {
+                return 'squash';
+            }
+            if (data.allow_rebase_merge === true) {
+                return 'rebase';
+            }
+            return null;
         };
         this.requestChangesWithInlineComment = async (prUrl, changedFilePath, commentBody, inlineCommentLocation = null) => {
             const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);

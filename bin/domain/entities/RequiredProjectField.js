@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.REQUIRED_PROJECT_FIELDS = exports.DEPENDED_ISSUE_URL_FIELD_NAME = exports.NEXT_ACTION_HOUR_FIELD_NAME = exports.NEXT_ACTION_DATE_FIELD_NAME = exports.STORY_FIELD_NAME = void 0;
+exports.REQUIRED_PROJECT_FIELDS = exports.AGENT_FIELD_NAME = exports.DEPENDED_ISSUE_URL_FIELD_NAME = exports.NEXT_ACTION_HOUR_FIELD_NAME = exports.NEXT_ACTION_DATE_FIELD_NAME = exports.STORY_FIELD_NAME = void 0;
 const storyOption = (name, color) => ({ name, color, description: '' });
 const REQUIRED_STORY_OPTIONS = [
     storyOption('regular / NO STORY', 'RED'),
@@ -23,6 +23,7 @@ exports.STORY_FIELD_NAME = 'Story';
 exports.NEXT_ACTION_DATE_FIELD_NAME = 'Next Action Date';
 exports.NEXT_ACTION_HOUR_FIELD_NAME = 'Next Action Hour';
 exports.DEPENDED_ISSUE_URL_FIELD_NAME = 'Depended Issue URL separated by comma';
+exports.AGENT_FIELD_NAME = 'Agent';
 exports.REQUIRED_PROJECT_FIELDS = [
     {
         name: exports.STORY_FIELD_NAME,
@@ -42,6 +43,11 @@ exports.REQUIRED_PROJECT_FIELDS = [
     {
         name: exports.DEPENDED_ISSUE_URL_FIELD_NAME,
         dataType: 'TEXT',
+        options: [],
+    },
+    {
+        name: exports.AGENT_FIELD_NAME,
+        dataType: 'SINGLE_SELECT',
         options: [],
     },
 ];

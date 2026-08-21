@@ -122,6 +122,7 @@ export interface IssueRepository {
     getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
     setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) => Promise<void>;
+    setIssueAgentField: (issueUrl: string, project: Project, agentOptionId: string) => Promise<void>;
     getIssueOrPullRequestBody: (url: string) => Promise<string>;
     getIssueOrPullRequestComments: (url: string) => Promise<IssueComment[]>;
     getPullRequestDetail: (prUrl: string) => Promise<PullRequestDetail | null>;

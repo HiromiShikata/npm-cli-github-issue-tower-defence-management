@@ -386,6 +386,43 @@ class GraphqlProjectRepository extends BaseGitHubRepository_1.BaseGitHubReposito
             await this.projectIssuesCacheRepository?.updateFieldOptions(project.id, project.story.fieldId, options);
             return options;
         };
+        this.updateAgentList = async (project, newAgentList) => {
+            if (!project.agent) {
+                throw new Error('Project has no agent field');
+            }
+            const mutation = `mutation UpdateAgentOptions($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    singleSelectOptions: $options
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        options {
+          id
+          name
+          color
+          description
+        }
+      }
+    }
+  }
+}`;
+            const variables = {
+                fieldId: project.agent.fieldId,
+                options: newAgentList.map(({ id, name, color, description }) => ({
+                    ...(id !== null ? { id } : {}),
+                    name,
+                    color,
+                    description,
+                })),
+            };
+            const response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: mutation,
+                variables,
+            });
+            return response.data.updateProjectV2Field.projectV2Field.options;
+        };
         this.updateStatusList = async (project, newStatusList) => {
             const mutation = `mutation UpdateStatusOptions($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
   updateProjectV2Field(input: {

@@ -1,3 +1,15 @@
+# [1.165.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.164.0...v1.165.0) (2026-08-21)
+
+
+### Bug Fixes
+
+* **mergePullRequest:** fall back to squash or rebase when repository disallows merge commits ([#1645](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1645)) ([d9c4e13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d9c4e138e3c8e086e5ff0488dd86ec0581053ae4)), closes [HiromiShikata/umino-corporait-operation#30690](https://github.com/HiromiShikata/umino-corporait-operation/issues/30690)
+
+
+### Features
+
+* **project:** use GitHub Project V2 agent field instead of labels for agent designation ([#1644](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1644)) ([1e96121](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1e9612104744fa9fc5030b0c6c8e31e8a882464b)), closes [HiromiShikata/umino-corporait-operation#30679](https://github.com/HiromiShikata/umino-corporait-operation/issues/30679)
+
 # [1.164.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.163.0...v1.164.0) (2026-08-20)
 
 

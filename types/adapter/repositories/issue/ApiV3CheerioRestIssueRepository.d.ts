@@ -64,6 +64,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     getIssueByUrl: (url: string) => Promise<Issue | null>;
     addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
     setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) => Promise<void>;
+    setIssueAgentField: (issueUrl: string, project: Project, agentOptionId: string) => Promise<void>;
     updateNextActionDate: (issueUrl: string, project: Project, date: Date, projectItemId?: string) => Promise<void>;
     updateNextActionHour: (project: Project & {
         nextActionHour: NonNullable<Project["nextActionHour"]>;
@@ -105,6 +106,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     getAuthenticatedUserLogin: () => Promise<string>;
     approvePullRequest: (prUrl: string) => Promise<void>;
     mergePullRequest: (prUrl: string) => Promise<void>;
+    private resolveAllowedMergeMethod;
     requestChangesWithInlineComment: (prUrl: string, changedFilePath: string | null, commentBody: string, inlineCommentLocation?: PullRequestReviewInlineLocation | null) => Promise<void>;
     private recordRequestedChangesWithoutReview;
     private fetchPullRequestHeadSha;

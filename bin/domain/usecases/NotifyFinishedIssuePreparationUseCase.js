@@ -7,6 +7,7 @@ const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestAppr
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
+const ProjectFieldName_1 = require("../entities/ProjectFieldName");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -85,25 +86,29 @@ class NotifyFinishedIssuePreparationUseCase {
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
             const isTrustedAuthor = (author) => this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
-            const lastComment = comments[comments.length - 1];
-            if (lastComment &&
-                isTrustedAuthor(lastComment.author) &&
-                lastComment.content.startsWith('From: :robot:')) {
-                const nextStepAgent = this.extractNextStepAgent(lastComment.content);
-                if (nextStepAgent !== null) {
-                    await this.issueRepository.getOrCreateLabel(issue.org, issue.repo, nextStepAgent);
-                    const agentLabels = params.labelsAsLlmAgentName ?? [];
-                    const filteredLabels = issue.labels.filter((label) => !label.startsWith('llm-agent:') && !agentLabels.includes(label));
-                    const updatedLabels = [...new Set([...filteredLabels, nextStepAgent])];
-                    issue.labels = updatedLabels;
-                    issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
-                    await this.issueRepository.update(issue, project);
-                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
-                    await this.issueRepository.updateLabels(issue, updatedLabels);
-                    await this.patchConsoleTab(issue);
-                    await this.issueCommentRepository.createComment(issue, `Next step agent: ${nextStepAgent}`);
-                    return;
+            const lastTrustedBotComment = [...comments]
+                .reverse()
+                .find((c) => isTrustedAuthor(c.author) && c.content.startsWith('From: :robot:'));
+            const nextStepAgent = lastTrustedBotComment
+                ? this.extractNextStepAgent(lastTrustedBotComment.content)
+                : null;
+            if (nextStepAgent !== null) {
+                const agentOptionId = await this.ensureAgentOptionAndGetId(project, nextStepAgent);
+                if (agentOptionId) {
+                    await this.issueRepository.setIssueAgentField(params.issueUrl, project, agentOptionId);
                 }
+                await this.issueRepository.getOrCreateLabel(issue.org, issue.repo, nextStepAgent);
+                const agentLabels = params.labelsAsLlmAgentName ?? [];
+                const filteredLabels = issue.labels.filter((label) => !label.startsWith('llm-agent:') && !agentLabels.includes(label));
+                const updatedLabels = [...new Set([...filteredLabels, nextStepAgent])];
+                issue.labels = updatedLabels;
+                issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
+                await this.issueRepository.update(issue, project);
+                await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                await this.issueRepository.updateLabels(issue, updatedLabels);
+                await this.patchConsoleTab(issue);
+                await this.issueCommentRepository.createComment(issue, `Next step agent: ${nextStepAgent}`);
+                return;
             }
             const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
             const rejectionStatusMessage = rejections.length > 0
@@ -203,32 +208,6 @@ class NotifyFinishedIssuePreparationUseCase {
             const nextStepValue = Reflect.get(reportJson, 'nextStep');
             return nextStepValue !== null && nextStepValue !== undefined;
         };
-        this.extractNextStepAgent = (body) => {
-            const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
-            if (!reportMatch || reportMatch.length < 2) {
-                return null;
-            }
-            let reportJson;
-            try {
-                reportJson = JSON.parse(reportMatch[1]);
-            }
-            catch (error) {
-                console.warn('Invalid JSON in report body while checking nextStepAgent:', error);
-                return null;
-            }
-            if (typeof reportJson !== 'object' || reportJson === null) {
-                return null;
-            }
-            if (!('nextStepAgent' in reportJson)) {
-                return null;
-            }
-            const nextStepAgentValue = Reflect.get(reportJson, 'nextStepAgent');
-            if (typeof nextStepAgentValue !== 'string' ||
-                nextStepAgentValue.trim() === '') {
-                return null;
-            }
-            return nextStepAgentValue;
-        };
         this.setDependedIssueUrlForAllOpenPRs = async (issue, issueUrl, project) => {
             if (!project.dependedIssueUrlSeparatedByComma) {
                 console.warn(`dependedIssueUrlSeparatedByComma field not configured in project, skipping depended issue URL update for issue ${issueUrl}`);
@@ -279,6 +258,48 @@ class NotifyFinishedIssuePreparationUseCase {
             if (lower === WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME.toLowerCase())
                 return 'failed-preparation';
             return null;
+        };
+        this.extractNextStepAgent = (body) => {
+            const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+            if (!reportMatch || reportMatch.length < 2) {
+                return null;
+            }
+            let reportJson;
+            try {
+                reportJson = JSON.parse(reportMatch[1]);
+            }
+            catch (error) {
+                console.warn('Invalid JSON in report body while checking nextStepAgent:', error);
+                return null;
+            }
+            if (typeof reportJson !== 'object' || reportJson === null) {
+                return null;
+            }
+            if (!('nextStepAgent' in reportJson)) {
+                return null;
+            }
+            const value = Reflect.get(reportJson, 'nextStepAgent');
+            if (typeof value !== 'string' || value.trim() === '') {
+                return null;
+            }
+            return value.trim();
+        };
+        this.ensureAgentOptionAndGetId = async (project, agentName) => {
+            if (!project.agent) {
+                return null;
+            }
+            const normalizedTarget = (0, ProjectFieldName_1.normalizeProjectFieldName)(agentName);
+            const existing = project.agent.options.find((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name) === normalizedTarget);
+            if (existing) {
+                return existing.id;
+            }
+            const mergedOptions = [
+                ...project.agent.options.map((o) => ({ ...o })),
+                { id: null, name: agentName, color: 'GRAY', description: '' },
+            ];
+            const updatedOptions = await this.projectRepository.updateAgentList(project, mergedOptions);
+            const created = updatedOptions.find((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name) === normalizedTarget);
+            return created?.id ?? null;
         };
         this.patchConsoleTab = async (issue) => {
             if (!this.consoleTabsRepository)
