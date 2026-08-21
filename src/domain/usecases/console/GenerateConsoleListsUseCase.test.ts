@@ -11,7 +11,7 @@ const storyOption = (
 ): FieldOption => ({ id, name, color, description: '' });
 
 const STORY_OPTIONS: FieldOption[] = [
-  storyOption('s1', 'regular / NO STORY; SET STORY FIELD', 'RED'),
+  storyOption('s1', 'regular / NO STORY; SET STORY FIELD', 'GRAY'),
   storyOption('s2', 'Story Alpha', 'BLUE'),
   storyOption('s3', 'Story Beta', 'GREEN'),
 ];
@@ -798,6 +798,91 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.triage.storyColors).toEqual({});
       expect(result.unread.items).toHaveLength(1);
       expect(result.triage.items).toHaveLength(1);
+    });
+  });
+
+  describe('stories tab', () => {
+    it('includes one entry per non-GRAY story option', () => {
+      const result = run([]);
+      expect(result.stories.stories).toHaveLength(2);
+      expect(result.stories.stories.map((s) => s.storyName)).toEqual([
+        'Story Alpha',
+        'Story Beta',
+      ]);
+    });
+
+    it('excludes story options whose color is GRAY', () => {
+      const result = run([]);
+      const names = result.stories.stories.map((s) => s.storyName);
+      expect(names).not.toContain('regular / NO STORY; SET STORY FIELD');
+    });
+
+    it('counts open items per story from all open issues on the board', () => {
+      const result = run([
+        makeIssue({ story: 'Story Alpha', isClosed: false }),
+        makeIssue({ story: 'Story Alpha', isClosed: false }),
+        makeIssue({ story: 'Story Beta', isClosed: false }),
+        makeIssue({ story: 'Story Alpha', isClosed: true }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      const beta = result.stories.stories.find(
+        (s) => s.storyName === 'Story Beta',
+      );
+      expect(alpha?.openItemCount).toBe(2);
+      expect(beta?.openItemCount).toBe(1);
+    });
+
+    it('counts open items regardless of assignee or actionability', () => {
+      const result = run([
+        makeIssue({
+          story: 'Story Alpha',
+          assignees: ['other-person'],
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+          isClosed: false,
+        }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      expect(alpha?.openItemCount).toBe(2);
+    });
+
+    it('exposes the storyOptionId from the project field option', () => {
+      const result = run([]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      expect(alpha?.storyOptionId).toBe('s2');
+    });
+
+    it('provides the nameWithOwner of the first issue as defaultNameWithOwner', () => {
+      const result = run([makeIssue({ nameWithOwner: 'demo/repo' })]);
+      expect(result.stories.defaultNameWithOwner).toBe('demo/repo');
+    });
+
+    it('sets defaultNameWithOwner to null when no issues are present', () => {
+      const result = run([]);
+      expect(result.stories.defaultNameWithOwner).toBeNull();
+    });
+
+    it('preserves the storyOrder in the stories tab', () => {
+      const result = run([]);
+      expect(result.stories.storyOrder).toEqual([
+        'regular / NO STORY; SET STORY FIELD',
+        'Story Alpha',
+        'Story Beta',
+      ]);
+    });
+
+    it('produces an empty stories list when the project has no story field', () => {
+      const result = run([], baseProject(null));
+      expect(result.stories.stories).toEqual([]);
     });
   });
 });

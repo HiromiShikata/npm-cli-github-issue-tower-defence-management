@@ -3,6 +3,7 @@ import type {
   ConsoleFieldOption,
   ConsoleListItem,
   ConsoleStoryColorSource,
+  ConsoleStoryEntry,
   ConsoleTabName,
 } from '../logic/types';
 import { CONSOLE_TABS } from '../logic/types';
@@ -13,6 +14,8 @@ export type ConsoleTabSnapshot = {
   statusOptions: ConsoleFieldOption[];
   storyOptions: ConsoleFieldOption[];
   storyColors: ConsoleStoryColorSource;
+  stories: ConsoleStoryEntry[];
+  defaultNameWithOwner: string | null;
 };
 
 export type ConsoleTabDataState = {
@@ -51,6 +54,13 @@ const parseOptions = (value: unknown): ConsoleFieldOption[] => {
   return value.filter(isRecord) as unknown as ConsoleFieldOption[];
 };
 
+const parseStoryEntries = (value: unknown): ConsoleStoryEntry[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(isRecord) as unknown as ConsoleStoryEntry[];
+};
+
 const parseSnapshot = (payload: unknown): ConsoleTabSnapshot => ({
   items: parseItems(payload),
   generatedAt:
@@ -63,6 +73,11 @@ const parseSnapshot = (payload: unknown): ConsoleTabSnapshot => ({
     isRecord(payload) && isRecord(payload.storyColors)
       ? (payload.storyColors as ConsoleStoryColorSource)
       : {},
+  stories: isRecord(payload) ? parseStoryEntries(payload.stories) : [],
+  defaultNameWithOwner:
+    isRecord(payload) && typeof payload.defaultNameWithOwner === 'string'
+      ? payload.defaultNameWithOwner
+      : null,
 });
 
 const emptySnapshots = (): Record<

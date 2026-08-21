@@ -10,6 +10,7 @@ import {
   ConsoleProjectBinding,
   handleAttachmentUpload,
   handleComment,
+  handleCreateIssue,
   handleIntmux,
   handleReview,
   handleReviewComment,
@@ -1425,6 +1426,216 @@ describe('consoleOperationApi', () => {
       expect(response).toEqual({
         statusCode: 400,
         body: { error: 'url is not a console item of this project' },
+      });
+    });
+  });
+
+  describe('handleCreateIssue', () => {
+    const projectWithStory = (): Project => ({
+      ...project,
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'opt_blue',
+            name: 'Portal redesign',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'opt_green',
+            name: 'Move to Okinawa',
+            color: 'GREEN',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    beforeEach(() => {
+      issueRepository.createNewIssue.mockResolvedValue(42);
+      issueRepository.addIssueToProject.mockResolvedValue(undefined);
+    });
+
+    it('creates the issue, adds it to the project, and sets the story', async () => {
+      const storyProject = projectWithStory();
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_new',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+
+      const response = await handleCreateIssue(
+        contextForProject(storyProject),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyOptionId: 'opt_blue',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({
+        ok: true,
+        issueUrl: 'https://github.com/acme-labs/portal/issues/42',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        '',
+        [],
+        [],
+      );
+      expect(issueRepository.addIssueToProject).toHaveBeenCalledWith(
+        storyProject,
+        'https://github.com/acme-labs/portal/issues/42',
+      );
+      expect(issueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: storyProject.story }),
+        createdIssue,
+        'opt_blue',
+      );
+    });
+
+    it('resolves the issue repository from a proxy url of the target repo', async () => {
+      const resolvedUrls: string[] = [];
+      const recordingContext: ConsoleOperationContext = {
+        ...contextForProject(projectWithStory()),
+        resolveIssueRepository: (url: string) => {
+          resolvedUrls.push(url);
+          return issueRepository;
+        },
+      };
+      issueRepository.get.mockResolvedValue(null);
+
+      await handleCreateIssue(recordingContext, {
+        pjcode: 'acme',
+        title: 'Task',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+      });
+
+      expect(resolvedUrls).toContain(
+        'https://github.com/acme-labs/portal/issues/0',
+      );
+    });
+
+    it('skips updateStory when get returns null after addIssueToProject', async () => {
+      issueRepository.get.mockResolvedValue(null);
+
+      const response = await handleCreateIssue(
+        contextForProject(projectWithStory()),
+        {
+          pjcode: 'acme',
+          title: 'Task without project item',
+          storyOptionId: 'opt_green',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    it('rejects when title is missing', async () => {
+      const response = await handleCreateIssue(context, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'title is required' },
+      });
+    });
+
+    it('rejects when storyOptionId is missing', async () => {
+      const response = await handleCreateIssue(context, {
+        pjcode: 'acme',
+        title: 'Task',
+        nameWithOwner: 'acme-labs/portal',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'storyOptionId is required' },
+      });
+    });
+
+    it('rejects when nameWithOwner is missing', async () => {
+      const response = await handleCreateIssue(context, {
+        pjcode: 'acme',
+        title: 'Task',
+        storyOptionId: 'opt_blue',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'nameWithOwner is required' },
+      });
+    });
+
+    it('rejects when nameWithOwner has no slash', async () => {
+      const response = await handleCreateIssue(context, {
+        pjcode: 'acme',
+        title: 'Task',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'noslash',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'nameWithOwner must be in owner/repo format' },
+      });
+    });
+
+    it('rejects when pjcode is not configured', async () => {
+      const response = await handleCreateIssue(context, {
+        pjcode: 'unknown',
+        title: 'Task',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'no project configured for pjcode "unknown"' },
+      });
+    });
+
+    it('rejects when the project has no story field', async () => {
+      const projectWithoutStory: Project = { ...project, story: null };
+
+      const response = await handleCreateIssue(
+        contextForProject(projectWithoutStory),
+        {
+          pjcode: 'acme',
+          title: 'Task',
+          storyOptionId: 'opt_blue',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'project does not have a story field' },
+      });
+    });
+
+    it('rejects when the storyOptionId is not found in the project', async () => {
+      const response = await handleCreateIssue(
+        contextForProject(projectWithStory()),
+        {
+          pjcode: 'acme',
+          title: 'Task',
+          storyOptionId: 'nonexistent',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'story option "nonexistent" not found in project' },
       });
     });
   });

@@ -336,3 +336,64 @@ test('opens the comment input with the item detail, keeps it on screen while the
   )?.height;
   expect(dockHeightAfterPosting).toBe(dockHeightBeforePosting);
 });
+
+test('renders the stories tab with non-gray stories, their open item counts, and an add-task button', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+  await expect(activeTabLabel(page)).toHaveText('Stories');
+
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow.locator('.console-story-count')).toHaveText('6');
+  await expect(
+    tdpmRow.locator('.console-op-button', { hasText: 'Add task' }),
+  ).toBeVisible();
+
+  const publishRow = page.locator('.console-story-list-row', {
+    hasText: 'Publish product documentation site',
+  });
+  await expect(publishRow.locator('.console-story-count')).toHaveText('1');
+
+  await expect(
+    page.locator('.console-story-list-row', {
+      hasText: 'regular / workflow improvement',
+    }),
+  ).toHaveCount(0);
+});
+
+test('creates an issue for a story when the add-task button and form are used', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await tdpmRow.locator('.console-op-button', { hasText: 'Add task' }).click();
+
+  await page
+    .locator('.console-story-create-input')
+    .fill('New task for TDPM Console port');
+  await page
+    .locator('.console-story-create-form .console-op-button', {
+      hasText: 'Create',
+    })
+    .click();
+
+  await expect
+    .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.createIssueCalls[0].title).toBe(
+    'New task for TDPM Console port',
+  );
+  expect(harness.createIssueCalls[0].org).toBe('HiromiShikata');
+  expect(harness.createIssueCalls[0].repo).toBe(
+    'npm-cli-github-issue-tower-defence-management',
+  );
+});
