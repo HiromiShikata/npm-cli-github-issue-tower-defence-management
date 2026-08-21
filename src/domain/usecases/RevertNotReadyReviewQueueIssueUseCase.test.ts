@@ -233,10 +233,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should skip Awaiting Quality Check issue with llm-agent label', async () => {
+    it('should skip Awaiting Quality Check issue with non-developer agent field', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
-        labels: ['llm-agent'],
+        labels: [],
+        agent: 'chore',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -252,6 +253,35 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should revert Awaiting Quality Check issue with developer agent field and no linked PR', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        labels: ['llm-agent:developer'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+      );
     });
 
     it('should revert issue when no linked PR is found', async () => {
@@ -1040,10 +1070,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
       });
 
-      it('should skip change-target auto-approve for issue with llm-agent label', async () => {
+      it('should skip change-target auto-approve for issue with non-developer agent field', async () => {
         const issue = createMockIssue({
           status: 'Awaiting Quality Check',
-          labels: ['llm-agent', 'change-target:src/domain'],
+          labels: ['change-target:src/domain'],
+          agent: 'chore',
         });
         linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
           createReadyPr(),
@@ -1156,10 +1187,11 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should skip Unread pull request with llm-agent label', async () => {
+    it('should skip Unread pull request with non-developer agent field', async () => {
       const pullRequest = createMockPullRequest({
         status: 'Unread',
-        labels: ['llm-agent'],
+        labels: [],
+        agent: 'chore',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1176,6 +1208,39 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should revert Unread pull request with developer agent field when it is in draft state', async () => {
+      const pullRequest = createMockPullRequest({
+        status: 'Unread',
+        labels: ['llm-agent:developer'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [pullRequest],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+        ...createReadyPr(),
+        isDraft: true,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        pullRequest,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        pullRequest,
+        expect.stringContaining('PULL_REQUEST_IS_DRAFT'),
+      );
     });
 
     it('should not move Unread pull request when it is review-ready', async () => {

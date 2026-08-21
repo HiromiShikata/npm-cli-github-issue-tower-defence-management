@@ -521,11 +521,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should advance orphaned issue with llm-agent label to Awaiting Quality Check without PR check', async () => {
+  it('should advance orphaned issue with non-developer agent field to Awaiting Quality Check without PR check', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
-      labels: ['llm-agent'],
+      labels: [],
+      agent: 'chore',
     });
     mockIssueRepository.getAllIssues.mockResolvedValue({
       project: mockProject,
@@ -554,6 +555,42 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
+  it('should check PR for orphaned issue with developer agent field', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: ['llm-agent:developer'],
+      agent: 'developer',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'From: :robot: agent report',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
   it('should advance orphaned issue with a labelsAsLlmAgentName label (story) to Awaiting Quality Check without PR check', async () => {
