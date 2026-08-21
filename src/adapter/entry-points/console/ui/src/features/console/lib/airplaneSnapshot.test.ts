@@ -229,6 +229,39 @@ describe('airplaneSnapshot', () => {
       const result = parseAirplaneSnapshot(raw);
       expect(result?.failures).toContain('https://github.com/o/r/issues/99');
     });
+
+    it('parses stories and defaultNameWithOwner from a tab snapshot', () => {
+      const raw = {
+        capturedAt: '2026-01-01T00:00:00Z',
+        tabs: {
+          acme: {
+            stories: {
+              generatedAt: '2026-01-01T00:00:00Z',
+              statusOptions: [],
+              storyOptions: [],
+              storyColors: {},
+              items: [],
+              stories: [
+                {
+                  storyName: 'regular',
+                  storyOptionId: 'opt-1',
+                  color: 'GREEN',
+                  openItemCount: 3,
+                },
+              ],
+              defaultNameWithOwner: 'owner/repo',
+            },
+          },
+        },
+        items: {},
+        failures: [],
+      };
+      const result = parseAirplaneSnapshot(raw);
+      const storiesTab = result?.tabs.acme?.stories;
+      expect(storiesTab?.stories).toHaveLength(1);
+      expect(storiesTab?.stories[0].storyName).toBe('regular');
+      expect(storiesTab?.defaultNameWithOwner).toBe('owner/repo');
+    });
   });
 
   describe('readAirplaneModeFlag / writeAirplaneModeFlag', () => {
