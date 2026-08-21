@@ -19,10 +19,12 @@ export declare class IssueRejectionEvaluator {
         labels: string[];
         isPr: boolean;
         body?: string | null;
+        agent?: string | null;
     }, labelsNotRequiringPullRequest?: string[], options?: EvaluateOptions) => Promise<PrRejectionResult>;
     requiresPullRequestEvaluation: (issue: {
         labels: string[];
         body?: string | null;
+        agent?: string | null;
     }, labelsNotRequiringPullRequest?: string[]) => boolean;
     private resolveOpenPrsForPrItem;
     private resolveOpenPrsFromUrls;

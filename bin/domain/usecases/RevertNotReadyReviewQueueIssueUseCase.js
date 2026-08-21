@@ -52,10 +52,6 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     .map((pullRequest) => pullRequest.url),
             ])));
             for (const issue of awaitingQualityCheckIssues) {
-                const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
-                if (hasLlmAgentLabel) {
-                    continue;
-                }
                 if (!(0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(issue.author, allowedIssueAuthors)) {
                     continue;
                 }
@@ -98,10 +94,6 @@ class RevertNotReadyReviewQueueIssueUseCase {
             }
             const projectStory = project.story;
             for (const pullRequest of unreadPullRequests) {
-                const hasLlmAgentLabel = pullRequest.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
-                if (hasLlmAgentLabel) {
-                    continue;
-                }
                 if (!(0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(pullRequest.author, allowedIssueAuthors)) {
                     continue;
                 }

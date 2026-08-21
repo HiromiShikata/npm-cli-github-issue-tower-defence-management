@@ -1,3 +1,10 @@
+## [1.168.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.168.2...v1.168.3) (2026-08-21)
+
+
+### Bug Fixes
+
+* switch PR requirement checks from llm-agent labels to agent project field ([#1659](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1659)) ([b42cea9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b42cea974abb5fae2e7eb2091a2945105d74366b)), closes [HiromiShikata/umino-corporait-operation#30715](https://github.com/HiromiShikata/umino-corporait-operation/issues/30715)
+
 ## [1.168.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.168.1...v1.168.2) (2026-08-21)
 
 

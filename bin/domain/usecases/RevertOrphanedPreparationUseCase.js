@@ -123,9 +123,9 @@ class RevertOrphanedPreparationUseCase {
                 return { outcome: 'reject', comments };
             }
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
-            const hasLlmAgentLabel = issue.labels.some((l) => l === 'llm-agent' || l.startsWith('llm-agent:'));
+            const isNonDeveloperAgent = issue.agent != null && issue.agent !== 'developer';
             const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
-            if (hasLlmAgentLabel ||
+            if (isNonDeveloperAgent ||
                 hasLabelNotRequiringPullRequest ||
                 (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))) {
                 return { outcome: 'advanceToQualityCheck', comments };
