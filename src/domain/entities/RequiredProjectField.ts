@@ -63,9 +63,4 @@ export const REQUIRED_PROJECT_FIELDS: RequiredProjectFieldDefinition[] = [
     dataType: 'TEXT',
     options: [],
   },
-  {
-    name: AGENT_FIELD_NAME,
-    dataType: 'SINGLE_SELECT',
-    options: [],
-  },
 ];

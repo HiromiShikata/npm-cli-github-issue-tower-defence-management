@@ -27,6 +27,7 @@ import {
 import { Issue } from '../entities/Issue';
 import { FieldOption, Project } from '../entities/Project';
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
+import { AGENT_FIELD_NAME } from '../entities/RequiredProjectField';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -56,7 +57,7 @@ export class NotifyFinishedIssuePreparationUseCase {
   constructor(
     private readonly projectRepository: Pick<
       ProjectRepository,
-      'getByUrl' | 'updateAgentList'
+      'getByUrl' | 'updateAgentList' | 'createField'
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
@@ -570,10 +571,19 @@ export class NotifyFinishedIssuePreparationUseCase {
     project: Project,
     agentName: string,
   ): Promise<string | null> => {
-    if (!project.agent) {
-      return null;
-    }
     const normalizedTarget = normalizeProjectFieldName(agentName);
+    if (!project.agent) {
+      await this.projectRepository.createField(project, {
+        name: AGENT_FIELD_NAME,
+        dataType: 'SINGLE_SELECT',
+        options: [{ name: agentName, color: 'GRAY' as const, description: '' }],
+      });
+      const refreshed = await this.projectRepository.getByUrl(project.url);
+      const created = refreshed.agent?.options.find(
+        (o) => normalizeProjectFieldName(o.name) === normalizedTarget,
+      );
+      return created?.id ?? null;
+    }
     const existing = project.agent.options.find(
       (o) => normalizeProjectFieldName(o.name) === normalizedTarget,
     );
@@ -590,10 +600,10 @@ export class NotifyFinishedIssuePreparationUseCase {
       project,
       mergedOptions,
     );
-    const created = updatedOptions.find(
+    const added = updatedOptions.find(
       (o) => normalizeProjectFieldName(o.name) === normalizedTarget,
     );
-    return created?.id ?? null;
+    return added?.id ?? null;
   };
 
   private patchConsoleTab = async (issue: Issue): Promise<void> => {

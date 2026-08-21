@@ -86,7 +86,6 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       NEXT_ACTION_DATE_FIELD_NAME,
       NEXT_ACTION_HOUR_FIELD_NAME,
       DEPENDED_ISSUE_URL_FIELD_NAME,
-      AGENT_FIELD_NAME,
     ]);
   });
 
@@ -99,7 +98,6 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         'nextactiondate',
         'nextactionhour',
         'Depended Issue URL separated by comma',
-        'Agent',
       ],
       projectWithoutStory,
     );
@@ -123,7 +121,6 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
     expect(createdFieldNames).toEqual([
       NEXT_ACTION_HOUR_FIELD_NAME,
       DEPENDED_ISSUE_URL_FIELD_NAME,
-      AGENT_FIELD_NAME,
     ]);
   });
 
@@ -655,15 +652,29 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       expect(projectRepository.updateAgentList).not.toHaveBeenCalled();
     });
 
-    it('does not call updateAgentList when project has no agent field', async () => {
+    it('calls createField with AGENT_FIELD_NAME and initial agents when project has no agent field', async () => {
       const { projectRepository, useCase } = createUseCase(
         [],
         projectWithoutStory,
       );
 
-      await useCase.reconcileAgentOptions(projectWithoutStory, ['impl']);
+      await useCase.reconcileAgentOptions(projectWithoutStory, [
+        'impl',
+        'chore',
+      ]);
 
       expect(projectRepository.updateAgentList).not.toHaveBeenCalled();
+      expect(projectRepository.createField).toHaveBeenCalledWith(
+        projectWithoutStory,
+        {
+          name: AGENT_FIELD_NAME,
+          dataType: 'SINGLE_SELECT',
+          options: [
+            { name: 'impl', color: 'GRAY', description: '' },
+            { name: 'chore', color: 'GRAY', description: '' },
+          ],
+        },
+      );
     });
   });
 });
