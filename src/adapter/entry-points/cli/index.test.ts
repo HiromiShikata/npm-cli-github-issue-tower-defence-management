@@ -796,7 +796,39 @@ mysteryKey: 'value'
         manager: 'test-manager',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        agents: null,
       });
+    });
+
+    it('should pass the configured agent definitions to start preparation', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedStartPreparationUseCase = jest.mocked(
+        StartPreparationUseCase,
+      );
+
+      MockedStartPreparationUseCase.mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+      writeConfig({
+        ...defaultConfig,
+        agents: ['impl', 'chore', 'accounting'],
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledTimes(1);
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ agents: ['impl', 'chore', 'accounting'] }),
+      );
     });
 
     it('should allow CLI args to override config file values', async () => {
@@ -838,6 +870,7 @@ mysteryKey: 'value'
         manager: 'test-manager',
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
+        agents: null,
       });
     });
 

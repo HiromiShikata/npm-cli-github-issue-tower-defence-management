@@ -83,7 +83,7 @@ const createMockProject = (): Project => ({
 describe('StartPreparationUseCase', () => {
   let useCase: StartPreparationUseCase;
   let mockProjectRepository: Mocked<
-    Pick<ProjectRepository, 'getByUrl' | 'updateAgentList'>
+    Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
   >;
   let mockIssueRepository: Mocked<
     Pick<
@@ -109,6 +109,7 @@ describe('StartPreparationUseCase', () => {
     mockProject = createMockProject();
     mockProjectRepository = {
       getByUrl: jest.fn(),
+      createField: jest.fn().mockResolvedValue(undefined),
       updateAgentList: jest.fn().mockResolvedValue([]),
     };
     mockIssueRepository = {
@@ -241,7 +242,12 @@ describe('StartPreparationUseCase', () => {
 
     it('sets the existing Agent field option and removes the label when a label matches a configured agent definition', async () => {
       const project = projectWithAgentField([
-        { id: 'agent-option-impl', name: 'impl', color: 'GRAY', description: '' },
+        {
+          id: 'agent-option-impl',
+          name: 'impl',
+          color: 'GRAY',
+          description: '',
+        },
         {
           id: 'agent-option-chore',
           name: 'chore',
@@ -271,7 +277,12 @@ describe('StartPreparationUseCase', () => {
       const project = projectWithAgentField([]);
       arrangeIssue(project, ['impl']);
       mockProjectRepository.updateAgentList.mockResolvedValue([
-        { id: 'agent-option-impl', name: 'impl', color: 'GRAY', description: '' },
+        {
+          id: 'agent-option-impl',
+          name: 'impl',
+          color: 'GRAY',
+          description: '',
+        },
       ]);
 
       await runWithAgents(['impl']);
@@ -286,9 +297,42 @@ describe('StartPreparationUseCase', () => {
       expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
     });
 
-    it('keeps the label and still uses it as the agent when the project has no Agent field', async () => {
+    it('creates the Agent field when the project has none, then sets it and removes the label', async () => {
       const project = createMockProject();
       arrangeIssue(project, ['chore']);
+      mockProjectRepository.getByUrl.mockResolvedValueOnce(project);
+      mockProjectRepository.getByUrl.mockResolvedValueOnce(
+        projectWithAgentField([
+          {
+            id: 'agent-option-chore',
+            name: 'chore',
+            color: 'GRAY',
+            description: '',
+          },
+        ]),
+      );
+
+      await runWithAgents(['chore']);
+
+      expect(mockProjectRepository.createField.mock.calls).toHaveLength(1);
+      expect(mockProjectRepository.createField.mock.calls[0][1]).toEqual({
+        name: 'Agent',
+        dataType: 'SINGLE_SELECT',
+        options: [{ name: 'chore', color: 'GRAY', description: '' }],
+      });
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+        ['url1', project, 'agent-option-chore'],
+      ]);
+      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'chore',
+      );
+    });
+
+    it('keeps the label and still uses it as the agent when the Agent field option cannot be resolved', async () => {
+      const project = createMockProject();
+      arrangeIssue(project, ['chore']);
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
 
       await runWithAgents(['chore']);
 
@@ -301,7 +345,12 @@ describe('StartPreparationUseCase', () => {
 
     it('leaves the labels untouched when no label matches a configured agent definition', async () => {
       const project = projectWithAgentField([
-        { id: 'agent-option-impl', name: 'impl', color: 'GRAY', description: '' },
+        {
+          id: 'agent-option-impl',
+          name: 'impl',
+          color: 'GRAY',
+          description: '',
+        },
       ]);
       arrangeIssue(project, ['category:triager']);
 
@@ -6483,9 +6532,10 @@ describe('StartPreparationUseCase', () => {
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
   const mockProjectRepositoryForRotation: Mocked<
-    Pick<ProjectRepository, 'getByUrl' | 'updateAgentList'>
+    Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
   > = {
     getByUrl: jest.fn(),
+    createField: jest.fn(),
     updateAgentList: jest.fn(),
   };
   const mockIssueRepositoryForRotation: Mocked<
@@ -6805,7 +6855,11 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
   let useCase: StartPreparationUseCase;
   beforeEach(() => {
     useCase = new StartPreparationUseCase(
-      { getByUrl: jest.fn(), updateAgentList: jest.fn() },
+      {
+        getByUrl: jest.fn(),
+        createField: jest.fn(),
+        updateAgentList: jest.fn(),
+      },
       {
         getStoryObjectMap: jest.fn(),
         getAllOpened: jest.fn(),
