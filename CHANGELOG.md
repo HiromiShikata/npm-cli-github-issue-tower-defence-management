@@ -1,3 +1,10 @@
+## [1.166.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.5...v1.166.6) (2026-08-21)
+
+
+### Bug Fixes
+
+* **preparation:** strip the llm-agent prefix from the project agent field value ([#1653](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1653)) ([6d58afb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6d58afbf8283998148d132549f8d301efe01470c))
+
 ## [1.166.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.4...v1.166.5) (2026-08-21)
 
 

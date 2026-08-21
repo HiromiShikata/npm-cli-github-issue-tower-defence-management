@@ -1,12 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StartPreparationUseCase = exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = void 0;
+exports.StartPreparationUseCase = exports.agentNameFromDesignation = exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = void 0;
 const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
+const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
+const agentNameFromDesignation = (designation) => designation.startsWith(LLM_AGENT_LABEL_PREFIX)
+    ? designation.slice(LLM_AGENT_LABEL_PREFIX.length).trim()
+    : designation.trim();
+exports.agentNameFromDesignation = agentNameFromDesignation;
 class StartPreparationUseCase {
     constructor(projectRepository, issueRepository, localCommandRunner, claudeTokenUsageRepository, takeOwnershipSpawnRepository) {
         this.projectRepository = projectRepository;
@@ -248,10 +253,10 @@ class StartPreparationUseCase {
                         ? params.labelsAsLlmAgentName.includes(label)
                         : false)
                     : undefined;
-                const agent = issue.agent ||
+                const agent = (issue.agent === null ? null : (0, exports.agentNameFromDesignation)(issue.agent)) ||
                     issue.labels
-                        .find((label) => label.startsWith('llm-agent:'))
-                        ?.replace('llm-agent:', '')
+                        .find((label) => label.startsWith(LLM_AGENT_LABEL_PREFIX))
+                        ?.replace(LLM_AGENT_LABEL_PREFIX, '')
                         .trim() ||
                     mappedAgentFromLabel ||
                     issue.labels

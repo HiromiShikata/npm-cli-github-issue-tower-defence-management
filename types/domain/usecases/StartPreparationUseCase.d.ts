@@ -5,6 +5,7 @@ import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsag
 import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 export declare const DEFAULT_FALLBACK_LLM_MODEL_NAME = "claude-opus-4-8";
+export declare const agentNameFromDesignation: (designation: string) => string;
 export type RotationOrderEntry = {
     name: string;
     fiveHourUtilization: number;
