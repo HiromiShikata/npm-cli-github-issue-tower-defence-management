@@ -131,10 +131,7 @@ export const ConsolePage = () => {
   useEffect(() => {
     if (!isOnline || actionQueue.offlineActions.length === 0) return;
     for (const action of actionQueue.offlineActions) {
-      if (
-        offlineItemStates.has(action.id) ||
-        offlineFetchErrors.has(action.id)
-      )
+      if (offlineItemStates.has(action.id) || offlineFetchErrors.has(action.id))
         continue;
       setOfflineItemStates((prev) => new Map(prev).set(action.id, null));
       caches.client
@@ -142,9 +139,7 @@ export const ConsolePage = () => {
         .then((state) => {
           setOfflineItemStates((prev) => new Map(prev).set(action.id, state));
           if (action.isPr) {
-            setOfflinePrStatuses((prev) =>
-              new Map(prev).set(action.id, null),
-            );
+            setOfflinePrStatuses((prev) => new Map(prev).set(action.id, null));
             caches.client
               .fetchPullRequestStatus(action.itemUrl)
               .then((prStatus) => {
