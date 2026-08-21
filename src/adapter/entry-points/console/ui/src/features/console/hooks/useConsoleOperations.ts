@@ -72,7 +72,7 @@ export type ConsoleOperationsApi = {
   ) => Promise<void>;
 };
 
-const reviewRequest = (
+export const reviewRequest = (
   pjcode: string,
   item: ConsoleListItem,
   prUrl: string,
@@ -123,6 +123,33 @@ const reviewRequest = (
     issueCommentBody: buildUnnecessaryIssueCommentBody(prUrl),
   };
 };
+
+export const buildTriageRequest = (
+  pjcode: string,
+  item: ConsoleListItem,
+  action:
+    | ConsoleNextActionDateAction
+    | ConsoleCloseAction
+    | 'set_story'
+    | 'set_status',
+  extra?: { statusName?: string; storyOptionId?: string },
+): ConsoleTriageRequest => ({
+  pjcode,
+  action,
+  issueUrl: item.url,
+  projectItemId: item.projectItemId,
+  ...(extra ?? {}),
+});
+
+export const buildIntmuxRequest = (
+  pjcode: string,
+  item: ConsoleListItem,
+): ConsoleIntmuxRequest => ({
+  pjcode,
+  action: 'set_intmux',
+  issueUrl: item.url,
+  projectItemId: item.projectItemId,
+});
 
 const missingPjcodeError = (): Error =>
   new Error('No project specified in the URL path.');
@@ -179,13 +206,10 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const request: ConsoleTriageRequest = {
-        pjcode,
-        action,
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-      };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(
+        TRIAGE_OPERATION_PATH,
+        buildTriageRequest(pjcode, item, action),
+      );
       markDone(item);
     },
     [pjcode, markDone],
@@ -196,14 +220,12 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const request: ConsoleTriageRequest = {
-        pjcode,
-        action: 'set_story',
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-        storyOptionId: option.id,
-      };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(
+        TRIAGE_OPERATION_PATH,
+        buildTriageRequest(pjcode, item, 'set_story', {
+          storyOptionId: option.id,
+        }),
+      );
       invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
@@ -219,14 +241,12 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const request: ConsoleTriageRequest = {
-        pjcode,
-        action: 'set_status',
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-        statusName: option.name,
-      };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      await postConsoleOperation(
+        TRIAGE_OPERATION_PATH,
+        buildTriageRequest(pjcode, item, 'set_status', {
+          statusName: option.name,
+        }),
+      );
       invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
@@ -242,13 +262,10 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const request: ConsoleIntmuxRequest = {
-        pjcode,
-        action: 'set_intmux',
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-      };
-      await postConsoleOperation(INTMUX_OPERATION_PATH, request);
+      await postConsoleOperation(
+        INTMUX_OPERATION_PATH,
+        buildIntmuxRequest(pjcode, item),
+      );
       invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
@@ -264,12 +281,7 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const request: ConsoleTriageRequest = {
-        pjcode,
-        action,
-        issueUrl: item.url,
-        projectItemId: item.projectItemId,
-      };
+      const request = buildTriageRequest(pjcode, item, action);
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       markDone(item);
     },

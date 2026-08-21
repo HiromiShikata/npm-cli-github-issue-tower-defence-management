@@ -293,6 +293,20 @@ export const postConsoleOperation = async (
   }
 };
 
+export const postConsoleOperationRecord = async (
+  apiPath: string,
+  body: Record<string, unknown>,
+): Promise<void> => {
+  const response = await fetch(apiPath, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
 export const COMMENT_OPERATION_PATH = '/api/comment';
 
 export type ConsoleCommentRequest = {

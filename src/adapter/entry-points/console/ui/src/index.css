@@ -1337,3 +1337,123 @@ body {
   font-size: 0.6875rem;
   color: #8b949e;
 }
+
+.console-offline-panel {
+  margin: 0;
+  padding: 10px 12px;
+  background: #1c2128;
+  border-bottom: 1px solid #30363d;
+  font-size: 0.8125rem;
+}
+
+.console-offline-panel-header {
+  color: #ffd166;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.console-offline-panel-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  border-left: 3px solid currentColor;
+}
+
+.console-offline-panel-item-green {
+  background: #0d1f12;
+  color: #3fb950;
+  border-left-color: #2ea043;
+}
+
+.console-offline-panel-item-amber {
+  background: #211a00;
+  color: #ffd166;
+  border-left-color: #a06800;
+}
+
+.console-offline-panel-item-red {
+  background: #1e0b0e;
+  color: #f85149;
+  border-left-color: #da3633;
+}
+
+.console-offline-panel-item-gray {
+  background: #1c2128;
+  color: #aab0b8;
+  border-left-color: #6e7681;
+}
+
+.console-offline-panel-item-blue {
+  background: #0d1f40;
+  color: #79c0ff;
+  border-left-color: #4493f8;
+}
+
+.console-offline-panel-item-error {
+  background: #1e0b0e;
+  color: #f85149;
+  border-left-color: #f85149;
+}
+
+.console-offline-panel-item-message {
+  font-weight: 500;
+}
+
+.console-offline-panel-item-target {
+  color: #8b949e;
+  font-size: 0.75rem;
+}
+
+.console-offline-panel-item-pr-status {
+  color: #8b949e;
+  font-size: 0.75rem;
+}
+
+.console-offline-panel-item-fetch-error {
+  color: #f85149;
+  font-size: 0.75rem;
+}
+
+.console-offline-panel-item-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.console-offline-panel-confirm {
+  flex: 0 0 auto;
+  border: 1px solid #238636;
+  border-radius: 6px;
+  background: #238636;
+  color: #ffffff;
+  padding: 5px 16px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  min-width: 56px;
+}
+
+.console-offline-panel-confirm:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.console-offline-panel-discard {
+  flex: 0 0 auto;
+  border: 1px solid #da3633;
+  border-radius: 6px;
+  background: transparent;
+  color: #f85149;
+  padding: 5px 16px;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  min-width: 72px;
+}
+
+.console-offline-panel-discard:hover {
+  background: rgba(218, 54, 51, 0.12);
+}

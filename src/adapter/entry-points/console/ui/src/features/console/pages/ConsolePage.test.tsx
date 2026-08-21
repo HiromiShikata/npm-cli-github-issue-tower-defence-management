@@ -824,6 +824,50 @@ describe('ConsolePage comment composer isolation', () => {
     });
     expect(queryByText('first item only comment')).toBeNull();
   });
+
+  it('queues the action offline when the review API call fails with a network error', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => listPayload(listMatch[1]),
+          };
+        }
+        if (url.endsWith('/api/review')) {
+          throw new TypeError('Failed to fetch');
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      fireEvent.click(await findByText('Approve & Merge'));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(getByText(/1 action held/)).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage auto-advance tab', () => {

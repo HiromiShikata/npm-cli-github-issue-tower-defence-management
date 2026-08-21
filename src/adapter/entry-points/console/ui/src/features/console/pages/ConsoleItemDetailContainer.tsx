@@ -3,15 +3,27 @@ import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentCompo
 import type { ConsoleAddInlineComment } from '../components/detail/ConsoleFileDiff';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
+import type { ConsoleOfflinePayload } from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
-import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
+import {
+  buildIntmuxRequest,
+  buildTriageRequest,
+  type ConsoleOperationsApi,
+  INTMUX_OPERATION_PATH,
+  REVIEW_OPERATION_PATH,
+  reviewRequest,
+  TRIAGE_OPERATION_PATH,
+} from '../hooks/useConsoleOperations';
 import { buildImageProxyUrl } from '../lib/imageProxy';
 import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
 import type {
+  ConsoleCloseAction,
+  ConsoleNextActionDateAction,
   ConsoleOperationHandlers,
   ConsolePendingReviewComment,
+  ConsoleReviewAction,
 } from '../logic/operations';
 import { mergePostedComments } from '../logic/postedComments';
 import type {
@@ -29,13 +41,70 @@ export type ConsoleQueueActionInput = {
   kind: ConsoleActionKind;
   item: ConsoleListItem;
   commit: () => Promise<void>;
+  offline?: ConsoleOfflinePayload;
 };
+
+const itemOfflineBase = (item: ConsoleListItem) => ({
+  itemUrl: item.url,
+  projectItemId: item.projectItemId,
+  itemNumber: item.number,
+  repo: item.repo,
+  isPr: item.isPr,
+});
+
+const buildReviewOfflinePayload = (
+  pjcode: string,
+  item: ConsoleListItem,
+  prUrl: string,
+  action: ConsoleReviewAction,
+  pendingComments: ConsolePendingReviewComment[],
+): ConsoleOfflinePayload => ({
+  ...itemOfflineBase(item),
+  apiPath: REVIEW_OPERATION_PATH,
+  requestBody: reviewRequest(
+    pjcode,
+    item,
+    prUrl,
+    action,
+    pendingComments,
+  ) as unknown as Record<string, unknown>,
+});
+
+const buildTriageOfflinePayload = (
+  pjcode: string,
+  item: ConsoleListItem,
+  action:
+    | ConsoleNextActionDateAction
+    | ConsoleCloseAction
+    | 'set_story'
+    | 'set_status',
+  extra?: { statusName?: string; storyOptionId?: string },
+): ConsoleOfflinePayload => ({
+  ...itemOfflineBase(item),
+  apiPath: TRIAGE_OPERATION_PATH,
+  requestBody: buildTriageRequest(
+    pjcode,
+    item,
+    action,
+    extra,
+  ) as unknown as Record<string, unknown>,
+});
+
+const buildIntmuxOfflinePayload = (
+  pjcode: string,
+  item: ConsoleListItem,
+): ConsoleOfflinePayload => ({
+  ...itemOfflineBase(item),
+  apiPath: INTMUX_OPERATION_PATH,
+  requestBody: buildIntmuxRequest(pjcode, item),
+});
 
 export type ConsoleItemDetailContainerProps = {
   tab: ConsoleTabName;
   item: ConsoleListItem;
   caches: ConsoleCaches;
   operations: ConsoleOperationsApi;
+  pjcode?: string | null;
   statusOptions: ConsoleFieldOption[];
   storyOptions: ConsoleFieldOption[];
   storyColors: ConsoleStoryColorSource;
@@ -50,6 +119,7 @@ export const ConsoleItemDetailContainer = ({
   item,
   caches,
   operations,
+  pjcode,
   statusOptions,
   storyOptions,
   storyColors,
@@ -113,6 +183,16 @@ export const ConsoleItemDetailContainer = ({
         item,
         commit: () =>
           operations.reviewPullRequest(item, prUrl, action, reviewComments),
+        offline:
+          pjcode != null
+            ? buildReviewOfflinePayload(
+                pjcode,
+                item,
+                prUrl,
+                action,
+                reviewComments,
+              )
+            : undefined,
       });
     },
     onSetNextActionDate: (action) => {
@@ -120,6 +200,10 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'next_action_date', action },
         item,
         commit: () => operations.setNextActionDate(item, action),
+        offline:
+          pjcode != null
+            ? buildTriageOfflinePayload(pjcode, item, action)
+            : undefined,
       });
     },
     onSetStory: (option: ConsoleFieldOption) => {
@@ -127,6 +211,12 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'set_story', optionName: option.name },
         item,
         commit: () => operations.setStory(item, option),
+        offline:
+          pjcode != null
+            ? buildTriageOfflinePayload(pjcode, item, 'set_story', {
+                storyOptionId: option.id,
+              })
+            : undefined,
       });
     },
     onSetStatus: (option: ConsoleFieldOption) => {
@@ -134,6 +224,12 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'set_status', optionName: option.name },
         item,
         commit: () => operations.setStatus(item, option),
+        offline:
+          pjcode != null
+            ? buildTriageOfflinePayload(pjcode, item, 'set_status', {
+                statusName: option.name,
+              })
+            : undefined,
       });
     },
     onSetInTmuxByHuman: (option: ConsoleFieldOption) => {
@@ -141,6 +237,8 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'set_in_tmux_by_human', optionName: option.name },
         item,
         commit: () => operations.setInTmuxByHuman(item, option),
+        offline:
+          pjcode != null ? buildIntmuxOfflinePayload(pjcode, item) : undefined,
       });
     },
     onClose: (action) => {
@@ -148,6 +246,10 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'close', action },
         item,
         commit: () => operations.closeIssue(item, action),
+        offline:
+          pjcode != null
+            ? buildTriageOfflinePayload(pjcode, item, action)
+            : undefined,
       });
     },
   };
