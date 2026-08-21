@@ -17,38 +17,17 @@ export class ClearDependedIssueURLUseCase {
   }): Promise<void> => {
     const dependedIssueUrlSeparatedByComma =
       input.project.dependedIssueUrlSeparatedByComma;
-    if (!dependedIssueUrlSeparatedByComma || input.cacheUsed) {
+    if (!dependedIssueUrlSeparatedByComma) {
       return;
     }
+    const absentDependedIssueIsResolvable = !input.cacheUsed;
     for (const issue of input.issues) {
       if (issue.dependedIssueUrls.length <= 0 || issue.isClosed) {
         continue;
       }
-      const circularDependedIssueUrls = issue.dependedIssueUrls.filter(
-        (dependedIssueUrl) => {
-          // get all depended issues circularly
-          const circularDependedIssues = new Set<string>();
-          const stack = [dependedIssueUrl];
-          while (stack.length > 0) {
-            const url = stack.pop();
-            if (!url) {
-              throw new Error('url is undefined');
-            }
-            if (circularDependedIssues.has(url)) {
-              continue;
-            }
-            circularDependedIssues.add(url);
-            const dependedIssue = input.issues.find(
-              (issue) => issue.url === url,
-            );
-            if (!dependedIssue) {
-              continue;
-            }
-            stack.push(...dependedIssue.dependedIssueUrls);
-          }
-          return circularDependedIssues.has(issue.url);
-        },
-      );
+      const circularDependedIssueUrls = absentDependedIssueIsResolvable
+        ? this.findCircularDependedIssueUrls(issue, input.issues)
+        : [];
       if (circularDependedIssueUrls.length > 0) {
         await this.issueRepository.clearProjectField(
           input.project,
@@ -62,11 +41,15 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
         continue;
       }
-      const notFoundDependedIssueUrls = issue.dependedIssueUrls.filter(
-        (dependedIssueUrl) =>
-          !input.issues.some((depIssue) => depIssue.url === dependedIssueUrl),
-      );
-      const remainingDependedIssueUrls = issue.dependedIssueUrls.filter(
+      const notFoundDependedIssueUrls = absentDependedIssueIsResolvable
+        ? issue.dependedIssueUrls.filter(
+            (dependedIssueUrl) =>
+              !input.issues.some(
+                (depIssue) => depIssue.url === dependedIssueUrl,
+              ),
+          )
+        : [];
+      const openDependedIssueUrls = issue.dependedIssueUrls.filter(
         (dependedIssueUrl) =>
           input.issues.some(
             (depIssue) =>
@@ -86,6 +69,12 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       ) {
         continue;
       }
+      const remainingDependedIssueUrls = absentDependedIssueIsResolvable
+        ? openDependedIssueUrls
+        : issue.dependedIssueUrls.filter(
+            (dependedIssueUrl) =>
+              !closedDependedIssueUrls.includes(dependedIssueUrl),
+          );
       if (remainingDependedIssueUrls.length === 0) {
         await this.issueRepository.clearProjectField(
           input.project,
@@ -119,4 +108,29 @@ ${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       }
     }
   };
+
+  private findCircularDependedIssueUrls = (
+    issue: Issue,
+    issues: Issue[],
+  ): string[] =>
+    issue.dependedIssueUrls.filter((dependedIssueUrl) => {
+      const reachableIssueUrls = new Set<string>();
+      const stack = [dependedIssueUrl];
+      while (stack.length > 0) {
+        const url = stack.pop();
+        if (!url) {
+          throw new Error('url is undefined');
+        }
+        if (reachableIssueUrls.has(url)) {
+          continue;
+        }
+        reachableIssueUrls.add(url);
+        const dependedIssue = issues.find((candidate) => candidate.url === url);
+        if (!dependedIssue) {
+          continue;
+        }
+        stack.push(...dependedIssue.dependedIssueUrls);
+      }
+      return reachableIssueUrls.has(issue.url);
+    });
 }

@@ -259,10 +259,89 @@ describe('ClearDependedIssueURLUseCase', () => {
         ],
       },
       {
-        name: 'should not call clearProjectField and createComment when dependedIssue is closed and cacheUsed is true',
+        name: 'should call clearProjectField and createComment when dependedIssue is closed and the issue list came from the incremental cache',
         input: {
           project: basicProject,
           issues: [basicIssueOne, basicIssueTwo, basicIssueThree],
+          cacheUsed: true,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [basicProject, 'fieldId', basicIssueTwo],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [basicProject, 'fieldId', basicIssueThree, 'url2'],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            basicIssueTwo,
+            'All depended issues are already closed, dependency field cleared:\n- url1',
+          ],
+          [
+            basicIssueThree,
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+        ],
+      },
+      {
+        name: 'should not call clearProjectField and createComment when dependedIssue is not found and the issue list came from the incremental cache',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url4'],
+            },
+          ],
+          cacheUsed: true,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should keep a dependedIssue that is absent from the incremental cache and remove only the closed one',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url1', 'url4'],
+            },
+          ],
+          cacheUsed: true,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
+            'url4',
+          ],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+        ],
+      },
+      {
+        name: 'should not call clearProjectField and createComment for a circular dependency when the issue list came from the incremental cache',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url3'],
+            },
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url2'],
+            },
+          ],
           cacheUsed: true,
         },
         expectedIssueRepositoryClearProjectFieldCalls: [],
