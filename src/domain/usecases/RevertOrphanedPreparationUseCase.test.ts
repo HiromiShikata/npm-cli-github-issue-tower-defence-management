@@ -1638,4 +1638,37 @@ describe('RevertOrphanedPreparationUseCase', () => {
       ).toEqual([followingIssue.url]);
     });
   });
+
+  it('should revert orphaned issue to Awaiting Workspace and not throw when getCommentsFromIssue returns 404', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+      new Error('Failed to fetch comments from GitHub REST API: 404 Not Found'),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
+      'Auto Status Check: REJECTED',
+    );
+  });
 });
