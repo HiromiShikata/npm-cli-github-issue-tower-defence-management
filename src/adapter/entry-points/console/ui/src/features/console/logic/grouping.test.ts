@@ -69,14 +69,58 @@ describe('resolveItemStory', () => {
 });
 
 describe('buildConsoleListRows', () => {
-  it('inserts a group header whenever the story changes and keeps array order', () => {
+  it('sorts items by storyOrder before grouping', () => {
+    const items = [
+      item({ number: 1, story: 'Beta' }),
+      item({ number: 2, story: 'Alpha' }),
+      item({ number: 3, story: 'Beta' }),
+    ];
+    const rows = buildConsoleListRows(items, {}, ['Alpha', 'Beta']);
+    expect(rows.map((row) => row.kind)).toEqual([
+      'group-header',
+      'item',
+      'group-header',
+      'item',
+      'item',
+    ]);
+    const firstHeader = rows[0];
+    expect(firstHeader.kind === 'group-header' && firstHeader.story).toBe(
+      'Alpha',
+    );
+    const secondHeader = rows[2];
+    expect(secondHeader.kind === 'group-header' && secondHeader.story).toBe(
+      'Beta',
+    );
+    expect(secondHeader.kind === 'group-header' && secondHeader.count).toBe(2);
+  });
+
+  it('sorts by overlay-resolved story when storyOrder is provided', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: {
+        ts: 1,
+        mode: 'triage',
+        story: { name: 'Alpha', color: 'BLUE' },
+      },
+    };
+    const items = [
+      item({ number: 1, story: 'Beta' }),
+      item({ number: 2, story: 'Beta' }),
+    ];
+    const rows = buildConsoleListRows(items, overlay, ['Alpha', 'Beta']);
+    const firstHeader = rows[0];
+    expect(firstHeader.kind === 'group-header' && firstHeader.story).toBe(
+      'Alpha',
+    );
+  });
+
+  it('keeps original relative order when storyOrder is empty', () => {
     const items = [
       item({ number: 1, story: 'Alpha' }),
       item({ number: 2, story: 'Alpha' }),
       item({ number: 3, story: 'Beta' }),
       item({ number: 4, story: 'Alpha' }),
     ];
-    const rows = buildConsoleListRows(items, {});
+    const rows = buildConsoleListRows(items, {}, []);
     expect(rows.map((row) => row.kind)).toEqual([
       'group-header',
       'item',
@@ -91,6 +135,6 @@ describe('buildConsoleListRows', () => {
   });
 
   it('returns no rows for an empty list', () => {
-    expect(buildConsoleListRows([], {})).toEqual([]);
+    expect(buildConsoleListRows([], {}, [])).toEqual([]);
   });
 });

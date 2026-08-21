@@ -17,6 +17,7 @@ export type ConsoleTabSnapshot = {
   stories: ConsoleStoryEntry[];
   defaultNameWithOwner: string | null;
   fromCache: boolean;
+  storyOrder: string[];
 };
 
 export type ConsoleTabDataState = {
@@ -81,6 +82,7 @@ const parseSnapshotData = (
     isRecord(payload) && typeof payload.defaultNameWithOwner === 'string'
       ? payload.defaultNameWithOwner
       : null,
+  storyOrder: isRecord(payload) ? parseStringArray(payload.storyOrder) : [],
 });
 
 const emptySnapshots = (): Record<

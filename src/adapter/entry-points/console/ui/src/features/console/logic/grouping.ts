@@ -51,19 +51,34 @@ export type ConsoleItemSummary = {
 
 export type ConsoleListRow = ConsoleListGroupRow | ConsoleItemSummary;
 
+const UNKNOWN_STORY_SORT_INDEX = 999999;
+
 export const buildConsoleListRows = (
   items: ConsoleListItem[],
   overlay: ConsoleOverlay,
+  storyOrder: string[],
 ): ConsoleListRow[] => {
+  const indexByStory = new Map(storyOrder.map((name, index) => [name, index]));
+  const sorted =
+    storyOrder.length === 0
+      ? items
+      : [...items].sort((a, b) => {
+          const storyA = resolveItemStory(a, overlay);
+          const storyB = resolveItemStory(b, overlay);
+          const indexA = indexByStory.get(storyA) ?? UNKNOWN_STORY_SORT_INDEX;
+          const indexB = indexByStory.get(storyB) ?? UNKNOWN_STORY_SORT_INDEX;
+          return indexA - indexB;
+        });
+
   const storyCounts = new Map<string, number>();
-  for (const item of items) {
+  for (const item of sorted) {
     const story = resolveItemStory(item, overlay);
     storyCounts.set(story, (storyCounts.get(story) ?? 0) + 1);
   }
 
   const rows: ConsoleListRow[] = [];
   let previousStory: string | null = null;
-  for (const item of items) {
+  for (const item of sorted) {
     const story = resolveItemStory(item, overlay);
     if (story !== previousStory) {
       rows.push({
