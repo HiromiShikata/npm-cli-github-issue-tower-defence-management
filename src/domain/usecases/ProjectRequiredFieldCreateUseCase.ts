@@ -91,7 +91,19 @@ export class ProjectRequiredFieldCreateUseCase {
     project: Project,
     agentNames: string[] | null,
   ): Promise<void> => {
-    if (!project.agent || !agentNames || agentNames.length === 0) {
+    if (!agentNames || agentNames.length === 0) {
+      return;
+    }
+    if (!project.agent) {
+      await this.projectRepository.createField(project, {
+        name: AGENT_FIELD_NAME,
+        dataType: 'SINGLE_SELECT',
+        options: agentNames.map((name) => ({
+          name,
+          color: 'GRAY' as const,
+          description: '',
+        })),
+      });
       return;
     }
     const existingOptions = project.agent.options;

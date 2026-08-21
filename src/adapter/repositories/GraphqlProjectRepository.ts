@@ -536,12 +536,12 @@ export class GraphqlProjectRepository
             : null,
       },
     });
-    if (!response.data) {
+    if (!response.data?.createProjectV2Field?.projectV2Field) {
       const errorMessages = response.errors
         ? response.errors.map((e) => e.message).join('; ')
-        : 'no data field in response';
+        : 'no projectV2Field in response';
       throw new Error(
-        `GitHub GraphQL API returned no data for createField ${field.name}: ${errorMessages}`,
+        `GitHub GraphQL API failed to create field ${field.name}: ${errorMessages}`,
       );
     }
   };

@@ -3,6 +3,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
+import { AGENT_FIELD_NAME } from '../entities/RequiredProjectField';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -90,6 +91,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   let mockProjectRepository: {
     getByUrl: jest.Mock;
     updateAgentList: jest.Mock;
+    createField: jest.Mock;
   };
   let mockIssueRepository: {
     get: jest.Mock;
@@ -128,6 +130,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository = {
       getByUrl: jest.fn(),
       updateAgentList: jest.fn().mockResolvedValue([]),
+      createField: jest.fn().mockResolvedValue(undefined),
     };
 
     mockIssueRepository = {
@@ -3719,11 +3722,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockProjectRepository.updateAgentList).not.toHaveBeenCalled();
     });
 
-    it('does not call setIssueAgentField when project has no agent field', async () => {
+    it('creates agent field via createField and does not call setIssueAgentField when project has no agent field and re-fetch also returns no agent', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(
-        createMockProject({ agent: null }),
-      );
+      const projectWithoutAgent = createMockProject({ agent: null });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutAgent);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -3741,6 +3743,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: null,
       });
 
+      expect(mockProjectRepository.createField).toHaveBeenCalledWith(
+        projectWithoutAgent,
+        {
+          name: AGENT_FIELD_NAME,
+          dataType: 'SINGLE_SELECT',
+          options: [{ name: 'impl', color: 'GRAY', description: '' }],
+        },
+      );
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });
