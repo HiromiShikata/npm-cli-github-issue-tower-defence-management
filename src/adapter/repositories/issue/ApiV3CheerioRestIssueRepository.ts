@@ -362,6 +362,12 @@ function isRefContainer(value: unknown): value is { ref: string } {
   return isRecord(value) && typeof value.ref === 'string';
 }
 
+function isRepoMergeSettings(
+  value: unknown,
+): value is { allow_squash_merge?: boolean; allow_rebase_merge?: boolean } {
+  return isRecord(value);
+}
+
 type IssueOrPullRequestBodyResponse = {
   body: string | null;
 };
@@ -2247,24 +2253,71 @@ export class ApiV3CheerioRestIssueRepository
 
   mergePullRequest = async (prUrl: string): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+    const mergeUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/merge`;
+    const headers = {
+      Authorization: `Bearer ${this.ghToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/vnd.github+json',
+    };
+    const mergeWith = (mergeMethod?: 'squash' | 'rebase') =>
+      this.fetchWithRateLimitRetry(() =>
+        fetch(mergeUrl, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(
+            mergeMethod ? { merge_method: mergeMethod } : {},
+          ),
+        }),
+      );
+    const response = await mergeWith();
+    if (response.ok) {
+      return;
+    }
+    if (response.status === 405) {
+      const fallbackMethod = await this.resolveAllowedMergeMethod(owner, repo);
+      if (fallbackMethod !== null) {
+        const retryResponse = await mergeWith(fallbackMethod);
+        if (retryResponse.ok) {
+          return;
+        }
+        const retryReason =
+          await this.formatGitHubErrorWithStatus(retryResponse);
+        throw new Error(`Failed to merge PR ${prUrl}: ${retryReason}`);
+      }
+    }
+    const reason = await this.formatGitHubErrorWithStatus(response);
+    throw new Error(`Failed to merge PR ${prUrl}: ${reason}`);
+  };
+
+  private resolveAllowedMergeMethod = async (
+    owner: string,
+    repo: string,
+  ): Promise<'squash' | 'rebase' | null> => {
     const response = await this.fetchWithRateLimitRetry(() =>
       fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/merge`,
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
         {
-          method: 'PUT',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
-            'Content-Type': 'application/json',
             Accept: 'application/vnd.github+json',
           },
-          body: JSON.stringify({}),
         },
       ),
     );
     if (!response.ok) {
-      const reason = await this.formatGitHubErrorWithStatus(response);
-      throw new Error(`Failed to merge PR ${prUrl}: ${reason}`);
+      return null;
     }
+    const data: unknown = await response.json();
+    if (!isRepoMergeSettings(data)) {
+      return null;
+    }
+    if (data.allow_squash_merge === true) {
+      return 'squash';
+    }
+    if (data.allow_rebase_merge === true) {
+      return 'rebase';
+    }
+    return null;
   };
 
   requestChangesWithInlineComment = async (

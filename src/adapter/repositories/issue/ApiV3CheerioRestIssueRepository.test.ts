@@ -1171,6 +1171,157 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('mergePullRequest', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should PUT to the GitHub merge API with no merge_method when the repository allows merge commits', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.mergePullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/merge',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({}),
+        }),
+      );
+    });
+
+    it('should fall back to squash merge when the repository disallows merge commits (HTTP 405)', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'Merge commits are not allowed on this repository.',
+            }),
+            { status: 405, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              allow_squash_merge: true,
+              allow_rebase_merge: true,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.mergePullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        3,
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/merge',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ merge_method: 'squash' }),
+        }),
+      );
+    });
+
+    it('should fall back to rebase merge when squash merge is also disallowed', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'Merge commits are not allowed on this repository.',
+            }),
+            { status: 405, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              allow_squash_merge: false,
+              allow_rebase_merge: true,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.mergePullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/42',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        3,
+        'https://api.github.com/repos/HiromiShikata/test-repository/pulls/42/merge',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ merge_method: 'rebase' }),
+        }),
+      );
+    });
+
+    it('should throw with the original error when no alternative merge method is available after HTTP 405', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              message: 'Merge commits are not allowed on this repository.',
+            }),
+            { status: 405, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              allow_squash_merge: false,
+              allow_rebase_merge: false,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.mergePullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.toThrow(
+        'Failed to merge PR https://github.com/HiromiShikata/test-repository/pull/42: HTTP 405 Merge commits are not allowed on this repository.',
+      );
+    });
+
+    it('should throw when the merge API responds with a non-405 error', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Not Found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.mergePullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/42',
+        ),
+      ).rejects.toThrow(
+        'Failed to merge PR https://github.com/HiromiShikata/test-repository/pull/42: HTTP 404 Not Found',
+      );
+    });
+  });
+
   describe('rate-limit-aware retry on console operations', () => {
     afterEach(() => {
       jest.restoreAllMocks();
