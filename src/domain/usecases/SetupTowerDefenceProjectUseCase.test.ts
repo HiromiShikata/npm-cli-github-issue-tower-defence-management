@@ -39,6 +39,7 @@ const buildProject = (statuses: FieldOption[]): Project => ({
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+  agent: null,
 });
 
 const buildCanonicalStatuses = (): FieldOption[] =>
@@ -74,6 +75,7 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
   createdAt: new Date('2024-01-01'),
   author: 'user',
   closingIssueReferenceUrls: [],
+  agent: null,
   ...overrides,
 });
 

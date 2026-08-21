@@ -41,6 +41,7 @@ describe('GetStoryObjectMapUseCase', () => {
     remainingEstimationMinutes: null,
     dependedIssueUrlSeparatedByComma: null,
     completionDate50PercentConfidence: null,
+    agent: null,
   };
 
   const createBasicIssue = (overrides: Partial<Issue> = {}): Issue => ({
@@ -68,6 +69,7 @@ describe('GetStoryObjectMapUseCase', () => {
     createdAt: new Date(),
     author: '',
     closingIssueReferenceUrls: [],
+    agent: null,
     ...overrides,
   });
 

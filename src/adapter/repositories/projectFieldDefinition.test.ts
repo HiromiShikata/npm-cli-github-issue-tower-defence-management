@@ -140,6 +140,7 @@ describe('projectFromDefinition', () => {
         name: 'Completion Date (50% Confidence)',
         fieldId: 'PVTF_completion',
       },
+      agent: null,
     });
   });
 

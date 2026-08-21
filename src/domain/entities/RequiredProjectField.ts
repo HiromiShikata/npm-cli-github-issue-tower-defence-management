@@ -40,6 +40,7 @@ export const NEXT_ACTION_DATE_FIELD_NAME = 'Next Action Date';
 export const NEXT_ACTION_HOUR_FIELD_NAME = 'Next Action Hour';
 export const DEPENDED_ISSUE_URL_FIELD_NAME =
   'Depended Issue URL separated by comma';
+export const AGENT_FIELD_NAME = 'Agent';
 
 export const REQUIRED_PROJECT_FIELDS: RequiredProjectFieldDefinition[] = [
   {
@@ -60,6 +61,11 @@ export const REQUIRED_PROJECT_FIELDS: RequiredProjectFieldDefinition[] = [
   {
     name: DEPENDED_ISSUE_URL_FIELD_NAME,
     dataType: 'TEXT',
+    options: [],
+  },
+  {
+    name: AGENT_FIELD_NAME,
+    dataType: 'SINGLE_SELECT',
     options: [],
   },
 ];

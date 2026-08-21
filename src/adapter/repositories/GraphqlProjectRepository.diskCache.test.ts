@@ -71,6 +71,7 @@ const expectedProject: Project = {
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+  agent: null,
 };
 
 const fetchProjectIdResponse = {

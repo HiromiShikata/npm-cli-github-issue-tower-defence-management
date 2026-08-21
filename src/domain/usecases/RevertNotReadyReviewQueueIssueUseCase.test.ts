@@ -54,6 +54,7 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+  agent: null,
   ...overrides,
 });
 
@@ -82,6 +83,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   createdAt: new Date(),
   author: 'owner',
   closingIssueReferenceUrls: [],
+  agent: null,
   ...overrides,
 });
 

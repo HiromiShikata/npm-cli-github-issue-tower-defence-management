@@ -31,6 +31,7 @@ const makeIssue = (overrides: Partial<Issue> = {}): Issue => ({
   createdAt: new Date(),
   author: '',
   closingIssueReferenceUrls: [],
+  agent: null,
   ...overrides,
 });
 

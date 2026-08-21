@@ -160,6 +160,7 @@ export class HandleScheduledEventUseCase {
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
     autoAssignManagerAuthors?: string[] | null;
+    agents?: string[] | null;
     startPreparation?: {
       defaultAgentName: string;
       defaultLlmModelName?: string | null;
@@ -195,6 +196,7 @@ export class HandleScheduledEventUseCase {
     }
     await this.projectRequiredFieldCreateUseCase.run({
       projectUrl: input.projectUrl,
+      agents: input.agents ?? null,
     });
     await this.setupTowerDefenceProjectUseCase.run({
       projectUrl: input.projectUrl,

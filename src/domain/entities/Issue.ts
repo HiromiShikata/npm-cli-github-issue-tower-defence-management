@@ -25,4 +25,5 @@ export type Issue = {
   createdAt: Date;
   author: string;
   closingIssueReferenceUrls: string[];
+  agent: string | null;
 };

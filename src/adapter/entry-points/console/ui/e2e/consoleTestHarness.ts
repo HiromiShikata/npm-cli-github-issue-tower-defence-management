@@ -318,6 +318,7 @@ const buildE2eProject = (): Project => ({
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+  agent: null,
 });
 
 const buildIssueForUrl = (url: string): Issue => ({
@@ -345,6 +346,7 @@ const buildIssueForUrl = (url: string): Issue => ({
   createdAt: new Date('2026-06-18T00:00:00.000Z'),
   author: 'HiromiShikata',
   closingIssueReferenceUrls: [],
+  agent: null,
 });
 
 const notImplemented = (method: string): never => {
@@ -560,6 +562,7 @@ const createStubIssueRepository = (
           changedFiles: 1,
         }
       : null,
+  setIssueAgentField: async (): Promise<void> => undefined,
 });
 
 export type ConsoleE2eHarness = {

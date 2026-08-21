@@ -197,6 +197,11 @@ export interface IssueRepository {
     project: Project,
     issueUrl: string,
   ) => Promise<void>;
+  setIssueAgentField: (
+    issueUrl: string,
+    project: Project,
+    agentOptionId: string,
+  ) => Promise<void>;
   getIssueOrPullRequestBody: (url: string) => Promise<string>;
   getIssueOrPullRequestComments: (url: string) => Promise<IssueComment[]>;
   getPullRequestDetail: (prUrl: string) => Promise<PullRequestDetail | null>;

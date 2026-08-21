@@ -25,6 +25,8 @@ import {
   ConsoleTabName,
 } from './console/GenerateConsoleListsUseCase';
 import { Issue } from '../entities/Issue';
+import { FieldOption, Project } from '../entities/Project';
+import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -52,7 +54,10 @@ export class NotifyFinishedIssuePreparationUseCase {
   private readonly changeTargetPullRequestApprover: ChangeTargetPullRequestApprover;
 
   constructor(
-    private readonly projectRepository: Pick<ProjectRepository, 'getByUrl'>,
+    private readonly projectRepository: Pick<
+      ProjectRepository,
+      'getByUrl' | 'updateAgentList'
+    >,
     private readonly issueRepository: Pick<
       IssueRepository,
       | 'get'
@@ -67,6 +72,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'approvePullRequest'
       | 'requestChangesWithInlineComment'
       | 'setDependedIssueUrl'
+      | 'setIssueAgentField'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -93,6 +99,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     labelsAsLlmAgentName?: string[] | null;
     labelsNotRequiringPullRequest?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
+    agents?: string[] | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -195,41 +202,53 @@ export class NotifyFinishedIssuePreparationUseCase {
     const isTrustedAuthor = (author: string): boolean =>
       this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
 
-    const lastComment = comments[comments.length - 1];
-    if (
-      lastComment &&
-      isTrustedAuthor(lastComment.author) &&
-      lastComment.content.startsWith('From: :robot:')
-    ) {
-      const nextStepAgent = this.extractNextStepAgent(lastComment.content);
-      if (nextStepAgent !== null) {
-        await this.issueRepository.getOrCreateLabel(
-          issue.org,
-          issue.repo,
-          nextStepAgent,
-        );
-        const agentLabels = params.labelsAsLlmAgentName ?? [];
-        const filteredLabels = issue.labels.filter(
-          (label) =>
-            !label.startsWith('llm-agent:') && !agentLabels.includes(label),
-        );
-        const updatedLabels = [...new Set([...filteredLabels, nextStepAgent])];
-        issue.labels = updatedLabels;
-        issue.status = AWAITING_WORKSPACE_STATUS_NAME;
-        await this.issueRepository.update(issue, project);
-        await this.issueRepository.updateStatus(
+    const lastTrustedBotComment = [...comments]
+      .reverse()
+      .find(
+        (c) =>
+          isTrustedAuthor(c.author) && c.content.startsWith('From: :robot:'),
+      );
+    const nextStepAgent = lastTrustedBotComment
+      ? this.extractNextStepAgent(lastTrustedBotComment.content)
+      : null;
+    if (nextStepAgent !== null) {
+      const agentOptionId = await this.ensureAgentOptionAndGetId(
+        project,
+        nextStepAgent,
+      );
+      if (agentOptionId) {
+        await this.issueRepository.setIssueAgentField(
+          params.issueUrl,
           project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
+          agentOptionId,
         );
-        await this.issueRepository.updateLabels(issue, updatedLabels);
-        await this.patchConsoleTab(issue);
-        await this.issueCommentRepository.createComment(
-          issue,
-          `Next step agent: ${nextStepAgent}`,
-        );
-        return;
       }
+      await this.issueRepository.getOrCreateLabel(
+        issue.org,
+        issue.repo,
+        nextStepAgent,
+      );
+      const agentLabels = params.labelsAsLlmAgentName ?? [];
+      const filteredLabels = issue.labels.filter(
+        (label) =>
+          !label.startsWith('llm-agent:') && !agentLabels.includes(label),
+      );
+      const updatedLabels = [...new Set([...filteredLabels, nextStepAgent])];
+      issue.labels = updatedLabels;
+      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingWorkspaceStatusOption.id,
+      );
+      await this.issueRepository.updateLabels(issue, updatedLabels);
+      await this.patchConsoleTab(issue);
+      await this.issueCommentRepository.createComment(
+        issue,
+        `Next step agent: ${nextStepAgent}`,
+      );
+      return;
     }
 
     const { rejections, approvedPrUrl } = await this.collectRejections(
@@ -444,37 +463,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     return nextStepValue !== null && nextStepValue !== undefined;
   };
 
-  private extractNextStepAgent = (body: string): string | null => {
-    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
-    if (!reportMatch || reportMatch.length < 2) {
-      return null;
-    }
-    let reportJson: unknown;
-    try {
-      reportJson = JSON.parse(reportMatch[1]);
-    } catch (error) {
-      console.warn(
-        'Invalid JSON in report body while checking nextStepAgent:',
-        error,
-      );
-      return null;
-    }
-    if (typeof reportJson !== 'object' || reportJson === null) {
-      return null;
-    }
-    if (!('nextStepAgent' in reportJson)) {
-      return null;
-    }
-    const nextStepAgentValue = Reflect.get(reportJson, 'nextStepAgent');
-    if (
-      typeof nextStepAgentValue !== 'string' ||
-      nextStepAgentValue.trim() === ''
-    ) {
-      return null;
-    }
-    return nextStepAgentValue;
-  };
-
   private setDependedIssueUrlForAllOpenPRs = async (
     issue: { url: string; labels: string[]; isPr: boolean },
     issueUrl: string,
@@ -548,6 +536,64 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (lower === FAILED_PREPARATION_STATUS_NAME.toLowerCase())
       return 'failed-preparation';
     return null;
+  };
+
+  private extractNextStepAgent = (body: string): string | null => {
+    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+    if (!reportMatch || reportMatch.length < 2) {
+      return null;
+    }
+    let reportJson: unknown;
+    try {
+      reportJson = JSON.parse(reportMatch[1]);
+    } catch (error) {
+      console.warn(
+        'Invalid JSON in report body while checking nextStepAgent:',
+        error,
+      );
+      return null;
+    }
+    if (typeof reportJson !== 'object' || reportJson === null) {
+      return null;
+    }
+    if (!('nextStepAgent' in reportJson)) {
+      return null;
+    }
+    const value = Reflect.get(reportJson, 'nextStepAgent');
+    if (typeof value !== 'string' || value.trim() === '') {
+      return null;
+    }
+    return value.trim();
+  };
+
+  private ensureAgentOptionAndGetId = async (
+    project: Project,
+    agentName: string,
+  ): Promise<string | null> => {
+    if (!project.agent) {
+      return null;
+    }
+    const normalizedTarget = normalizeProjectFieldName(agentName);
+    const existing = project.agent.options.find(
+      (o) => normalizeProjectFieldName(o.name) === normalizedTarget,
+    );
+    if (existing) {
+      return existing.id;
+    }
+    const mergedOptions: (Omit<FieldOption, 'id'> & {
+      id: FieldOption['id'] | null;
+    })[] = [
+      ...project.agent.options.map((o) => ({ ...o })),
+      { id: null, name: agentName, color: 'GRAY' as const, description: '' },
+    ];
+    const updatedOptions = await this.projectRepository.updateAgentList(
+      project,
+      mergedOptions,
+    );
+    const created = updatedOptions.find(
+      (o) => normalizeProjectFieldName(o.name) === normalizedTarget,
+    );
+    return created?.id ?? null;
   };
 
   private patchConsoleTab = async (issue: Issue): Promise<void> => {

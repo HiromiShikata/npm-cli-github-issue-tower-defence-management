@@ -29,6 +29,7 @@ const createMockProject = (): Project => ({
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
+  agent: null,
 });
 
 let issueCounter = 0;
@@ -59,6 +60,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => {
     createdAt: new Date(),
     author: 'testuser',
     closingIssueReferenceUrls: [],
+    agent: null,
     ...overrides,
   };
 };

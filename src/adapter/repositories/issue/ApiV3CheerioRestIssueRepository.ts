@@ -621,6 +621,10 @@ export class ApiV3CheerioRestIssueRepository
     const status = item.customFields.find(
       (field) => normalizeFieldName(field.name) === 'status',
     )?.value;
+    const agent =
+      item.customFields.find(
+        (field) => normalizeFieldName(field.name) === 'agent',
+      )?.value ?? null;
     const { owner, repo } = this.extractIssueFromUrl(item.url);
 
     return {
@@ -650,6 +654,7 @@ export class ApiV3CheerioRestIssueRepository
       createdAt: new Date(item.createdAt || '2000-01-01'),
       author: item.author,
       closingIssueReferenceUrls: item.closingIssueReferenceUrls,
+      agent,
     };
   };
   private restoreIssuesFromCache = (rawIssues: unknown): Issue[] | null => {
@@ -918,6 +923,33 @@ export class ApiV3CheerioRestIssueRepository
       dependedIssueUrlField.fieldId,
       projectItemId,
       issueUrl,
+    );
+  };
+
+  setIssueAgentField = async (
+    issueUrl: string,
+    project: Project,
+    agentOptionId: string,
+  ): Promise<void> => {
+    if (!project.agent) {
+      return;
+    }
+    const existingProjectItem =
+      await this.graphqlProjectItemRepository.fetchProjectItemByUrl(
+        issueUrl,
+        project.id,
+      );
+    const projectItemId =
+      existingProjectItem?.id ??
+      (await this.graphqlProjectItemRepository.addIssueToProject(
+        project.id,
+        issueUrl,
+      ));
+    await this.graphqlProjectItemRepository.updateProjectField(
+      project.id,
+      project.agent.fieldId,
+      projectItemId,
+      { singleSelectOptionId: agentOptionId },
     );
   };
 
