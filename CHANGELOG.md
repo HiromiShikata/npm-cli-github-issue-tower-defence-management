@@ -1,3 +1,10 @@
+## [1.166.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.1...v1.166.2) (2026-08-21)
+
+
+### Bug Fixes
+
+* **console:** merge pull request on HTTP 422 approval in approve_and_merge action ([#1616](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1616)) ([82faa24](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/82faa2406a57cb3756a4331948a16b6a9600a3e1))
+
 ## [1.166.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.0...v1.166.1) (2026-08-21)
 
 
