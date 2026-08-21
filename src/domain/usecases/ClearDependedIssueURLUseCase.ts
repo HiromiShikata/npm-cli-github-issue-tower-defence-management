@@ -125,9 +125,7 @@ ${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
           continue;
         }
         reachableIssueUrls.add(url);
-        const dependedIssue = issues.find(
-          (candidate) => candidate.url === url,
-        );
+        const dependedIssue = issues.find((candidate) => candidate.url === url);
         if (!dependedIssue) {
           continue;
         }
