@@ -51,7 +51,7 @@ describe("ConsoleOfflinePendingActionsPanel", () => {
 		const { getByText, queryByText } = render(
 			<ConsoleOfflinePendingActionsPanel {...baseProps} isOnline={false} />,
 		);
-		expect(getByText(/PR #851/)).toBeInTheDocument();
+		expect(getByText(/PR #851 — Add serveConsole/)).toBeInTheDocument();
 		expect(getByText("Approved — PR #851")).toBeInTheDocument();
 		expect(queryByText("Send")).not.toBeInTheDocument();
 	});
