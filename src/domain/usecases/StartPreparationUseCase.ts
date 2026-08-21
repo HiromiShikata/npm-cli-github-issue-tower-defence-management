@@ -14,6 +14,12 @@ const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
+const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
+
+export const agentNameFromDesignation = (designation: string): string =>
+  designation.startsWith(LLM_AGENT_LABEL_PREFIX)
+    ? designation.slice(LLM_AGENT_LABEL_PREFIX.length).trim()
+    : designation.trim();
 
 export type RotationOrderEntry = {
   name: string;
@@ -479,10 +485,10 @@ export class StartPreparationUseCase {
             )
           : undefined;
       const agent =
-        issue.agent ||
+        (issue.agent === null ? null : agentNameFromDesignation(issue.agent)) ||
         issue.labels
-          .find((label: string) => label.startsWith('llm-agent:'))
-          ?.replace('llm-agent:', '')
+          .find((label: string) => label.startsWith(LLM_AGENT_LABEL_PREFIX))
+          ?.replace(LLM_AGENT_LABEL_PREFIX, '')
           .trim() ||
         mappedAgentFromLabel ||
         issue.labels

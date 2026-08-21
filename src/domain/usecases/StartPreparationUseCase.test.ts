@@ -4957,6 +4957,7 @@ describe('StartPreparationUseCase', () => {
       defaultAgentName: string;
       defaultLlmAgentName: string | null;
       labelsAsLlmAgentName: string[] | null;
+      agent?: string | null;
     }): Promise<string> => {
       const awaitingIssues: Issue[] = [
         createMockIssue({
@@ -4964,6 +4965,7 @@ describe('StartPreparationUseCase', () => {
           title: 'Issue 1',
           labels: params.labels,
           status: 'Awaiting Workspace',
+          agent: params.agent ?? null,
         }),
       ];
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -4993,6 +4995,28 @@ describe('StartPreparationUseCase', () => {
       const awArgs = mockLocalCommandRunner.runCommand.mock.calls[0][1];
       return awArgs[1];
     };
+
+    it('strips the llm-agent: prefix from the project agent field value', async () => {
+      const selectedAgent = await runWithIssueLabels({
+        agent: 'llm-agent:impl',
+        labels: [],
+        defaultAgentName: 'default-agent',
+        defaultLlmAgentName: 'default-llm-agent',
+        labelsAsLlmAgentName: null,
+      });
+      expect(selectedAgent).toBe('impl');
+    });
+
+    it('keeps a project agent field value that carries no llm-agent: prefix', async () => {
+      const selectedAgent = await runWithIssueLabels({
+        agent: 'developer',
+        labels: [],
+        defaultAgentName: 'default-agent',
+        defaultLlmAgentName: 'default-llm-agent',
+        labelsAsLlmAgentName: null,
+      });
+      expect(selectedAgent).toBe('developer');
+    });
 
     it('selects explicit llm-agent: label over labelsAsLlmAgentName mapping', async () => {
       const selectedAgent = await runWithIssueLabels({
