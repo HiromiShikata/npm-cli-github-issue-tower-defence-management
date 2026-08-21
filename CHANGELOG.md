@@ -1,3 +1,10 @@
+## [1.166.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.4...v1.166.5) (2026-08-21)
+
+
+### Bug Fixes
+
+* **preparation:** remove redundant next-step-agent comment ([#1651](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1651)) ([90b52f9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/90b52f9ba062ce5f65f8662b940db3886e23efef)), closes [HiromiShikata/umino-corporait-operation#30713](https://github.com/HiromiShikata/umino-corporait-operation/issues/30713)
+
 ## [1.166.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.3...v1.166.4) (2026-08-21)
 
 

@@ -108,7 +108,6 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                 await this.issueRepository.updateLabels(issue, updatedLabels);
                 await this.patchConsoleTab(issue);
-                await this.issueCommentRepository.createComment(issue, `Next step agent: ${nextStepAgent}`);
                 return;
             }
             const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
