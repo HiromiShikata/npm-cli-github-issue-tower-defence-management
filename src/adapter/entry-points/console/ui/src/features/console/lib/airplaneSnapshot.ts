@@ -8,6 +8,7 @@ import type {
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
   ConsoleStoryColorSource,
+  ConsoleStoryEntry,
   ConsoleTabName,
 } from '../logic/types';
 
@@ -17,6 +18,8 @@ export type AirplaneTabSnapshot = {
   statusOptions: ConsoleFieldOption[];
   storyOptions: ConsoleFieldOption[];
   storyColors: ConsoleStoryColorSource;
+  stories: ConsoleStoryEntry[];
+  defaultNameWithOwner: string | null;
 };
 
 export type AirplaneItemSnapshot = {
@@ -157,6 +160,8 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
       statusOptions: [],
       storyOptions: [],
       storyColors: {},
+      stories: [],
+      defaultNameWithOwner: null,
     };
   }
   const items: ConsoleListItem[] = Array.isArray(payload.items)
@@ -172,6 +177,9 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
   const storyOptions: ConsoleFieldOption[] = Array.isArray(payload.storyOptions)
     ? (payload.storyOptions.filter(isRecord) as ConsoleFieldOption[])
     : [];
+  const stories: ConsoleStoryEntry[] = Array.isArray(payload.stories)
+    ? (payload.stories.filter(isRecord) as unknown as ConsoleStoryEntry[])
+    : [];
   return {
     items,
     generatedAt:
@@ -181,6 +189,11 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
     storyColors: isRecord(payload.storyColors)
       ? (payload.storyColors as ConsoleStoryColorSource)
       : {},
+    stories,
+    defaultNameWithOwner:
+      typeof payload.defaultNameWithOwner === 'string'
+        ? payload.defaultNameWithOwner
+        : null,
   };
 };
 
