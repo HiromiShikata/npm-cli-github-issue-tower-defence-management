@@ -616,6 +616,19 @@ describe('GenerateConsoleListsUseCase', () => {
         'second',
       ]);
     });
+
+    it('groups items of different unknown stories contiguously even when interleaved by original position', () => {
+      const result = run([
+        makeIssue({ status: 'Unread', story: 'Unknown Story A' }),
+        makeIssue({ status: 'Unread', story: 'Unknown Story B' }),
+        makeIssue({ status: 'Unread', story: 'Unknown Story A' }),
+      ]);
+      expect(result.unread.items.map((i) => i.story)).toEqual([
+        'Unknown Story A',
+        'Unknown Story A',
+        'Unknown Story B',
+      ]);
+    });
   });
 
   describe('options construction', () => {
