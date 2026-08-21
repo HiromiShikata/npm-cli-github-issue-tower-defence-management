@@ -87,6 +87,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     private prBodyContainsCrossRepoClosingKeyword;
     private readonly requiredCheckNamesCache;
     private getRequiredCheckNames;
+    private getCheckRunsViaCheckSuitesFallback;
     private getCommitCiContexts;
     private fetchSlimPullRequest;
     private buildRelatedPullRequestFromSlim;

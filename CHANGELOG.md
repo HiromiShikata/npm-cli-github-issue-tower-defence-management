@@ -1,3 +1,10 @@
+## [1.166.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.2...v1.166.3) (2026-08-21)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository:** fall back to check-suites when commits/{sha}/check-runs returns 404 ([#1610](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1610)) ([f3682af](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f3682afc870c0c24564bf2baee63eca2855751f7)), closes [HiromiShikata/secretary#4003](https://github.com/HiromiShikata/secretary/issues/4003)
+
 ## [1.166.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.166.1...v1.166.2) (2026-08-21)
 
 
