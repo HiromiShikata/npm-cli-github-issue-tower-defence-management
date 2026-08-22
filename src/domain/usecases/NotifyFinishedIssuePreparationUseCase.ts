@@ -73,6 +73,8 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'requestChangesWithInlineComment'
       | 'setDependedIssueUrl'
       | 'setIssueAgentField'
+      | 'searchIssue'
+      | 'createNewIssue'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -100,6 +102,8 @@ export class NotifyFinishedIssuePreparationUseCase {
     labelsNotRequiringPullRequest?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
     agents?: string[] | null;
+    missingAgentName?: string | null;
+    sessionErrorLine?: string | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -141,6 +145,17 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue.status,
         PREPARATION_STATUS_NAME,
       );
+    }
+
+    if (params.missingAgentName) {
+      await this.handleMissingAgentDefinition(
+        issue,
+        project,
+        awaitingWorkspaceStatusOption,
+        params.missingAgentName,
+        params.sessionErrorLine ?? null,
+      );
+      return;
     }
 
     if (issue.dependedIssueUrls.length === 0) {
@@ -360,6 +375,72 @@ export class NotifyFinishedIssuePreparationUseCase {
     await this.issueCommentRepository.createComment(
       issue,
       rejectionStatusMessage,
+    );
+  };
+
+  private handleMissingAgentDefinition = async (
+    issue: Issue,
+    project: Project,
+    awaitingWorkspaceStatusOption: { id: string },
+    missingAgentName: string,
+    sessionErrorLine: string | null,
+  ): Promise<void> => {
+    const taskIssueTitle = `Register missing agent definition: ${missingAgentName}`;
+
+    const searchResults = await this.issueRepository.searchIssue({
+      owner: issue.org,
+      repositoryName: issue.repo,
+      type: 'issue',
+      state: 'open',
+      title: taskIssueTitle,
+    });
+    const exactMatch = searchResults.find((i) => i.title === taskIssueTitle);
+
+    let taskIssueUrl: string;
+    if (exactMatch) {
+      taskIssueUrl = exactMatch.url;
+    } else {
+      const body = [
+        `The preparation worker for ${issue.url} failed because the agent definition \`${missingAgentName}\` was not found.`,
+        '',
+        `- Missing agent name: \`${missingAgentName}\``,
+        `- Failing item: ${issue.url}`,
+        `- Error: ${sessionErrorLine ?? '(not captured)'}`,
+      ].join('\n');
+      const issueNumber = await this.issueRepository.createNewIssue(
+        issue.org,
+        issue.repo,
+        taskIssueTitle,
+        body,
+        [],
+        [],
+      );
+      taskIssueUrl = `https://github.com/${issue.org}/${issue.repo}/issues/${issueNumber}`;
+    }
+
+    if (project.dependedIssueUrlSeparatedByComma) {
+      await this.issueRepository.setDependedIssueUrl(
+        issue.url,
+        project,
+        taskIssueUrl,
+      );
+    } else {
+      console.warn(
+        `dependedIssueUrlSeparatedByComma not configured; cannot block ${issue.url} via ${taskIssueUrl}`,
+      );
+    }
+
+    issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+    await this.issueRepository.update(issue, project);
+    await this.issueRepository.updateStatus(
+      project,
+      issue,
+      awaitingWorkspaceStatusOption.id,
+    );
+    await this.patchConsoleTab(issue);
+    await this.issueCommentRepository.createComment(
+      issue,
+      `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`,
     );
   };
 
