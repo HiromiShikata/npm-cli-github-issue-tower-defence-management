@@ -19,6 +19,12 @@ const baseProps = {
   fromCache: false,
   tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
   onSelectTab: () => {},
+  airplaneModeStatus: 'off' as const,
+  airplaneModeProgress: null,
+  airplaneModeCapturedAt: null,
+  airplaneModeFailures: [],
+  onAirplaneModeStartSync: () => {},
+  onAirplaneModeTurnOff: () => {},
 };
 
 describe('ConsoleTabList', () => {

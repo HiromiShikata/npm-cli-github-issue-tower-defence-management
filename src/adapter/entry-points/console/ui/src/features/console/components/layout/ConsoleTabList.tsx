@@ -1,4 +1,9 @@
+import type {
+  AirplaneModeStatus,
+  AirplaneSyncProgress,
+} from '../../hooks/useAirplaneMode';
 import { CONSOLE_TABS, type ConsoleTabName } from '../../logic/types';
+import { ConsoleAirplaneModeButton } from './ConsoleAirplaneModeButton';
 
 export type ConsoleTabBarProps = {
   activeTab: ConsoleTabName;
@@ -8,6 +13,12 @@ export type ConsoleTabBarProps = {
   fromCache: boolean;
   tabHref: (tab: ConsoleTabName) => string;
   onSelectTab: (tab: ConsoleTabName) => void;
+  airplaneModeStatus: AirplaneModeStatus;
+  airplaneModeProgress: AirplaneSyncProgress | null;
+  airplaneModeCapturedAt: string | null;
+  airplaneModeFailures: string[];
+  onAirplaneModeStartSync: () => void;
+  onAirplaneModeTurnOff: () => void;
 };
 
 export const ConsoleTabList = ({
@@ -18,6 +29,12 @@ export const ConsoleTabList = ({
   fromCache,
   tabHref,
   onSelectTab,
+  airplaneModeStatus,
+  airplaneModeProgress,
+  airplaneModeCapturedAt,
+  airplaneModeFailures,
+  onAirplaneModeStartSync,
+  onAirplaneModeTurnOff,
 }: ConsoleTabBarProps) => {
   return (
     <nav aria-label="Console tabs" className="console-tabbar">
@@ -60,7 +77,7 @@ export const ConsoleTabList = ({
         );
       })}
       {pjcode !== null && <span className="console-tab-pjname">{pjcode}</span>}
-      {generatedAt !== null && (
+      {generatedAt !== null && airplaneModeStatus !== 'on' && (
         <span
           className="console-tab-geninfo"
           data-from-cache={fromCache ? 'true' : undefined}
@@ -68,6 +85,14 @@ export const ConsoleTabList = ({
           {fromCache ? '(cached) ' : ''}snapshot: {generatedAt}
         </span>
       )}
+      <ConsoleAirplaneModeButton
+        status={airplaneModeStatus}
+        progress={airplaneModeProgress}
+        capturedAt={airplaneModeCapturedAt}
+        failures={airplaneModeFailures}
+        onStartSync={onAirplaneModeStartSync}
+        onTurnOff={onAirplaneModeTurnOff}
+      />
     </nav>
   );
 };
