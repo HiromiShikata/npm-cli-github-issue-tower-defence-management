@@ -1516,6 +1516,8 @@ mysteryKey: 'value'
         labelsNotRequiringPullRequest: null,
         changeTargetPathAliases: null,
         agents: null,
+        missingAgentName: null,
+        sessionErrorLine: null,
       });
     });
 
@@ -1554,6 +1556,8 @@ mysteryKey: 'value'
         labelsNotRequiringPullRequest: null,
         changeTargetPathAliases: null,
         agents: null,
+        missingAgentName: null,
+        sessionErrorLine: null,
       });
     });
 
