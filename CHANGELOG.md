@@ -1,3 +1,15 @@
+# [1.169.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.168.4...v1.169.0) (2026-08-22)
+
+
+### Bug Fixes
+
+* **preparation:** adopt an agent designation label into the Agent project field on every cycle ([#1665](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1665)) ([3e885ab](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3e885ab195dc58124cc38ea63ea336f943d87cd1)), closes [#1664](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1664)
+
+
+### Features
+
+* **notify-finished-issue-preparation:** stop respawning items when named agent definition is missing ([#1663](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1663)) ([ceeef1b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ceeef1b156452d303a47423af7ee0a45bde74f44)), closes [#1658](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1658)
+
 ## [1.168.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.168.3...v1.168.4) (2026-08-22)
 
 

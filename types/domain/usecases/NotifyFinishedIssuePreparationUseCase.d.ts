@@ -17,7 +17,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private readonly consoleTabsRepository?;
     private readonly issueRejectionEvaluator;
     private readonly changeTargetPullRequestApprover;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'updateAgentList' | 'createField'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateLabels' | 'getOrCreateLabel' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment' | 'setDependedIssueUrl' | 'setIssueAgentField'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>, consoleTabsRepository?: (ConsoleTabsRepository | null) | undefined);
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'updateAgentList' | 'createField'>, issueRepository: Pick<IssueRepository, 'get' | 'update' | 'updateStatus' | 'updateLabels' | 'getOrCreateLabel' | 'findRelatedOpenPRs' | 'getStoryObjectMap' | 'getOpenPullRequest' | 'getPullRequestChangedFilePaths' | 'approvePullRequest' | 'requestChangesWithInlineComment' | 'setDependedIssueUrl' | 'setIssueAgentField' | 'searchIssue' | 'createNewIssue'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, webhookRepository: Pick<WebhookRepository, 'sendGetRequest'>, consoleTabsRepository?: (ConsoleTabsRepository | null) | undefined);
     run: (params: {
         projectUrl: string;
         issueUrl: string;
@@ -28,7 +28,10 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         labelsNotRequiringPullRequest?: string[] | null;
         changeTargetPathAliases?: Record<string, string> | null;
         agents?: string[] | null;
+        missingAgentName?: string | null;
+        sessionErrorLine?: string | null;
     }) => Promise<void>;
+    private handleMissingAgentDefinition;
     private isAuthorTrusted;
     private collectRejections;
     private reportBodyHasNextStep;

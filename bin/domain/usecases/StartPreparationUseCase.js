@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StartPreparationUseCase = exports.agentNameFromDesignation = exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = void 0;
 const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
-const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
+const AgentDesignationLabelAdoptUseCase_1 = require("./AgentDesignationLabelAdoptUseCase");
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
@@ -156,23 +156,6 @@ class StartPreparationUseCase {
             }));
             return [...selectedEntries, ...excluded];
         };
-        this.migrateAgentDesignationLabelToProjectField = async (issue, project, configuredAgentNames) => {
-            const agentLabel = configuredAgentNames === null
-                ? undefined
-                : issue.labels.find((label) => configuredAgentNames.includes(label));
-            if (agentLabel === undefined) {
-                return;
-            }
-            issue.agent = agentLabel;
-            const agentOptionId = await (0, ensureAgentOptionAndGetId_1.ensureAgentOptionAndGetId)(this.projectRepository, project, agentLabel);
-            if (agentOptionId === null) {
-                console.warn(`Agent field option '${agentLabel}' could not be resolved for ${issue.url}. Keeping the label as the agent designation.`);
-                return;
-            }
-            await this.issueRepository.setIssueAgentField(issue.url, project, agentOptionId);
-            await this.issueRepository.removeLabel(issue, agentLabel);
-            issue.labels = issue.labels.filter((label) => label !== agentLabel);
-        };
         this.run = async (params) => {
             const tokenUsages = await this.claudeTokenUsageRepository.getAvailableTokenUsages();
             let rotationTokens = null;
@@ -266,7 +249,7 @@ class StartPreparationUseCase {
                     exclusionCounts.notAssignedToManager++;
                     continue;
                 }
-                await this.migrateAgentDesignationLabelToProjectField(issue, project, params.agents ?? null);
+                await (0, AgentDesignationLabelAdoptUseCase_1.adoptIssueAgentDesignationLabel)(issue, project, params.agents ?? [], this.projectRepository, this.issueRepository);
                 const mappedAgentFromLabel = params.labelsAsLlmAgentName !== null
                     ? issue.labels.find((label) => params.labelsAsLlmAgentName !== null
                         ? params.labelsAsLlmAgentName.includes(label)

@@ -63,7 +63,7 @@ const isTransientSpreadsheetApiError = (error) => {
         TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(error.message));
 };
 class HandleScheduledEventUseCase {
-    constructor(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.projectRequiredFieldCreateUseCase = projectRequiredFieldCreateUseCase;
         this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
@@ -84,6 +84,7 @@ class HandleScheduledEventUseCase {
         this.startPreparationUseCase = startPreparationUseCase;
         this.revertOrphanedPreparationUseCase = revertOrphanedPreparationUseCase;
         this.revertNotReadyReviewQueueIssueUseCase = revertNotReadyReviewQueueIssueUseCase;
+        this.agentDesignationLabelAdoptUseCase = agentDesignationLabelAdoptUseCase;
         this.updateRateLimitCacheUseCase = updateRateLimitCacheUseCase;
         this.dailySecurityScanUseCase = dailySecurityScanUseCase;
         this.dateRepository = dateRepository;
@@ -236,6 +237,11 @@ ${JSON.stringify(e)}
             const allowedIssueAuthors = (0, resolveAllowedIssueAuthors_1.resolveAllowedIssueAuthors)({
                 topLevel: input.allowedIssueAuthors,
                 startPreparation: input.startPreparation?.allowedIssueAuthors,
+            });
+            await this.agentDesignationLabelAdoptUseCase.run({
+                project,
+                issues,
+                agents: input.agents ?? null,
             });
             await this.revertNotReadyReviewQueueIssueUseCase.run({
                 projectUrl: input.projectUrl,

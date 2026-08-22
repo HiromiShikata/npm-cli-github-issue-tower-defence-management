@@ -289,6 +289,8 @@ exports.program
     .option('--projectUrl <url>', 'GitHub project URL')
     .option('--thresholdForAutoReject <count>', 'Threshold for auto-escalation after consecutive rejections (default: 3)')
     .option('--workflowBlockerResolvedWebhookUrl <url>', 'Webhook URL to notify when a workflow blocker issue status changes to awaiting quality check. Supports {URL} and {MESSAGE} placeholders.')
+    .option('--missingAgentName <name>', 'Agent definition name that was not found, triggering the missing-agent task creation path')
+    .option('--sessionErrorLine <line>', 'Exact error line from the session log to include in the task issue body')
     .action(async (options) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -364,6 +366,8 @@ exports.program
         labelsNotRequiringPullRequest: config.labelsNotRequiringPullRequest ?? null,
         changeTargetPathAliases: config.changeTargetPathAliases ?? null,
         agents: config.agents ?? null,
+        missingAgentName: options.missingAgentName ?? null,
+        sessionErrorLine: options.sessionErrorLine ?? null,
     });
 });
 exports.program

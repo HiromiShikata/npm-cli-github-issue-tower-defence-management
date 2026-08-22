@@ -31,7 +31,6 @@ export declare class StartPreparationUseCase {
     getTokenConcurrentLimit: (fiveHourUtilization: number, sevenDayUtilization: number, selectionWeight?: number) => number;
     private selectRotationTokens;
     buildRotationOrder: (tokenUsages: ClaudeTokenUsage[], utilizationPercentageThreshold: number, modelName: string | null) => RotationOrderEntry[];
-    private migrateAgentDesignationLabelToProjectField;
     run: (params: {
         projectUrl: string;
         defaultAgentName: string;
