@@ -69,6 +69,7 @@ import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimit
 import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from '../../../domain/usecases/RevertNotReadyReviewQueueIssueUseCase';
+import { AgentDesignationLabelAdoptUseCase } from '../../../domain/usecases/AgentDesignationLabelAdoptUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { ProjectRequiredFieldCreateUseCase } from '../../../domain/usecases/ProjectRequiredFieldCreateUseCase';
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
@@ -494,6 +495,8 @@ export class HandleScheduledEventUseCaseHandler {
         issueRepository,
         issueCommentRepository,
       );
+    const agentDesignationLabelAdoptUseCase =
+      new AgentDesignationLabelAdoptUseCase(projectRepository, issueRepository);
 
     const dailySecurityScanUseCase = mergedInput.dailySecurityScan
       ? new DailySecurityScanUseCase(
@@ -525,6 +528,7 @@ export class HandleScheduledEventUseCaseHandler {
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
       revertNotReadyReviewQueueIssueUseCase,
+      agentDesignationLabelAdoptUseCase,
       updateRateLimitCacheUseCase,
       dailySecurityScanUseCase,
       systemDateRepository,
