@@ -92,6 +92,8 @@ type NotifyFinishedOptions = {
   thresholdForAutoReject?: string;
   workflowBlockerResolvedWebhookUrl?: string;
   configFilePath: string;
+  missingAgentName?: string;
+  sessionErrorLine?: string;
 };
 
 type CheckIssueReviewReadinessOptions = {
@@ -496,6 +498,14 @@ program
     '--workflowBlockerResolvedWebhookUrl <url>',
     'Webhook URL to notify when a workflow blocker issue status changes to awaiting quality check. Supports {URL} and {MESSAGE} placeholders.',
   )
+  .option(
+    '--missingAgentName <name>',
+    'Agent definition name that was not found, triggering the missing-agent task creation path',
+  )
+  .option(
+    '--sessionErrorLine <line>',
+    'Exact error line from the session log to include in the task issue body',
+  )
   .action(async (options: NotifyFinishedOptions) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -629,6 +639,8 @@ program
         config.labelsNotRequiringPullRequest ?? null,
       changeTargetPathAliases: config.changeTargetPathAliases ?? null,
       agents: config.agents ?? null,
+      missingAgentName: options.missingAgentName ?? null,
+      sessionErrorLine: options.sessionErrorLine ?? null,
     });
   });
 

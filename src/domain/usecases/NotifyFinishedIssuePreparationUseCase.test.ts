@@ -107,6 +107,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     requestChangesWithInlineComment: jest.Mock;
     setDependedIssueUrl: jest.Mock;
     setIssueAgentField: jest.Mock;
+    searchIssue: jest.Mock;
+    createNewIssue: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -147,6 +149,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
       setDependedIssueUrl: jest.fn(),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+      searchIssue: jest.fn().mockResolvedValue([]),
+      createNewIssue: jest.fn().mockResolvedValue(42),
     };
 
     mockIssueCommentRepository = {
@@ -3891,6 +3895,164 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(
         mockConsoleTabsRepository.patchIssueTabTransition,
       ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('when missingAgentName is provided', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const taskIssueTitle = 'Register missing agent definition: impl';
+    const taskIssueUrl = 'https://github.com/user/repo/issues/42';
+
+    it('creates a task issue and sets depended issue URL when no existing open task issue exists', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        missingAgentName: 'impl',
+        sessionErrorLine:
+          "Error: Agent 'impl' not found at /path/agents/impl.md",
+      });
+
+      expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith({
+        owner: 'user',
+        repositoryName: 'repo',
+        type: 'issue',
+        state: 'open',
+        title: taskIssueTitle,
+      });
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        taskIssueTitle,
+        expect.stringContaining(issueUrl),
+        [],
+        [],
+      );
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        taskIssueTitle,
+        expect.stringContaining('impl'),
+        [],
+        [],
+      );
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        taskIssueTitle,
+        expect.stringContaining(
+          "Error: Agent 'impl' not found at /path/agents/impl.md",
+        ),
+        [],
+        [],
+      );
+      expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
+        issueUrl,
+        mockProject,
+        taskIssueUrl,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('impl'),
+      );
+    });
+
+    it('reuses an existing open task issue and does not create a new one', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        {
+          url: taskIssueUrl,
+          title: taskIssueTitle,
+          number: '42',
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        missingAgentName: 'impl',
+      });
+
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
+        issueUrl,
+        mockProject,
+        taskIssueUrl,
+      );
+    });
+
+    it('skips setDependedIssueUrl when project has no dependedIssueUrlSeparatedByComma field but still creates the task issue and returns to Awaiting Workspace', async () => {
+      const projectWithoutDependedField = createMockProject({
+        dependedIssueUrlSeparatedByComma: null,
+      });
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithoutDependedField,
+      );
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        missingAgentName: 'impl',
+      });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithoutDependedField,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('uses (not captured) as error line when sessionErrorLine is not provided', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        missingAgentName: 'impl',
+      });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        taskIssueTitle,
+        expect.stringContaining('(not captured)'),
+        [],
+        [],
+      );
     });
   });
 });
