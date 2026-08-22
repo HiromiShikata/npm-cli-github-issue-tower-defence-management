@@ -276,6 +276,8 @@ describe('useConsoleTabData', () => {
             storyColors: {},
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
             items: [
               {
                 number: 1,
@@ -305,6 +307,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           unread: {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -314,6 +318,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           'workflow-blocker': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -323,6 +329,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           'failed-preparation': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -332,6 +340,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           'todo-by-human': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -341,6 +351,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           'todo-by-agent': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -350,6 +362,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           stories: {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -359,6 +373,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
         },
       },
@@ -400,6 +416,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           triage: {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -409,6 +427,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           unread: {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -418,6 +438,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           'workflow-blocker': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -427,6 +449,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           'failed-preparation': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -436,6 +460,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           'todo-by-human': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -445,6 +471,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           'todo-by-agent': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -454,6 +482,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
           stories: {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -463,6 +493,8 @@ describe('useConsoleTabData', () => {
             items: [],
             stories: [],
             defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
           },
         },
       },

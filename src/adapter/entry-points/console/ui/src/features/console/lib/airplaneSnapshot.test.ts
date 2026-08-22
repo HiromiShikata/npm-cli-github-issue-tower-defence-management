@@ -66,6 +66,33 @@ describe('airplaneSnapshot', () => {
       expect(result?.tabs.acme?.prs.items).toHaveLength(1);
       expect(result?.tabs.acme?.prs.items[0].title).toBe('Fix bug');
       expect(result?.tabs.acme?.prs.statusOptions).toHaveLength(1);
+      expect(result?.tabs.acme?.prs.fromCache).toBe(false);
+      expect(result?.tabs.acme?.prs.storyOrder).toEqual([]);
+    });
+
+    it('parses storyOrder and fromCache from a tab snapshot', () => {
+      const raw = {
+        capturedAt: '2026-01-01T00:00:00Z',
+        tabs: {
+          acme: {
+            prs: {
+              generatedAt: '2026-01-01T00:00:00Z',
+              statusOptions: [],
+              storyOptions: [],
+              storyColors: {},
+              items: [],
+              stories: [],
+              defaultNameWithOwner: null,
+              storyOrder: ['regular', 'chore'],
+            },
+          },
+        },
+        items: {},
+        failures: [],
+      };
+      const result = parseAirplaneSnapshot(raw);
+      expect(result?.tabs.acme?.prs.storyOrder).toEqual(['regular', 'chore']);
+      expect(result?.tabs.acme?.prs.fromCache).toBe(false);
     });
 
     it('parses item snapshots with PR fields', () => {
