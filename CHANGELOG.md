@@ -1,3 +1,10 @@
+## [1.169.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.169.0...v1.169.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **preparation:** resolve agent from Agent field only, remove label-based resolution ([#1668](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1668)) ([07493de](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/07493deeb3df73f52cb97c9c38feb5d548ad9b2e)), closes [#1666](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1666)
+
 # [1.169.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.168.4...v1.169.0) (2026-08-22)
 
 

@@ -250,22 +250,7 @@ class StartPreparationUseCase {
                     continue;
                 }
                 await (0, AgentDesignationLabelAdoptUseCase_1.adoptIssueAgentDesignationLabel)(issue, project, params.agents ?? [], this.projectRepository, this.issueRepository);
-                const mappedAgentFromLabel = params.labelsAsLlmAgentName !== null
-                    ? issue.labels.find((label) => params.labelsAsLlmAgentName !== null
-                        ? params.labelsAsLlmAgentName.includes(label)
-                        : false)
-                    : undefined;
                 const agent = (issue.agent === null ? null : (0, exports.agentNameFromDesignation)(issue.agent)) ||
-                    issue.labels
-                        .find((label) => label.startsWith(LLM_AGENT_LABEL_PREFIX))
-                        ?.replace(LLM_AGENT_LABEL_PREFIX, '')
-                        .trim() ||
-                    mappedAgentFromLabel ||
-                    issue.labels
-                        .find((label) => label.startsWith('category:'))
-                        ?.replace('category:', '')
-                        .trim() ||
-                    params.defaultLlmAgentName ||
                     params.defaultAgentName;
                 const labelModelName = issue.labels
                     .find((label) => label.startsWith('llm-model:'))
