@@ -3917,7 +3917,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         missingAgentName: 'impl',
-        sessionErrorLine: "Error: Agent 'impl' not found at /path/agents/impl.md",
+        sessionErrorLine:
+          "Error: Agent 'impl' not found at /path/agents/impl.md",
       });
 
       expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith({
@@ -3947,7 +3948,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'user',
         'repo',
         taskIssueTitle,
-        expect.stringContaining("Error: Agent 'impl' not found at /path/agents/impl.md"),
+        expect.stringContaining(
+          "Error: Agent 'impl' not found at /path/agents/impl.md",
+        ),
         [],
         [],
       );
@@ -4001,7 +4004,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         dependedIssueUrlSeparatedByComma: null,
       });
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutDependedField);
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithoutDependedField,
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueRepository.searchIssue.mockResolvedValue([]);
       mockIssueRepository.createNewIssue.mockResolvedValue(42);
