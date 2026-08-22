@@ -9,9 +9,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
-import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
-import { Issue } from '../entities/Issue';
-import { Project } from '../entities/Project';
+import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
 
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -310,41 +308,6 @@ export class StartPreparationUseCase {
     return [...selectedEntries, ...excluded];
   };
 
-  private migrateAgentDesignationLabelToProjectField = async (
-    issue: Issue,
-    project: Project,
-    configuredAgentNames: string[] | null,
-  ): Promise<void> => {
-    const agentLabel =
-      configuredAgentNames === null
-        ? undefined
-        : issue.labels.find((label: string) =>
-            configuredAgentNames.includes(label),
-          );
-    if (agentLabel === undefined) {
-      return;
-    }
-    issue.agent = agentLabel;
-    const agentOptionId = await ensureAgentOptionAndGetId(
-      this.projectRepository,
-      project,
-      agentLabel,
-    );
-    if (agentOptionId === null) {
-      console.warn(
-        `Agent field option '${agentLabel}' could not be resolved for ${issue.url}. Keeping the label as the agent designation.`,
-      );
-      return;
-    }
-    await this.issueRepository.setIssueAgentField(
-      issue.url,
-      project,
-      agentOptionId,
-    );
-    await this.issueRepository.removeLabel(issue, agentLabel);
-    issue.labels = issue.labels.filter((label) => label !== agentLabel);
-  };
-
   run = async (params: {
     projectUrl: string;
     defaultAgentName: string;
@@ -520,10 +483,12 @@ export class StartPreparationUseCase {
         exclusionCounts.notAssignedToManager++;
         continue;
       }
-      await this.migrateAgentDesignationLabelToProjectField(
+      await adoptIssueAgentDesignationLabel(
         issue,
         project,
-        params.agents ?? null,
+        params.agents ?? [],
+        this.projectRepository,
+        this.issueRepository,
       );
       const mappedAgentFromLabel =
         params.labelsAsLlmAgentName !== null

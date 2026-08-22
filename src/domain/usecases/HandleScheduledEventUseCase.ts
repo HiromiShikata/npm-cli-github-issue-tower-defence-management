@@ -25,6 +25,7 @@ import {
   RotationOrderEntry,
   StartPreparationUseCase,
 } from './StartPreparationUseCase';
+import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
@@ -135,6 +136,7 @@ export class HandleScheduledEventUseCase {
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
+    readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
     readonly dateRepository: DateRepository,
@@ -416,6 +418,11 @@ ${JSON.stringify(e)}
     const allowedIssueAuthors = resolveAllowedIssueAuthors({
       topLevel: input.allowedIssueAuthors,
       startPreparation: input.startPreparation?.allowedIssueAuthors,
+    });
+    await this.agentDesignationLabelAdoptUseCase.run({
+      project,
+      issues,
+      agents: input.agents ?? null,
     });
     await this.revertNotReadyReviewQueueIssueUseCase.run({
       projectUrl: input.projectUrl,

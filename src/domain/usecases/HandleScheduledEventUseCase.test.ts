@@ -24,6 +24,7 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
+import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
@@ -123,6 +124,8 @@ describe('HandleScheduledEventUseCase', () => {
       mock<RevertOrphanedPreparationUseCase>();
     const mockRevertNotReadyReviewQueueIssueUseCase =
       mock<RevertNotReadyReviewQueueIssueUseCase>();
+    const mockAgentDesignationLabelAdoptUseCase =
+      mock<AgentDesignationLabelAdoptUseCase>();
     const mockUpdateRateLimitCacheUseCase = mock<UpdateRateLimitCacheUseCase>();
     const mockDailySecurityScanUseCase = mock<DailySecurityScanUseCase>();
     const mockDateRepository = mock<DateRepository>();
@@ -151,6 +154,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
+      mockAgentDesignationLabelAdoptUseCase,
       mockUpdateRateLimitCacheUseCase,
       mockDailySecurityScanUseCase,
       mockDateRepository,
