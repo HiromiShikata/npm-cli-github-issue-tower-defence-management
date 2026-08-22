@@ -20,6 +20,8 @@ export type AirplaneTabSnapshot = {
   storyColors: ConsoleStoryColorSource;
   stories: ConsoleStoryEntry[];
   defaultNameWithOwner: string | null;
+  fromCache: boolean;
+  storyOrder: string[];
 };
 
 export type AirplaneItemSnapshot = {
@@ -162,6 +164,8 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
       storyColors: {},
       stories: [],
       defaultNameWithOwner: null,
+      fromCache: false,
+      storyOrder: [],
     };
   }
   const items: ConsoleListItem[] = Array.isArray(payload.items)
@@ -180,6 +184,9 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
   const stories: ConsoleStoryEntry[] = Array.isArray(payload.stories)
     ? (payload.stories.filter(isRecord) as unknown as ConsoleStoryEntry[])
     : [];
+  const storyOrder: string[] = Array.isArray(payload.storyOrder)
+    ? payload.storyOrder.filter((s): s is string => typeof s === 'string')
+    : [];
   return {
     items,
     generatedAt:
@@ -194,6 +201,8 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
       typeof payload.defaultNameWithOwner === 'string'
         ? payload.defaultNameWithOwner
         : null,
+    fromCache: false,
+    storyOrder,
   };
 };
 
