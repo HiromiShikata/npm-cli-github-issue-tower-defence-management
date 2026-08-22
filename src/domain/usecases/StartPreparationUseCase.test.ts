@@ -189,7 +189,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'impl',
+        'agent1',
         'claude-opus',
         '--configFilePath',
         '/path/to/config.yml',
@@ -359,7 +359,7 @@ describe('StartPreparationUseCase', () => {
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
       expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
       expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'triager',
+        'agent1',
       );
     });
 
@@ -507,7 +507,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'impl',
+        'agent1',
         'claude-opus',
         '--configFilePath',
         '/path/to/config.yml',
@@ -566,7 +566,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'https://github.com/user/repo/pull/354',
-        'impl',
+        'agent1',
         'claude-opus',
         '--configFilePath',
         '/path/to/config.yml',
@@ -803,7 +803,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'https://github.com/user/repo/issues/1',
-        'impl',
+        'agent1',
         'claude-opus',
         '--configFilePath',
         '/path/to/config.yml',
@@ -1081,7 +1081,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'impl',
+        'agent1',
         'claude-opus',
         '--configFilePath',
         '/path/to/config.yml',
@@ -1127,7 +1127,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'impl',
+        'agent1',
         'claude-opus',
         '--configFilePath',
         '/path/to/config.yml',
@@ -1136,7 +1136,7 @@ describe('StartPreparationUseCase', () => {
       ],
     ]);
   });
-  it('should use llm-agent label over category label and defaultLlmAgentName', async () => {
+  it('falls back to defaultAgentName when Agent field is empty, ignoring llm-agent: labels', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
         url: 'url1',
@@ -1173,7 +1173,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'research',
+        'agent1',
         'claude-sonnet-4-6',
         '--configFilePath',
         '/path/to/config.yml',
@@ -1182,7 +1182,7 @@ describe('StartPreparationUseCase', () => {
       ],
     ]);
   });
-  it('should use category label over defaultLlmAgentName when no llm-agent label', async () => {
+  it('falls back to defaultAgentName when Agent field is empty, ignoring category: labels', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
         url: 'url1',
@@ -1219,7 +1219,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'impl',
+        'agent1',
         'claude-sonnet-4-6',
         '--configFilePath',
         '/path/to/config.yml',
@@ -1228,7 +1228,7 @@ describe('StartPreparationUseCase', () => {
       ],
     ]);
   });
-  it('should use defaultLlmAgentName over defaultAgentName when no label', async () => {
+  it('falls back to defaultAgentName when Agent field is empty, ignoring defaultLlmAgentName', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
         url: 'url1',
@@ -1265,7 +1265,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'default-llm-agent',
+        'agent1',
         'claude-sonnet-4-6',
         '--configFilePath',
         '/path/to/config.yml',
@@ -1311,7 +1311,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'impl',
+        'agent1',
         'claude-sonnet',
         '--configFilePath',
         '/path/to/config.yml',
@@ -1412,7 +1412,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url2',
-        'impl',
+        'agent1',
         'claude-sonnet-4-6',
         '--configFilePath',
         '/path/to/config.yml',
@@ -2594,7 +2594,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'impl',
+        'agent1',
         'claude-opus',
         '--configFilePath',
         '/path/to/config.yml',
@@ -2643,7 +2643,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'impl',
+        'agent1',
         'claude-opus',
         '--configFilePath',
         '/path/to/config.yml',
@@ -2692,7 +2692,7 @@ describe('StartPreparationUseCase', () => {
       'aw',
       [
         'url1',
-        'impl',
+        'agent1',
         'claude-opus',
         '--configFilePath',
         '/path/to/config.yml',
@@ -5201,54 +5201,54 @@ describe('StartPreparationUseCase', () => {
       expect(selectedAgent).toBe('developer');
     });
 
-    it('selects explicit llm-agent: label over labelsAsLlmAgentName mapping', async () => {
+    it('uses defaultAgentName when Agent field is empty, ignoring llm-agent: label and labelsAsLlmAgentName', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['llm-agent:explicit-agent', 'story', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
         labelsAsLlmAgentName: ['story'],
       });
-      expect(selectedAgent).toBe('explicit-agent');
+      expect(selectedAgent).toBe('default-agent');
     });
 
-    it('uses the label name as the agent name when an issue label is listed in labelsAsLlmAgentName, over category: label', async () => {
+    it('uses defaultAgentName when Agent field is empty, ignoring labelsAsLlmAgentName and category: label', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['story', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
         labelsAsLlmAgentName: ['story'],
       });
-      expect(selectedAgent).toBe('story');
+      expect(selectedAgent).toBe('default-agent');
     });
 
-    it('matches labelsAsLlmAgentName entries exactly including colons in the label name', async () => {
+    it('uses defaultAgentName when Agent field is empty, ignoring colon-containing label in labelsAsLlmAgentName', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['story:body-condition', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
         labelsAsLlmAgentName: ['story', 'story:body-condition'],
       });
-      expect(selectedAgent).toBe('story:body-condition');
+      expect(selectedAgent).toBe('default-agent');
     });
 
-    it('falls through to category: label when no llm-agent: label and no issue label is in labelsAsLlmAgentName', async () => {
+    it('uses defaultAgentName when Agent field is empty, ignoring category: label and unmatched labelsAsLlmAgentName', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['unrelated-label', 'category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
         labelsAsLlmAgentName: ['story'],
       });
-      expect(selectedAgent).toBe('impl');
+      expect(selectedAgent).toBe('default-agent');
     });
 
-    it('falls through to defaultLlmAgentName when no llm-agent:, no labelsAsLlmAgentName match, and no category: label', async () => {
+    it('uses defaultAgentName when Agent field is empty, ignoring defaultLlmAgentName', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['unrelated-label'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
         labelsAsLlmAgentName: ['story'],
       });
-      expect(selectedAgent).toBe('default-llm-agent');
+      expect(selectedAgent).toBe('default-agent');
     });
 
     it('falls through to defaultAgentName when no llm-agent:, no labelsAsLlmAgentName match, no category: label, and no defaultLlmAgentName', async () => {
@@ -5268,7 +5268,7 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: 'default-llm-agent',
         labelsAsLlmAgentName: ['story'],
       });
-      expect(selectedAgent).toBe('default-llm-agent');
+      expect(selectedAgent).toBe('default-agent');
     });
 
     it('ignores labels that are not listed in labelsAsLlmAgentName when other entries are present', async () => {
@@ -5278,17 +5278,27 @@ describe('StartPreparationUseCase', () => {
         defaultLlmAgentName: 'default-llm-agent',
         labelsAsLlmAgentName: ['story', 'story:body-condition'],
       });
-      expect(selectedAgent).toBe('default-llm-agent');
+      expect(selectedAgent).toBe('default-agent');
     });
 
-    it('does not affect selection when labelsAsLlmAgentName is null and only category: label is present', async () => {
+    it('uses defaultAgentName when labelsAsLlmAgentName is null and Agent field is empty', async () => {
       const selectedAgent = await runWithIssueLabels({
         labels: ['category:impl'],
         defaultAgentName: 'default-agent',
         defaultLlmAgentName: 'default-llm-agent',
         labelsAsLlmAgentName: null,
       });
-      expect(selectedAgent).toBe('impl');
+      expect(selectedAgent).toBe('default-agent');
+    });
+
+    it('uses defaultAgentName when Agent field is empty and a bare label matches labelsAsLlmAgentName', async () => {
+      const selectedAgent = await runWithIssueLabels({
+        labels: ['chore'],
+        defaultAgentName: 'triage-agent',
+        defaultLlmAgentName: 'default-llm-agent',
+        labelsAsLlmAgentName: ['chore'],
+      });
+      expect(selectedAgent).toBe('triage-agent');
     });
   });
 
@@ -5347,7 +5357,7 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
       expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
         'url1',
-        'impl',
+        'agent1',
         'claude-opus-4-8',
         '--configFilePath',
         '/path/to/config.yml',

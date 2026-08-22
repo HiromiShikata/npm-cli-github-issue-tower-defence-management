@@ -490,26 +490,8 @@ export class StartPreparationUseCase {
         this.projectRepository,
         this.issueRepository,
       );
-      const mappedAgentFromLabel =
-        params.labelsAsLlmAgentName !== null
-          ? issue.labels.find((label: string) =>
-              params.labelsAsLlmAgentName !== null
-                ? params.labelsAsLlmAgentName.includes(label)
-                : false,
-            )
-          : undefined;
       const agent =
         (issue.agent === null ? null : agentNameFromDesignation(issue.agent)) ||
-        issue.labels
-          .find((label: string) => label.startsWith(LLM_AGENT_LABEL_PREFIX))
-          ?.replace(LLM_AGENT_LABEL_PREFIX, '')
-          .trim() ||
-        mappedAgentFromLabel ||
-        issue.labels
-          .find((label: string) => label.startsWith('category:'))
-          ?.replace('category:', '')
-          .trim() ||
-        params.defaultLlmAgentName ||
         params.defaultAgentName;
       const labelModelName = issue.labels
         .find((label: string) => label.startsWith('llm-model:'))
