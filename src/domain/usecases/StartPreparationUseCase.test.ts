@@ -5290,6 +5290,16 @@ describe('StartPreparationUseCase', () => {
       });
       expect(selectedAgent).toBe('impl');
     });
+
+    it('uses defaultAgentName when Agent field is empty and a bare label matches labelsAsLlmAgentName', async () => {
+      const selectedAgent = await runWithIssueLabels({
+        labels: ['chore'],
+        defaultAgentName: 'triage-agent',
+        defaultLlmAgentName: 'default-llm-agent',
+        labelsAsLlmAgentName: ['chore'],
+      });
+      expect(selectedAgent).toBe('triage-agent');
+    });
   });
 
   describe('Sonnet-to-Opus weekly limit fallback', () => {
