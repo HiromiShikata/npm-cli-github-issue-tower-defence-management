@@ -12,10 +12,7 @@ export const adoptIssueAgentDesignationLabel = async (
     ProjectRepository,
     'getByUrl' | 'createField' | 'updateAgentList'
   >,
-  issueRepository: Pick<
-    IssueRepository,
-    'setIssueAgentField' | 'removeLabel'
-  >,
+  issueRepository: Pick<IssueRepository, 'setIssueAgentField' | 'removeLabel'>,
 ): Promise<void> => {
   if (issue.agent !== null) {
     return;
