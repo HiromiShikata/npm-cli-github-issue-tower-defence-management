@@ -9,7 +9,8 @@ export declare const relabelAttachmentMarkdown: (markdown: string, label: string
 export declare class LocalCommandIssueAttachmentRepository implements IssueAttachmentRepository {
     private readonly localCommandRunner;
     private readonly temporaryDirectoryRoot;
-    constructor(localCommandRunner: LocalCommandRunner, temporaryDirectoryRoot?: string);
+    private readonly resolveGithubToken?;
+    constructor(localCommandRunner: LocalCommandRunner, temporaryDirectoryRoot?: string, resolveGithubToken?: ((repositoryOwner: string) => string) | undefined);
     uploadAttachment(request: IssueAttachmentUploadRequest): Promise<string>;
 }
 //# sourceMappingURL=LocalCommandIssueAttachmentRepository.d.ts.map

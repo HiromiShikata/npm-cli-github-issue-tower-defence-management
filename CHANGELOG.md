@@ -1,3 +1,10 @@
+## [1.173.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.173.1...v1.173.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* **LocalCommandIssueAttachmentRepository:** pass owner-specific GH_TOKEN to upload subprocess in console ([#1693](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1693)) ([815ba77](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/815ba77fcc1c6db9701cfebbc7516f1263894f5c)), closes [#1689](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1689)
+
 ## [1.173.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.173.0...v1.173.1) (2026-08-23)
 
 
