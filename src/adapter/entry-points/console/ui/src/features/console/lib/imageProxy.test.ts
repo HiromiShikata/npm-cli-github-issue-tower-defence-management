@@ -5,7 +5,7 @@ import {
 } from './imageProxy';
 
 const itemUrl =
-  'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1672';
+  'https://github.com/example-owner/example-repo/issues/1';
 
 describe('isProxyableImageUrl', () => {
   it('matches github user-attachments urls', () => {
