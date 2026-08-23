@@ -7,10 +7,7 @@ import { NotifyFinishedIssuePreparationUseCase } from './NotifyFinishedIssuePrep
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
-import {
-  IssueRepository,
-  RelatedPullRequest,
-} from './adapter-interfaces/IssueRepository';
+import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
@@ -398,7 +395,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
             mergeable: 'MERGEABLE',
             branchName: 'i1',
             createdAt: new Date(),
-          } as RelatedPullRequest,
+          },
         ]),
         getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
         getOpenPullRequest: jest.fn().mockResolvedValue(null),
@@ -470,7 +467,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
 
       const TRIGGER_MESSAGE = 'Reactivation trigger not yet reached';
       const triggerSentBack = notifyMockIssueCommentRepository.createComment.mock.calls.some(
-        (call) => (call[1] as string).includes(TRIGGER_MESSAGE),
+        (call) => typeof call[1] === 'string' && call[1].includes(TRIGGER_MESSAGE),
       );
 
       expect(spawnStarted).toBe(!triggerIsPending);
