@@ -422,8 +422,8 @@ export class NotifyFinishedIssuePreparationUseCase {
         `- Error: ${sessionErrorLine ?? '(not captured)'}`,
       ].join('\n');
       if (!manager) {
-        console.warn(
-          `No manager configured: the missing-agent task issue for \`${missingAgentName}\` will be created without an assignee and may not be picked up automatically.`,
+        throw new Error(
+          `'manager' is not configured: cannot create the missing-agent task issue for '${missingAgentName}' without an assignee. Set the 'manager' configuration key to a GitHub username.`,
         );
       }
       const issueNumber = await this.issueRepository.createNewIssue(
@@ -431,7 +431,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue.repo,
         taskIssueTitle,
         body,
-        manager ? [manager] : [],
+        [manager],
         [],
       );
       taskIssueUrl = `https://github.com/${issue.org}/${issue.repo}/issues/${issueNumber}`;
