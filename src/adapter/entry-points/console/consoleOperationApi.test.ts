@@ -1922,8 +1922,18 @@ describe('consoleOperationApi', () => {
         fieldId: 'storyField',
         databaseId: 1,
         stories: [
-          { id: 'opt_first', name: 'First story', color: 'BLUE', description: '' },
-          { id: 'opt_second', name: 'Second story', color: 'GREEN', description: '' },
+          {
+            id: 'opt_first',
+            name: 'First story',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'opt_second',
+            name: 'Second story',
+            color: 'GREEN',
+            description: '',
+          },
         ],
         workflowManagementStory: { id: 'wms', name: 'workflow' },
       },
@@ -1950,14 +1960,21 @@ describe('consoleOperationApi', () => {
       });
       expect(response.statusCode).toBe(200);
       expect(response.body).toEqual({ ok: true });
-      expect(updateStoryList).toHaveBeenCalledWith(
-        p,
-        [
-          { id: 'opt_first', name: 'First story', color: 'BLUE', description: '' },
-          { id: null, name: 'Brand new story', color: 'RED', description: '' },
-          { id: 'opt_second', name: 'Second story', color: 'GREEN', description: '' },
-        ],
-      );
+      expect(updateStoryList).toHaveBeenCalledWith(p, [
+        {
+          id: 'opt_first',
+          name: 'First story',
+          color: 'BLUE',
+          description: '',
+        },
+        { id: null, name: 'Brand new story', color: 'RED', description: '' },
+        {
+          id: 'opt_second',
+          name: 'Second story',
+          color: 'GREEN',
+          description: '',
+        },
+      ]);
     });
 
     it('inserts the new story as the only entry when the story list is empty', async () => {
@@ -1971,15 +1988,17 @@ describe('consoleOperationApi', () => {
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
       };
-      const response = await handleAddStory(addStoryContext(emptyStoryProject), {
-        pjcode: 'acme',
-        storyName: 'First ever story',
-      });
-      expect(response.statusCode).toBe(200);
-      expect(updateStoryList).toHaveBeenCalledWith(
-        emptyStoryProject,
-        [{ id: null, name: 'First ever story', color: 'RED', description: '' }],
+      const response = await handleAddStory(
+        addStoryContext(emptyStoryProject),
+        {
+          pjcode: 'acme',
+          storyName: 'First ever story',
+        },
       );
+      expect(response.statusCode).toBe(200);
+      expect(updateStoryList).toHaveBeenCalledWith(emptyStoryProject, [
+        { id: null, name: 'First ever story', color: 'RED', description: '' },
+      ]);
     });
 
     it('resolves the project repository using the project url', async () => {
@@ -1993,7 +2012,10 @@ describe('consoleOperationApi', () => {
 
     it('returns 502 when resolveProjectRepository is null', async () => {
       const response = await handleAddStory(
-        { ...contextForProject(buildProjectWithStories()), resolveProjectRepository: null },
+        {
+          ...contextForProject(buildProjectWithStories()),
+          resolveProjectRepository: null,
+        },
         { pjcode: 'acme', storyName: 'Any story' },
       );
       expect(response).toEqual({
@@ -2003,9 +2025,12 @@ describe('consoleOperationApi', () => {
     });
 
     it('rejects when storyName is missing', async () => {
-      const response = await handleAddStory(addStoryContext(buildProjectWithStories()), {
-        pjcode: 'acme',
-      });
+      const response = await handleAddStory(
+        addStoryContext(buildProjectWithStories()),
+        {
+          pjcode: 'acme',
+        },
+      );
       expect(response).toEqual({
         statusCode: 400,
         body: { error: 'storyName is required' },
@@ -2013,10 +2038,13 @@ describe('consoleOperationApi', () => {
     });
 
     it('rejects when pjcode is not configured', async () => {
-      const response = await handleAddStory(addStoryContext(buildProjectWithStories()), {
-        pjcode: 'unknown',
-        storyName: 'Any story',
-      });
+      const response = await handleAddStory(
+        addStoryContext(buildProjectWithStories()),
+        {
+          pjcode: 'unknown',
+          storyName: 'Any story',
+        },
+      );
       expect(response).toEqual({
         statusCode: 400,
         body: { error: 'no project configured for pjcode "unknown"' },
@@ -2028,10 +2056,13 @@ describe('consoleOperationApi', () => {
         ...buildProjectWithStories(),
         story: null,
       };
-      const response = await handleAddStory(addStoryContext(projectWithoutStory), {
-        pjcode: 'acme',
-        storyName: 'Any story',
-      });
+      const response = await handleAddStory(
+        addStoryContext(projectWithoutStory),
+        {
+          pjcode: 'acme',
+          storyName: 'Any story',
+        },
+      );
       expect(response).toEqual({
         statusCode: 400,
         body: { error: 'project does not have a story field' },

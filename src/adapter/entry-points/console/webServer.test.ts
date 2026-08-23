@@ -1118,13 +1118,27 @@ describe('webServer new routes integration', () => {
       status: {
         name: 'Status',
         fieldId: 'statusField',
-        statuses: [{ id: 'status_aw', name: 'Awaiting workspace', color: 'GRAY', description: '' }],
+        statuses: [
+          {
+            id: 'status_aw',
+            name: 'Awaiting workspace',
+            color: 'GRAY',
+            description: '',
+          },
+        ],
       },
       story: {
         name: 'Story',
         fieldId: 'storyField',
         databaseId: 1,
-        stories: [{ id: 'opt_blue', name: 'Existing story', color: 'BLUE', description: '' }],
+        stories: [
+          {
+            id: 'opt_blue',
+            name: 'Existing story',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
         workflowManagementStory: { id: 'wms', name: 'workflow' },
       },
     };
@@ -1153,13 +1167,15 @@ describe('webServer new routes integration', () => {
       );
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body)).toEqual({ ok: true });
-      expect(updateStoryList).toHaveBeenCalledWith(
-        projectWithStory,
-        [
-          { id: 'opt_blue', name: 'Existing story', color: 'BLUE', description: '' },
-          { id: null, name: 'My new story', color: 'RED', description: '' },
-        ],
-      );
+      expect(updateStoryList).toHaveBeenCalledWith(projectWithStory, [
+        {
+          id: 'opt_blue',
+          name: 'Existing story',
+          color: 'BLUE',
+          description: '',
+        },
+        { id: null, name: 'My new story', color: 'RED', description: '' },
+      ]);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
