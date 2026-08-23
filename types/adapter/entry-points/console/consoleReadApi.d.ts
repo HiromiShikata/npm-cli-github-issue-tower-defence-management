@@ -26,6 +26,7 @@ export declare class IssueTitleStateCache {
     private readonly entries;
     constructor(nowMs?: () => number);
     get: (url: string) => IssueOrPullRequestState | null;
+    getStale: (url: string) => IssueOrPullRequestState | null;
     set: (url: string, state: IssueOrPullRequestState) => void;
 }
 export declare class PullRequestStatusCache {
@@ -33,6 +34,7 @@ export declare class PullRequestStatusCache {
     private readonly entries;
     constructor(nowMs?: () => number);
     get: (url: string) => PullRequestStatusResponse | null;
+    getStale: (url: string) => PullRequestStatusResponse | null;
     set: (url: string, status: PullRequestStatusResponse) => void;
 }
 export type ConsoleReadApiResponse = {

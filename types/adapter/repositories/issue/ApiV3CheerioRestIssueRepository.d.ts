@@ -33,6 +33,7 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     private readonly lastIssuesFetchedAtByProjectId;
     getLastIssuesFetchedAt: (projectId: Project["id"]) => string | null;
     private fetchWithRateLimitRetry;
+    private throwGitHubError;
     updateStatus: (project: Project, issue: Issue, statusId: string) => Promise<void>;
     convertProjectItemToIssue: (item: ProjectItem) => Issue;
     private restoreIssuesFromCache;

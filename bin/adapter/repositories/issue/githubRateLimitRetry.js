@@ -1,6 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchWithGitHubRateLimitRetry = exports.computeBoundedBackoffMs = exports.computeRateLimitResetIso = exports.hasRateLimitSignals = exports.realSleep = exports.RATE_LIMIT_BASE_BACKOFF_MS = exports.RATE_LIMIT_TOTAL_BACKOFF_CAP_MS = exports.RATE_LIMIT_MAX_RETRIES = void 0;
+exports.fetchWithGitHubRateLimitRetry = exports.computeBoundedBackoffMs = exports.computeRateLimitResetIso = exports.hasRateLimitSignals = exports.realSleep = exports.RATE_LIMIT_BASE_BACKOFF_MS = exports.RATE_LIMIT_TOTAL_BACKOFF_CAP_MS = exports.RATE_LIMIT_MAX_RETRIES = exports.GitHubRateLimitError = void 0;
+class GitHubRateLimitError extends Error {
+    constructor() {
+        super(...arguments);
+        this.name = 'GitHubRateLimitError';
+    }
+}
+exports.GitHubRateLimitError = GitHubRateLimitError;
 exports.RATE_LIMIT_MAX_RETRIES = 3;
 exports.RATE_LIMIT_TOTAL_BACKOFF_CAP_MS = 5000;
 exports.RATE_LIMIT_BASE_BACKOFF_MS = 250;

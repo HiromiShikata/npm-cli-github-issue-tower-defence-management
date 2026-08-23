@@ -1,3 +1,10 @@
+## [1.173.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.173.0...v1.173.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **console:** return 429 with rate limit message instead of 500 on GitHub rate limit ([#1680](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1680)) ([1dca110](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1dca110c68862312a889301ed3e1c4f621bb5626)), closes [#1671](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1671)
+
 # [1.173.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.172.2...v1.173.0) (2026-08-23)
 
 

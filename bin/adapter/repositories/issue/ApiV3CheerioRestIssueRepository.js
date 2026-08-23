@@ -194,6 +194,16 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.lastIssuesFetchedAtByProjectId = new Map();
         this.getLastIssuesFetchedAt = (projectId) => this.lastIssuesFetchedAtByProjectId.get(projectId) ?? null;
         this.fetchWithRateLimitRetry = (request) => (0, githubRateLimitRetry_1.fetchWithGitHubRateLimitRetry)(request, this.sleep);
+        this.throwGitHubError = async (prefix, response) => {
+            const bodyText = await response.clone().text();
+            const isRateLimit = (0, githubRateLimitRetry_1.hasRateLimitSignals)(response.status, response.headers, bodyText);
+            const formatted = await this.formatGitHubErrorWithStatus(response);
+            const message = `${prefix}: ${formatted}`;
+            if (isRateLimit) {
+                throw new githubRateLimitRetry_1.GitHubRateLimitError(message);
+            }
+            throw new Error(message);
+        };
         this.updateStatus = async (project, issue, statusId) => {
             await this.graphqlProjectItemRepository.updateProjectField(project.id, project.status.fieldId, issue.itemId, { singleSelectOptionId: statusId });
         };
@@ -960,7 +970,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     variables: { owner, repo, issueNumber, after },
                 }));
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch issue timeline from GitHub GraphQL API: HTTP ${response.status}`);
+                    await this.throwGitHubError('Failed to fetch issue timeline from GitHub GraphQL API', response);
                 }
                 const responseData = await response.json();
                 if (!isIssueTimelineResponse(responseData)) {
@@ -1100,8 +1110,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     return null;
                 }
                 if (!response.ok) {
-                    const reason = await this.formatGitHubErrorWithStatus(response);
-                    throw new Error(`Failed to fetch pull request status for ${prUrl}: ${reason}`);
+                    await this.throwGitHubError(`Failed to fetch pull request status for ${prUrl}`, response);
                 }
                 const body = await response.json();
                 if (!isRestPullRequestCiStatusResponse(body)) {
@@ -1623,8 +1632,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.getIssueOrPullRequestBody = async (url) => {
             const response = await this.fetchIssueBodyResponse(url);
             if (!response.ok) {
-                const reason = await this.formatGitHubErrorWithStatus(response);
-                throw new Error(`Failed to fetch body for ${url}: ${reason}`);
+                await this.throwGitHubError(`Failed to fetch body for ${url}`, response);
             }
             return this.parseIssueBodyResponse(url, response);
         };
@@ -1654,8 +1662,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     },
                 }));
                 if (!response.ok) {
-                    const reason = await this.formatGitHubErrorWithStatus(response);
-                    throw new Error(`Failed to fetch comments for ${url}: ${reason}`);
+                    await this.throwGitHubError(`Failed to fetch comments for ${url}`, response);
                 }
                 const body = await response.json();
                 if (!isIssueCommentsResponse(body)) {
@@ -1690,8 +1697,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 },
             }));
             if (!detailResponse.ok) {
-                const reason = await this.formatGitHubErrorWithStatus(detailResponse);
-                throw new Error(`Failed to fetch detail for PR ${prUrl}: ${reason}`);
+                await this.throwGitHubError(`Failed to fetch detail for PR ${prUrl}`, detailResponse);
             }
             const detailBody = await detailResponse.json();
             if (!isPullRequestDetailResponse(detailBody)) {
@@ -1726,8 +1732,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     },
                 }));
                 if (!response.ok) {
-                    const reason = await this.formatGitHubErrorWithStatus(response);
-                    throw new Error(`Failed to fetch files for PR ${prUrl}: ${reason}`);
+                    await this.throwGitHubError(`Failed to fetch files for PR ${prUrl}`, response);
                 }
                 const body = await response.json();
                 if (!isPullRequestDetailFilesResponse(body)) {
@@ -1772,8 +1777,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     },
                 }));
                 if (!response.ok) {
-                    const reason = await this.formatGitHubErrorWithStatus(response);
-                    throw new Error(`Failed to fetch commits for PR ${prUrl}: ${reason}`);
+                    await this.throwGitHubError(`Failed to fetch commits for PR ${prUrl}`, response);
                 }
                 const body = await response.json();
                 if (!isPullRequestCommitsResponse(body)) {
@@ -1807,8 +1811,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     },
                 }));
                 if (!response.ok) {
-                    const reason = await this.formatGitHubErrorWithStatus(response);
-                    throw new Error(`Failed to fetch state for ${url}: ${reason}`);
+                    await this.throwGitHubError(`Failed to fetch state for ${url}`, response);
                 }
                 const body = await response.json();
                 if (!isPullRequestDetailResponse(body)) {
@@ -1829,8 +1832,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 },
             }));
             if (!response.ok) {
-                const reason = await this.formatGitHubErrorWithStatus(response);
-                throw new Error(`Failed to fetch state for ${url}: ${reason}`);
+                await this.throwGitHubError(`Failed to fetch state for ${url}`, response);
             }
             const body = await response.json();
             if (!isIssueOrPullRequestStateResponse(body)) {
