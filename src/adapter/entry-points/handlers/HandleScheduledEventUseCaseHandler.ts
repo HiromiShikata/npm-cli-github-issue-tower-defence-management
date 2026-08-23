@@ -74,6 +74,7 @@ import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueComm
 import { ProjectRequiredFieldCreateUseCase } from '../../../domain/usecases/ProjectRequiredFieldCreateUseCase';
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
+import { QualityCheckAdvanceUseCase } from '../../../domain/usecases/QualityCheckAdvanceUseCase';
 import { KyHttpRepository } from '../../repositories/KyHttpRepository';
 import { FileSystemKevReportWatermarkRepository } from '../../repositories/FileSystemKevReportWatermarkRepository';
 import {
@@ -507,6 +508,10 @@ export class HandleScheduledEventUseCaseHandler {
         )
       : null;
 
+    const qualityCheckAdvanceUseCase = new QualityCheckAdvanceUseCase(
+      issueRepository,
+    );
+
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       projectRequiredFieldCreateUseCase,
       setupTowerDefenceProjectUseCase,
@@ -531,6 +536,7 @@ export class HandleScheduledEventUseCaseHandler {
       agentDesignationLabelAdoptUseCase,
       updateRateLimitCacheUseCase,
       dailySecurityScanUseCase,
+      qualityCheckAdvanceUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,

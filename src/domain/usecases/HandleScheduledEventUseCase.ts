@@ -37,6 +37,7 @@ import {
   DailySecurityScanConfig,
   DailySecurityScanUseCase,
 } from './DailySecurityScanUseCase';
+import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -139,6 +140,7 @@ export class HandleScheduledEventUseCase {
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
+    readonly qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -177,6 +179,7 @@ export class HandleScheduledEventUseCase {
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
       awaitingQualityCheckStatus?: string | null;
+      autoAdvanceQualityCheckEnabled?: boolean;
       labelsAsLlmAgentName?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
@@ -333,6 +336,7 @@ export class HandleScheduledEventUseCase {
         targetDateTimes,
         storyIssues,
         runSlowSweep,
+        now,
       );
       rotationOrder = useCaseResult.rotationOrder;
     } catch (e) {
@@ -392,6 +396,7 @@ ${JSON.stringify(e)}
     targetDateTimes: Date[],
     storyObjectMap: StoryObjectMap,
     runSlowSweep: boolean,
+    now: Date,
   ): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     if (runSlowSweep) {
       await this.runSlowSweepUseCases(
@@ -461,6 +466,22 @@ ${JSON.stringify(e)}
           labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
           allowedIssueAuthors,
         });
+      }
+      if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
+        try {
+          await this.qualityCheckAdvanceUseCase.run({
+            project,
+            issues,
+            awaitingQualityCheckStatusName:
+              input.startPreparation.awaitingQualityCheckStatus ?? undefined,
+            evaluatedAt: now,
+          });
+        } catch (advanceError) {
+          console.error(
+            `[HandleScheduledEvent] Failed to advance quality check items for project ${project.url}: ${advanceError instanceof Error ? advanceError.message : String(advanceError)}`,
+            advanceError,
+          );
+        }
       }
       const preparationResult = await this.startPreparationUseCase.run({
         projectUrl: input.projectUrl,
