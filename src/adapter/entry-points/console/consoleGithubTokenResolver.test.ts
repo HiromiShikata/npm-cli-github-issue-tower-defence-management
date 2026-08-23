@@ -126,9 +126,10 @@ describe('extractRepositoryOwner', () => {
 });
 
 describe('createConsoleGithubTokenResolver', () => {
-  it('should return the default token for an owner that has no token file configured', () => {
+  it('should return the default token when consoleProjectUrls is null', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
+      null,
       null,
       () => {
         throw new Error('must not read any file');
@@ -138,54 +139,68 @@ describe('createConsoleGithubTokenResolver', () => {
     expect(resolve('HiromiShikata')).toBe('default-token');
   });
 
-  it('should return the token read from the file configured for that owner', () => {
+  it('should return the default token when githubTokenFileDirPath is null', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme-labs': '/creds/acme-labs-token.txt' },
-      (filePath) =>
-        filePath === '/creds/acme-labs-token.txt'
-          ? 'fine-grained-token\n'
-          : (() => {
-              throw new Error(`unexpected file path: ${filePath}`);
-            })(),
-    );
-
-    expect(resolve('acme-labs')).toBe('fine-grained-token');
-  });
-
-  it('should return the default token when the per-owner token map is provided but the owner has no entry in it', () => {
-    const resolve = createConsoleGithubTokenResolver(
-      'default-token',
-      { 'acme-labs': '/creds/acme-labs-token.txt' },
-      (filePath) => {
-        throw new Error(`must not read any file: ${filePath}`);
+      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      null,
+      () => {
+        throw new Error('must not read any file');
       },
     );
 
-    expect(resolve('globex-inc')).toBe('default-token');
+    expect(resolve('acme-labs')).toBe('default-token');
   });
 
-  it('should keep using the configured token file for an owner that has an entry while another owner falls back', () => {
+  it('should return the token read from the pjcode-named file for the matching project owner', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme-labs': '/creds/acme-labs-token.txt' },
+      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      '/creds',
       (filePath) =>
-        filePath === '/creds/acme-labs-token.txt'
+        filePath === '/creds/tdpm-github-token-acme.txt'
           ? 'fine-grained-token\n'
           : (() => {
               throw new Error(`unexpected file path: ${filePath}`);
             })(),
     );
 
-    expect(resolve('globex-inc')).toBe('default-token');
     expect(resolve('acme-labs')).toBe('fine-grained-token');
+  });
+
+  it('should return the token for example-org when cmg project URL owner is example-org', () => {
+    const resolve = createConsoleGithubTokenResolver(
+      'default-token',
+      { 'cmg': 'https://github.com/orgs/example-org/projects/18' },
+      '/token-dir',
+      (filePath) =>
+        filePath === '/token-dir/tdpm-github-token-cmg.txt'
+          ? 'cmg-token'
+          : (() => {
+              throw new Error(`unexpected file path: ${filePath}`);
+            })(),
+    );
+
+    expect(resolve('example-org')).toBe('cmg-token');
+  });
+
+  it('should keep using the default token for owners that match no project url', () => {
+    const resolve = createConsoleGithubTokenResolver(
+      'default-token',
+      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      '/creds',
+      () => 'fine-grained-token',
+    );
+
+    expect(resolve('globex-inc')).toBe('default-token');
   });
 
   it('should read the token file only once per owner', () => {
     let readCount = 0;
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme-labs': '/creds/acme-labs-token.txt' },
+      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      '/creds',
       () => {
         readCount += 1;
         return 'fine-grained-token';
@@ -198,29 +213,29 @@ describe('createConsoleGithubTokenResolver', () => {
     expect(readCount).toBe(1);
   });
 
-  it('should throw when the configured token file contains no token', () => {
+  it('should throw when the token file for the matching pjcode contains no token', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme-labs': '/creds/acme-labs-token.txt' },
+      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      '/creds',
       () => '  \n',
     );
 
     expect(() => resolve('acme-labs')).toThrow(
-      'The GitHub token file configured for repository owner "acme-labs" contains no token: /creds/acme-labs-token.txt',
+      'The GitHub token file for pjcode "acme" contains no token: /creds/tdpm-github-token-acme.txt',
     );
   });
 
-  it('should surface the read failure when the configured token file cannot be read', () => {
+  it('should return the default token when the token file for the matching pjcode is absent', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme-labs': '/creds/acme-labs-token.txt' },
+      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      '/creds',
       () => {
         throw new Error('ENOENT: no such file or directory');
       },
     );
 
-    expect(() => resolve('acme-labs')).toThrow(
-      'ENOENT: no such file or directory',
-    );
+    expect(resolve('acme-labs')).toBe('default-token');
   });
 });

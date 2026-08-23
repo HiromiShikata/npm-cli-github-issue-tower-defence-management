@@ -66,7 +66,8 @@ export const createConsoleGithubTokenResolverByItemUrl = (
 
 export const createConsoleGithubTokenResolver = (
   defaultToken: string,
-  githubTokenFilePathByRepositoryOwner: Record<string, string> | null,
+  consoleProjectUrls: Record<string, string> | null,
+  githubTokenFileDirPath: string | null,
   readTokenFile: GithubTokenFileReader,
 ): ConsoleGithubTokenResolver => {
   const resolvedTokenByRepositoryOwner = new Map<string, string>();
@@ -75,17 +76,26 @@ export const createConsoleGithubTokenResolver = (
     if (alreadyResolved !== undefined) {
       return alreadyResolved;
     }
-    if (githubTokenFilePathByRepositoryOwner === null) {
+    if (consoleProjectUrls === null || githubTokenFileDirPath === null) {
       return defaultToken;
     }
-    const filePath = githubTokenFilePathByRepositoryOwner[repositoryOwner];
-    if (filePath === undefined) {
+    const matchedPjcode = Object.entries(consoleProjectUrls).find(
+      ([, projectUrl]) => extractProjectOwner(projectUrl) === repositoryOwner,
+    )?.[0];
+    if (matchedPjcode === undefined) {
       return defaultToken;
     }
-    const token = readTokenFile(filePath).trim();
+    const filePath = `${githubTokenFileDirPath}/tdpm-github-token-${matchedPjcode}.txt`;
+    let fileContent: string;
+    try {
+      fileContent = readTokenFile(filePath);
+    } catch {
+      return defaultToken;
+    }
+    const token = fileContent.trim();
     if (token.length === 0) {
       throw new Error(
-        `The GitHub token file configured for repository owner "${repositoryOwner}" contains no token: ${filePath}`,
+        `The GitHub token file for pjcode "${matchedPjcode}" contains no token: ${filePath}`,
       );
     }
     resolvedTokenByRepositoryOwner.set(repositoryOwner, token);
