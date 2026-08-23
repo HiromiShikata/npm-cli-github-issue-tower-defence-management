@@ -646,7 +646,11 @@ describe('ConsoleItemDetail', () => {
   it('renders the agent chip inside the title header when agent is set', () => {
     const agentItem = { ...issueItem, agent: 'developer' };
     const { getByText, container } = render(
-      <ConsoleItemDetail item={agentItem} {...baseProps} overlayStatus={null} />,
+      <ConsoleItemDetail
+        item={agentItem}
+        {...baseProps}
+        overlayStatus={null}
+      />,
     );
     const title = container.querySelector('.console-detail-title');
     const agentChip = container.querySelector('.console-detail-agent-chip');
