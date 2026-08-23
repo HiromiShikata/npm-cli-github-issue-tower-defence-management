@@ -50,6 +50,20 @@ export const createConsoleProjectRepositoryResolver = <ProjectRepositoryType>(
   };
 };
 
+export const createConsoleGithubTokenResolverByItemUrl = (
+  resolveGithubToken: ConsoleGithubTokenResolver,
+): ((itemUrl: string) => string) => {
+  return (itemUrl: string): string => {
+    const owner = extractRepositoryOwner(itemUrl);
+    if (owner === null) {
+      throw new Error(
+        `The repository owner cannot be read from the url: ${itemUrl}`,
+      );
+    }
+    return resolveGithubToken(owner);
+  };
+};
+
 export const createConsoleGithubTokenResolver = (
   defaultToken: string,
   githubTokenFilePathByRepositoryOwner: Record<string, string> | null,
@@ -61,11 +75,14 @@ export const createConsoleGithubTokenResolver = (
     if (alreadyResolved !== undefined) {
       return alreadyResolved;
     }
-    const filePath = githubTokenFilePathByRepositoryOwner
-      ? githubTokenFilePathByRepositoryOwner[repositoryOwner]
-      : undefined;
-    if (filePath === undefined) {
+    if (githubTokenFilePathByRepositoryOwner === null) {
       return defaultToken;
+    }
+    const filePath = githubTokenFilePathByRepositoryOwner[repositoryOwner];
+    if (filePath === undefined) {
+      throw new Error(
+        `No GitHub token file is configured for repository owner "${repositoryOwner}". Add an entry for this owner in consoleGithubTokenFilesByRepositoryOwner.`,
+      );
     }
     const token = readTokenFile(filePath).trim();
     if (token.length === 0) {

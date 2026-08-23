@@ -60,8 +60,8 @@ export const ConsoleItemDetailContainer = ({
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item);
   const resolveImageProxyUrl = useCallback(
-    (src: string): string => buildImageProxyUrl(src),
-    [],
+    (src: string): string => buildImageProxyUrl(src, item.url),
+    [item.url],
   );
   const renderReferenceLink = useCallback(
     (href: string, fallbackText: string) => (

@@ -1731,6 +1731,8 @@ describe('webServer image proxy', () => {
   const testToken = 'image-proxy-token-value';
   const githubToken = 'gh-token-value';
   const allowedUrl = 'https://github.com/user-attachments/assets/abc-123';
+  const itemUrl = 'https://github.com/owner-name/repo-name/issues/12';
+  const itemUrlParam = `&itemUrl=${encodeURIComponent(itemUrl)}`;
 
   const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a]);
 
@@ -1802,7 +1804,7 @@ describe('webServer image proxy', () => {
         dashboardDir: null,
         dashboardDataDir: null,
         dashboardProjectNames: [],
-        githubToken: token,
+        resolveGithubToken: token === null ? null : (): string => token,
         imageFetcher: fetcher,
         port: 0,
       });
@@ -1814,7 +1816,7 @@ describe('webServer image proxy', () => {
     try {
       const response = await requestImage(
         server,
-        `/api/img?url=${encodeURIComponent(allowedUrl)}&k=${testToken}`,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}${itemUrlParam}&k=${testToken}`,
       );
       expect(response.statusCode).toBe(200);
       expect(response.contentType).toBe('image/png');
@@ -1832,7 +1834,7 @@ describe('webServer image proxy', () => {
     try {
       const response = await requestImage(
         server,
-        `/api/img?url=${encodeURIComponent('https://example.com/x.png')}&k=${testToken}`,
+        `/api/img?url=${encodeURIComponent('https://example.com/x.png')}${itemUrlParam}&k=${testToken}`,
       );
       expect(response.statusCode).toBe(400);
       expect(response.body.toString('utf-8')).toContain(
@@ -1877,12 +1879,61 @@ describe('webServer image proxy', () => {
     try {
       const response = await requestImage(
         server,
-        `/api/img?url=${encodeURIComponent(allowedUrl)}&k=${testToken}`,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}${itemUrlParam}&k=${testToken}`,
       );
       expect(response.statusCode).toBe(502);
       expect(response.body.toString('utf-8')).toContain(
         'github token is not configured',
       );
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('fetches the image with the token resolved for the repository owner of the item', async () => {
+    const receivedHeaders: Record<string, string>[] = [];
+    const recordingFetcher: ImageFetcher = async (_url, headers) => {
+      receivedHeaders.push(headers);
+      return { status: 200, contentType: 'image/png', body: pngBytes };
+    };
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      resolveGithubToken: (repositoryOwner: string): string =>
+        repositoryOwner === 'acme' ? 'acme-token' : githubToken,
+      imageFetcher: recordingFetcher,
+      port: 0,
+    });
+    try {
+      const response = await requestImage(
+        server,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}&itemUrl=${encodeURIComponent('https://github.com/acme/repo/issues/7')}&k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(receivedHeaders).toHaveLength(1);
+      expect(receivedHeaders[0]['Authorization']).toBe('token acme-token');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects an image request whose item url is missing with 400', async () => {
+    const { server, tmpDir } = await startProxyServer();
+    try {
+      const response = await requestImage(
+        server,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}&k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(400);
+      expect(response.body.toString('utf-8')).toContain('itemUrl');
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -1899,7 +1950,7 @@ describe('webServer image proxy', () => {
     try {
       const response = await requestImage(
         server,
-        `/api/img?url=${encodeURIComponent(allowedUrl)}&k=${testToken}`,
+        `/api/img?url=${encodeURIComponent(allowedUrl)}${itemUrlParam}&k=${testToken}`,
       );
       expect(response.statusCode).toBe(502);
       expect(response.body.toString('utf-8')).toContain('upstream 404');

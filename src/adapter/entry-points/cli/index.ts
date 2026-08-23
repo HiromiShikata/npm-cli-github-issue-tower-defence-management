@@ -54,6 +54,7 @@ import {
 } from '../console/consoleProjectResolver';
 import {
   createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByItemUrl,
   createConsoleIssueRepositoryResolver,
   createConsoleProjectRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
@@ -825,9 +826,11 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     ...githubRepositoryParams,
   );
 
+  const consoleGithubTokenFilesByRepositoryOwner =
+    config.consoleGithubTokenFilesByRepositoryOwner ?? null;
   const resolveGithubToken = createConsoleGithubTokenResolver(
     token,
-    config.consoleGithubTokenFilesByRepositoryOwner ?? null,
+    consoleGithubTokenFilesByRepositoryOwner,
     (filePath: string) => fs.readFileSync(filePath, 'utf8'),
   );
   const issueRepositoryByToken = new Map<string, IssueRepository>();
@@ -863,6 +866,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
       resolveGithubToken,
       buildIssueRepositoryForToken,
     );
+  const resolveGithubTokenForItemUrl =
+    createConsoleGithubTokenResolverByItemUrl(resolveGithubToken);
   const projectRepositoryByToken = new Map<string, GraphqlProjectRepository>();
   projectRepositoryByToken.set(token, projectRepository);
   const buildProjectRepositoryForToken = (
@@ -916,15 +921,14 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     dashboardDir,
     dashboardDataDir,
     dashboardProjectNames,
-    githubToken: token,
+    resolveGithubToken,
     issueRepository,
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
     issueAttachmentRepository: new LocalCommandIssueAttachmentRepository(
       new NodeLocalCommandRunner(),
-      undefined,
-      resolveGithubToken,
+      resolveGithubTokenForItemUrl,
     ),
     issueTitleStateCache: new IssueTitleStateCache(),
     pullRequestStatusCache: new PullRequestStatusCache(),

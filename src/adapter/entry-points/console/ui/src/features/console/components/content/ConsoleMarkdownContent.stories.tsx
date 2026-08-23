@@ -35,7 +35,11 @@ export const WithCodeFence: Story = {
 export const WithProxiedGitHubImages: Story = {
   args: {
     body: consoleMarkdownImageBodyFixture,
-    buildImageProxyUrl: (src) => buildImageProxyUrl(src),
+    buildImageProxyUrl: (src) =>
+      buildImageProxyUrl(
+        src,
+        'https://github.com/example-owner/example-repo/issues/1',
+      ),
   },
 };
 

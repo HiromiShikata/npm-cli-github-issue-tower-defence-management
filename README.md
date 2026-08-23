@@ -130,6 +130,21 @@ consoleProjects:
 
 Each project's status and story options are loaded lazily the first time a `pjcode` is used and then cached for the life of the process, so the additional projects add no startup cost.
 
+When the console serves multiple projects whose owners require distinct GitHub tokens, the optional `consoleGithubTokenFilesByRepositoryOwner` config key maps each repository owner login to the path of a file containing that owner's GitHub token. When a request arrives for an owner that has an entry in the map, `serveWeb` reads that owner's token from the configured file. When the key is absent or `null`, or when an owner has no entry in the map, the fleet-wide `GH_TOKEN` is used as the fallback for that owner. This means you can start with a single entry for the first owner that needs a distinct token, and any remaining owners continue to use the default credential:
+
+```yaml
+consoleAccessToken: '<console access token>'
+projectUrl: 'https://github.com/orgs/my-org/projects/1'
+projectName: 'my-project'
+consoleProjects:
+  my-project: 'https://github.com/orgs/my-org/projects/1'
+  other-project: 'https://github.com/orgs/other-org/projects/2'
+consoleGithubTokenFilesByRepositoryOwner:
+  my-org: '/path/to/my-org-token.txt'
+```
+
+In the example above, requests for `my-org` use the token from the configured file; requests for `other-org` fall back to `GH_TOKEN`. Each token file must contain only the token string, with an optional trailing newline. The fleet-wide `GH_TOKEN` is still required for the `startDaemon` preparation cycle; only the console HTTP server routes go through the per-owner token files.
+
 The optional `storyProgressCommentEnabled` config key controls the daily story progress comment. Once per day the schedule cycle posts a comment containing a mermaid `flowchart TD` of the story and its child issues onto every story issue. Setting the key to `false` stops that comment being posted for the project; the key defaults to `true`, so omitting it leaves the existing behaviour unchanged.
 
 ```yaml

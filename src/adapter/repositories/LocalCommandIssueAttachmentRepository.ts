@@ -9,6 +9,10 @@ import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/Loc
 
 export const UPLOAD_COMMAND = 'upload-file-to-gh-issue';
 
+export type IssueAttachmentGithubTokenResolver = (
+  issueOrPullRequestUrl: string,
+) => string;
+
 export const ALLOWED_ATTACHMENT_EXTENSIONS = [
   '.png',
   '.jpg',
@@ -57,8 +61,8 @@ export const relabelAttachmentMarkdown = (
 export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRepository {
   constructor(
     private readonly localCommandRunner: LocalCommandRunner,
+    private readonly resolveGithubToken: IssueAttachmentGithubTokenResolver,
     private readonly temporaryDirectoryRoot: string = tmpdir(),
-    private readonly resolveGithubToken?: (repositoryOwner: string) => string,
   ) {}
 
   async uploadAttachment(
@@ -73,21 +77,14 @@ export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRep
     );
     try {
       await writeFile(filePath, request.content);
-      let commandOptions: { env: { GH_TOKEN: string } } | undefined;
-      if (this.resolveGithubToken !== undefined) {
-        const ownerMatch = request.issueOrPullRequestUrl.match(
-          /https:\/\/github\.com\/([A-Za-z0-9._-]+)\//,
-        );
-        if (ownerMatch !== null) {
-          commandOptions = {
-            env: { GH_TOKEN: this.resolveGithubToken(ownerMatch[1]) },
-          };
-        }
-      }
       const result = await this.localCommandRunner.runCommand(
         UPLOAD_COMMAND,
         [filePath, request.issueOrPullRequestUrl],
-        commandOptions,
+        {
+          env: {
+            GH_TOKEN: this.resolveGithubToken(request.issueOrPullRequestUrl),
+          },
+        },
       );
       if (result.exitCode !== 0) {
         throw new Error(

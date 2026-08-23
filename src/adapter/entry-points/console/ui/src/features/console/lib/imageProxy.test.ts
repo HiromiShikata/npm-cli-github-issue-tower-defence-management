@@ -4,6 +4,8 @@ import {
   rewriteGitHubImageSources,
 } from './imageProxy';
 
+const itemUrl = 'https://github.com/example-owner/example-repo/issues/1';
+
 describe('isProxyableImageUrl', () => {
   it('matches github user-attachments urls', () => {
     expect(
@@ -27,21 +29,22 @@ describe('isProxyableImageUrl', () => {
 });
 
 describe('buildImageProxyUrl', () => {
-  it('encodes the source url without appending a token', () => {
+  it('encodes the source url and the item url without appending a token', () => {
     const src = 'https://github.com/user-attachments/assets/abc?x=1';
-    expect(buildImageProxyUrl(src)).toBe(
-      `/api/img?url=${encodeURIComponent(src)}`,
+    expect(buildImageProxyUrl(src, itemUrl)).toBe(
+      `/api/img?url=${encodeURIComponent(src)}&itemUrl=${encodeURIComponent(itemUrl)}`,
     );
   });
 
   it('does not include a token query parameter', () => {
     const src = 'https://github.com/user-attachments/assets/abc';
-    expect(buildImageProxyUrl(src)).not.toContain('k=');
+    expect(buildImageProxyUrl(src, itemUrl)).not.toContain('k=');
   });
 });
 
 describe('rewriteGitHubImageSources', () => {
-  const buildProxyUrl = (src: string): string => buildImageProxyUrl(src);
+  const buildProxyUrl = (src: string): string =>
+    buildImageProxyUrl(src, itemUrl);
 
   it('rewrites an allow-listed github image src to the proxy url', () => {
     const githubSrc = 'https://github.com/user-attachments/assets/abc';

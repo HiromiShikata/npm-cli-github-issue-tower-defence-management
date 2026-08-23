@@ -6,8 +6,8 @@ export const isProxyableImageUrl = (src: string): boolean =>
 
 export type ImageProxyUrlBuilder = (src: string) => string;
 
-export const buildImageProxyUrl = (src: string): string =>
-  `/api/img?url=${encodeURIComponent(src)}`;
+export const buildImageProxyUrl = (src: string, itemUrl: string): string =>
+  `/api/img?url=${encodeURIComponent(src)}&itemUrl=${encodeURIComponent(itemUrl)}`;
 
 export const rewriteGitHubImageSources = (
   html: string,
