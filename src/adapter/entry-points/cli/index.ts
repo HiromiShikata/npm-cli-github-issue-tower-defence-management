@@ -56,6 +56,7 @@ import {
   createConsoleGithubTokenResolver,
   createConsoleIssueRepositoryResolver,
   createConsoleProjectRepositoryResolver,
+  validateConsoleGithubTokenCoverage,
 } from '../console/consoleGithubTokenResolver';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
@@ -825,9 +826,15 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     ...githubRepositoryParams,
   );
 
+  const consoleGithubTokenFilesByRepositoryOwner =
+    config.consoleGithubTokenFilesByRepositoryOwner ?? null;
+  validateConsoleGithubTokenCoverage(
+    consoleGithubTokenFilesByRepositoryOwner,
+    Object.values(config.consoleProjects ?? {}),
+  );
   const resolveGithubToken = createConsoleGithubTokenResolver(
     token,
-    config.consoleGithubTokenFilesByRepositoryOwner ?? null,
+    consoleGithubTokenFilesByRepositoryOwner,
     (filePath: string) => fs.readFileSync(filePath, 'utf8'),
   );
   const issueRepositoryByToken = new Map<string, IssueRepository>();

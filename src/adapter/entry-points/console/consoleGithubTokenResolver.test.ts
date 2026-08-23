@@ -4,6 +4,7 @@ import {
   createConsoleProjectRepositoryResolver,
   extractProjectOwner,
   extractRepositoryOwner,
+  validateConsoleGithubTokenCoverage,
 } from './consoleGithubTokenResolver';
 
 describe('extractProjectOwner', () => {
@@ -181,5 +182,55 @@ describe('createConsoleGithubTokenResolver', () => {
     expect(() => resolve('acme-labs')).toThrow(
       'ENOENT: no such file or directory',
     );
+  });
+});
+
+describe('validateConsoleGithubTokenCoverage', () => {
+  it('should throw at startup listing all served project owners with no token file entry', () => {
+    expect(() =>
+      validateConsoleGithubTokenCoverage(
+        { 'meta-site': '/creds/meta-site-token.txt' },
+        [
+          'https://github.com/orgs/meta-site/projects/1',
+          'https://github.com/users/HiromiShikata/projects/2',
+          'https://github.com/users/utage3/projects/3',
+        ],
+      ),
+    ).toThrow('HiromiShikata, utage3');
+  });
+
+  it('should not throw when all served project owners have token file entries', () => {
+    expect(() =>
+      validateConsoleGithubTokenCoverage(
+        {
+          'meta-site': '/creds/meta-site-token.txt',
+          HiromiShikata: '/creds/hiromi-token.txt',
+          utage3: '/creds/utage3-token.txt',
+        },
+        [
+          'https://github.com/orgs/meta-site/projects/1',
+          'https://github.com/users/HiromiShikata/projects/2',
+          'https://github.com/users/utage3/projects/3',
+        ],
+      ),
+    ).not.toThrow();
+  });
+
+  it('should not throw when the token map is null', () => {
+    expect(() =>
+      validateConsoleGithubTokenCoverage(null, [
+        'https://github.com/orgs/meta-site/projects/1',
+        'https://github.com/users/HiromiShikata/projects/2',
+      ]),
+    ).not.toThrow();
+  });
+
+  it('should not throw when no project urls are provided', () => {
+    expect(() =>
+      validateConsoleGithubTokenCoverage(
+        { 'meta-site': '/creds/meta-site-token.txt' },
+        [],
+      ),
+    ).not.toThrow();
   });
 });
