@@ -240,6 +240,29 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    it('should call TriagerApprovalDispatchUseCase with project URL', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      await useCase.run(input);
+      expect(mockTriagerApprovalDispatchUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/test-org/test-project',
+        }),
+      );
+    });
+
     it('should return null and skip all processing when disabled is true', async () => {
       const input = {
         projectName: 'test-project',
