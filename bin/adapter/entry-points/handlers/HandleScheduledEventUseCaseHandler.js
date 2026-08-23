@@ -59,12 +59,12 @@ const ProxyRateLimitCacheRepository_1 = require("../../repositories/ProxyRateLim
 const UpdateRateLimitCacheUseCase_1 = require("../../../domain/usecases/UpdateRateLimitCacheUseCase");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const RevertNotReadyReviewQueueIssueUseCase_1 = require("../../../domain/usecases/RevertNotReadyReviewQueueIssueUseCase");
+const TriagerApprovalDispatchUseCase_1 = require("../../../domain/usecases/TriagerApprovalDispatchUseCase");
 const AgentDesignationLabelAdoptUseCase_1 = require("../../../domain/usecases/AgentDesignationLabelAdoptUseCase");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const ProjectRequiredFieldCreateUseCase_1 = require("../../../domain/usecases/ProjectRequiredFieldCreateUseCase");
 const SetupTowerDefenceProjectUseCase_1 = require("../../../domain/usecases/SetupTowerDefenceProjectUseCase");
 const DailySecurityScanUseCase_1 = require("../../../domain/usecases/DailySecurityScanUseCase");
-const QualityCheckAdvanceUseCase_1 = require("../../../domain/usecases/QualityCheckAdvanceUseCase");
 const KyHttpRepository_1 = require("../../repositories/KyHttpRepository");
 const FileSystemKevReportWatermarkRepository_1 = require("../../repositories/FileSystemKevReportWatermarkRepository");
 const WorkflowStatus_1 = require("../../../domain/entities/WorkflowStatus");
@@ -242,12 +242,12 @@ class HandleScheduledEventUseCaseHandler {
             const issueCommentRepository = new GitHubIssueCommentRepository_1.GitHubIssueCommentRepository(input.credentials.bot.github.token);
             const revertOrphanedPreparationUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, issueCommentRepository, nodeLocalCommandRunner);
             const revertNotReadyReviewQueueIssueUseCase = new RevertNotReadyReviewQueueIssueUseCase_1.RevertNotReadyReviewQueueIssueUseCase(projectRepository, issueRepository, issueCommentRepository);
+            const triagerApprovalDispatchUseCase = new TriagerApprovalDispatchUseCase_1.TriagerApprovalDispatchUseCase(projectRepository, issueRepository, issueCommentRepository);
             const agentDesignationLabelAdoptUseCase = new AgentDesignationLabelAdoptUseCase_1.AgentDesignationLabelAdoptUseCase(projectRepository, issueRepository);
             const dailySecurityScanUseCase = mergedInput.dailySecurityScan
                 ? new DailySecurityScanUseCase_1.DailySecurityScanUseCase(nodeLocalCommandRunner, issueRepository, new KyHttpRepository_1.KyHttpRepository(), new FileSystemKevReportWatermarkRepository_1.FileSystemKevReportWatermarkRepository())
                 : null;
-            const qualityCheckAdvanceUseCase = new QualityCheckAdvanceUseCase_1.QualityCheckAdvanceUseCase(issueRepository);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             const result = await handleScheduledEventUseCase.run(mergedInput);
             if (result) {
                 if (result.rotationOrder !== null) {

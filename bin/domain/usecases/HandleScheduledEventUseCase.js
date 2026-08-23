@@ -63,7 +63,7 @@ const isTransientSpreadsheetApiError = (error) => {
         TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(error.message));
 };
 class HandleScheduledEventUseCase {
-    constructor(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.projectRequiredFieldCreateUseCase = projectRequiredFieldCreateUseCase;
         this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
@@ -84,10 +84,10 @@ class HandleScheduledEventUseCase {
         this.startPreparationUseCase = startPreparationUseCase;
         this.revertOrphanedPreparationUseCase = revertOrphanedPreparationUseCase;
         this.revertNotReadyReviewQueueIssueUseCase = revertNotReadyReviewQueueIssueUseCase;
+        this.triagerApprovalDispatchUseCase = triagerApprovalDispatchUseCase;
         this.agentDesignationLabelAdoptUseCase = agentDesignationLabelAdoptUseCase;
         this.updateRateLimitCacheUseCase = updateRateLimitCacheUseCase;
         this.dailySecurityScanUseCase = dailySecurityScanUseCase;
-        this.qualityCheckAdvanceUseCase = qualityCheckAdvanceUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
         this.projectRepository = projectRepository;
@@ -177,7 +177,7 @@ class HandleScheduledEventUseCase {
             }
             let rotationOrder;
             try {
-                const useCaseResult = await this.runEachUseCases(input, project, issues, cacheUsed, targetDateTimes, storyIssues, runSlowSweep, now);
+                const useCaseResult = await this.runEachUseCases(input, project, issues, cacheUsed, targetDateTimes, storyIssues, runSlowSweep);
                 rotationOrder = useCaseResult.rotationOrder;
             }
             catch (e) {
@@ -219,7 +219,7 @@ ${JSON.stringify(e)}
                 rotationOrder,
             };
         };
-        this.runEachUseCases = async (input, project, issues, cacheUsed, targetDateTimes, storyObjectMap, runSlowSweep, now) => {
+        this.runEachUseCases = async (input, project, issues, cacheUsed, targetDateTimes, storyObjectMap, runSlowSweep) => {
             if (runSlowSweep) {
                 await this.runSlowSweepUseCases(input, project, issues, cacheUsed, targetDateTimes, storyObjectMap);
             }
@@ -252,6 +252,10 @@ ${JSON.stringify(e)}
                 changeTargetPathAliases: input.changeTargetPathAliases,
                 allowedIssueAuthors,
             });
+            await this.triagerApprovalDispatchUseCase.run({
+                projectUrl: input.projectUrl,
+                allowedIssueAuthors,
+            });
             if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
                 await this.dailySecurityScanUseCase.run({
                     targetDates: targetDateTimes,
@@ -278,19 +282,6 @@ ${JSON.stringify(e)}
                         labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
                         allowedIssueAuthors,
                     });
-                }
-                if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
-                    try {
-                        await this.qualityCheckAdvanceUseCase.run({
-                            project,
-                            issues,
-                            awaitingQualityCheckStatusName: input.startPreparation.awaitingQualityCheckStatus ?? undefined,
-                            evaluatedAt: now,
-                        });
-                    }
-                    catch (advanceError) {
-                        console.error(`[HandleScheduledEvent] Failed to advance quality check items for project ${project.url}: ${advanceError instanceof Error ? advanceError.message : String(advanceError)}`, advanceError);
-                    }
                 }
                 const preparationResult = await this.startPreparationUseCase.run({
                     projectUrl: input.projectUrl,
