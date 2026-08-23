@@ -37,6 +37,7 @@ import {
   DailySecurityScanConfig,
   DailySecurityScanUseCase,
 } from './DailySecurityScanUseCase';
+import { AdvanceQualityCheckUseCase } from './AdvanceQualityCheckUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -139,6 +140,7 @@ export class HandleScheduledEventUseCase {
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
+    readonly advanceQualityCheckUseCase: AdvanceQualityCheckUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -177,6 +179,7 @@ export class HandleScheduledEventUseCase {
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
       awaitingQualityCheckStatus?: string | null;
+      autoAdvanceQualityCheckEnabled?: boolean;
       labelsAsLlmAgentName?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
@@ -460,6 +463,14 @@ ${JSON.stringify(e)}
           labelsAsLlmAgentName,
           labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
           allowedIssueAuthors,
+        });
+      }
+      if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
+        await this.advanceQualityCheckUseCase.run({
+          project,
+          issues,
+          awaitingQualityCheckStatusName:
+            input.startPreparation.awaitingQualityCheckStatus ?? undefined,
         });
       }
       const preparationResult = await this.startPreparationUseCase.run({
