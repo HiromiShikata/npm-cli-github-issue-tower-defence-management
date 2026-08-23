@@ -1837,5 +1837,56 @@ describe('consoleOperationApi', () => {
         ],
       );
     });
+
+    it('returns 400 when project does not have a story field', async () => {
+      const projectWithoutStory = { ...projectWithOrderedStories(), story: null };
+      const response = await handleReorderStory(
+        contextWithUpdateStoryList(jest.fn(), projectWithoutStory),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_b',
+          direction: 'up',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'project does not have a story field' },
+      });
+    });
+
+    it('passes the full story list including GRAY options to updateStoryList', async () => {
+      const projectWithGray = {
+        ...projectWithOrderedStories(),
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          stories: [
+            { id: 'opt_a', name: 'Alpha', color: 'BLUE' as const, description: '' },
+            { id: 'opt_gray', name: 'Archived', color: 'GRAY' as const, description: '' },
+            { id: 'opt_b', name: 'Beta', color: 'GREEN' as const, description: '' },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const updateStoryList = jest.fn().mockResolvedValue([]);
+      const response = await handleReorderStory(
+        contextWithUpdateStoryList(updateStoryList, projectWithGray),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_b',
+          direction: 'up',
+        },
+      );
+      expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+      expect(updateStoryList).toHaveBeenCalledWith(
+        expect.objectContaining({ id: projectWithGray.id }),
+        [
+          expect.objectContaining({ id: 'opt_a' }),
+          expect.objectContaining({ id: 'opt_b' }),
+          expect.objectContaining({ id: 'opt_gray' }),
+        ],
+      );
+    });
   });
 });
