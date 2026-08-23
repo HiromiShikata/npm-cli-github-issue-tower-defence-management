@@ -140,15 +140,16 @@ export const ConsolePage = () => {
   const generatedAt = activeSnapshot?.generatedAt ?? null;
   const fromCache = activeSnapshot?.fromCache ?? false;
 
-  const [localStoryOptionsOverride, setLocalStoryOptionsOverride] = useState<
-    typeof storyOptions | null
-  >(null);
+  const [localStoryOptionsOverride, setLocalStoryOptionsOverride] = useState<{
+    generatedAt: string | undefined;
+    stories: typeof storyOptions;
+  } | null>(null);
 
-  useEffect(() => {
-    setLocalStoryOptionsOverride(null);
-  }, [activeSnapshot?.generatedAt]);
-
-  const displayedStoryOptions = localStoryOptionsOverride ?? storyOptions;
+  const displayedStoryOptions =
+    localStoryOptionsOverride !== null &&
+    localStoryOptionsOverride.generatedAt === activeSnapshot?.generatedAt
+      ? localStoryOptionsOverride.stories
+      : storyOptions;
   const triageStoryOptions = displayedStoryOptions.filter(
     (o) => o.color !== 'GRAY',
   );
@@ -288,7 +289,7 @@ export const ConsolePage = () => {
         throw new Error('No project specified in the URL path.');
       }
       await postConsoleReorderStory({ pjcode, storyOptionId, direction });
-      const currentOptions = localStoryOptionsOverride ?? storyOptions;
+      const currentOptions = displayedStoryOptions;
       const index = currentOptions.findIndex((o) => o.id === storyOptionId);
       if (index === -1) {
         return;
@@ -301,9 +302,12 @@ export const ConsolePage = () => {
       const temp = next[index];
       next[index] = next[swapIndex];
       next[swapIndex] = temp;
-      setLocalStoryOptionsOverride(next);
+      setLocalStoryOptionsOverride({
+        generatedAt: activeSnapshot?.generatedAt,
+        stories: next,
+      });
     },
-    [pjcode, localStoryOptionsOverride, storyOptions],
+    [pjcode, displayedStoryOptions, activeSnapshot?.generatedAt],
   );
 
   return (

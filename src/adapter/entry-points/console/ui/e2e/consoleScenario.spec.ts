@@ -413,10 +413,7 @@ test('reorders stories on the triage tab with up/down buttons', async ({
   await expect(rows.nth(1)).toContainText('Publish product documentation site');
   await expect(rows.nth(2)).toContainText('regular / WORKFLOW BLOCKER');
 
-  await rows
-    .nth(0)
-    .locator('[aria-label="Move down"]')
-    .click();
+  await rows.nth(0).locator('[aria-label="Move down"]').click();
 
   await expect
     .poll(() => harness.reorderStoryCalls.length, { timeout: 5000 })
@@ -425,10 +422,7 @@ test('reorders stories on the triage tab with up/down buttons', async ({
   await expect(rows.nth(0)).toContainText('Publish product documentation site');
   await expect(rows.nth(1)).toContainText('TDPM Console port');
 
-  await rows
-    .nth(1)
-    .locator('[aria-label="Move up"]')
-    .click();
+  await rows.nth(1).locator('[aria-label="Move up"]').click();
 
   await expect
     .poll(() => harness.reorderStoryCalls.length, { timeout: 5000 })
