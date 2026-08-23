@@ -5,6 +5,7 @@ const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const AgentDesignationLabelAdoptUseCase_1 = require("./AgentDesignationLabelAdoptUseCase");
 const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
+const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
@@ -252,6 +253,22 @@ class StartPreparationUseCase {
                 await (0, AgentDesignationLabelAdoptUseCase_1.adoptIssueAgentDesignationLabel)(issue, project, params.agents ?? [], this.projectRepository, this.issueRepository);
                 const agent = (issue.agent === null ? null : (0, exports.agentNameFromDesignation)(issue.agent)) ||
                     params.defaultAgentName;
+                if (issue.agent === null) {
+                    const agentOptionId = await (0, ensureAgentOptionAndGetId_1.ensureAgentOptionAndGetId)(this.projectRepository, project, agent);
+                    if (agentOptionId !== null) {
+                        try {
+                            await this.issueRepository.setIssueAgentField(issue.url, project, agentOptionId);
+                            issue.agent = agent;
+                        }
+                        catch (err) {
+                            console.error(`Failed to write Agent field for ${issue.url}: ${err instanceof Error ? err.message : String(err)}`);
+                            continue;
+                        }
+                    }
+                    else {
+                        console.warn(`Agent field option '${agent}' could not be set for ${issue.url}. Proceeding without recording the agent in the Agent field.`);
+                    }
+                }
                 const labelModelName = issue.labels
                     .find((label) => label.startsWith('llm-model:'))
                     ?.replace('llm-model:', '')

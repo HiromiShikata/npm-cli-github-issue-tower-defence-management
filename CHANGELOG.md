@@ -1,3 +1,10 @@
+## [1.172.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.172.0...v1.172.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **start-preparation:** set the Agent project field before spawning when no agent is configured ([#1678](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1678)) ([726157e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/726157e8b0a99cea92b14fe30abe7557d12b4161))
+
 # [1.172.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.171.0...v1.172.0) (2026-08-23)
 
 
