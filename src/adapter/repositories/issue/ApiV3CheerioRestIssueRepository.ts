@@ -856,7 +856,7 @@ export class ApiV3CheerioRestIssueRepository
       return { issues, project, cacheUsed: false };
     }
 
-    const lastFetchedAt = new Date(cache!.lastFetchedAt);
+    const lastFetchedAt = new Date(cache.lastFetchedAt);
     const cutoff = new Date(
       lastFetchedAt.getTime() - INCREMENTAL_FETCH_SKEW_BUFFER_MS,
     );
@@ -869,7 +869,7 @@ export class ApiV3CheerioRestIssueRepository
       .filter((item) => new Date(item.updatedAt).getTime() >= cutoff.getTime())
       .map((item) => item.id);
     const issuesByUrl = new Map<string, Issue>(
-      cache!.issues.map((issue) => [issue.url, issue]),
+      cache.issues.map((issue) => [issue.url, issue]),
     );
     if (changedItemIds.length > 0) {
       const changedItems =
@@ -885,7 +885,7 @@ export class ApiV3CheerioRestIssueRepository
     const nowIso = now.toISOString();
     await this.projectIssuesCacheRepository.write(projectId, {
       lastFetchedAt: nowIso,
-      lastFullFetchAt: cache!.lastFullFetchAt,
+      lastFullFetchAt: cache.lastFullFetchAt,
       project,
       issues,
     });

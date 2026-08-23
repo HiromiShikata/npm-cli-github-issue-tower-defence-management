@@ -425,7 +425,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(result.cacheUsed).toBe(true);
       expect(result.project).toBe(freshProject);
-      expect(projectRepository.getProject).toHaveBeenCalledWith('cached-project');
+      expect(projectRepository.getProject).toHaveBeenCalledWith(
+        'cached-project',
+      );
       const lightCall =
         graphqlProjectItemRepository.fetchProjectItemsLight.mock.calls[0];
       expect(lightCall[0]).toBe('cached-project');
@@ -811,7 +813,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       await repository.getAllIssues('cached-project');
 
       const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
-      expect(cacheWrite).toEqual(expect.objectContaining({ project: freshProject }));
+      expect(cacheWrite).toEqual(
+        expect.objectContaining({ project: freshProject }),
+      );
     });
 
     it('falls back to cache.project and logs a warning when getProject fails during incremental fetch', async () => {
@@ -865,9 +869,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         new Error('project fetch failed'),
       );
 
-      await expect(
-        repository.getAllIssues('cached-project'),
-      ).rejects.toThrow('project fetch failed');
+      await expect(repository.getAllIssues('cached-project')).rejects.toThrow(
+        'project fetch failed',
+      );
     });
   });
 
