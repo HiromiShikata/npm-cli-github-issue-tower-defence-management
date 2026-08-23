@@ -1839,7 +1839,10 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when project does not have a story field', async () => {
-      const projectWithoutStory = { ...projectWithOrderedStories(), story: null };
+      const projectWithoutStory = {
+        ...projectWithOrderedStories(),
+        story: null,
+      };
       const response = await handleReorderStory(
         contextWithUpdateStoryList(jest.fn(), projectWithoutStory),
         {
@@ -1862,9 +1865,24 @@ describe('consoleOperationApi', () => {
           fieldId: 'storyField',
           databaseId: 1,
           stories: [
-            { id: 'opt_a', name: 'Alpha', color: 'BLUE' as const, description: '' },
-            { id: 'opt_gray', name: 'Archived', color: 'GRAY' as const, description: '' },
-            { id: 'opt_b', name: 'Beta', color: 'GREEN' as const, description: '' },
+            {
+              id: 'opt_a',
+              name: 'Alpha',
+              color: 'BLUE' as const,
+              description: '',
+            },
+            {
+              id: 'opt_gray',
+              name: 'Archived',
+              color: 'GRAY' as const,
+              description: '',
+            },
+            {
+              id: 'opt_b',
+              name: 'Beta',
+              color: 'GREEN' as const,
+              description: '',
+            },
           ],
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
