@@ -28,8 +28,9 @@ export const formatRelativeTime = (iso: string, now: number): string => {
     return `${days} days ago`;
   }
   const date = new Date(then);
-  const sameYear = date.getFullYear() === new Date(now).getFullYear();
+  const sameYear = date.getUTCFullYear() === new Date(now).getUTCFullYear();
   return date.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
     year: sameYear ? undefined : 'numeric',
     month: 'short',
     day: 'numeric',
@@ -42,6 +43,7 @@ export const formatFullTimestamp = (iso: string): string => {
     return '';
   }
   return new Date(then).toLocaleString('ja-JP', {
+    timeZone: 'UTC',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

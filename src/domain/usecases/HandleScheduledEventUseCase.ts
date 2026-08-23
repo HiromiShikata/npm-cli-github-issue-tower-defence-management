@@ -622,20 +622,20 @@ ${JSON.stringify(e)}
     const targetDateTimes: Date[] = [];
     if (from.getTime() > to.getTime()) {
       const targetDate = new Date(to);
-      targetDate.setSeconds(0);
-      targetDate.setMilliseconds(0);
+      targetDate.setUTCSeconds(0);
+      targetDate.setUTCMilliseconds(0);
       return [targetDate];
     }
     const targetDate = new Date(from);
     targetDate.setTime(targetDate.getTime() + 60 * 1000);
-    targetDate.setSeconds(0);
-    targetDate.setMilliseconds(0);
+    targetDate.setUTCSeconds(0);
+    targetDate.setUTCMilliseconds(0);
     while (
       targetDate.getTime() <= to.getTime() &&
       targetDateTimes.length < 300
     ) {
       targetDateTimes.push(new Date(targetDate));
-      targetDate.setMinutes(targetDate.getMinutes() + 1);
+      targetDate.setUTCMinutes(targetDate.getUTCMinutes() + 1);
     }
     return targetDateTimes;
   };

@@ -32,7 +32,7 @@ export class CreateEstimationIssueUseCase {
       !story ||
       !input.targetDates.find(
         (targetDate) =>
-          targetDate.getHours() === 7 && targetDate.getMinutes() === 0,
+          targetDate.getUTCHours() === 7 && targetDate.getUTCMinutes() === 0,
       )
     ) {
       return;
@@ -41,7 +41,7 @@ export class CreateEstimationIssueUseCase {
     if (!targetDate) {
       return;
     }
-    if (targetDate.getDay() === 0 || targetDate.getDay() === 6) {
+    if (targetDate.getUTCDay() === 0 || targetDate.getUTCDay() === 6) {
       return;
     }
 

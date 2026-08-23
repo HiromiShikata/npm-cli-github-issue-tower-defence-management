@@ -28,10 +28,12 @@ export class ClearPastNextActionDateHourUseCase {
         }
         const scheduledDate = issue.nextActionDate ?? now;
         const scheduledTime = new Date(
-          scheduledDate.getFullYear(),
-          scheduledDate.getMonth(),
-          scheduledDate.getDate(),
-          issue.nextActionHour,
+          Date.UTC(
+            scheduledDate.getUTCFullYear(),
+            scheduledDate.getUTCMonth(),
+            scheduledDate.getUTCDate(),
+            issue.nextActionHour,
+          ),
         );
         if (scheduledTime.getTime() > now.getTime()) {
           continue;
