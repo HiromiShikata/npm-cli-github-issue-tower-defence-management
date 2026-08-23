@@ -330,9 +330,7 @@ describe('AdvanceQualityCheckUseCase', () => {
 
   it('does not advance an issue with dependedIssueUrls set', async () => {
     const issue = createMockIssue({
-      dependedIssueUrls: [
-        'https://github.com/user/repo/issues/999',
-      ],
+      dependedIssueUrls: ['https://github.com/user/repo/issues/999'],
     });
     const mergedPr = createMergedPr(issue.url);
     const project = createMockProject();
