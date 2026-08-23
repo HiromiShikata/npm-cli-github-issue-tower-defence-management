@@ -105,7 +105,14 @@ const createPassingPr = () => ({
 describe('RevertOrphanedPreparationUseCase', () => {
   let useCase: RevertOrphanedPreparationUseCase;
   let mockProjectRepository: Mocked<
-    Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>
+    Pick<
+      ProjectRepository,
+      | 'findProjectIdByUrl'
+      | 'getProject'
+      | 'createField'
+      | 'getByUrl'
+      | 'updateAgentList'
+    >
   >;
   let mockIssueRepository: Mocked<
     Pick<
@@ -115,6 +122,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
       | 'get'
+      | 'setIssueAgentField'
     >
   >;
   let mockIssueCommentRepository: Mocked<
@@ -129,6 +137,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockProjectRepository = {
       findProjectIdByUrl: jest.fn().mockResolvedValue('project-1'),
       getProject: jest.fn().mockResolvedValue(mockProject),
+      createField: jest.fn().mockResolvedValue(undefined),
+      getByUrl: jest.fn().mockResolvedValue(mockProject),
+      updateAgentList: jest.fn().mockResolvedValue([]),
     };
     mockIssueRepository = {
       getAllIssues: jest.fn().mockResolvedValue({
@@ -144,6 +155,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         .mockImplementation(async (issueUrl: string) =>
           createMockIssue({ url: issueUrl, status: 'Preparation' }),
         ),
+      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
     };
     mockIssueCommentRepository = {
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
@@ -195,6 +207,56 @@ describe('RevertOrphanedPreparationUseCase', () => {
       '--',
       'https://github.com/user/repo/issues/10',
     ]);
+  });
+
+  it('should set the designated next step agent and return the orphaned issue to Awaiting Workspace', async () => {
+    mockProject.agent = {
+      name: 'agent',
+      fieldId: 'agent-field-id',
+      options: [
+        {
+          id: 'agent-option-developer',
+          name: 'developer',
+          color: 'GRAY',
+          description: '',
+        },
+      ],
+    };
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      agent: 'triager',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content:
+          'From: :robot: triager\n\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
+        createdAt: new Date('2024-01-02T00:00:00Z'),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+      [stuckIssue.url, mockProject, 'agent-option-developer'],
+    ]);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
   it('should advance orphaned issue to Awaiting Quality Check when agent report and passing PR are present', async () => {
