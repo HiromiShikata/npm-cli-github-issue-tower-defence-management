@@ -1,21 +1,21 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TriagerApprovalDispatchUseCase = void 0;
+const agentReportPrefix_1 = require("./agentReportPrefix");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
+const isRecord_1 = require("./isRecord");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
-const AGENT_REPORT_PREFIX = 'From: :robot:';
 const TRIAGER_AGENT_NAME = 'triager';
 const MAX_COMMENT_FETCHES_PER_CYCLE = 20;
-const isRecord = (value) => typeof value === 'object' && value !== null;
 const parseTriagerProposalBlock = (commentContent) => {
-    if (!commentContent.startsWith(`${AGENT_REPORT_PREFIX} ${TRIAGER_AGENT_NAME}`)) {
+    if (!commentContent.startsWith(`${agentReportPrefix_1.AGENT_REPORT_PREFIX} ${TRIAGER_AGENT_NAME}`)) {
         return null;
     }
     const jsonBlockMatches = [
         ...commentContent.matchAll(/```json\n([\s\S]*?)\n```/g),
     ];
-    for (let i = 1; i < jsonBlockMatches.length; i++) {
+    for (let i = 0; i < jsonBlockMatches.length; i++) {
         const blockContent = jsonBlockMatches[i][1];
         if (!blockContent) {
             continue;
@@ -27,11 +27,11 @@ const parseTriagerProposalBlock = (commentContent) => {
         catch {
             continue;
         }
-        if (!isRecord(parsed)) {
+        if (!(0, isRecord_1.isRecord)(parsed)) {
             continue;
         }
         const proposalValue = parsed['triagerProposal'];
-        if (!isRecord(proposalValue)) {
+        if (!(0, isRecord_1.isRecord)(proposalValue)) {
             continue;
         }
         if (typeof proposalValue['recommendedAgent'] !== 'string' ||
@@ -51,10 +51,10 @@ const isApprovalComment = (content, author, allowedIssueAuthors) => {
     if (!(0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors)) {
         return false;
     }
-    if (content.startsWith(AGENT_REPORT_PREFIX)) {
+    if (content.startsWith(agentReportPrefix_1.AGENT_REPORT_PREFIX)) {
         return false;
     }
-    return /^(ok|オーケー)$/i.test(content.trim());
+    return /^(ok|オーケー|はい[\s\S]*)$/i.test(content.trim());
 };
 class TriagerApprovalDispatchUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository) {
@@ -80,32 +80,34 @@ class TriagerApprovalDispatchUseCase {
             const candidateIssues = issues
                 .filter((issue) => (issue.status === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME ||
                 issue.status === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME) &&
-                issue.agent === null &&
+                (issue.agent === null || issue.agent === TRIAGER_AGENT_NAME) &&
                 (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(issue.author, allowedIssueAuthors))
                 .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
             if (candidateIssues.length === 0) {
                 return;
             }
-            const windowStart = (cycleIndex * MAX_COMMENT_FETCHES_PER_CYCLE) % candidateIssues.length;
             const windowSize = Math.min(MAX_COMMENT_FETCHES_PER_CYCLE, candidateIssues.length);
+            const windowStart = (cycleIndex * MAX_COMMENT_FETCHES_PER_CYCLE) % candidateIssues.length;
             for (let slot = 0; slot < windowSize; slot++) {
                 const issue = candidateIssues[(windowStart + slot) % candidateIssues.length];
                 const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
-                let proposalCommentIndex = -1;
+                let firstProposalIndex = -1;
                 let proposal = null;
                 for (let i = 0; i < comments.length; i++) {
                     const parsed = parseTriagerProposalBlock(comments[i].content);
                     if (parsed !== null) {
-                        proposalCommentIndex = i;
+                        if (firstProposalIndex === -1) {
+                            firstProposalIndex = i;
+                        }
                         proposal = parsed;
                     }
                 }
-                if (proposalCommentIndex === -1 || proposal === null) {
+                if (firstProposalIndex === -1 || proposal === null) {
                     console.log(`[TriagerApprovalDispatch] No machine-readable triager proposal block found, skipping. issueUrl: ${issue.url}`);
                     continue;
                 }
                 let approved = false;
-                for (let i = proposalCommentIndex + 1; i < comments.length; i++) {
+                for (let i = firstProposalIndex + 1; i < comments.length; i++) {
                     const comment = comments[i];
                     if (isApprovalComment(comment.content, comment.author, allowedIssueAuthors ?? [])) {
                         approved = true;
