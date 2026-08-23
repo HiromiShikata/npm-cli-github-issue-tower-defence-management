@@ -3,7 +3,7 @@ import {
   PullRequestReviewCommentSide,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
-import { Project } from '../../../domain/entities/Project';
+import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import {
   recordDoneProjectItemIdAcrossTabs,
@@ -38,6 +38,9 @@ export type ConsoleOperationContext = {
   isPjcodeConfigured: ConsolePjcodeValidator;
   consoleDataOutputDir: string | null;
   issueAttachmentRepository: IssueAttachmentRepository | null;
+  updateStoryList:
+    | ((project: Project, stories: FieldOption[]) => Promise<FieldOption[]>)
+    | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -720,5 +723,49 @@ export const handleIntmux = async (
     return failure;
   }
   recordDoneForStatusChange(context, pjcode, projectItemId);
+  return ok();
+};
+
+export const handleReorderStory = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const pjcode = body.pjcode;
+  const storyOptionId = body.storyOptionId;
+  const direction = body.direction;
+  if (!isNonEmptyString(pjcode)) {
+    return badRequest('pjcode is required');
+  }
+  if (!isNonEmptyString(storyOptionId)) {
+    return badRequest('storyOptionId is required');
+  }
+  if (direction !== 'up' && direction !== 'down') {
+    return badRequest('direction must be "up" or "down"');
+  }
+  const binding = await context.resolveProject(pjcode);
+  if (binding === null) {
+    return badRequest(`no project configured for pjcode "${pjcode}"`);
+  }
+  const { project } = binding;
+  if (project.story === null) {
+    return badRequest('project does not have a story field');
+  }
+  if (context.updateStoryList === null) {
+    return badRequest('updateStoryList is not configured');
+  }
+  const stories = project.story.stories;
+  const index = stories.findIndex((s) => s.id === storyOptionId);
+  if (index === -1) {
+    return badRequest('story option not found');
+  }
+  const swapIndex = index + (direction === 'up' ? -1 : 1);
+  if (swapIndex < 0 || swapIndex >= stories.length) {
+    return badRequest('cannot move in that direction');
+  }
+  const reordered = [...stories];
+  const temp = reordered[index];
+  reordered[index] = reordered[swapIndex];
+  reordered[swapIndex] = temp;
+  await context.updateStoryList(project, reordered);
   return ok();
 };

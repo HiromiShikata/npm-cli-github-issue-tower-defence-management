@@ -611,6 +611,10 @@ const createStubIssueRepository = (
   setIssueAgentField: async (): Promise<void> => undefined,
 });
 
+export type ConsoleE2eReorderStoryCall = {
+  storyOptionIds: string[];
+};
+
 export type ConsoleE2eHarness = {
   baseUrl: string;
   appUrl: string;
@@ -619,6 +623,7 @@ export type ConsoleE2eHarness = {
   reviewCommentCalls: ConsoleE2eReviewCommentCall[];
   requestChangesCalls: ConsoleE2eRequestChangesCall[];
   createIssueCalls: ConsoleE2eCreateIssueCall[];
+  reorderStoryCalls: ConsoleE2eReorderStoryCall[];
   stop: () => Promise<void>;
 };
 
@@ -640,6 +645,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
   const reviewCommentCalls: ConsoleE2eReviewCommentCall[] = [];
   const requestChangesCalls: ConsoleE2eRequestChangesCall[] = [];
   const createIssueCalls: ConsoleE2eCreateIssueCall[] = [];
+  const reorderStoryCalls: ConsoleE2eReorderStoryCall[] = [];
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
@@ -650,6 +656,15 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
       requestChangesCalls,
       createIssueCalls,
     ),
+    projectRepository: {
+      updateStoryList: async (
+        _project,
+        stories,
+      ) => {
+        reorderStoryCalls.push({ storyOptionIds: stories.map((s) => s.id) });
+        return stories;
+      },
+    },
     resolveProject,
     isPjcodeConfigured,
     issueTitleStateCache: new IssueTitleStateCache(),
@@ -679,6 +694,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     reviewCommentCalls,
     requestChangesCalls,
     createIssueCalls,
+    reorderStoryCalls,
     stop: async (): Promise<void> => {
       await closeServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });

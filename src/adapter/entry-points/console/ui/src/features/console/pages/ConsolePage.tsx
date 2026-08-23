@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
+import { ConsoleStoryReorderPanel } from '../components/list/ConsoleStoryReorderPanel';
 import {
   ConsoleErrorToast,
   ConsoleUndoToast,
@@ -15,7 +16,10 @@ import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
 import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
-import { postConsoleCreateIssue } from '../lib/consoleApi';
+import {
+  postConsoleCreateIssue,
+  postConsoleReorderStory,
+} from '../lib/consoleApi';
 import {
   actionAdvances,
   actionToastColor,
@@ -135,6 +139,19 @@ export const ConsolePage = () => {
   const storyOptions = activeSnapshot?.storyOptions ?? [];
   const generatedAt = activeSnapshot?.generatedAt ?? null;
   const fromCache = activeSnapshot?.fromCache ?? false;
+
+  const [localStoryOptionsOverride, setLocalStoryOptionsOverride] = useState<
+    typeof storyOptions | null
+  >(null);
+
+  useEffect(() => {
+    setLocalStoryOptionsOverride(null);
+  }, [activeSnapshot?.generatedAt]);
+
+  const displayedStoryOptions = localStoryOptionsOverride ?? storyOptions;
+  const triageStoryOptions = displayedStoryOptions.filter(
+    (o) => o.color !== 'GRAY',
+  );
 
   const selectedItem = useMemo<ConsoleListItem | null>(() => {
     if (selectedItemKey === null || activeSnapshot === null) {
@@ -265,6 +282,30 @@ export const ConsolePage = () => {
     [pjcode, defaultNameWithOwner],
   );
 
+  const handleReorderStory = useCallback(
+    async (storyOptionId: string, direction: 'up' | 'down'): Promise<void> => {
+      if (pjcode === null) {
+        throw new Error('No project specified in the URL path.');
+      }
+      await postConsoleReorderStory({ pjcode, storyOptionId, direction });
+      const currentOptions = localStoryOptionsOverride ?? storyOptions;
+      const index = currentOptions.findIndex((o) => o.id === storyOptionId);
+      if (index === -1) {
+        return;
+      }
+      const swapIndex = index + (direction === 'up' ? -1 : 1);
+      if (swapIndex < 0 || swapIndex >= currentOptions.length) {
+        return;
+      }
+      const next = [...currentOptions];
+      const temp = next[index];
+      next[index] = next[swapIndex];
+      next[swapIndex] = temp;
+      setLocalStoryOptionsOverride(next);
+    },
+    [pjcode, localStoryOptionsOverride, storyOptions],
+  );
+
   return (
     <main className="console-app">
       {actionQueue.pending !== null && (
@@ -299,15 +340,23 @@ export const ConsolePage = () => {
           onCreateIssue={handleCreateIssue}
         />
       ) : selectedItem === null ? (
-        <ConsoleItemList
-          rows={rows}
-          storyColors={storyColors}
-          activeItemId={null}
-          now={now}
-          isLoading={isLoading}
-          error={error}
-          onSelectItem={(item) => navigation.openItem(item.projectItemId)}
-        />
+        <>
+          {activeTab === 'triage' && triageStoryOptions.length > 0 && (
+            <ConsoleStoryReorderPanel
+              stories={triageStoryOptions}
+              onReorderStory={handleReorderStory}
+            />
+          )}
+          <ConsoleItemList
+            rows={rows}
+            storyColors={storyColors}
+            activeItemId={null}
+            now={now}
+            isLoading={isLoading}
+            error={error}
+            onSelectItem={(item) => navigation.openItem(item.projectItemId)}
+          />
+        </>
       ) : (
         <div className="console-detail-screen" ref={detailScreenRef}>
           <ConsoleItemDetailContainer

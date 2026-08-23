@@ -417,3 +417,24 @@ export const postConsoleCreateIssue = async (
   }
   return payload.issueUrl;
 };
+
+export const REORDER_STORY_OPERATION_PATH = '/api/reorderstory';
+
+export type ConsoleReorderStoryRequest = {
+  pjcode: string;
+  storyOptionId: string;
+  direction: 'up' | 'down';
+};
+
+export const postConsoleReorderStory = async (
+  request: ConsoleReorderStoryRequest,
+): Promise<void> => {
+  const response = await fetch(REORDER_STORY_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};

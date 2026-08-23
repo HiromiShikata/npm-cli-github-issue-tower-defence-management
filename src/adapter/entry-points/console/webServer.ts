@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import {
   CONSOLE_LIST_TAB_NAMES,
   buildConsoleDataResponse,
@@ -28,6 +29,7 @@ import {
   handleComment,
   handleCreateIssue,
   handleIntmux,
+  handleReorderStory,
   handleReview,
   handleReviewComment,
   handleTriage,
@@ -232,6 +234,7 @@ export type WebServerOptions = {
   resolveProject?: ConsoleProjectResolver | null;
   isPjcodeConfigured?: ConsolePjcodeValidator | null;
   issueAttachmentRepository?: IssueAttachmentRepository | null;
+  projectRepository?: Pick<ProjectRepository, 'updateStoryList'> | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
   pullRequestStatusCache?: PullRequestStatusCache | null;
 };
@@ -529,6 +532,8 @@ const dispatchOperation = (
       return handleAttachmentUpload(context, body);
     case '/api/createissue':
       return handleCreateIssue(context, body);
+    case '/api/reorderstory':
+      return handleReorderStory(context, body);
     default:
       return null;
   }
@@ -551,12 +556,18 @@ const handleOperationApi = async (
   }
   const resolveIssueRepository =
     options.resolveIssueRepository ?? ((): IssueRepository => issueRepository);
+  const projectRepository = options.projectRepository ?? null;
   const context: ConsoleOperationContext = {
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
     consoleDataOutputDir: options.consoleDataOutputDir,
     issueAttachmentRepository: options.issueAttachmentRepository ?? null,
+    updateStoryList:
+      projectRepository !== null
+        ? (project, stories) =>
+            projectRepository.updateStoryList(project, stories)
+        : null,
   };
   const dispatched = dispatchOperation(context, requestPath, body);
   if (dispatched === null) {

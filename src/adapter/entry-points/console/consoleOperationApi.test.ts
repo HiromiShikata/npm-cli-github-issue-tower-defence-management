@@ -12,6 +12,7 @@ import {
   handleComment,
   handleCreateIssue,
   handleIntmux,
+  handleReorderStory,
   handleReview,
   handleReviewComment,
   handleTriage,
@@ -110,6 +111,7 @@ describe('consoleOperationApi', () => {
       isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
       consoleDataOutputDir: baseDir,
       issueAttachmentRepository: null,
+      updateStoryList: null,
     };
   });
 
@@ -122,6 +124,7 @@ describe('consoleOperationApi', () => {
     isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
     consoleDataOutputDir: baseDir,
     issueAttachmentRepository: null,
+    updateStoryList: null,
   });
 
   afterEach(() => {
@@ -864,6 +867,7 @@ describe('consoleOperationApi', () => {
         isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
+        updateStoryList: null,
       };
     });
 
@@ -1109,6 +1113,7 @@ describe('consoleOperationApi', () => {
           pjcode === 'acme' || pjcode === 'globex',
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
+        updateStoryList: null,
       };
       const response = await handleTriage(multiContext, {
         pjcode: 'globex',
@@ -1675,6 +1680,162 @@ describe('consoleOperationApi', () => {
         statusCode: 400,
         body: { error: 'story option "nonexistent" not found in project' },
       });
+    });
+  });
+
+  describe('handleReorderStory', () => {
+    const projectWithOrderedStories = (): Project => ({
+      ...project,
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          { id: 'opt_a', name: 'Alpha', color: 'BLUE', description: '' },
+          { id: 'opt_b', name: 'Beta', color: 'GREEN', description: '' },
+          { id: 'opt_c', name: 'Gamma', color: 'RED', description: '' },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    const contextWithUpdateStoryList = (
+      updateStoryList: ConsoleOperationContext['updateStoryList'],
+      baseProject: Project = projectWithOrderedStories(),
+    ): ConsoleOperationContext => ({
+      ...contextForProject(baseProject),
+      updateStoryList,
+    });
+
+    it('returns 400 when pjcode is missing', async () => {
+      const response = await handleReorderStory(context, {
+        storyOptionId: 'opt_b',
+        direction: 'up',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'pjcode is required' },
+      });
+    });
+
+    it('returns 400 when storyOptionId is missing', async () => {
+      const response = await handleReorderStory(context, {
+        pjcode: 'acme',
+        direction: 'up',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'storyOptionId is required' },
+      });
+    });
+
+    it('returns 400 when direction is not "up" or "down"', async () => {
+      const response = await handleReorderStory(context, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_b',
+        direction: 'left',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'direction must be "up" or "down"' },
+      });
+    });
+
+    it('returns 400 when project is not found', async () => {
+      const response = await handleReorderStory(
+        contextWithUpdateStoryList(jest.fn()),
+        {
+          pjcode: 'unknown',
+          storyOptionId: 'opt_b',
+          direction: 'up',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'no project configured for pjcode "unknown"' },
+      });
+    });
+
+    it('returns 400 when story option is not found', async () => {
+      const response = await handleReorderStory(
+        contextWithUpdateStoryList(jest.fn()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_nonexistent',
+          direction: 'up',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'story option not found' },
+      });
+    });
+
+    it('returns 400 when direction is "up" and the option is already first', async () => {
+      const response = await handleReorderStory(
+        contextWithUpdateStoryList(jest.fn()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_a',
+          direction: 'up',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'cannot move in that direction' },
+      });
+    });
+
+    it('returns 400 when direction is "down" and the option is already last', async () => {
+      const response = await handleReorderStory(
+        contextWithUpdateStoryList(jest.fn()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_c',
+          direction: 'down',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'cannot move in that direction' },
+      });
+    });
+
+    it('returns 400 when updateStoryList is not configured', async () => {
+      const response = await handleReorderStory(
+        contextWithUpdateStoryList(null),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_b',
+          direction: 'up',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'updateStoryList is not configured' },
+      });
+    });
+
+    it('swaps the target option with its neighbor, calls updateStoryList with reordered list, and returns 200', async () => {
+      const updateStoryList = jest.fn().mockResolvedValue([]);
+      const response = await handleReorderStory(
+        contextWithUpdateStoryList(updateStoryList),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_b',
+          direction: 'up',
+        },
+      );
+      expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+      expect(updateStoryList).toHaveBeenCalledTimes(1);
+      expect(updateStoryList).toHaveBeenCalledWith(
+        expect.objectContaining({ id: projectWithOrderedStories().id }),
+        [
+          expect.objectContaining({ id: 'opt_b' }),
+          expect.objectContaining({ id: 'opt_a' }),
+          expect.objectContaining({ id: 'opt_c' }),
+        ],
+      );
     });
   });
 });
