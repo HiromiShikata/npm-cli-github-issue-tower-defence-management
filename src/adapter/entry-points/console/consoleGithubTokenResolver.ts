@@ -60,9 +60,7 @@ export const validateConsoleGithubTokenCoverage = (
   const missingOwners = servedProjectUrls
     .map(extractProjectOwner)
     .filter((owner): owner is string => owner !== null)
-    .filter(
-      (owner) => !(owner in githubTokenFilePathByRepositoryOwner),
-    );
+    .filter((owner) => !(owner in githubTokenFilePathByRepositoryOwner));
   if (missingOwners.length > 0) {
     throw new Error(
       `The following repository owners served by the console have no GitHub token file configured in consoleGithubTokenFilesByRepositoryOwner: ${missingOwners.join(', ')}. Add entries for these owners to the config file.`,
