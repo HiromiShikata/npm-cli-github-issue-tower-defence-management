@@ -1,3 +1,10 @@
+# [1.170.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.169.2...v1.170.0) (2026-08-23)
+
+
+### Features
+
+* **console-detail:** keep only type mark, title and number in head line and move status, conflict and CI state below it ([#1609](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1609)) ([8418cb9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8418cb9ad3aaa4a64e0583fd778cd7b95b630a78)), closes [#1606](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1606)
+
 ## [1.169.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.169.1...v1.169.2) (2026-08-23)
 
 
