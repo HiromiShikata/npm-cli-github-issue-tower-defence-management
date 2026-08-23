@@ -42,6 +42,9 @@ describe('ConsolePullRequestDetail', () => {
     ).toBeInTheDocument();
     expect(getByText('+1184')).toBeInTheDocument();
     expect(getByText('27 files')).toBeInTheDocument();
+    expect(
+      getByText('HiromiShikata/npm-cli-github-issue-tower-defence-management'),
+    ).toBeInTheDocument();
   });
 
   it('renders the CI status badge derived from the pull request fields', () => {
