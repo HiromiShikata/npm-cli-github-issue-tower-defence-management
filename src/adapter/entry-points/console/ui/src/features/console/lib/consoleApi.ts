@@ -80,7 +80,20 @@ const requestJson = async (
   try {
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const payload: unknown = await response.json();
+        if (
+          isRecord(payload) &&
+          typeof payload.error === 'string' &&
+          payload.error.length > 0
+        ) {
+          errorMessage = payload.error;
+        }
+      } catch (e: unknown) {
+        console.warn('Failed to parse error body from non-ok response:', e);
+      }
+      throw new Error(errorMessage);
     }
     const payload: unknown = await response.json();
     try {

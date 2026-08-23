@@ -3,6 +3,7 @@ import {
   IssueComment,
   PullRequestCommit,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 
 export const ISSUE_TITLE_CACHE_TTL_MS = 300 * 1000;
 
@@ -72,6 +73,11 @@ export class IssueTitleStateCache {
     return entry.state;
   };
 
+  getStale = (url: string): IssueOrPullRequestState | null => {
+    const entry = this.entries.get(url);
+    return entry?.state ?? null;
+  };
+
   set = (url: string, state: IssueOrPullRequestState): void => {
     this.entries.set(url, { state, fetchedAtMs: this.nowMs() });
   };
@@ -93,6 +99,11 @@ export class PullRequestStatusCache {
     return entry.status;
   };
 
+  getStale = (url: string): PullRequestStatusResponse | null => {
+    const entry = this.entries.get(url);
+    return entry?.status ?? null;
+  };
+
   set = (url: string, status: PullRequestStatusResponse): void => {
     this.entries.set(url, { status, fetchedAtMs: this.nowMs() });
   };
@@ -103,6 +114,10 @@ export type ConsoleReadApiResponse = {
   body: unknown;
 };
 
+const isGitHubRateLimitError = (
+  error: unknown,
+): error is GitHubRateLimitError => error instanceof GitHubRateLimitError;
+
 const badRequest = (message: string): ConsoleReadApiResponse => ({
   statusCode: 400,
   body: { error: message },
@@ -111,6 +126,11 @@ const badRequest = (message: string): ConsoleReadApiResponse => ({
 const ok = (body: unknown): ConsoleReadApiResponse => ({
   statusCode: 200,
   body,
+});
+
+const rateLimited = (error: Error): ConsoleReadApiResponse => ({
+  statusCode: 429,
+  body: { error: error.message },
 });
 
 export type RelatedPullRequestWithSummary = {
@@ -160,8 +180,15 @@ export const handleItemBody = async (
   if (!url) {
     return badRequest('url query parameter is required');
   }
-  const body = await issueRepository.getIssueOrPullRequestBody(url);
-  return ok({ body });
+  try {
+    const body = await issueRepository.getIssueOrPullRequestBody(url);
+    return ok({ body });
+  } catch (error) {
+    if (isGitHubRateLimitError(error)) {
+      return rateLimited(error);
+    }
+    throw error;
+  }
 };
 
 export const handleComments = async (
@@ -171,8 +198,15 @@ export const handleComments = async (
   if (!url) {
     return badRequest('url query parameter is required');
   }
-  const comments = await issueRepository.getIssueOrPullRequestComments(url);
-  return ok({ comments: serializeComments(comments) });
+  try {
+    const comments = await issueRepository.getIssueOrPullRequestComments(url);
+    return ok({ comments: serializeComments(comments) });
+  } catch (error) {
+    if (isGitHubRateLimitError(error)) {
+      return rateLimited(error);
+    }
+    throw error;
+  }
 };
 
 export const handlePrFiles = async (
@@ -182,11 +216,18 @@ export const handlePrFiles = async (
   if (!url) {
     return badRequest('url query parameter is required');
   }
-  const detail = await issueRepository.getPullRequestDetail(url);
-  if (detail === null) {
-    return ok({ files: null });
+  try {
+    const detail = await issueRepository.getPullRequestDetail(url);
+    if (detail === null) {
+      return ok({ files: null });
+    }
+    return ok({ files: detail.files });
+  } catch (error) {
+    if (isGitHubRateLimitError(error)) {
+      return rateLimited(error);
+    }
+    throw error;
   }
-  return ok({ files: detail.files });
 };
 
 export const handlePrCommits = async (
@@ -196,8 +237,15 @@ export const handlePrCommits = async (
   if (!url) {
     return badRequest('url query parameter is required');
   }
-  const commits = await issueRepository.getPullRequestCommits(url);
-  return ok({ commits: serializeCommits(commits) });
+  try {
+    const commits = await issueRepository.getPullRequestCommits(url);
+    return ok({ commits: serializeCommits(commits) });
+  } catch (error) {
+    if (isGitHubRateLimitError(error)) {
+      return rateLimited(error);
+    }
+    throw error;
+  }
 };
 
 export const handleRelatedPrs = async (
@@ -207,30 +255,38 @@ export const handleRelatedPrs = async (
   if (!url) {
     return badRequest('url query parameter is required');
   }
-  const relatedPullRequests = await issueRepository.findRelatedOpenPRs(url);
-  const withSummaries: RelatedPullRequestWithSummary[] = await Promise.all(
-    relatedPullRequests.map(async (relatedPullRequest) => {
-      const summary = await issueRepository.getPullRequestSummary(
-        relatedPullRequest.url,
-      );
-      return {
-        url: relatedPullRequest.url,
-        branchName: relatedPullRequest.branchName,
-        createdAt: relatedPullRequest.createdAt.toISOString(),
-        isDraft: relatedPullRequest.isDraft,
-        isConflicted: relatedPullRequest.isConflicted,
-        mergeableStatus: deriveMergeableStatus(relatedPullRequest.mergeable),
-        isPassedAllCiJob: relatedPullRequest.isPassedAllCiJob,
-        isCiStateSuccess: relatedPullRequest.isCiStateSuccess,
-        isResolvedAllReviewComments:
-          relatedPullRequest.isResolvedAllReviewComments,
-        isBranchOutOfDate: relatedPullRequest.isBranchOutOfDate,
-        missingRequiredCheckNames: relatedPullRequest.missingRequiredCheckNames,
-        summary,
-      };
-    }),
-  );
-  return ok({ relatedPullRequests: withSummaries });
+  try {
+    const relatedPullRequests = await issueRepository.findRelatedOpenPRs(url);
+    const withSummaries: RelatedPullRequestWithSummary[] = await Promise.all(
+      relatedPullRequests.map(async (relatedPullRequest) => {
+        const summary = await issueRepository.getPullRequestSummary(
+          relatedPullRequest.url,
+        );
+        return {
+          url: relatedPullRequest.url,
+          branchName: relatedPullRequest.branchName,
+          createdAt: relatedPullRequest.createdAt.toISOString(),
+          isDraft: relatedPullRequest.isDraft,
+          isConflicted: relatedPullRequest.isConflicted,
+          mergeableStatus: deriveMergeableStatus(relatedPullRequest.mergeable),
+          isPassedAllCiJob: relatedPullRequest.isPassedAllCiJob,
+          isCiStateSuccess: relatedPullRequest.isCiStateSuccess,
+          isResolvedAllReviewComments:
+            relatedPullRequest.isResolvedAllReviewComments,
+          isBranchOutOfDate: relatedPullRequest.isBranchOutOfDate,
+          missingRequiredCheckNames:
+            relatedPullRequest.missingRequiredCheckNames,
+          summary,
+        };
+      }),
+    );
+    return ok({ relatedPullRequests: withSummaries });
+  } catch (error) {
+    if (isGitHubRateLimitError(error)) {
+      return rateLimited(error);
+    }
+    throw error;
+  }
 };
 
 export const handleIssueTitle = async (
@@ -245,10 +301,21 @@ export const handleIssueTitle = async (
   if (cached !== null) {
     return ok(cached);
   }
-  const state: IssueOrPullRequestState =
-    await issueRepository.getIssueOrPullRequestState(url);
-  cache.set(url, state);
-  return ok(state);
+  try {
+    const state: IssueOrPullRequestState =
+      await issueRepository.getIssueOrPullRequestState(url);
+    cache.set(url, state);
+    return ok(state);
+  } catch (error) {
+    if (isGitHubRateLimitError(error)) {
+      const stale = cache.getStale(url);
+      if (stale !== null) {
+        return ok(stale);
+      }
+      return rateLimited(error);
+    }
+    throw error;
+  }
 };
 
 export const handlePullRequestStatus = async (
@@ -263,21 +330,32 @@ export const handlePullRequestStatus = async (
   if (cached !== null) {
     return ok(cached);
   }
-  const pullRequest = await issueRepository.getOpenPullRequestCiStatus(url);
-  const response: PullRequestStatusResponse =
-    pullRequest === null
-      ? { found: false, status: null }
-      : {
-          found: true,
-          status: {
-            isConflicted: pullRequest.isConflicted,
-            mergeableStatus: deriveMergeableStatus(pullRequest.mergeable),
-            isPassedAllCiJob: pullRequest.isPassedAllCiJob,
-            isCiStateSuccess: pullRequest.isCiStateSuccess,
-            isBranchOutOfDate: pullRequest.isBranchOutOfDate,
-            missingRequiredCheckNames: pullRequest.missingRequiredCheckNames,
-          },
-        };
-  cache.set(url, response);
-  return ok(response);
+  try {
+    const pullRequest = await issueRepository.getOpenPullRequestCiStatus(url);
+    const response: PullRequestStatusResponse =
+      pullRequest === null
+        ? { found: false, status: null }
+        : {
+            found: true,
+            status: {
+              isConflicted: pullRequest.isConflicted,
+              mergeableStatus: deriveMergeableStatus(pullRequest.mergeable),
+              isPassedAllCiJob: pullRequest.isPassedAllCiJob,
+              isCiStateSuccess: pullRequest.isCiStateSuccess,
+              isBranchOutOfDate: pullRequest.isBranchOutOfDate,
+              missingRequiredCheckNames: pullRequest.missingRequiredCheckNames,
+            },
+          };
+    cache.set(url, response);
+    return ok(response);
+  } catch (error) {
+    if (isGitHubRateLimitError(error)) {
+      const stale = cache.getStale(url);
+      if (stale !== null) {
+        return ok(stale);
+      }
+      return rateLimited(error);
+    }
+    throw error;
+  }
 };
