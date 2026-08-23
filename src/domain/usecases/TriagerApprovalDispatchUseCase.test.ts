@@ -412,10 +412,9 @@ describe('TriagerApprovalDispatchUseCase', () => {
         allowedIssueAuthors: ['owner-user'],
       });
 
-      const expectedStory = mockProject.story!;
       expect(mockIssueRepository.updateStory.mock.calls).toEqual([
         [
-          { ...mockProject, story: expectedStory },
+          mockProject,
           issue,
           'story-regular-workflow-id',
         ],
@@ -430,12 +429,10 @@ describe('TriagerApprovalDispatchUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
         [mockProject, issue, 'awaiting-workspace-id'],
       ]);
-      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
-        1,
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('TRIAGER_PROPOSAL_APPROVED'),
       );
-      expect(
-        (mockIssueCommentRepository.createComment.mock.calls[0] as [Issue, string])[1],
-      ).toContain('TRIAGER_PROPOSAL_APPROVED');
     });
 
     it('should accept OK (uppercase) as an approval token', async () => {

@@ -11,6 +11,9 @@ import {
 const AGENT_REPORT_PREFIX = 'From: :robot:';
 const TRIAGER_AGENT_NAME = 'triager';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
 type TriagerProposal = {
   recommendedAgent: string;
   recommendedStory: string;
@@ -39,15 +42,14 @@ const parseTriagerProposalBlock = (
     } catch {
       continue;
     }
-    if (typeof parsed !== 'object' || parsed === null) {
+    if (!isRecord(parsed)) {
       continue;
     }
-    const obj = parsed as Record<string, unknown>;
-    const proposalValue = obj['triagerProposal'];
-    if (typeof proposalValue !== 'object' || proposalValue === null) {
+    const proposalValue = parsed['triagerProposal'];
+    if (!isRecord(proposalValue)) {
       continue;
     }
-    const p = proposalValue as Record<string, unknown>;
+    const p = proposalValue;
     if (
       typeof p['recommendedAgent'] !== 'string' ||
       typeof p['recommendedStory'] !== 'string' ||
