@@ -1107,6 +1107,64 @@ describe('webServer new routes integration', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('routes POST /api/addstory to handleAddStory and calls updateStoryList', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const updateStoryList = jest.fn().mockResolvedValue([]);
+    const projectWithStory: Project = {
+      ...mock<Project>(),
+      id: 'PVT_1',
+      url: 'https://github.com/orgs/acme-labs/projects/1',
+      status: {
+        name: 'Status',
+        fieldId: 'statusField',
+        statuses: [{ id: 'status_aw', name: 'Awaiting workspace', color: 'GRAY', description: '' }],
+      },
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [{ id: 'opt_blue', name: 'Existing story', color: 'BLUE', description: '' }],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    };
+    const issueRepository = mock<IssueRepository>();
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: projectWithStory } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      resolveProjectRepository: () => ({ updateStoryList }),
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/addstory?k=${testToken}`,
+        { pjcode: 'acme', storyName: 'My new story' },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ ok: true });
+      expect(updateStoryList).toHaveBeenCalledWith(
+        projectWithStory,
+        [
+          { id: 'opt_blue', name: 'Existing story', color: 'BLUE', description: '' },
+          { id: null, name: 'My new story', color: 'RED', description: '' },
+        ],
+      );
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('resolveFlatInTmuxFilePath', () => {

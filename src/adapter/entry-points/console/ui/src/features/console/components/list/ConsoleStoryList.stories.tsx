@@ -50,7 +50,10 @@ const storiesWithUrl = storiesWithoutUrl.map((s) => ({
 const meta: Meta<typeof ConsoleStoryList> = {
   title: 'Console/ConsoleStoryList',
   component: ConsoleStoryList,
-  args: { onCreateIssue: () => Promise.resolve() },
+  args: {
+    onCreateIssue: () => Promise.resolve(),
+    onAddStory: () => Promise.resolve(),
+  },
 };
 
 export default meta;

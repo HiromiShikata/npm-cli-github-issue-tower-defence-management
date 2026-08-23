@@ -374,6 +374,26 @@ export const postConsoleAttachment = async (
   return payload.markdown;
 };
 
+export const ADD_STORY_OPERATION_PATH = '/api/addstory';
+
+export type ConsoleAddStoryRequest = {
+  pjcode: string;
+  storyName: string;
+};
+
+export const postConsoleAddStory = async (
+  request: ConsoleAddStoryRequest,
+): Promise<void> => {
+  const response = await fetch(ADD_STORY_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
 export const REVIEW_COMMENT_OPERATION_PATH = '/api/reviewcomment';
 
 export const postConsoleReviewComment = async (

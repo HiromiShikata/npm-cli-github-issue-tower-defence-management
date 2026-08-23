@@ -3,6 +3,7 @@ import {
   PullRequestReviewCommentSide,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import {
@@ -32,6 +33,10 @@ export type ConsoleIssueRepositoryResolver = (
   issueOrPullRequestUrl: string,
 ) => IssueRepository;
 
+export type ConsoleProjectRepositoryResolver = (
+  projectUrl: string,
+) => Pick<ProjectRepository, 'updateStoryList'>;
+
 export type ConsoleOperationContext = {
   resolveIssueRepository: ConsoleIssueRepositoryResolver;
   resolveProject: ConsoleProjectResolver;
@@ -41,6 +46,7 @@ export type ConsoleOperationContext = {
   updateStoryList:
     | ((project: Project, stories: FieldOption[]) => Promise<FieldOption[]>)
     | null;
+  resolveProjectRepository: ConsoleProjectRepositoryResolver | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -767,5 +773,40 @@ export const handleReorderStory = async (
   reordered[index] = reordered[swapIndex];
   reordered[swapIndex] = temp;
   await context.updateStoryList(project, reordered);
+  return ok();
+};
+
+export const handleAddStory = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  if (context.resolveProjectRepository === null) {
+    return badGateway('project repository is not configured');
+  }
+  const storyName = body.storyName;
+  if (!isNonEmptyString(storyName)) {
+    return badRequest('storyName is required');
+  }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { project } = binding;
+  if (project.story === null) {
+    return badRequest('project does not have a story field');
+  }
+  const existingStories = project.story.stories;
+  const newStory = {
+    id: null,
+    name: storyName,
+    color: 'RED' as const,
+    description: '',
+  };
+  const newStoryList =
+    existingStories.length > 0
+      ? [existingStories[0], newStory, ...existingStories.slice(1)]
+      : [newStory];
+  const projectRepository = context.resolveProjectRepository(project.url);
+  await projectRepository.updateStoryList(project, newStoryList);
   return ok();
 };

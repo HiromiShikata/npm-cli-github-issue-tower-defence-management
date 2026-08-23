@@ -8,6 +8,7 @@ import { Issue } from '../../../domain/entities/Issue';
 import {
   ConsoleOperationContext,
   ConsoleProjectBinding,
+  handleAddStory,
   handleAttachmentUpload,
   handleComment,
   handleCreateIssue,
@@ -112,6 +113,7 @@ describe('consoleOperationApi', () => {
       consoleDataOutputDir: baseDir,
       issueAttachmentRepository: null,
       updateStoryList: null,
+      resolveProjectRepository: null,
     };
   });
 
@@ -125,6 +127,7 @@ describe('consoleOperationApi', () => {
     consoleDataOutputDir: baseDir,
     issueAttachmentRepository: null,
     updateStoryList: null,
+    resolveProjectRepository: null,
   });
 
   afterEach(() => {
@@ -868,6 +871,7 @@ describe('consoleOperationApi', () => {
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         updateStoryList: null,
+        resolveProjectRepository: null,
       };
     });
 
@@ -1114,6 +1118,7 @@ describe('consoleOperationApi', () => {
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         updateStoryList: null,
+        resolveProjectRepository: null,
       };
       const response = await handleTriage(multiContext, {
         pjcode: 'globex',
@@ -1905,6 +1910,132 @@ describe('consoleOperationApi', () => {
           expect.objectContaining({ id: 'opt_gray' }),
         ],
       );
+    });
+  });
+
+  describe('handleAddStory', () => {
+    const buildProjectWithStories = (): Project => ({
+      ...project,
+      url: 'https://github.com/orgs/acme-labs/projects/1',
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          { id: 'opt_first', name: 'First story', color: 'BLUE', description: '' },
+          { id: 'opt_second', name: 'Second story', color: 'GREEN', description: '' },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    const updateStoryList = jest.fn();
+    const projectRepositoryResolver = jest.fn(() => ({ updateStoryList }));
+
+    const addStoryContext = (p: Project): ConsoleOperationContext => ({
+      ...contextForProject(p),
+      resolveProjectRepository: projectRepositoryResolver,
+    });
+
+    beforeEach(() => {
+      updateStoryList.mockResolvedValue([]);
+      projectRepositoryResolver.mockReturnValue({ updateStoryList });
+    });
+
+    it('inserts the new story at index 1 and calls updateStoryList', async () => {
+      const p = buildProjectWithStories();
+      const response = await handleAddStory(addStoryContext(p), {
+        pjcode: 'acme',
+        storyName: 'Brand new story',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true });
+      expect(updateStoryList).toHaveBeenCalledWith(
+        p,
+        [
+          { id: 'opt_first', name: 'First story', color: 'BLUE', description: '' },
+          { id: null, name: 'Brand new story', color: 'RED', description: '' },
+          { id: 'opt_second', name: 'Second story', color: 'GREEN', description: '' },
+        ],
+      );
+    });
+
+    it('inserts the new story as the only entry when the story list is empty', async () => {
+      const emptyStoryProject: Project = {
+        ...buildProjectWithStories(),
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          stories: [],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const response = await handleAddStory(addStoryContext(emptyStoryProject), {
+        pjcode: 'acme',
+        storyName: 'First ever story',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(updateStoryList).toHaveBeenCalledWith(
+        emptyStoryProject,
+        [{ id: null, name: 'First ever story', color: 'RED', description: '' }],
+      );
+    });
+
+    it('resolves the project repository using the project url', async () => {
+      const p = buildProjectWithStories();
+      await handleAddStory(addStoryContext(p), {
+        pjcode: 'acme',
+        storyName: 'Any story',
+      });
+      expect(projectRepositoryResolver).toHaveBeenCalledWith(p.url);
+    });
+
+    it('returns 502 when resolveProjectRepository is null', async () => {
+      const response = await handleAddStory(
+        { ...contextForProject(buildProjectWithStories()), resolveProjectRepository: null },
+        { pjcode: 'acme', storyName: 'Any story' },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'project repository is not configured' },
+      });
+    });
+
+    it('rejects when storyName is missing', async () => {
+      const response = await handleAddStory(addStoryContext(buildProjectWithStories()), {
+        pjcode: 'acme',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'storyName is required' },
+      });
+    });
+
+    it('rejects when pjcode is not configured', async () => {
+      const response = await handleAddStory(addStoryContext(buildProjectWithStories()), {
+        pjcode: 'unknown',
+        storyName: 'Any story',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'no project configured for pjcode "unknown"' },
+      });
+    });
+
+    it('rejects when the project has no story field', async () => {
+      const projectWithoutStory: Project = {
+        ...buildProjectWithStories(),
+        story: null,
+      };
+      const response = await handleAddStory(addStoryContext(projectWithoutStory), {
+        pjcode: 'acme',
+        storyName: 'Any story',
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'project does not have a story field' },
+      });
     });
   });
 });
