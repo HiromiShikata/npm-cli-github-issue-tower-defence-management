@@ -29,6 +29,7 @@ import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateU
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
+import { AdvanceQualityCheckUseCase } from './AdvanceQualityCheckUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -128,6 +129,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<AgentDesignationLabelAdoptUseCase>();
     const mockUpdateRateLimitCacheUseCase = mock<UpdateRateLimitCacheUseCase>();
     const mockDailySecurityScanUseCase = mock<DailySecurityScanUseCase>();
+    const mockAdvanceQualityCheckUseCase = mock<AdvanceQualityCheckUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -157,6 +159,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockAgentDesignationLabelAdoptUseCase,
       mockUpdateRateLimitCacheUseCase,
       mockDailySecurityScanUseCase,
+      mockAdvanceQualityCheckUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
@@ -1473,5 +1476,95 @@ describe('HandleScheduledEventUseCase', () => {
         expect(lastExecutionWrite).toBeUndefined();
       });
     });
+
+    describe('autoAdvanceQualityCheckEnabled', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      it('does not call advanceQualityCheckUseCase when autoAdvanceQualityCheckEnabled is absent', async () => {
+        await useCase.run(baseInput);
+
+        expect(mockAdvanceQualityCheckUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('does not call advanceQualityCheckUseCase when autoAdvanceQualityCheckEnabled is false', async () => {
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: false,
+          },
+        });
+
+        expect(mockAdvanceQualityCheckUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('calls advanceQualityCheckUseCase when autoAdvanceQualityCheckEnabled is true', async () => {
+        const mockProject = mock<Project>();
+        const mockIssues: Issue[] = [];
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: mockIssues,
+          project: mockProject,
+          cacheUsed: false,
+        });
+
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: true,
+          },
+        });
+
+        expect(mockAdvanceQualityCheckUseCase.run).toHaveBeenCalledWith(
+          expect.objectContaining({
+            project: mockProject,
+            issues: mockIssues,
+          }),
+        );
+      });
+
+      it('passes awaitingQualityCheckStatus to advanceQualityCheckUseCase when configured', async () => {
+        const mockProject = mock<Project>();
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [],
+          project: mockProject,
+          cacheUsed: false,
+        });
+
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: true,
+            awaitingQualityCheckStatus: 'Custom Review Status',
+          },
+        });
+
+        expect(mockAdvanceQualityCheckUseCase.run).toHaveBeenCalledWith(
+          expect.objectContaining({
+            awaitingQualityCheckStatusName: 'Custom Review Status',
+          }),
+        );
+      });
+    });
   });
 });
+
