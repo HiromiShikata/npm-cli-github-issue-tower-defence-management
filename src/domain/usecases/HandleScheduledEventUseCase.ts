@@ -336,6 +336,7 @@ export class HandleScheduledEventUseCase {
         targetDateTimes,
         storyIssues,
         runSlowSweep,
+        now,
       );
       rotationOrder = useCaseResult.rotationOrder;
     } catch (e) {
@@ -395,6 +396,7 @@ ${JSON.stringify(e)}
     targetDateTimes: Date[],
     storyObjectMap: StoryObjectMap,
     runSlowSweep: boolean,
+    now: Date,
   ): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     if (runSlowSweep) {
       await this.runSlowSweepUseCases(
@@ -471,6 +473,7 @@ ${JSON.stringify(e)}
           issues,
           awaitingQualityCheckStatusName:
             input.startPreparation.awaitingQualityCheckStatus ?? undefined,
+          evaluatedAt: now,
         });
       }
       const preparationResult = await this.startPreparationUseCase.run({

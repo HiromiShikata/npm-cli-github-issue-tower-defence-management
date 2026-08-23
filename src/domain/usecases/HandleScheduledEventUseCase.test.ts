@@ -1515,6 +1515,8 @@ describe('HandleScheduledEventUseCase', () => {
       it('calls advanceQualityCheckUseCase when autoAdvanceQualityCheckEnabled is true', async () => {
         const mockProject = mock<Project>();
         const mockIssues: Issue[] = [];
+        const fixedNow = new Date('2024-06-15T12:00:00Z');
+        mockDateRepository.now.mockResolvedValue(fixedNow);
         mockIssueRepository.getAllIssues.mockResolvedValue({
           issues: mockIssues,
           project: mockProject,
@@ -1535,6 +1537,7 @@ describe('HandleScheduledEventUseCase', () => {
           expect.objectContaining({
             project: mockProject,
             issues: mockIssues,
+            evaluatedAt: fixedNow,
           }),
         );
       });
