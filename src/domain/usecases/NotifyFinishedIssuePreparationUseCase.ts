@@ -254,6 +254,32 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
+    const absoluteLastComment = comments[comments.length - 1];
+    const absoluteLastIsNewBotReport =
+      !!absoluteLastComment &&
+      isTrustedAuthor(absoluteLastComment.author) &&
+      absoluteLastComment.content.startsWith('From: :robot:');
+
+    if (!absoluteLastIsNewBotReport && lastTrustedBotComment) {
+      const prRequired = this.extractPullRequestRequired(
+        lastTrustedBotComment.content,
+      );
+      const hasNextStep = this.reportBodyHasNextStep(
+        lastTrustedBotComment.content,
+      );
+      if (prRequired === false && !hasNextStep) {
+        issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.patchConsoleTab(issue);
+        return;
+      }
+    }
+
     const { rejections, approvedPrUrl } = await this.collectRejections(
       issue,
       comments,
@@ -612,6 +638,23 @@ export class NotifyFinishedIssuePreparationUseCase {
       return 'failed-preparation';
     return null;
   };
+
+  private extractPullRequestRequired = (body: string): boolean | null => {
+    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+    if (!reportMatch || !reportMatch[1]) return null;
+    let reportJson: unknown;
+    try {
+      reportJson = JSON.parse(reportMatch[1]);
+    } catch {
+      return null;
+    }
+    if (typeof reportJson !== 'object' || reportJson === null) return null;
+    if (!('pullRequestRequired' in reportJson)) return null;
+    const value = Reflect.get(reportJson, 'pullRequestRequired');
+    if (typeof value !== 'boolean') return null;
+    return value;
+  };
+
 
   private ensureAgentOptionAndGetId = async (
     project: Project,
