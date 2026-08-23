@@ -1567,6 +1567,27 @@ describe('HandleScheduledEventUseCase', () => {
           }),
         );
       });
+
+      it('continues to startPreparationUseCase when qualityCheckAdvanceUseCase.run rejects', async () => {
+        mockAdvanceQualityCheckUseCase.run.mockRejectedValue(
+          new AggregateError(
+            [new Error('GitHub API rate limit')],
+            'Failed to advance 1 issue(s) from Awaiting Quality Check to Done',
+          ),
+        );
+
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: true,
+          },
+        });
+
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+      });
     });
   });
 });
