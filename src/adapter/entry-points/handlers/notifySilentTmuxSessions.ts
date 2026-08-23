@@ -79,6 +79,7 @@ const createSubAgentActivityRepository = (
       new NodeSubAgentProcessLister(localCommandRunner),
       now,
       new FileSystemSubAgentLivenessResolver(subAgentRuntimeRootDirectory),
+      subAgentRuntimeRootDirectory,
     );
   }
   return new ProcessListSessionSubAgentActivityRepository(
