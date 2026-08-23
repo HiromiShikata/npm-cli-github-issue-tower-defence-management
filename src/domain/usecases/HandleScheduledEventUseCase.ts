@@ -28,6 +28,8 @@ import {
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
+import { TriagerApprovalDispatchUseCase } from './TriagerApprovalDispatchUseCase';
+import { isRecord } from './isRecord';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
@@ -63,9 +65,6 @@ const isTransientApiError = (error: Error): boolean => {
 
 const TRANSIENT_NETWORK_ERROR_CODE_PATTERN =
   /\b(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ERR_NETWORK|ERR_SOCKET_CONNECTION_TIMEOUT)\b/;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 const extractHttpStatusFromError = (error: Error): number | null => {
   if (!isRecord(error)) {
@@ -137,6 +136,7 @@ export class HandleScheduledEventUseCase {
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
+    readonly triagerApprovalDispatchUseCase: TriagerApprovalDispatchUseCase,
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
@@ -435,6 +435,10 @@ ${JSON.stringify(e)}
       labelsAsLlmAgentName,
       labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
       changeTargetPathAliases: input.changeTargetPathAliases,
+      allowedIssueAuthors,
+    });
+    await this.triagerApprovalDispatchUseCase.run({
+      projectUrl: input.projectUrl,
       allowedIssueAuthors,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {

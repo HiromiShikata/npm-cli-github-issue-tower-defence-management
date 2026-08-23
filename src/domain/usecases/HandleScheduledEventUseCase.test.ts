@@ -24,6 +24,7 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
+import { TriagerApprovalDispatchUseCase } from './TriagerApprovalDispatchUseCase';
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
@@ -125,6 +126,8 @@ describe('HandleScheduledEventUseCase', () => {
       mock<RevertOrphanedPreparationUseCase>();
     const mockRevertNotReadyReviewQueueIssueUseCase =
       mock<RevertNotReadyReviewQueueIssueUseCase>();
+    const mockTriagerApprovalDispatchUseCase =
+      mock<TriagerApprovalDispatchUseCase>();
     const mockAgentDesignationLabelAdoptUseCase =
       mock<AgentDesignationLabelAdoptUseCase>();
     const mockUpdateRateLimitCacheUseCase = mock<UpdateRateLimitCacheUseCase>();
@@ -156,6 +159,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
+      mockTriagerApprovalDispatchUseCase,
       mockAgentDesignationLabelAdoptUseCase,
       mockUpdateRateLimitCacheUseCase,
       mockDailySecurityScanUseCase,
@@ -234,6 +238,29 @@ describe('HandleScheduledEventUseCase', () => {
         project: mockProject,
         issues: [],
       });
+    });
+
+    it('should call TriagerApprovalDispatchUseCase with project URL', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      await useCase.run(input);
+      expect(mockTriagerApprovalDispatchUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/test-org/test-project',
+        }),
+      );
     });
 
     it('should return null and skip all processing when disabled is true', async () => {

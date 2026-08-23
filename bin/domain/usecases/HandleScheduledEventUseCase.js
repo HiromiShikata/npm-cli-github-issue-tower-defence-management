@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HandleScheduledEventUseCase = exports.ProjectNotFoundError = void 0;
+const isRecord_1 = require("./isRecord");
 const resolveLabelsAsLlmAgentName_1 = require("./resolveLabelsAsLlmAgentName");
 const resolveAllowedIssueAuthors_1 = require("./resolveAllowedIssueAuthors");
 class ProjectNotFoundError extends Error {
@@ -21,15 +22,14 @@ const isTransientApiError = (error) => {
         /request timed out/i.test(msg));
 };
 const TRANSIENT_NETWORK_ERROR_CODE_PATTERN = /\b(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ERR_NETWORK|ERR_SOCKET_CONNECTION_TIMEOUT)\b/;
-const isRecord = (value) => typeof value === 'object' && value !== null;
 const extractHttpStatusFromError = (error) => {
-    if (!isRecord(error)) {
+    if (!(0, isRecord_1.isRecord)(error)) {
         return null;
     }
     const response = error.response;
     const values = [
         error.status,
-        isRecord(response) ? response.status : null,
+        (0, isRecord_1.isRecord)(response) ? response.status : null,
         error.code,
     ];
     for (const value of values) {
@@ -51,7 +51,7 @@ const isTransientSpreadsheetApiError = (error) => {
         /request timed out/i.test(error.message)) {
         return true;
     }
-    const code = isRecord(error) ? error.code : null;
+    const code = (0, isRecord_1.isRecord)(error) ? error.code : null;
     if (typeof code === 'string' &&
         TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(code)) {
         return true;
@@ -63,7 +63,7 @@ const isTransientSpreadsheetApiError = (error) => {
         TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(error.message));
 };
 class HandleScheduledEventUseCase {
-    constructor(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.projectRequiredFieldCreateUseCase = projectRequiredFieldCreateUseCase;
         this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
@@ -84,6 +84,7 @@ class HandleScheduledEventUseCase {
         this.startPreparationUseCase = startPreparationUseCase;
         this.revertOrphanedPreparationUseCase = revertOrphanedPreparationUseCase;
         this.revertNotReadyReviewQueueIssueUseCase = revertNotReadyReviewQueueIssueUseCase;
+        this.triagerApprovalDispatchUseCase = triagerApprovalDispatchUseCase;
         this.agentDesignationLabelAdoptUseCase = agentDesignationLabelAdoptUseCase;
         this.updateRateLimitCacheUseCase = updateRateLimitCacheUseCase;
         this.dailySecurityScanUseCase = dailySecurityScanUseCase;
@@ -250,6 +251,10 @@ ${JSON.stringify(e)}
                 labelsAsLlmAgentName,
                 labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
                 changeTargetPathAliases: input.changeTargetPathAliases,
+                allowedIssueAuthors,
+            });
+            await this.triagerApprovalDispatchUseCase.run({
+                projectUrl: input.projectUrl,
                 allowedIssueAuthors,
             });
             if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {

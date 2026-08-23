@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isPullRequestDeclaredUnnecessary = void 0;
-const AGENT_REPORT_PREFIX = 'From: :robot:';
+const agentReportPrefix_1 = require("./agentReportPrefix");
 const isPullRequestDeclaredUnnecessary = (comments, isTrustedAuthor) => {
     const lastComment = comments[comments.length - 1];
     if (!lastComment ||
         !isTrustedAuthor(lastComment.author) ||
-        !lastComment.content.startsWith(AGENT_REPORT_PREFIX)) {
+        !lastComment.content.startsWith(agentReportPrefix_1.AGENT_REPORT_PREFIX)) {
         return false;
     }
     const reportMatch = lastComment.content.match(/```json\n([\s\S]*?)\n```/);
