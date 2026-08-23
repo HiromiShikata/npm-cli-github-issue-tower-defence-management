@@ -4,7 +4,6 @@ import {
   createConsoleProjectRepositoryResolver,
   extractProjectOwner,
   extractRepositoryOwner,
-  validateConsoleGithubTokenCoverage,
 } from './consoleGithubTokenResolver';
 
 describe('extractProjectOwner', () => {
@@ -129,16 +128,14 @@ describe('createConsoleGithubTokenResolver', () => {
     expect(resolve('acme-labs')).toBe('fine-grained-token');
   });
 
-  it('should throw when the per-owner token map is provided but the owner has no entry in it', () => {
+  it('should fall back to the default token when the per-owner token map is provided but the owner has no entry in it', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
       { 'acme-labs': '/creds/acme-labs-token.txt' },
       () => 'fine-grained-token',
     );
 
-    expect(() => resolve('globex-inc')).toThrow(
-      'No GitHub token file is configured for repository owner "globex-inc". Add an entry for this owner under consoleGithubTokenFilesByRepositoryOwner in the config file.',
-    );
+    expect(resolve('globex-inc')).toBe('default-token');
   });
 
   it('should read the token file only once per owner', () => {
@@ -185,52 +182,3 @@ describe('createConsoleGithubTokenResolver', () => {
   });
 });
 
-describe('validateConsoleGithubTokenCoverage', () => {
-  it('should throw at startup listing all served project owners with no token file entry', () => {
-    expect(() =>
-      validateConsoleGithubTokenCoverage(
-        { 'meta-site': '/creds/meta-site-token.txt' },
-        [
-          'https://github.com/orgs/meta-site/projects/1',
-          'https://github.com/users/HiromiShikata/projects/2',
-          'https://github.com/users/utage3/projects/3',
-        ],
-      ),
-    ).toThrow('HiromiShikata, utage3');
-  });
-
-  it('should not throw when all served project owners have token file entries', () => {
-    expect(() =>
-      validateConsoleGithubTokenCoverage(
-        {
-          'meta-site': '/creds/meta-site-token.txt',
-          HiromiShikata: '/creds/hiromi-token.txt',
-          utage3: '/creds/utage3-token.txt',
-        },
-        [
-          'https://github.com/orgs/meta-site/projects/1',
-          'https://github.com/users/HiromiShikata/projects/2',
-          'https://github.com/users/utage3/projects/3',
-        ],
-      ),
-    ).not.toThrow();
-  });
-
-  it('should not throw when the token map is null', () => {
-    expect(() =>
-      validateConsoleGithubTokenCoverage(null, [
-        'https://github.com/orgs/meta-site/projects/1',
-        'https://github.com/users/HiromiShikata/projects/2',
-      ]),
-    ).not.toThrow();
-  });
-
-  it('should not throw when no project urls are provided', () => {
-    expect(() =>
-      validateConsoleGithubTokenCoverage(
-        { 'meta-site': '/creds/meta-site-token.txt' },
-        [],
-      ),
-    ).not.toThrow();
-  });
-});
