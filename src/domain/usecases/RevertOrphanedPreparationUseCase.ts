@@ -119,7 +119,10 @@ export class RevertOrphanedPreparationUseCase {
       if (!isStillInPreparation) {
         continue;
       }
-      const nextStepAgent = this.resolveNextStepAgent(comments);
+      const nextStepAgent = this.resolveNextStepAgent(
+        comments,
+        params.allowedIssueAuthors,
+      );
       if (nextStepAgent !== null) {
         const agentOptionId = await ensureAgentOptionAndGetId(
           this.projectRepository,
@@ -341,10 +344,19 @@ export class RevertOrphanedPreparationUseCase {
     return [pr];
   };
 
-  private resolveNextStepAgent = (comments: Comment[]): string | null => {
+  private resolveNextStepAgent = (
+    comments: Comment[],
+    allowedIssueAuthors: string[] | null | undefined,
+  ): string | null => {
     const lastReportComment = [...comments]
       .reverse()
-      .find((comment) => comment.content.startsWith('From: :robot:'));
+      .find(
+        (comment) =>
+          isAuthorAuthorizedForAutoStatusCheck(
+            comment.author,
+            allowedIssueAuthors,
+          ) && comment.content.startsWith('From: :robot:'),
+      );
     return lastReportComment
       ? extractNextStepAgent(lastReportComment.content)
       : null;

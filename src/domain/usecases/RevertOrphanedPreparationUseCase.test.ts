@@ -250,6 +250,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['bot'],
     });
 
     expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
@@ -257,6 +258,53 @@ describe('RevertOrphanedPreparationUseCase', () => {
     ]);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+  });
+
+  it('should ignore a next step agent designated by an author outside the allowed issue authors', async () => {
+    mockProject.agent = {
+      name: 'agent',
+      fieldId: 'agent-field-id',
+      options: [
+        {
+          id: 'agent-option-developer',
+          name: 'developer',
+          color: 'GRAY',
+          description: '',
+        },
+      ],
+    };
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      agent: 'triager',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'outsider',
+        content:
+          'From: :robot: triager\n\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
+        createdAt: new Date('2024-01-02T00:00:00Z'),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['bot'],
+    });
+
+    expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([]);
   });
 
   it('should advance orphaned issue to Awaiting Quality Check when agent report and passing PR are present', async () => {
