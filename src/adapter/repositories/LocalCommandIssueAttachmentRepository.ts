@@ -58,9 +58,7 @@ export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRep
   constructor(
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly temporaryDirectoryRoot: string = tmpdir(),
-    private readonly resolveGithubToken?: (
-      repositoryOwner: string,
-    ) => string,
+    private readonly resolveGithubToken?: (repositoryOwner: string) => string,
   ) {}
 
   async uploadAttachment(
@@ -75,9 +73,7 @@ export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRep
     );
     try {
       await writeFile(filePath, request.content);
-      let commandOptions:
-        | { env: { GH_TOKEN: string } }
-        | undefined;
+      let commandOptions: { env: { GH_TOKEN: string } } | undefined;
       if (this.resolveGithubToken !== undefined) {
         const ownerMatch = request.issueOrPullRequestUrl.match(
           /https:\/\/github\.com\/([A-Za-z0-9._-]+)\//,

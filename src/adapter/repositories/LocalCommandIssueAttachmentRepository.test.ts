@@ -155,8 +155,7 @@ describe('LocalCommandIssueAttachmentRepository', () => {
         };
       },
     };
-    const resolveGithubToken = (owner: string): string =>
-      `token-for-${owner}`;
+    const resolveGithubToken = (owner: string): string => `token-for-${owner}`;
     const repository = new LocalCommandIssueAttachmentRepository(
       runner,
       root,
