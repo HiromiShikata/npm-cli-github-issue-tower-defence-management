@@ -1,3 +1,10 @@
+## [1.169.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.169.1...v1.169.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* **preparation:** stop returning issues to Awaiting Workspace when reactivation trigger is reached ([#1670](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1670)) ([6e7ea08](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6e7ea08966846ef719abf3921449d5a88e1623bf)), closes [#1669](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1669)
+
 ## [1.169.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.169.0...v1.169.1) (2026-08-22)
 
 

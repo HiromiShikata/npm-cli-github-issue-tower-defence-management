@@ -80,7 +80,12 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.issueCommentRepository.createComment(issue, `Issue has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 return;
             }
-            if (issue.nextActionDate !== null || issue.nextActionHour !== null) {
+            const evaluatedAt = new Date();
+            const startOfTomorrow = new Date(evaluatedAt.getFullYear(), evaluatedAt.getMonth(), evaluatedAt.getDate() + 1);
+            const hasFutureNextActionDate = issue.nextActionDate !== null && issue.nextActionDate >= startOfTomorrow;
+            const hasUnreachedNextActionHour = issue.nextActionHour !== null &&
+                evaluatedAt.getHours() < issue.nextActionHour;
+            if (hasFutureNextActionDate || hasUnreachedNextActionHour) {
                 issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
