@@ -15,9 +15,7 @@ import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnership
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
 
-const createMinimalIssue = (
-  overrides: Partial<Issue> = {},
-): Issue => ({
+const createMinimalIssue = (overrides: Partial<Issue> = {}): Issue => ({
   nameWithOwner: 'user/repo',
   number: 1,
   title: 'Test Issue',
@@ -55,8 +53,18 @@ const createSpawnMockProject = (): Project => ({
     name: 'Status',
     fieldId: 'status-field-id',
     statuses: [
-      { id: 'awaiting-ws-id', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
-      { id: 'preparation-id', name: 'Preparation', color: 'YELLOW', description: '' },
+      {
+        id: 'awaiting-ws-id',
+        name: 'Awaiting Workspace',
+        color: 'GRAY',
+        description: '',
+      },
+      {
+        id: 'preparation-id',
+        name: 'Preparation',
+        color: 'YELLOW',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -77,10 +85,30 @@ const createNotifyMockProject = (): Project => ({
     name: 'Status',
     fieldId: 'status-field-id',
     statuses: [
-      { id: 'awaiting-ws-id', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
-      { id: 'preparation-id', name: 'Preparation', color: 'YELLOW', description: '' },
-      { id: 'failed-prep-id', name: 'Failed Preparation', color: 'RED', description: '' },
-      { id: 'awaiting-qc-id', name: 'Awaiting Quality Check', color: 'BLUE', description: '' },
+      {
+        id: 'awaiting-ws-id',
+        name: 'Awaiting Workspace',
+        color: 'GRAY',
+        description: '',
+      },
+      {
+        id: 'preparation-id',
+        name: 'Preparation',
+        color: 'YELLOW',
+        description: '',
+      },
+      {
+        id: 'failed-prep-id',
+        name: 'Failed Preparation',
+        color: 'RED',
+        description: '',
+      },
+      {
+        id: 'awaiting-qc-id',
+        name: 'Awaiting Quality Check',
+        color: 'BLUE',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -95,7 +123,12 @@ const createNotifyMockProject = (): Project => ({
 const createStoryObjectMap = (issues: Issue[]): StoryObjectMap => {
   const map: StoryObjectMap = new Map();
   map.set('Default Story', {
-    story: { id: 'story-1', name: 'Default Story', color: 'GRAY', description: '' },
+    story: {
+      id: 'story-1',
+      name: 'Default Story',
+      color: 'GRAY',
+      description: '',
+    },
     storyIssue: null,
     issues,
   });
@@ -161,14 +194,16 @@ describe('issueReactivationTriggerIsPending', () => {
       expected: true,
     },
     {
-      label: 'returns true when nextActionDate is future (production ISO form new Date("YYYY-MM-DD"))',
+      label:
+        'returns true when nextActionDate is future (production ISO form new Date("YYYY-MM-DD"))',
       now: new Date(2026, 0, 15, 10, 0, 0),
       nextActionDate: new Date('2026-01-16'),
       nextActionHour: null,
       expected: true,
     },
     {
-      label: 'returns false when nextActionDate is today (production ISO form new Date("YYYY-MM-DD"))',
+      label:
+        'returns false when nextActionDate is today (production ISO form new Date("YYYY-MM-DD"))',
       now: new Date(2026, 0, 15, 10, 0, 0),
       nextActionDate: new Date('2026-01-15'),
       nextActionHour: null,
@@ -268,216 +303,228 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
     },
   ];
 
-  describe.each(agreementCases)('$label', ({ now, nextActionDate, nextActionHour }) => {
-    let spawnMockIssueRepository: jest.Mocked<
-      Pick<
-        IssueRepository,
-        | 'getStoryObjectMap'
-        | 'getAllOpened'
-        | 'updateStatus'
-        | 'findRelatedOpenPRs'
-        | 'getOpenPullRequest'
-        | 'closePullRequest'
-        | 'deletePullRequestBranch'
-        | 'createCommentByUrl'
-        | 'setIssueAgentField'
-        | 'removeLabel'
-      >
-    >;
-    let spawnMockProjectRepository: jest.Mocked<
-      Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
-    >;
-    let spawnMockLocalCommandRunner: jest.Mocked<LocalCommandRunner>;
-    let spawnMockClaudeTokenUsageRepository: jest.Mocked<ClaudeTokenUsageRepository>;
-    let spawnMockTakeOwnershipSpawnRepository: jest.Mocked<TakeOwnershipSpawnRepository>;
-    let spawnUseCase: StartPreparationUseCase;
+  describe.each(agreementCases)(
+    '$label',
+    ({ now, nextActionDate, nextActionHour }) => {
+      let spawnMockIssueRepository: jest.Mocked<
+        Pick<
+          IssueRepository,
+          | 'getStoryObjectMap'
+          | 'getAllOpened'
+          | 'updateStatus'
+          | 'findRelatedOpenPRs'
+          | 'getOpenPullRequest'
+          | 'closePullRequest'
+          | 'deletePullRequestBranch'
+          | 'createCommentByUrl'
+          | 'setIssueAgentField'
+          | 'removeLabel'
+        >
+      >;
+      let spawnMockProjectRepository: jest.Mocked<
+        Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
+      >;
+      let spawnMockLocalCommandRunner: jest.Mocked<LocalCommandRunner>;
+      let spawnMockClaudeTokenUsageRepository: jest.Mocked<ClaudeTokenUsageRepository>;
+      let spawnMockTakeOwnershipSpawnRepository: jest.Mocked<TakeOwnershipSpawnRepository>;
+      let spawnUseCase: StartPreparationUseCase;
 
-    let notifyMockIssueRepository: jest.Mocked<
-      Pick<
-        IssueRepository,
-        | 'get'
-        | 'update'
-        | 'updateStatus'
-        | 'updateLabels'
-        | 'getOrCreateLabel'
-        | 'findRelatedOpenPRs'
-        | 'getStoryObjectMap'
-        | 'getOpenPullRequest'
-        | 'getPullRequestChangedFilePaths'
-        | 'approvePullRequest'
-        | 'requestChangesWithInlineComment'
-        | 'setDependedIssueUrl'
-        | 'setIssueAgentField'
-        | 'searchIssue'
-        | 'createNewIssue'
-      >
-    >;
-    let notifyMockIssueCommentRepository: jest.Mocked<
-      Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>
-    >;
-    let notifyMockProjectRepository: jest.Mocked<
-      Pick<ProjectRepository, 'getByUrl' | 'updateAgentList' | 'createField'>
-    >;
-    let notifyMockWebhookRepository: jest.Mocked<
-      Pick<WebhookRepository, 'sendGetRequest'>
-    >;
-    let notifyUseCase: NotifyFinishedIssuePreparationUseCase;
+      let notifyMockIssueRepository: jest.Mocked<
+        Pick<
+          IssueRepository,
+          | 'get'
+          | 'update'
+          | 'updateStatus'
+          | 'updateLabels'
+          | 'getOrCreateLabel'
+          | 'findRelatedOpenPRs'
+          | 'getStoryObjectMap'
+          | 'getOpenPullRequest'
+          | 'getPullRequestChangedFilePaths'
+          | 'approvePullRequest'
+          | 'requestChangesWithInlineComment'
+          | 'setDependedIssueUrl'
+          | 'setIssueAgentField'
+          | 'searchIssue'
+          | 'createNewIssue'
+        >
+      >;
+      let notifyMockIssueCommentRepository: jest.Mocked<
+        Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>
+      >;
+      let notifyMockProjectRepository: jest.Mocked<
+        Pick<ProjectRepository, 'getByUrl' | 'updateAgentList' | 'createField'>
+      >;
+      let notifyMockWebhookRepository: jest.Mocked<
+        Pick<WebhookRepository, 'sendGetRequest'>
+      >;
+      let notifyUseCase: NotifyFinishedIssuePreparationUseCase;
 
-    beforeEach(() => {
-      jest.resetAllMocks();
-      jest.useFakeTimers().setSystemTime(now);
+      beforeEach(() => {
+        jest.resetAllMocks();
+        jest.useFakeTimers().setSystemTime(now);
 
-      const spawnProject = createSpawnMockProject();
-      spawnMockProjectRepository = {
-        getByUrl: jest.fn().mockResolvedValue(spawnProject),
-        createField: jest.fn().mockResolvedValue(undefined),
-        updateAgentList: jest.fn().mockResolvedValue([]),
-      };
-      spawnMockIssueRepository = {
-        getStoryObjectMap: jest.fn().mockResolvedValue(
-          createStoryObjectMap([
-            createMinimalIssue({ nextActionDate, nextActionHour }),
+        const spawnProject = createSpawnMockProject();
+        spawnMockProjectRepository = {
+          getByUrl: jest.fn().mockResolvedValue(spawnProject),
+          createField: jest.fn().mockResolvedValue(undefined),
+          updateAgentList: jest.fn().mockResolvedValue([]),
+        };
+        spawnMockIssueRepository = {
+          getStoryObjectMap: jest
+            .fn()
+            .mockResolvedValue(
+              createStoryObjectMap([
+                createMinimalIssue({ nextActionDate, nextActionHour }),
+              ]),
+            ),
+          getAllOpened: jest.fn().mockResolvedValue([]),
+          updateStatus: jest.fn().mockResolvedValue(undefined),
+          findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
+          getOpenPullRequest: jest.fn().mockResolvedValue(null),
+          closePullRequest: jest.fn().mockResolvedValue(undefined),
+          deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
+          createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+          setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+          removeLabel: jest.fn().mockResolvedValue(undefined),
+        };
+        spawnMockLocalCommandRunner = {
+          runCommand: jest
+            .fn()
+            .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
+        };
+        spawnMockClaudeTokenUsageRepository = {
+          ensureObservable: jest.fn().mockResolvedValue(undefined),
+          getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
+          getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
+          proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+        };
+        spawnMockTakeOwnershipSpawnRepository = {
+          listSpawns: jest.fn().mockReturnValue([]),
+          listRunningIssueUrls: jest.fn().mockReturnValue([]),
+        };
+        spawnUseCase = new StartPreparationUseCase(
+          spawnMockProjectRepository,
+          spawnMockIssueRepository,
+          spawnMockLocalCommandRunner,
+          spawnMockClaudeTokenUsageRepository,
+          spawnMockTakeOwnershipSpawnRepository,
+        );
+
+        const notifyProject = createNotifyMockProject();
+        notifyMockProjectRepository = {
+          getByUrl: jest.fn().mockResolvedValue(notifyProject),
+          updateAgentList: jest.fn().mockResolvedValue([]),
+          createField: jest.fn().mockResolvedValue(undefined),
+        };
+        notifyMockIssueRepository = {
+          get: jest.fn().mockResolvedValue(
+            createMinimalIssue({
+              status: 'Preparation',
+              nextActionDate,
+              nextActionHour,
+            }),
+          ),
+          update: jest.fn().mockResolvedValue(undefined),
+          updateStatus: jest.fn().mockResolvedValue(undefined),
+          updateLabels: jest.fn().mockResolvedValue(undefined),
+          getOrCreateLabel: jest.fn().mockResolvedValue(undefined),
+          findRelatedOpenPRs: jest.fn().mockResolvedValue([
+            {
+              url: 'https://github.com/user/repo/pull/1',
+              isConflicted: false,
+              isPassedAllCiJob: true,
+              isCiStateSuccess: true,
+              isResolvedAllReviewComments: true,
+              isBranchOutOfDate: false,
+              missingRequiredCheckNames: [],
+              isDraft: false,
+              mergeable: 'MERGEABLE',
+              branchName: 'i1',
+              createdAt: new Date(),
+            },
           ]),
-        ),
-        getAllOpened: jest.fn().mockResolvedValue([]),
-        updateStatus: jest.fn().mockResolvedValue(undefined),
-        findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
-        getOpenPullRequest: jest.fn().mockResolvedValue(null),
-        closePullRequest: jest.fn().mockResolvedValue(undefined),
-        deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
-        createCommentByUrl: jest.fn().mockResolvedValue(undefined),
-        setIssueAgentField: jest.fn().mockResolvedValue(undefined),
-        removeLabel: jest.fn().mockResolvedValue(undefined),
-      };
-      spawnMockLocalCommandRunner = {
-        runCommand: jest.fn().mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
-      };
-      spawnMockClaudeTokenUsageRepository = {
-        ensureObservable: jest.fn().mockResolvedValue(undefined),
-        getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
-        getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
-        proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
-      };
-      spawnMockTakeOwnershipSpawnRepository = {
-        listSpawns: jest.fn().mockReturnValue([]),
-        listRunningIssueUrls: jest.fn().mockReturnValue([]),
-      };
-      spawnUseCase = new StartPreparationUseCase(
-        spawnMockProjectRepository,
-        spawnMockIssueRepository,
-        spawnMockLocalCommandRunner,
-        spawnMockClaudeTokenUsageRepository,
-        spawnMockTakeOwnershipSpawnRepository,
-      );
-
-      const notifyProject = createNotifyMockProject();
-      notifyMockProjectRepository = {
-        getByUrl: jest.fn().mockResolvedValue(notifyProject),
-        updateAgentList: jest.fn().mockResolvedValue([]),
-        createField: jest.fn().mockResolvedValue(undefined),
-      };
-      notifyMockIssueRepository = {
-        get: jest.fn().mockResolvedValue(
-          createMinimalIssue({
-            status: 'Preparation',
-            nextActionDate,
-            nextActionHour,
-          }),
-        ),
-        update: jest.fn().mockResolvedValue(undefined),
-        updateStatus: jest.fn().mockResolvedValue(undefined),
-        updateLabels: jest.fn().mockResolvedValue(undefined),
-        getOrCreateLabel: jest.fn().mockResolvedValue(undefined),
-        findRelatedOpenPRs: jest.fn().mockResolvedValue([
-          {
-            url: 'https://github.com/user/repo/pull/1',
-            isConflicted: false,
-            isPassedAllCiJob: true,
-            isCiStateSuccess: true,
-            isResolvedAllReviewComments: true,
-            isBranchOutOfDate: false,
-            missingRequiredCheckNames: [],
-            isDraft: false,
-            mergeable: 'MERGEABLE',
-            branchName: 'i1',
-            createdAt: new Date(),
-          },
-        ]),
-        getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
-        getOpenPullRequest: jest.fn().mockResolvedValue(null),
-        getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
-        approvePullRequest: jest.fn().mockResolvedValue(undefined),
-        requestChangesWithInlineComment: jest.fn().mockResolvedValue(undefined),
-        setDependedIssueUrl: jest.fn().mockResolvedValue(undefined),
-        setIssueAgentField: jest.fn().mockResolvedValue(undefined),
-        searchIssue: jest.fn().mockResolvedValue([]),
-        createNewIssue: jest.fn().mockResolvedValue(42),
-      };
-      notifyMockIssueCommentRepository = {
-        getCommentsFromIssue: jest.fn().mockResolvedValue([
-          {
-            author: 'bot',
-            content: 'From: :robot: developer (claude-opus-5)',
-            createdAt: new Date(),
-          },
-        ]),
-        createComment: jest.fn().mockResolvedValue(undefined),
-      };
-      notifyMockWebhookRepository = {
-        sendGetRequest: jest.fn().mockResolvedValue(undefined),
-      };
-      notifyUseCase = new NotifyFinishedIssuePreparationUseCase(
-        notifyMockProjectRepository,
-        notifyMockIssueRepository,
-        notifyMockIssueCommentRepository,
-        notifyMockWebhookRepository,
-      );
-    });
-
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
-    it('spawn side starts the issue if and only if finish side does not send it back for the trigger', async () => {
-      const triggerIsPending = issueReactivationTriggerIsPending(
-        { nextActionDate, nextActionHour },
-        now,
-      );
-
-      await spawnUseCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
+          getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
+          getOpenPullRequest: jest.fn().mockResolvedValue(null),
+          getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
+          approvePullRequest: jest.fn().mockResolvedValue(undefined),
+          requestChangesWithInlineComment: jest
+            .fn()
+            .mockResolvedValue(undefined),
+          setDependedIssueUrl: jest.fn().mockResolvedValue(undefined),
+          setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+          searchIssue: jest.fn().mockResolvedValue([]),
+          createNewIssue: jest.fn().mockResolvedValue(42),
+        };
+        notifyMockIssueCommentRepository = {
+          getCommentsFromIssue: jest.fn().mockResolvedValue([
+            {
+              author: 'bot',
+              content: 'From: :robot: developer (claude-opus-5)',
+              createdAt: new Date(),
+            },
+          ]),
+          createComment: jest.fn().mockResolvedValue(undefined),
+        };
+        notifyMockWebhookRepository = {
+          sendGetRequest: jest.fn().mockResolvedValue(undefined),
+        };
+        notifyUseCase = new NotifyFinishedIssuePreparationUseCase(
+          notifyMockProjectRepository,
+          notifyMockIssueRepository,
+          notifyMockIssueCommentRepository,
+          notifyMockWebhookRepository,
+        );
       });
 
-      const spawnStarted = spawnMockIssueRepository.updateStatus.mock.calls.some(
-        (call) => call[2] === 'preparation-id',
-      );
-
-      await notifyUseCase.run({
-        projectUrl: 'https://github.com/users/user/projects/2',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+      afterEach(() => {
+        jest.useRealTimers();
       });
 
-      const TRIGGER_MESSAGE = 'Reactivation trigger not yet reached';
-      const triggerSentBack = notifyMockIssueCommentRepository.createComment.mock.calls.some(
-        (call) => typeof call[1] === 'string' && call[1].includes(TRIGGER_MESSAGE),
-      );
+      it('spawn side starts the issue if and only if finish side does not send it back for the trigger', async () => {
+        const triggerIsPending = issueReactivationTriggerIsPending(
+          { nextActionDate, nextActionHour },
+          now,
+        );
 
-      expect(spawnStarted).toBe(!triggerIsPending);
-      expect(triggerSentBack).toBe(triggerIsPending);
-    });
-  });
+        await spawnUseCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          defaultAgentName: 'agent1',
+          defaultLlmModelName: 'claude-sonnet-4-6',
+          fallbackLlmModelName: null,
+          defaultLlmAgentName: null,
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          utilizationPercentageThreshold: 90,
+          allowedIssueAuthors: ['testuser'],
+          manager: 'manager-user',
+          codexHomeCandidates: null,
+          labelsAsLlmAgentName: null,
+        });
+
+        const spawnStarted =
+          spawnMockIssueRepository.updateStatus.mock.calls.some(
+            (call) => call[2] === 'preparation-id',
+          );
+
+        await notifyUseCase.run({
+          projectUrl: 'https://github.com/users/user/projects/2',
+          issueUrl: 'https://github.com/user/repo/issues/1',
+          thresholdForAutoReject: 3,
+          workflowBlockerResolvedWebhookUrl: null,
+          allowedIssueAuthors: null,
+        });
+
+        const TRIGGER_MESSAGE = 'Reactivation trigger not yet reached';
+        const triggerSentBack =
+          notifyMockIssueCommentRepository.createComment.mock.calls.some(
+            (call) =>
+              typeof call[1] === 'string' && call[1].includes(TRIGGER_MESSAGE),
+          );
+
+        expect(spawnStarted).toBe(!triggerIsPending);
+        expect(triggerSentBack).toBe(triggerIsPending);
+      });
+    },
+  );
 });
