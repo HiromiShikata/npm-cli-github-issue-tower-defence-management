@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClearPastNextActionDateHourUseCase = void 0;
+const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 class ClearPastNextActionDateHourUseCase {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
@@ -34,7 +35,7 @@ class ClearPastNextActionDateHourUseCase {
             if (!nextActionDate) {
                 return;
             }
-            const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+            const startOfTomorrow = (0, issueReactivationTriggerIsPending_1.issueReactivationTriggerStartOfTomorrow)(now);
             for (const issue of input.issues) {
                 if (issue.nextActionHour !== null ||
                     (issue.nextActionDate?.getTime() ?? Infinity) >=

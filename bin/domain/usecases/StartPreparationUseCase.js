@@ -4,6 +4,7 @@ exports.StartPreparationUseCase = exports.agentNameFromDesignation = exports.DEF
 const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const AgentDesignationLabelAdoptUseCase_1 = require("./AgentDesignationLabelAdoptUseCase");
+const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
@@ -216,9 +217,6 @@ class StartPreparationUseCase {
                 notAssignedToManager: 0,
             };
             const now = new Date();
-            const currentHour = now.getHours();
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const tomorrowStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate() + 1);
             for (let i = 0; i < awaitingWorkspaceIssues.length &&
                 updatedCurrentPreparationIssueCount < effectiveMaxPreparingIssuesCount; i++) {
                 const issue = awaitingWorkspaceIssues[i];
@@ -230,13 +228,15 @@ class StartPreparationUseCase {
                     console.warn(`Skipping ${issue.url}: worker already running.`);
                     continue;
                 }
-                if (issue.nextActionDate !== null &&
-                    issue.nextActionDate >= tomorrowStart) {
-                    exclusionCounts.futureNextActionDate++;
-                    continue;
-                }
-                if (issue.nextActionHour !== null && currentHour < issue.nextActionHour) {
-                    exclusionCounts.nextActionHourNotReached++;
+                if ((0, issueReactivationTriggerIsPending_1.issueReactivationTriggerIsPending)(issue, now)) {
+                    const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+                    if (issue.nextActionDate !== null &&
+                        issue.nextActionDate >= startOfTomorrow) {
+                        exclusionCounts.futureNextActionDate++;
+                    }
+                    else {
+                        exclusionCounts.nextActionHourNotReached++;
+                    }
                     continue;
                 }
                 if (params.allowedIssueAuthors === null ||

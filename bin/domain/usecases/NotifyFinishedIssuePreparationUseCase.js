@@ -8,6 +8,7 @@ const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequir
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
+const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -81,16 +82,12 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             const evaluatedAt = new Date();
-            const startOfTomorrow = new Date(evaluatedAt.getFullYear(), evaluatedAt.getMonth(), evaluatedAt.getDate() + 1);
-            const hasFutureNextActionDate = issue.nextActionDate !== null && issue.nextActionDate >= startOfTomorrow;
-            const hasUnreachedNextActionHour = issue.nextActionHour !== null &&
-                evaluatedAt.getHours() < issue.nextActionHour;
-            if (hasFutureNextActionDate || hasUnreachedNextActionHour) {
+            if ((0, issueReactivationTriggerIsPending_1.issueReactivationTriggerIsPending)(issue, evaluatedAt)) {
                 issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                 await this.patchConsoleTab(issue);
-                await this.issueCommentRepository.createComment(issue, `Issue has next action date or hour set: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`);
+                await this.issueCommentRepository.createComment(issue, `Reactivation trigger not yet reached: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`);
                 return;
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);

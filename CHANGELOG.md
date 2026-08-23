@@ -1,3 +1,10 @@
+# [1.172.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.171.0...v1.172.0) (2026-08-23)
+
+
+### Features
+
+* **preparation:** extract reactivation trigger predicate into shared domain function ([#1677](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1677)) ([c22b803](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c22b80309ce65643b59cb271a8a5c6dc8bfbcced)), closes [#1674](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1674)
+
 # [1.171.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.170.1...v1.171.0) (2026-08-23)
 
 
