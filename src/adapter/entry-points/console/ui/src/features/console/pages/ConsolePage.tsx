@@ -145,14 +145,11 @@ export const ConsolePage = () => {
     stories: typeof storyOptions;
   } | null>(null);
 
-  const displayedStoryOptions =
+  const triageStoryOptions =
     localStoryOptionsOverride !== null &&
     localStoryOptionsOverride.generatedAt === activeSnapshot?.generatedAt
       ? localStoryOptionsOverride.stories
-      : storyOptions;
-  const triageStoryOptions = displayedStoryOptions.filter(
-    (o) => o.color !== 'GRAY',
-  );
+      : storyOptions.filter((o) => o.color !== 'GRAY');
 
   const selectedItem = useMemo<ConsoleListItem | null>(() => {
     if (selectedItemKey === null || activeSnapshot === null) {
@@ -289,16 +286,15 @@ export const ConsolePage = () => {
         throw new Error('No project specified in the URL path.');
       }
       await postConsoleReorderStory({ pjcode, storyOptionId, direction });
-      const currentOptions = displayedStoryOptions;
-      const index = currentOptions.findIndex((o) => o.id === storyOptionId);
+      const index = triageStoryOptions.findIndex((o) => o.id === storyOptionId);
       if (index === -1) {
         return;
       }
       const swapIndex = index + (direction === 'up' ? -1 : 1);
-      if (swapIndex < 0 || swapIndex >= currentOptions.length) {
+      if (swapIndex < 0 || swapIndex >= triageStoryOptions.length) {
         return;
       }
-      const next = [...currentOptions];
+      const next = [...triageStoryOptions];
       const temp = next[index];
       next[index] = next[swapIndex];
       next[swapIndex] = temp;
@@ -307,7 +303,7 @@ export const ConsolePage = () => {
         stories: next,
       });
     },
-    [pjcode, displayedStoryOptions, activeSnapshot?.generatedAt],
+    [pjcode, triageStoryOptions, activeSnapshot?.generatedAt],
   );
 
   return (
