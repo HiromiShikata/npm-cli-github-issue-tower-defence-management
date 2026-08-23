@@ -368,6 +368,7 @@ exports.program
         agents: config.agents ?? null,
         missingAgentName: options.missingAgentName ?? null,
         sessionErrorLine: options.sessionErrorLine ?? null,
+        manager: config.manager ?? null,
     });
 });
 exports.program

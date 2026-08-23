@@ -54,7 +54,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 throw new IllegalIssueStatusError(params.issueUrl, issue.status, WorkflowStatus_1.PREPARATION_STATUS_NAME);
             }
             if (params.missingAgentName) {
-                await this.handleMissingAgentDefinition(issue, project, awaitingWorkspaceStatusOption, params.missingAgentName, params.sessionErrorLine ?? null);
+                await this.handleMissingAgentDefinition(issue, project, awaitingWorkspaceStatusOption, params.missingAgentName, params.sessionErrorLine ?? null, params.manager ?? null);
                 return;
             }
             if (issue.dependedIssueUrls.length === 0) {
@@ -161,7 +161,7 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
             await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
         };
-        this.handleMissingAgentDefinition = async (issue, project, awaitingWorkspaceStatusOption, missingAgentName, sessionErrorLine) => {
+        this.handleMissingAgentDefinition = async (issue, project, awaitingWorkspaceStatusOption, missingAgentName, sessionErrorLine, manager) => {
             const taskIssueTitle = `Register missing agent definition: ${missingAgentName}`;
             const searchResults = await this.issueRepository.searchIssue({
                 owner: issue.org,
@@ -183,7 +183,10 @@ class NotifyFinishedIssuePreparationUseCase {
                     `- Failing item: ${issue.url}`,
                     `- Error: ${sessionErrorLine ?? '(not captured)'}`,
                 ].join('\n');
-                const issueNumber = await this.issueRepository.createNewIssue(issue.org, issue.repo, taskIssueTitle, body, [], []);
+                if (!manager) {
+                    throw new Error(`'manager' is not configured: cannot create the missing-agent task issue for '${missingAgentName}' without an assignee. Set the 'manager' configuration key to a GitHub username.`);
+                }
+                const issueNumber = await this.issueRepository.createNewIssue(issue.org, issue.repo, taskIssueTitle, body, [manager], []);
                 taskIssueUrl = `https://github.com/${issue.org}/${issue.repo}/issues/${issueNumber}`;
             }
             if (project.dependedIssueUrlSeparatedByComma) {

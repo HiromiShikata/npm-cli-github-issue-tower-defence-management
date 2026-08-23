@@ -1,3 +1,10 @@
+## [1.170.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.170.0...v1.170.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **notify:** assign the missing-agent task issue to the manager so it is actionable ([#1673](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1673)) ([cd5168c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cd5168c5677d7587ce2d5ff92d45cd1dd563665f)), closes [#1667](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1667)
+
 # [1.170.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.169.2...v1.170.0) (2026-08-23)
 
 

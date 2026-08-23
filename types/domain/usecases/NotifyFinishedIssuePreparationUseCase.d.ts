@@ -30,6 +30,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         agents?: string[] | null;
         missingAgentName?: string | null;
         sessionErrorLine?: string | null;
+        manager?: string | null;
     }) => Promise<void>;
     private handleMissingAgentDefinition;
     private isAuthorTrusted;
