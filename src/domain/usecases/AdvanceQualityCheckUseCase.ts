@@ -17,7 +17,8 @@ export class AdvanceQualityCheckUseCase {
     awaitingQualityCheckStatusName?: string;
   }): Promise<number> => {
     const qualityCheckStatusName =
-      params.awaitingQualityCheckStatusName ?? AWAITING_QUALITY_CHECK_STATUS_NAME;
+      params.awaitingQualityCheckStatusName ??
+      AWAITING_QUALITY_CHECK_STATUS_NAME;
     const doneStatusOption = params.project.status.statuses.find(
       (s) => s.name === DONE_STATUS_NAME,
     );

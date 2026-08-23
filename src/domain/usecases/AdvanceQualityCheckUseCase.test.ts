@@ -65,7 +65,12 @@ const createMockProject = (): Project => ({
         color: 'GREEN',
         description: '',
       },
-      { id: 'done-id', name: DONE_STATUS_NAME, color: 'PURPLE', description: '' },
+      {
+        id: 'done-id',
+        name: DONE_STATUS_NAME,
+        color: 'PURPLE',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -102,15 +107,29 @@ describe('AdvanceQualityCheckUseCase', () => {
   });
 
   it('moves multiple issues in Awaiting Quality Check status to Done', async () => {
-    const issue1 = createMockIssue({ number: 1, url: 'https://github.com/user/repo/issues/1' });
-    const issue2 = createMockIssue({ number: 2, url: 'https://github.com/user/repo/issues/2' });
+    const issue1 = createMockIssue({
+      number: 1,
+      url: 'https://github.com/user/repo/issues/1',
+    });
+    const issue2 = createMockIssue({
+      number: 2,
+      url: 'https://github.com/user/repo/issues/2',
+    });
     const project = createMockProject();
 
     await useCase.run({ project, issues: [issue1, issue2] });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(2);
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(project, issue1, 'done-id');
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(project, issue2, 'done-id');
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      issue1,
+      'done-id',
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      issue2,
+      'done-id',
+    );
   });
 
   it('does not move issues that are not in Awaiting Quality Check status', async () => {
@@ -171,7 +190,10 @@ describe('AdvanceQualityCheckUseCase', () => {
 
   it('returns the count of advanced issues', async () => {
     const issue1 = createMockIssue({ number: 1 });
-    const issue2 = createMockIssue({ number: 2, url: 'https://github.com/user/repo/issues/2' });
+    const issue2 = createMockIssue({
+      number: 2,
+      url: 'https://github.com/user/repo/issues/2',
+    });
     const notAdvancedIssue = createMockIssue({
       number: 3,
       url: 'https://github.com/user/repo/issues/3',

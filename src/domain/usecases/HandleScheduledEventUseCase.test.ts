@@ -1567,4 +1567,3 @@ describe('HandleScheduledEventUseCase', () => {
     });
   });
 });
-
