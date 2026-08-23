@@ -1518,6 +1518,7 @@ mysteryKey: 'value'
         agents: null,
         missingAgentName: null,
         sessionErrorLine: null,
+        manager: 'test-manager',
       });
     });
 
@@ -1558,6 +1559,7 @@ mysteryKey: 'value'
         agents: null,
         missingAgentName: null,
         sessionErrorLine: null,
+        manager: 'test-manager',
       });
     });
 

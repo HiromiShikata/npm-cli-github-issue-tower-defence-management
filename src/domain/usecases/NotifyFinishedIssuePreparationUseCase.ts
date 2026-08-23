@@ -104,6 +104,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     agents?: string[] | null;
     missingAgentName?: string | null;
     sessionErrorLine?: string | null;
+    manager?: string | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -154,6 +155,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption,
         params.missingAgentName,
         params.sessionErrorLine ?? null,
+        params.manager ?? null,
       );
       return;
     }
@@ -395,6 +397,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     awaitingWorkspaceStatusOption: { id: string },
     missingAgentName: string,
     sessionErrorLine: string | null,
+    manager: string | null,
   ): Promise<void> => {
     const taskIssueTitle = `Register missing agent definition: ${missingAgentName}`;
 
@@ -418,12 +421,17 @@ export class NotifyFinishedIssuePreparationUseCase {
         `- Failing item: ${issue.url}`,
         `- Error: ${sessionErrorLine ?? '(not captured)'}`,
       ].join('\n');
+      if (!manager) {
+        console.warn(
+          `No manager configured: the missing-agent task issue for \`${missingAgentName}\` will be created without an assignee and may not be picked up automatically.`,
+        );
+      }
       const issueNumber = await this.issueRepository.createNewIssue(
         issue.org,
         issue.repo,
         taskIssueTitle,
         body,
-        [],
+        manager ? [manager] : [],
         [],
       );
       taskIssueUrl = `https://github.com/${issue.org}/${issue.repo}/issues/${issueNumber}`;
