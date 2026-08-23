@@ -1,7 +1,10 @@
 import { mkdtemp, readdir } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
+import {
+  LocalCommandRunner,
+  LocalCommandRunnerOptions,
+} from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import {
   LocalCommandIssueAttachmentRepository,
   relabelAttachmentMarkdown,
@@ -132,5 +135,72 @@ describe('LocalCommandIssueAttachmentRepository', () => {
         content: new Uint8Array([1]),
       }),
     ).rejects.toThrow(`${UPLOAD_COMMAND} returned no markdown`);
+  });
+
+  it('should pass GH_TOKEN env resolved from the owner when resolveGithubToken is provided', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'attachment-test-root-'));
+    const received: {
+      program: string;
+      args: string[];
+      options: LocalCommandRunnerOptions | undefined;
+    }[] = [];
+    const runner: LocalCommandRunner = {
+      runCommand: async (program, args, options) => {
+        received.push({ program, args, options });
+        return {
+          stdout:
+            '![screenshot](https://github.com/user-attachments/assets/abc)\n',
+          stderr: '',
+          exitCode: 0,
+        };
+      },
+    };
+    const resolveGithubToken = (owner: string): string => `token-for-${owner}`;
+    const repository = new LocalCommandIssueAttachmentRepository(
+      runner,
+      root,
+      resolveGithubToken,
+    );
+
+    await repository.uploadAttachment({
+      issueOrPullRequestUrl: 'https://github.com/meta-site/repo/issues/1',
+      fileName: 'screenshot.png',
+      content: new Uint8Array([1, 2, 3]),
+    });
+
+    expect(received).toHaveLength(1);
+    expect(received[0].options).toEqual({
+      env: { GH_TOKEN: 'token-for-meta-site' },
+    });
+  });
+
+  it('should pass undefined as third argument to runCommand when resolveGithubToken is not provided', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'attachment-test-root-'));
+    const received: {
+      program: string;
+      args: string[];
+      options: LocalCommandRunnerOptions | undefined;
+    }[] = [];
+    const runner: LocalCommandRunner = {
+      runCommand: async (program, args, options) => {
+        received.push({ program, args, options });
+        return {
+          stdout:
+            '![screenshot](https://github.com/user-attachments/assets/abc)\n',
+          stderr: '',
+          exitCode: 0,
+        };
+      },
+    };
+    const repository = new LocalCommandIssueAttachmentRepository(runner, root);
+
+    await repository.uploadAttachment({
+      issueOrPullRequestUrl: 'https://github.com/owner/repo/issues/1',
+      fileName: 'screenshot.png',
+      content: new Uint8Array([1]),
+    });
+
+    expect(received).toHaveLength(1);
+    expect(received[0].options).toBeUndefined();
   });
 });
