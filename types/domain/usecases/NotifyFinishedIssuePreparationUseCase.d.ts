@@ -40,7 +40,6 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private resolveOpenPrsForPrItem;
     private sendWorkflowBlockerNotification;
     private resolveConsoleTargetTab;
-    private extractNextStepAgent;
     private ensureAgentOptionAndGetId;
     private patchConsoleTab;
 }

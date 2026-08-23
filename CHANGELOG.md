@@ -1,3 +1,10 @@
+## [1.172.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.172.1...v1.172.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* route an orphaned issue to the next step agent its report designates ([#1692](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1692)) ([13eac05](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/13eac05aa8e3fc04d875623df80ebc0971be896e))
+
 ## [1.172.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.172.0...v1.172.1) (2026-08-23)
 
 

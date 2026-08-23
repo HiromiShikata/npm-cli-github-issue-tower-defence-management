@@ -7,6 +7,8 @@ const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnec
 const autoStatusCheckComments_1 = require("./autoStatusCheckComments");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
+const extractNextStepAgent_1 = require("./extractNextStepAgent");
+const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 class RevertOrphanedPreparationUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository, localCommandRunner) {
@@ -40,6 +42,15 @@ class RevertOrphanedPreparationUseCase {
                 const { outcome, comments } = await this.evaluateOutcome(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), params.allowedIssueAuthors);
                 const isStillInPreparation = await this.isStillInPreparation(issue, project);
                 if (!isStillInPreparation) {
+                    continue;
+                }
+                const nextStepAgent = this.resolveNextStepAgent(comments, params.allowedIssueAuthors);
+                if (nextStepAgent !== null) {
+                    const agentOptionId = await (0, ensureAgentOptionAndGetId_1.ensureAgentOptionAndGetId)(this.projectRepository, project, nextStepAgent);
+                    if (agentOptionId !== null) {
+                        await this.issueRepository.setIssueAgentField(issue.url, project, agentOptionId);
+                    }
+                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     continue;
                 }
                 if (outcome === 'returnToLabelSelectedAgent') {
@@ -151,6 +162,14 @@ class RevertOrphanedPreparationUseCase {
                 return [];
             }
             return [pr];
+        };
+        this.resolveNextStepAgent = (comments, allowedIssueAuthors) => {
+            const lastReportComment = [...comments]
+                .reverse()
+                .find((comment) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(comment.author, allowedIssueAuthors) && comment.content.startsWith('From: :robot:'));
+            return lastReportComment
+                ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastReportComment.content)
+                : null;
         };
         this.reportBodyHasNextStep = (body) => {
             const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);

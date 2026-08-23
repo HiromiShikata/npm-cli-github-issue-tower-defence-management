@@ -3,11 +3,11 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 export declare class RevertOrphanedPreparationUseCase {
-    readonly projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>;
-    readonly issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'get'>;
+    readonly projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject' | 'createField' | 'getByUrl' | 'updateAgentList'>;
+    readonly issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'get' | 'setIssueAgentField'>;
     readonly issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>;
     readonly localCommandRunner: LocalCommandRunner;
-    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'get'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, localCommandRunner: LocalCommandRunner);
+    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject' | 'createField' | 'getByUrl' | 'updateAgentList'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'get' | 'setIssueAgentField'>, issueCommentRepository: Pick<IssueCommentRepository, 'getCommentsFromIssue' | 'createComment'>, localCommandRunner: LocalCommandRunner);
     run: (params: {
         projectUrl: string;
         preparationProcessCheckCommand: string;
@@ -22,6 +22,7 @@ export declare class RevertOrphanedPreparationUseCase {
     private isStillInPreparation;
     private evaluateOutcome;
     private resolveOpenPrsForPrItem;
+    private resolveNextStepAgent;
     private reportBodyHasNextStep;
     private isOrphanedIssue;
     private isAwLogStale;
