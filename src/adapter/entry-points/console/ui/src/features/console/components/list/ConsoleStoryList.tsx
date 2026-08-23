@@ -129,16 +129,32 @@ export const ConsoleStoryList = ({
         return (
           <li key={entry.storyOptionId} className="console-story-list-row">
             <div className="console-story-list-row-main">
-              <span
-                className="console-storytag"
-                style={{ color: palette.fg, borderColor: palette.border }}
-              >
+              {entry.storyViewUrl !== null ? (
+                <a
+                  href={entry.storyViewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="console-storytag"
+                  style={{ color: palette.fg, borderColor: palette.border }}
+                >
+                  <span
+                    className="console-story-dot"
+                    style={{ backgroundColor: palette.dot }}
+                  />
+                  {entry.storyName}
+                </a>
+              ) : (
                 <span
-                  className="console-story-dot"
-                  style={{ backgroundColor: palette.dot }}
-                />
-                {entry.storyName}
-              </span>
+                  className="console-storytag"
+                  style={{ color: palette.fg, borderColor: palette.border }}
+                >
+                  <span
+                    className="console-story-dot"
+                    style={{ backgroundColor: palette.dot }}
+                  />
+                  {entry.storyName}
+                </span>
+              )}
               <span className="console-story-count">{entry.openItemCount}</span>
               <button
                 type="button"

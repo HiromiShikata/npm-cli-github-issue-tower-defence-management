@@ -101,6 +101,7 @@ describe('GenerateConsoleListsUseCase', () => {
     issues: Issue[],
     project: Project = projectWithStory,
     workflowBlockerStoryName: string | null = 'regular / WORKFLOW BLOCKER',
+    urlOfStoryView: string | null = null,
   ) =>
     usecase.run({
       project,
@@ -109,6 +110,7 @@ describe('GenerateConsoleListsUseCase', () => {
       assigneeLogin: ASSIGNEE,
       generatedAt,
       workflowBlockerStoryName,
+      urlOfStoryView,
     });
 
   describe('common actionable filter', () => {
@@ -878,6 +880,57 @@ describe('GenerateConsoleListsUseCase', () => {
     it('produces an empty stories list when the project has no story field', () => {
       const result = run([], baseProject(null));
       expect(result.stories.stories).toEqual([]);
+    });
+
+    it('sets storyViewUrl to null for every entry when urlOfStoryView is null', () => {
+      const result = run([], projectWithStory, null, null);
+      for (const entry of result.stories.stories) {
+        expect(entry.storyViewUrl).toBeNull();
+      }
+    });
+
+    it('computes storyViewUrl with sliceBy query param for each entry when urlOfStoryView is provided', () => {
+      const result = run(
+        [],
+        projectWithStory,
+        null,
+        'https://github.com/orgs/demo/projects/1/views/1',
+      );
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      const beta = result.stories.stories.find(
+        (s) => s.storyName === 'Story Beta',
+      );
+      expect(alpha?.storyViewUrl).toBe(
+        'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20Alpha',
+      );
+      expect(beta?.storyViewUrl).toBe(
+        'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20Beta',
+      );
+    });
+
+    it('encodes special characters in the story name when building storyViewUrl', () => {
+      const specialStoryOptions: FieldOption[] = [
+        storyOption('sp1', 'Story #1 & More', 'BLUE'),
+      ];
+      const specialProject = baseProject({
+        name: 'story',
+        fieldId: 'story-field',
+        databaseId: 2,
+        stories: specialStoryOptions,
+        workflowManagementStory: { id: 'wm', name: 'workflow management' },
+      });
+      const result = run(
+        [],
+        specialProject,
+        null,
+        'https://github.com/orgs/demo/projects/1/views/1',
+      );
+      const entry = result.stories.stories[0];
+      expect(entry.storyViewUrl).toBe(
+        'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20%231%20%26%20More',
+      );
     });
   });
 
