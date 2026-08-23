@@ -90,7 +90,9 @@ const requestJson = async (
         ) {
           errorMessage = payload.error;
         }
-      } catch {}
+      } catch (e: unknown) {
+        console.warn('Failed to parse error body from non-ok response:', e);
+      }
       throw new Error(errorMessage);
     }
     const payload: unknown = await response.json();

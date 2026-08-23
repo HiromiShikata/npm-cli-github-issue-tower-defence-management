@@ -3,6 +3,7 @@ import {
   IssueComment,
   PullRequestCommit,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 
 export const ISSUE_TITLE_CACHE_TTL_MS = 300 * 1000;
 
@@ -72,6 +73,11 @@ export class IssueTitleStateCache {
     return entry.state;
   };
 
+  getStale = (url: string): IssueOrPullRequestState | null => {
+    const entry = this.entries.get(url);
+    return entry?.state ?? null;
+  };
+
   set = (url: string, state: IssueOrPullRequestState): void => {
     this.entries.set(url, { state, fetchedAtMs: this.nowMs() });
   };
@@ -93,6 +99,11 @@ export class PullRequestStatusCache {
     return entry.status;
   };
 
+  getStale = (url: string): PullRequestStatusResponse | null => {
+    const entry = this.entries.get(url);
+    return entry?.status ?? null;
+  };
+
   set = (url: string, status: PullRequestStatusResponse): void => {
     this.entries.set(url, { status, fetchedAtMs: this.nowMs() });
   };
@@ -103,11 +114,9 @@ export type ConsoleReadApiResponse = {
   body: unknown;
 };
 
-const GITHUB_RATE_LIMIT_MESSAGE_PATTERN = /GitHub rate limit exceeded/;
-
-const isGitHubRateLimitError = (error: unknown): error is Error =>
-  error instanceof Error &&
-  GITHUB_RATE_LIMIT_MESSAGE_PATTERN.test(error.message);
+const isGitHubRateLimitError = (
+  error: unknown,
+): error is GitHubRateLimitError => error instanceof GitHubRateLimitError;
 
 const badRequest = (message: string): ConsoleReadApiResponse => ({
   statusCode: 400,
@@ -299,6 +308,10 @@ export const handleIssueTitle = async (
     return ok(state);
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
+      const stale = cache.getStale(url);
+      if (stale !== null) {
+        return ok(stale);
+      }
       return rateLimited(error);
     }
     throw error;
@@ -337,6 +350,10 @@ export const handlePullRequestStatus = async (
     return ok(response);
   } catch (error) {
     if (isGitHubRateLimitError(error)) {
+      const stale = cache.getStale(url);
+      if (stale !== null) {
+        return ok(stale);
+      }
       return rateLimited(error);
     }
     throw error;

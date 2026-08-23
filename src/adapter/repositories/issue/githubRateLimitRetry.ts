@@ -1,3 +1,7 @@
+export class GitHubRateLimitError extends Error {
+  readonly name = 'GitHubRateLimitError';
+}
+
 export const RATE_LIMIT_MAX_RETRIES = 3;
 export const RATE_LIMIT_TOTAL_BACKOFF_CAP_MS = 5000;
 export const RATE_LIMIT_BASE_BACKOFF_MS = 250;

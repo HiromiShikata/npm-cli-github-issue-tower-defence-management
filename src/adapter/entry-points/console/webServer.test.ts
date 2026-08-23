@@ -21,6 +21,7 @@ import {
 } from './webServer';
 import type { ImageFetcher } from './consoleImageProxy';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
+import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { readDoneProjectItemIds } from './consoleDoneStore';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
@@ -677,7 +678,7 @@ describe('webServer new routes integration', () => {
     const rateLimitMessage =
       'Failed to fetch body for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
     issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
-      new Error(rateLimitMessage),
+      new GitHubRateLimitError(rateLimitMessage),
     );
     const server = await startWebServer({
       accessToken: testToken,
