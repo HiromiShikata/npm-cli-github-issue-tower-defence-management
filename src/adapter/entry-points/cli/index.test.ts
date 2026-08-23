@@ -1798,6 +1798,40 @@ mysteryKey: 'value'
         }),
       );
     });
+
+    it('passes manager from config file to useCase.run', async () => {
+      const configWithManager = {
+        ...defaultConfig,
+        manager: 'alice',
+      };
+      writeConfig(configWithManager);
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ manager: 'alice' }),
+      );
+    });
   });
 
   describe('checkIssueReviewReadiness', () => {
