@@ -66,6 +66,44 @@ describe('relabelAttachmentMarkdown', () => {
 });
 
 describe('LocalCommandIssueAttachmentRepository', () => {
+  const resolveGithubToken = (): string => 'default-token';
+
+  it('should run the upload command with the github token resolved for the item url', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'attachment-test-root-'));
+    const received: {
+      args: string[];
+      options: LocalCommandRunnerOptions | undefined;
+    }[] = [];
+    const runner: LocalCommandRunner = {
+      runCommand: async (_program, args, options) => {
+        received.push({ args, options });
+        return {
+          stdout:
+            '![attachment](https://github.com/user-attachments/assets/66666666-7777-8888-9999-000000000000)\n',
+          stderr: '',
+          exitCode: 0,
+        };
+      },
+    };
+    const repository = new LocalCommandIssueAttachmentRepository(
+      runner,
+      (issueOrPullRequestUrl) =>
+        issueOrPullRequestUrl.startsWith('https://github.com/acme/')
+          ? 'acme-token'
+          : 'other-token',
+      root,
+    );
+
+    await repository.uploadAttachment({
+      issueOrPullRequestUrl: 'https://github.com/acme/repo/issues/7',
+      fileName: 'screenshot.png',
+      content: new Uint8Array([1]),
+    });
+
+    expect(received).toHaveLength(1);
+    expect(received[0].options?.env).toEqual({ GH_TOKEN: 'acme-token' });
+  });
+
   it('should upload the written file and return the markdown the command printed', async () => {
     const root = await mkdtemp(join(tmpdir(), 'attachment-test-root-'));
     const received: { program: string; args: string[] }[] = [];
@@ -80,7 +118,11 @@ describe('LocalCommandIssueAttachmentRepository', () => {
         };
       },
     };
-    const repository = new LocalCommandIssueAttachmentRepository(runner, root);
+    const repository = new LocalCommandIssueAttachmentRepository(
+      runner,
+      resolveGithubToken,
+      root,
+    );
 
     const markdown = await repository.uploadAttachment({
       issueOrPullRequestUrl: 'https://github.com/owner/repo/issues/1',
@@ -107,7 +149,11 @@ describe('LocalCommandIssueAttachmentRepository', () => {
         exitCode: 1,
       }),
     };
-    const repository = new LocalCommandIssueAttachmentRepository(runner, root);
+    const repository = new LocalCommandIssueAttachmentRepository(
+      runner,
+      resolveGithubToken,
+      root,
+    );
 
     await expect(
       repository.uploadAttachment({
@@ -126,7 +172,11 @@ describe('LocalCommandIssueAttachmentRepository', () => {
     const runner: LocalCommandRunner = {
       runCommand: async () => ({ stdout: '\n', stderr: '', exitCode: 0 }),
     };
-    const repository = new LocalCommandIssueAttachmentRepository(runner, root);
+    const repository = new LocalCommandIssueAttachmentRepository(
+      runner,
+      resolveGithubToken,
+      root,
+    );
 
     await expect(
       repository.uploadAttachment({

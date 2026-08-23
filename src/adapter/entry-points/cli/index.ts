@@ -865,6 +865,11 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
       resolveGithubToken,
       buildIssueRepositoryForToken,
     );
+  const resolveGithubTokenForItemUrl =
+    createConsoleIssueRepositoryResolver<string>(
+      resolveGithubToken,
+      (repositoryToken: string): string => repositoryToken,
+    );
   const projectRepositoryByToken = new Map<string, GraphqlProjectRepository>();
   projectRepositoryByToken.set(token, projectRepository);
   const buildProjectRepositoryForToken = (
@@ -925,8 +930,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     isPjcodeConfigured,
     issueAttachmentRepository: new LocalCommandIssueAttachmentRepository(
       new NodeLocalCommandRunner(),
-      undefined,
-      resolveGithubToken,
+      resolveGithubTokenForItemUrl,
     ),
     issueTitleStateCache: new IssueTitleStateCache(),
     pullRequestStatusCache: new PullRequestStatusCache(),
