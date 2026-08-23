@@ -68,7 +68,7 @@ describe('ConsoleStoryReorderPanel', () => {
   });
 
   it('disables both buttons while onReorderStory is in progress', async () => {
-    let resolveReorder: () => void;
+    let resolveReorder: (() => void) | undefined;
     const onReorderStory = jest.fn(
       () =>
         new Promise<void>((resolve) => {
