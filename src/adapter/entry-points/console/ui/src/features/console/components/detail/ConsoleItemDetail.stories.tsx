@@ -480,3 +480,35 @@ export const IssueWithSnapshotStatusNoOverlay: Story = {
     relatedPullRequests: [],
   },
 };
+
+export const IssueWithAgent: Story = {
+  args: {
+    item: consoleListItemsFixture[5],
+    storyName: 'TDPM Console port',
+    storyColorEnum: 'BLUE',
+    overlayStatus: null,
+    state: {
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Display agent field next to status in TDPM console items',
+    },
+    body: '## Issue body\n\nThis item has both a status and an agent set.',
+    bodyIsLoading: false,
+    bodyError: null,
+    stateError: null,
+    pullRequestStatusError: null,
+    relatedPullRequestsError: null,
+    comments: [],
+    commentsAreLoading: false,
+    commentsError: null,
+    files: [],
+    filesAreLoading: false,
+    filesError: null,
+    commits: [],
+    commitsAreLoading: false,
+    commitsError: null,
+    pullRequestStatus: null,
+    relatedPullRequests: [],
+  },
+};

@@ -508,6 +508,7 @@ describe('GenerateConsoleListsUseCase', () => {
       const item = result.unread.items[0];
       expect(Object.keys(item).sort()).toEqual(
         [
+          'agent',
           'createdAt',
           'dependedIssueUrls',
           'isPr',
@@ -896,6 +897,25 @@ describe('GenerateConsoleListsUseCase', () => {
     it('produces an empty stories list when the project has no story field', () => {
       const result = run([], baseProject(null));
       expect(result.stories.stories).toEqual([]);
+    });
+  });
+
+  describe('agent field propagation', () => {
+    it('copies the agent value from the issue into the list item', () => {
+      const result = run([makeIssue({ status: 'Unread', agent: 'developer' })]);
+      expect(result.unread.items[0].agent).toBe('developer');
+    });
+
+    it('preserves null when the issue has no agent set', () => {
+      const result = run([makeIssue({ status: 'Unread', agent: null })]);
+      expect(result.unread.items[0].agent).toBeNull();
+    });
+
+    it('copies the agent into every tab that shows the issue', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Quality Check', agent: 'chore' }),
+      ]);
+      expect(result.prs.items[0].agent).toBe('chore');
     });
   });
 });

@@ -55,6 +55,7 @@ type ConsoleFixtureListItem = {
   isPr: boolean;
   story: string;
   status: string | null;
+  agent: string | null;
   nextActionDate: string | null;
   nextActionHour: number | null;
   dependedIssueUrls: string[];
@@ -155,6 +156,7 @@ const issueItem = (
   relatedOpenPullRequestUrls: [],
   story,
   status: null,
+  agent: null,
   nextActionDate: null,
   nextActionHour: null,
   dependedIssueUrls: [],
@@ -180,6 +182,7 @@ const pullRequestItem = (
   relatedOpenPullRequestUrls: [],
   story,
   status: null,
+  agent: null,
   nextActionDate: null,
   nextActionHour: null,
   dependedIssueUrls: [],

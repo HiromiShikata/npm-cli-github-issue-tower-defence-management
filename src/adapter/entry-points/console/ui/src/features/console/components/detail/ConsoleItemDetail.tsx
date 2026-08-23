@@ -205,6 +205,9 @@ export const ConsoleItemDetail = ({
             {displayStatus.name}
           </span>
         )}
+        {item.agent !== null && item.agent !== '' && (
+          <span className="console-detail-agent-chip">{item.agent}</span>
+        )}
         {storyName !== null && (
           <span className="console-storytag">
             <span

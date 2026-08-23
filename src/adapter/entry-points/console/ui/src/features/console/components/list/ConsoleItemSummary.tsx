@@ -70,6 +70,12 @@ export const ConsoleItemSummary = ({
               {item.status}
             </span>
           )}
+          {item.agent !== null && item.agent !== '' && (
+            <span className="console-item-field">
+              <span className="console-item-field-label">Agent</span>
+              {item.agent}
+            </span>
+          )}
           {item.nextActionDate !== null && (
             <span className="console-item-field">
               <span className="console-item-field-label">Next Action Date</span>

@@ -125,4 +125,31 @@ describe('ConsoleItemSummary', () => {
     );
     expect(getByRole('button')).toHaveAttribute('data-active', 'true');
   });
+
+  it('renders the agent field next to status when agent is set', () => {
+    const agentItem = { ...prItem, agent: 'developer' };
+    const { getByText } = render(
+      <ConsoleItemSummary
+        item={agentItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(getByText('Agent')).toBeInTheDocument();
+    expect(getByText('developer')).toBeInTheDocument();
+  });
+
+  it('omits the agent field when agent is null', () => {
+    const noAgentItem = { ...prItem, agent: null };
+    const { queryByText } = render(
+      <ConsoleItemSummary
+        item={noAgentItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(queryByText('Agent')).not.toBeInTheDocument();
+  });
 });
