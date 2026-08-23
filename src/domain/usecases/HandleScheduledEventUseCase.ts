@@ -810,8 +810,8 @@ ${JSON.stringify(e)}
     const summaryStoryIssue: StoryObjectMap = new Map();
     const targetStory = input.project.story?.stories || [];
     for (const story of targetStory) {
-      const storyIssue = input.issues.find((issue) =>
-        story.name.startsWith(issue.title),
+      const storyIssue = input.issues.find(
+        (issue) => story.name.startsWith(issue.title) && !issue.isClosed,
       );
       summaryStoryIssue.set(story.name, {
         story,
