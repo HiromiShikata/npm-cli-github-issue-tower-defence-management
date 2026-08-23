@@ -29,7 +29,7 @@ import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateU
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
-import { AdvanceQualityCheckUseCase } from './AdvanceQualityCheckUseCase';
+import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -129,7 +129,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<AgentDesignationLabelAdoptUseCase>();
     const mockUpdateRateLimitCacheUseCase = mock<UpdateRateLimitCacheUseCase>();
     const mockDailySecurityScanUseCase = mock<DailySecurityScanUseCase>();
-    const mockAdvanceQualityCheckUseCase = mock<AdvanceQualityCheckUseCase>();
+    const mockAdvanceQualityCheckUseCase = mock<QualityCheckAdvanceUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();

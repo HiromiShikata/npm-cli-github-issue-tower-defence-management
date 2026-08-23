@@ -7,7 +7,7 @@ import {
 } from '../entities/WorkflowStatus';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 
-export class AdvanceQualityCheckUseCase {
+export class QualityCheckAdvanceUseCase {
   constructor(
     private readonly issueRepository: Pick<IssueRepository, 'updateStatus'>,
   ) {}

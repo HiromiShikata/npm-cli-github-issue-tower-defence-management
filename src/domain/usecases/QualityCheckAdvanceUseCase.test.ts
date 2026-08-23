@@ -1,4 +1,4 @@
-import { AdvanceQualityCheckUseCase } from './AdvanceQualityCheckUseCase';
+import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
@@ -116,15 +116,15 @@ const createMockProject = (): Project => ({
 
 const FIXED_NOW = new Date('2026-01-15T10:00:00Z');
 
-describe('AdvanceQualityCheckUseCase', () => {
-  let useCase: AdvanceQualityCheckUseCase;
+describe('QualityCheckAdvanceUseCase', () => {
+  let useCase: QualityCheckAdvanceUseCase;
   let mockIssueRepository: Mocked<Pick<IssueRepository, 'updateStatus'>>;
 
   beforeEach(() => {
     mockIssueRepository = {
       updateStatus: jest.fn(),
     };
-    useCase = new AdvanceQualityCheckUseCase(mockIssueRepository);
+    useCase = new QualityCheckAdvanceUseCase(mockIssueRepository);
   });
 
   it('moves an issue in Awaiting Quality Check status to Done when its linked PR is merged', async () => {

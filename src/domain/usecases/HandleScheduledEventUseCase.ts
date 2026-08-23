@@ -37,7 +37,7 @@ import {
   DailySecurityScanConfig,
   DailySecurityScanUseCase,
 } from './DailySecurityScanUseCase';
-import { AdvanceQualityCheckUseCase } from './AdvanceQualityCheckUseCase';
+import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -140,7 +140,7 @@ export class HandleScheduledEventUseCase {
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
-    readonly advanceQualityCheckUseCase: AdvanceQualityCheckUseCase,
+    readonly qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -468,13 +468,20 @@ ${JSON.stringify(e)}
         });
       }
       if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
-        await this.advanceQualityCheckUseCase.run({
-          project,
-          issues,
-          awaitingQualityCheckStatusName:
-            input.startPreparation.awaitingQualityCheckStatus ?? undefined,
-          evaluatedAt: now,
-        });
+        try {
+          await this.qualityCheckAdvanceUseCase.run({
+            project,
+            issues,
+            awaitingQualityCheckStatusName:
+              input.startPreparation.awaitingQualityCheckStatus ?? undefined,
+            evaluatedAt: now,
+          });
+        } catch (advanceError) {
+          console.error(
+            `[HandleScheduledEvent] Failed to advance quality check items for project ${project.url}: ${advanceError instanceof Error ? advanceError.message : String(advanceError)}`,
+            advanceError,
+          );
+        }
       }
       const preparationResult = await this.startPreparationUseCase.run({
         projectUrl: input.projectUrl,
