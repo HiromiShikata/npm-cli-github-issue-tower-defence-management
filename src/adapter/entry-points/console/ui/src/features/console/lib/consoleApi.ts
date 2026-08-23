@@ -90,9 +90,7 @@ const requestJson = async (
         ) {
           errorMessage = payload.error;
         }
-      } catch {
-        // JSON parse failure, keep status-code message
-      }
+      } catch {}
       throw new Error(errorMessage);
     }
     const payload: unknown = await response.json();
