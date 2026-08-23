@@ -4,8 +4,7 @@ import {
   rewriteGitHubImageSources,
 } from './imageProxy';
 
-const itemUrl =
-  'https://github.com/example-owner/example-repo/issues/1';
+const itemUrl = 'https://github.com/example-owner/example-repo/issues/1';
 
 describe('isProxyableImageUrl', () => {
   it('matches github user-attachments urls', () => {
