@@ -3,7 +3,10 @@ import type * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Issue } from '../../../../../domain/entities/Issue';
-import type { Project } from '../../../../../domain/entities/Project';
+import type {
+  FieldOption,
+  Project,
+} from '../../../../../domain/entities/Project';
 import type {
   IssueComment,
   IssueRepository,
@@ -658,8 +661,12 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     ),
     projectRepository: {
       updateStoryList: async (_project, stories) => {
-        reorderStoryCalls.push({ storyOptionIds: stories.map((s) => s.id) });
-        return stories;
+        reorderStoryCalls.push({
+          storyOptionIds: stories
+            .map((s) => s.id)
+            .filter((id): id is string => id !== null),
+        });
+        return stories as FieldOption[];
       },
     },
     resolveProject,
