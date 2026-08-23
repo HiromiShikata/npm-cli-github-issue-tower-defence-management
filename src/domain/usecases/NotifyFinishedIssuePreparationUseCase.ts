@@ -655,7 +655,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     return value;
   };
 
-
   private ensureAgentOptionAndGetId = async (
     project: Project,
     agentName: string,
