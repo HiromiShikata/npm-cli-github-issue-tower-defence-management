@@ -1,6 +1,7 @@
 import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
+import { issueReactivationTriggerStartOfTomorrow } from './issueReactivationTriggerIsPending';
 
 export class ClearPastNextActionDateHourUseCase {
   constructor(
@@ -57,11 +58,7 @@ export class ClearPastNextActionDateHourUseCase {
     if (!nextActionDate) {
       return;
     }
-    const startOfTomorrow = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1,
-    );
+    const startOfTomorrow = issueReactivationTriggerStartOfTomorrow(now);
     for (const issue of input.issues) {
       if (
         issue.nextActionHour !== null ||

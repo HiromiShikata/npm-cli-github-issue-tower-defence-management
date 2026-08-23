@@ -27,6 +27,7 @@ import {
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
+import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -198,17 +199,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     const evaluatedAt = new Date();
-    const startOfTomorrow = new Date(
-      evaluatedAt.getFullYear(),
-      evaluatedAt.getMonth(),
-      evaluatedAt.getDate() + 1,
-    );
-    const hasFutureNextActionDate =
-      issue.nextActionDate !== null && issue.nextActionDate >= startOfTomorrow;
-    const hasUnreachedNextActionHour =
-      issue.nextActionHour !== null &&
-      evaluatedAt.getHours() < issue.nextActionHour;
-    if (hasFutureNextActionDate || hasUnreachedNextActionHour) {
+    if (issueReactivationTriggerIsPending(issue, evaluatedAt)) {
       issue.status = AWAITING_WORKSPACE_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -219,7 +210,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.patchConsoleTab(issue);
       await this.issueCommentRepository.createComment(
         issue,
-        `Issue has next action date or hour set: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`,
+        `Reactivation trigger not yet reached: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`,
       );
       return;
     }
