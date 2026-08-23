@@ -10,10 +10,7 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
-import {
-  issueReactivationTriggerIsPending,
-  issueReactivationTriggerStartOfTomorrow,
-} from './issueReactivationTriggerIsPending';
+import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -437,7 +434,6 @@ export class StartPreparationUseCase {
     };
 
     const now = new Date();
-    const startOfTomorrow = issueReactivationTriggerStartOfTomorrow(now);
 
     for (
       let i = 0;
@@ -455,6 +451,11 @@ export class StartPreparationUseCase {
         continue;
       }
       if (issueReactivationTriggerIsPending(issue, now)) {
+        const startOfTomorrow = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() + 1,
+        );
         if (
           issue.nextActionDate !== null &&
           issue.nextActionDate >= startOfTomorrow

@@ -255,6 +255,12 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
       nextActionHour: 9,
     },
     {
+      label: 'date and hour together: future date with unreached hour',
+      now: new Date(2026, 0, 15, 10, 0, 0),
+      nextActionDate: new Date(2026, 0, 16),
+      nextActionHour: 11,
+    },
+    {
       label: 'production ISO date form: nextActionDate is future',
       now: new Date(2026, 0, 15, 10, 0, 0),
       nextActionDate: new Date('2026-01-16'),
