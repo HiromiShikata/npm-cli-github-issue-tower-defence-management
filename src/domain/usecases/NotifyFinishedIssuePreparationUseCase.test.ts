@@ -4013,6 +4013,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         missingAgentName: 'impl',
+        manager: 'alice',
         sessionErrorLine:
           "Error: Agent 'impl' not found at /path/agents/impl.md",
       });
@@ -4029,7 +4030,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'repo',
         taskIssueTitle,
         expect.stringContaining(issueUrl),
-        [],
+        ['alice'],
         [],
       );
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
@@ -4037,7 +4038,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'repo',
         taskIssueTitle,
         expect.stringContaining('impl'),
-        [],
+        ['alice'],
         [],
       );
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
@@ -4047,7 +4048,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.stringContaining(
           "Error: Agent 'impl' not found at /path/agents/impl.md",
         ),
-        [],
+        ['alice'],
         [],
       );
       expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
@@ -4114,6 +4115,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         missingAgentName: 'impl',
+        manager: 'alice',
       });
 
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(1);
@@ -4139,6 +4141,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         missingAgentName: 'impl',
+        manager: 'alice',
       });
 
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
@@ -4146,9 +4149,56 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'repo',
         taskIssueTitle,
         expect.stringContaining('(not captured)'),
-        [],
+        ['alice'],
         [],
       );
+    });
+
+    it('passes the manager as the assignee to createNewIssue when manager is provided', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        missingAgentName: 'impl',
+        manager: 'alice',
+      });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        taskIssueTitle,
+        expect.any(String),
+        ['alice'],
+        [],
+      );
+    });
+
+    it('throws an error and does not call createNewIssue when manager is absent', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+
+      await expect(
+        useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          issueUrl,
+          thresholdForAutoReject: 3,
+          workflowBlockerResolvedWebhookUrl: null,
+          allowedIssueAuthors: null,
+          missingAgentName: 'impl',
+        }),
+      ).rejects.toThrow('manager');
+
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
     });
   });
 });

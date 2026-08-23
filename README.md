@@ -56,7 +56,7 @@ Options for notifyFinishedIssuePreparation:
   --projectUrl <url>                               GitHub project URL
   --thresholdForAutoReject <count>                 Threshold for auto-escalation after consecutive rejections (default: 3)
   --workflowBlockerResolvedWebhookUrl <url>        Webhook URL to notify when a workflow blocker issue status changes
-  --missingAgentName <name>                        Agent definition name that was not found; triggers task issue creation and blocks the item until that issue is closed
+  --missingAgentName <name>                        Agent definition name that was not found; triggers task issue creation (assigned to the manager from config) and blocks the item until that issue is closed
   --sessionErrorLine <line>                        Exact error line from the session log to include in the task issue body
 
 Options for checkIssueReviewReadiness:
