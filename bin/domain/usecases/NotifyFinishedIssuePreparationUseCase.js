@@ -345,6 +345,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 isPr: issue.isPr,
                 story: issue.story ?? '',
                 status: issue.status,
+                agent: issue.agent,
                 nextActionDate: issue.nextActionDate === null
                     ? null
                     : issue.nextActionDate.toISOString(),

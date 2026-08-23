@@ -1,3 +1,10 @@
+# [1.171.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.170.1...v1.171.0) (2026-08-23)
+
+
+### Features
+
+* **console:** display agent field next to status in console list and detail ([#1676](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1676)) ([c2ef148](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c2ef148cf5914be8e91a0c58bbf431fc29ed9cd4)), closes [HiromiShikata/umino-corporait-operation#30777](https://github.com/HiromiShikata/umino-corporait-operation/issues/30777) [#1609](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1609)
+
 ## [1.170.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.170.0...v1.170.1) (2026-08-23)
 
 
