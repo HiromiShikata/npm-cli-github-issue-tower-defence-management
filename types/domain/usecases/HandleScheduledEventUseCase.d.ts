@@ -29,6 +29,7 @@ import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateU
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanConfig, DailySecurityScanUseCase } from './DailySecurityScanUseCase';
+import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 export declare class ProjectNotFoundError extends Error {
     constructor(message: string);
 }
@@ -56,11 +57,12 @@ export declare class HandleScheduledEventUseCase {
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase;
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null;
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null;
+    readonly qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase;
     readonly dateRepository: DateRepository;
     readonly spreadsheetRepository: SpreadsheetRepository;
     readonly projectRepository: ProjectRepository;
     readonly issueRepository: IssueRepository;
-    constructor(projectRequiredFieldCreateUseCase: ProjectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase, agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null, dailySecurityScanUseCase: DailySecurityScanUseCase | null, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
+    constructor(projectRequiredFieldCreateUseCase: ProjectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, startPreparationUseCase: StartPreparationUseCase, revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase, agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null, dailySecurityScanUseCase: DailySecurityScanUseCase | null, qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
     run: (input: {
         projectName: string;
         org: string;
@@ -93,6 +95,7 @@ export declare class HandleScheduledEventUseCase {
             awLogDirectoryPath?: string;
             awLogStaleThresholdMinutes?: number;
             awaitingQualityCheckStatus?: string | null;
+            autoAdvanceQualityCheckEnabled?: boolean;
             labelsAsLlmAgentName?: string[] | null;
         } | null;
         thresholdForAutoReject?: number;
@@ -109,7 +112,7 @@ export declare class HandleScheduledEventUseCase {
         storyIssues: StoryObjectMap;
         rotationOrder: RotationOrderEntry[] | null;
     } | null>;
-    runEachUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap, runSlowSweep: boolean) => Promise<{
+    runEachUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap, runSlowSweep: boolean, now: Date) => Promise<{
         rotationOrder: RotationOrderEntry[] | null;
     }>;
     runSlowSweepUseCases: (input: Parameters<HandleScheduledEventUseCase["run"]>[0], project: Project, issues: Issue[], cacheUsed: boolean, targetDateTimes: Date[], storyObjectMap: StoryObjectMap) => Promise<void>;

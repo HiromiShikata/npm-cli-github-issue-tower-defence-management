@@ -1,3 +1,10 @@
+# [1.173.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.172.2...v1.173.0) (2026-08-23)
+
+
+### Features
+
+* **AdvanceQualityCheckUseCase:** auto-advance Awaiting Quality Check items to Done ([#1686](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1686)) ([0d33826](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0d3382625e5d3113212240c2ef67de6c02517b0a)), closes [#1681](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1681)
+
 ## [1.172.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.172.1...v1.172.2) (2026-08-23)
 
 
