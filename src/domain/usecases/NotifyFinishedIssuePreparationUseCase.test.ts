@@ -119,6 +119,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   };
   let mockProject: Project;
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     jest.resetAllMocks();
 
@@ -485,6 +489,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   it('should set status to Awaiting Workspace when issue has nextActionDate set', async () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 10, 0, 0));
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -518,6 +523,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   it('should set status to Awaiting Workspace when issue has nextActionHour set', async () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 8, 0, 0));
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -547,6 +553,96 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
       expect.stringContaining('nextActionHour=9'),
+    );
+  });
+
+  it('should not send issue back to Awaiting Workspace when nextActionDate is today or earlier', async () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 10, 0, 0));
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      nextActionDate: new Date(2026, 10, 1),
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: :robot: Test report' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      'awaiting-quality-check-id',
+    );
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'awaiting-workspace-id',
+    );
+  });
+
+  it('should not send issue back to Awaiting Workspace when nextActionHour has already been reached', async () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 10, 0, 0));
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      nextActionHour: 9,
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({ content: 'From: :robot: Test report' }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      {
+        url: 'https://github.com/user/repo/pull/1',
+        isConflicted: false,
+        isPassedAllCiJob: true,
+        isCiStateSuccess: true,
+        isResolvedAllReviewComments: true,
+        isBranchOutOfDate: false,
+        missingRequiredCheckNames: [],
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      'awaiting-quality-check-id',
+    );
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'awaiting-workspace-id',
     );
   });
 
