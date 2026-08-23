@@ -140,6 +140,28 @@ describe('ConsoleItemSummary', () => {
     expect(getByText('developer')).toBeInTheDocument();
   });
 
+  it('renders the agent field when agent is set and no other fields are present', () => {
+    const agentOnlyItem = {
+      ...prItem,
+      story: '',
+      status: null,
+      agent: 'developer',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+    };
+    const { getByText } = render(
+      <ConsoleItemSummary
+        item={agentOnlyItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(getByText('Agent')).toBeInTheDocument();
+    expect(getByText('developer')).toBeInTheDocument();
+  });
+
   it('omits the agent field when agent is null', () => {
     const noAgentItem = { ...prItem, agent: null };
     const { queryByText } = render(

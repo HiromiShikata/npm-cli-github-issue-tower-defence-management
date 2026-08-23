@@ -54,6 +54,7 @@ export const ConsoleItemSummary = ({
       </span>
       {(item.story !== '' ||
         (item.status !== null && item.status !== '') ||
+        (item.agent !== null && item.agent !== '') ||
         item.nextActionDate !== null ||
         item.nextActionHour !== null ||
         item.dependedIssueUrls.length > 0) && (

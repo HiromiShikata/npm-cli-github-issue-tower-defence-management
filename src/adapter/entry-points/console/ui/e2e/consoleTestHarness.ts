@@ -274,13 +274,16 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
     ),
   ],
   'todo-by-agent': [
-    issueItem(
-      871,
-      'Route console items into the Todo by agent manual triage bucket',
-      'TDAG00871',
-      'TDPM Console port',
-      '2026-06-18T00:41:27.000Z',
-    ),
+    {
+      ...issueItem(
+        871,
+        'Route console items into the Todo by agent manual triage bucket',
+        'TDAG00871',
+        'TDPM Console port',
+        '2026-06-18T00:41:27.000Z',
+      ),
+      agent: 'developer',
+    },
   ],
 };
 
