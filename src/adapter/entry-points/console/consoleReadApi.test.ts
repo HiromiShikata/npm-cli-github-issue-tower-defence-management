@@ -15,6 +15,9 @@ import {
 } from './consoleReadApi';
 
 describe('consoleReadApi', () => {
+  const RATE_LIMIT_ERROR_MESSAGE =
+    'Failed to fetch body for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
+
   describe('handleItemBody', () => {
     it('returns 400 when url is missing', async () => {
       const issueRepository = mock<IssueRepository>();
@@ -34,6 +37,29 @@ describe('consoleReadApi', () => {
       expect(issueRepository.getIssueOrPullRequestBody).toHaveBeenCalledWith(
         'https://github.com/o/r/issues/1',
       );
+    });
+
+    it('returns 429 with the error message when the repository throws a GitHub rate limit error', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
+        new Error(RATE_LIMIT_ERROR_MESSAGE),
+      );
+      const response = await handleItemBody(
+        issueRepository,
+        'https://github.com/o/r/issues/1',
+      );
+      expect(response.statusCode).toBe(429);
+      expect(response.body).toEqual({ error: RATE_LIMIT_ERROR_MESSAGE });
+    });
+
+    it('re-throws non-rate-limit errors from the repository', async () => {
+      const issueRepository = mock<IssueRepository>();
+      issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
+        new Error('Network timeout'),
+      );
+      await expect(
+        handleItemBody(issueRepository, 'https://github.com/o/r/issues/1'),
+      ).rejects.toThrow('Network timeout');
     });
   });
 
@@ -67,6 +93,21 @@ describe('consoleReadApi', () => {
       const issueRepository = mock<IssueRepository>();
       const response = await handleComments(issueRepository, null);
       expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 429 with the error message when the repository throws a GitHub rate limit error', async () => {
+      const issueRepository = mock<IssueRepository>();
+      const rateLimitMessage =
+        'Failed to fetch comments for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
+      issueRepository.getIssueOrPullRequestComments.mockRejectedValue(
+        new Error(rateLimitMessage),
+      );
+      const response = await handleComments(
+        issueRepository,
+        'https://github.com/o/r/issues/1',
+      );
+      expect(response.statusCode).toBe(429);
+      expect(response.body).toEqual({ error: rateLimitMessage });
     });
   });
 
@@ -130,6 +171,21 @@ describe('consoleReadApi', () => {
       const response = await handlePrFiles(issueRepository, null);
       expect(response.statusCode).toBe(400);
     });
+
+    it('returns 429 with the error message when the repository throws a GitHub rate limit error', async () => {
+      const issueRepository = mock<IssueRepository>();
+      const rateLimitMessage =
+        'Failed to fetch PR detail for https://github.com/o/r/pull/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
+      issueRepository.getPullRequestDetail.mockRejectedValue(
+        new Error(rateLimitMessage),
+      );
+      const response = await handlePrFiles(
+        issueRepository,
+        'https://github.com/o/r/pull/1',
+      );
+      expect(response.statusCode).toBe(429);
+      expect(response.body).toEqual({ error: rateLimitMessage });
+    });
   });
 
   describe('handlePrCommits', () => {
@@ -164,6 +220,21 @@ describe('consoleReadApi', () => {
       const issueRepository = mock<IssueRepository>();
       const response = await handlePrCommits(issueRepository, null);
       expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 429 with the error message when the repository throws a GitHub rate limit error', async () => {
+      const issueRepository = mock<IssueRepository>();
+      const rateLimitMessage =
+        'Failed to fetch commits for https://github.com/o/r/pull/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
+      issueRepository.getPullRequestCommits.mockRejectedValue(
+        new Error(rateLimitMessage),
+      );
+      const response = await handlePrCommits(
+        issueRepository,
+        'https://github.com/o/r/pull/1',
+      );
+      expect(response.statusCode).toBe(429);
+      expect(response.body).toEqual({ error: rateLimitMessage });
     });
   });
 
@@ -227,6 +298,21 @@ describe('consoleReadApi', () => {
       const issueRepository = mock<IssueRepository>();
       const response = await handleRelatedPrs(issueRepository, null);
       expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 429 with the error message when the repository throws a GitHub rate limit error', async () => {
+      const issueRepository = mock<IssueRepository>();
+      const rateLimitMessage =
+        'Failed to fetch related PRs for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
+      issueRepository.findRelatedOpenPRs.mockRejectedValue(
+        new Error(rateLimitMessage),
+      );
+      const response = await handleRelatedPrs(
+        issueRepository,
+        'https://github.com/o/r/issues/1',
+      );
+      expect(response.statusCode).toBe(429);
+      expect(response.body).toEqual({ error: rateLimitMessage });
     });
   });
 
@@ -350,6 +436,23 @@ describe('consoleReadApi', () => {
         1,
       );
     });
+
+    it('returns 429 with the error message when the repository throws a GitHub rate limit error', async () => {
+      const issueRepository = mock<IssueRepository>();
+      const rateLimitMessage =
+        'Failed to fetch state for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
+      issueRepository.getIssueOrPullRequestState.mockRejectedValue(
+        new Error(rateLimitMessage),
+      );
+      const cache = new IssueTitleStateCache(() => 0);
+      const response = await handleIssueTitle(
+        issueRepository,
+        cache,
+        'https://github.com/o/r/issues/1',
+      );
+      expect(response.statusCode).toBe(429);
+      expect(response.body).toEqual({ error: rateLimitMessage });
+    });
   });
 
   describe('handlePullRequestStatus with the TTL cache', () => {
@@ -455,6 +558,23 @@ describe('consoleReadApi', () => {
       expect(issueRepository.getOpenPullRequestCiStatus).toHaveBeenCalledTimes(
         2,
       );
+    });
+
+    it('returns 429 with the error message when the repository throws a GitHub rate limit error', async () => {
+      const issueRepository = mock<IssueRepository>();
+      const rateLimitMessage =
+        'Failed to fetch CI status for https://github.com/o/r/pull/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
+      issueRepository.getOpenPullRequestCiStatus.mockRejectedValue(
+        new Error(rateLimitMessage),
+      );
+      const cache = new PullRequestStatusCache(() => 0);
+      const response = await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        'https://github.com/o/r/pull/1',
+      );
+      expect(response.statusCode).toBe(429);
+      expect(response.body).toEqual({ error: rateLimitMessage });
     });
   });
 });

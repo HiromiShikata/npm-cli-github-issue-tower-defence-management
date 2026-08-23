@@ -284,6 +284,16 @@ describe('createConsoleApiClient', () => {
     ).rejects.toThrow('HTTP 500');
   });
 
+  it('throws the error message from the JSON body of a non-ok response instead of the HTTP status code', async () => {
+    const rateLimitMessage =
+      'Failed to fetch body for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
+    mockFetchOnce({ error: rateLimitMessage }, false);
+    const client = createConsoleApiClient();
+    await expect(
+      client.fetchItemBody('https://github.com/o/r/issues/1'),
+    ).rejects.toThrow(rateLimitMessage);
+  });
+
   it('returns cached comments when the network fetch rejects', async () => {
     const cachedBody = {
       comments: [

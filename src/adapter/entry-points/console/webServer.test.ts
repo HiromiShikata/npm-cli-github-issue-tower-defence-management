@@ -671,6 +671,40 @@ describe('webServer new routes integration', () => {
     }
   });
 
+  it('returns 429 with the rate limit error message instead of 500 when the repository throws a GitHub rate limit error', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    const rateLimitMessage =
+      'Failed to fetch body for https://github.com/o/r/issues/1: HTTP 403 GitHub rate limit exceeded, please retry shortly (resets at 2026-01-01T01:00:00.000Z)';
+    issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
+      new Error(rateLimitMessage),
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      issueTitleStateCache: new IssueTitleStateCache(),
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/itembody?k=${testToken}&url=https://github.com/o/r/issues/1`,
+      );
+      expect(response.statusCode).toBe(429);
+      expect(JSON.parse(response.body)).toEqual({ error: rateLimitMessage });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('serves the pull request status read api when a status cache is injected', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
