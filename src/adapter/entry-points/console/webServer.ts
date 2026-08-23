@@ -166,8 +166,10 @@ export const extractProvidedToken = (
   return null;
 };
 
+export const CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
 export const buildTokenCookie = (token: string): string =>
-  `${CONSOLE_TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict`;
+  `${CONSOLE_TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS}`;
 
 export const buildKeylessLocation = (requestUrl: URL): string => {
   const params = new URLSearchParams(requestUrl.searchParams);
