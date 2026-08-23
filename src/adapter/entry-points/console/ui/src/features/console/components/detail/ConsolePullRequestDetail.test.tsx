@@ -43,7 +43,9 @@ describe('ConsolePullRequestDetail', () => {
     expect(getByText('+1184')).toBeInTheDocument();
     expect(getByText('27 files')).toBeInTheDocument();
     expect(
-      getByText('HiromiShikata/npm-cli-github-issue-tower-defence-management'),
+      getByText(
+        `${pullRequestReference.owner}/${pullRequestReference.repo}`,
+      ),
     ).toBeInTheDocument();
   });
 
