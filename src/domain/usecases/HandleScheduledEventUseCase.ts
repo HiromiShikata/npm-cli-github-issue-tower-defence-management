@@ -28,6 +28,7 @@ import {
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
+import { TriagerApprovalDispatchUseCase } from './TriagerApprovalDispatchUseCase';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
@@ -137,6 +138,7 @@ export class HandleScheduledEventUseCase {
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
+    readonly triagerApprovalDispatchUseCase: TriagerApprovalDispatchUseCase,
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
@@ -435,6 +437,10 @@ ${JSON.stringify(e)}
       labelsAsLlmAgentName,
       labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
       changeTargetPathAliases: input.changeTargetPathAliases,
+      allowedIssueAuthors,
+    });
+    await this.triagerApprovalDispatchUseCase.run({
+      projectUrl: input.projectUrl,
       allowedIssueAuthors,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {

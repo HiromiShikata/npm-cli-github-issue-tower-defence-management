@@ -69,6 +69,7 @@ import { ProxyRateLimitCacheRepository } from '../../repositories/ProxyRateLimit
 import { UpdateRateLimitCacheUseCase } from '../../../domain/usecases/UpdateRateLimitCacheUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from '../../../domain/usecases/RevertNotReadyReviewQueueIssueUseCase';
+import { TriagerApprovalDispatchUseCase } from '../../../domain/usecases/TriagerApprovalDispatchUseCase';
 import { AgentDesignationLabelAdoptUseCase } from '../../../domain/usecases/AgentDesignationLabelAdoptUseCase';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { ProjectRequiredFieldCreateUseCase } from '../../../domain/usecases/ProjectRequiredFieldCreateUseCase';
@@ -496,6 +497,11 @@ export class HandleScheduledEventUseCaseHandler {
         issueRepository,
         issueCommentRepository,
       );
+    const triagerApprovalDispatchUseCase = new TriagerApprovalDispatchUseCase(
+      projectRepository,
+      issueRepository,
+      issueCommentRepository,
+    );
     const agentDesignationLabelAdoptUseCase =
       new AgentDesignationLabelAdoptUseCase(projectRepository, issueRepository);
 
@@ -533,6 +539,7 @@ export class HandleScheduledEventUseCaseHandler {
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
       revertNotReadyReviewQueueIssueUseCase,
+      triagerApprovalDispatchUseCase,
       agentDesignationLabelAdoptUseCase,
       updateRateLimitCacheUseCase,
       dailySecurityScanUseCase,
