@@ -44,26 +44,21 @@ const relabelAttachmentMarkdown = (markdown, label) => {
 };
 exports.relabelAttachmentMarkdown = relabelAttachmentMarkdown;
 class LocalCommandIssueAttachmentRepository {
-    constructor(localCommandRunner, temporaryDirectoryRoot = (0, os_1.tmpdir)(), resolveGithubToken) {
+    constructor(localCommandRunner, resolveGithubToken, temporaryDirectoryRoot = (0, os_1.tmpdir)()) {
         this.localCommandRunner = localCommandRunner;
-        this.temporaryDirectoryRoot = temporaryDirectoryRoot;
         this.resolveGithubToken = resolveGithubToken;
+        this.temporaryDirectoryRoot = temporaryDirectoryRoot;
     }
     async uploadAttachment(request) {
         const directory = await (0, promises_1.mkdtemp)((0, path_1.join)(this.temporaryDirectoryRoot, 'console-attachment-'));
         const filePath = (0, path_1.join)(directory, `${exports.UPLOAD_FILE_BASE_NAME}${(0, exports.resolveAttachmentExtension)(request.fileName)}`);
         try {
             await (0, promises_1.writeFile)(filePath, request.content);
-            let commandOptions;
-            if (this.resolveGithubToken !== undefined) {
-                const ownerMatch = request.issueOrPullRequestUrl.match(/https:\/\/github\.com\/([A-Za-z0-9._-]+)\//);
-                if (ownerMatch !== null) {
-                    commandOptions = {
-                        env: { GH_TOKEN: this.resolveGithubToken(ownerMatch[1]) },
-                    };
-                }
-            }
-            const result = await this.localCommandRunner.runCommand(exports.UPLOAD_COMMAND, [filePath, request.issueOrPullRequestUrl], commandOptions);
+            const result = await this.localCommandRunner.runCommand(exports.UPLOAD_COMMAND, [filePath, request.issueOrPullRequestUrl], {
+                env: {
+                    GH_TOKEN: this.resolveGithubToken(request.issueOrPullRequestUrl),
+                },
+            });
             if (result.exitCode !== 0) {
                 throw new Error(`${exports.UPLOAD_COMMAND} failed with exit code ${result.exitCode}: ${result.stderr.trim()}`);
             }

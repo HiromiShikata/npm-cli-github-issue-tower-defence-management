@@ -1,3 +1,15 @@
+# [1.174.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.173.3...v1.174.0) (2026-08-23)
+
+
+### Bug Fixes
+
+* **console:** throw when a served owner has no token file configured ([#1685](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1685)) ([ed3f748](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ed3f748502becf3d79f2f08d1de07c0d252b7aff)), closes [#1672](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1672)
+
+
+### Features
+
+* **triager:** add TriagerApprovalDispatchUseCase for owner-approval dispatch ([#1679](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1679)) ([f46e03e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f46e03e93517f42e4d75e8d4df1940d71aac150f))
+
 ## [1.173.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.173.2...v1.173.3) (2026-08-23)
 
 

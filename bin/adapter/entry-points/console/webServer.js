@@ -41,6 +41,7 @@ const consoleDataDelivery_1 = require("./consoleDataDelivery");
 const consoleReadApi_1 = require("./consoleReadApi");
 const consoleOperationApi_1 = require("./consoleOperationApi");
 const consoleImageProxy_1 = require("./consoleImageProxy");
+const consoleGithubTokenResolver_1 = require("./consoleGithubTokenResolver");
 const dashboardComposeService_1 = require("./dashboardComposeService");
 const OwnerCallFile_1 = require("../../../domain/usecases/intmux/OwnerCallFile");
 exports.DEFAULT_WEB_PORT = 9980;
@@ -289,8 +290,21 @@ const sendImage = (response, contentType, body) => {
     response.end(body);
 };
 const handleImageProxy = async (options, response, searchParams) => {
-    const githubToken = options.githubToken ?? null;
-    if (githubToken === null || githubToken.length === 0) {
+    const resolveGithubToken = options.resolveGithubToken ?? null;
+    if (resolveGithubToken === null) {
+        sendJson(response, 502, { error: 'github token is not configured' });
+        return;
+    }
+    const itemUrl = searchParams.get('itemUrl') ?? '';
+    const repositoryOwner = (0, consoleGithubTokenResolver_1.extractRepositoryOwner)(itemUrl);
+    if (repositoryOwner === null) {
+        sendJson(response, 400, {
+            error: 'missing or unreadable itemUrl parameter',
+        });
+        return;
+    }
+    const githubToken = resolveGithubToken(repositoryOwner);
+    if (githubToken.length === 0) {
         sendJson(response, 502, { error: 'github token is not configured' });
         return;
     }

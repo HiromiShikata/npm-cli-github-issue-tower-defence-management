@@ -463,7 +463,8 @@ const runServeWeb = async (options) => {
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, new SystemDateRepository_1.SystemDateRepository(), ...githubRepositoryParams);
-    const resolveGithubToken = (0, consoleGithubTokenResolver_1.createConsoleGithubTokenResolver)(token, config.consoleGithubTokenFilesByRepositoryOwner ?? null, (filePath) => fs_1.default.readFileSync(filePath, 'utf8'));
+    const consoleGithubTokenFilesByRepositoryOwner = config.consoleGithubTokenFilesByRepositoryOwner ?? null;
+    const resolveGithubToken = (0, consoleGithubTokenResolver_1.createConsoleGithubTokenResolver)(token, consoleGithubTokenFilesByRepositoryOwner, (filePath) => fs_1.default.readFileSync(filePath, 'utf8'));
     const issueRepositoryByToken = new Map();
     issueRepositoryByToken.set(token, issueRepository);
     const buildIssueRepositoryForToken = (repositoryToken) => {
@@ -477,6 +478,7 @@ const runServeWeb = async (options) => {
         return built;
     };
     const resolveIssueRepository = (0, consoleGithubTokenResolver_1.createConsoleIssueRepositoryResolver)(resolveGithubToken, buildIssueRepositoryForToken);
+    const resolveGithubTokenForItemUrl = (0, consoleGithubTokenResolver_1.createConsoleGithubTokenResolverByItemUrl)(resolveGithubToken);
     const projectRepositoryByToken = new Map();
     projectRepositoryByToken.set(token, projectRepository);
     const buildProjectRepositoryForToken = (repositoryToken) => {
@@ -505,12 +507,12 @@ const runServeWeb = async (options) => {
         dashboardDir,
         dashboardDataDir,
         dashboardProjectNames,
-        githubToken: token,
+        resolveGithubToken,
         issueRepository,
         resolveIssueRepository,
         resolveProject,
         isPjcodeConfigured,
-        issueAttachmentRepository: new LocalCommandIssueAttachmentRepository_1.LocalCommandIssueAttachmentRepository(new NodeLocalCommandRunner_1.NodeLocalCommandRunner(), undefined, resolveGithubToken),
+        issueAttachmentRepository: new LocalCommandIssueAttachmentRepository_1.LocalCommandIssueAttachmentRepository(new NodeLocalCommandRunner_1.NodeLocalCommandRunner(), resolveGithubTokenForItemUrl),
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         pullRequestStatusCache: new consoleReadApi_1.PullRequestStatusCache(),
         port,

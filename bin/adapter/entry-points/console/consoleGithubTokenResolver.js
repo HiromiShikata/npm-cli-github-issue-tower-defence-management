@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createConsoleGithubTokenResolver = exports.createConsoleProjectRepositoryResolver = exports.extractProjectOwner = exports.createConsoleIssueRepositoryResolver = exports.extractRepositoryOwner = void 0;
+exports.createConsoleGithubTokenResolver = exports.createConsoleGithubTokenResolverByItemUrl = exports.createConsoleProjectRepositoryResolver = exports.extractProjectOwner = exports.createConsoleIssueRepositoryResolver = exports.extractRepositoryOwner = void 0;
 const extractRepositoryOwner = (issueOrPullRequestUrl) => {
     const match = issueOrPullRequestUrl.match(/^https:\/\/github\.com\/([A-Za-z0-9._-]+)\/[A-Za-z0-9._-]+\/(?:issues|pull)\/\d+/);
     return match ? match[1] : null;
@@ -31,6 +31,16 @@ const createConsoleProjectRepositoryResolver = (resolveGithubToken, buildProject
     };
 };
 exports.createConsoleProjectRepositoryResolver = createConsoleProjectRepositoryResolver;
+const createConsoleGithubTokenResolverByItemUrl = (resolveGithubToken) => {
+    return (itemUrl) => {
+        const owner = (0, exports.extractRepositoryOwner)(itemUrl);
+        if (owner === null) {
+            throw new Error(`The repository owner cannot be read from the url: ${itemUrl}`);
+        }
+        return resolveGithubToken(owner);
+    };
+};
+exports.createConsoleGithubTokenResolverByItemUrl = createConsoleGithubTokenResolverByItemUrl;
 const createConsoleGithubTokenResolver = (defaultToken, githubTokenFilePathByRepositoryOwner, readTokenFile) => {
     const resolvedTokenByRepositoryOwner = new Map();
     return (repositoryOwner) => {
@@ -38,11 +48,12 @@ const createConsoleGithubTokenResolver = (defaultToken, githubTokenFilePathByRep
         if (alreadyResolved !== undefined) {
             return alreadyResolved;
         }
-        const filePath = githubTokenFilePathByRepositoryOwner
-            ? githubTokenFilePathByRepositoryOwner[repositoryOwner]
-            : undefined;
-        if (filePath === undefined) {
+        if (githubTokenFilePathByRepositoryOwner === null) {
             return defaultToken;
+        }
+        const filePath = githubTokenFilePathByRepositoryOwner[repositoryOwner];
+        if (filePath === undefined) {
+            throw new Error(`No GitHub token file is configured for repository owner "${repositoryOwner}". Add an entry for this owner in consoleGithubTokenFilesByRepositoryOwner.`);
         }
         const token = readTokenFile(filePath).trim();
         if (token.length === 0) {

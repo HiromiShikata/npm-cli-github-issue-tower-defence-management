@@ -4,6 +4,7 @@ import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/Iss
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { ConsoleIssueRepositoryResolver, ConsolePjcodeValidator, ConsoleProjectResolver } from './consoleOperationApi';
 import { ImageFetcher } from './consoleImageProxy';
+import { ConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
 export declare const DEFAULT_WEB_PORT = 9980;
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
 export declare const CONSOLE_TOKEN_COOKIE = "pv_token";
@@ -23,7 +24,7 @@ export type WebServerOptions = {
     dashboardDir: string | null;
     dashboardDataDir: string | null;
     dashboardProjectNames: string[];
-    githubToken?: string | null;
+    resolveGithubToken?: ConsoleGithubTokenResolver | null;
     imageFetcher?: ImageFetcher | null;
     issueRepository?: IssueRepository | null;
     resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
