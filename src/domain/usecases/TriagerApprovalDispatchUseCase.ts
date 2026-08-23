@@ -135,7 +135,10 @@ export class TriagerApprovalDispatchUseCase {
           (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
             issue.status === AWAITING_QUALITY_CHECK_STATUS_NAME) &&
           issue.agent === null &&
-          isAuthorAuthorizedForAutoStatusCheck(issue.author, allowedIssueAuthors),
+          isAuthorAuthorizedForAutoStatusCheck(
+            issue.author,
+            allowedIssueAuthors,
+          ),
       )
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
