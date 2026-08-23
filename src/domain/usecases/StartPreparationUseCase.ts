@@ -11,6 +11,7 @@ import {
 } from '../entities/WorkflowStatus';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -488,6 +489,32 @@ export class StartPreparationUseCase {
       const agent =
         (issue.agent === null ? null : agentNameFromDesignation(issue.agent)) ||
         params.defaultAgentName;
+      if (issue.agent === null) {
+        const agentOptionId = await ensureAgentOptionAndGetId(
+          this.projectRepository,
+          project,
+          agent,
+        );
+        if (agentOptionId !== null) {
+          try {
+            await this.issueRepository.setIssueAgentField(
+              issue.url,
+              project,
+              agentOptionId,
+            );
+            issue.agent = agent;
+          } catch (err) {
+            console.error(
+              `Failed to write Agent field for ${issue.url}: ${err instanceof Error ? err.message : String(err)}`,
+            );
+            continue;
+          }
+        } else {
+          console.warn(
+            `Agent field option '${agent}' could not be set for ${issue.url}. Proceeding without recording the agent in the Agent field.`,
+          );
+        }
+      }
       const labelModelName = issue.labels
         .find((label: string) => label.startsWith('llm-model:'))
         ?.replace('llm-model:', '')
