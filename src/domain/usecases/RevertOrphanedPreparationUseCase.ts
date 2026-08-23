@@ -22,6 +22,8 @@ import {
   RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
   RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
 } from './returnedToAwaitingWorkspaceMessage';
+import { extractNextStepAgent } from './extractNextStepAgent';
+import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -32,7 +34,11 @@ export class RevertOrphanedPreparationUseCase {
   constructor(
     readonly projectRepository: Pick<
       ProjectRepository,
-      'findProjectIdByUrl' | 'getProject'
+      | 'findProjectIdByUrl'
+      | 'getProject'
+      | 'createField'
+      | 'getByUrl'
+      | 'updateAgentList'
     >,
     readonly issueRepository: Pick<
       IssueRepository,
@@ -41,6 +47,7 @@ export class RevertOrphanedPreparationUseCase {
       | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
       | 'get'
+      | 'setIssueAgentField'
     >,
     readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -110,6 +117,27 @@ export class RevertOrphanedPreparationUseCase {
         project,
       );
       if (!isStillInPreparation) {
+        continue;
+      }
+      const nextStepAgent = this.resolveNextStepAgent(comments);
+      if (nextStepAgent !== null) {
+        const agentOptionId = await ensureAgentOptionAndGetId(
+          this.projectRepository,
+          project,
+          nextStepAgent,
+        );
+        if (agentOptionId !== null) {
+          await this.issueRepository.setIssueAgentField(
+            issue.url,
+            project,
+            agentOptionId,
+          );
+        }
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
         continue;
       }
       if (outcome === 'returnToLabelSelectedAgent') {
@@ -311,6 +339,15 @@ export class RevertOrphanedPreparationUseCase {
       return [];
     }
     return [pr];
+  };
+
+  private resolveNextStepAgent = (comments: Comment[]): string | null => {
+    const lastReportComment = [...comments]
+      .reverse()
+      .find((comment) => comment.content.startsWith('From: :robot:'));
+    return lastReportComment
+      ? extractNextStepAgent(lastReportComment.content)
+      : null;
   };
 
   private reportBodyHasNextStep = (body: string): boolean => {
