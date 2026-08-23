@@ -265,7 +265,8 @@ export const handleRelatedPrs = async (
           isResolvedAllReviewComments:
             relatedPullRequest.isResolvedAllReviewComments,
           isBranchOutOfDate: relatedPullRequest.isBranchOutOfDate,
-          missingRequiredCheckNames: relatedPullRequest.missingRequiredCheckNames,
+          missingRequiredCheckNames:
+            relatedPullRequest.missingRequiredCheckNames,
           summary,
         };
       }),
