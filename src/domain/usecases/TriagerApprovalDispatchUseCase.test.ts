@@ -183,9 +183,9 @@ describe('TriagerApprovalDispatchUseCase', () => {
         allowedIssueAuthors: ['owner-user'],
       });
 
-      expect(mockIssueCommentRepository.getCommentsFromIssue.mock.calls).toEqual(
-        [],
-      );
+      expect(
+        mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+      ).toEqual([]);
       expect(mockIssueRepository.updateStatus.mock.calls).toEqual([]);
     });
 
@@ -413,11 +413,7 @@ describe('TriagerApprovalDispatchUseCase', () => {
       });
 
       expect(mockIssueRepository.updateStory.mock.calls).toEqual([
-        [
-          mockProject,
-          issue,
-          'story-regular-workflow-id',
-        ],
+        [mockProject, issue, 'story-regular-workflow-id'],
       ]);
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
         [
@@ -575,9 +571,9 @@ describe('TriagerApprovalDispatchUseCase', () => {
         allowedIssueAuthors: ['owner-user'],
       });
 
-      expect(mockIssueCommentRepository.getCommentsFromIssue.mock.calls).toEqual(
-        [],
-      );
+      expect(
+        mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+      ).toEqual([]);
     });
 
     it('should use the last triager proposal when multiple proposals exist', async () => {

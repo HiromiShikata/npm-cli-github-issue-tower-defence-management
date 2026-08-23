@@ -110,9 +110,7 @@ export class TriagerApprovalDispatchUseCase {
       params.projectUrl,
     );
     if (!projectId) {
-      throw new Error(
-        `Project not found. projectUrl: ${params.projectUrl}`,
-      );
+      throw new Error(`Project not found. projectUrl: ${params.projectUrl}`);
     }
     const project = await this.projectRepository.getProject(projectId);
     if (!project) {
@@ -160,11 +158,7 @@ export class TriagerApprovalDispatchUseCase {
       }
 
       let approved = false;
-      for (
-        let i = proposalCommentIndex + 1;
-        i < comments.length;
-        i++
-      ) {
+      for (let i = proposalCommentIndex + 1; i < comments.length; i++) {
         const comment = comments[i];
         if (
           isApprovalComment(
