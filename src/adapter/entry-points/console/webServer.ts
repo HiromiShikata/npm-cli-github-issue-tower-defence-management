@@ -34,6 +34,10 @@ import {
 } from './consoleOperationApi';
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
 import {
+  ConsoleGithubTokenResolver,
+  extractRepositoryOwner,
+} from './consoleGithubTokenResolver';
+import {
   composeDashboardText,
   dashboardComposeFilesPresent,
 } from './dashboardComposeService';
@@ -219,7 +223,7 @@ export type WebServerOptions = {
   dashboardDir: string | null;
   dashboardDataDir: string | null;
   dashboardProjectNames: string[];
-  githubToken?: string | null;
+  resolveGithubToken?: ConsoleGithubTokenResolver | null;
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
   resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
@@ -379,8 +383,21 @@ const handleImageProxy = async (
   response: http.ServerResponse,
   searchParams: URLSearchParams,
 ): Promise<void> => {
-  const githubToken = options.githubToken ?? null;
-  if (githubToken === null || githubToken.length === 0) {
+  const resolveGithubToken = options.resolveGithubToken ?? null;
+  if (resolveGithubToken === null) {
+    sendJson(response, 502, { error: 'github token is not configured' });
+    return;
+  }
+  const itemUrl = searchParams.get('itemUrl') ?? '';
+  const repositoryOwner = extractRepositoryOwner(itemUrl);
+  if (repositoryOwner === null) {
+    sendJson(response, 400, {
+      error: 'missing or unreadable itemUrl parameter',
+    });
+    return;
+  }
+  const githubToken = resolveGithubToken(repositoryOwner);
+  if (githubToken.length === 0) {
     sendJson(response, 502, { error: 'github token is not configured' });
     return;
   }

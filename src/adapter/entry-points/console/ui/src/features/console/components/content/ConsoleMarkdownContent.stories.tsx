@@ -35,7 +35,11 @@ export const WithCodeFence: Story = {
 export const WithProxiedGitHubImages: Story = {
   args: {
     body: consoleMarkdownImageBodyFixture,
-    buildImageProxyUrl: (src) => buildImageProxyUrl(src),
+    buildImageProxyUrl: (src) =>
+      buildImageProxyUrl(
+        src,
+        'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1672',
+      ),
   },
 };
 

@@ -918,7 +918,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     dashboardDir,
     dashboardDataDir,
     dashboardProjectNames,
-    githubToken: token,
+    resolveGithubToken,
     issueRepository,
     resolveIssueRepository,
     resolveProject,
