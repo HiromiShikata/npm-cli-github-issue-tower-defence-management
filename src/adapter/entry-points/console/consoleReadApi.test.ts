@@ -677,7 +677,11 @@ describe('consoleReadApi', () => {
       const url = 'https://github.com/o/r/pull/1';
       await handlePullRequestStatus(issueRepository, cache, url);
       now = PULL_REQUEST_STATUS_CACHE_TTL_MS + 1;
-      const response = await handlePullRequestStatus(issueRepository, cache, url);
+      const response = await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        url,
+      );
       expect(response.statusCode).toBe(200);
       expect(response.body).toEqual({
         found: true,

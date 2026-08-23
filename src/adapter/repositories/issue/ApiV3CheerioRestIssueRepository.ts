@@ -2806,7 +2806,10 @@ export class ApiV3CheerioRestIssueRepository
         ),
       );
       if (!response.ok) {
-        await this.throwGitHubError(`Failed to fetch comments for ${url}`, response);
+        await this.throwGitHubError(
+          `Failed to fetch comments for ${url}`,
+          response,
+        );
       }
       const body: unknown = await response.json();
       if (!isIssueCommentsResponse(body)) {
@@ -2855,7 +2858,10 @@ export class ApiV3CheerioRestIssueRepository
       ),
     );
     if (!detailResponse.ok) {
-      await this.throwGitHubError(`Failed to fetch detail for PR ${prUrl}`, detailResponse);
+      await this.throwGitHubError(
+        `Failed to fetch detail for PR ${prUrl}`,
+        detailResponse,
+      );
     }
     const detailBody: unknown = await detailResponse.json();
     if (!isPullRequestDetailResponse(detailBody)) {
@@ -2908,7 +2914,10 @@ export class ApiV3CheerioRestIssueRepository
         ),
       );
       if (!response.ok) {
-        await this.throwGitHubError(`Failed to fetch files for PR ${prUrl}`, response);
+        await this.throwGitHubError(
+          `Failed to fetch files for PR ${prUrl}`,
+          response,
+        );
       }
       const body: unknown = await response.json();
       if (!isPullRequestDetailFilesResponse(body)) {
@@ -2968,7 +2977,10 @@ export class ApiV3CheerioRestIssueRepository
         ),
       );
       if (!response.ok) {
-        await this.throwGitHubError(`Failed to fetch commits for PR ${prUrl}`, response);
+        await this.throwGitHubError(
+          `Failed to fetch commits for PR ${prUrl}`,
+          response,
+        );
       }
       const body: unknown = await response.json();
       if (!isPullRequestCommitsResponse(body)) {
@@ -3016,7 +3028,10 @@ export class ApiV3CheerioRestIssueRepository
         ),
       );
       if (!response.ok) {
-        await this.throwGitHubError(`Failed to fetch state for ${url}`, response);
+        await this.throwGitHubError(
+          `Failed to fetch state for ${url}`,
+          response,
+        );
       }
       const body: unknown = await response.json();
       if (!isPullRequestDetailResponse(body)) {
