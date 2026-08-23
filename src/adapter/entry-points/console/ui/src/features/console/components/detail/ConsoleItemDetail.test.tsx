@@ -643,7 +643,7 @@ describe('ConsoleItemDetail', () => {
     expect(chip).toBeNull();
   });
 
-  it('renders the agent chip inside the title header when agent is set', () => {
+  it('renders the agent chip inside the topline when agent is set', () => {
     const agentItem = { ...issueItem, agent: 'developer' };
     const { getByText, container } = render(
       <ConsoleItemDetail
@@ -652,11 +652,11 @@ describe('ConsoleItemDetail', () => {
         overlayStatus={null}
       />,
     );
-    const title = container.querySelector('.console-detail-title');
+    const topline = container.querySelector('.console-detail-topline');
     const agentChip = container.querySelector('.console-detail-agent-chip');
     expect(agentChip).not.toBeNull();
     expect(agentChip).toHaveTextContent('developer');
-    expect(title?.contains(getByText('developer'))).toBe(true);
+    expect(topline?.contains(getByText('developer'))).toBe(true);
   });
 
   it('renders no agent chip when agent is null', () => {
