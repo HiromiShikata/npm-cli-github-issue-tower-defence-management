@@ -10,6 +10,7 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
+import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -433,17 +434,6 @@ export class StartPreparationUseCase {
     };
 
     const now = new Date();
-    const currentHour = now.getHours();
-    const todayStart = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-    const tomorrowStart = new Date(
-      todayStart.getFullYear(),
-      todayStart.getMonth(),
-      todayStart.getDate() + 1,
-    );
 
     for (
       let i = 0;
@@ -460,15 +450,20 @@ export class StartPreparationUseCase {
         console.warn(`Skipping ${issue.url}: worker already running.`);
         continue;
       }
-      if (
-        issue.nextActionDate !== null &&
-        issue.nextActionDate >= tomorrowStart
-      ) {
-        exclusionCounts.futureNextActionDate++;
-        continue;
-      }
-      if (issue.nextActionHour !== null && currentHour < issue.nextActionHour) {
-        exclusionCounts.nextActionHourNotReached++;
+      if (issueReactivationTriggerIsPending(issue, now)) {
+        const startOfTomorrow = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() + 1,
+        );
+        if (
+          issue.nextActionDate !== null &&
+          issue.nextActionDate >= startOfTomorrow
+        ) {
+          exclusionCounts.futureNextActionDate++;
+        } else {
+          exclusionCounts.nextActionHourNotReached++;
+        }
         continue;
       }
       if (

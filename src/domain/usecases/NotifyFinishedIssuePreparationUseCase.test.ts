@@ -518,7 +518,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      expect.stringContaining('Issue has next action date or hour set:'),
+      expect.stringContaining('Reactivation trigger not yet reached:'),
     );
   });
 
