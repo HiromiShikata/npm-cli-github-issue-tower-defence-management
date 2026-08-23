@@ -26,6 +26,7 @@ const item = (number: number): ConsoleListItem => ({
   relatedOpenPullRequestUrls: [],
   story: 'Story',
   status: null,
+  agent: null,
   nextActionDate: null,
   nextActionHour: null,
   dependedIssueUrls: [],

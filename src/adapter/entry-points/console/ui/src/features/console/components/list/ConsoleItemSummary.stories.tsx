@@ -27,3 +27,7 @@ export const ReactivationTriggerRow: Story = {
 export const ActiveRow: Story = {
   args: { item: consoleListItemsFixture[0], isActive: true },
 };
+
+export const ItemWithAgent: Story = {
+  args: { item: consoleListItemsFixture[5], isActive: false },
+};

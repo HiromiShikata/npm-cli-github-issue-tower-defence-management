@@ -18,6 +18,7 @@ const makeItem = (
   isPr: false,
   story: 'Story A',
   status: 'Awaiting Quality Check',
+  agent: null,
   nextActionDate: null,
   nextActionHour: null,
   dependedIssueUrls: [],

@@ -19,6 +19,7 @@ const item = (
   isPr: false,
   relatedOpenPullRequestUrls: [],
   status: null,
+  agent: null,
   nextActionDate: null,
   nextActionHour: null,
   dependedIssueUrls: [],

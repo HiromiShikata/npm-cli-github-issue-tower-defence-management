@@ -365,6 +365,32 @@ test('renders the stories tab with non-gray stories, their open item counts, and
   ).toHaveCount(0);
 });
 
+test('shows the agent label and value in the list row and the agent chip in the detail view', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Todo by agent').click();
+
+  const agentItemRow = itemRowByText(
+    page,
+    'Route console items into the Todo by agent manual triage bucket',
+  );
+  await expect(
+    agentItemRow.locator('.console-item-field-label', { hasText: 'Agent' }),
+  ).toBeVisible();
+  await expect(
+    agentItemRow.locator('.console-item-field', { hasText: 'developer' }),
+  ).toBeVisible();
+
+  await agentItemRow.click();
+
+  await expect(page.locator('.console-detail-agent-chip')).toBeVisible();
+  await expect(page.locator('.console-detail-agent-chip')).toHaveText(
+    'developer',
+  );
+});
+
 test('creates an issue for a story when the add-task button and form are used', async ({
   page,
 }) => {

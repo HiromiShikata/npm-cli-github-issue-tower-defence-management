@@ -24,6 +24,7 @@ const prItem: ConsoleListItem = {
   relatedOpenPullRequestUrls: [],
   story: 'Story',
   status: null,
+  agent: null,
   nextActionDate: null,
   nextActionHour: null,
   dependedIssueUrls: [],

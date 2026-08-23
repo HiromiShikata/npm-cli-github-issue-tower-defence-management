@@ -19,6 +19,7 @@ const makeItem = (
   relatedOpenPullRequestUrls: [],
   story: 'Story',
   status: null,
+  agent: null,
   nextActionDate: null,
   nextActionHour: null,
   dependedIssueUrls: [],

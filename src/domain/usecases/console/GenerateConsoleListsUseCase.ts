@@ -20,6 +20,7 @@ export type ConsoleListItem = {
   isPr: boolean;
   story: string;
   status: string | null;
+  agent: string | null;
   nextActionDate: string | null;
   nextActionHour: number | null;
   dependedIssueUrls: string[];
@@ -308,6 +309,7 @@ export class GenerateConsoleListsUseCase {
     isPr: issue.isPr,
     story: issue.story ?? '',
     status: issue.status,
+    agent: issue.agent,
     nextActionDate:
       issue.nextActionDate === null ? null : issue.nextActionDate.toISOString(),
     nextActionHour: issue.nextActionHour,

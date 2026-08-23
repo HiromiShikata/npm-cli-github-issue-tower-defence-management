@@ -54,6 +54,7 @@ export const ConsoleItemSummary = ({
       </span>
       {(item.story !== '' ||
         (item.status !== null && item.status !== '') ||
+        (item.agent !== null && item.agent !== '') ||
         item.nextActionDate !== null ||
         item.nextActionHour !== null ||
         item.dependedIssueUrls.length > 0) && (
@@ -68,6 +69,12 @@ export const ConsoleItemSummary = ({
             <span className="console-item-field">
               <span className="console-item-field-label">Status</span>
               {item.status}
+            </span>
+          )}
+          {item.agent !== null && item.agent !== '' && (
+            <span className="console-item-field">
+              <span className="console-item-field-label">Agent</span>
+              {item.agent}
             </span>
           )}
           {item.nextActionDate !== null && (

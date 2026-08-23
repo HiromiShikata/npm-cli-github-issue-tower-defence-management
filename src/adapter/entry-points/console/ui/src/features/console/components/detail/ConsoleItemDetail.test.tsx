@@ -642,4 +642,33 @@ describe('ConsoleItemDetail', () => {
     const chip = container.querySelector('.console-detail-status-chip');
     expect(chip).toBeNull();
   });
+
+  it('renders the agent chip inside the topline when agent is set', () => {
+    const agentItem = { ...issueItem, agent: 'developer' };
+    const { getByText, container } = render(
+      <ConsoleItemDetail
+        item={agentItem}
+        {...baseProps}
+        overlayStatus={null}
+      />,
+    );
+    const topline = container.querySelector('.console-detail-topline');
+    const agentChip = container.querySelector('.console-detail-agent-chip');
+    expect(agentChip).not.toBeNull();
+    expect(agentChip).toHaveTextContent('developer');
+    expect(topline?.contains(getByText('developer'))).toBe(true);
+  });
+
+  it('renders no agent chip when agent is null', () => {
+    const noAgentItem = { ...issueItem, agent: null };
+    const { container } = render(
+      <ConsoleItemDetail
+        item={noAgentItem}
+        {...baseProps}
+        overlayStatus={null}
+      />,
+    );
+    const agentChip = container.querySelector('.console-detail-agent-chip');
+    expect(agentChip).toBeNull();
+  });
 });
