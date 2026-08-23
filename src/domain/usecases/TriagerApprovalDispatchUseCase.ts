@@ -10,6 +10,7 @@ import {
 
 const AGENT_REPORT_PREFIX = 'From: :robot:';
 const TRIAGER_AGENT_NAME = 'triager';
+const MAX_COMMENT_FETCHES_PER_CYCLE = 20;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -128,17 +129,24 @@ export class TriagerApprovalDispatchUseCase {
 
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
-    const candidateIssues = issues.filter(
-      (issue) =>
-        (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
-          issue.status === AWAITING_QUALITY_CHECK_STATUS_NAME) &&
-        issue.agent === null &&
-        isAuthorAuthorizedForAutoStatusCheck(issue.author, allowedIssueAuthors),
-    );
+    const candidateIssues = issues
+      .filter(
+        (issue) =>
+          (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
+            issue.status === AWAITING_QUALITY_CHECK_STATUS_NAME) &&
+          issue.agent === null &&
+          isAuthorAuthorizedForAutoStatusCheck(issue.author, allowedIssueAuthors),
+      )
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
+    let commentFetchCount = 0;
     for (const issue of candidateIssues) {
+      if (commentFetchCount >= MAX_COMMENT_FETCHES_PER_CYCLE) {
+        break;
+      }
       const comments =
         await this.issueCommentRepository.getCommentsFromIssue(issue);
+      commentFetchCount++;
 
       let proposalCommentIndex = -1;
       let proposal: TriagerProposal | null = null;

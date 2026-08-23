@@ -576,6 +576,33 @@ describe('TriagerApprovalDispatchUseCase', () => {
       ).toEqual([]);
     });
 
+    it('should fetch comments for at most 20 candidate issues per cycle when the backlog is large', async () => {
+      const manyIssues = Array.from({ length: 25 }, (_, i) =>
+        createMockIssue({
+          number: i + 1,
+          url: `https://github.com/owner/repo/issues/${i + 1}`,
+          itemId: `item-${i + 1}`,
+          status: 'Awaiting Quality Check',
+          author: 'owner-user',
+        }),
+      );
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: manyIssues,
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
+      });
+
+      expect(
+        mockIssueCommentRepository.getCommentsFromIssue,
+      ).toHaveBeenCalledTimes(20);
+    });
+
     it('should use the last triager proposal when multiple proposals exist', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
