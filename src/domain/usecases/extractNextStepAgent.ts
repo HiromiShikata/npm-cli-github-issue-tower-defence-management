@@ -1,5 +1,8 @@
+import { normalizeReportBody } from './normalizeReportBody';
 export const extractNextStepAgent = (body: string): string | null => {
-  const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+  const reportMatch = normalizeReportBody(body).match(
+    /```json\n([\s\S]*?)\n```/,
+  );
   if (!reportMatch || reportMatch.length < 2) {
     return null;
   }

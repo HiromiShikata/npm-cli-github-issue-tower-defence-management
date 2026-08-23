@@ -6,6 +6,7 @@ import {
 } from './IssueRejectionEvaluator';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
+import { normalizeReportBody } from './normalizeReportBody';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -113,7 +114,9 @@ export class CheckIssueReviewReadinessUseCase {
     allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
 
   private reportBodyHasNextStep = (body: string): boolean => {
-    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+    const reportMatch = normalizeReportBody(body).match(
+      /```json\n([\s\S]*?)\n```/,
+    );
     if (!reportMatch || reportMatch.length < 2) {
       return false;
     }

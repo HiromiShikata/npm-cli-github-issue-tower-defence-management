@@ -1,4 +1,5 @@
 import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
+import { normalizeReportBody } from './normalizeReportBody';
 
 export const isPullRequestDeclaredUnnecessary = (
   comments: { author: string; content: string }[],
@@ -12,7 +13,9 @@ export const isPullRequestDeclaredUnnecessary = (
   ) {
     return false;
   }
-  const reportMatch = lastComment.content.match(/```json\n([\s\S]*?)\n```/);
+  const reportMatch = normalizeReportBody(lastComment.content).match(
+    /```json\n([\s\S]*?)\n```/,
+  );
   if (!reportMatch || reportMatch.length < 2) {
     return false;
   }

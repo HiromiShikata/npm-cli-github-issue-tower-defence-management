@@ -24,6 +24,7 @@ import {
 } from './returnedToAwaitingWorkspaceMessage';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
+import { normalizeReportBody } from './normalizeReportBody';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -363,7 +364,9 @@ export class RevertOrphanedPreparationUseCase {
   };
 
   private reportBodyHasNextStep = (body: string): boolean => {
-    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+    const reportMatch = normalizeReportBody(body).match(
+      /```json\n([\s\S]*?)\n```/,
+    );
     if (!reportMatch || reportMatch.length < 2) {
       return false;
     }

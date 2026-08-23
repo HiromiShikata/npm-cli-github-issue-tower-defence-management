@@ -29,6 +29,7 @@ import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import { normalizeReportBody } from './normalizeReportBody';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -514,7 +515,9 @@ export class NotifyFinishedIssuePreparationUseCase {
   };
 
   private reportBodyHasNextStep = (body: string): boolean => {
-    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+    const reportMatch = normalizeReportBody(body).match(
+      /```json\n([\s\S]*?)\n```/,
+    );
     if (!reportMatch || reportMatch.length < 2) {
       return false;
     }

@@ -20,6 +20,21 @@ describe('isPullRequestDeclaredUnnecessary', () => {
     ).toBe(true);
   });
 
+  it('returns true when the code fence backticks of that report are backslash escaped', () => {
+    expect(
+      isPullRequestDeclaredUnnecessary(
+        [
+          {
+            author: 'agent-bot',
+            content:
+              'From: :robot: agent report\n\\`\\`\\`json\n{"pullRequestRequired": false}\n\\`\\`\\`',
+          },
+        ],
+        trustEveryAuthor,
+      ),
+    ).toBe(true);
+  });
+
   it('returns false when the last report declares pullRequestRequired as true', () => {
     expect(
       isPullRequestDeclaredUnnecessary(

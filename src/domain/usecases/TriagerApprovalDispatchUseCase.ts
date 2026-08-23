@@ -9,6 +9,7 @@ import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { normalizeReportBody } from './normalizeReportBody';
 
 const TRIAGER_AGENT_NAME = 'triager';
 const MAX_COMMENT_FETCHES_PER_CYCLE = 20;
@@ -28,7 +29,9 @@ const parseTriagerProposalBlock = (
     return null;
   }
   const jsonBlockMatches = [
-    ...commentContent.matchAll(/```json\n([\s\S]*?)\n```/g),
+    ...normalizeReportBody(commentContent).matchAll(
+      /```json\n([\s\S]*?)\n```/g,
+    ),
   ];
   for (let i = 0; i < jsonBlockMatches.length; i++) {
     const blockContent = jsonBlockMatches[i][1];

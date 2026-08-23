@@ -2,6 +2,7 @@ import {
   IssueRepository,
   RelatedPullRequest,
 } from './adapter-interfaces/IssueRepository';
+import { normalizeReportBody } from './normalizeReportBody';
 
 export type PrRejectedReasonType =
   | 'PULL_REQUEST_NOT_FOUND'
@@ -300,7 +301,9 @@ export class IssueRejectionEvaluator {
     body: string | null | undefined,
   ): boolean => {
     if (!body) return true;
-    const match = body.trimEnd().match(/```json\n([\s\S]*?)\n```\s*$/);
+    const match = normalizeReportBody(body)
+      .trimEnd()
+      .match(/```json\n([\s\S]*?)\n```\s*$/);
     if (!match || !match[1]) return true;
     let config: unknown;
     try {
