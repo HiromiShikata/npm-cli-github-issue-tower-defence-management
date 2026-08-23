@@ -923,6 +923,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     isPjcodeConfigured,
     issueAttachmentRepository: new LocalCommandIssueAttachmentRepository(
       new NodeLocalCommandRunner(),
+      undefined,
+      resolveGithubToken,
     ),
     issueTitleStateCache: new IssueTitleStateCache(),
     pullRequestStatusCache: new PullRequestStatusCache(),

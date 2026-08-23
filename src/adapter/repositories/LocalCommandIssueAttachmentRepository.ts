@@ -58,6 +58,9 @@ export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRep
   constructor(
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly temporaryDirectoryRoot: string = tmpdir(),
+    private readonly resolveGithubToken?: (
+      repositoryOwner: string,
+    ) => string,
   ) {}
 
   async uploadAttachment(
@@ -72,10 +75,24 @@ export class LocalCommandIssueAttachmentRepository implements IssueAttachmentRep
     );
     try {
       await writeFile(filePath, request.content);
-      const result = await this.localCommandRunner.runCommand(UPLOAD_COMMAND, [
-        filePath,
-        request.issueOrPullRequestUrl,
-      ]);
+      let commandOptions:
+        | { env: { GH_TOKEN: string } }
+        | undefined;
+      if (this.resolveGithubToken !== undefined) {
+        const ownerMatch = request.issueOrPullRequestUrl.match(
+          /https:\/\/github\.com\/([A-Za-z0-9._-]+)\//,
+        );
+        if (ownerMatch !== null) {
+          commandOptions = {
+            env: { GH_TOKEN: this.resolveGithubToken(ownerMatch[1]) },
+          };
+        }
+      }
+      const result = await this.localCommandRunner.runCommand(
+        UPLOAD_COMMAND,
+        [filePath, request.issueOrPullRequestUrl],
+        commandOptions,
+      );
       if (result.exitCode !== 0) {
         throw new Error(
           `${UPLOAD_COMMAND} failed with exit code ${result.exitCode}: ${result.stderr.trim()}`,
