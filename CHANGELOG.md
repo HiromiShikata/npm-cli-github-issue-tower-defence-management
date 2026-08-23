@@ -1,3 +1,10 @@
+## [1.173.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.173.2...v1.173.3) (2026-08-23)
+
+
+### Bug Fixes
+
+* **TranscriptSessionSubAgentActivityRepository:** drop ghost subagents from reminder when liveness file absent ([#1683](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1683)) ([ec8ada5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ec8ada5e905e4ae989a82036c54aa1e21b0bf82d)), closes [HiromiShikata/secretary#4161](https://github.com/HiromiShikata/secretary/issues/4161)
+
 ## [1.173.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.173.1...v1.173.2) (2026-08-23)
 
 

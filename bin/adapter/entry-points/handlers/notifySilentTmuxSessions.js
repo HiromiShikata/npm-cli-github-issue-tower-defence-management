@@ -21,7 +21,7 @@ const FileSystemSilentSessionCandidateStateRepository_1 = require("../../reposit
 const FileSystemSilentSessionHubTaskStatusCacheRepository_1 = require("../../repositories/FileSystemSilentSessionHubTaskStatusCacheRepository");
 const createSubAgentActivityRepository = (subAgentTranscriptRootDirectory, subAgentRuntimeRootDirectory, subAgentProcessMatchPattern, subAgentOutputRootDirectory, localCommandRunner, now) => {
     if (subAgentTranscriptRootDirectory !== null) {
-        return new TranscriptSessionSubAgentActivityRepository_1.TranscriptSessionSubAgentActivityRepository(new FileSystemSubAgentTranscriptDirectoryResolver_1.FileSystemSubAgentTranscriptDirectoryResolver(subAgentTranscriptRootDirectory), new NodeSubAgentProcessLister_1.NodeSubAgentProcessLister(localCommandRunner), now, new FileSystemSubAgentLivenessResolver_1.FileSystemSubAgentLivenessResolver(subAgentRuntimeRootDirectory));
+        return new TranscriptSessionSubAgentActivityRepository_1.TranscriptSessionSubAgentActivityRepository(new FileSystemSubAgentTranscriptDirectoryResolver_1.FileSystemSubAgentTranscriptDirectoryResolver(subAgentTranscriptRootDirectory), new NodeSubAgentProcessLister_1.NodeSubAgentProcessLister(localCommandRunner), now, new FileSystemSubAgentLivenessResolver_1.FileSystemSubAgentLivenessResolver(subAgentRuntimeRootDirectory), subAgentRuntimeRootDirectory);
     }
     return new ProcessListSessionSubAgentActivityRepository_1.ProcessListSessionSubAgentActivityRepository(subAgentProcessMatchPattern, new NodeSubAgentProcessLister_1.NodeSubAgentProcessLister(localCommandRunner), new FileSystemSubAgentSilentSecondsResolver_1.FileSystemSubAgentSilentSecondsResolver(subAgentOutputRootDirectory, now));
 };

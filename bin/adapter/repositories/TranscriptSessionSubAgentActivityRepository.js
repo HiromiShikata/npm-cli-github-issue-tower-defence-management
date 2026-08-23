@@ -236,11 +236,12 @@ const parseTerminalAgentIds = (content) => {
     return result;
 };
 class TranscriptSessionSubAgentActivityRepository {
-    constructor(directoryResolver, processLister, now, livenessResolver = alwaysIndeterminateLivenessResolver) {
+    constructor(directoryResolver, processLister, now, livenessResolver = alwaysIndeterminateLivenessResolver, runtimeRootDirectory = null) {
         this.directoryResolver = directoryResolver;
         this.processLister = processLister;
         this.now = now;
         this.livenessResolver = livenessResolver;
+        this.runtimeRootDirectory = runtimeRootDirectory;
         this.listSubAgentActivitiesBySessionName = async (sessionNames, transcriptPathBySessionName) => {
             const result = new Map();
             const nowEpochSeconds = Math.floor(this.now.getTime() / 1000);
@@ -263,7 +264,7 @@ class TranscriptSessionSubAgentActivityRepository {
                     sessionName,
                     mainTranscriptPath,
                 });
-                const activities = await this.collectActivities(directory, nowEpochSeconds, terminalAgentIds, liveSubAgentIds, loadNormalizedProcessCommandLines);
+                const activities = await this.collectActivities(directory, nowEpochSeconds, terminalAgentIds, liveSubAgentIds, loadNormalizedProcessCommandLines, mainTranscriptPath);
                 if (activities.length > 0) {
                     result.set(sessionName, activities);
                 }
@@ -283,7 +284,18 @@ class TranscriptSessionSubAgentActivityRepository {
             }
             return parseTerminalAgentIds(content);
         };
-        this.collectActivities = async (directory, nowEpochSeconds, terminalAgentIds, liveSubAgentIds, loadNormalizedProcessCommandLines) => {
+        this.resolveOutputFilePath = (mainTranscriptPath, agentId) => {
+            if (this.runtimeRootDirectory === null || mainTranscriptPath === null) {
+                return null;
+            }
+            const slug = path.basename(path.dirname(mainTranscriptPath));
+            const sid = path.basename(mainTranscriptPath, '.jsonl');
+            if (slug.length === 0 || slug === '.' || sid.length === 0) {
+                return null;
+            }
+            return path.join(this.runtimeRootDirectory, slug, sid, 'tasks', `${agentId}.output`);
+        };
+        this.collectActivities = async (directory, nowEpochSeconds, terminalAgentIds, liveSubAgentIds, loadNormalizedProcessCommandLines, mainTranscriptPath) => {
             let entries;
             try {
                 entries = fs.readdirSync(directory, { withFileTypes: true });
@@ -303,6 +315,17 @@ class TranscriptSessionSubAgentActivityRepository {
                 }
                 if (liveSubAgentIds !== null && !liveSubAgentIds.has(agentId)) {
                     continue;
+                }
+                if (liveSubAgentIds === null && this.runtimeRootDirectory !== null) {
+                    const outputFilePath = this.resolveOutputFilePath(mainTranscriptPath, agentId);
+                    const outputFileExists = outputFilePath !== null && fs.existsSync(outputFilePath);
+                    if (!outputFileExists) {
+                        const processCommandLines = await loadNormalizedProcessCommandLines();
+                        const appearsInProcess = processCommandLines.some((line) => line.includes(agentId));
+                        if (!appearsInProcess) {
+                            continue;
+                        }
+                    }
                 }
                 const filePath = path.join(directory, fileName);
                 const activity = await this.toActivity(filePath, fileName, nowEpochSeconds, liveSubAgentIds !== null, loadNormalizedProcessCommandLines);

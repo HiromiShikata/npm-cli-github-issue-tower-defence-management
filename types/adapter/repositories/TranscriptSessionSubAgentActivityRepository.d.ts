@@ -9,9 +9,11 @@ export declare class TranscriptSessionSubAgentActivityRepository implements Sess
     private readonly processLister;
     private readonly now;
     private readonly livenessResolver;
-    constructor(directoryResolver: SubAgentTranscriptDirectoryResolver, processLister: SubAgentProcessLister, now: Date, livenessResolver?: SubAgentLivenessResolver);
+    private readonly runtimeRootDirectory;
+    constructor(directoryResolver: SubAgentTranscriptDirectoryResolver, processLister: SubAgentProcessLister, now: Date, livenessResolver?: SubAgentLivenessResolver, runtimeRootDirectory?: string | null);
     listSubAgentActivitiesBySessionName: (sessionNames: string[], transcriptPathBySessionName: Map<string, string>) => Promise<Map<string, SubAgentActivity[]>>;
     private loadTerminalAgentIds;
+    private resolveOutputFilePath;
     private collectActivities;
     private toActivity;
     private hasLiveMatchingProcess;
