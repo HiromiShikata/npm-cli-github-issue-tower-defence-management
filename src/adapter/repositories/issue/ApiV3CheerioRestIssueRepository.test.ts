@@ -810,10 +810,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       await repository.getAllIssues('cached-project');
 
-      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1] as {
-        project: Project;
-      };
-      expect(cacheWrite.project).toBe(freshProject);
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toEqual(expect.objectContaining({ project: freshProject }));
     });
 
     it('falls back to cache.project and logs a warning when getProject fails during incremental fetch', async () => {
