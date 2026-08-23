@@ -50,6 +50,20 @@ export const createConsoleProjectRepositoryResolver = <ProjectRepositoryType>(
   };
 };
 
+export const createConsoleGithubTokenResolverByItemUrl = (
+  resolveGithubToken: ConsoleGithubTokenResolver,
+): ((itemUrl: string) => string) => {
+  return (itemUrl: string): string => {
+    const owner = extractRepositoryOwner(itemUrl);
+    if (owner === null) {
+      throw new Error(
+        `The repository owner cannot be read from the url: ${itemUrl}`,
+      );
+    }
+    return resolveGithubToken(owner);
+  };
+};
+
 export const createConsoleGithubTokenResolver = (
   defaultToken: string,
   githubTokenFilePathByRepositoryOwner: Record<string, string> | null,

@@ -1,5 +1,6 @@
 import {
   createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByItemUrl,
   createConsoleIssueRepositoryResolver,
   createConsoleProjectRepositoryResolver,
   extractProjectOwner,
@@ -46,6 +47,30 @@ describe('createConsoleProjectRepositoryResolver', () => {
 
     expect(() => resolve('https://github.com/orgs/acme')).toThrow(
       'The project owner cannot be read from the project url: https://github.com/orgs/acme',
+    );
+  });
+});
+
+describe('createConsoleGithubTokenResolverByItemUrl', () => {
+  it('returns the token for the owner of the given item url', () => {
+    const resolve = createConsoleGithubTokenResolverByItemUrl(
+      (repositoryOwner) => `token-of-${repositoryOwner}`,
+    );
+
+    expect(
+      resolve('https://github.com/acme-labs/acme-portal-mock/issues/178'),
+    ).toBe('token-of-acme-labs');
+  });
+
+  it('throws when the repository owner cannot be read from the url', () => {
+    const resolve = createConsoleGithubTokenResolverByItemUrl(
+      (repositoryOwner) => `token-of-${repositoryOwner}`,
+    );
+
+    expect(() =>
+      resolve('https://github.com/acme-labs/acme-portal-mock'),
+    ).toThrow(
+      'The repository owner cannot be read from the url: https://github.com/acme-labs/acme-portal-mock',
     );
   });
 });
