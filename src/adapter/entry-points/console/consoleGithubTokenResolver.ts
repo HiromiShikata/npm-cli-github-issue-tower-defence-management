@@ -61,11 +61,14 @@ export const createConsoleGithubTokenResolver = (
     if (alreadyResolved !== undefined) {
       return alreadyResolved;
     }
-    const filePath = githubTokenFilePathByRepositoryOwner
-      ? githubTokenFilePathByRepositoryOwner[repositoryOwner]
-      : undefined;
-    if (filePath === undefined) {
+    if (githubTokenFilePathByRepositoryOwner === null) {
       return defaultToken;
+    }
+    const filePath = githubTokenFilePathByRepositoryOwner[repositoryOwner];
+    if (filePath === undefined) {
+      throw new Error(
+        `No GitHub token file is configured for repository owner "${repositoryOwner}". Add an entry for this owner under consoleGithubTokenFilesByRepositoryOwner in the config file.`,
+      );
     }
     const token = readTokenFile(filePath).trim();
     if (token.length === 0) {

@@ -128,14 +128,16 @@ describe('createConsoleGithubTokenResolver', () => {
     expect(resolve('acme-labs')).toBe('fine-grained-token');
   });
 
-  it('should keep using the default token for the other owners when one owner has a token file', () => {
+  it('should throw when the per-owner token map is provided but the owner has no entry in it', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
       { 'acme-labs': '/creds/acme-labs-token.txt' },
       () => 'fine-grained-token',
     );
 
-    expect(resolve('globex-inc')).toBe('default-token');
+    expect(() => resolve('globex-inc')).toThrow(
+      'No GitHub token file is configured for repository owner "globex-inc". Add an entry for this owner under consoleGithubTokenFilesByRepositoryOwner in the config file.',
+    );
   });
 
   it('should read the token file only once per owner', () => {
