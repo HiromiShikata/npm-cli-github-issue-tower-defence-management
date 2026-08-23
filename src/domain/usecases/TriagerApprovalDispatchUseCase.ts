@@ -50,18 +50,17 @@ const parseTriagerProposalBlock = (
     if (!isRecord(proposalValue)) {
       continue;
     }
-    const p = proposalValue;
     if (
-      typeof p['recommendedAgent'] !== 'string' ||
-      typeof p['recommendedStory'] !== 'string' ||
-      typeof p['storyAlreadySet'] !== 'boolean'
+      typeof proposalValue['recommendedAgent'] !== 'string' ||
+      typeof proposalValue['recommendedStory'] !== 'string' ||
+      typeof proposalValue['storyAlreadySet'] !== 'boolean'
     ) {
       continue;
     }
     return {
-      recommendedAgent: p['recommendedAgent'],
-      recommendedStory: p['recommendedStory'],
-      storyAlreadySet: p['storyAlreadySet'],
+      recommendedAgent: proposalValue['recommendedAgent'],
+      recommendedStory: proposalValue['recommendedStory'],
+      storyAlreadySet: proposalValue['storyAlreadySet'],
     };
   }
   return null;
@@ -104,8 +103,10 @@ export class TriagerApprovalDispatchUseCase {
   run = async (params: {
     projectUrl: string;
     allowedIssueAuthors?: string[] | null;
+    cycleIndex?: number;
   }): Promise<void> => {
     const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
+    const cycleIndex = params.cycleIndex ?? Math.floor(Date.now() / 60_000);
 
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -142,14 +143,23 @@ export class TriagerApprovalDispatchUseCase {
       )
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 
-    let commentFetchCount = 0;
-    for (const issue of candidateIssues) {
-      if (commentFetchCount >= MAX_COMMENT_FETCHES_PER_CYCLE) {
-        break;
-      }
+    if (candidateIssues.length === 0) {
+      return;
+    }
+
+    const windowStart =
+      (cycleIndex * MAX_COMMENT_FETCHES_PER_CYCLE) % candidateIssues.length;
+    const windowSize = Math.min(
+      MAX_COMMENT_FETCHES_PER_CYCLE,
+      candidateIssues.length,
+    );
+
+    for (let slot = 0; slot < windowSize; slot++) {
+      const issue =
+        candidateIssues[(windowStart + slot) % candidateIssues.length];
+
       const comments =
         await this.issueCommentRepository.getCommentsFromIssue(issue);
-      commentFetchCount++;
 
       let proposalCommentIndex = -1;
       let proposal: TriagerProposal | null = null;
