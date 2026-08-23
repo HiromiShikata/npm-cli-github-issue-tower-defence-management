@@ -1,4 +1,4 @@
-const AGENT_REPORT_PREFIX = 'From: :robot:';
+import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
 
 export const isPullRequestDeclaredUnnecessary = (
   comments: { author: string; content: string }[],

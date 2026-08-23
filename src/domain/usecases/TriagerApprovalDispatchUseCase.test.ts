@@ -603,7 +603,7 @@ describe('TriagerApprovalDispatchUseCase', () => {
       ).toHaveBeenCalledTimes(20);
     });
 
-    it('should dispatch an approval on a candidate beyond position 20 as the cursor advances on the second run', async () => {
+    it('should dispatch an approval on a candidate beyond position 20 when the cycle index advances to the next window', async () => {
       const candidates = Array.from({ length: 21 }, (_, i) =>
         createMockIssue({
           number: i + 1,
@@ -638,17 +638,29 @@ describe('TriagerApprovalDispatchUseCase', () => {
         },
       );
 
-      // Run 1: processes candidates 0-19 (issues 1-20); cursor advances to 20
-      await useCase.run({
+      // cycleIndex=0: windowStart=0, covers positions 0-19 (issues 1-20); issue 21 not reached
+      const firstUseCase = new TriagerApprovalDispatchUseCase(
+        mockProjectRepository,
+        mockIssueRepository,
+        mockIssueCommentRepository,
+      );
+      await firstUseCase.run({
         projectUrl: 'https://github.com/orgs/owner/projects/1',
         allowedIssueAuthors: ['owner-user'],
+        cycleIndex: 0,
       });
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
 
-      // Run 2: starts from cursor=20, so candidate[20] (issue 21) is reached
-      await useCase.run({
+      // cycleIndex=1: windowStart=20, covers position 20 (issue 21)
+      const secondUseCase = new TriagerApprovalDispatchUseCase(
+        mockProjectRepository,
+        mockIssueRepository,
+        mockIssueCommentRepository,
+      );
+      await secondUseCase.run({
         projectUrl: 'https://github.com/orgs/owner/projects/1',
         allowedIssueAuthors: ['owner-user'],
+        cycleIndex: 1,
       });
 
       expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
@@ -725,7 +737,7 @@ describe('TriagerApprovalDispatchUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     });
 
-    it('should read all candidates across consecutive runs even when candidate count evenly divides MAX_COMMENT_FETCHES_PER_CYCLE', async () => {
+    it('should read all candidates across consecutive cycles even when candidate count evenly divides MAX_COMMENT_FETCHES_PER_CYCLE', async () => {
       const candidates = Array.from({ length: 40 }, (_, i) =>
         createMockIssue({
           number: i + 1,
@@ -743,13 +755,28 @@ describe('TriagerApprovalDispatchUseCase', () => {
       });
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
 
-      await useCase.run({
+      // cycleIndex=0: windowStart=0, covers positions 0-19 (issues 1-20)
+      const firstUseCase = new TriagerApprovalDispatchUseCase(
+        mockProjectRepository,
+        mockIssueRepository,
+        mockIssueCommentRepository,
+      );
+      await firstUseCase.run({
         projectUrl: 'https://github.com/orgs/owner/projects/1',
         allowedIssueAuthors: ['owner-user'],
+        cycleIndex: 0,
       });
-      await useCase.run({
+
+      // cycleIndex=1: windowStart=20, covers positions 20-39 (issues 21-40)
+      const secondUseCase = new TriagerApprovalDispatchUseCase(
+        mockProjectRepository,
+        mockIssueRepository,
+        mockIssueCommentRepository,
+      );
+      await secondUseCase.run({
         projectUrl: 'https://github.com/orgs/owner/projects/1',
         allowedIssueAuthors: ['owner-user'],
+        cycleIndex: 1,
       });
 
       expect(

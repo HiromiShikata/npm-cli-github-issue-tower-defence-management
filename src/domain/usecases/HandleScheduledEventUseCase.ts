@@ -29,6 +29,7 @@ import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptU
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { TriagerApprovalDispatchUseCase } from './TriagerApprovalDispatchUseCase';
+import { isRecord } from './isRecord';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
@@ -64,9 +65,6 @@ const isTransientApiError = (error: Error): boolean => {
 
 const TRANSIENT_NETWORK_ERROR_CODE_PATTERN =
   /\b(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ERR_NETWORK|ERR_SOCKET_CONNECTION_TIMEOUT)\b/;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 const extractHttpStatusFromError = (error: Error): number | null => {
   if (!isRecord(error)) {

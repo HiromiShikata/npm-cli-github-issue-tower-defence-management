@@ -1,19 +1,17 @@
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
+import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import { isRecord } from './isRecord';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
-const AGENT_REPORT_PREFIX = 'From: :robot:';
 const TRIAGER_AGENT_NAME = 'triager';
 const MAX_COMMENT_FETCHES_PER_CYCLE = 20;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
 
 type TriagerProposal = {
   recommendedAgent: string;
@@ -81,8 +79,6 @@ const isApprovalComment = (
 };
 
 export class TriagerApprovalDispatchUseCase {
-  private candidateCursorOffset: number = 0;
-
   constructor(
     private readonly projectRepository: Pick<
       ProjectRepository,
@@ -105,8 +101,10 @@ export class TriagerApprovalDispatchUseCase {
   run = async (params: {
     projectUrl: string;
     allowedIssueAuthors?: string[] | null;
+    cycleIndex?: number;
   }): Promise<void> => {
     const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
+    const cycleIndex = params.cycleIndex ?? Math.floor(Date.now() / 60_000);
 
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -147,13 +145,12 @@ export class TriagerApprovalDispatchUseCase {
       return;
     }
 
-    const windowStart = this.candidateCursorOffset % candidateIssues.length;
     const windowSize = Math.min(
       MAX_COMMENT_FETCHES_PER_CYCLE,
       candidateIssues.length,
     );
-    this.candidateCursorOffset =
-      (windowStart + windowSize) % candidateIssues.length;
+    const windowStart =
+      (cycleIndex * MAX_COMMENT_FETCHES_PER_CYCLE) % candidateIssues.length;
 
     for (let slot = 0; slot < windowSize; slot++) {
       const issue =
