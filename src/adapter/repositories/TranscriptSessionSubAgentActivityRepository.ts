@@ -250,6 +250,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     private readonly processLister: SubAgentProcessLister,
     private readonly now: Date,
     private readonly livenessResolver: SubAgentLivenessResolver = alwaysIndeterminateLivenessResolver,
+    private readonly runtimeRootDirectory: string | null = null,
   ) {}
 
   listSubAgentActivitiesBySessionName = async (
@@ -290,6 +291,7 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
         terminalAgentIds,
         liveSubAgentIds,
         loadNormalizedProcessCommandLines,
+        mainTranscriptPath,
       );
       if (activities.length > 0) {
         result.set(sessionName, activities);
@@ -313,12 +315,34 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
     return parseTerminalAgentIds(content);
   };
 
+  private resolveOutputFilePath = (
+    mainTranscriptPath: string | null,
+    agentId: string,
+  ): string | null => {
+    if (this.runtimeRootDirectory === null || mainTranscriptPath === null) {
+      return null;
+    }
+    const slug = path.basename(path.dirname(mainTranscriptPath));
+    const sid = path.basename(mainTranscriptPath, '.jsonl');
+    if (slug.length === 0 || slug === '.' || sid.length === 0) {
+      return null;
+    }
+    return path.join(
+      this.runtimeRootDirectory,
+      slug,
+      sid,
+      'tasks',
+      `${agentId}.output`,
+    );
+  };
+
   private collectActivities = async (
     directory: string,
     nowEpochSeconds: number,
     terminalAgentIds: Set<string>,
     liveSubAgentIds: Set<string> | null,
     loadNormalizedProcessCommandLines: () => Promise<string[]>,
+    mainTranscriptPath: string | null,
   ): Promise<SubAgentActivity[]> => {
     let entries: fs.Dirent[];
     try {
@@ -338,6 +362,23 @@ export class TranscriptSessionSubAgentActivityRepository implements SessionSubAg
       }
       if (liveSubAgentIds !== null && !liveSubAgentIds.has(agentId)) {
         continue;
+      }
+      if (liveSubAgentIds === null && this.runtimeRootDirectory !== null) {
+        const outputFilePath = this.resolveOutputFilePath(
+          mainTranscriptPath,
+          agentId,
+        );
+        const outputFileExists =
+          outputFilePath !== null && fs.existsSync(outputFilePath);
+        if (!outputFileExists) {
+          const processCommandLines = await loadNormalizedProcessCommandLines();
+          const appearsInProcess = processCommandLines.some((line) =>
+            line.includes(agentId),
+          );
+          if (!appearsInProcess) {
+            continue;
+          }
+        }
       }
       const filePath = path.join(directory, fileName);
       const activity = await this.toActivity(

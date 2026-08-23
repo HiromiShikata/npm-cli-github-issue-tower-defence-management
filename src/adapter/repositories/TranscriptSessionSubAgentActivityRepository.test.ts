@@ -1529,4 +1529,146 @@ describe('TranscriptSessionSubAgentActivityRepository', () => {
       },
     ]);
   });
+
+  const outputFilePathFor = (sessionName: string, agentId: string): string => {
+    const mainTranscriptPath = mainTranscriptPathFor(sessionName);
+    const slug = path.basename(path.dirname(mainTranscriptPath));
+    const sid = path.basename(mainTranscriptPath, '.jsonl');
+    return path.join(rootDirectory, slug, sid, 'tasks', `${agentId}.output`);
+  };
+
+  const createOutputFile = (sessionName: string, agentId: string): void => {
+    const filePath = outputFilePathFor(sessionName, agentId);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, '', 'utf8');
+  };
+
+  it('excludes a sub-agent whose output file is absent and whose id matches no running process when the liveness file is absent', async () => {
+    const sessionName = 'session-4161-ghost-agent';
+    const agentId = 'a4161dead00000001';
+    writeAgentTranscript(
+      sessionName,
+      agentId,
+      pendingToolUseEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith(null),
+      rootDirectory,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
+
+  it('includes a sub-agent whose output file exists even when the liveness file is absent', async () => {
+    const sessionName = 'session-4161-live-output';
+    const agentId = 'a4161live00000002';
+    writeAgentTranscript(
+      sessionName,
+      agentId,
+      pendingToolUseEntries('2026-06-27T11:45:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    createOutputFile(sessionName, agentId);
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith(null),
+      rootDirectory,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: `agent-${agentId}`,
+        silentSeconds: 600,
+        runningSeconds: 900,
+        waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
+      },
+    ]);
+  });
+
+  it('includes a sub-agent whose output file is absent but whose id appears in a running process command line when the liveness file is absent', async () => {
+    const sessionName = 'session-4161-live-process';
+    const agentId = 'a4161proc00000003';
+    writeAgentTranscript(
+      sessionName,
+      agentId,
+      pendingToolUseEntries('2026-06-27T11:45:00.000Z'),
+      nowEpochSeconds - 600,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      processListerWith([
+        {
+          commandLine: `/path/to/claude --session ${agentId} --task task.txt`,
+          elapsedSeconds: 600,
+        },
+      ]),
+      now,
+      livenessResolverWith(null),
+      rootDirectory,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.get(sessionName)).toEqual([
+      {
+        label: `agent-${agentId}`,
+        silentSeconds: 600,
+        runningSeconds: 900,
+        waitingOnExternalProcess: false,
+        finishedResultUnconsumed: false,
+      },
+    ]);
+  });
+
+  it('emits no sub-agent entries when every transcript has no output file and no matching process and the liveness file is absent', async () => {
+    const sessionName = 'session-4161-all-absent';
+    const agentId1 = 'a4161none00000004';
+    const agentId2 = 'a4161none00000005';
+    writeAgentTranscript(
+      sessionName,
+      agentId1,
+      pendingToolUseEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 900,
+    );
+    writeAgentTranscript(
+      sessionName,
+      agentId2,
+      pendingToolUseEntries('2026-06-27T11:00:00.000Z'),
+      nowEpochSeconds - 900,
+    );
+    const repository = new TranscriptSessionSubAgentActivityRepository(
+      createResolver(),
+      emptyProcessLister(),
+      now,
+      livenessResolverWith(null),
+      rootDirectory,
+    );
+
+    const result = await repository.listSubAgentActivitiesBySessionName(
+      [sessionName],
+      transcriptMapFor([sessionName]),
+    );
+
+    expect(result.size).toBe(0);
+  });
 });
