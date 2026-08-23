@@ -32,7 +32,7 @@ const parseTriagerProposalBlock = (
   const jsonBlockMatches = [
     ...commentContent.matchAll(/```json\n([\s\S]*?)\n```/g),
   ];
-  for (let i = 1; i < jsonBlockMatches.length; i++) {
+  for (let i = 0; i < jsonBlockMatches.length; i++) {
     const blockContent = jsonBlockMatches[i][1];
     if (!blockContent) {
       continue;
@@ -77,10 +77,12 @@ const isApprovalComment = (
   if (content.startsWith(AGENT_REPORT_PREFIX)) {
     return false;
   }
-  return /^(ok|オーケー)$/i.test(content.trim());
+  return /^(ok|オーケー|はい[\s\S]*)$/i.test(content.trim());
 };
 
 export class TriagerApprovalDispatchUseCase {
+  private candidateCursorOffset: number = 0;
+
   constructor(
     private readonly projectRepository: Pick<
       ProjectRepository,
@@ -103,10 +105,8 @@ export class TriagerApprovalDispatchUseCase {
   run = async (params: {
     projectUrl: string;
     allowedIssueAuthors?: string[] | null;
-    cycleIndex?: number;
   }): Promise<void> => {
     const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
-    const cycleIndex = params.cycleIndex ?? Math.floor(Date.now() / 60_000);
 
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -135,7 +135,7 @@ export class TriagerApprovalDispatchUseCase {
         (issue) =>
           (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
             issue.status === AWAITING_QUALITY_CHECK_STATUS_NAME) &&
-          issue.agent === null &&
+          (issue.agent === null || issue.agent === TRIAGER_AGENT_NAME) &&
           isAuthorAuthorizedForAutoStatusCheck(
             issue.author,
             allowedIssueAuthors,
@@ -147,12 +147,13 @@ export class TriagerApprovalDispatchUseCase {
       return;
     }
 
-    const windowStart =
-      (cycleIndex * MAX_COMMENT_FETCHES_PER_CYCLE) % candidateIssues.length;
+    const windowStart = this.candidateCursorOffset % candidateIssues.length;
     const windowSize = Math.min(
       MAX_COMMENT_FETCHES_PER_CYCLE,
       candidateIssues.length,
     );
+    this.candidateCursorOffset =
+      (windowStart + windowSize) % candidateIssues.length;
 
     for (let slot = 0; slot < windowSize; slot++) {
       const issue =
@@ -161,17 +162,19 @@ export class TriagerApprovalDispatchUseCase {
       const comments =
         await this.issueCommentRepository.getCommentsFromIssue(issue);
 
-      let proposalCommentIndex = -1;
+      let firstProposalIndex = -1;
       let proposal: TriagerProposal | null = null;
       for (let i = 0; i < comments.length; i++) {
         const parsed = parseTriagerProposalBlock(comments[i].content);
         if (parsed !== null) {
-          proposalCommentIndex = i;
+          if (firstProposalIndex === -1) {
+            firstProposalIndex = i;
+          }
           proposal = parsed;
         }
       }
 
-      if (proposalCommentIndex === -1 || proposal === null) {
+      if (firstProposalIndex === -1 || proposal === null) {
         console.log(
           `[TriagerApprovalDispatch] No machine-readable triager proposal block found, skipping. issueUrl: ${issue.url}`,
         );
@@ -179,7 +182,7 @@ export class TriagerApprovalDispatchUseCase {
       }
 
       let approved = false;
-      for (let i = proposalCommentIndex + 1; i < comments.length; i++) {
+      for (let i = firstProposalIndex + 1; i < comments.length; i++) {
         const comment = comments[i];
         if (
           isApprovalComment(

@@ -603,7 +603,7 @@ describe('TriagerApprovalDispatchUseCase', () => {
       ).toHaveBeenCalledTimes(20);
     });
 
-    it('should dispatch an approval on a candidate beyond position 20 when the cycleIndex advances the window', async () => {
+    it('should dispatch an approval on a candidate beyond position 20 as the cursor advances on the second run', async () => {
       const candidates = Array.from({ length: 21 }, (_, i) =>
         createMockIssue({
           number: i + 1,
@@ -638,10 +638,17 @@ describe('TriagerApprovalDispatchUseCase', () => {
         },
       );
 
+      // Run 1: processes candidates 0-19 (issues 1-20); cursor advances to 20
       await useCase.run({
         projectUrl: 'https://github.com/orgs/owner/projects/1',
         allowedIssueAuthors: ['owner-user'],
-        cycleIndex: 1,
+      });
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+
+      // Run 2: starts from cursor=20, so candidate[20] (issue 21) is reached
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
       });
 
       expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
@@ -650,6 +657,157 @@ describe('TriagerApprovalDispatchUseCase', () => {
         'developer-option-id',
       );
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    });
+
+    it('should include issues where the agent field is already set to triager in the candidate list', async () => {
+      const issueWithTriagerAgent = createMockIssue({
+        status: 'Awaiting Quality Check',
+        author: 'owner-user',
+        agent: 'triager',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issueWithTriagerAgent],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createComment(
+          'bot',
+          TRIAGER_PROPOSAL_COMMENT(
+            'developer',
+            'regular / workflow improvement',
+            false,
+          ),
+        ),
+        createComment('owner-user', 'ok'),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'https://github.com/owner/repo/issues/1',
+        mockProject,
+        'developer-option-id',
+      );
+    });
+
+    it('should accept はい followed by natural language as an approval token', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        author: 'owner-user',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createComment(
+          'bot',
+          TRIAGER_PROPOSAL_COMMENT(
+            'developer',
+            'regular / workflow improvement',
+            false,
+          ),
+        ),
+        createComment('owner-user', 'はい、それで良いです。進めてください'),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    });
+
+    it('should read all candidates across consecutive runs even when candidate count evenly divides MAX_COMMENT_FETCHES_PER_CYCLE', async () => {
+      const candidates = Array.from({ length: 40 }, (_, i) =>
+        createMockIssue({
+          number: i + 1,
+          url: `https://github.com/owner/repo/issues/${i + 1}`,
+          itemId: `item-${i + 1}`,
+          status: 'Awaiting Quality Check',
+          author: 'owner-user',
+          createdAt: new Date(2000 + i, 0, 1),
+        }),
+      );
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: candidates,
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
+      });
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
+      });
+
+      expect(
+        mockIssueCommentRepository.getCommentsFromIssue,
+      ).toHaveBeenCalledTimes(40);
+      const fetchedNumbers =
+        mockIssueCommentRepository.getCommentsFromIssue.mock.calls.map(
+          ([issue]) => issue.number,
+        );
+      for (let i = 1; i <= 40; i++) {
+        expect(fetchedNumbers).toContain(i);
+      }
+    });
+
+    it('should dispatch using the last proposal when the owner approved after the first of multiple proposals', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        author: 'owner-user',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      // p1 (storyAlreadySet=false) → owner ok → p2 (storyAlreadySet=true)
+      // The ok after p1 satisfies the approval gate (firstProposalIndex=0);
+      // the last proposal (p2, storyAlreadySet=true) is used for recommendation.
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createComment(
+          'bot',
+          TRIAGER_PROPOSAL_COMMENT(
+            'developer',
+            'regular / workflow improvement',
+            false,
+          ),
+        ),
+        createComment('owner-user', 'ok'),
+        createComment(
+          'bot',
+          TRIAGER_PROPOSAL_COMMENT(
+            'developer',
+            'regular / workflow improvement',
+            true,
+          ),
+        ),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
+      });
+
+      expect(mockIssueRepository.updateStory.mock.calls).toEqual([]);
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(1);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('TRIAGER_PROPOSAL_APPROVED'),
+      );
     });
 
     it('should use the last triager proposal when multiple proposals exist', async () => {
