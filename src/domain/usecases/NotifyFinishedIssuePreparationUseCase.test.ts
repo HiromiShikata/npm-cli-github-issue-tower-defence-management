@@ -1632,6 +1632,53 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should return to Awaiting Workspace without rejection when the agent stops again after a previous NO_REPORT_FROM_AGENT_BOT rejection', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager (model-id)\n```json\n{ "pullRequestRequired": false, "nextStep": null }\n```\n\nThis task belongs to agent: chore.',
+      }),
+      createMockComment({
+        content:
+          'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE\nThe report declared that this task needs no pull request.',
+      }),
+      createMockComment({
+        content:
+          'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT\n- PULL_REQUEST_NOT_FOUND',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      'awaiting-workspace-id',
+    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
+    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Auto Status Check: REJECTED'),
+    );
+  });
+
   it('should still reject a draft PR when the last report declares pullRequestRequired as false', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
