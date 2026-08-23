@@ -660,13 +660,17 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
       createIssueCalls,
     ),
     projectRepository: {
-      updateStoryList: async (_project, stories) => {
+      updateStoryList: async (_updatedProject, stories) => {
         reorderStoryCalls.push({
           storyOptionIds: stories
             .map((s) => s.id)
             .filter((id): id is string => id !== null),
         });
-        return stories as FieldOption[];
+        const result = stories as FieldOption[];
+        if (project.story !== null) {
+          project.story.stories = result;
+        }
+        return result;
       },
     },
     resolveProject,

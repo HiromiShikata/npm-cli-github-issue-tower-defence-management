@@ -88,7 +88,7 @@ describe('ConsoleStoryReorderPanel', () => {
     const downButtonsDuring = getAllByRole('button', { name: 'Move down' });
     expect(upButtonsDuring[1]).toBeDisabled();
     expect(downButtonsDuring[1]).toBeDisabled();
-    resolveReorder!();
+    resolveReorder?.();
     await waitFor(() => expect(upButtonsDuring[1]).not.toBeDisabled());
   });
 
