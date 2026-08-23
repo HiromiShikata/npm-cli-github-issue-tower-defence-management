@@ -1676,7 +1676,11 @@ describe('HandleScheduledEventUseCase', () => {
     };
 
     it('should return storyIssue as null when the only matching issue is closed', async () => {
-      const closedIssue: Issue = { ...baseIssue, state: 'CLOSED', isClosed: true };
+      const closedIssue: Issue = {
+        ...baseIssue,
+        state: 'CLOSED',
+        isClosed: true,
+      };
       const result = await useCase.storyIssues({
         project: baseProject,
         issues: [closedIssue],
