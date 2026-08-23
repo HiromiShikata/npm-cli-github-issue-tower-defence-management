@@ -435,7 +435,10 @@ describe('postConsoleAddStory', () => {
   });
 
   it('throws the error reason surfaced by the server', async () => {
-    mockFetchFailureOnce(400, JSON.stringify({ error: 'storyName is required' }));
+    mockFetchFailureOnce(
+      400,
+      JSON.stringify({ error: 'storyName is required' }),
+    );
     await expect(
       postConsoleAddStory({ pjcode: 'acme', storyName: '' }),
     ).rejects.toThrow('storyName is required');

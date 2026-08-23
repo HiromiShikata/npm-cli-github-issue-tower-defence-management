@@ -343,9 +343,7 @@ describe('ConsoleStoryList', () => {
   });
 
   it('shows an API error when onAddStory rejects', async () => {
-    const onAddStory = jest
-      .fn()
-      .mockRejectedValue(new Error('API failure'));
+    const onAddStory = jest.fn().mockRejectedValue(new Error('API failure'));
     const { getByRole, getByPlaceholderText, getByText } = render(
       <ConsoleStoryList
         stories={storyEntries}
