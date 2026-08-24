@@ -1,3 +1,10 @@
+# [1.178.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.177.0...v1.178.0) (2026-08-24)
+
+
+### Features
+
+* **console:** display PR repository name in console-pr-statbar ([#1694](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1694)) ([2a158d2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2a158d24bff886461da72740283157481e77733f)), closes [#1690](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1690)
+
 # [1.177.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.176.0...v1.177.0) (2026-08-24)
 
 
