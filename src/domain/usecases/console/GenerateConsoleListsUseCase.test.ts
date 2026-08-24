@@ -113,7 +113,9 @@ describe('GenerateConsoleListsUseCase', () => {
 
   describe('common actionable filter', () => {
     it('rejects closed issues', () => {
-      const result = run([makeIssue({ status: 'Todo by human', isClosed: true })]);
+      const result = run([
+        makeIssue({ status: 'Todo by human', isClosed: true }),
+      ]);
       expect(result['todo-by-human'].items).toHaveLength(0);
     });
 
@@ -145,7 +147,9 @@ describe('GenerateConsoleListsUseCase', () => {
     });
 
     it('rejects issues with a next action hour', () => {
-      const result = run([makeIssue({ status: 'Todo by human', nextActionHour: 9 })]);
+      const result = run([
+        makeIssue({ status: 'Todo by human', nextActionHour: 9 }),
+      ]);
       expect(result['todo-by-human'].items).toHaveLength(0);
     });
 
@@ -565,7 +569,9 @@ describe('GenerateConsoleListsUseCase', () => {
     });
 
     it('maps a null story to an empty string', () => {
-      const result = run([makeIssue({ status: 'Awaiting Quality Check', story: null })]);
+      const result = run([
+        makeIssue({ status: 'Awaiting Quality Check', story: null }),
+      ]);
       expect(result.prs.items[0].story).toBe('');
     });
 
@@ -598,8 +604,16 @@ describe('GenerateConsoleListsUseCase', () => {
 
     it('keeps original order between items sharing the same story (stable)', () => {
       const result = run([
-        makeIssue({ status: 'Todo by human', story: 'Story Alpha', title: 'first' }),
-        makeIssue({ status: 'Todo by human', story: 'Story Alpha', title: 'second' }),
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Story Alpha',
+          title: 'first',
+        }),
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Story Alpha',
+          title: 'second',
+        }),
       ]);
       expect(result['todo-by-human'].items.map((i) => i.title)).toEqual([
         'first',
@@ -778,10 +792,7 @@ describe('GenerateConsoleListsUseCase', () => {
     const projectNoStory = baseProject(null);
 
     it('degrades story order, colors and triage options gracefully', () => {
-      const result = run(
-        [makeIssue({ story: 'no story' })],
-        projectNoStory,
-      );
+      const result = run([makeIssue({ story: 'no story' })], projectNoStory);
       expect(result.prs.storyOrder).toEqual([]);
       expect(result.prs.storyColors).toEqual({});
       expect(result.triage.storyOptions).toEqual([]);
@@ -877,12 +888,16 @@ describe('GenerateConsoleListsUseCase', () => {
 
   describe('agent field propagation', () => {
     it('copies the agent value from the issue into the list item', () => {
-      const result = run([makeIssue({ status: 'Awaiting Quality Check', agent: 'developer' })]);
+      const result = run([
+        makeIssue({ status: 'Awaiting Quality Check', agent: 'developer' }),
+      ]);
       expect(result.prs.items[0].agent).toBe('developer');
     });
 
     it('preserves null when the issue has no agent set', () => {
-      const result = run([makeIssue({ status: 'Awaiting Quality Check', agent: null })]);
+      const result = run([
+        makeIssue({ status: 'Awaiting Quality Check', agent: null }),
+      ]);
       expect(result.prs.items[0].agent).toBeNull();
     });
 

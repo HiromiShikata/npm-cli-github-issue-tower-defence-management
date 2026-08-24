@@ -133,9 +133,15 @@ describe('GenerateDashboardRowUseCase', () => {
 
   it('counts blocker by case-insensitive workflow blocker story membership for non-closed mine issues', () => {
     const issues = [
-      makeIssue({ status: 'Awaiting Workspace', story: 'Workflow Blocker / urgent' }),
+      makeIssue({
+        status: 'Awaiting Workspace',
+        story: 'Workflow Blocker / urgent',
+      }),
       makeIssue({ status: 'Awaiting Workspace', story: 'workflow blocker' }),
-      makeIssue({ status: 'Awaiting Workspace', story: 'regular / maintenance' }),
+      makeIssue({
+        status: 'Awaiting Workspace',
+        story: 'regular / maintenance',
+      }),
       makeIssue({
         status: 'Awaiting Workspace',
         story: 'workflow blocker',

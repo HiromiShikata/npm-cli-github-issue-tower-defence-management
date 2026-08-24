@@ -200,7 +200,9 @@ describe('writeConsoleLists', () => {
       generatedAt: '2026-06-14T07:22:33Z',
     });
 
-    const raw: unknown = JSON.parse(fs.readFileSync(tabFile('todo-by-human'), 'utf8'));
+    const raw: unknown = JSON.parse(
+      fs.readFileSync(tabFile('todo-by-human'), 'utf8'),
+    );
     expect(isRecord(raw)).toBe(true);
     const items: unknown = isRecord(raw) ? raw.items : undefined;
     expect(isUnknownArray(items)).toBe(true);
@@ -266,7 +268,9 @@ describe('writeConsoleLists', () => {
   };
 
   const todoByHumanServedItemCount = (): number => {
-    const route = parseConsoleDataRoute('projects/demo/todo-by-human/list.json');
+    const route = parseConsoleDataRoute(
+      'projects/demo/todo-by-human/list.json',
+    );
     if (route === null) {
       throw new Error('route should not be null');
     }
@@ -291,7 +295,9 @@ describe('writeConsoleLists', () => {
     for (const id of ['PVTI_1', 'PVTI_2', 'PVTI_3']) {
       recordDoneProjectItemId(outDir, 'demo', 'todo-by-human', id);
     }
-    expect(readDoneProjectItemIds(outDir, 'demo', 'todo-by-human')).toHaveLength(3);
+    expect(
+      readDoneProjectItemIds(outDir, 'demo', 'todo-by-human'),
+    ).toHaveLength(3);
 
     regenerateTodoByHuman();
 

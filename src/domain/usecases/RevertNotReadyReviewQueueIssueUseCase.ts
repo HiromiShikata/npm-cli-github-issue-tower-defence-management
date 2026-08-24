@@ -186,7 +186,6 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         throw error;
       }
     }
-
   };
 
   // Derives, for each issue, the set of open pull request URLs that reference it

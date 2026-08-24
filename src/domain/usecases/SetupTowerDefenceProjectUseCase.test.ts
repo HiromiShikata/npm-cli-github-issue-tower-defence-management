@@ -402,7 +402,9 @@ describe('SetupTowerDefenceProjectUseCase', () => {
 
     expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
-    const awaitingWorkspaceEntry = payload.find((s) => s.name === AWAITING_WORKSPACE_STATUS_NAME);
+    const awaitingWorkspaceEntry = payload.find(
+      (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
+    );
     expect(awaitingWorkspaceEntry?.id).toBe('template-todo');
     const todoByHumanEntry = payload.find((s) => s.name === TODO_STATUS_NAME);
     expect(todoByHumanEntry?.id).toBeNull();
