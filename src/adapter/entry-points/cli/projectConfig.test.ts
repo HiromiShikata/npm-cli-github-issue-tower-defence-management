@@ -251,8 +251,6 @@ describe('parseProjectReadmeConfig developerAgentName', () => {
 
   it('yields undefined developerAgentName when the key is absent', () => {
     const readme = makeReadme('defaultAgentName: impl\n');
-    expect(
-      parseProjectReadmeConfig(readme).developerAgentName,
-    ).toBeUndefined();
+    expect(parseProjectReadmeConfig(readme).developerAgentName).toBeUndefined();
   });
 });
