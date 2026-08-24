@@ -1227,18 +1227,18 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should skip an archived Unread pull request on updateStatus failure and continue with remaining pull requests', async () => {
+    it('should skip an archived Awaiting Quality Check pull request on updateStatus failure and continue with remaining pull requests', async () => {
       const archivedPullRequest = createMockPullRequest({
         number: 1,
         url: 'https://github.com/user/repo/pull/1',
         itemId: 'archived-pr-item',
-        status: 'Unread',
+        status: 'Awaiting Quality Check',
       });
       const normalPullRequest = createMockPullRequest({
         number: 2,
         url: 'https://github.com/user/repo/pull/2',
         itemId: 'normal-pr-item',
-        status: 'Unread',
+        status: 'Awaiting Quality Check',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1300,9 +1300,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should propagate a non-archived updateStatus error for Unread pull requests unchanged', async () => {
+    it('should propagate a non-archived updateStatus error for Awaiting Quality Check pull requests unchanged', async () => {
       const pullRequest = createMockPullRequest({
-        status: 'Unread',
+        status: 'Awaiting Quality Check',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1443,18 +1443,18 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should skip an Unread pull request whose updateStatus times out and continue with remaining pull requests', async () => {
+    it('should skip an Awaiting Quality Check pull request whose updateStatus times out and continue with remaining pull requests', async () => {
       const timedOutPullRequest = createMockPullRequest({
         number: 1,
         url: 'https://github.com/user/repo/pull/1',
         itemId: 'timed-out-pr-item',
-        status: 'Unread',
+        status: 'Awaiting Quality Check',
       });
       const normalPullRequest = createMockPullRequest({
         number: 2,
         url: 'https://github.com/user/repo/pull/2',
         itemId: 'normal-pr-item',
-        status: 'Unread',
+        status: 'Awaiting Quality Check',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1587,9 +1587,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should not revert a rejected Unread pull request that is not assigned to the manager', async () => {
+    it('should not revert a rejected Awaiting Quality Check pull request that is not assigned to the manager', async () => {
       const pullRequest = createMockPullRequest({
-        status: 'Unread',
+        status: 'Awaiting Quality Check',
         assignees: ['other-user'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -1613,9 +1613,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should revert a rejected Unread pull request that is assigned to the manager', async () => {
+    it('should revert a rejected Awaiting Quality Check pull request that is assigned to the manager', async () => {
       const pullRequest = createMockPullRequest({
-        status: 'Unread',
+        status: 'Awaiting Quality Check',
         assignees: ['manager-user'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({

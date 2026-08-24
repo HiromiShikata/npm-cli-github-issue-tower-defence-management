@@ -2,7 +2,7 @@ import {
   findNextNonEmptyTabToRight,
   resolveDefaultActiveTab,
 } from './tabAdvance';
-import { type ConsoleTabName } from './types';
+import type { ConsoleTabName } from './types';
 
 const counts = (
   overrides: Partial<Record<ConsoleTabName, number>>,
@@ -43,9 +43,9 @@ describe('findNextNonEmptyTabToRight', () => {
   });
 
   it('returns the immediately adjacent tab when it is non-empty', () => {
-    expect(
-      findNextNonEmptyTabToRight('prs', counts({ triage: 12 })),
-    ).toBe('triage');
+    expect(findNextNonEmptyTabToRight('prs', counts({ triage: 12 }))).toBe(
+      'triage',
+    );
   });
 
   it('returns null when no tab to the right has any items', () => {
