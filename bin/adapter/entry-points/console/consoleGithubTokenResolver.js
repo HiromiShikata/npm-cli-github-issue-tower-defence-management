@@ -53,7 +53,7 @@ const createConsoleGithubTokenResolver = (defaultToken, githubTokenFilePathByRep
         }
         const filePath = githubTokenFilePathByRepositoryOwner[repositoryOwner];
         if (filePath === undefined) {
-            throw new Error(`No GitHub token file is configured for repository owner "${repositoryOwner}". Add an entry for this owner in consoleGithubTokenFilesByRepositoryOwner.`);
+            return defaultToken;
         }
         const token = readTokenFile(filePath).trim();
         if (token.length === 0) {

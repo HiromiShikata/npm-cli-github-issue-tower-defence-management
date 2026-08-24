@@ -6,6 +6,7 @@ const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 const isRecord_1 = require("./isRecord");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
+const normalizeReportBody_1 = require("./normalizeReportBody");
 const TRIAGER_AGENT_NAME = 'triager';
 const MAX_COMMENT_FETCHES_PER_CYCLE = 20;
 const parseTriagerProposalBlock = (commentContent) => {
@@ -13,7 +14,7 @@ const parseTriagerProposalBlock = (commentContent) => {
         return null;
     }
     const jsonBlockMatches = [
-        ...commentContent.matchAll(/```json\n([\s\S]*?)\n```/g),
+        ...(0, normalizeReportBody_1.normalizeReportBody)(commentContent).matchAll(/```json\n([\s\S]*?)\n```/g),
     ];
     for (let i = 0; i < jsonBlockMatches.length; i++) {
         const blockContent = jsonBlockMatches[i][1];

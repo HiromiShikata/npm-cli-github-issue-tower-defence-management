@@ -1,3 +1,12 @@
+## [1.174.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.174.0...v1.174.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* **console:** fall back to the default GitHub token when a served owner has no token file entry ([#1714](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1714)) ([a7e0787](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a7e07874a7700b2a2a6d4c88fe9b695031e4cca8))
+* **console:** keep the console access token cookie across browser restarts ([#1716](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1716)) ([f244398](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f244398caecb2bb98d397957e8cbd7dd3e400af5))
+* **preparation:** read the report json block when its code fence is backslash escaped ([#1718](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1718)) ([f92b42d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f92b42dcbe0e97d24561b28a8dfd1c371379f2e2))
+
 # [1.174.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.173.3...v1.174.0) (2026-08-23)
 
 

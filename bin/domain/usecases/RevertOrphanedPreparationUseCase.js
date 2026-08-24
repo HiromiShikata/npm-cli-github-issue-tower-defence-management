@@ -9,6 +9,7 @@ const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForA
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
 const extractNextStepAgent_1 = require("./extractNextStepAgent");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
+const normalizeReportBody_1 = require("./normalizeReportBody");
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 class RevertOrphanedPreparationUseCase {
     constructor(projectRepository, issueRepository, issueCommentRepository, localCommandRunner) {
@@ -172,7 +173,7 @@ class RevertOrphanedPreparationUseCase {
                 : null;
         };
         this.reportBodyHasNextStep = (body) => {
-            const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+            const reportMatch = (0, normalizeReportBody_1.normalizeReportBody)(body).match(/```json\n([\s\S]*?)\n```/);
             if (!reportMatch || reportMatch.length < 2) {
                 return false;
             }

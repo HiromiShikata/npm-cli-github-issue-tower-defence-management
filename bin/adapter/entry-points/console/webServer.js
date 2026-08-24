@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.isOwnerCallFileRequestPath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.buildKeylessLocation = exports.buildTokenCookie = exports.extractProvidedToken = exports.extractCookieToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_COOKIE = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_WEB_PORT = void 0;
+exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.isOwnerCallFileRequestPath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.buildKeylessLocation = exports.buildTokenCookie = exports.CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS = exports.extractProvidedToken = exports.extractCookieToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_COOKIE = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_WEB_PORT = void 0;
 const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -147,7 +147,8 @@ const extractProvidedToken = (queryToken, headerToken, cookieToken) => {
     return null;
 };
 exports.extractProvidedToken = extractProvidedToken;
-const buildTokenCookie = (token) => `${exports.CONSOLE_TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict`;
+exports.CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+const buildTokenCookie = (token) => `${exports.CONSOLE_TOKEN_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${exports.CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS}`;
 exports.buildTokenCookie = buildTokenCookie;
 const buildKeylessLocation = (requestUrl) => {
     const params = new URLSearchParams(requestUrl.searchParams);

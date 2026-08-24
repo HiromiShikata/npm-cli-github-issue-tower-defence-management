@@ -10,6 +10,7 @@ const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorksp
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const extractNextStepAgent_1 = require("./extractNextStepAgent");
 const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
+const normalizeReportBody_1 = require("./normalizeReportBody");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -227,7 +228,7 @@ class NotifyFinishedIssuePreparationUseCase {
             };
         };
         this.reportBodyHasNextStep = (body) => {
-            const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+            const reportMatch = (0, normalizeReportBody_1.normalizeReportBody)(body).match(/```json\n([\s\S]*?)\n```/);
             if (!reportMatch || reportMatch.length < 2) {
                 return false;
             }

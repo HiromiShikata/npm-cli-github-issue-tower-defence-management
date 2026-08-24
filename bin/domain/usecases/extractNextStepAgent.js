@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.extractNextStepAgent = void 0;
+const normalizeReportBody_1 = require("./normalizeReportBody");
 const extractNextStepAgent = (body) => {
-    const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+    const reportMatch = (0, normalizeReportBody_1.normalizeReportBody)(body).match(/```json\n([\s\S]*?)\n```/);
     if (!reportMatch || reportMatch.length < 2) {
         return null;
     }

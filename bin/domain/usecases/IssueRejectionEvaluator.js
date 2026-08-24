@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IssueRejectionEvaluator = void 0;
+const normalizeReportBody_1 = require("./normalizeReportBody");
 class IssueRejectionEvaluator {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
@@ -201,7 +202,9 @@ class IssueRejectionEvaluator {
         this.isPullRequestRequiredByBody = (body) => {
             if (!body)
                 return true;
-            const match = body.trimEnd().match(/```json\n([\s\S]*?)\n```\s*$/);
+            const match = (0, normalizeReportBody_1.normalizeReportBody)(body)
+                .trimEnd()
+                .match(/```json\n([\s\S]*?)\n```\s*$/);
             if (!match || !match[1])
                 return true;
             let config;

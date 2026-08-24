@@ -14,6 +14,7 @@ export declare const isConsoleAppRoute: (requestPath: string) => boolean;
 export declare const isTokenValid: (expectedToken: string, providedToken: string | null) => boolean;
 export declare const extractCookieToken: (cookieHeader: string | undefined) => string | null;
 export declare const extractProvidedToken: (queryToken: string | string[] | null, headerToken: string | string[] | undefined, cookieToken: string | null) => string | null;
+export declare const CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS: number;
 export declare const buildTokenCookie: (token: string) => string;
 export declare const buildKeylessLocation: (requestUrl: URL) => string;
 export type WebServerOptions = {

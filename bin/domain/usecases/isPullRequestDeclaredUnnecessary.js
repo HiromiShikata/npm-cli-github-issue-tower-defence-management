@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isPullRequestDeclaredUnnecessary = void 0;
 const agentReportPrefix_1 = require("./agentReportPrefix");
+const normalizeReportBody_1 = require("./normalizeReportBody");
 const isPullRequestDeclaredUnnecessary = (comments, isTrustedAuthor) => {
     const lastComment = comments[comments.length - 1];
     if (!lastComment ||
@@ -9,7 +10,7 @@ const isPullRequestDeclaredUnnecessary = (comments, isTrustedAuthor) => {
         !lastComment.content.startsWith(agentReportPrefix_1.AGENT_REPORT_PREFIX)) {
         return false;
     }
-    const reportMatch = lastComment.content.match(/```json\n([\s\S]*?)\n```/);
+    const reportMatch = (0, normalizeReportBody_1.normalizeReportBody)(lastComment.content).match(/```json\n([\s\S]*?)\n```/);
     if (!reportMatch || reportMatch.length < 2) {
         return false;
     }

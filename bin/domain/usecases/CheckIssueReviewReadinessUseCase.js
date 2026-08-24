@@ -4,6 +4,7 @@ exports.CheckIssueReviewReadinessUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
+const normalizeReportBody_1 = require("./normalizeReportBody");
 class CheckIssueReviewReadinessUseCase {
     constructor(issueRepository, issueCommentRepository) {
         this.issueRepository = issueRepository;
@@ -51,7 +52,7 @@ class CheckIssueReviewReadinessUseCase {
         };
         this.isAuthorTrusted = (author, allowedIssueAuthors) => allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
         this.reportBodyHasNextStep = (body) => {
-            const reportMatch = body.match(/```json\n([\s\S]*?)\n```/);
+            const reportMatch = (0, normalizeReportBody_1.normalizeReportBody)(body).match(/```json\n([\s\S]*?)\n```/);
             if (!reportMatch || reportMatch.length < 2) {
                 return false;
             }
