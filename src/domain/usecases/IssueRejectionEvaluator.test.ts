@@ -258,6 +258,89 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
     });
 
+    it('should require PR evaluation and reject CI failure when issue agent is pr-reviewer', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr('https://github.com/user/repo/pull/10', {
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        }),
+      ]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+        agent: 'pr-reviewer',
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections.map((r) => r.type)).toContain(
+        'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
+      );
+    });
+
+    it('should require PR evaluation and reject conflict when issue agent is pr-reviewer', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr('https://github.com/user/repo/pull/10', {
+          isConflicted: true,
+        }),
+      ]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+        agent: 'pr-reviewer',
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections.map((r) => r.type)).toContain(
+        'PULL_REQUEST_CONFLICTED',
+      );
+    });
+
+    it('should require PR evaluation and approve when issue agent is pr-reviewer with passing CI and no conflict', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr('https://github.com/user/repo/pull/10'),
+      ]);
+
+      const result = await evaluator.evaluate({
+        url: 'https://github.com/user/repo/issues/1',
+        labels: [],
+        isPr: false,
+        agent: 'pr-reviewer',
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(0);
+      expect(result.approvedPrUrl).toBe('https://github.com/user/repo/pull/10');
+    });
+
+    it('should still require PR evaluation for pr-reviewer when custom developerAgentName is set', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr('https://github.com/user/repo/pull/10', {
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        }),
+      ]);
+
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'pr-reviewer',
+        },
+        [],
+        { developerAgentName: 'my-developer' },
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections.map((r) => r.type)).toContain(
+        'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
+      );
+    });
+
     it('should not reject for draft state when issue has non-e2e category label', async () => {
       const result = await evaluator.evaluate({
         url: 'https://github.com/user/repo/issues/1',
