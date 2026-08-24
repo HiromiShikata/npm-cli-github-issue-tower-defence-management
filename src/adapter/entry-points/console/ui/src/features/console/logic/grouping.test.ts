@@ -67,6 +67,73 @@ describe('resolveItemStory', () => {
       CONSOLE_NO_STORY_LABEL,
     );
   });
+
+  it('returns overlay story when overlay entry is fresh (ts >= snapshot)', () => {
+    const snapshotTs = 1000;
+    const overlay: ConsoleOverlay = {
+      PVTI_4: {
+        ts: snapshotTs,
+        mode: 'triage',
+        story: { name: 'FreshOverlay', color: 'GREEN' },
+      },
+    };
+    expect(
+      resolveItemStory(
+        item({ number: 4, story: 'ItemStory' }),
+        overlay,
+        new Date(snapshotTs).toISOString(),
+      ),
+    ).toBe('FreshOverlay');
+  });
+
+  it('falls back to item story when overlay entry is stale (ts < snapshot)', () => {
+    const overlayTs = 999;
+    const snapshotTs = 1000;
+    const overlay: ConsoleOverlay = {
+      PVTI_5: {
+        ts: overlayTs,
+        mode: 'triage',
+        story: { name: 'StaleOverlay', color: 'RED' },
+      },
+    };
+    expect(
+      resolveItemStory(
+        item({ number: 5, story: 'ItemStory' }),
+        overlay,
+        new Date(snapshotTs).toISOString(),
+      ),
+    ).toBe('ItemStory');
+  });
+
+  it('returns overlay story when snapshotGeneratedAt is null (backward compat)', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_6: {
+        ts: 1,
+        mode: 'triage',
+        story: { name: 'OverlayStory', color: 'BLUE' },
+      },
+    };
+    expect(
+      resolveItemStory(item({ number: 6, story: 'ItemStory' }), overlay, null),
+    ).toBe('OverlayStory');
+  });
+
+  it('returns overlay story when snapshotGeneratedAt is an invalid date string (NaN guard)', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_7: {
+        ts: 1,
+        mode: 'triage',
+        story: { name: 'OverlayStory', color: 'BLUE' },
+      },
+    };
+    expect(
+      resolveItemStory(
+        item({ number: 7, story: 'ItemStory' }),
+        overlay,
+        'not-a-date',
+      ),
+    ).toBe('OverlayStory');
+  });
 });
 
 describe('buildConsoleListRows', () => {
@@ -137,5 +204,26 @@ describe('buildConsoleListRows', () => {
 
   it('returns no rows for an empty list', () => {
     expect(buildConsoleListRows([], {}, [])).toEqual([]);
+  });
+
+  it('uses item story for group header when overlay entry is stale', () => {
+    const overlayTs = 999;
+    const snapshotTs = 1000;
+    const overlay: ConsoleOverlay = {
+      PVTI_1: {
+        ts: overlayTs,
+        mode: 'triage',
+        story: { name: 'StaleStory', color: 'RED' },
+      },
+    };
+    const items = [item({ number: 1, story: 'ItemStory' })];
+    const rows = buildConsoleListRows(
+      items,
+      overlay,
+      [],
+      new Date(snapshotTs).toISOString(),
+    );
+    const header = rows[0];
+    expect(header.kind === 'group-header' && header.story).toBe('ItemStory');
   });
 });

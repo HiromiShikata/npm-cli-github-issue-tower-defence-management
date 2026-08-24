@@ -120,8 +120,14 @@ export const ConsolePage = () => {
   const storyOrder = activeSnapshot?.storyOrder ?? [];
 
   const rows = useMemo(
-    () => buildConsoleListRows(pendingItems, overlayState.overlay, storyOrder),
-    [pendingItems, overlayState.overlay, storyOrder],
+    () =>
+      buildConsoleListRows(
+        pendingItems,
+        overlayState.overlay,
+        storyOrder,
+        activeSnapshot?.generatedAt ?? null,
+      ),
+    [pendingItems, overlayState.overlay, storyOrder, activeSnapshot],
   );
 
   const storyColors = activeSnapshot?.storyColors ?? {};
@@ -183,7 +189,11 @@ export const ConsolePage = () => {
 
   const storyNameForSelected =
     selectedItem !== null
-      ? resolveItemStory(selectedItem, overlayState.overlay)
+      ? resolveItemStory(
+          selectedItem,
+          overlayState.overlay,
+          snapshots[activeTab]?.generatedAt ?? null,
+        )
       : null;
 
   const advanceToNext = useCallback(

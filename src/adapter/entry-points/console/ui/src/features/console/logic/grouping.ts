@@ -24,6 +24,7 @@ export const resolveStoryColorEnum = (
 export const resolveItemStory = (
   item: ConsoleListItem,
   overlay: ConsoleOverlay,
+  snapshotGeneratedAt: string | null = null,
 ): string => {
   const overlayKey =
     item.projectItemId !== '' ? item.projectItemId : item.itemId;
@@ -32,6 +33,16 @@ export const resolveItemStory = (
     overlayEntry?.story?.name !== undefined &&
     overlayEntry.story.name !== ''
   ) {
+    if (snapshotGeneratedAt !== null) {
+      const snapshotGeneratedAtMs = Date.parse(snapshotGeneratedAt);
+      if (
+        !Number.isNaN(snapshotGeneratedAtMs) &&
+        overlayEntry.ts < snapshotGeneratedAtMs
+      ) {
+        const trimmed = item.story.trim();
+        return trimmed !== '' ? item.story : CONSOLE_NO_STORY_LABEL;
+      }
+    }
     return overlayEntry.story.name;
   }
   const trimmed = item.story.trim();
@@ -57,14 +68,15 @@ export const buildConsoleListRows = (
   items: ConsoleListItem[],
   overlay: ConsoleOverlay,
   storyOrder: string[],
+  snapshotGeneratedAt: string | null = null,
 ): ConsoleListRow[] => {
   const indexByStory = new Map(storyOrder.map((name, index) => [name, index]));
   const sorted =
     storyOrder.length === 0
       ? items
       : [...items].sort((a, b) => {
-          const storyA = resolveItemStory(a, overlay);
-          const storyB = resolveItemStory(b, overlay);
+          const storyA = resolveItemStory(a, overlay, snapshotGeneratedAt);
+          const storyB = resolveItemStory(b, overlay, snapshotGeneratedAt);
           const indexA = indexByStory.get(storyA) ?? UNKNOWN_STORY_SORT_INDEX;
           const indexB = indexByStory.get(storyB) ?? UNKNOWN_STORY_SORT_INDEX;
           return indexA - indexB;
@@ -72,14 +84,14 @@ export const buildConsoleListRows = (
 
   const storyCounts = new Map<string, number>();
   for (const item of sorted) {
-    const story = resolveItemStory(item, overlay);
+    const story = resolveItemStory(item, overlay, snapshotGeneratedAt);
     storyCounts.set(story, (storyCounts.get(story) ?? 0) + 1);
   }
 
   const rows: ConsoleListRow[] = [];
   let previousStory: string | null = null;
   for (const item of sorted) {
-    const story = resolveItemStory(item, overlay);
+    const story = resolveItemStory(item, overlay, snapshotGeneratedAt);
     if (story !== previousStory) {
       rows.push({
         kind: 'group-header',
