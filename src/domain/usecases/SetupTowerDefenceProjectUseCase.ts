@@ -48,7 +48,8 @@ export class SetupTowerDefenceProjectUseCase {
     const existing = project.status.statuses;
 
     const unreadStatus = existing.find(
-      (s) => s.name === SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
+      (s) =>
+        s.name === SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
     );
     if (unreadStatus) {
       const awaitingWorkspaceStatus = existing.find(
@@ -57,7 +58,9 @@ export class SetupTowerDefenceProjectUseCase {
       if (awaitingWorkspaceStatus) {
         const { issues } = await this.issueRepository.getAllIssues(project.id);
         const unreadIssues = issues.filter(
-          (issue) => issue.status === SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
+          (issue) =>
+            issue.status ===
+            SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
         );
         for (const issue of unreadIssues) {
           await this.issueRepository.updateStatus(
