@@ -1,3 +1,10 @@
+## [1.175.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.175.0...v1.175.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* **preparation:** let a later report end a next-step agent hand-off ([#1725](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1725)) ([5597f38](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5597f3889536150b5e76c08791a4f9fe463ad6f3)), closes [#1724](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1724) [#1722](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1722)
+
 # [1.175.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.174.3...v1.175.0) (2026-08-24)
 
 
