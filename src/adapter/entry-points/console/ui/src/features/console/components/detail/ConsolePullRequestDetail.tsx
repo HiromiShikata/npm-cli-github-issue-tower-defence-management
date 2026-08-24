@@ -92,6 +92,11 @@ export const ConsolePullRequestDetail = ({
         </a>
         <ConsoleCopyUrlButton url={pullRequest.url} label="Copy PR URL" />
         <div className="console-pr-statbar">
+          {pullRequestReference !== null && (
+            <span className="console-pr-repo">
+              {pullRequestReference.owner}/{pullRequestReference.repo}
+            </span>
+          )}
           {pullRequest.branchName !== null && (
             <span className="console-pr-branch">{pullRequest.branchName}</span>
           )}

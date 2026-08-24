@@ -917,6 +917,11 @@ body {
   color: #8b949e;
 }
 
+.console-pr-repo {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #8b949e;
+}
+
 .console-detail-screen {
   flex: 1 0 auto;
   display: flex;
