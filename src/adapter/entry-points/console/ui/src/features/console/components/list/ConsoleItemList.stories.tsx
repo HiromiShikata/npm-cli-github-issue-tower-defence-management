@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { buildConsoleListRows } from '../../logic/grouping';
+import type { ConsoleOverlay } from '../../logic/types';
 import {
   consoleListItemsFixture,
   consoleStoryColorsFixture,
@@ -56,6 +57,41 @@ export const ErrorState: Story = {
     activeItemId: null,
     isLoading: false,
     error: 'HTTP 404',
+    onSelectItem: () => {},
+  },
+};
+
+const staleOverlay: ConsoleOverlay = {
+  PVTI_lADOABCD1234zgABCD01: {
+    ts: 100,
+    mode: 'prs',
+    story: { name: 'OldStory', color: 'GRAY' },
+  },
+};
+
+export const StaleOverlayBefore: Story = {
+  args: {
+    rows: buildConsoleListRows([consoleListItemsFixture[0]], staleOverlay, []),
+    storyColors: consoleStoryColorsFixture,
+    activeItemId: null,
+    isLoading: false,
+    error: null,
+    onSelectItem: () => {},
+  },
+};
+
+export const StaleOverlayAfter: Story = {
+  args: {
+    rows: buildConsoleListRows(
+      [consoleListItemsFixture[0]],
+      staleOverlay,
+      [],
+      '2026-08-24T00:00:00Z',
+    ),
+    storyColors: consoleStoryColorsFixture,
+    activeItemId: null,
+    isLoading: false,
+    error: null,
     onSelectItem: () => {},
   },
 };
