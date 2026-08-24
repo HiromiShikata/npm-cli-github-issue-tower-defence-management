@@ -556,7 +556,7 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       ]);
     });
 
-  it('should rethrow non-Error thrown values without logging', async () => {
+    it('should rethrow non-Error thrown values without logging', async () => {
       const failingIssue = {
         ...basicIssue,
         url: 'https://github.com/testOrg/testRepo/issues/44',
