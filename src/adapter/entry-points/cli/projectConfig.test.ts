@@ -196,3 +196,63 @@ describe('parseProjectReadmeConfig consoleDataOutputDir', () => {
     ).toBeUndefined();
   });
 });
+
+describe('loadConfigFile developerAgentName', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-developer-agent-name-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('parses developerAgentName from the config file', () => {
+    const filePath = writeConfig(
+      "projectName: 'demo'\ndeveloperAgentName: 'my-developer'\n",
+    );
+    expect(loadConfigFile(filePath).developerAgentName).toBe('my-developer');
+  });
+
+  it('yields undefined developerAgentName when the key is absent', () => {
+    const filePath = writeConfig("projectName: 'demo'\n");
+    expect(loadConfigFile(filePath).developerAgentName).toBeUndefined();
+  });
+});
+
+describe('parseProjectReadmeConfig developerAgentName', () => {
+  const makeReadme = (yaml: string) =>
+    `<details>\n<summary>config</summary>\n${yaml}\n</details>`;
+
+  it('returns developerAgentName from the README config section', () => {
+    const readme = makeReadme("developerAgentName: 'my-developer'\n");
+    const result = parseProjectReadmeConfig(readme);
+    expect(result.developerAgentName).toBe('my-developer');
+  });
+
+  it('does not emit a warning for developerAgentName', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const readme = makeReadme("developerAgentName: 'my-developer'\n");
+    parseProjectReadmeConfig(readme, 'https://example.com/project');
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('developerAgentName'),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('yields undefined developerAgentName when the key is absent', () => {
+    const readme = makeReadme('defaultAgentName: impl\n');
+    expect(
+      parseProjectReadmeConfig(readme).developerAgentName,
+    ).toBeUndefined();
+  });
+});
