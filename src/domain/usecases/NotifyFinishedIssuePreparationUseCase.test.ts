@@ -1552,6 +1552,47 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should take the Awaiting Quality Check path when a later report omits the next step agent an earlier report declared', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: Test report\n```json\n{"nextStepAgent": "pr-reviewer"}\n```',
+      }),
+      createMockComment({
+        content:
+          'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE\nThe report declared that this task needs no pull request.',
+      }),
+      createMockComment({
+        content:
+          'From: :robot: Test report\n```json\n{"pullRequestRequired": false, "reviewResult": "PASS", "nextStep": null}\n```',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'Awaiting Quality Check',
+      }),
+      mockProject,
+    );
+  });
+
   it('should still return the issue to Awaiting Workspace when the earlier return comment came from an untrusted author', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',

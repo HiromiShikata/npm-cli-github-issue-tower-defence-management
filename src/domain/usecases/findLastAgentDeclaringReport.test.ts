@@ -68,4 +68,83 @@ describe('findLastAgentDeclaringReport', () => {
   it('returns null when no comment declares an agent', () => {
     expect(findLastAgentDeclaringReport([], trustEveryAuthor)).toBeNull();
   });
+
+  it('returns null when a later report carries a report json block that omits the agent', () => {
+    expect(
+      findLastAgentDeclaringReport(
+        [
+          { author: 'bot', content: report('pr-reviewer') },
+          {
+            author: 'bot',
+            content:
+              'From: :robot: agent (model)\n```json\n{"pullRequestRequired": false, "reviewResult": "PASS", "nextStep": null}\n```',
+          },
+        ],
+        trustEveryAuthor,
+      ),
+    ).toBeNull();
+  });
+
+  it('returns null when the later report json block is unparsable', () => {
+    expect(
+      findLastAgentDeclaringReport(
+        [
+          { author: 'bot', content: report('pr-reviewer') },
+          {
+            author: 'bot',
+            content: 'From: :robot: agent (model)\n```json\n{not json}\n```',
+          },
+        ],
+        trustEveryAuthor,
+      ),
+    ).toBeNull();
+  });
+
+  it('returns null when a later report written with escaped fences omits the agent', () => {
+    expect(
+      findLastAgentDeclaringReport(
+        [
+          { author: 'bot', content: report('pr-reviewer') },
+          {
+            author: 'bot',
+            content:
+              'From: :robot: agent (model)\n\\`\\`\\`json\r\n{"reviewResult": "PASS"}\r\n\\`\\`\\`',
+          },
+        ],
+        trustEveryAuthor,
+      ),
+    ).toBeNull();
+  });
+
+  it('keeps the declaration when the later bot comment holds no report json block', () => {
+    expect(
+      findLastAgentDeclaringReport(
+        [
+          { author: 'bot', content: report('pr-reviewer') },
+          {
+            author: 'bot',
+            content:
+              'From: :robot: agent (model)\n\n## Review\nLeft an inline note on the pull request.',
+          },
+        ],
+        trustEveryAuthor,
+      )?.content,
+    ).toBe(report('pr-reviewer'));
+  });
+
+  it('keeps the declaration when the later report comes from an author that is not trusted', () => {
+    expect(
+      findLastAgentDeclaringReport(
+        [
+          { author: 'bot', content: report('pr-reviewer') },
+          {
+            author: 'stranger',
+            content:
+              'From: :robot: agent (model)\n```json\n{"reviewResult": "PASS"}\n```',
+          },
+        ],
+        (author) => author === 'bot',
+      )?.content,
+    ).toBe(report('pr-reviewer'));
+  });
 });
