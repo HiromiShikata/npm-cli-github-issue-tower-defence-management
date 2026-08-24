@@ -71,7 +71,7 @@ describe('dashboard emitter filename matches composer lookup key', () => {
         dashboardDataDir: dir,
         pjcode: projectName,
         assigneeLogin: ASSIGNEE,
-        issues: [makeIssue({ status: 'Unread' })],
+        issues: [makeIssue({ status: 'Awaiting Workspace' })],
         generatedAt: '2026-06-26T12:00:00.000Z',
       });
 
@@ -90,7 +90,7 @@ describe('dashboard emitter filename matches composer lookup key', () => {
         dashboardDataDir: dir,
         pjcode: projectName,
         assigneeLogin: ASSIGNEE,
-        issues: [makeIssue({ status: 'Unread' })],
+        issues: [makeIssue({ status: 'Awaiting Workspace' })],
         generatedAt: '2026-06-26T12:00:00.000Z',
       });
     }
@@ -119,7 +119,10 @@ describe('dashboard emitter filename matches composer lookup key', () => {
 
   it('composes the full grid with no fallback row and shows the 2-char display labels', () => {
     const issuesByName: Record<string, Issue[]> = {
-      acme: [makeIssue({ status: 'Unread' }), makeIssue({ status: 'Unread' })],
+      acme: [
+        makeIssue({ status: 'Failed Preparation' }),
+        makeIssue({ status: 'Failed Preparation' }),
+      ],
       globex: [makeIssue({ status: 'Awaiting Quality Check' })],
       initech: [makeIssue({ status: 'Awaiting Workspace' })],
       umbrella: [makeIssue({ status: 'Todo by human' })],
@@ -160,21 +163,21 @@ describe('dashboard emitter filename matches composer lookup key', () => {
       [
         wrap('M55% C62% D93% cy13'),
         wrap('LA 16 23 40'),
-        wrap('pj   unr tdo aqc fal prp aws dep'),
+        wrap('pj   tdo aqc fal prp aws dep'),
         wrap(
-          `🟢${toDashboardDisplayLabel('acme')}   2   0   0   0   0   0   0`,
+          `🟢${toDashboardDisplayLabel('acme')}   0   0   2   0   0   0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('globex')}   0   0   1   0   0   0   0`,
+          `🟢${toDashboardDisplayLabel('globex')}   0   1   0   0   0   0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('initech')}   0   0   0   0   0   1   0`,
+          `🟢${toDashboardDisplayLabel('initech')}   0   0   0   0   1   0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('umbrella')}   0   1   0   0   0   0   0`,
+          `🟢${toDashboardDisplayLabel('umbrella')}   1   0   0   0   0   0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('soylent')}   0   0   0   0   1   0   0`,
+          `🟢${toDashboardDisplayLabel('soylent')}   0   0   0   1   0   0`,
         ),
         wrap(''),
       ].join('\n') + '\n';

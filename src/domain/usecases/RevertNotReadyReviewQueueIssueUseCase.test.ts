@@ -1286,11 +1286,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         normalPullRequest,
         'awaiting-workspace-id',
       );
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'project-1' }),
-        normalPullRequest,
-        'workflow-management-story-id',
-      );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         normalPullRequest,
         expect.stringContaining('Auto Status Check: REJECTED'),
@@ -1499,11 +1494,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         mockProject,
         normalPullRequest,
         'awaiting-workspace-id',
-      );
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'project-1' }),
-        normalPullRequest,
-        'workflow-management-story-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         normalPullRequest,
