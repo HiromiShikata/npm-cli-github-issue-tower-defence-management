@@ -17,6 +17,14 @@ describe('extractNextStepAgent', () => {
     ).toBe('developer');
   });
 
+  it('returns the declared agent when the report body uses CRLF line endings', () => {
+    expect(
+      extractNextStepAgent(
+        'From: :robot: agent (model)\r\n\r\n```json\r\n{ "pullRequestRequired": false, "nextStepAgent": "developer" }\r\n```\r\n\r\nbody text\r\n',
+      ),
+    ).toBe('developer');
+  });
+
   it('returns null when the report declares no agent', () => {
     expect(
       extractNextStepAgent(
