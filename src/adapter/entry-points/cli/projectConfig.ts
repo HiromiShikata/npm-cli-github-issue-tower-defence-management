@@ -6,6 +6,7 @@ export type ConfigFile = {
   projectUrl?: string;
   manager?: string;
   defaultAgentName?: string;
+  developerAgentName?: string;
   defaultLlmModelName?: string;
   fallbackLlmModelName?: string;
   defaultLlmAgentName?: string;
@@ -117,6 +118,7 @@ const getDisksValue = (
 
 const knownProjectReadmeConfigKeys = [
   'defaultAgentName',
+  'developerAgentName',
   'defaultLlmModelName',
   'fallbackLlmModelName',
   'defaultLlmAgentName',
@@ -148,6 +150,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       projectUrl: getStringValue(parsed, 'projectUrl'),
       manager: getStringValue(parsed, 'manager'),
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
+      developerAgentName: getStringValue(parsed, 'developerAgentName'),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
       fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
       defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
@@ -242,6 +245,7 @@ export const parseProjectReadmeConfig = (
     }
     return {
       defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
+      developerAgentName: getStringValue(parsed, 'developerAgentName'),
       defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
       fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
       defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
@@ -305,6 +309,10 @@ export const mergeConfigs = (
     readmeOverrides.defaultAgentName ??
     cliOverrides.defaultAgentName ??
     configFile.defaultAgentName,
+  developerAgentName:
+    readmeOverrides.developerAgentName ??
+    cliOverrides.developerAgentName ??
+    configFile.developerAgentName,
   defaultLlmModelName:
     readmeOverrides.defaultLlmModelName ??
     cliOverrides.defaultLlmModelName ??

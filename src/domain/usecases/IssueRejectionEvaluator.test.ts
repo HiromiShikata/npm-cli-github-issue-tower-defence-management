@@ -203,6 +203,61 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.approvedPrUrl).toBeNull();
     });
 
+    it('should require PR evaluation for custom developer agent name when it matches issue agent', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'my-developer',
+        },
+        [],
+        { developerAgentName: 'my-developer' },
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+    });
+
+    it('should not require PR evaluation when issue agent does not match custom developer agent name', async () => {
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'other-agent',
+        },
+        [],
+        { developerAgentName: 'my-developer' },
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(0);
+      expect(result.approvedPrUrl).toBeNull();
+    });
+
+    it('should default to developer when developerAgentName is null', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        },
+        [],
+        { developerAgentName: null },
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+    });
+
     it('should not reject for draft state when issue has non-e2e category label', async () => {
       const result = await evaluator.evaluate({
         url: 'https://github.com/user/repo/issues/1',
