@@ -28,7 +28,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { findLastAgentDeclaringReport } from './findLastAgentDeclaringReport';
+import { findLastAgentReport } from './findLastAgentReport';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { normalizeReportBody } from './normalizeReportBody';
 
@@ -224,12 +224,12 @@ export class NotifyFinishedIssuePreparationUseCase {
     const isTrustedAuthor = (author: string): boolean =>
       this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
 
-    const lastAgentDeclaringReport = findLastAgentDeclaringReport(
+    const lastAgentReport = findLastAgentReport(
       comments,
       isTrustedAuthor,
     );
-    const nextStepAgent = lastAgentDeclaringReport
-      ? extractNextStepAgent(lastAgentDeclaringReport.content)
+    const nextStepAgent = lastAgentReport
+      ? extractNextStepAgent(lastAgentReport.content)
       : null;
     if (nextStepAgent !== null) {
       const agentOptionId = await this.ensureAgentOptionAndGetId(

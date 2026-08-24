@@ -3769,7 +3769,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('calls setIssueAgentField when a later bot comment carries no declaration of its own', async () => {
+    it('does not call setIssueAgentField when the latest bot report carries no declaration of its own', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
       const projectWithAgent = makeProjectWithAgent();
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
@@ -3794,11 +3794,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: null,
       });
 
-      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
-        'https://github.com/user/repo/issues/1',
-        projectWithAgent,
-        'opt-impl',
-      );
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
 
     it('creates a new agent option and calls setIssueAgentField when nextStepAgent is not an existing option', async () => {

@@ -8,7 +8,7 @@ const autoStatusCheckComments_1 = require("./autoStatusCheckComments");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
 const extractNextStepAgent_1 = require("./extractNextStepAgent");
-const findLastAgentDeclaringReport_1 = require("./findLastAgentDeclaringReport");
+const findLastAgentReport_1 = require("./findLastAgentReport");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const normalizeReportBody_1 = require("./normalizeReportBody");
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
@@ -166,9 +166,9 @@ class RevertOrphanedPreparationUseCase {
             return [pr];
         };
         this.resolveNextStepAgent = (comments, allowedIssueAuthors) => {
-            const lastAgentDeclaringReport = (0, findLastAgentDeclaringReport_1.findLastAgentDeclaringReport)(comments, (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors));
-            return lastAgentDeclaringReport
-                ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastAgentDeclaringReport.content)
+            const lastAgentReport = (0, findLastAgentReport_1.findLastAgentReport)(comments, (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors));
+            return lastAgentReport
+                ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastAgentReport.content)
                 : null;
         };
         this.reportBodyHasNextStep = (body) => {

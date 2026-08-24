@@ -9,7 +9,7 @@ const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnec
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const extractNextStepAgent_1 = require("./extractNextStepAgent");
-const findLastAgentDeclaringReport_1 = require("./findLastAgentDeclaringReport");
+const findLastAgentReport_1 = require("./findLastAgentReport");
 const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 const normalizeReportBody_1 = require("./normalizeReportBody");
 class IssueNotFoundError extends Error {
@@ -95,9 +95,9 @@ class NotifyFinishedIssuePreparationUseCase {
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
             const isTrustedAuthor = (author) => this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
-            const lastAgentDeclaringReport = (0, findLastAgentDeclaringReport_1.findLastAgentDeclaringReport)(comments, isTrustedAuthor);
-            const nextStepAgent = lastAgentDeclaringReport
-                ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastAgentDeclaringReport.content)
+            const lastAgentReport = (0, findLastAgentReport_1.findLastAgentReport)(comments, isTrustedAuthor);
+            const nextStepAgent = lastAgentReport
+                ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastAgentReport.content)
                 : null;
             if (nextStepAgent !== null) {
                 const agentOptionId = await this.ensureAgentOptionAndGetId(project, nextStepAgent);
