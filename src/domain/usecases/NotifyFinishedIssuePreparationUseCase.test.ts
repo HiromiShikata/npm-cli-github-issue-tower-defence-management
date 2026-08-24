@@ -947,6 +947,85 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
+  it('should comment the repeated dispatch when the declared nextStepAgent is already the agent field value', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'accounting',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager\n```json\n{"nextStepAgent": "accounting", "nextStep": null}\n```',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'awaiting-workspace-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Next step agent dispatch repeated: accounting'),
+    );
+  });
+
+  it('should escalate to Failed Preparation when the declared nextStepAgent was already dispatched up to the threshold without a report', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'accounting',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager\n```json\n{"nextStepAgent": "accounting", "nextStep": null}\n```',
+      }),
+      createMockComment({
+        content: 'Next step agent dispatch repeated: accounting',
+      }),
+      createMockComment({
+        content: 'Next step agent dispatch repeated: accounting',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'failed-preparation-id',
+    );
+    expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining(
+        'Failed to receive a report from the dispatched agent for 3 times',
+      ),
+    );
+  });
+
   it('should not modify labels when nextStepAgent is specified', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
