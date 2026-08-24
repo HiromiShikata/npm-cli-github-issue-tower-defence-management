@@ -30,7 +30,11 @@ export class AssignNoAssigneeIssueToManagerUseCase {
       assignees: Member['name'][];
       state: Issue['state'];
       author: string;
+      isRepoArchived?: boolean;
     }): boolean => {
+      if (target.isRepoArchived) {
+        return false;
+      }
       if (target.assignees.length > 0 || target.state !== 'OPEN') {
         return false;
       }

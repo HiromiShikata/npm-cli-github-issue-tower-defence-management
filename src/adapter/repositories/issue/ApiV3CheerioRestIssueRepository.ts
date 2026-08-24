@@ -686,6 +686,7 @@ export class ApiV3CheerioRestIssueRepository
       author: item.author,
       closingIssueReferenceUrls: item.closingIssueReferenceUrls,
       agent,
+      isRepoArchived: item.isRepoArchived,
     };
   };
   private restoreIssuesFromCache = (rawIssues: unknown): Issue[] | null => {
