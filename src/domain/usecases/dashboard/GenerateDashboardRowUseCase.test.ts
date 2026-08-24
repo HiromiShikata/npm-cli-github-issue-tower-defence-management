@@ -45,7 +45,6 @@ describe('GenerateDashboardRowUseCase', () => {
 
   it('returns all-zero counts for an empty issue list', () => {
     expect(usecase.run({ issues: [], assigneeLogin: ASSIGNEE })).toEqual({
-      unread: 0,
       todo: 0,
       qc: 0,
       fail: 0,
@@ -56,16 +55,14 @@ describe('GenerateDashboardRowUseCase', () => {
     });
   });
 
-  it('counts actionable Unread, Todo, Awaiting Quality Check and Awaiting Workspace issues', () => {
+  it('counts actionable Todo, Awaiting Quality Check and Awaiting Workspace issues', () => {
     const issues = [
-      makeIssue({ status: 'Unread' }),
       makeIssue({ status: 'Todo by human' }),
       makeIssue({ status: 'Awaiting Quality Check' }),
       makeIssue({ status: 'Awaiting Workspace' }),
     ];
 
     expect(usecase.run({ issues, assigneeLogin: ASSIGNEE })).toEqual({
-      unread: 1,
       todo: 1,
       qc: 1,
       fail: 0,
@@ -78,8 +75,6 @@ describe('GenerateDashboardRowUseCase', () => {
 
   it('excludes non-actionable issues from actionable status columns', () => {
     const issues = [
-      makeIssue({ status: 'Unread', nextActionDate: new Date() }),
-      makeIssue({ status: 'Unread', nextActionHour: 9 }),
       makeIssue({
         status: 'Awaiting Quality Check',
         dependedIssueUrls: ['https://github.com/demo/repo/issues/999'],
@@ -89,7 +84,6 @@ describe('GenerateDashboardRowUseCase', () => {
     ];
 
     expect(usecase.run({ issues, assigneeLogin: ASSIGNEE })).toEqual({
-      unread: 0,
       todo: 0,
       qc: 0,
       fail: 0,
@@ -112,7 +106,6 @@ describe('GenerateDashboardRowUseCase', () => {
     ];
 
     expect(usecase.run({ issues, assigneeLogin: ASSIGNEE })).toEqual({
-      unread: 0,
       todo: 0,
       qc: 0,
       fail: 1,
@@ -140,16 +133,22 @@ describe('GenerateDashboardRowUseCase', () => {
 
   it('counts blocker by case-insensitive workflow blocker story membership for non-closed mine issues', () => {
     const issues = [
-      makeIssue({ status: 'Unread', story: 'Workflow Blocker / urgent' }),
-      makeIssue({ status: 'Awaiting Workspace', story: 'workflow blocker' }),
-      makeIssue({ status: 'Unread', story: 'regular / maintenance' }),
       makeIssue({
-        status: 'Unread',
+        status: 'Awaiting Workspace',
+        story: 'Workflow Blocker / urgent',
+      }),
+      makeIssue({ status: 'Awaiting Workspace', story: 'workflow blocker' }),
+      makeIssue({
+        status: 'Awaiting Workspace',
+        story: 'regular / maintenance',
+      }),
+      makeIssue({
+        status: 'Awaiting Workspace',
         story: 'workflow blocker',
         isClosed: true,
       }),
       makeIssue({
-        status: 'Unread',
+        status: 'Awaiting Workspace',
         story: 'workflow blocker',
         assignees: ['someone-else'],
       }),

@@ -2,14 +2,12 @@ import { Issue } from '../../entities/Issue';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
-  DEFAULT_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
 
 export type DashboardRow = {
-  unread: number;
   todo: number;
   qc: number;
   fail: number;
@@ -48,7 +46,6 @@ export class GenerateDashboardRowUseCase {
         .length;
 
     return {
-      unread: countActionableWithStatus(DEFAULT_STATUS_NAME),
       todo: countActionableWithStatus(TODO_STATUS_NAME),
       qc: countActionableWithStatus(AWAITING_QUALITY_CHECK_STATUS_NAME),
       fail: countMineWithStatus(FAILED_PREPARATION_STATUS_NAME),

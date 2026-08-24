@@ -1,6 +1,5 @@
 import { FieldOption } from './Project';
 
-export const DEFAULT_STATUS_NAME = 'Unread';
 export const AWAITING_WORKSPACE_STATUS_NAME = 'Awaiting Workspace';
 export const PREPARATION_STATUS_NAME = 'Preparation';
 export const FAILED_PREPARATION_STATUS_NAME = 'Failed Preparation';
@@ -24,10 +23,6 @@ export type WorkflowStatusDefinition = {
 };
 
 export const REQUIRED_WORKFLOW_STATUSES: WorkflowStatusDefinition[] = [
-  {
-    name: DEFAULT_STATUS_NAME,
-    color: 'ORANGE',
-  },
   {
     name: AWAITING_WORKSPACE_STATUS_NAME,
     color: 'BLUE',

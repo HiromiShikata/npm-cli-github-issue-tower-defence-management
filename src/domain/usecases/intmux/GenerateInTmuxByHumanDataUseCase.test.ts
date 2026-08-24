@@ -19,7 +19,7 @@ const STORY_OPTIONS: FieldOption[] = [
 ];
 
 const STATUS_OPTIONS: FieldOption[] = [
-  storyOption('st-unread', 'Unread', 'ORANGE'),
+  storyOption('st-aws', 'Awaiting Workspace', 'ORANGE'),
   storyOption('st-tmux', 'In Tmux by human', 'RED'),
   storyOption('st-done', 'Done', 'PURPLE'),
 ];
@@ -133,7 +133,7 @@ describe('GenerateInTmuxByHumanDataUseCase', () => {
     });
 
     it('rejects issues whose status is not In Tmux by human', () => {
-      const result = run([makeIssue({ status: 'Unread' })]);
+      const result = run([makeIssue({ status: 'Awaiting Workspace' })]);
       expect(result.v1).toEqual([]);
     });
 

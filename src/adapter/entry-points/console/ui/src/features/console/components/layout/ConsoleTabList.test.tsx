@@ -6,7 +6,6 @@ const counts: Record<ConsoleTabName, number> = {
   'workflow-blocker': 4,
   prs: 3,
   triage: 0,
-  unread: 5,
   'failed-preparation': 0,
   'todo-by-human': 2,
   'todo-by-agent': 3,
@@ -27,7 +26,6 @@ describe('ConsoleTabList', () => {
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
     expect(queryByText('Awaiting Quality Check')).not.toBeNull();
-    expect(queryByText('Unread')).not.toBeNull();
     expect(queryByText('Todo by human')).not.toBeNull();
     expect(queryByText('Todo by agent')).not.toBeNull();
     expect(queryByText('Triage')).toBeNull();
@@ -114,8 +112,8 @@ describe('ConsoleTabList', () => {
         onSelectTab={onSelectTab}
       />,
     );
-    fireEvent.click(getByText('Unread'));
-    expect(onSelectTab).toHaveBeenCalledWith('unread');
+    fireEvent.click(getByText('Todo by human'));
+    expect(onSelectTab).toHaveBeenCalledWith('todo-by-human');
   });
 
   it('prefixes the snapshot info with "(cached)" and sets data-from-cache when data is from cache', () => {

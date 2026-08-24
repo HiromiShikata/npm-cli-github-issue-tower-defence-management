@@ -38,7 +38,6 @@ const project: Project = {
     name: 'Status',
     fieldId: 'status-field',
     statuses: [
-      option('st-unread', 'Unread', 'ORANGE'),
       option('st-aw', 'Awaiting Workspace', 'BLUE'),
       option('st-aqc', 'Awaiting Quality Check', 'GREEN'),
     ],
@@ -93,7 +92,7 @@ describe('writeConsoleLists', () => {
       pjcode: 'demo',
       assigneeLogin: ASSIGNEE,
       project,
-      issues: [makeIssue({ status: 'Unread' })],
+      issues: [makeIssue({ status: 'Todo by human' })],
       generatedAt: '2026-06-14T07:22:33Z',
     });
 
@@ -101,7 +100,6 @@ describe('writeConsoleLists', () => {
       'workflow-blocker',
       'prs',
       'triage',
-      'unread',
       'failed-preparation',
       'todo-by-human',
       'todo-by-agent',
@@ -198,11 +196,13 @@ describe('writeConsoleLists', () => {
       pjcode: 'demo',
       assigneeLogin: ASSIGNEE,
       project,
-      issues: [makeIssue({ status: 'Unread' })],
+      issues: [makeIssue({ status: 'Todo by human' })],
       generatedAt: '2026-06-14T07:22:33Z',
     });
 
-    const raw: unknown = JSON.parse(fs.readFileSync(tabFile('unread'), 'utf8'));
+    const raw: unknown = JSON.parse(
+      fs.readFileSync(tabFile('todo-by-human'), 'utf8'),
+    );
     expect(isRecord(raw)).toBe(true);
     const items: unknown = isRecord(raw) ? raw.items : undefined;
     expect(isUnknownArray(items)).toBe(true);
@@ -229,7 +229,7 @@ describe('writeConsoleLists', () => {
       pjcode: 'demo',
       assigneeLogin: ASSIGNEE,
       project,
-      issues: [makeIssue({ status: 'Unread' })],
+      issues: [makeIssue({ status: 'Todo by human' })],
     });
     expect(fs.readdirSync(outDir)).toHaveLength(0);
   });
@@ -240,7 +240,7 @@ describe('writeConsoleLists', () => {
       pjcode: '',
       assigneeLogin: ASSIGNEE,
       project,
-      issues: [makeIssue({ status: 'Unread' })],
+      issues: [makeIssue({ status: 'Todo by human' })],
     });
     expect(fs.readdirSync(outDir)).toHaveLength(0);
   });
@@ -251,24 +251,26 @@ describe('writeConsoleLists', () => {
       pjcode: 'demo',
       assigneeLogin: null,
       project,
-      issues: [makeIssue({ status: 'Unread' })],
+      issues: [makeIssue({ status: 'Todo by human' })],
     });
     expect(fs.readdirSync(outDir)).toHaveLength(0);
   });
 
-  const regenerateUnread = (): void => {
+  const regenerateTodoByHuman = (): void => {
     writeConsoleLists({
       consoleDataOutputDir: outDir,
       pjcode: 'demo',
       assigneeLogin: ASSIGNEE,
       project,
-      issues: [makeIssue({ status: 'Unread', itemId: 'item-1' })],
+      issues: [makeIssue({ status: 'Todo by human', itemId: 'item-1' })],
       generatedAt: '2026-06-14T07:22:33Z',
     });
   };
 
-  const unreadServedItemCount = (): number => {
-    const route = parseConsoleDataRoute('projects/demo/unread/list.json');
+  const todoByHumanServedItemCount = (): number => {
+    const route = parseConsoleDataRoute(
+      'projects/demo/todo-by-human/list.json',
+    );
     if (route === null) {
       throw new Error('route should not be null');
     }
@@ -279,7 +281,7 @@ describe('writeConsoleLists', () => {
   };
 
   it('resets the done file of every tab to an empty record on regeneration', () => {
-    regenerateUnread();
+    regenerateTodoByHuman();
 
     for (const tab of CONSOLE_DONE_TAB_NAMES) {
       const doneFile = path.join(outDir, 'demo', tab, '.done.json');
@@ -291,32 +293,34 @@ describe('writeConsoleLists', () => {
 
   it('clears a pre-existing accumulated done file on regeneration', () => {
     for (const id of ['PVTI_1', 'PVTI_2', 'PVTI_3']) {
-      recordDoneProjectItemId(outDir, 'demo', 'unread', id);
+      recordDoneProjectItemId(outDir, 'demo', 'todo-by-human', id);
     }
-    expect(readDoneProjectItemIds(outDir, 'demo', 'unread')).toHaveLength(3);
+    expect(
+      readDoneProjectItemIds(outDir, 'demo', 'todo-by-human'),
+    ).toHaveLength(3);
 
-    regenerateUnread();
+    regenerateTodoByHuman();
 
-    expect(readDoneProjectItemIds(outDir, 'demo', 'unread')).toEqual([]);
+    expect(readDoneProjectItemIds(outDir, 'demo', 'todo-by-human')).toEqual([]);
   });
 
   it('serves the full list after regeneration despite a prior accumulated done record', () => {
-    recordDoneProjectItemId(outDir, 'demo', 'unread', 'item-1');
+    recordDoneProjectItemId(outDir, 'demo', 'todo-by-human', 'item-1');
 
-    regenerateUnread();
+    regenerateTodoByHuman();
 
-    expect(unreadServedItemCount()).toBe(1);
+    expect(todoByHumanServedItemCount()).toBe(1);
   });
 
   it('re-hides an item recorded as done until the next regeneration bounds it to one cycle', () => {
-    regenerateUnread();
-    expect(unreadServedItemCount()).toBe(1);
+    regenerateTodoByHuman();
+    expect(todoByHumanServedItemCount()).toBe(1);
 
-    recordDoneProjectItemId(outDir, 'demo', 'unread', 'item-1');
-    expect(unreadServedItemCount()).toBe(0);
+    recordDoneProjectItemId(outDir, 'demo', 'todo-by-human', 'item-1');
+    expect(todoByHumanServedItemCount()).toBe(0);
 
-    regenerateUnread();
-    expect(unreadServedItemCount()).toBe(1);
+    regenerateTodoByHuman();
+    expect(todoByHumanServedItemCount()).toBe(1);
   });
 });
 

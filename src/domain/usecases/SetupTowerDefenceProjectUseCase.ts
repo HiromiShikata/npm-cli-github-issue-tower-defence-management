@@ -2,7 +2,7 @@ import { FieldOption } from '../entities/Project';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import {
-  DEFAULT_STATUS_NAME,
+  AWAITING_WORKSPACE_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
   LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
   LEGACY_IN_TMUX_STATUS_NAME,
@@ -28,21 +28,49 @@ export class SetupTowerDefenceProjectUseCase {
   private static readonly LEGACY_STATUS_NAMES: Readonly<
     Record<string, string>
   > = {
-    [DEFAULT_STATUS_NAME]: LEGACY_TODO_STATUS_NAME,
+    [AWAITING_WORKSPACE_STATUS_NAME]: LEGACY_TODO_STATUS_NAME,
     [TODO_STATUS_NAME]: LEGACY_TODO_STATUS_NAME,
     [IN_TMUX_STATUS_NAME]: LEGACY_IN_TMUX_STATUS_NAME,
   };
+
+  private static readonly UNREAD_MIGRATED_STATUS_NAME = 'Unread' as const;
 
   private static readonly MIGRATED_FROM_NAMES: ReadonlySet<string> = new Set([
     LEGACY_TODO_STATUS_NAME,
     LEGACY_IN_TMUX_STATUS_NAME,
     PC_TODO_STATUS_NAME,
     LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
+    SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
   ]);
 
   run = async (params: { projectUrl: string }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
     const existing = project.status.statuses;
+
+    const unreadStatus = existing.find(
+      (s) =>
+        s.name === SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
+    );
+    if (unreadStatus) {
+      const awaitingWorkspaceStatus = existing.find(
+        (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
+      );
+      if (awaitingWorkspaceStatus) {
+        const { issues } = await this.issueRepository.getAllIssues(project.id);
+        const unreadIssues = issues.filter(
+          (issue) =>
+            issue.status ===
+            SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
+        );
+        for (const issue of unreadIssues) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatus.id,
+          );
+        }
+      }
+    }
 
     const awaitingTaskBreakdownStatus = existing.find(
       (s) => s.name === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,

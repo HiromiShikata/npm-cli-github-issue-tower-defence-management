@@ -91,7 +91,7 @@ describe('ConsoleOperationMenu', () => {
   it('hides the review group when there is no pull request', () => {
     const { queryByText } = render(
       <ConsoleOperationMenu
-        tab="unread"
+        tab="todo-by-human"
         item={issueItem}
         hasPullRequest={false}
         rejectEnabled={false}

@@ -25,7 +25,6 @@ describe('buildComposeDashboardInput', () => {
       writeProject(dataDir, 'acme', {
         pjcode: 'acme',
         capturedAt: 'x',
-        unread: 3,
         todo: 1,
         qc: 2,
         fail: 0,
@@ -42,7 +41,6 @@ describe('buildComposeDashboardInput', () => {
         {
           code: 'ac',
           row: {
-            unread: 3,
             todo: 1,
             qc: 2,
             fail: 0,
@@ -62,7 +60,7 @@ describe('buildComposeDashboardInput', () => {
   it('treats a project file with a missing field as an absent row', () => {
     const dataDir = makeDataDir();
     try {
-      writeProject(dataDir, 'acme', { unread: 1, todo: 1 });
+      writeProject(dataDir, 'acme', { todo: 1 });
       const input = buildComposeDashboardInput({
         dashboardDataDir: dataDir,
         projectNames: ['acme'],
@@ -365,7 +363,6 @@ describe('composeDashboardText', () => {
       writeProject(dataDir, 'acme', {
         pjcode: 'acme',
         capturedAt: 'x',
-        unread: 3,
         todo: 1,
         qc: 2,
         fail: 0,
@@ -411,9 +408,9 @@ describe('composeDashboardText', () => {
       ).toBe(
         '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
           '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-          '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
-          '<tt>🟢ac&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
-          '<tt>&nbsp;&nbsp;in&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
+          '<tt>pj&nbsp;&nbsp;&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
+          '<tt>🟢ac&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
+          '<tt>&nbsp;&nbsp;in&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
           '<tt></tt><br>\n' +
           '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n',
       );
@@ -445,7 +442,6 @@ describe('dashboardComposeFilesPresent', () => {
   const minimalProject = {
     pjcode: 'acme',
     capturedAt: 'x',
-    unread: 0,
     todo: 0,
     qc: 0,
     fail: 0,

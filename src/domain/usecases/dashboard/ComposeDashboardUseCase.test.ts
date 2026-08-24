@@ -19,7 +19,6 @@ import { TokenStatus, TokenStatusColor } from './GenerateTokenStatusUseCase';
 const codePointLength = (value: string): number => [...value].length;
 
 const projectRow = (overrides: Partial<DashboardRow>): DashboardRow => ({
-  unread: 0,
   todo: 0,
   qc: 0,
   fail: 0,
@@ -198,11 +197,11 @@ describe('formatMachineStatusLines', () => {
 
 describe('formatProjectHeaderLine', () => {
   it('renders the fixed project grid header', () => {
-    expect(formatProjectHeaderLine()).toBe('pj   unr tdo aqc fal prp aws dep');
+    expect(formatProjectHeaderLine()).toBe('pj   tdo aqc fal prp aws dep');
   });
 
-  it('fits the 32 character width budget exactly', () => {
-    expect(codePointLength(formatProjectHeaderLine())).toBe(
+  it('fits within the 32 character width budget', () => {
+    expect(codePointLength(formatProjectHeaderLine())).toBeLessThanOrEqual(
       PROJECT_ROW_WIDTH_BUDGET,
     );
   });
@@ -213,24 +212,24 @@ describe('formatProjectRowLine', () => {
     expect(
       formatProjectRowLine({
         code: 'ac',
-        row: projectRow({ unread: 3, todo: 1, qc: 2, ws: 4, dep: 1 }),
+        row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }),
       }),
-    ).toBe('🟢ac   3   1   2   0   0   4   1');
+    ).toBe('🟢ac   1   2   0   0   4   1');
   });
 
   it('renders placeholder cells with a blank dot for an absent project file', () => {
     expect(formatProjectRowLine({ code: 'in', row: null })).toBe(
-      '  in  --  --  --  --  --  --  --',
+      '  in  --  --  --  --  --  --',
     );
   });
 
   it('caps a count above 999 at 999', () => {
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ unread: 1500 }) }),
-    ).toBe('🟠ac 999   0   0   0   0   0   0');
+      formatProjectRowLine({ code: 'ac', row: projectRow({ todo: 1500 }) }),
+    ).toBe('🟢ac 999   0   0   0   0   0');
   });
 
-  it('applies the five level severity dot rules in descending order', () => {
+  it('applies the four level severity dot rules in descending order', () => {
     expect(
       formatProjectRowLine({ code: 'ac', row: projectRow({ blocker: 2 }) }),
     ).toContain('🔴');
@@ -238,17 +237,11 @@ describe('formatProjectRowLine', () => {
       formatProjectRowLine({ code: 'ac', row: projectRow({ blocker: 1 }) }),
     ).toContain('🟣');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ unread: 10 }) }),
-    ).toContain('🟠');
-    expect(
       formatProjectRowLine({ code: 'ac', row: projectRow({ qc: 15 }) }),
     ).toContain('🟠');
     expect(
       formatProjectRowLine({ code: 'ac', row: projectRow({ fail: 5 }) }),
     ).toContain('🟠');
-    expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ unread: 5 }) }),
-    ).toContain('🟡');
     expect(
       formatProjectRowLine({ code: 'ac', row: projectRow({ qc: 10 }) }),
     ).toContain('🟡');
@@ -258,7 +251,7 @@ describe('formatProjectRowLine', () => {
     expect(
       formatProjectRowLine({
         code: 'ac',
-        row: projectRow({ unread: 4, qc: 9, fail: 2 }),
+        row: projectRow({ qc: 9, fail: 2 }),
       }),
     ).toContain('🟢');
   });
@@ -267,7 +260,6 @@ describe('formatProjectRowLine', () => {
     const present = formatProjectRowLine({
       code: 'gl',
       row: projectRow({
-        unread: 999,
         todo: 999,
         qc: 999,
         fail: 999,
@@ -349,11 +341,11 @@ describe('ComposeDashboardUseCase', () => {
     projects: [
       {
         code: 'ac',
-        row: projectRow({ unread: 3, todo: 1, qc: 2, ws: 4, dep: 1 }),
+        row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }),
       },
       {
         code: 'gl',
-        row: projectRow({ unread: 12, qc: 16, fail: 6, pr: 1 }),
+        row: projectRow({ qc: 16, fail: 6, pr: 1 }),
       },
       { code: 'in', row: null },
       { code: 'um', row: projectRow({ blocker: 1 }) },
@@ -395,11 +387,11 @@ describe('ComposeDashboardUseCase', () => {
   const expectedBody =
     '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
     '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-    '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
-    '<tt>🟢ac&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
-    '<tt>🟠gl&nbsp;&nbsp;12&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;16&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;in&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
-    '<tt>🟣um&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>pj&nbsp;&nbsp;&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
+    '<tt>🟢ac&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
+    '<tt>🟠gl&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;16&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;in&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
+    '<tt>🟣um&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>⚪bob_&nbsp;100%&nbsp;0d00h00&nbsp;&nbsp;95%&nbsp;0d02h00&nbsp;0&nbsp;0</tt><br>\n' +
     '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n' +
@@ -460,7 +452,6 @@ describe('ComposeDashboardUseCase', () => {
         {
           code: 'ac',
           row: projectRow({
-            unread: 999,
             todo: 999,
             qc: 999,
             fail: 999,
@@ -599,7 +590,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     sevenDayWindowAggregate: ComposeDashboardInput['sevenDayWindowAggregate'],
   ): ComposeDashboardInput => ({
     machineStatus: null,
-    projects: [{ code: 'ac', row: projectRow({ unread: 1 }) }],
+    projects: [{ code: 'ac', row: projectRow({ todo: 1 }) }],
     tokens: [
       tokenStatus({ name: 'alice', sevenDayUtilizationPercent: 60 }),
       tokenStatus({ name: 'bob', sevenDayUtilizationPercent: 66 }),
@@ -633,7 +624,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     expect(lines[aggregateIndex - 1]).toBe(
       formatProjectRowLine({
         code: 'ac',
-        row: projectRow({ unread: 1 }),
+        row: projectRow({ todo: 1 }),
       }),
     );
     expect(lines[aggregateIndex + 1]).toContain('alice');

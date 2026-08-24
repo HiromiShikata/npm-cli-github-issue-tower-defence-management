@@ -83,7 +83,7 @@ describe('webServer pure helpers', () => {
       expect(isConsoleAppRoute('/projects/acme/workflow-blocker')).toBe(true);
       expect(isConsoleAppRoute('/projects/acme/prs')).toBe(true);
       expect(isConsoleAppRoute('/projects/globex/triage')).toBe(true);
-      expect(isConsoleAppRoute('/projects/initech/unread')).toBe(true);
+      expect(isConsoleAppRoute('/projects/initech/todo-by-human')).toBe(true);
       expect(isConsoleAppRoute('/projects/umbrella/failed-preparation')).toBe(
         true,
       );
@@ -1473,7 +1473,6 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       JSON.stringify({
         pjcode: 'acme',
         capturedAt: '2026-06-26T00:00:00.000Z',
-        unread: 3,
         todo: 1,
         qc: 2,
         fail: 0,
@@ -1488,7 +1487,6 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       JSON.stringify({
         pjcode: 'initech',
         capturedAt: '2026-06-26T00:00:00.000Z',
-        unread: 0,
         todo: 0,
         qc: 0,
         fail: 0,
@@ -1532,9 +1530,9 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
   const expectedComposed =
     '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
     '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-    '<tt>pj&nbsp;&nbsp;&nbsp;unr&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
-    '<tt>🟢ac&nbsp;&nbsp;&nbsp;3&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
-    '<tt>🟢in&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>pj&nbsp;&nbsp;&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
+    '<tt>🟢ac&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
+    '<tt>🟢in&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n';
 

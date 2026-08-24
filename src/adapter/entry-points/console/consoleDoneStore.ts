@@ -82,7 +82,6 @@ export const CONSOLE_DONE_TAB_NAMES: string[] = [
   'workflow-blocker',
   'prs',
   'triage',
-  'unread',
   'failed-preparation',
   'todo-by-human',
   'todo-by-agent',
@@ -91,7 +90,6 @@ export const CONSOLE_DONE_TAB_NAMES: string[] = [
 
 export const CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES: string[] = [
   'prs',
-  'unread',
   'failed-preparation',
   'todo-by-human',
   'todo-by-agent',

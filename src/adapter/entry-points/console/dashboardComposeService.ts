@@ -44,7 +44,6 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
   if (!isRecord(value)) {
     return null;
   }
-  const unread = asFiniteNumber(value.unread);
   const todo = asFiniteNumber(value.todo);
   const qc = asFiniteNumber(value.qc);
   const fail = asFiniteNumber(value.fail);
@@ -53,7 +52,6 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
   const dep = asFiniteNumber(value.dep);
   const blocker = asFiniteNumber(value.blocker);
   if (
-    unread === null ||
     todo === null ||
     qc === null ||
     fail === null ||
@@ -64,7 +62,7 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
   ) {
     return null;
   }
-  return { unread, todo, qc, fail, pr, ws, dep, blocker };
+  return { todo, qc, fail, pr, ws, dep, blocker };
 };
 
 const readProjectRow = (

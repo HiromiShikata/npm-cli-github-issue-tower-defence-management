@@ -28,14 +28,6 @@ const tabBadge = (page: Page, label: string) =>
 const itemRowByText = (page: Page, text: string) =>
   page.locator('.console-item-row', { hasText: text });
 
-const processSelectedItemViaStatus = async (page: Page): Promise<void> => {
-  const statusButton = page
-    .locator('.console-op-button', { hasText: 'Awaiting Workspace' })
-    .first();
-  await expect(statusButton).toBeVisible();
-  await statusButton.click();
-};
-
 test('shows CI and conflict badges in the directly opened PR detail header', async ({
   page,
 }) => {
@@ -72,7 +64,6 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
 
   await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
   await expect(tabBadge(page, 'Awaiting Quality Check')).toHaveText('1');
-  await expect(tabBadge(page, 'Unread')).toHaveText('2');
   await expect(tabBadge(page, 'Triage')).toHaveText('2');
   await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
@@ -86,38 +77,19 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await expect(approveButton).toBeVisible();
   await approveButton.click();
 
-  await expect(activeTabLabel(page)).toHaveText('Unread', { timeout: 8000 });
-  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0, {
-    timeout: 8000,
-  });
-
-  await itemRowByText(
-    page,
-    'Scaffold React console UI under entry-points with build bundling',
-  ).click();
-  await processSelectedItemViaStatus(page);
-  await expect(tabBadge(page, 'Unread')).toHaveText('1', { timeout: 8000 });
-  await tabByLabel(page, 'Unread').click();
-
-  await itemRowByText(
-    page,
-    'Add server-side console API handlers for read and operation endpoints',
-  ).click();
-  await processSelectedItemViaStatus(page);
-
   await expect(activeTabLabel(page)).toHaveText('Triage', { timeout: 8000 });
-  await expect(tabByLabel(page, 'Unread')).toHaveCount(0, {
+  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0, {
     timeout: 8000,
   });
 
   await tabByLabel(page, 'Todo by human').click();
   await expect(activeTabLabel(page)).toHaveText('Todo by human');
-  await expect(tabByLabel(page, 'Unread')).toHaveCount(0);
+  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0);
   await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
   await tabByLabel(page, 'Triage').click();
   await expect(activeTabLabel(page)).toHaveText('Triage');
-  await expect(tabByLabel(page, 'Unread')).toHaveCount(0);
+  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0);
   await expect(tabBadge(page, 'Triage')).toHaveText('2');
 });
 
@@ -348,7 +320,7 @@ test('renders the stories tab with non-gray stories, their open item counts, and
   const tdpmRow = page.locator('.console-story-list-row', {
     hasText: 'TDPM Console port',
   });
-  await expect(tdpmRow.locator('.console-story-count')).toHaveText('6');
+  await expect(tdpmRow.locator('.console-story-count')).toHaveText('4');
   await expect(
     tdpmRow.locator('.console-op-button', { hasText: 'Add task' }),
   ).toBeVisible();
