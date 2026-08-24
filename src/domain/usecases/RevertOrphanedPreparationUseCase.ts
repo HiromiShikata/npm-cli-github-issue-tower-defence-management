@@ -131,13 +131,13 @@ export class RevertOrphanedPreparationUseCase {
       const nextStepAgent = lastAgentReport
         ? extractNextStepAgent(lastAgentReport.content)
         : null;
-      if (nextStepAgent !== null && lastAgentReport !== null) {
+      if (nextStepAgent !== null) {
         const repetition = resolveNextStepAgentDispatchRepetition({
           agentFieldValue: issue.agent,
           nextStepAgent,
-          commentsAfterLastAgentReport: comments.slice(
-            comments.indexOf(lastAgentReport) + 1,
-          ),
+          commentsAfterLastAgentReport: lastAgentReport
+            ? comments.slice(comments.indexOf(lastAgentReport) + 1)
+            : [],
           isTrustedAuthor: (author) =>
             isAuthorAuthorizedForAutoStatusCheck(
               author,
@@ -177,7 +177,7 @@ export class RevertOrphanedPreparationUseCase {
           issue,
           awaitingWorkspaceStatusOption.id,
         );
-        if (repetition.type === 'dispatchAgain') {
+        if (repetition.type !== 'notRepeated') {
           await this.issueCommentRepository.createComment(
             issue,
             repetition.comment,

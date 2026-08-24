@@ -30,8 +30,8 @@ import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
-import { resolveNextStepAgentDispatchRepetition } from './resolveNextStepAgentDispatchRepetition';
 import { normalizeReportBody } from './normalizeReportBody';
+import { resolveNextStepAgentDispatchRepetition } from './resolveNextStepAgentDispatchRepetition';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -229,13 +229,14 @@ export class NotifyFinishedIssuePreparationUseCase {
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
-    if (nextStepAgent !== null && lastAgentReport !== null) {
+    const commentsAfterLastAgentReport = lastAgentReport
+      ? comments.slice(comments.indexOf(lastAgentReport) + 1)
+      : [];
+    if (nextStepAgent !== null) {
       const repetition = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: issue.agent,
         nextStepAgent,
-        commentsAfterLastAgentReport: comments.slice(
-          comments.indexOf(lastAgentReport) + 1,
-        ),
+        commentsAfterLastAgentReport,
         isTrustedAuthor,
         thresholdForAutoReject: params.thresholdForAutoReject,
       });

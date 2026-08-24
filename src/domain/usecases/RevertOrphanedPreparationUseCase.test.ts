@@ -325,6 +325,69 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
+  it('should record the repeated dispatch even when the project has no Failed Preparation status', async () => {
+    mockProject.status.statuses = mockProject.status.statuses.filter(
+      (status) => status.name !== 'Failed Preparation',
+    );
+    mockProject.agent = {
+      name: 'agent',
+      fieldId: 'agent-field-id',
+      options: [
+        {
+          id: 'agent-option-developer',
+          name: 'developer',
+          color: 'GRAY',
+          description: '',
+        },
+      ],
+    };
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      agent: 'developer',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content:
+          'From: :robot: triager\n\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
+        createdAt: new Date('2024-01-02T00:00:00Z'),
+      },
+      {
+        author: 'bot',
+        content: 'Next step agent dispatch repeated: developer',
+        createdAt: new Date('2024-01-02T01:00:00Z'),
+      },
+      {
+        author: 'bot',
+        content: 'Next step agent dispatch repeated: developer',
+        createdAt: new Date('2024-01-02T02:00:00Z'),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['bot'],
+    });
+
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      stuckIssue,
+      expect.stringContaining('Next step agent dispatch repeated: developer'),
+    );
+  });
+
   it('should ignore a next step agent designated by an author outside the allowed issue authors', async () => {
     mockProject.agent = {
       name: 'agent',
