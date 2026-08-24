@@ -27,7 +27,9 @@ export const resolveNextStepAgentDispatchRepetition = <
   const previousRepetitions = params.commentsAfterLastAgentReport.filter(
     (comment) =>
       params.isTrustedAuthor(comment.author) &&
-      comment.content.startsWith(NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD),
+      comment.content.startsWith(
+        NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD,
+      ),
   ).length;
   const repetition = previousRepetitions + 1;
   if (repetition >= params.thresholdForAutoReject) {

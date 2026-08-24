@@ -123,7 +123,10 @@ export class RevertOrphanedPreparationUseCase {
         continue;
       }
       const lastAgentReport = findLastAgentReport(comments, (author) =>
-        isAuthorAuthorizedForAutoStatusCheck(author, params.allowedIssueAuthors),
+        isAuthorAuthorizedForAutoStatusCheck(
+          author,
+          params.allowedIssueAuthors,
+        ),
       );
       const nextStepAgent = lastAgentReport
         ? extractNextStepAgent(lastAgentReport.content)
