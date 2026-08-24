@@ -1,3 +1,10 @@
+## [1.174.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.174.2...v1.174.3) (2026-08-24)
+
+
+### Bug Fixes
+
+* **preparation:** keep a declared next-step agent when a later bot comment omits one ([#1722](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1722)) ([229ad6d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/229ad6dce4cfea053ff803f787bdd7bdc02486c0)), closes [#1721](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1721)
+
 ## [1.174.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.174.1...v1.174.2) (2026-08-24)
 
 
