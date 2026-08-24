@@ -33,19 +33,23 @@ export class SetupTowerDefenceProjectUseCase {
     [IN_TMUX_STATUS_NAME]: LEGACY_IN_TMUX_STATUS_NAME,
   };
 
+  private static readonly UNREAD_MIGRATED_STATUS_NAME = 'Unread' as const;
+
   private static readonly MIGRATED_FROM_NAMES: ReadonlySet<string> = new Set([
     LEGACY_TODO_STATUS_NAME,
     LEGACY_IN_TMUX_STATUS_NAME,
     PC_TODO_STATUS_NAME,
     LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
-    'Unread',
+    SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
   ]);
 
   run = async (params: { projectUrl: string }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
     const existing = project.status.statuses;
 
-    const unreadStatus = existing.find((s) => s.name === 'Unread');
+    const unreadStatus = existing.find(
+      (s) => s.name === SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
+    );
     if (unreadStatus) {
       const awaitingWorkspaceStatus = existing.find(
         (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
@@ -53,7 +57,7 @@ export class SetupTowerDefenceProjectUseCase {
       if (awaitingWorkspaceStatus) {
         const { issues } = await this.issueRepository.getAllIssues(project.id);
         const unreadIssues = issues.filter(
-          (issue) => issue.status === 'Unread',
+          (issue) => issue.status === SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
         );
         for (const issue of unreadIssues) {
           await this.issueRepository.updateStatus(
