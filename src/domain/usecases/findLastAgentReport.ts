@@ -1,7 +1,6 @@
 import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
-import { extractNextStepAgent } from './extractNextStepAgent';
 
-export const findLastAgentDeclaringReport = <
+export const findLastAgentReport = <
   Comment extends { author: string; content: string },
 >(
   comments: Comment[],
@@ -12,6 +11,5 @@ export const findLastAgentDeclaringReport = <
     .find(
       (comment) =>
         isTrustedAuthor(comment.author) &&
-        comment.content.startsWith(AGENT_REPORT_PREFIX) &&
-        extractNextStepAgent(comment.content) !== null,
+        comment.content.startsWith(AGENT_REPORT_PREFIX),
     ) ?? null;

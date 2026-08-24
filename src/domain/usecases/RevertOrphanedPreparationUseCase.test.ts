@@ -501,6 +501,55 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(0);
   });
 
+  it('should not re-dispatch the declared agent when a later report omits the next step agent an earlier report declared', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content:
+          'From: :robot: agent report\n\n```json\n{ "nextStepAgent": "pr-reviewer" }\n```\n',
+        createdAt: new Date(),
+      },
+      {
+        author: 'agent-bot',
+        content:
+          'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE\nThe last report declared that this task needs no pull request.',
+        createdAt: new Date(),
+      },
+      {
+        author: 'agent-bot',
+        content:
+          'From: :robot: agent report\n\n```json\n{ "pullRequestRequired": false, "reviewResult": "PASS", "nextStep": null }\n```\n',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
   it('should revert an orphaned issue to Awaiting Workspace when the no pull request declaration comes from an author outside allowedIssueAuthors', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',

@@ -23,7 +23,7 @@ import {
   RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
 } from './returnedToAwaitingWorkspaceMessage';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { findLastAgentDeclaringReport } from './findLastAgentDeclaringReport';
+import { findLastAgentReport } from './findLastAgentReport';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { normalizeReportBody } from './normalizeReportBody';
 
@@ -350,13 +350,11 @@ export class RevertOrphanedPreparationUseCase {
     comments: Comment[],
     allowedIssueAuthors: string[] | null | undefined,
   ): string | null => {
-    const lastAgentDeclaringReport = findLastAgentDeclaringReport(
-      comments,
-      (author) =>
-        isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+    const lastAgentReport = findLastAgentReport(comments, (author) =>
+      isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
     );
-    return lastAgentDeclaringReport
-      ? extractNextStepAgent(lastAgentDeclaringReport.content)
+    return lastAgentReport
+      ? extractNextStepAgent(lastAgentReport.content)
       : null;
   };
 
