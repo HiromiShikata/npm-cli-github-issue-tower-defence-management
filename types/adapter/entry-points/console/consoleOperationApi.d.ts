@@ -1,6 +1,6 @@
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
-import { Project } from '../../../domain/entities/Project';
+import { FieldOption, Project } from '../../../domain/entities/Project';
 export declare const AWAITING_WORKSPACE_STATUS_NAME = "awaiting workspace";
 export declare const IN_TMUX_BY_HUMAN_STATUS_NAME = "in tmux by human";
 export declare const CHORE_LABEL_NAME = "chore";
@@ -17,6 +17,7 @@ export type ConsoleOperationContext = {
     isPjcodeConfigured: ConsolePjcodeValidator;
     consoleDataOutputDir: string | null;
     issueAttachmentRepository: IssueAttachmentRepository | null;
+    updateStoryList: ((project: Project, stories: FieldOption[]) => Promise<FieldOption[]>) | null;
 };
 export type ConsoleOperationResponse = {
     statusCode: number;
@@ -29,4 +30,5 @@ export declare const handleAttachmentUpload: (context: ConsoleOperationContext, 
 export declare const handleCreateIssue: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleReviewComment: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleIntmux: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
+export declare const handleReorderStory: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 //# sourceMappingURL=consoleOperationApi.d.ts.map
