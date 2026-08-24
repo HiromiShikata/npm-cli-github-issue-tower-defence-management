@@ -95,6 +95,7 @@ type NotifyFinishedOptions = {
   configFilePath: string;
   missingAgentName?: string;
   sessionErrorLine?: string;
+  deferPreparation?: boolean;
 };
 
 type CheckIssueReviewReadinessOptions = {
@@ -507,6 +508,10 @@ program
     '--sessionErrorLine <line>',
     'Exact error line from the session log to include in the task issue body',
   )
+  .option(
+    '--deferPreparation',
+    'Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) without creating any issue; use for transient upstream failures',
+  )
   .action(async (options: NotifyFinishedOptions) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -644,6 +649,7 @@ program
       sessionErrorLine: options.sessionErrorLine ?? null,
       manager: config.manager ?? null,
       developerAgentName: config.developerAgentName ?? null,
+      deferPreparation: options.deferPreparation ?? null,
     });
   });
 

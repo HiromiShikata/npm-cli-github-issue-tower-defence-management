@@ -347,6 +347,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           | 'setIssueAgentField'
           | 'searchIssue'
           | 'createNewIssue'
+          | 'updateNextActionDate'
         >
       >;
       let notifyMockIssueCommentRepository: jest.Mocked<
@@ -455,6 +456,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           setIssueAgentField: jest.fn().mockResolvedValue(undefined),
           searchIssue: jest.fn().mockResolvedValue([]),
           createNewIssue: jest.fn().mockResolvedValue(42),
+          updateNextActionDate: jest.fn().mockResolvedValue(undefined),
         };
         notifyMockIssueCommentRepository = {
           getCommentsFromIssue: jest.fn().mockResolvedValue([
