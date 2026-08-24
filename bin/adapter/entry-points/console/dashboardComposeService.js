@@ -59,7 +59,6 @@ const parseDashboardRow = (value) => {
     if (!isRecord(value)) {
         return null;
     }
-    const unread = asFiniteNumber(value.unread);
     const todo = asFiniteNumber(value.todo);
     const qc = asFiniteNumber(value.qc);
     const fail = asFiniteNumber(value.fail);
@@ -67,8 +66,7 @@ const parseDashboardRow = (value) => {
     const ws = asFiniteNumber(value.ws);
     const dep = asFiniteNumber(value.dep);
     const blocker = asFiniteNumber(value.blocker);
-    if (unread === null ||
-        todo === null ||
+    if (todo === null ||
         qc === null ||
         fail === null ||
         pr === null ||
@@ -77,7 +75,7 @@ const parseDashboardRow = (value) => {
         blocker === null) {
         return null;
     }
-    return { unread, todo, qc, fail, pr, ws, dep, blocker };
+    return { todo, qc, fail, pr, ws, dep, blocker };
 };
 const readProjectRow = (dashboardDataDir, projectName) => parseDashboardRow(readJsonFile(path.join(dashboardDataDir, 'projects', `${projectName}.json`)));
 const parseLoad = (value) => {

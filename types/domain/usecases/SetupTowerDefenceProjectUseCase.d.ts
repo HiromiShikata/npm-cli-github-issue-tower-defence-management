@@ -5,6 +5,7 @@ export declare class SetupTowerDefenceProjectUseCase {
     private readonly issueRepository;
     constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>);
     private static readonly LEGACY_STATUS_NAMES;
+    private static readonly UNREAD_MIGRATED_STATUS_NAME;
     private static readonly MIGRATED_FROM_NAMES;
     run: (params: {
         projectUrl: string;

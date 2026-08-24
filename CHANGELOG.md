@@ -1,3 +1,10 @@
+# [1.175.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.174.3...v1.175.0) (2026-08-24)
+
+
+### Features
+
+* remove Unread status and make Awaiting Workspace the default status ([#1723](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1723)) ([0d25f46](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0d25f4680c9ea9fbbcb7807e7208671862b6827e)), closes [HiromiShikata/umino-corporait-operation#30821](https://github.com/HiromiShikata/umino-corporait-operation/issues/30821)
+
 ## [1.174.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.174.2...v1.174.3) (2026-08-24)
 
 

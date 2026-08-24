@@ -43,7 +43,7 @@ export type ConsoleTriageTab = {
     storyColors: Record<string, ConsoleColor>;
     items: ConsoleListItem[];
 };
-export type ConsoleTabName = 'workflow-blocker' | 'prs' | 'triage' | 'unread' | 'failed-preparation' | 'todo-by-human' | 'todo-by-agent' | 'stories';
+export type ConsoleTabName = 'workflow-blocker' | 'prs' | 'triage' | 'failed-preparation' | 'todo-by-human' | 'todo-by-agent' | 'stories';
 export type ConsoleStoryEntry = {
     storyName: string;
     storyOptionId: string;
@@ -64,7 +64,6 @@ export type ConsoleLists = {
     'workflow-blocker': ConsoleStatusTab;
     prs: ConsoleStatusTab;
     triage: ConsoleTriageTab;
-    unread: ConsoleStatusTab;
     'failed-preparation': ConsoleStatusTab;
     'todo-by-human': ConsoleStatusTab;
     'todo-by-agent': ConsoleStatusTab;

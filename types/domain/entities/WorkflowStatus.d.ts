@@ -1,5 +1,4 @@
 import { FieldOption } from './Project';
-export declare const DEFAULT_STATUS_NAME = "Unread";
 export declare const AWAITING_WORKSPACE_STATUS_NAME = "Awaiting Workspace";
 export declare const PREPARATION_STATUS_NAME = "Preparation";
 export declare const FAILED_PREPARATION_STATUS_NAME = "Failed Preparation";

@@ -90,7 +90,6 @@ exports.CONSOLE_DONE_TAB_NAMES = [
     'workflow-blocker',
     'prs',
     'triage',
-    'unread',
     'failed-preparation',
     'todo-by-human',
     'todo-by-agent',
@@ -98,7 +97,6 @@ exports.CONSOLE_DONE_TAB_NAMES = [
 ];
 exports.CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES = [
     'prs',
-    'unread',
     'failed-preparation',
     'todo-by-human',
     'todo-by-agent',

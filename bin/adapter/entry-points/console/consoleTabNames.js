@@ -5,7 +5,6 @@ exports.CONSOLE_LIST_TAB_NAMES = [
     'workflow-blocker',
     'prs',
     'triage',
-    'unread',
     'failed-preparation',
     'todo-by-human',
     'todo-by-agent',

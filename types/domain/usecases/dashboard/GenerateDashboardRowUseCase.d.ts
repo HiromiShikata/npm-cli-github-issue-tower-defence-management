@@ -1,6 +1,5 @@
 import { Issue } from '../../entities/Issue';
 export type DashboardRow = {
-    unread: number;
     todo: number;
     qc: number;
     fail: number;

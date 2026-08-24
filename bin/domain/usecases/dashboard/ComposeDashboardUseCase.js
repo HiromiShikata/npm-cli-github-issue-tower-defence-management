@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ComposeDashboardUseCase = exports.formatTokenRowLine = exports.formatSevenDayWindowAggregateLine = exports.SEVEN_DAY_UTILIZATION_COLUMN_START = exports.formatProjectRowLine = exports.formatProjectHeaderLine = exports.formatMachineStatusLines = exports.formatResetCountdown = exports.roundHalfToEven = exports.TOKEN_UTILIZATION_WIDTH = exports.STATUS_DOT_DISPLAY_WIDTH = exports.PROJECT_ROW_WIDTH_BUDGET = void 0;
 exports.PROJECT_ROW_WIDTH_BUDGET = 32;
 const PROJECT_COLUMNS = [
-    { header: 'unr', key: 'unread' },
     { header: 'tdo', key: 'todo' },
     { header: 'aqc', key: 'qc' },
     { header: 'fal', key: 'fail' },
@@ -127,10 +126,10 @@ const severityDot = (row) => {
     if (row.blocker === 1) {
         return '🟣';
     }
-    if (row.unread >= 10 || row.qc >= 15 || row.fail >= 5) {
+    if (row.qc >= 15 || row.fail >= 5) {
         return '🟠';
     }
-    if (row.unread >= 5 || row.qc >= 10 || row.fail >= 3) {
+    if (row.qc >= 10 || row.fail >= 3) {
         return '🟡';
     }
     return '🟢';

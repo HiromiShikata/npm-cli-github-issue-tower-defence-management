@@ -44,13 +44,11 @@ class GenerateConsoleListsUseCase {
                 'workflow-blocker': buildStatusTabFromSource(issues.filter((issue) => issue.isClosed === false), this.workflowBlockerSelector(workflowBlockerStoryName), ['done']),
                 prs: buildStatusTab((issue) => issue.status !== null &&
                     issue.status.toLowerCase() === 'awaiting quality check', ['awaiting quality check', 'done']),
-                unread: buildStatusTab((issue) => issue.status !== null && issue.status.toLowerCase() === 'unread', ['unread', 'done']),
                 'failed-preparation': buildStatusTab((issue) => issue.status === 'Failed Preparation', [
                     'failed preparation',
                     'done',
                     'preparation',
                     'icebox',
-                    'unread',
                     'in tmux by human',
                     'in tmux by agent',
                     'todo by agent',

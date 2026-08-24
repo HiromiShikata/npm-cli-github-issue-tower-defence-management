@@ -39,7 +39,6 @@ class RevertNotReadyReviewQueueIssueUseCase {
             const { issues } = await this.issueRepository.getAllIssues(projectId);
             const awaitingQualityCheckIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME);
             const relatedOpenPrUrlsByIssueUrl = this.buildRelatedOpenPrUrlsByIssueUrl(issues);
-            const unreadPullRequests = issues.filter((issue) => issue.status === WorkflowStatus_1.DEFAULT_STATUS_NAME && issue.isPr);
             const labelsNotRequiringPullRequest = (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params);
             const willBeEvaluated = (item) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(item.author, allowedIssueAuthors) &&
                 this.issueRejectionEvaluator.requiresPullRequestEvaluation(item, labelsNotRequiringPullRequest);
@@ -47,9 +46,6 @@ class RevertNotReadyReviewQueueIssueUseCase {
                 ...awaitingQualityCheckIssues
                     .filter(willBeEvaluated)
                     .flatMap((issue) => relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? []),
-                ...unreadPullRequests
-                    .filter(willBeEvaluated)
-                    .map((pullRequest) => pullRequest.url),
             ])));
             for (const issue of awaitingQualityCheckIssues) {
                 if (!(0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(issue.author, allowedIssueAuthors)) {
@@ -87,41 +83,6 @@ class RevertNotReadyReviewQueueIssueUseCase {
                 catch (error) {
                     if (isTimeoutError(error)) {
                         console.warn(`RevertNotReadyReviewQueueIssueUseCase: request timed out, skipping issue for this cycle. issueUrl: ${issue.url} error: ${error instanceof Error ? error.message : String(error)}`);
-                        continue;
-                    }
-                    throw error;
-                }
-            }
-            const projectStory = project.story;
-            for (const pullRequest of unreadPullRequests) {
-                if (!(0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(pullRequest.author, allowedIssueAuthors)) {
-                    continue;
-                }
-                try {
-                    const { rejections } = await this.issueRejectionEvaluator.evaluate(pullRequest, labelsNotRequiringPullRequest, { resolvedOpenPrByUrl });
-                    if (rejections.length > 0) {
-                        if (!pullRequest.assignees.includes(params.manager)) {
-                            continue;
-                        }
-                        try {
-                            await this.issueRepository.updateStatus(project, pullRequest, awaitingWorkspaceStatusOption.id);
-                        }
-                        catch (error) {
-                            if (isArchivedProjectItemError(error)) {
-                                console.warn(`RevertNotReadyReviewQueueIssueUseCase: project item is archived and cannot be updated, skipping revert. prUrl: ${pullRequest.url}`);
-                                continue;
-                            }
-                            throw error;
-                        }
-                        if (projectStory) {
-                            await this.issueRepository.updateStory({ ...project, story: projectStory }, pullRequest, projectStory.workflowManagementStory.id);
-                        }
-                        await this.issueCommentRepository.createComment(pullRequest, `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`);
-                    }
-                }
-                catch (error) {
-                    if (isTimeoutError(error)) {
-                        console.warn(`RevertNotReadyReviewQueueIssueUseCase: request timed out, skipping pull request for this cycle. prUrl: ${pullRequest.url} error: ${error instanceof Error ? error.message : String(error)}`);
                         continue;
                     }
                     throw error;
