@@ -188,6 +188,7 @@ export class HandleScheduledEventUseCase {
     queryToAddProject?: string | null;
     storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
+    developerAgentName?: string | null;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -436,6 +437,7 @@ ${JSON.stringify(e)}
       labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
       changeTargetPathAliases: input.changeTargetPathAliases,
       allowedIssueAuthors,
+      developerAgentName: input.developerAgentName,
     });
     await this.triagerApprovalDispatchUseCase.run({
       projectUrl: input.projectUrl,

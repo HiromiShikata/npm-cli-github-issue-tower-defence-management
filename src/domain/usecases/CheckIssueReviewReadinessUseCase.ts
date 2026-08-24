@@ -44,6 +44,7 @@ export class CheckIssueReviewReadinessUseCase {
     allowedIssueAuthors?: string[] | null;
     labelsAsLlmAgentName?: string[] | null;
     labelsNotRequiringPullRequest?: string[] | null;
+    developerAgentName?: string | null;
   }): Promise<IssueReviewReadinessResult> => {
     const issue = await this.issueRepository.getIssueByUrl(params.issueUrl);
 
@@ -88,6 +89,7 @@ export class CheckIssueReviewReadinessUseCase {
       await this.issueRejectionEvaluator.evaluate(
         issue,
         resolveLabelsNotRequiringPullRequest(params),
+        { developerAgentName: params.developerAgentName },
       );
 
     const requiredPrRejections = isPullRequestDeclaredUnnecessary(

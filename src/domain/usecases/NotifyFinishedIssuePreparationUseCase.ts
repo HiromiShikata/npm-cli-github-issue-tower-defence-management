@@ -109,6 +109,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     missingAgentName?: string | null;
     sessionErrorLine?: string | null;
     manager?: string | null;
+    developerAgentName?: string | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -256,6 +257,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       comments,
       isTrustedAuthor,
       resolveLabelsNotRequiringPullRequest(params),
+      params.developerAgentName,
     );
 
     const rejectionStatusMessage =
@@ -468,6 +470,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     comments: { author: string; content: string }[],
     isTrustedAuthor: (author: string) => boolean,
     labelsNotRequiringPullRequest: string[],
+    developerAgentName?: string | null,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -495,6 +498,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.issueRejectionEvaluator.evaluate(
         issue,
         labelsNotRequiringPullRequest,
+        { developerAgentName },
       );
     const requiredPrRejections = isPullRequestDeclaredUnnecessary(
       comments,
