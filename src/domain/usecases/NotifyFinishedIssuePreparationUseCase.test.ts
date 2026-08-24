@@ -3728,6 +3728,38 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
+    it('calls setIssueAgentField when a later bot comment carries no declaration of its own', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      const projectWithAgent = makeProjectWithAgent();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": "do something", "nextStepAgent": "impl"}\n```',
+        }),
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n\n## PR URL\nhttps://github.com/user/repo/pull/2\n',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'https://github.com/user/repo/issues/1',
+        projectWithAgent,
+        'opt-impl',
+      );
+    });
+
     it('creates a new agent option and calls setIssueAgentField when nextStepAgent is not an existing option', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
       const projectWithAgent = makeProjectWithAgent();

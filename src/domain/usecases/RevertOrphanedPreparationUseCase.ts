@@ -23,6 +23,7 @@ import {
   RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
 } from './returnedToAwaitingWorkspaceMessage';
 import { extractNextStepAgent } from './extractNextStepAgent';
+import { findLastAgentDeclaringReport } from './findLastAgentDeclaringReport';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { normalizeReportBody } from './normalizeReportBody';
 
@@ -349,17 +350,13 @@ export class RevertOrphanedPreparationUseCase {
     comments: Comment[],
     allowedIssueAuthors: string[] | null | undefined,
   ): string | null => {
-    const lastReportComment = [...comments]
-      .reverse()
-      .find(
-        (comment) =>
-          isAuthorAuthorizedForAutoStatusCheck(
-            comment.author,
-            allowedIssueAuthors,
-          ) && comment.content.startsWith('From: :robot:'),
-      );
-    return lastReportComment
-      ? extractNextStepAgent(lastReportComment.content)
+    const lastAgentDeclaringReport = findLastAgentDeclaringReport(
+      comments,
+      (author) =>
+        isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+    );
+    return lastAgentDeclaringReport
+      ? extractNextStepAgent(lastAgentDeclaringReport.content)
       : null;
   };
 
