@@ -507,7 +507,56 @@ describe('AssignNoAssigneeIssueToManagerUseCase', () => {
       });
     });
 
-    it('should rethrow non-Error thrown values without logging', async () => {
+    it('should skip issues in archived repositories', async () => {
+      const archivedIssue = {
+        ...basicIssue,
+        isRepoArchived: true,
+      };
+
+      await useCase.run({
+        issues: [archivedIssue],
+        manager: 'manager1',
+        cacheUsed: false,
+      });
+
+      expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([]);
+    });
+
+    it('should assign manager to issues in non-archived repositories', async () => {
+      const nonArchivedIssue = {
+        ...basicIssue,
+        isRepoArchived: false,
+      };
+
+      await useCase.run({
+        issues: [nonArchivedIssue],
+        manager: 'manager1',
+        cacheUsed: false,
+      });
+
+      expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+        [nonArchivedIssue, ['manager1']],
+      ]);
+    });
+
+    it('should assign manager to issues where isRepoArchived is undefined', async () => {
+      const issueWithoutArchivedFlag = {
+        ...basicIssue,
+        isRepoArchived: undefined,
+      };
+
+      await useCase.run({
+        issues: [issueWithoutArchivedFlag],
+        manager: 'manager1',
+        cacheUsed: false,
+      });
+
+      expect(mockIssueRepository.updateAssigneeList.mock.calls).toEqual([
+        [issueWithoutArchivedFlag, ['manager1']],
+      ]);
+    });
+
+  it('should rethrow non-Error thrown values without logging', async () => {
       const failingIssue = {
         ...basicIssue,
         url: 'https://github.com/testOrg/testRepo/issues/44',

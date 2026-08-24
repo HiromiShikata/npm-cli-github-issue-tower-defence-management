@@ -72,6 +72,7 @@ const buildProjectItem = (url: string, title: string): ProjectItem => ({
   updatedAt: '2026-07-06T00:00:00.000Z',
   author: '',
   closingIssueReferenceUrls: [],
+  isRepoArchived: false,
   customFields: [],
 });
 
@@ -116,6 +117,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             closingIssueReferenceUrls: [
               'https://github.com/HiromiShikata/test-repository/issues/7',
             ],
+            isRepoArchived: false,
             customFields: [
               { name: 'nextActionDate', value: '2000-01-01' },
               { name: 'nextActionHour', value: '1' },
@@ -153,6 +155,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             'https://github.com/HiromiShikata/test-repository/issues/7',
           ],
           agent: null,
+          isRepoArchived: false,
         },
       },
       {
@@ -172,6 +175,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             updatedAt: '2024-01-02T00:00:00Z',
             author: '',
             closingIssueReferenceUrls: [],
+            isRepoArchived: false,
             customFields: [
               {
                 name: 'DependedIssueUrls',
@@ -210,6 +214,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           author: '',
           closingIssueReferenceUrls: [],
           agent: null,
+          isRepoArchived: false,
         },
       },
     ];
