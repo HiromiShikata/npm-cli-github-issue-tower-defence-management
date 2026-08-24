@@ -402,7 +402,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     awaitingWorkspaceStatusOption: { id: string },
   ): Promise<void> => {
     const tomorrow = issueReactivationTriggerStartOfTomorrow(new Date());
-    await this.issueRepository.updateNextActionDate(issue.url, project, tomorrow);
+    await this.issueRepository.updateNextActionDate(
+      issue.url,
+      project,
+      tomorrow,
+    );
     issue.status = AWAITING_WORKSPACE_STATUS_NAME;
     await this.issueRepository.update(issue, project);
     await this.issueRepository.updateStatus(
