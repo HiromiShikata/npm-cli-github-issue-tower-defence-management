@@ -249,6 +249,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 author: item.author,
                 closingIssueReferenceUrls: item.closingIssueReferenceUrls,
                 agent,
+                isRepoArchived: item.isRepoArchived,
             };
         };
         this.restoreIssuesFromCache = (rawIssues) => {

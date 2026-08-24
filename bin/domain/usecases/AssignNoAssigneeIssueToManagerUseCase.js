@@ -10,6 +10,9 @@ class AssignNoAssigneeIssueToManagerUseCase {
                 ? input.autoAssignManagerAuthors
                 : null;
             const isAssignable = (target) => {
+                if (target.isRepoArchived) {
+                    return false;
+                }
                 if (target.assignees.length > 0 || target.state !== 'OPEN') {
                     return false;
                 }

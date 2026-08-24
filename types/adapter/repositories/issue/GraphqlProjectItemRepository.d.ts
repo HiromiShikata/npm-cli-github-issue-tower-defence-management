@@ -15,6 +15,7 @@ export type ProjectItem = {
     updatedAt: string;
     author: string;
     closingIssueReferenceUrls: string[];
+    isRepoArchived: boolean;
     customFields: {
         name: string;
         value: string | null;

@@ -9,27 +9,40 @@ class SetupTowerDefenceProjectUseCase {
         this.run = async (params) => {
             const project = await this.projectRepository.getByUrl(params.projectUrl);
             const existing = project.status.statuses;
+            const awaitingWorkspaceStatus = existing.find((s) => s.name === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME);
+            let issuesPromise = null;
+            const fetchIssues = () => {
+                if (!issuesPromise) {
+                    issuesPromise = this.issueRepository.getAllIssues(project.id);
+                }
+                return issuesPromise;
+            };
             const unreadStatus = existing.find((s) => s.name === SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME);
-            if (unreadStatus) {
-                const awaitingWorkspaceStatus = existing.find((s) => s.name === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME);
-                if (awaitingWorkspaceStatus) {
-                    const { issues } = await this.issueRepository.getAllIssues(project.id);
-                    const unreadIssues = issues.filter((issue) => issue.status ===
-                        SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME);
-                    for (const issue of unreadIssues) {
-                        await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatus.id);
-                    }
+            if (unreadStatus && awaitingWorkspaceStatus) {
+                const { issues } = await fetchIssues();
+                const unreadIssues = issues.filter((issue) => issue.status ===
+                    SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME);
+                for (const issue of unreadIssues) {
+                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatus.id);
                 }
             }
             const awaitingTaskBreakdownStatus = existing.find((s) => s.name === WorkflowStatus_1.LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME);
             if (awaitingTaskBreakdownStatus) {
                 const todoStatus = existing.find((s) => s.name === WorkflowStatus_1.TODO_STATUS_NAME);
                 if (todoStatus) {
-                    const { issues } = await this.issueRepository.getAllIssues(project.id);
+                    const { issues } = await fetchIssues();
                     const awaitingTaskBreakdownIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME);
                     for (const issue of awaitingTaskBreakdownIssues) {
                         await this.issueRepository.updateStatus(project, issue, todoStatus.id);
                     }
+                }
+            }
+            if (awaitingWorkspaceStatus) {
+                const { issues } = await fetchIssues();
+                const limboIssues = issues.filter((issue) => issue.state === 'OPEN' &&
+                    (issue.status === WorkflowStatus_1.DONE_STATUS_NAME || issue.status === null));
+                for (const issue of limboIssues) {
+                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatus.id);
                 }
             }
             const hasMigratedFromName = existing.some((s) => SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES.has(s.name));

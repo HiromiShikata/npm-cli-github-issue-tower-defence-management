@@ -84,6 +84,7 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
               }
               repository {
                 nameWithOwner
+                isArchived
               }
             }
             ... on PullRequest {
@@ -108,6 +109,7 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
               }
               repository {
                 nameWithOwner
+                isArchived
               }
               closingIssuesReferences(first: 50) {
                 nodes {
@@ -358,6 +360,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                 closingIssueReferenceUrls: item.content.closingIssuesReferences?.nodes
                     ?.map((node) => node.url)
                     .filter((url) => url.length > 0) || [],
+                isRepoArchived: item.content.repository.isArchived ?? false,
                 customFields: item.fieldValues.nodes
                     .filter((field) => !!field.field)
                     .map((field) => {
@@ -659,6 +662,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
       repository {
         nameWithOwner
+        isArchived
       }
       projectItems(first: 10) {
         nodes {
@@ -737,6 +741,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       }
       repository {
         nameWithOwner
+        isArchived
       }
       closingIssuesReferences(first: 50) {
         nodes {
@@ -852,6 +857,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                 closingIssueReferenceUrls: content.closingIssuesReferences?.nodes
                     ?.map((node) => node.url)
                     .filter((url) => url.length > 0) || [],
+                isRepoArchived: content.repository.isArchived ?? false,
                 customFields: item.fieldValues.nodes
                     .filter((field) => !!field.field)
                     .map((field) => {

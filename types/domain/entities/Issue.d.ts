@@ -26,5 +26,6 @@ export type Issue = {
     author: string;
     closingIssueReferenceUrls: string[];
     agent: string | null;
+    isRepoArchived?: boolean;
 };
 //# sourceMappingURL=Issue.d.ts.map

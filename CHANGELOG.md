@@ -1,3 +1,16 @@
+# [1.177.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.176.0...v1.177.0) (2026-08-24)
+
+
+### Bug Fixes
+
+* **console:** apply snapshot freshness check to overlay story entries in resolveItemStory ([#1732](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1732)) ([44268bc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/44268bcea8f0dd9068504aeb673d6a6def1a4187)), closes [#1730](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1730)
+* **SetupTowerDefenceProjectUseCase:** move open issues with Done or null status to Awaiting Workspace ([#1736](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1736)) ([5afbcf1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5afbcf17167981683b78ef9e42c40701b203e3d5)), closes [HiromiShikata/umino-corporait-operation#30853](https://github.com/HiromiShikata/umino-corporait-operation/issues/30853)
+
+
+### Features
+
+* **assign:** skip assignee update for issues in archived repositories ([#1733](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1733)) ([0e6d0be](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0e6d0beaf0adcabe03429a80c6ff4674258b2876)), closes [#1731](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1731)
+
 # [1.176.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.175.1...v1.176.0) (2026-08-24)
 
 
