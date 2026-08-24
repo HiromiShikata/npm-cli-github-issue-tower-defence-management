@@ -252,6 +252,7 @@ ${JSON.stringify(e)}
                 labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
                 changeTargetPathAliases: input.changeTargetPathAliases,
                 allowedIssueAuthors,
+                developerAgentName: input.developerAgentName,
             });
             await this.triagerApprovalDispatchUseCase.run({
                 projectUrl: input.projectUrl,

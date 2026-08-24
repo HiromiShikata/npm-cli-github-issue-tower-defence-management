@@ -164,6 +164,7 @@ class HandleScheduledEventUseCaseHandler {
                 claudeCodeOauthTokenListJsonPath: readmeConfig.claudeCodeOauthTokenListJsonPath ??
                     input.claudeCodeOauthTokenListJsonPath,
                 thresholdForAutoReject: readmeConfig.thresholdForAutoReject ?? input.thresholdForAutoReject,
+                developerAgentName: readmeConfig.developerAgentName ?? input.developerAgentName ?? null,
                 startPreparation: input.startPreparation
                     ? {
                         ...input.startPreparation,

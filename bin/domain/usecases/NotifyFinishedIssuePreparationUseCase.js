@@ -110,7 +110,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.patchConsoleTab(issue);
                 return;
             }
-            const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
+            const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), params.developerAgentName);
             const rejectionStatusMessage = rejections.length > 0
                 ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
                 : 'Auto Status Check: APPROVED';
@@ -200,7 +200,7 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.issueCommentRepository.createComment(issue, `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`);
         };
         this.isAuthorTrusted = (author, allowedIssueAuthors) => allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
-        this.collectRejections = async (issue, comments, isTrustedAuthor, labelsNotRequiringPullRequest) => {
+        this.collectRejections = async (issue, comments, isTrustedAuthor, labelsNotRequiringPullRequest, developerAgentName) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];
             if (!lastComment ||
@@ -217,7 +217,7 @@ class NotifyFinishedIssuePreparationUseCase {
                     detail: 'REPORT_HAS_NEXT_STEP',
                 });
             }
-            const { rejections: prRejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsNotRequiringPullRequest);
+            const { rejections: prRejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsNotRequiringPullRequest, { developerAgentName });
             const requiredPrRejections = (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor)
                 ? prRejections.filter((rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND')
                 : prRejections;

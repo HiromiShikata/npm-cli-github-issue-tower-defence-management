@@ -40,7 +40,7 @@ class CheckIssueReviewReadinessUseCase {
                     detail: 'REPORT_HAS_NEXT_STEP',
                 });
             }
-            const { rejections: prRejections } = await this.issueRejectionEvaluator.evaluate(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params));
+            const { rejections: prRejections } = await this.issueRejectionEvaluator.evaluate(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), { developerAgentName: params.developerAgentName });
             const requiredPrRejections = (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor)
                 ? prRejections.filter((rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND')
                 : prRejections;

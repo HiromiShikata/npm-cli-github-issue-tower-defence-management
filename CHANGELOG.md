@@ -1,3 +1,10 @@
+# [1.176.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.175.1...v1.176.0) (2026-08-24)
+
+
+### Features
+
+* add developerAgentName config field to make developer agent name configurable ([#1729](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1729)) ([52a9bdf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/52a9bdf3008a9597c22856463a7610d2ccc9bfc2)), closes [#1728](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1728)
+
 ## [1.175.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.175.0...v1.175.1) (2026-08-24)
 
 

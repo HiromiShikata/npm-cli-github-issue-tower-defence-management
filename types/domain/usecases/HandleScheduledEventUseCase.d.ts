@@ -106,6 +106,7 @@ export declare class HandleScheduledEventUseCase {
         queryToAddProject?: string | null;
         storyProgressCommentEnabled?: boolean;
         dailySecurityScan?: DailySecurityScanConfig | null;
+        developerAgentName?: string | null;
     }) => Promise<{
         project: Project;
         issues: Issue[];

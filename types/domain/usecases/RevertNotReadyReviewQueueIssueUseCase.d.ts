@@ -15,6 +15,7 @@ export declare class RevertNotReadyReviewQueueIssueUseCase {
         labelsNotRequiringPullRequest?: string[] | null;
         changeTargetPathAliases?: Record<string, string> | null;
         allowedIssueAuthors?: string[] | null;
+        developerAgentName?: string | null;
     }) => Promise<void>;
     private buildRelatedOpenPrUrlsByIssueUrl;
 }
