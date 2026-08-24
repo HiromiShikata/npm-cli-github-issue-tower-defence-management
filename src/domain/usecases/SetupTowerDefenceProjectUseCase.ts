@@ -51,7 +51,8 @@ export class SetupTowerDefenceProjectUseCase {
       (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
     );
 
-    let issuesPromise: ReturnType<IssueRepository['getAllIssues']> | null = null;
+    let issuesPromise: ReturnType<IssueRepository['getAllIssues']> | null =
+      null;
     const fetchIssues = () => {
       if (!issuesPromise) {
         issuesPromise = this.issueRepository.getAllIssues(project.id);
