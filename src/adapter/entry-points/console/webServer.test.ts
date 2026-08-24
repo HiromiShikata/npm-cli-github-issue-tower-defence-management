@@ -2067,6 +2067,25 @@ describe('webServer token cookie redirect', () => {
     }
   });
 
+  it('sets a token cookie that survives a browser restart by carrying a long Max-Age', async () => {
+    const { server, tmpDir } = await startWithUiDist();
+    try {
+      const response = await requestServer(
+        server,
+        `/projects/acme?k=${testToken}`,
+      );
+      const cookie = firstSetCookie(response.setCookie);
+      const maxAgeAttribute = /(?:^|;\s*)Max-Age=(\d+)\s*(?:;|$)/i.exec(cookie);
+      expect(maxAgeAttribute).not.toBeNull();
+      expect(Number((maxAgeAttribute ?? ['', '0'])[1])).toBeGreaterThanOrEqual(
+        30 * 24 * 60 * 60,
+      );
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('redirects a per-project tab route carrying ?k= and preserves other query parameters', async () => {
     const { server, tmpDir } = await startWithUiDist();
     try {
