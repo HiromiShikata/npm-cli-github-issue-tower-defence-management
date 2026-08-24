@@ -47,7 +47,7 @@ const listPayload = (tab: string) => ({
             createdAt: '2026-06-17T00:00:00.000Z',
           },
         ]
-      : tab === 'unread'
+      : tab === 'todo-by-human'
         ? [
             {
               number: 866,
@@ -60,7 +60,7 @@ const listPayload = (tab: string) => ({
               isPr: false,
               relatedOpenPullRequestUrls: [],
               story: 'TDPM Console port',
-              status: 'Unread',
+              status: 'Todo by human',
               nextActionDate: null,
               nextActionHour: null,
               dependedIssueUrls: [],
@@ -271,7 +271,7 @@ describe('ConsolePage', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
 
-    fireEvent.click(getByText('Unread'));
+    fireEvent.click(getByText('Todo by human'));
     await waitFor(() => {
       expect(
         getByText('Notify finished issue preparation'),
@@ -288,10 +288,9 @@ describe('ConsolePage', () => {
     });
     const tabs = within(tabBar());
     expect(tabs.queryByText('Awaiting Quality Check')).not.toBeNull();
-    expect(tabs.queryByText('Unread')).not.toBeNull();
+    expect(tabs.queryByText('Todo by human')).not.toBeNull();
     expect(tabs.queryByText('Triage')).toBeNull();
     expect(tabs.queryByText('Failed Preparation')).toBeNull();
-    expect(tabs.queryByText('Todo by human')).toBeNull();
   });
 
   it('does not render the project header bar above the tab bar', async () => {
@@ -855,7 +854,7 @@ describe('ConsolePage auto-advance tab', () => {
       });
       expect(
         within(tabBar())
-          .getByText('Unread')
+          .getByText('Todo by human')
           .closest('a')
           ?.getAttribute('aria-current'),
       ).toBe('page');

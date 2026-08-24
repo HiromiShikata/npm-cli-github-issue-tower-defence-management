@@ -23,7 +23,6 @@ const counts: Record<ConsoleTabName, number> = {
   'workflow-blocker': 5,
   prs: 35,
   triage: 132,
-  unread: 18,
   'failed-preparation': 2,
   'todo-by-human': 66,
   'todo-by-agent': 24,
@@ -44,9 +43,8 @@ export const ZeroCountTabsHidden: Story = {
       'workflow-blocker': 0,
       prs: 35,
       triage: 0,
-      unread: 18,
       'failed-preparation': 0,
-      'todo-by-human': 0,
+      'todo-by-human': 18,
       'todo-by-agent': 0,
       stories: 0,
     },
@@ -60,9 +58,8 @@ export const ZeroCountActiveTabStaysVisible: Story = {
       'workflow-blocker': 0,
       prs: 35,
       triage: 0,
-      unread: 18,
       'failed-preparation': 0,
-      'todo-by-human': 0,
+      'todo-by-human': 18,
       'todo-by-agent': 0,
       stories: 0,
     },
@@ -71,12 +68,11 @@ export const ZeroCountActiveTabStaysVisible: Story = {
 
 export const AfterAutoAdvanceToNextTab: Story = {
   args: {
-    activeTab: 'unread',
+    activeTab: 'failed-preparation',
     counts: {
       'workflow-blocker': 0,
       prs: 0,
       triage: 0,
-      unread: 7,
       'failed-preparation': 2,
       'todo-by-human': 4,
       'todo-by-agent': 0,

@@ -110,7 +110,6 @@ const AWAITING_WORKSPACE_OPTION: ConsoleFixtureFieldOption = {
 };
 
 const STATUS_OPTIONS: ConsoleFixtureFieldOption[] = [
-  { id: 'f75ad846', name: 'Unread', color: 'ORANGE' },
   AWAITING_WORKSPACE_OPTION,
   { id: 'f57f1ce9', name: 'Preparation', color: 'YELLOW' },
   { id: 'fd313492', name: 'Failed Preparation', color: 'RED' },
@@ -236,22 +235,6 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
       '2026-06-10T11:42:00.000Z',
     ),
   ],
-  unread: [
-    issueItem(
-      845,
-      'Scaffold React console UI under entry-points with build bundling',
-      'UNR00845',
-      'TDPM Console port',
-      '2026-06-16T22:01:55.000Z',
-    ),
-    issueItem(
-      853,
-      'Add server-side console API handlers for read and operation endpoints',
-      'UNR00853',
-      'TDPM Console port',
-      '2026-06-17T05:48:09.000Z',
-    ),
-  ],
   'failed-preparation': [
     {
       ...issueItem(
@@ -295,7 +278,7 @@ const CONSOLE_E2E_STORIES_SNAPSHOT = {
       storyName: 'TDPM Console port',
       storyOptionId: '1491051e',
       color: 'BLUE',
-      openItemCount: 6,
+      openItemCount: 4,
     },
     {
       storyName: 'Publish product documentation site',

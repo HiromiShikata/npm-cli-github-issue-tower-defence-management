@@ -17,7 +17,6 @@ const STORY_OPTIONS: FieldOption[] = [
 ];
 
 const STATUS_OPTIONS: FieldOption[] = [
-  storyOption('st-unread', 'Unread', 'ORANGE'),
   storyOption('st-aw', 'Awaiting Workspace', 'BLUE'),
   storyOption('st-prep', 'Preparation', 'YELLOW'),
   storyOption('st-failed', 'Failed Preparation', 'RED'),
@@ -114,45 +113,45 @@ describe('GenerateConsoleListsUseCase', () => {
 
   describe('common actionable filter', () => {
     it('rejects closed issues', () => {
-      const result = run([makeIssue({ status: 'Unread', isClosed: true })]);
-      expect(result.unread.items).toHaveLength(0);
+      const result = run([makeIssue({ status: 'Todo by human', isClosed: true })]);
+      expect(result['todo-by-human'].items).toHaveLength(0);
     });
 
     it('rejects issues not assigned to the assignee login', () => {
       const result = run([
-        makeIssue({ status: 'Unread', assignees: ['other-person'] }),
+        makeIssue({ status: 'Todo by human', assignees: ['other-person'] }),
       ]);
-      expect(result.unread.items).toHaveLength(0);
+      expect(result['todo-by-human'].items).toHaveLength(0);
     });
 
     it('rejects issues with a depended issue url', () => {
       const result = run([
         makeIssue({
-          status: 'Unread',
+          status: 'Todo by human',
           dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
         }),
       ]);
-      expect(result.unread.items).toHaveLength(0);
+      expect(result['todo-by-human'].items).toHaveLength(0);
     });
 
     it('rejects issues with a next action date', () => {
       const result = run([
         makeIssue({
-          status: 'Unread',
+          status: 'Todo by human',
           nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
         }),
       ]);
-      expect(result.unread.items).toHaveLength(0);
+      expect(result['todo-by-human'].items).toHaveLength(0);
     });
 
     it('rejects issues with a next action hour', () => {
-      const result = run([makeIssue({ status: 'Unread', nextActionHour: 9 })]);
-      expect(result.unread.items).toHaveLength(0);
+      const result = run([makeIssue({ status: 'Todo by human', nextActionHour: 9 })]);
+      expect(result['todo-by-human'].items).toHaveLength(0);
     });
 
     it('accepts an issue that passes every actionable condition', () => {
-      const result = run([makeIssue({ status: 'Unread' })]);
-      expect(result.unread.items).toHaveLength(1);
+      const result = run([makeIssue({ status: 'Todo by human' })]);
+      expect(result['todo-by-human'].items).toHaveLength(1);
     });
   });
 
@@ -161,17 +160,9 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([
         makeIssue({ status: 'awaiting quality check' }),
         makeIssue({ status: 'Awaiting Quality Check' }),
-        makeIssue({ status: 'Unread' }),
+        makeIssue({ status: 'Awaiting Workspace' }),
       ]);
       expect(result.prs.items).toHaveLength(2);
-    });
-
-    it('selects unread items case-insensitively', () => {
-      const result = run([
-        makeIssue({ status: 'UNREAD' }),
-        makeIssue({ status: 'Awaiting Quality Check' }),
-      ]);
-      expect(result.unread.items).toHaveLength(1);
     });
 
     it('selects failed preparation items only with exact case', () => {
@@ -189,7 +180,7 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ status: 'Todo by human' }),
         makeIssue({ status: 'Todo' }),
         makeIssue({ status: 'todo by human' }),
-        makeIssue({ status: 'Unread' }),
+        makeIssue({ status: 'Awaiting Workspace' }),
       ]);
       expect(result['todo-by-human'].items.map((item) => item.number)).toEqual([
         1, 2,
@@ -208,7 +199,7 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ status: 'Todo by agent' }),
         makeIssue({ status: 'todo by agent' }),
         makeIssue({ status: 'Todo by human' }),
-        makeIssue({ status: 'Unread' }),
+        makeIssue({ status: 'Awaiting Workspace' }),
       ]);
       expect(result['todo-by-agent'].items.map((item) => item.number)).toEqual([
         1,
@@ -428,7 +419,6 @@ describe('GenerateConsoleListsUseCase', () => {
       ...result['workflow-blocker'].items,
       ...result.prs.items,
       ...result.triage.items,
-      ...result.unread.items,
       ...result['failed-preparation'].items,
       ...result['todo-by-human'].items,
     ];
@@ -478,16 +468,15 @@ describe('GenerateConsoleListsUseCase', () => {
           story: 'regular / WORKFLOW BLOCKER',
           status: 'In Tmux by human',
         }),
-        makeIssue({ status: 'Unread' }),
+        makeIssue({ story: 'no story', status: 'Awaiting Workspace' }),
       ]);
       expect(
         result['workflow-blocker'].items.map((item) => item.status).sort(),
       ).toEqual(['In Tmux by agent', 'In Tmux by human']);
-      expect(result.unread.items.map((item) => item.number)).toEqual([3]);
+      expect(result.triage.items.map((item) => item.number)).toEqual([3]);
       expect(
         result.prs.items
           .concat(result.triage.items)
-          .concat(result.unread.items)
           .concat(result['failed-preparation'].items)
           .concat(result['todo-by-human'].items)
           .some((item) => item.status === 'In Tmux by agent'),
@@ -499,13 +488,13 @@ describe('GenerateConsoleListsUseCase', () => {
     it('projects the expected keys and never includes a body field', () => {
       const result = run([
         makeIssue({
-          status: 'Unread',
+          status: 'Awaiting Quality Check',
           story: 'Story Alpha',
           labels: ['bug', 'p1'],
           isPr: true,
         }),
       ]);
-      const item = result.unread.items[0];
+      const item = result.prs.items[0];
       expect(Object.keys(item).sort()).toEqual(
         [
           'agent',
@@ -562,44 +551,44 @@ describe('GenerateConsoleListsUseCase', () => {
     it('emits null reactivation-trigger fields and an empty depended url array when absent', () => {
       const result = run([
         makeIssue({
-          status: 'Unread',
+          status: 'Awaiting Quality Check',
           nextActionDate: null,
           nextActionHour: null,
           dependedIssueUrls: [],
         }),
       ]);
-      const item = result.unread.items[0];
-      expect(item.status).toBe('Unread');
+      const item = result.prs.items[0];
+      expect(item.status).toBe('Awaiting Quality Check');
       expect(item.nextActionDate).toBeNull();
       expect(item.nextActionHour).toBeNull();
       expect(item.dependedIssueUrls).toEqual([]);
     });
 
     it('maps a null story to an empty string', () => {
-      const result = run([makeIssue({ status: 'Unread', story: null })]);
-      expect(result.unread.items[0].story).toBe('');
+      const result = run([makeIssue({ status: 'Awaiting Quality Check', story: null })]);
+      expect(result.prs.items[0].story).toBe('');
     });
 
     it('serializes createdAt as an ISO string keeping milliseconds', () => {
       const result = run([
         makeIssue({
-          status: 'Unread',
+          status: 'Awaiting Quality Check',
           createdAt: new Date('2026-06-13T08:18:45.000Z'),
         }),
       ]);
-      expect(result.unread.items[0].createdAt).toBe('2026-06-13T08:18:45.000Z');
+      expect(result.prs.items[0].createdAt).toBe('2026-06-13T08:18:45.000Z');
     });
   });
 
   describe('story order stable sort', () => {
     it('sorts by story field order and places unknown stories last', () => {
       const result = run([
-        makeIssue({ status: 'Unread', story: 'Story Beta' }),
-        makeIssue({ status: 'Unread', story: 'Unmapped Story' }),
-        makeIssue({ status: 'Unread', story: 'Story Alpha' }),
-        makeIssue({ status: 'Unread', story: 'Story Beta' }),
+        makeIssue({ status: 'Todo by human', story: 'Story Beta' }),
+        makeIssue({ status: 'Todo by human', story: 'Unmapped Story' }),
+        makeIssue({ status: 'Todo by human', story: 'Story Alpha' }),
+        makeIssue({ status: 'Todo by human', story: 'Story Beta' }),
       ]);
-      expect(result.unread.items.map((i) => i.story)).toEqual([
+      expect(result['todo-by-human'].items.map((i) => i.story)).toEqual([
         'Story Alpha',
         'Story Beta',
         'Story Beta',
@@ -609,10 +598,10 @@ describe('GenerateConsoleListsUseCase', () => {
 
     it('keeps original order between items sharing the same story (stable)', () => {
       const result = run([
-        makeIssue({ status: 'Unread', story: 'Story Alpha', title: 'first' }),
-        makeIssue({ status: 'Unread', story: 'Story Alpha', title: 'second' }),
+        makeIssue({ status: 'Todo by human', story: 'Story Alpha', title: 'first' }),
+        makeIssue({ status: 'Todo by human', story: 'Story Alpha', title: 'second' }),
       ]);
-      expect(result.unread.items.map((i) => i.title)).toEqual([
+      expect(result['todo-by-human'].items.map((i) => i.title)).toEqual([
         'first',
         'second',
       ]);
@@ -620,11 +609,11 @@ describe('GenerateConsoleListsUseCase', () => {
 
     it('groups items of different unknown stories contiguously even when interleaved by original position', () => {
       const result = run([
-        makeIssue({ status: 'Unread', story: 'Unknown Story A' }),
-        makeIssue({ status: 'Unread', story: 'Unknown Story B' }),
-        makeIssue({ status: 'Unread', story: 'Unknown Story A' }),
+        makeIssue({ status: 'Todo by human', story: 'Unknown Story A' }),
+        makeIssue({ status: 'Todo by human', story: 'Unknown Story B' }),
+        makeIssue({ status: 'Todo by human', story: 'Unknown Story A' }),
       ]);
-      expect(result.unread.items.map((i) => i.story)).toEqual([
+      expect(result['todo-by-human'].items.map((i) => i.story)).toEqual([
         'Unknown Story A',
         'Unknown Story A',
         'Unknown Story B',
@@ -636,13 +625,6 @@ describe('GenerateConsoleListsUseCase', () => {
     it('excludes awaiting quality check and done from prs status options', () => {
       const names = run([]).prs.statusOptions.map((o) => o.name);
       expect(names).not.toContain('Awaiting Quality Check');
-      expect(names).not.toContain('Done');
-      expect(names).toContain('Unread');
-    });
-
-    it('excludes unread and done from unread status options', () => {
-      const names = run([]).unread.statusOptions.map((o) => o.name);
-      expect(names).not.toContain('Unread');
       expect(names).not.toContain('Done');
       expect(names).toContain('Awaiting Workspace');
     });
@@ -656,7 +638,6 @@ describe('GenerateConsoleListsUseCase', () => {
         'Done',
         'Preparation',
         'Icebox',
-        'Unread',
         'In Tmux by human',
         'In Tmux by agent',
         'Todo by agent',
@@ -700,12 +681,9 @@ describe('GenerateConsoleListsUseCase', () => {
   });
 
   describe('storyColors shape per tab', () => {
-    it('uses object color values for prs, unread and failed-preparation', () => {
+    it('uses object color values for prs and failed-preparation', () => {
       const result = run([]);
       expect(result.prs.storyColors['Story Alpha']).toEqual({ color: 'BLUE' });
-      expect(result.unread.storyColors['Story Beta']).toEqual({
-        color: 'GREEN',
-      });
       expect(result['failed-preparation'].storyColors['Story Alpha']).toEqual({
         color: 'BLUE',
       });
@@ -723,7 +701,6 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([]);
       expect(result.prs.generatedAt).toBe(generatedAt);
       expect(result.triage.generatedAt).toBe(generatedAt);
-      expect(result.unread.generatedAt).toBe(generatedAt);
       expect(result['failed-preparation'].generatedAt).toBe(generatedAt);
       expect(generatedAt).not.toMatch(/\.\d{3}Z$/);
     });
@@ -732,7 +709,6 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([]);
       expect(result.prs.pjcode).toBe('demo');
       expect(result.triage.pjcode).toBe('demo');
-      expect(result.unread.pjcode).toBe('demo');
       expect(result['failed-preparation'].pjcode).toBe('demo');
     });
   });
@@ -803,14 +779,13 @@ describe('GenerateConsoleListsUseCase', () => {
 
     it('degrades story order, colors and triage options gracefully', () => {
       const result = run(
-        [makeIssue({ status: 'Unread', story: 'no story' })],
+        [makeIssue({ story: 'no story' })],
         projectNoStory,
       );
       expect(result.prs.storyOrder).toEqual([]);
       expect(result.prs.storyColors).toEqual({});
       expect(result.triage.storyOptions).toEqual([]);
       expect(result.triage.storyColors).toEqual({});
-      expect(result.unread.items).toHaveLength(1);
       expect(result.triage.items).toHaveLength(1);
     });
   });
@@ -902,13 +877,13 @@ describe('GenerateConsoleListsUseCase', () => {
 
   describe('agent field propagation', () => {
     it('copies the agent value from the issue into the list item', () => {
-      const result = run([makeIssue({ status: 'Unread', agent: 'developer' })]);
-      expect(result.unread.items[0].agent).toBe('developer');
+      const result = run([makeIssue({ status: 'Awaiting Quality Check', agent: 'developer' })]);
+      expect(result.prs.items[0].agent).toBe('developer');
     });
 
     it('preserves null when the issue has no agent set', () => {
-      const result = run([makeIssue({ status: 'Unread', agent: null })]);
-      expect(result.unread.items[0].agent).toBeNull();
+      const result = run([makeIssue({ status: 'Awaiting Quality Check', agent: null })]);
+      expect(result.prs.items[0].agent).toBeNull();
     });
 
     it('copies the agent into every tab that shows the issue', () => {

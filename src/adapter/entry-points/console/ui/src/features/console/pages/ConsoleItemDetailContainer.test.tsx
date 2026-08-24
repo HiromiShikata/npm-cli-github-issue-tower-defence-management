@@ -163,7 +163,7 @@ describe('ConsoleItemDetailContainer', () => {
     }));
     const { container, getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
-        tab="unread"
+        tab="todo-by-human"
         item={issueItem}
         caches={buildCaches()}
         operations={operations}
@@ -253,7 +253,7 @@ describe('ConsoleItemDetailContainer', () => {
     }));
     const { container, getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
-        tab="unread"
+        tab="todo-by-human"
         item={issueItem}
         caches={buildCaches()}
         operations={operations}
@@ -420,7 +420,7 @@ describe('ConsoleItemDetailContainer', () => {
       getByText,
     } = render(
       <ConsoleItemDetailContainer
-        tab="unread"
+        tab="todo-by-human"
         item={issueItemWithRelatedPullRequest}
         caches={buildCaches({
           relatedPrs: [relatedPullRequest],
