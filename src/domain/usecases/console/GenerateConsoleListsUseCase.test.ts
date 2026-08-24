@@ -472,7 +472,7 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(
         result['workflow-blocker'].items.map((item) => item.status).sort(),
       ).toEqual(['In Tmux by agent', 'In Tmux by human']);
-      expect(result.triage.items.map((item) => item.number)).toEqual([3]);
+      expect(result.triage.items.map((item) => item.number)).toEqual([3, 2]);
       expect(
         result.prs.items
           .concat(result.triage.items)
