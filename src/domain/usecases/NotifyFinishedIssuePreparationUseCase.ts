@@ -224,10 +224,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     const isTrustedAuthor = (author: string): boolean =>
       this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
 
-    const lastAgentReport = findLastAgentReport(
-      comments,
-      isTrustedAuthor,
-    );
+    const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;

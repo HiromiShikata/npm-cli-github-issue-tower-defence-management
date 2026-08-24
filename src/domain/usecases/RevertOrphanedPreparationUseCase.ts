@@ -350,10 +350,8 @@ export class RevertOrphanedPreparationUseCase {
     comments: Comment[],
     allowedIssueAuthors: string[] | null | undefined,
   ): string | null => {
-    const lastAgentReport = findLastAgentReport(
-      comments,
-      (author) =>
-        isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+    const lastAgentReport = findLastAgentReport(comments, (author) =>
+      isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
     );
     return lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
