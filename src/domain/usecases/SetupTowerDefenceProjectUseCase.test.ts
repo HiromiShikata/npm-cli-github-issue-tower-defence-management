@@ -7,7 +7,6 @@ import { Issue } from '../entities/Issue';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
-  DEFAULT_STATUS_NAME,
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   ICEBOX_STATUS_NAME,
@@ -80,9 +79,8 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
 });
 
 describe('SetupTowerDefenceProjectUseCase', () => {
-  it('should define exactly the 11 required statuses in the documented order with the documented colors and no descriptions', () => {
+  it('should define exactly the 10 required statuses in the documented order with the documented colors and no descriptions', () => {
     expect(REQUIRED_WORKFLOW_STATUSES).toEqual([
-      { name: DEFAULT_STATUS_NAME, color: 'ORANGE' },
       { name: AWAITING_WORKSPACE_STATUS_NAME, color: 'BLUE' },
       { name: PREPARATION_STATUS_NAME, color: 'YELLOW' },
       { name: FAILED_PREPARATION_STATUS_NAME, color: 'RED' },
@@ -190,9 +188,9 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
     const statuses: FieldOption[] = [
       {
-        id: 'unread-id',
-        name: DEFAULT_STATUS_NAME,
-        color: 'ORANGE',
+        id: 'aws-id',
+        name: AWAITING_WORKSPACE_STATUS_NAME,
+        color: 'BLUE',
         description: '',
       },
       {
@@ -222,13 +220,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       project,
       [
         {
-          id: 'unread-id',
-          name: DEFAULT_STATUS_NAME,
-          color: 'ORANGE',
-          description: '',
-        },
-        {
-          id: null,
+          id: 'aws-id',
           name: AWAITING_WORKSPACE_STATUS_NAME,
           color: 'BLUE',
           description: '',
@@ -328,7 +320,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
     expect(payload.map((status) => status.name)).toEqual([
-      DEFAULT_STATUS_NAME,
       AWAITING_WORKSPACE_STATUS_NAME,
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
@@ -369,7 +360,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     expect(payload[1].color).toBe(REQUIRED_WORKFLOW_STATUSES[1].color);
   });
 
-  it('should reuse the default template "Todo" option ID for Unread so a newly added item lands in Unread', async () => {
+  it('should reuse the default template "Todo" option ID for Awaiting Workspace so a newly added item lands in Awaiting Workspace', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
@@ -411,8 +402,8 @@ describe('SetupTowerDefenceProjectUseCase', () => {
 
     expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
-    const unreadEntry = payload.find((s) => s.name === DEFAULT_STATUS_NAME);
-    expect(unreadEntry?.id).toBe('template-todo');
+    const awaitingWorkspaceEntry = payload.find((s) => s.name === AWAITING_WORKSPACE_STATUS_NAME);
+    expect(awaitingWorkspaceEntry?.id).toBe('template-todo');
     const todoByHumanEntry = payload.find((s) => s.name === TODO_STATUS_NAME);
     expect(todoByHumanEntry?.id).toBeNull();
     expect(payload.some((s) => s.name === LEGACY_TODO_STATUS_NAME)).toBe(false);
@@ -453,7 +444,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
     const inTmuxEntry = payload.find((s) => s.name === IN_TMUX_STATUS_NAME);
     expect(inTmuxEntry).toBeDefined();
-    expect(inTmuxEntry?.id).toBe('id-7');
+    expect(inTmuxEntry?.id).toBe('id-6');
     expect(payload.some((s) => s.name === LEGACY_IN_TMUX_STATUS_NAME)).toBe(
       false,
     );
@@ -505,7 +496,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       if (s.name === TODO_BY_AGENT_STATUS_NAME) {
         return { ...s, id: 'preexisting-todo-agent-id' };
       }
-      if (s.name === DEFAULT_STATUS_NAME) {
+      if (s.name === AWAITING_WORKSPACE_STATUS_NAME) {
         return { ...s, description: 'stale description' };
       }
       return s;
@@ -583,7 +574,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       if (s.name === IN_TMUX_BY_AGENT_STATUS_NAME) {
         return { ...s, id: 'preexisting-agent-id' };
       }
-      if (s.name === DEFAULT_STATUS_NAME) {
+      if (s.name === AWAITING_WORKSPACE_STATUS_NAME) {
         return { ...s, description: 'stale description' };
       }
       return s;
@@ -657,49 +648,43 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const statuses: FieldOption[] = [
       {
         id: 'id-0',
-        name: DEFAULT_STATUS_NAME,
-        color: 'ORANGE',
-        description: '',
-      },
-      {
-        id: 'id-1',
         name: AWAITING_WORKSPACE_STATUS_NAME,
         color: 'BLUE',
         description: '',
       },
       {
-        id: 'id-2',
+        id: 'id-1',
         name: PREPARATION_STATUS_NAME,
         color: 'YELLOW',
         description: '',
       },
       {
-        id: 'id-3',
+        id: 'id-2',
         name: FAILED_PREPARATION_STATUS_NAME,
         color: 'RED',
         description: '',
       },
       {
-        id: 'id-4',
+        id: 'id-3',
         name: AWAITING_QUALITY_CHECK_STATUS_NAME,
         color: 'GREEN',
         description: '',
       },
       {
-        id: 'id-5',
+        id: 'id-4',
         name: LEGACY_TODO_STATUS_NAME,
         color: 'PINK',
         description: '',
       },
-      { id: 'id-6', name: PC_TODO_STATUS_NAME, color: 'PINK', description: '' },
+      { id: 'id-5', name: PC_TODO_STATUS_NAME, color: 'PINK', description: '' },
       {
-        id: 'id-7',
+        id: 'id-6',
         name: LEGACY_IN_TMUX_STATUS_NAME,
         color: 'RED',
         description: '',
       },
-      { id: 'id-8', name: DONE_STATUS_NAME, color: 'PURPLE', description: '' },
-      { id: 'id-9', name: ICEBOX_STATUS_NAME, color: 'GRAY', description: '' },
+      { id: 'id-7', name: DONE_STATUS_NAME, color: 'PURPLE', description: '' },
+      { id: 'id-8', name: ICEBOX_STATUS_NAME, color: 'GRAY', description: '' },
     ];
     const project = buildProject(statuses);
     mockProjectRepository.getByUrl.mockResolvedValue(project);
@@ -720,7 +705,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
 
     expect(payload.map((s) => s.name)).toEqual([
-      DEFAULT_STATUS_NAME,
       AWAITING_WORKSPACE_STATUS_NAME,
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
@@ -733,9 +717,9 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       ICEBOX_STATUS_NAME,
     ]);
 
-    expect(payload.find((s) => s.name === TODO_STATUS_NAME)?.id).toBe('id-5');
+    expect(payload.find((s) => s.name === TODO_STATUS_NAME)?.id).toBe('id-4');
     expect(payload.find((s) => s.name === IN_TMUX_STATUS_NAME)?.id).toBe(
-      'id-7',
+      'id-6',
     );
     expect(payload.some((s) => s.name === PC_TODO_STATUS_NAME)).toBe(false);
     expect(payload.some((s) => s.name === LEGACY_TODO_STATUS_NAME)).toBe(false);
@@ -751,12 +735,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
     const todoStatusId = 'todo-status-id';
     const statuses: FieldOption[] = [
-      {
-        id: 'id-0',
-        name: DEFAULT_STATUS_NAME,
-        color: 'ORANGE',
-        description: '',
-      },
       {
         id: 'atb-id',
         name: LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
@@ -858,7 +836,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       ),
     ).toBe(false);
     expect(payload.map((s) => s.name)).toEqual([
-      DEFAULT_STATUS_NAME,
       AWAITING_WORKSPACE_STATUS_NAME,
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
@@ -942,12 +919,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const statuses: FieldOption[] = [
       {
         id: 'id-0',
-        name: DEFAULT_STATUS_NAME,
-        color: 'ORANGE',
-        description: '',
-      },
-      {
-        id: 'id-1',
         name: LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
         color: 'ORANGE',
         description: '',
@@ -1012,7 +983,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
 
     expect(payload.map((s) => s.name)).toEqual([
-      DEFAULT_STATUS_NAME,
       AWAITING_WORKSPACE_STATUS_NAME,
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
@@ -1039,5 +1009,71 @@ describe('SetupTowerDefenceProjectUseCase', () => {
         (s) => s.name === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
       ),
     ).toBe(false);
+  });
+
+  it('should migrate issues from Unread to Awaiting Workspace when both statuses exist in the project', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const awaitingWorkspaceId = 'aws-status-id';
+    const statuses: FieldOption[] = [
+      { id: 'unread-id', name: 'Unread', color: 'ORANGE', description: '' },
+      {
+        id: awaitingWorkspaceId,
+        name: AWAITING_WORKSPACE_STATUS_NAME,
+        color: 'BLUE',
+        description: '',
+      },
+      ...buildCanonicalStatuses().filter(
+        (s) => s.name !== AWAITING_WORKSPACE_STATUS_NAME,
+      ),
+    ];
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+
+    const unreadIssue1 = buildIssue({
+      number: 1,
+      url: 'https://github.com/test-org/test-repo/issues/1',
+      itemId: 'item-1',
+      status: 'Unread',
+    });
+    const unreadIssue2 = buildIssue({
+      number: 2,
+      url: 'https://github.com/test-org/test-repo/issues/2',
+      itemId: 'item-2',
+      status: 'Unread',
+    });
+    const awsIssue = buildIssue({
+      number: 3,
+      url: 'https://github.com/test-org/test-repo/issues/3',
+      itemId: 'item-3',
+      status: AWAITING_WORKSPACE_STATUS_NAME,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [unreadIssue1, unreadIssue2, awsIssue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(2);
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      unreadIssue1,
+      awaitingWorkspaceId,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      unreadIssue2,
+      awaitingWorkspaceId,
+    );
   });
 });

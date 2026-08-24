@@ -57,7 +57,6 @@ export type ConsoleTabName =
   | 'workflow-blocker'
   | 'prs'
   | 'triage'
-  | 'unread'
   | 'failed-preparation'
   | 'todo-by-human'
   | 'todo-by-agent'
@@ -83,7 +82,6 @@ export type ConsoleLists = {
   'workflow-blocker': ConsoleStatusTab;
   prs: ConsoleStatusTab;
   triage: ConsoleTriageTab;
-  unread: ConsoleStatusTab;
   'failed-preparation': ConsoleStatusTab;
   'todo-by-human': ConsoleStatusTab;
   'todo-by-agent': ConsoleStatusTab;
@@ -192,11 +190,6 @@ export class GenerateConsoleListsUseCase {
           issue.status.toLowerCase() === 'awaiting quality check',
         ['awaiting quality check', 'done'],
       ),
-      unread: buildStatusTab(
-        (issue) =>
-          issue.status !== null && issue.status.toLowerCase() === 'unread',
-        ['unread', 'done'],
-      ),
       'failed-preparation': buildStatusTab(
         (issue) => issue.status === 'Failed Preparation',
         [
@@ -204,7 +197,6 @@ export class GenerateConsoleListsUseCase {
           'done',
           'preparation',
           'icebox',
-          'unread',
           'in tmux by human',
           'in tmux by agent',
           'todo by agent',

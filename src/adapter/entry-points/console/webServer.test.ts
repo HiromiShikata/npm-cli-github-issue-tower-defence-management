@@ -83,7 +83,7 @@ describe('webServer pure helpers', () => {
       expect(isConsoleAppRoute('/projects/acme/workflow-blocker')).toBe(true);
       expect(isConsoleAppRoute('/projects/acme/prs')).toBe(true);
       expect(isConsoleAppRoute('/projects/globex/triage')).toBe(true);
-      expect(isConsoleAppRoute('/projects/initech/unread')).toBe(true);
+      expect(isConsoleAppRoute('/projects/initech/todo-by-human')).toBe(true);
       expect(isConsoleAppRoute('/projects/umbrella/failed-preparation')).toBe(
         true,
       );
@@ -1473,7 +1473,6 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       JSON.stringify({
         pjcode: 'acme',
         capturedAt: '2026-06-26T00:00:00.000Z',
-        unread: 3,
         todo: 1,
         qc: 2,
         fail: 0,
@@ -1488,7 +1487,6 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       JSON.stringify({
         pjcode: 'initech',
         capturedAt: '2026-06-26T00:00:00.000Z',
-        unread: 0,
         todo: 0,
         qc: 0,
         fail: 0,

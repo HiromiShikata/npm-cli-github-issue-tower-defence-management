@@ -39,7 +39,6 @@ type ProjectColumn = {
 };
 
 const PROJECT_COLUMNS: ProjectColumn[] = [
-  { header: 'unr', key: 'unread' },
   { header: 'tdo', key: 'todo' },
   { header: 'aqc', key: 'qc' },
   { header: 'fal', key: 'fail' },
@@ -189,10 +188,10 @@ const severityDot = (row: DashboardRow): string => {
   if (row.blocker === 1) {
     return '🟣';
   }
-  if (row.unread >= 10 || row.qc >= 15 || row.fail >= 5) {
+  if (row.qc >= 15 || row.fail >= 5) {
     return '🟠';
   }
-  if (row.unread >= 5 || row.qc >= 10 || row.fail >= 3) {
+  if (row.qc >= 10 || row.fail >= 3) {
     return '🟡';
   }
   return '🟢';

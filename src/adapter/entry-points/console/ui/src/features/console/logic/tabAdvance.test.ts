@@ -2,7 +2,7 @@ import {
   findNextNonEmptyTabToRight,
   resolveDefaultActiveTab,
 } from './tabAdvance';
-import { CONSOLE_TABS, type ConsoleTabName } from './types';
+import { type ConsoleTabName } from './types';
 
 const counts = (
   overrides: Partial<Record<ConsoleTabName, number>>,
@@ -10,7 +10,6 @@ const counts = (
   'workflow-blocker': 0,
   prs: 0,
   triage: 0,
-  unread: 0,
   'failed-preparation': 0,
   'todo-by-human': 0,
   'todo-by-agent': 0,
@@ -18,17 +17,10 @@ const counts = (
   ...overrides,
 });
 
-describe('CONSOLE_TABS ordering', () => {
-  it('places Unread before Triage so unseen items are worked first', () => {
-    const names = CONSOLE_TABS.map((tab) => tab.name);
-    expect(names.indexOf('unread')).toBeLessThan(names.indexOf('triage'));
-  });
-});
-
 describe('findNextNonEmptyTabToRight', () => {
   it('returns the first non-empty tab to the right of the active tab', () => {
-    expect(findNextNonEmptyTabToRight('prs', counts({ unread: 7 }))).toBe(
-      'unread',
+    expect(findNextNonEmptyTabToRight('prs', counts({ triage: 7 }))).toBe(
+      'triage',
     );
   });
 
@@ -36,7 +28,7 @@ describe('findNextNonEmptyTabToRight', () => {
     expect(
       findNextNonEmptyTabToRight(
         'prs',
-        counts({ triage: 0, unread: 0, 'todo-by-human': 4 }),
+        counts({ triage: 0, 'todo-by-human': 4 }),
       ),
     ).toBe('todo-by-human');
   });
@@ -52,13 +44,13 @@ describe('findNextNonEmptyTabToRight', () => {
 
   it('returns the immediately adjacent tab when it is non-empty', () => {
     expect(
-      findNextNonEmptyTabToRight('prs', counts({ triage: 12, unread: 7 })),
-    ).toBe('unread');
+      findNextNonEmptyTabToRight('prs', counts({ triage: 12 })),
+    ).toBe('triage');
   });
 
   it('returns null when no tab to the right has any items', () => {
     expect(
-      findNextNonEmptyTabToRight('unread', counts({ prs: 35 })),
+      findNextNonEmptyTabToRight('todo-by-human', counts({ prs: 35 })),
     ).toBeNull();
   });
 
@@ -77,7 +69,6 @@ describe('resolveDefaultActiveTab', () => {
           'workflow-blocker': 3,
           prs: 5,
           triage: 2,
-          unread: 9,
           'failed-preparation': 1,
           'todo-by-human': 4,
         }),

@@ -60,7 +60,7 @@ describe('writeDashboardRow', () => {
       pjcode: 'ac',
       assigneeLogin: ASSIGNEE,
       issues: [
-        makeIssue({ status: 'Unread' }),
+        makeIssue({ status: 'Awaiting Workspace' }),
         makeIssue({ status: 'Awaiting Quality Check' }),
       ],
       generatedAt: '2026-06-26T12:00:00.000Z',
@@ -70,12 +70,11 @@ describe('writeDashboardRow', () => {
     const expected: DashboardRowFile = {
       pjcode: 'ac',
       capturedAt: '2026-06-26T12:00:00.000Z',
-      unread: 1,
       todo: 0,
       qc: 1,
       fail: 0,
       pr: 0,
-      ws: 0,
+      ws: 1,
       dep: 0,
       blocker: 0,
     };
@@ -87,7 +86,7 @@ describe('writeDashboardRow', () => {
       dashboardDataDir: null,
       pjcode: 'ac',
       assigneeLogin: ASSIGNEE,
-      issues: [makeIssue({ status: 'Unread' })],
+      issues: [makeIssue({ status: 'Awaiting Workspace' })],
     });
 
     expect(fs.readdirSync(dir)).toEqual([]);
@@ -98,13 +97,13 @@ describe('writeDashboardRow', () => {
       dashboardDataDir: dir,
       pjcode: null,
       assigneeLogin: ASSIGNEE,
-      issues: [makeIssue({ status: 'Unread' })],
+      issues: [makeIssue({ status: 'Awaiting Workspace' })],
     });
     writeDashboardRow({
       dashboardDataDir: dir,
       pjcode: 'ac',
       assigneeLogin: null,
-      issues: [makeIssue({ status: 'Unread' })],
+      issues: [makeIssue({ status: 'Awaiting Workspace' })],
     });
 
     expect(fs.readdirSync(dir)).toEqual([]);
