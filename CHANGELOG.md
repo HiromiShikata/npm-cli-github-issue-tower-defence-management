@@ -1,3 +1,10 @@
+## [1.174.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.174.1...v1.174.2) (2026-08-24)
+
+
+### Bug Fixes
+
+* **preparation:** read a report whose code fences use CRLF line endings ([#1720](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1720)) ([6871315](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6871315075593fc2c6a78a28bd7195c82b9299e9)), closes [#1719](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1719)
+
 ## [1.174.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.174.0...v1.174.1) (2026-08-24)
 
 
