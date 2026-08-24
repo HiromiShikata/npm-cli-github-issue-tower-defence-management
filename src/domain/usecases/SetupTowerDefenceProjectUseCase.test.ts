@@ -1013,6 +1013,144 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     ).toBe(false);
   });
 
+  it('should move open issue with Done status to Awaiting Workspace even when project has canonical statuses', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const canonicalStatuses = buildCanonicalStatuses();
+    const awaitingWorkspaceId = canonicalStatuses[0].id;
+    const project = buildProject(canonicalStatuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    const openDoneIssue = buildIssue({
+      number: 10,
+      url: 'https://github.com/test-org/test-repo/issues/10',
+      itemId: 'item-10',
+      state: 'OPEN',
+      status: DONE_STATUS_NAME,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [openDoneIssue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      openDoneIssue,
+      awaitingWorkspaceId,
+    );
+    expect(mockProjectRepository.updateStatusList).not.toHaveBeenCalled();
+  });
+
+  it('should move open issue with null status to Awaiting Workspace even when project has canonical statuses', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const canonicalStatuses = buildCanonicalStatuses();
+    const awaitingWorkspaceId = canonicalStatuses[0].id;
+    const project = buildProject(canonicalStatuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    const openNullStatusIssue = buildIssue({
+      number: 11,
+      url: 'https://github.com/test-org/test-repo/issues/11',
+      itemId: 'item-11',
+      state: 'OPEN',
+      status: null,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [openNullStatusIssue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.updateStatus.mockResolvedValue(undefined);
+
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      openNullStatusIssue,
+      awaitingWorkspaceId,
+    );
+    expect(mockProjectRepository.updateStatusList).not.toHaveBeenCalled();
+  });
+
+  it('should not move closed issue with Done status to Awaiting Workspace', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const project = buildProject(buildCanonicalStatuses());
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    const closedDoneIssue = buildIssue({
+      number: 12,
+      url: 'https://github.com/test-org/test-repo/issues/12',
+      itemId: 'item-12',
+      state: 'CLOSED',
+      isClosed: true,
+      status: DONE_STATUS_NAME,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [closedDoneIssue],
+      cacheUsed: false,
+    });
+
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockProjectRepository.updateStatusList).not.toHaveBeenCalled();
+  });
+
+  it('should not move closed issue with null status to Awaiting Workspace', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const project = buildProject(buildCanonicalStatuses());
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    const closedNullStatusIssue = buildIssue({
+      number: 13,
+      url: 'https://github.com/test-org/test-repo/issues/13',
+      itemId: 'item-13',
+      state: 'CLOSED',
+      isClosed: true,
+      status: null,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [closedNullStatusIssue],
+      cacheUsed: false,
+    });
+
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockProjectRepository.updateStatusList).not.toHaveBeenCalled();
+  });
+
   it('should migrate issues from Unread to Awaiting Workspace when both statuses exist in the project', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
