@@ -391,7 +391,8 @@ export const mergeConfigs = (
     cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
   consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
   consoleGithubTokenFileDir:
-    cliOverrides.consoleGithubTokenFileDir ?? configFile.consoleGithubTokenFileDir,
+    cliOverrides.consoleGithubTokenFileDir ??
+    configFile.consoleGithubTokenFileDir,
   disks: cliOverrides.disks ?? configFile.disks,
 });
 

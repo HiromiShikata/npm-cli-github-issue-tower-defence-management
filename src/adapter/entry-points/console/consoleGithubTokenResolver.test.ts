@@ -142,7 +142,7 @@ describe('createConsoleGithubTokenResolver', () => {
   it('should return the default token when githubTokenFileDirPath is null', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      { acme: 'https://github.com/orgs/acme-labs/projects/1' },
       null,
       () => {
         throw new Error('must not read any file');
@@ -155,7 +155,7 @@ describe('createConsoleGithubTokenResolver', () => {
   it('should return the token read from the pjcode-named file for the matching project owner', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      { acme: 'https://github.com/orgs/acme-labs/projects/1' },
       '/creds',
       (filePath) =>
         filePath === '/creds/tdpm-github-token-acme.txt'
@@ -171,7 +171,7 @@ describe('createConsoleGithubTokenResolver', () => {
   it('should return the token for example-org when cmg project URL owner is example-org', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'cmg': 'https://github.com/orgs/example-org/projects/18' },
+      { cmg: 'https://github.com/orgs/example-org/projects/18' },
       '/token-dir',
       (filePath) =>
         filePath === '/token-dir/tdpm-github-token-cmg.txt'
@@ -187,7 +187,7 @@ describe('createConsoleGithubTokenResolver', () => {
   it('should keep using the default token for owners that match no project url', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      { acme: 'https://github.com/orgs/acme-labs/projects/1' },
       '/creds',
       () => 'fine-grained-token',
     );
@@ -199,7 +199,7 @@ describe('createConsoleGithubTokenResolver', () => {
     let readCount = 0;
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      { acme: 'https://github.com/orgs/acme-labs/projects/1' },
       '/creds',
       () => {
         readCount += 1;
@@ -216,7 +216,7 @@ describe('createConsoleGithubTokenResolver', () => {
   it('should throw when the token file for the matching pjcode contains no token', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      { acme: 'https://github.com/orgs/acme-labs/projects/1' },
       '/creds',
       () => '  \n',
     );
@@ -229,7 +229,7 @@ describe('createConsoleGithubTokenResolver', () => {
   it('should return the default token when the token file for the matching pjcode is absent', () => {
     const resolve = createConsoleGithubTokenResolver(
       'default-token',
-      { 'acme': 'https://github.com/orgs/acme-labs/projects/1' },
+      { acme: 'https://github.com/orgs/acme-labs/projects/1' },
       '/creds',
       () => {
         throw new Error('ENOENT: no such file or directory');
