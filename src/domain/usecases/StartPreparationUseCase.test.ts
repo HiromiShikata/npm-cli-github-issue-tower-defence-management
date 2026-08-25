@@ -6454,9 +6454,9 @@ describe('StartPreparationUseCase', () => {
   });
 
   it('should log one aggregate spawn candidate exclusion summary per run with counts by reason', async () => {
-    const currentHour = new Date().getHours();
+    const currentHour = new Date().getUTCHours();
     const dayAfterTomorrow = new Date();
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2);
     const awaitingIssues: Issue[] = [
       createMockIssue({
         url: 'https://github.com/user/repo/issues/11',
