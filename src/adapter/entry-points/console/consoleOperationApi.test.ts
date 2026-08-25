@@ -8,7 +8,7 @@ import { Issue } from '../../../domain/entities/Issue';
 import {
   ConsoleOperationContext,
   ConsoleProjectBinding,
-  handleAddStory,
+  handleStoryAdd,
   handleAttachmentUpload,
   handleComment,
   handleCreateIssue,
@@ -1913,7 +1913,7 @@ describe('consoleOperationApi', () => {
     });
   });
 
-  describe('handleAddStory', () => {
+  describe('handleStoryAdd', () => {
     const buildProjectWithStories = (): Project => ({
       ...project,
       url: 'https://github.com/orgs/acme-labs/projects/1',
@@ -1954,7 +1954,7 @@ describe('consoleOperationApi', () => {
 
     it('inserts the new story at index 1 and calls updateStoryList', async () => {
       const p = buildProjectWithStories();
-      const response = await handleAddStory(addStoryContext(p), {
+      const response = await handleStoryAdd(addStoryContext(p), {
         pjcode: 'acme',
         storyName: 'Brand new story',
       });
@@ -1988,7 +1988,7 @@ describe('consoleOperationApi', () => {
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
       };
-      const response = await handleAddStory(
+      const response = await handleStoryAdd(
         addStoryContext(emptyStoryProject),
         {
           pjcode: 'acme',
@@ -2003,7 +2003,7 @@ describe('consoleOperationApi', () => {
 
     it('resolves the project repository using the project url', async () => {
       const p = buildProjectWithStories();
-      await handleAddStory(addStoryContext(p), {
+      await handleStoryAdd(addStoryContext(p), {
         pjcode: 'acme',
         storyName: 'Any story',
       });
@@ -2011,7 +2011,7 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 502 when resolveProjectRepository is null', async () => {
-      const response = await handleAddStory(
+      const response = await handleStoryAdd(
         {
           ...contextForProject(buildProjectWithStories()),
           resolveProjectRepository: null,
@@ -2025,7 +2025,7 @@ describe('consoleOperationApi', () => {
     });
 
     it('rejects when storyName is missing', async () => {
-      const response = await handleAddStory(
+      const response = await handleStoryAdd(
         addStoryContext(buildProjectWithStories()),
         {
           pjcode: 'acme',
@@ -2038,7 +2038,7 @@ describe('consoleOperationApi', () => {
     });
 
     it('rejects when pjcode is not configured', async () => {
-      const response = await handleAddStory(
+      const response = await handleStoryAdd(
         addStoryContext(buildProjectWithStories()),
         {
           pjcode: 'unknown',
@@ -2056,7 +2056,7 @@ describe('consoleOperationApi', () => {
         ...buildProjectWithStories(),
         story: null,
       };
-      const response = await handleAddStory(
+      const response = await handleStoryAdd(
         addStoryContext(projectWithoutStory),
         {
           pjcode: 'acme',

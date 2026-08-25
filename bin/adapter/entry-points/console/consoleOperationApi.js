@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleAddStory = exports.handleReorderStory = exports.handleIntmux = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleStoryAdd = exports.handleReorderStory = exports.handleIntmux = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
@@ -541,7 +541,7 @@ const handleReorderStory = async (context, body) => {
     return ok();
 };
 exports.handleReorderStory = handleReorderStory;
-const handleAddStory = async (context, body) => {
+const handleStoryAdd = async (context, body) => {
     if (context.resolveProjectRepository === null) {
         return badGateway('project repository is not configured');
     }
@@ -571,5 +571,5 @@ const handleAddStory = async (context, body) => {
     await projectRepository.updateStoryList(project, newStoryList);
     return ok();
 };
-exports.handleAddStory = handleAddStory;
+exports.handleStoryAdd = handleStoryAdd;
 //# sourceMappingURL=consoleOperationApi.js.map

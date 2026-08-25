@@ -26,7 +26,7 @@ import {
   ConsolePjcodeValidator,
   ConsoleProjectRepositoryResolver,
   ConsoleProjectResolver,
-  handleAddStory,
+  handleStoryAdd,
   handleAttachmentUpload,
   handleComment,
   handleCreateIssue,
@@ -544,7 +544,7 @@ const dispatchOperation = (
     case '/api/reorderstory':
       return handleReorderStory(context, body);
     case '/api/addstory':
-      return handleAddStory(context, body);
+      return handleStoryAdd(context, body);
     default:
       return null;
   }

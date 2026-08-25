@@ -376,7 +376,7 @@ export const ConsolePage = () => {
     [pjcode, triageStoryOptions, activeSnapshot?.generatedAt],
   );
 
-  const handleAddStory = useCallback(
+  const handleStoryAdd = useCallback(
     async (storyName: string): Promise<void> => {
       if (pjcode === null) {
         throw new Error('No project specified in the URL path.');
@@ -432,7 +432,7 @@ export const ConsolePage = () => {
           isLoading={isLoading}
           error={error}
           onCreateIssue={handleCreateIssue}
-          onAddStory={handleAddStory}
+          onAddStory={handleStoryAdd}
         />
       ) : selectedItem === null ? (
         <>

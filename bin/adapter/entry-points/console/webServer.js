@@ -414,7 +414,7 @@ const dispatchOperation = (context, requestPath, body) => {
         case '/api/reorderstory':
             return (0, consoleOperationApi_1.handleReorderStory)(context, body);
         case '/api/addstory':
-            return (0, consoleOperationApi_1.handleAddStory)(context, body);
+            return (0, consoleOperationApi_1.handleStoryAdd)(context, body);
         default:
             return null;
     }

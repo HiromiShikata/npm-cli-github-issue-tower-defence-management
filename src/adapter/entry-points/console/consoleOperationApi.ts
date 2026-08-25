@@ -776,7 +776,7 @@ export const handleReorderStory = async (
   return ok();
 };
 
-export const handleAddStory = async (
+export const handleStoryAdd = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {

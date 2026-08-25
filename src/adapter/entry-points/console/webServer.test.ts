@@ -1108,7 +1108,7 @@ describe('webServer new routes integration', () => {
     }
   });
 
-  it('routes POST /api/addstory to handleAddStory and calls updateStoryList', async () => {
+  it('routes POST /api/addstory to handleStoryAdd and calls updateStoryList', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const updateStoryList = jest.fn().mockResolvedValue([]);
     const projectWithStory: Project = {
