@@ -9,37 +9,9 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 class GoogleSpreadsheetRepository {
     constructor(localStorageRepository, serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
-        'dummy', sheetsClientFactory, sleepFn = (ms) => new Promise((resolve) => setTimeout(resolve, ms))) {
+        'dummy', sheetsClientFactory) {
         this.localStorageRepository = localStorageRepository;
         this.keyFile = './tmp/service-account-key.json';
-        this.callWithRetry = async (fn) => {
-            const backoffMs = [1000, 2000, 4000];
-            let lastError;
-            for (let attempt = 0; attempt <= backoffMs.length; attempt++) {
-                try {
-                    return await fn();
-                }
-                catch (error) {
-                    lastError = error;
-                    const isQuotaError = (() => {
-                        if (!(error instanceof Error))
-                            return false;
-                        if (error.message.includes('Quota exceeded'))
-                            return true;
-                        if ('status' in error && error.status === 429)
-                            return true;
-                        if ('code' in error && error.code === 429)
-                            return true;
-                        return false;
-                    })();
-                    if (!isQuotaError || attempt === backoffMs.length) {
-                        throw error;
-                    }
-                    await this.sleepFn(backoffMs[attempt]);
-                }
-            }
-            throw lastError;
-        };
         this.getSpreadsheetId = (spreadsheetUrl) => {
             const url = new URL(spreadsheetUrl);
             return url.pathname.split('/')[3];
@@ -47,9 +19,9 @@ class GoogleSpreadsheetRepository {
         this.getSheet = async (spreadsheetUrl, sheetName) => {
             const sheets = this.sheetsClient;
             const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
-            const responseSheet = await this.callWithRetry(() => sheets.spreadsheets.get({
+            const responseSheet = await sheets.spreadsheets.get({
                 spreadsheetId,
-            }));
+            });
             if (responseSheet.status !== 200) {
                 throw new Error(`Failed to get sheet: ${responseSheet.status}. ${JSON.stringify(responseSheet.data)}`);
             }
@@ -57,10 +29,10 @@ class GoogleSpreadsheetRepository {
             if (!sheet) {
                 return null;
             }
-            const response = await this.callWithRetry(() => sheets.spreadsheets.values.get({
+            const response = await sheets.spreadsheets.values.get({
                 spreadsheetId,
                 range: sheetName,
-            }));
+            });
             if (response.status !== 200) {
                 throw new Error(`Failed to get sheet: ${response.status}. ${JSON.stringify(response.data)}`);
             }
@@ -73,14 +45,14 @@ class GoogleSpreadsheetRepository {
             const sheets = this.sheetsClient;
             const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
             await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
-            const response = await this.callWithRetry(() => sheets.spreadsheets.values.update({
+            const response = await sheets.spreadsheets.values.update({
                 spreadsheetId,
                 range: `${sheetName}!${String.fromCharCode(65 + column)}${row + 1}`,
                 valueInputOption: 'RAW',
                 requestBody: {
                     values: [[value]],
                 },
-            }));
+            });
             if (response.status !== 200) {
                 throw new Error(`Failed to update cell: ${response.status}. ${JSON.stringify(response.data)}`);
             }
@@ -88,7 +60,7 @@ class GoogleSpreadsheetRepository {
         this.sheetExists = async (spreadsheetUrl, sheetName) => {
             const sheets = this.sheetsClient;
             const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
-            const response = await this.callWithRetry(() => sheets.spreadsheets.get({ spreadsheetId }));
+            const response = await sheets.spreadsheets.get({ spreadsheetId });
             if (response.status !== 200) {
                 throw new Error(`Failed to get sheet: ${response.status}. ${JSON.stringify(response.data)}`);
             }
@@ -100,7 +72,7 @@ class GoogleSpreadsheetRepository {
             if (await this.sheetExists(spreadsheetUrl, sheetName)) {
                 return;
             }
-            const response = await this.callWithRetry(() => sheets.spreadsheets.batchUpdate({
+            const response = await sheets.spreadsheets.batchUpdate({
                 spreadsheetId,
                 requestBody: {
                     requests: [
@@ -113,7 +85,7 @@ class GoogleSpreadsheetRepository {
                         },
                     ],
                 },
-            }));
+            });
             if (response.status !== 200) {
                 throw new Error(`Failed to create sheet: ${response.status}. ${JSON.stringify(response.data)}`);
             }
@@ -124,19 +96,18 @@ class GoogleSpreadsheetRepository {
             await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
             const sheet = await this.getSheet(spreadsheetUrl, sheetName);
             const range = `${sheetName}!A${sheet ? sheet.length + 1 : 1}:A`;
-            const response = await this.callWithRetry(() => sheets.spreadsheets.values.append({
+            const response = await sheets.spreadsheets.values.append({
                 spreadsheetId,
                 range: range,
                 valueInputOption: 'RAW',
                 requestBody: {
                     values,
                 },
-            }));
+            });
             if (response.status !== 200) {
                 throw new Error(`Failed to append values: ${response.status}. ${JSON.stringify(response.data)}`);
             }
         };
-        this.sleepFn = sleepFn;
         this.localStorageRepository.write(this.keyFile, serviceAccountKey);
         this.sheetsClient = sheetsClientFactory
             ? sheetsClientFactory()
