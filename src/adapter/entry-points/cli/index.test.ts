@@ -1520,6 +1520,7 @@ mysteryKey: 'value'
         sessionErrorLine: null,
         manager: 'test-manager',
         developerAgentName: null,
+        reactivateAfterHours: null,
       });
     });
 
@@ -1562,7 +1563,83 @@ mysteryKey: 'value'
         sessionErrorLine: null,
         manager: 'test-manager',
         developerAgentName: null,
+        reactivateAfterHours: null,
       });
+    });
+
+    it('should pass reactivateAfterHours through as a number when the flag is given', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+        '--reactivateAfterHours',
+        '2',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ reactivateAfterHours: 2 }),
+      );
+    });
+
+    it('should exit without running when reactivateAfterHours is not a positive integer', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'notifyFinishedIssuePreparation',
+          '--configFilePath',
+          configFilePath,
+          '--issueUrl',
+          'https://github.com/test/repo/issues/1',
+          '--reactivateAfterHours',
+          '0',
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(mockRun).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Invalid value for --reactivateAfterHours. It must be a positive integer.',
+      );
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
     });
 
     it('should pass custom thresholdForAutoReject from config file', async () => {

@@ -109,6 +109,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     setIssueAgentField: jest.Mock;
     searchIssue: jest.Mock;
     createNewIssue: jest.Mock;
+    updateNextActionDate: jest.Mock;
+    updateNextActionHour: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -155,6 +157,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       searchIssue: jest.fn().mockResolvedValue([]),
       createNewIssue: jest.fn().mockResolvedValue(42),
+      updateNextActionDate: jest.fn().mockResolvedValue(undefined),
+      updateNextActionHour: jest.fn().mockResolvedValue(undefined),
     };
 
     mockIssueCommentRepository = {
@@ -4299,6 +4303,185 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       ).rejects.toThrow('manager');
 
       expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('when reactivateAfterHours is provided', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const nextActionDateField = {
+      name: 'Next Action Date',
+      fieldId: 'next-action-date-id',
+    };
+    const nextActionHourField = {
+      name: 'Next Action Hour',
+      fieldId: 'next-action-hour-id',
+    };
+
+    it('defers through nextActionHour and returns the item to Awaiting Workspace without creating any issue', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 10, 0, 0));
+      const project = createMockProject({
+        nextActionDate: nextActionDateField,
+        nextActionHour: nextActionHourField,
+      });
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: project.url,
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        reactivateAfterHours: 1,
+      });
+
+      expect(mockIssueRepository.updateNextActionHour).toHaveBeenCalledWith(
+        expect.objectContaining({ nextActionHour: nextActionHourField }),
+        expect.objectContaining({ url: issueUrl }),
+        11,
+      );
+      expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('defers through nextActionDate to the start of tomorrow when the deferred hour would pass midnight', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 23, 30, 0));
+      const project = createMockProject({
+        nextActionDate: nextActionDateField,
+        nextActionHour: nextActionHourField,
+      });
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: project.url,
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        reactivateAfterHours: 1,
+      });
+
+      expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
+        issueUrl,
+        project,
+        new Date(2026, 10, 2),
+      );
+      expect(mockIssueRepository.updateNextActionHour).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+
+    it('records the session error line in the comment it posts', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 10, 0, 0));
+      const project = createMockProject({
+        nextActionDate: nextActionDateField,
+        nextActionHour: nextActionHourField,
+      });
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: project.url,
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        reactivateAfterHours: 2,
+        sessionErrorLine: 'API Error: 529 Overloaded',
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('API Error: 529 Overloaded'),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.not.stringContaining('agent definition'),
+      );
+    });
+
+    it('throws without deferring when the project has no Next Action Hour field configured', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 10, 0, 0));
+      const project = createMockProject({
+        nextActionDate: nextActionDateField,
+        nextActionHour: null,
+      });
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await expect(
+        useCase.run({
+          projectUrl: project.url,
+          issueUrl,
+          thresholdForAutoReject: 3,
+          workflowBlockerResolvedWebhookUrl: null,
+          reactivateAfterHours: 1,
+        }),
+      ).rejects.toThrow('Next Action Hour');
+
+      expect(mockIssueRepository.updateNextActionHour).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+
+    it('throws without deferring when the project has no Next Action Date field configured and the deferral passes midnight', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 23, 30, 0));
+      const project = createMockProject({
+        nextActionDate: null,
+        nextActionHour: nextActionHourField,
+      });
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await expect(
+        useCase.run({
+          projectUrl: project.url,
+          issueUrl,
+          thresholdForAutoReject: 3,
+          workflowBlockerResolvedWebhookUrl: null,
+          reactivateAfterHours: 1,
+        }),
+      ).rejects.toThrow('Next Action Date');
+
+      expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+
+    it('takes the missing-agent path and does not defer when both options are given', async () => {
+      jest.useFakeTimers().setSystemTime(new Date(2026, 10, 1, 10, 0, 0));
+      const project = createMockProject({
+        nextActionDate: nextActionDateField,
+        nextActionHour: nextActionHourField,
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL',
+          fieldId: 'depended-field-id',
+        },
+      });
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: project.url,
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        missingAgentName: 'impl',
+        reactivateAfterHours: 1,
+        manager: 'manager-user',
+      });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalled();
+      expect(mockIssueRepository.updateNextActionHour).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
     });
   });
 });
