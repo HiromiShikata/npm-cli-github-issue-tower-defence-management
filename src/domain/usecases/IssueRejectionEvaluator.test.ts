@@ -874,7 +874,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'chore',
           },
           [],
-          { detectConflictEvenIfEvaluationSkipped: true, relatedOpenPrUrls: null },
+          {
+            detectConflictEvenIfEvaluationSkipped: true,
+            relatedOpenPrUrls: null,
+          },
         );
 
         expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
@@ -898,7 +901,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'chore',
           },
           [],
-          { detectConflictEvenIfEvaluationSkipped: true, relatedOpenPrUrls: null },
+          {
+            detectConflictEvenIfEvaluationSkipped: true,
+            relatedOpenPrUrls: null,
+          },
         );
 
         expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
@@ -955,7 +961,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'chore',
           },
           [],
-          { detectConflictEvenIfEvaluationSkipped: true, relatedOpenPrUrls: null },
+          {
+            detectConflictEvenIfEvaluationSkipped: true,
+            relatedOpenPrUrls: null,
+          },
         );
 
         expect(result.rejections).toHaveLength(1);
