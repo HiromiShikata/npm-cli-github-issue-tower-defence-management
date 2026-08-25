@@ -1620,6 +1620,74 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
       });
     });
+
+    describe('reopenedDoneIssueRevertUseCase', () => {
+      const baseInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      it('does not call reopenedDoneIssueRevertUseCase when startPreparation is absent', async () => {
+        await useCase.run(baseInput);
+
+        expect(mockReopenedDoneIssueRevertUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('calls reopenedDoneIssueRevertUseCase with project and issues when startPreparation is configured', async () => {
+        const mockProject = mock<Project>();
+        const mockIssues: Issue[] = [];
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: mockIssues,
+          project: mockProject,
+          cacheUsed: false,
+        });
+
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: false,
+          },
+        });
+
+        expect(mockReopenedDoneIssueRevertUseCase.run).toHaveBeenCalledWith({
+          project: mockProject,
+          issues: mockIssues,
+        });
+      });
+
+      it('continues to startPreparationUseCase when reopenedDoneIssueRevertUseCase.run rejects', async () => {
+        mockReopenedDoneIssueRevertUseCase.run.mockRejectedValue(
+          new AggregateError(
+            [new Error('GitHub API error')],
+            'Failed to revert 1 reopened Done issue(s)',
+          ),
+        );
+
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: false,
+          },
+        });
+
+        expect(mockStartPreparationUseCase.run).toHaveBeenCalled();
+      });
+    });
   });
 
   describe('storyIssues', () => {
