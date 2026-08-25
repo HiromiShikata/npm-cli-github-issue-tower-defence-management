@@ -55,6 +55,34 @@ describe('findLastAgentReport', () => {
     ).toBe(withoutReportJson);
   });
 
+  it('returns the most recent agent report whose prefix follows a leading fenced json block', () => {
+    const fencedBeforePrefix =
+      '```json\n{ "pullRequestRequired": false }\n```\n\nFrom: :robot: agent (model)\n\n## Result\nDone.';
+    expect(
+      findLastAgentReport(
+        [
+          { author: 'bot', content: report('impl') },
+          { author: 'bot', content: fencedBeforePrefix },
+        ],
+        trustEveryAuthor,
+      )?.content,
+    ).toBe(fencedBeforePrefix);
+  });
+
+  it('skips a later comment whose only agent report prefix sits inside a fenced block', () => {
+    const prefixInsideFence =
+      '```\nFrom: :robot: agent (model)\n```\n\nQuoted for reference.';
+    expect(
+      findLastAgentReport(
+        [
+          { author: 'bot', content: report('impl') },
+          { author: 'bot', content: prefixInsideFence },
+        ],
+        trustEveryAuthor,
+      )?.content,
+    ).toBe(report('impl'));
+  });
+
   it('skips a later comment that does not carry the agent report prefix', () => {
     expect(
       findLastAgentReport(

@@ -1,4 +1,4 @@
-import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
+import { isAgentReportBody } from './isAgentReportBody';
 import { normalizeReportBody } from './normalizeReportBody';
 
 export const isPullRequestDeclaredUnnecessary = (
@@ -9,7 +9,7 @@ export const isPullRequestDeclaredUnnecessary = (
   if (
     !lastComment ||
     !isTrustedAuthor(lastComment.author) ||
-    !lastComment.content.startsWith(AGENT_REPORT_PREFIX)
+    !isAgentReportBody(lastComment.content)
   ) {
     return false;
   }

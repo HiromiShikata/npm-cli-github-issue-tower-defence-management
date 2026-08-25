@@ -1,7 +1,10 @@
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
+import {
+  isAgentReportBody,
+  isAgentReportBodyFromAgent,
+} from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { isRecord } from './isRecord';
@@ -23,9 +26,7 @@ type TriagerProposal = {
 const parseTriagerProposalBlock = (
   commentContent: string,
 ): TriagerProposal | null => {
-  if (
-    !commentContent.startsWith(`${AGENT_REPORT_PREFIX} ${TRIAGER_AGENT_NAME}`)
-  ) {
+  if (!isAgentReportBodyFromAgent(commentContent, TRIAGER_AGENT_NAME)) {
     return null;
   }
   const jsonBlockMatches = [
@@ -75,7 +76,7 @@ const isApprovalComment = (
   if (!isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors)) {
     return false;
   }
-  if (content.startsWith(AGENT_REPORT_PREFIX)) {
+  if (isAgentReportBody(content)) {
     return false;
   }
   return /^(ok|オーケー|はい[\s\S]*)$/i.test(content.trim());

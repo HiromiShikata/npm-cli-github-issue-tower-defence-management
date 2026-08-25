@@ -7,6 +7,7 @@ import {
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
 import { normalizeReportBody } from './normalizeReportBody';
+import { isAgentReportBody } from './isAgentReportBody';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -72,7 +73,7 @@ export class CheckIssueReviewReadinessUseCase {
     if (
       !lastComment ||
       !isTrustedAuthor(lastComment.author) ||
-      !lastComment.content.startsWith('From: :robot:')
+      !isAgentReportBody(lastComment.content)
     ) {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',

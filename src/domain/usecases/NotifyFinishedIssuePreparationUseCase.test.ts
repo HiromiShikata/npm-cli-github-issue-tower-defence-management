@@ -984,6 +984,56 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should end the dispatch loop when the dispatched agent reports with the prefix behind a leading fenced json block', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'accounting',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager\n```json\n{"nextStepAgent": "accounting", "nextStep": null}\n```',
+      }),
+      createMockComment({
+        content:
+          'Auto Status Check: RETURNED_TO_AWAITING_WORKSPACE\nThe report declared that this task needs no pull request.',
+      }),
+      createMockComment({
+        content:
+          '```json\n{ "pullRequestRequired": false, "nextStep": null }\n```\n\nFrom: :robot: accounting (model)\n\n## Result\nDone.',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 'Awaiting Quality Check',
+      }),
+      mockProject,
+    );
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'awaiting-workspace-id',
+    );
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('Next step agent dispatch repeated: accounting'),
+    );
+  });
+
   it('should escalate to Failed Preparation when the declared nextStepAgent was already dispatched up to the threshold without a report', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
