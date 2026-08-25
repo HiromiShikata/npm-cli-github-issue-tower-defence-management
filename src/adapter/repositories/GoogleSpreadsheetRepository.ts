@@ -44,13 +44,17 @@ interface SheetsApiClient {
 export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
   keyFile = './tmp/service-account-key.json';
   private readonly sheetsClient: SheetsApiClient;
+  private readonly sleepFn: (ms: number) => Promise<void>;
 
   constructor(
     readonly localStorageRepository: LocalStorageRepository,
     serviceAccountKey: string = process.env.GOOGLE_SERVICE_ACCOUNT_KEY ||
       'dummy',
     sheetsClientFactory?: () => SheetsApiClient,
+    sleepFn: (ms: number) => Promise<void> = (ms) =>
+      new Promise((resolve) => setTimeout(resolve, ms)),
   ) {
+    this.sleepFn = sleepFn;
     this.localStorageRepository.write(this.keyFile, serviceAccountKey);
     this.sheetsClient = sheetsClientFactory
       ? sheetsClientFactory()
@@ -93,6 +97,30 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
         })();
   }
 
+  private callWithRetry = async <T>(fn: () => Promise<T>): Promise<T> => {
+    const backoffMs = [1000, 2000, 4000];
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= backoffMs.length; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error;
+        const isQuotaError = (() => {
+          if (!(error instanceof Error)) return false;
+          if (error.message.includes('Quota exceeded')) return true;
+          if ('status' in error && error.status === 429) return true;
+          if ('code' in error && error.code === 429) return true;
+          return false;
+        })();
+        if (!isQuotaError || attempt === backoffMs.length) {
+          throw error;
+        }
+        await this.sleepFn(backoffMs[attempt]);
+      }
+    }
+    throw lastError;
+  };
+
   getSpreadsheetId = (spreadsheetUrl: string): string => {
     const url = new URL(spreadsheetUrl);
     return url.pathname.split('/')[3];
@@ -103,9 +131,11 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
   ): Promise<string[][] | null> => {
     const sheets = this.sheetsClient;
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
-    const responseSheet = await sheets.spreadsheets.get({
-      spreadsheetId,
-    });
+    const responseSheet = await this.callWithRetry(() =>
+      sheets.spreadsheets.get({
+        spreadsheetId,
+      }),
+    );
     if (responseSheet.status !== 200) {
       throw new Error(
         `Failed to get sheet: ${responseSheet.status}. ${JSON.stringify(responseSheet.data)}`,
@@ -117,10 +147,12 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     if (!sheet) {
       return null;
     }
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: sheetName,
-    });
+    const response = await this.callWithRetry(() =>
+      sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: sheetName,
+      }),
+    );
     if (response.status !== 200) {
       throw new Error(
         `Failed to get sheet: ${response.status}. ${JSON.stringify(response.data)}`,
@@ -141,14 +173,16 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     const sheets = this.sheetsClient;
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
     await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
-    const response = await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `${sheetName}!${String.fromCharCode(65 + column)}${row + 1}`,
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: [[value]],
-      },
-    });
+    const response = await this.callWithRetry(() =>
+      sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetName}!${String.fromCharCode(65 + column)}${row + 1}`,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values: [[value]],
+        },
+      }),
+    );
     if (response.status !== 200) {
       throw new Error(
         `Failed to update cell: ${response.status}. ${JSON.stringify(response.data)}`,
@@ -161,7 +195,9 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
   ): Promise<boolean> => {
     const sheets = this.sheetsClient;
     const spreadsheetId = this.getSpreadsheetId(spreadsheetUrl);
-    const response = await sheets.spreadsheets.get({ spreadsheetId });
+    const response = await this.callWithRetry(() =>
+      sheets.spreadsheets.get({ spreadsheetId }),
+    );
     if (response.status !== 200) {
       throw new Error(
         `Failed to get sheet: ${response.status}. ${JSON.stringify(response.data)}`,
@@ -180,20 +216,22 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     if (await this.sheetExists(spreadsheetUrl, sheetName)) {
       return;
     }
-    const response = await sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        requests: [
-          {
-            addSheet: {
-              properties: {
-                title: sheetName,
+    const response = await this.callWithRetry(() =>
+      sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              addSheet: {
+                properties: {
+                  title: sheetName,
+                },
               },
             },
-          },
-        ],
-      },
-    });
+          ],
+        },
+      }),
+    );
     if (response.status !== 200) {
       throw new Error(
         `Failed to create sheet: ${response.status}. ${JSON.stringify(response.data)}`,
@@ -211,14 +249,16 @@ export class GoogleSpreadsheetRepository implements SpreadsheetRepository {
     await this.createNewSheetIfNotExists(spreadsheetUrl, sheetName);
     const sheet = await this.getSheet(spreadsheetUrl, sheetName);
     const range = `${sheetName}!A${sheet ? sheet.length + 1 : 1}:A`;
-    const response = await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: range,
-      valueInputOption: 'RAW',
-      requestBody: {
-        values,
-      },
-    });
+    const response = await this.callWithRetry(() =>
+      sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: range,
+        valueInputOption: 'RAW',
+        requestBody: {
+          values,
+        },
+      }),
+    );
     if (response.status !== 200) {
       throw new Error(
         `Failed to append values: ${response.status}. ${JSON.stringify(response.data)}`,

@@ -215,6 +215,53 @@ describe('GoogleSpreadsheetRepository', () => {
 
       expect(result).toEqual([['1', 'true', 'text']]);
     });
+
+    test('retries once after a quota error and returns the value on success', async () => {
+      mockSpreadsheetsGet
+        .mockRejectedValueOnce(
+          new Error('Quota exceeded for quota metric Read requests'),
+        )
+        .mockResolvedValueOnce({
+          status: 200,
+          data: {
+            sheets: [{ properties: { title: 'RetrySheet' } }],
+          },
+        });
+      mockSpreadsheetsValuesGet.mockResolvedValue({
+        status: 200,
+        data: { values: [['retried']] },
+      });
+      const repositoryWithFastSleep = new GoogleSpreadsheetRepository(
+        localStorageRepository,
+        'dummy-service-account-key',
+        () => mockSheetsClient,
+        () => Promise.resolve(),
+      );
+
+      const result = await repositoryWithFastSleep.getSheet(
+        spreadsheetUrl,
+        'RetrySheet',
+      );
+
+      expect(result).toEqual([['retried']]);
+      expect(mockSpreadsheetsGet).toHaveBeenCalledTimes(2);
+    });
+
+    test('throws after exhausting all retries', async () => {
+      mockSpreadsheetsGet.mockRejectedValue(
+        new Error('Quota exceeded for quota metric Read requests'),
+      );
+      const repositoryWithFastSleep = new GoogleSpreadsheetRepository(
+        localStorageRepository,
+        'dummy-service-account-key',
+        () => mockSheetsClient,
+        () => Promise.resolve(),
+      );
+
+      await expect(
+        repositoryWithFastSleep.getSheet(spreadsheetUrl, 'AnySheet'),
+      ).rejects.toThrow('Quota exceeded');
+    });
   });
 
   describe('updateCell', () => {
