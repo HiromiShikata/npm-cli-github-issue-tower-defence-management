@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TriagerApprovalDispatchUseCase = void 0;
-const agentReportPrefix_1 = require("./agentReportPrefix");
+const isAgentReportBody_1 = require("./isAgentReportBody");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 const isRecord_1 = require("./isRecord");
@@ -10,7 +10,7 @@ const normalizeReportBody_1 = require("./normalizeReportBody");
 const TRIAGER_AGENT_NAME = 'triager';
 const MAX_COMMENT_FETCHES_PER_CYCLE = 20;
 const parseTriagerProposalBlock = (commentContent) => {
-    if (!commentContent.startsWith(`${agentReportPrefix_1.AGENT_REPORT_PREFIX} ${TRIAGER_AGENT_NAME}`)) {
+    if (!(0, isAgentReportBody_1.isAgentReportBodyFromAgent)(commentContent, TRIAGER_AGENT_NAME)) {
         return null;
     }
     const jsonBlockMatches = [
@@ -52,7 +52,7 @@ const isApprovalComment = (content, author, allowedIssueAuthors) => {
     if (!(0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors)) {
         return false;
     }
-    if (content.startsWith(agentReportPrefix_1.AGENT_REPORT_PREFIX)) {
+    if ((0, isAgentReportBody_1.isAgentReportBody)(content)) {
         return false;
     }
     return /^(ok|オーケー|はい[\s\S]*)$/i.test(content.trim());

@@ -5,6 +5,7 @@ const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 const normalizeReportBody_1 = require("./normalizeReportBody");
+const isAgentReportBody_1 = require("./isAgentReportBody");
 class CheckIssueReviewReadinessUseCase {
     constructor(issueRepository, issueCommentRepository) {
         this.issueRepository = issueRepository;
@@ -28,7 +29,7 @@ class CheckIssueReviewReadinessUseCase {
             const lastComment = comments[comments.length - 1];
             if (!lastComment ||
                 !isTrustedAuthor(lastComment.author) ||
-                !lastComment.content.startsWith('From: :robot:')) {
+                !(0, isAgentReportBody_1.isAgentReportBody)(lastComment.content)) {
                 rejections.push({
                     type: 'NO_REPORT_FROM_AGENT_BOT',
                     detail: 'NO_REPORT_FROM_AGENT_BOT',

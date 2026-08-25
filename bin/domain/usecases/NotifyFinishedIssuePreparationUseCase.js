@@ -10,6 +10,7 @@ const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorksp
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const extractNextStepAgent_1 = require("./extractNextStepAgent");
 const findLastAgentReport_1 = require("./findLastAgentReport");
+const isAgentReportBody_1 = require("./isAgentReportBody");
 const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 const normalizeReportBody_1 = require("./normalizeReportBody");
 const resolveNextStepAgentDispatchRepetition_1 = require("./resolveNextStepAgentDispatchRepetition");
@@ -241,7 +242,7 @@ class NotifyFinishedIssuePreparationUseCase {
             const lastComment = comments[comments.length - 1];
             if (!lastComment ||
                 !isTrustedAuthor(lastComment.author) ||
-                !lastComment.content.startsWith('From: :robot:')) {
+                !(0, isAgentReportBody_1.isAgentReportBody)(lastComment.content)) {
                 rejections.push({
                     type: 'NO_REPORT_FROM_AGENT_BOT',
                     detail: 'NO_REPORT_FROM_AGENT_BOT',

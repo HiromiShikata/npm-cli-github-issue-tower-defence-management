@@ -1,3 +1,10 @@
+## [1.180.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.180.0...v1.180.1) (2026-08-25)
+
+
+### Bug Fixes
+
+* **preparation:** recognize an agent report whose prefix follows leading fenced blocks ([#1753](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1753)) ([aea40d5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/aea40d5b8fd4341b0e020d0b7a5b9691dbfd59b9))
+
 # [1.180.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.179.0...v1.180.0) (2026-08-25)
 
 

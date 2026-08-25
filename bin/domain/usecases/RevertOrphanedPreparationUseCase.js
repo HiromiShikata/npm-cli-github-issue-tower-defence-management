@@ -9,6 +9,7 @@ const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForA
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
 const extractNextStepAgent_1 = require("./extractNextStepAgent");
 const findLastAgentReport_1 = require("./findLastAgentReport");
+const isAgentReportBody_1 = require("./isAgentReportBody");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const normalizeReportBody_1 = require("./normalizeReportBody");
 const resolveNextStepAgentDispatchRepetition_1 = require("./resolveNextStepAgentDispatchRepetition");
@@ -151,7 +152,7 @@ class RevertOrphanedPreparationUseCase {
                 };
             }
             const lastComment = comments[comments.length - 1];
-            if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
+            if (!lastComment || !(0, isAgentReportBody_1.isAgentReportBody)(lastComment.content)) {
                 return { outcome: 'reject', comments };
             }
             if (this.reportBodyHasNextStep(lastComment.content)) {
