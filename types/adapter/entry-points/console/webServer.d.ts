@@ -3,7 +3,7 @@ import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-inte
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
-import { ConsoleIssueRepositoryResolver, ConsolePjcodeValidator, ConsoleProjectResolver } from './consoleOperationApi';
+import { ConsoleIssueRepositoryResolver, ConsolePjcodeValidator, ConsoleProjectRepositoryResolver, ConsoleProjectResolver } from './consoleOperationApi';
 import { ImageFetcher } from './consoleImageProxy';
 import { ConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
 export declare const DEFAULT_WEB_PORT = 9980;
@@ -32,6 +32,7 @@ export type WebServerOptions = {
     resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
     resolveProject?: ConsoleProjectResolver | null;
     isPjcodeConfigured?: ConsolePjcodeValidator | null;
+    resolveProjectRepository?: ConsoleProjectRepositoryResolver | null;
     issueAttachmentRepository?: IssueAttachmentRepository | null;
     projectRepository?: Pick<ProjectRepository, 'updateStoryList'> | null;
     issueTitleStateCache?: IssueTitleStateCache | null;

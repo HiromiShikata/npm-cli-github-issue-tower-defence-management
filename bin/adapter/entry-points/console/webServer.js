@@ -413,6 +413,8 @@ const dispatchOperation = (context, requestPath, body) => {
             return (0, consoleOperationApi_1.handleCreateIssue)(context, body);
         case '/api/reorderstory':
             return (0, consoleOperationApi_1.handleReorderStory)(context, body);
+        case '/api/addstory':
+            return (0, consoleOperationApi_1.handleAddStory)(context, body);
         default:
             return null;
     }
@@ -437,6 +439,7 @@ const handleOperationApi = async (options, requestPath, body) => {
         updateStoryList: projectRepository !== null
             ? (project, stories) => projectRepository.updateStoryList(project, stories)
             : null,
+        resolveProjectRepository: options.resolveProjectRepository ?? null,
     };
     const dispatched = dispatchOperation(context, requestPath, body);
     if (dispatched === null) {

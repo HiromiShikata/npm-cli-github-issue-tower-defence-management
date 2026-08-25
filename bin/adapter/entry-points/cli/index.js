@@ -515,6 +515,7 @@ const runServeWeb = async (options) => {
         resolveIssueRepository,
         resolveProject,
         isPjcodeConfigured,
+        resolveProjectRepository,
         issueAttachmentRepository: new LocalCommandIssueAttachmentRepository_1.LocalCommandIssueAttachmentRepository(new NodeLocalCommandRunner_1.NodeLocalCommandRunner(), resolveGithubTokenForItemUrl),
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         pullRequestStatusCache: new consoleReadApi_1.PullRequestStatusCache(),

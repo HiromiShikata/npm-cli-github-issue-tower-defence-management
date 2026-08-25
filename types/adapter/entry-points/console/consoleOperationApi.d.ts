@@ -1,5 +1,6 @@
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { FieldOption, Project } from '../../../domain/entities/Project';
 export declare const AWAITING_WORKSPACE_STATUS_NAME = "awaiting workspace";
 export declare const IN_TMUX_BY_HUMAN_STATUS_NAME = "in tmux by human";
@@ -11,6 +12,7 @@ export type ConsoleProjectBinding = {
 export type ConsoleProjectResolver = (pjcode: string) => Promise<ConsoleProjectBinding | null>;
 export type ConsolePjcodeValidator = (pjcode: string) => boolean;
 export type ConsoleIssueRepositoryResolver = (issueOrPullRequestUrl: string) => IssueRepository;
+export type ConsoleProjectRepositoryResolver = (projectUrl: string) => Pick<ProjectRepository, 'updateStoryList'>;
 export type ConsoleOperationContext = {
     resolveIssueRepository: ConsoleIssueRepositoryResolver;
     resolveProject: ConsoleProjectResolver;
@@ -18,6 +20,7 @@ export type ConsoleOperationContext = {
     consoleDataOutputDir: string | null;
     issueAttachmentRepository: IssueAttachmentRepository | null;
     updateStoryList: ((project: Project, stories: FieldOption[]) => Promise<FieldOption[]>) | null;
+    resolveProjectRepository: ConsoleProjectRepositoryResolver | null;
 };
 export type ConsoleOperationResponse = {
     statusCode: number;
@@ -31,4 +34,5 @@ export declare const handleCreateIssue: (context: ConsoleOperationContext, body:
 export declare const handleReviewComment: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleIntmux: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleReorderStory: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
+export declare const handleAddStory: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 //# sourceMappingURL=consoleOperationApi.d.ts.map
