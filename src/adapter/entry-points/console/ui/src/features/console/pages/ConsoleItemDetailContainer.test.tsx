@@ -425,9 +425,10 @@ describe('ConsoleItemDetailContainer', () => {
   });
 
   it('does not pass onSubmitAndMoveToAwaitingWorkspace to the composer when statusOptions does not include Awaiting Workspace', () => {
-    const statusOptionsWithoutAwaitingWorkspace = consoleStatusOptionsFixture.filter(
-      (o) => o.name !== 'Awaiting Workspace',
-    );
+    const statusOptionsWithoutAwaitingWorkspace =
+      consoleStatusOptionsFixture.filter(
+        (o) => o.name !== 'Awaiting Workspace',
+      );
     const { queryByText } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"

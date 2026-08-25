@@ -6,7 +6,9 @@ export type ConsoleCommentComposerProps = {
   initialDraft?: string;
   onSubmit: (body: string) => Promise<ConsoleComment>;
   onDraftChange?: (draft: string) => void;
-  onSubmitAndMoveToAwaitingWorkspace?: (body: string) => Promise<ConsoleComment>;
+  onSubmitAndMoveToAwaitingWorkspace?: (
+    body: string,
+  ) => Promise<ConsoleComment>;
   onUploadFile?: (file: File) => Promise<string>;
 };
 
