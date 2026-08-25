@@ -29,6 +29,7 @@ import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
+import { isAgentReportBody } from './isAgentReportBody';
 import {
   issueReactivationTriggerIsPending,
   issueReactivationTriggerStartOfTomorrow,
@@ -559,7 +560,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (
       !lastComment ||
       !isTrustedAuthor(lastComment.author) ||
-      !lastComment.content.startsWith('From: :robot:')
+      !isAgentReportBody(lastComment.content)
     ) {
       rejections.push({
         type: 'NO_REPORT_FROM_AGENT_BOT',

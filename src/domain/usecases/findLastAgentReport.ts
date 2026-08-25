@@ -1,4 +1,4 @@
-import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
+import { isAgentReportBody } from './isAgentReportBody';
 
 export const findLastAgentReport = <
   Comment extends { author: string; content: string },
@@ -10,6 +10,5 @@ export const findLastAgentReport = <
     .reverse()
     .find(
       (comment) =>
-        isTrustedAuthor(comment.author) &&
-        comment.content.startsWith(AGENT_REPORT_PREFIX),
+        isTrustedAuthor(comment.author) && isAgentReportBody(comment.content),
     ) ?? null;

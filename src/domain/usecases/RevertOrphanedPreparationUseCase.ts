@@ -24,6 +24,7 @@ import {
 } from './returnedToAwaitingWorkspaceMessage';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
+import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { normalizeReportBody } from './normalizeReportBody';
 import { resolveNextStepAgentDispatchRepetition } from './resolveNextStepAgentDispatchRepetition';
@@ -334,7 +335,7 @@ export class RevertOrphanedPreparationUseCase {
     }
 
     const lastComment = comments[comments.length - 1];
-    if (!lastComment || !lastComment.content.startsWith('From: :robot:')) {
+    if (!lastComment || !isAgentReportBody(lastComment.content)) {
       return { outcome: 'reject', comments };
     }
     if (this.reportBodyHasNextStep(lastComment.content)) {
