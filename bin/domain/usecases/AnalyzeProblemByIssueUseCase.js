@@ -10,7 +10,7 @@ class AnalyzeProblemByIssueUseCase {
             const story = input.project.story;
             if (!storyProgressCommentEnabled ||
                 !story ||
-                !input.targetDates.find((targetDate) => targetDate.getHours() === 0 && targetDate.getMinutes() === 0)) {
+                !input.targetDates.find((targetDate) => targetDate.getUTCHours() === 0 && targetDate.getUTCMinutes() === 0)) {
                 return;
             }
             const targetDate = input.targetDates[input.targetDates.length - 1];

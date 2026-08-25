@@ -11,21 +11,21 @@ class SystemDateRepository {
         };
         this.formatDateTimeWithDayOfWeek = (date) => {
             const dateWithDayOfWeek = this.formatDateWithDayOfWeek(date);
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const hours = String(date.getUTCHours()).padStart(2, '0');
+            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
             return `${dateWithDayOfWeek} ${hours}:${minutes}`;
         };
         this.formatDateWithDayOfWeek = (date) => {
-            const dayOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${date.getFullYear()}/${month}/${day} (${dayOfWeek})`;
+            const dayOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getUTCDay()];
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            return `${date.getUTCFullYear()}/${month}/${day} (${dayOfWeek})`;
         };
         this.formatStartEnd = (start, end) => {
-            const endDate = start.getFullYear() === end.getFullYear() &&
-                start.getMonth() === end.getMonth() &&
-                start.getDate() === end.getDate()
-                ? `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
+            const endDate = start.getUTCFullYear() === end.getUTCFullYear() &&
+                start.getUTCMonth() === end.getUTCMonth() &&
+                start.getUTCDate() === end.getUTCDate()
+                ? `${String(end.getUTCHours()).padStart(2, '0')}:${String(end.getUTCMinutes()).padStart(2, '0')}`
                 : this.formatDateTimeWithDayOfWeek(end);
             return `${this.formatDateTimeWithDayOfWeek(start)} - ${endDate}`;
         };

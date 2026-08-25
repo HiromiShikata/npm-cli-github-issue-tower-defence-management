@@ -10,7 +10,7 @@ class AnalyzeStoriesUseCase {
         this.run = async (input) => {
             const story = input.project.story;
             if (!story ||
-                !input.targetDates.find((targetDate) => targetDate.getHours() === 5 && targetDate.getMinutes() === 0)) {
+                !input.targetDates.find((targetDate) => targetDate.getUTCHours() === 5 && targetDate.getUTCMinutes() === 0)) {
                 return;
             }
             const phases = new Map();
