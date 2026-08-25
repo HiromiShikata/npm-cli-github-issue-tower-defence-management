@@ -2,18 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { colorFromEnum } from '../../logic/colors';
 import type { ConsoleStoryEntry } from '../../logic/types';
 
-type StoryCreateFormProps = {
-  storyOptionId: string;
-  onSubmit: (storyOptionId: string, title: string) => Promise<void>;
+type InlineInputFormProps = {
+  placeholder: string;
+  emptyValueError: string;
+  onSubmit: (value: string) => Promise<void>;
   onCancel: () => void;
 };
 
-const StoryCreateForm = ({
-  storyOptionId,
+const InlineInputForm = ({
+  placeholder,
+  emptyValueError,
   onSubmit,
   onCancel,
-}: StoryCreateFormProps) => {
-  const [titleInput, setTitleInput] = useState('');
+}: InlineInputFormProps) => {
+  const [valueInput, setValueInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -23,78 +25,9 @@ const StoryCreateForm = ({
   }, []);
 
   const handleSubmit = async (): Promise<void> => {
-    const trimmed = titleInput.trim();
+    const trimmed = valueInput.trim();
     if (trimmed.length === 0) {
-      setSubmitError('Title is required');
-      return;
-    }
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      await onSubmit(storyOptionId, trimmed);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <form
-      className="console-story-create-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void handleSubmit();
-      }}
-    >
-      <input
-        ref={inputRef}
-        type="text"
-        className="console-story-create-input"
-        placeholder="Issue title"
-        value={titleInput}
-        onChange={(e) => setTitleInput(e.target.value)}
-        disabled={submitting}
-      />
-      <button type="submit" className="console-op-button" disabled={submitting}>
-        {submitting ? 'Creating…' : 'Create'}
-      </button>
-      <button
-        type="button"
-        className="console-op-button"
-        onClick={onCancel}
-        disabled={submitting}
-      >
-        Cancel
-      </button>
-      {submitError !== null && (
-        <p role="alert" className="console-list-error">
-          {submitError}
-        </p>
-      )}
-    </form>
-  );
-};
-
-type StoryAddFormProps = {
-  onSubmit: (storyName: string) => Promise<void>;
-  onCancel: () => void;
-};
-
-const StoryAddForm = ({ onSubmit, onCancel }: StoryAddFormProps) => {
-  const [nameInput, setNameInput] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const handleSubmit = async (): Promise<void> => {
-    const trimmed = nameInput.trim();
-    if (trimmed.length === 0) {
-      setSubmitError('Story name is required');
+      setSubmitError(emptyValueError);
       return;
     }
     setSubmitting(true);
@@ -110,7 +43,7 @@ const StoryAddForm = ({ onSubmit, onCancel }: StoryAddFormProps) => {
 
   return (
     <form
-      className="console-story-create-form"
+      className="console-inline-input-form"
       onSubmit={(event) => {
         event.preventDefault();
         void handleSubmit();
@@ -119,10 +52,10 @@ const StoryAddForm = ({ onSubmit, onCancel }: StoryAddFormProps) => {
       <input
         ref={inputRef}
         type="text"
-        className="console-story-create-input"
-        placeholder="Story name"
-        value={nameInput}
-        onChange={(e) => setNameInput(e.target.value)}
+        className="console-inline-input-form-input"
+        placeholder={placeholder}
+        value={valueInput}
+        onChange={(e) => setValueInput(e.target.value)}
         disabled={submitting}
       />
       <button type="submit" className="console-op-button" disabled={submitting}>
@@ -144,6 +77,25 @@ const StoryAddForm = ({ onSubmit, onCancel }: StoryAddFormProps) => {
     </form>
   );
 };
+
+type StoryCreateFormProps = {
+  storyOptionId: string;
+  onSubmit: (storyOptionId: string, title: string) => Promise<void>;
+  onCancel: () => void;
+};
+
+const StoryCreateForm = ({
+  storyOptionId,
+  onSubmit,
+  onCancel,
+}: StoryCreateFormProps) => (
+  <InlineInputForm
+    placeholder="Issue title"
+    emptyValueError="Title is required"
+    onSubmit={(title) => onSubmit(storyOptionId, title)}
+    onCancel={onCancel}
+  />
+);
 
 export type ConsoleStoryListProps = {
   stories: ConsoleStoryEntry[];
@@ -257,7 +209,9 @@ export const ConsoleStoryList = ({
           Add story
         </button>
         {addStoryExpanded && (
-          <StoryAddForm
+          <InlineInputForm
+            placeholder="Story name"
+            emptyValueError="Story name is required"
             onSubmit={async (storyName) => {
               await onAddStory(storyName);
               setAddStoryExpanded(false);
