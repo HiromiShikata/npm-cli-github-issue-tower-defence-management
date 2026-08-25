@@ -1640,6 +1640,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<StartPreparationUseCase>(),
       mock<RevertOrphanedPreparationUseCase>(),
       mock<RevertNotReadyReviewQueueIssueUseCase>(),
+      mock<TriagerApprovalDispatchUseCase>(),
       mock<AgentDesignationLabelAdoptUseCase>(),
       null,
       null,

@@ -18,7 +18,7 @@ class ClearPastNextActionDateHourUseCase {
                         continue;
                     }
                     const scheduledDate = issue.nextActionDate ?? now;
-                    const scheduledTime = new Date(scheduledDate.getFullYear(), scheduledDate.getMonth(), scheduledDate.getDate(), issue.nextActionHour);
+                    const scheduledTime = new Date(Date.UTC(scheduledDate.getUTCFullYear(), scheduledDate.getUTCMonth(), scheduledDate.getUTCDate(), issue.nextActionHour));
                     if (scheduledTime.getTime() > now.getTime()) {
                         continue;
                     }

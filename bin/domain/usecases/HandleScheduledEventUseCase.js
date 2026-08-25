@@ -477,7 +477,7 @@ ${JSON.stringify(e)}
             const summaryStoryIssue = new Map();
             const targetStory = input.project.story?.stories || [];
             for (const story of targetStory) {
-                const storyIssue = input.issues.find((issue) => story.name.startsWith(issue.title));
+                const storyIssue = input.issues.find((issue) => story.name.startsWith(issue.title) && !issue.isClosed);
                 summaryStoryIssue.set(story.name, {
                     story,
                     storyIssue: storyIssue || null,
@@ -499,18 +499,18 @@ HandleScheduledEventUseCase.createTargetDateTimes = (from, to) => {
     const targetDateTimes = [];
     if (from.getTime() > to.getTime()) {
         const targetDate = new Date(to);
-        targetDate.setSeconds(0);
-        targetDate.setMilliseconds(0);
+        targetDate.setUTCSeconds(0);
+        targetDate.setUTCMilliseconds(0);
         return [targetDate];
     }
     const targetDate = new Date(from);
     targetDate.setTime(targetDate.getTime() + 60 * 1000);
-    targetDate.setSeconds(0);
-    targetDate.setMilliseconds(0);
+    targetDate.setUTCSeconds(0);
+    targetDate.setUTCMilliseconds(0);
     while (targetDate.getTime() <= to.getTime() &&
         targetDateTimes.length < 300) {
         targetDateTimes.push(new Date(targetDate));
-        targetDate.setMinutes(targetDate.getMinutes() + 1);
+        targetDate.setUTCMinutes(targetDate.getUTCMinutes() + 1);
     }
     return targetDateTimes;
 };

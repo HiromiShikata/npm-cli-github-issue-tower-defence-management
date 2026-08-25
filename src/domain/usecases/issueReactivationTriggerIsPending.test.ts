@@ -139,64 +139,64 @@ describe('issueReactivationTriggerIsPending', () => {
   it.each([
     {
       label: 'returns false when no trigger is set',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: null,
       nextActionHour: null,
       expected: false,
     },
     {
       label: 'returns true when nextActionDate is tomorrow',
-      now: new Date(2026, 0, 15, 10, 0, 0),
-      nextActionDate: new Date(2026, 0, 16),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
+      nextActionDate: new Date(Date.UTC(2026, 0, 16)),
       nextActionHour: null,
       expected: true,
     },
     {
       label: 'returns false when nextActionDate is today',
-      now: new Date(2026, 0, 15, 10, 0, 0),
-      nextActionDate: new Date(2026, 0, 15),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
+      nextActionDate: new Date(Date.UTC(2026, 0, 15)),
       nextActionHour: null,
       expected: false,
     },
     {
       label: 'returns false when nextActionDate is in the past',
-      now: new Date(2026, 0, 15, 10, 0, 0),
-      nextActionDate: new Date(2026, 0, 14),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
+      nextActionDate: new Date(Date.UTC(2026, 0, 14)),
       nextActionHour: null,
       expected: false,
     },
     {
       label: 'returns true when nextActionHour is in the future',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: null,
       nextActionHour: 11,
       expected: true,
     },
     {
       label: 'returns false when nextActionHour exactly equals current hour',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: null,
       nextActionHour: 10,
       expected: false,
     },
     {
       label: 'returns false when nextActionHour is in the past',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: null,
       nextActionHour: 9,
       expected: false,
     },
     {
       label: 'returns true when date is future and hour has been reached',
-      now: new Date(2026, 0, 15, 10, 0, 0),
-      nextActionDate: new Date(2026, 0, 16),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
+      nextActionDate: new Date(Date.UTC(2026, 0, 16)),
       nextActionHour: 9,
       expected: true,
     },
     {
       label:
         'returns true when nextActionDate is future (production ISO form new Date("YYYY-MM-DD"))',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: new Date('2026-01-16'),
       nextActionHour: null,
       expected: true,
@@ -204,7 +204,7 @@ describe('issueReactivationTriggerIsPending', () => {
     {
       label:
         'returns false when nextActionDate is today (production ISO form new Date("YYYY-MM-DD"))',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: new Date('2026-01-15'),
       nextActionHour: null,
       expected: false,
@@ -221,16 +221,16 @@ describe('issueReactivationTriggerIsPending', () => {
 describe('issueReactivationTriggerStartOfTomorrow', () => {
   it('returns midnight of the following day', () => {
     const result = issueReactivationTriggerStartOfTomorrow(
-      new Date(2026, 0, 15, 10, 30, 0),
+      new Date(Date.UTC(2026, 0, 15, 10, 30, 0)),
     );
-    expect(result).toEqual(new Date(2026, 0, 16, 0, 0, 0));
+    expect(result).toEqual(new Date(Date.UTC(2026, 0, 16, 0, 0, 0)));
   });
 
   it('handles month-end rollover correctly', () => {
     const result = issueReactivationTriggerStartOfTomorrow(
-      new Date(2026, 0, 31, 23, 59, 0),
+      new Date(Date.UTC(2026, 0, 31, 23, 59, 0)),
     );
-    expect(result).toEqual(new Date(2026, 1, 1, 0, 0, 0));
+    expect(result).toEqual(new Date(Date.UTC(2026, 1, 1, 0, 0, 0)));
   });
 });
 
@@ -243,61 +243,61 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
   }> = [
     {
       label: 'no trigger set',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: null,
       nextActionHour: null,
     },
     {
       label: 'nextActionDate is tomorrow (future)',
-      now: new Date(2026, 0, 15, 10, 0, 0),
-      nextActionDate: new Date(2026, 0, 16),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
+      nextActionDate: new Date(Date.UTC(2026, 0, 16)),
       nextActionHour: null,
     },
     {
       label: 'nextActionDate is today (trigger reached)',
-      now: new Date(2026, 0, 15, 10, 0, 0),
-      nextActionDate: new Date(2026, 0, 15),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
+      nextActionDate: new Date(Date.UTC(2026, 0, 15)),
       nextActionHour: null,
     },
     {
       label: 'nextActionDate is in the past',
-      now: new Date(2026, 0, 15, 10, 0, 0),
-      nextActionDate: new Date(2026, 0, 14),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
+      nextActionDate: new Date(Date.UTC(2026, 0, 14)),
       nextActionHour: null,
     },
     {
       label: 'nextActionHour is in the future',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: null,
       nextActionHour: 11,
     },
     {
       label: 'nextActionHour exactly equals current hour (boundary)',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: null,
       nextActionHour: 10,
     },
     {
       label: 'nextActionHour is in the past',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: null,
       nextActionHour: 9,
     },
     {
       label: 'date and hour together: future date with reached hour',
-      now: new Date(2026, 0, 15, 10, 0, 0),
-      nextActionDate: new Date(2026, 0, 16),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
+      nextActionDate: new Date(Date.UTC(2026, 0, 16)),
       nextActionHour: 9,
     },
     {
       label: 'date and hour together: future date with unreached hour',
-      now: new Date(2026, 0, 15, 10, 0, 0),
-      nextActionDate: new Date(2026, 0, 16),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
+      nextActionDate: new Date(Date.UTC(2026, 0, 16)),
       nextActionHour: 11,
     },
     {
       label: 'production ISO date form: nextActionDate is future',
-      now: new Date(2026, 0, 15, 10, 0, 0),
+      now: new Date(Date.UTC(2026, 0, 15, 10, 0, 0)),
       nextActionDate: new Date('2026-01-16'),
       nextActionHour: null,
     },

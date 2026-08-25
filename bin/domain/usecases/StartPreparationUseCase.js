@@ -230,7 +230,7 @@ class StartPreparationUseCase {
                     continue;
                 }
                 if ((0, issueReactivationTriggerIsPending_1.issueReactivationTriggerIsPending)(issue, now)) {
-                    const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+                    const startOfTomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
                     if (issue.nextActionDate !== null &&
                         issue.nextActionDate >= startOfTomorrow) {
                         exclusionCounts.futureNextActionDate++;

@@ -337,11 +337,31 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             const isFullFetch = cache === null ||
                 now.getTime() - new Date(cache.lastFullFetchAt).getTime() >=
                     exports.FULL_ISSUE_FETCH_INTERVAL_MS;
-            if (isFullFetch) {
-                const project = await this.projectRepository.getProject(projectId);
-                if (!project) {
+            let project;
+            try {
+                const freshProject = await this.projectRepository.getProject(projectId);
+                if (!freshProject) {
                     throw new Error(`Project not found. projectId: ${projectId}`);
                 }
+                project = freshProject;
+            }
+            catch (error) {
+                if (!isFullFetch && cache !== null) {
+                    console.warn(`Failed to refresh project metadata, using cached. projectId: ${projectId}, error: ${String(error)}`);
+                    project = cache.project;
+                }
+                else {
+                    throw error;
+                }
+            }
+            const cacheStoriesByOptionId = new Map(cache?.project.story?.stories.map((s) => [s.id, s.name]) ?? []);
+            const freshStoryOptionIds = new Set(project.story?.stories.map((s) => s.id) ?? []);
+            const storyOptionsChanged = cache !== null &&
+                ([...cacheStoriesByOptionId.entries()].some(([id, name]) => !freshStoryOptionIds.has(id) ||
+                    project.story?.stories.find((s) => s.id === id)?.name !== name) ??
+                    false);
+            const effectiveIsFullFetch = isFullFetch || storyOptionsChanged;
+            if (effectiveIsFullFetch) {
                 const items = await this.graphqlProjectItemRepository.fetchProjectItems(projectId);
                 const issues = items.map((item) => this.convertProjectItemToIssue(item));
                 const nowIso = now.toISOString();
@@ -354,7 +374,6 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
                 return { issues, project, cacheUsed: false };
             }
-            const project = cache.project;
             const lastFetchedAt = new Date(cache.lastFetchedAt);
             const cutoff = new Date(lastFetchedAt.getTime() - exports.INCREMENTAL_FETCH_SKEW_BUFFER_MS);
             const lightItems = await this.graphqlProjectItemRepository.fetchProjectItemsLight(projectId, `updated:>=${this.toDateString(cutoff)}`);

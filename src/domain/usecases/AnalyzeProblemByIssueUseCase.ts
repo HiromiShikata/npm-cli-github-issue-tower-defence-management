@@ -26,7 +26,7 @@ export class AnalyzeProblemByIssueUseCase {
       !story ||
       !input.targetDates.find(
         (targetDate) =>
-          targetDate.getHours() === 0 && targetDate.getMinutes() === 0,
+          targetDate.getUTCHours() === 0 && targetDate.getUTCMinutes() === 0,
       )
     ) {
       return;

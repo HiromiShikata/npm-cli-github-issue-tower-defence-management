@@ -4,9 +4,11 @@ export const issueReactivationTriggerStartOfTomorrow = (
   evaluatedAt: Date,
 ): Date =>
   new Date(
-    evaluatedAt.getFullYear(),
-    evaluatedAt.getMonth(),
-    evaluatedAt.getDate() + 1,
+    Date.UTC(
+      evaluatedAt.getUTCFullYear(),
+      evaluatedAt.getUTCMonth(),
+      evaluatedAt.getUTCDate() + 1,
+    ),
   );
 
 export const issueReactivationTriggerIsPending = (
@@ -18,6 +20,6 @@ export const issueReactivationTriggerIsPending = (
     issue.nextActionDate !== null && issue.nextActionDate >= startOfTomorrow;
   const hasUnreachedNextActionHour =
     issue.nextActionHour !== null &&
-    evaluatedAt.getHours() < issue.nextActionHour;
+    evaluatedAt.getUTCHours() < issue.nextActionHour;
   return hasFutureNextActionDate || hasUnreachedNextActionHour;
 };

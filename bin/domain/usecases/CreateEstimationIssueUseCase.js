@@ -10,14 +10,14 @@ class CreateEstimationIssueUseCase {
         this.run = async (input) => {
             const story = input.project.story;
             if (!story ||
-                !input.targetDates.find((targetDate) => targetDate.getHours() === 7 && targetDate.getMinutes() === 0)) {
+                !input.targetDates.find((targetDate) => targetDate.getUTCHours() === 7 && targetDate.getUTCMinutes() === 0)) {
                 return;
             }
             const targetDate = input.targetDates[input.targetDates.length - 1];
             if (!targetDate) {
                 return;
             }
-            if (targetDate.getDay() === 0 || targetDate.getDay() === 6) {
+            if (targetDate.getUTCDay() === 0 || targetDate.getUTCDay() === 6) {
                 return;
             }
             for (const story of input.project.story?.stories || []) {

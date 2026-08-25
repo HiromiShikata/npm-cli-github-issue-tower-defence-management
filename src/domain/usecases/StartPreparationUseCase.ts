@@ -453,9 +453,11 @@ export class StartPreparationUseCase {
       }
       if (issueReactivationTriggerIsPending(issue, now)) {
         const startOfTomorrow = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() + 1,
+          Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate() + 1,
+          ),
         );
         if (
           issue.nextActionDate !== null &&

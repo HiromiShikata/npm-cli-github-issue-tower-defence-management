@@ -32,7 +32,7 @@ export class CreateEstimationIssueUseCase {
       !story ||
       !input.targetDates.find(
         (targetDate) =>
-          targetDate.getHours() === 7 && targetDate.getMinutes() === 0,
+          targetDate.getUTCHours() === 7 && targetDate.getUTCMinutes() === 0,
       )
     ) {
       return;
@@ -41,7 +41,7 @@ export class CreateEstimationIssueUseCase {
     if (!targetDate) {
       return;
     }
-    if (targetDate.getDay() === 0 || targetDate.getDay() === 6) {
+    if (targetDate.getUTCDay() === 0 || targetDate.getUTCDay() === 6) {
       return;
     }
 
@@ -91,7 +91,7 @@ export class CreateEstimationIssueUseCase {
           !!issueInStory.completionDate50PercentConfidence &&
           (issueInStory.completionDate50PercentConfidence.getTime() <
             targetDate.getTime() + 7 * 24 * 60 * 60 * 1000 ||
-            targetDate.getDay() === 1)
+            targetDate.getUTCDay() === 1)
         ) {
           await this.issueRepository.createComment(
             issueInStory,
