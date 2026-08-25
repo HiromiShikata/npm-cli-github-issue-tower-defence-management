@@ -76,12 +76,12 @@ const StoryCreateForm = ({
   );
 };
 
-type AddStoryFormProps = {
+type StoryAddFormProps = {
   onSubmit: (storyName: string) => Promise<void>;
   onCancel: () => void;
 };
 
-const AddStoryForm = ({ onSubmit, onCancel }: AddStoryFormProps) => {
+const StoryAddForm = ({ onSubmit, onCancel }: StoryAddFormProps) => {
   const [nameInput, setNameInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -257,7 +257,7 @@ export const ConsoleStoryList = ({
           Add story
         </button>
         {addStoryExpanded && (
-          <AddStoryForm
+          <StoryAddForm
             onSubmit={async (storyName) => {
               await onAddStory(storyName);
               setAddStoryExpanded(false);
