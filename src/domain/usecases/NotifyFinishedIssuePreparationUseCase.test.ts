@@ -4391,5 +4391,50 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
     });
+
+    it('states the session stop reason in the deferral comment', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        deferPreparation: true,
+        sessionErrorLine:
+          'Task failed 3 consecutive times with terminal_reason=api_error',
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining(
+          'Task failed 3 consecutive times with terminal_reason=api_error',
+        ),
+      );
+    });
+
+    it('states that no stop reason was captured when sessionErrorLine is absent', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        deferPreparation: true,
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('(not captured)'),
+      );
+    });
   });
 });
