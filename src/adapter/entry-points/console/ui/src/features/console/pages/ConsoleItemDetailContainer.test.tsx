@@ -74,6 +74,7 @@ const buildOperations = (): ConsoleOperationsApi => ({
   setStatus: jest.fn(async () => {}),
   setInTmuxByHuman: jest.fn(async () => {}),
   closeIssue: jest.fn(async () => {}),
+  okAndMoveToAwaitingWorkspace: jest.fn(async () => {}),
   addComment: jest.fn(async () => ({
     author: 'HiromiShikata',
     body: 'comment body',

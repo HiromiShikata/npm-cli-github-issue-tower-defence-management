@@ -112,7 +112,7 @@ test('renders the Workflow Blocker tab leftmost and shows its detail operations'
   ).click();
 
   await expect(
-    page.locator('.console-op-button', { hasText: 'Awaiting Workspace' }),
+    page.locator('.console-op-button', { hasText: /^Awaiting Workspace$/ }),
   ).toBeVisible();
   await expect(
     page.locator('.console-op-button', { hasText: 'Close as not planned' }),
