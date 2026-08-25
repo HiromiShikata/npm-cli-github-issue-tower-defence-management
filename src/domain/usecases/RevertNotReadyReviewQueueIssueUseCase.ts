@@ -98,22 +98,13 @@ export class RevertNotReadyReviewQueueIssueUseCase {
 
     const labelsNotRequiringPullRequest =
       resolveLabelsNotRequiringPullRequest(params);
-    const willBeEvaluated = (item: Issue): boolean =>
-      isAuthorAuthorizedForAutoStatusCheck(item.author, allowedIssueAuthors) &&
-      this.issueRejectionEvaluator.requiresPullRequestEvaluation(
-        item,
-        labelsNotRequiringPullRequest,
-        params.developerAgentName,
-      );
 
     const resolvedOpenPrByUrl = await this.issueRepository.getOpenPullRequests(
       Array.from(
         new Set([
-          ...awaitingQualityCheckIssues
-            .filter(willBeEvaluated)
-            .flatMap(
-              (issue) => relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
-            ),
+          ...awaitingQualityCheckIssues.flatMap(
+            (issue) => relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
+          ),
         ]),
       ),
     );
@@ -135,6 +126,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
               resolvedOpenPrByUrl,
               developerAgentName: params.developerAgentName,
+              detectConflictEvenIfEvaluationSkipped: true,
             },
           );
         if (

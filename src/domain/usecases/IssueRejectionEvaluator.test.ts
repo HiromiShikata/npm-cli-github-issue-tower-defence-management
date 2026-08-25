@@ -858,6 +858,117 @@ describe('IssueRejectionEvaluator', () => {
       });
     });
 
+    describe('detectConflictEvenIfEvaluationSkipped option', () => {
+      it('should call findRelatedOpenPRs and return PULL_REQUEST_CONFLICTED when relatedOpenPrUrls is null and PR is conflicted', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr('https://github.com/user/repo/pull/1', {
+            isConflicted: true,
+          }),
+        ]);
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'chore',
+          },
+          [],
+          { detectConflictEvenIfEvaluationSkipped: true, relatedOpenPrUrls: null },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+          'https://github.com/user/repo/issues/1',
+        );
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_CONFLICTED');
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should call findRelatedOpenPRs and return no rejections when relatedOpenPrUrls is null and no PR is conflicted', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr('https://github.com/user/repo/pull/1'),
+        ]);
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'chore',
+          },
+          [],
+          { detectConflictEvenIfEvaluationSkipped: true, relatedOpenPrUrls: null },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+          'https://github.com/user/repo/issues/1',
+        );
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should use resolveOpenPrsFromUrls path and not call findRelatedOpenPRs when relatedOpenPrUrls is provided', async () => {
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue(
+          createReadyPr('https://github.com/user/repo/pull/5', {
+            isConflicted: true,
+          }),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'chore',
+          },
+          [],
+          {
+            detectConflictEvenIfEvaluationSkipped: true,
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/5'],
+          },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/5',
+        );
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_CONFLICTED');
+      });
+
+      it('should emit only PULL_REQUEST_CONFLICTED and not PULL_REQUEST_IS_DRAFT or other types when evaluation is skipped', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr('https://github.com/user/repo/pull/1', {
+            isConflicted: true,
+            isDraft: true,
+            isPassedAllCiJob: false,
+            isCiStateSuccess: false,
+          }),
+        ]);
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'chore',
+          },
+          [],
+          { detectConflictEvenIfEvaluationSkipped: true, relatedOpenPrUrls: null },
+        );
+
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_CONFLICTED');
+        expect(result.rejections.map((r) => r.type)).not.toContain(
+          'PULL_REQUEST_IS_DRAFT',
+        );
+        expect(result.rejections.map((r) => r.type)).not.toContain(
+          'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
+        );
+      });
+    });
+
     describe('change-target-must: label behavior', () => {
       const prUrl = 'https://github.com/user/repo/pull/1';
 

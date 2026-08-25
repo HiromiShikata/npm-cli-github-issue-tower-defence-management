@@ -37,6 +37,7 @@ export type EvaluateOptions = {
   // The agent name treated as the developer agent for PR/CI/conflict checks.
   // When null or undefined, defaults to 'developer'.
   developerAgentName?: string | null;
+  detectConflictEvenIfEvaluationSkipped?: boolean;
 };
 
 export class IssueRejectionEvaluator {
@@ -184,6 +185,26 @@ export class IssueRejectionEvaluator {
           ).length === 0
         ) {
           approvedPrUrl = pr.url;
+        }
+      }
+    } else if (options.detectConflictEvenIfEvaluationSkipped) {
+      let prsToCheck: RelatedPullRequest[];
+      if (options.relatedOpenPrUrls != null) {
+        const resolved = await this.resolveOpenPrsFromUrls(
+          options.relatedOpenPrUrls,
+          options.resolvedOpenPrByUrl ?? null,
+        );
+        prsToCheck = resolved.prs;
+      } else {
+        prsToCheck = await this.issueRepository.findRelatedOpenPRs(issue.url);
+      }
+      for (const pr of prsToCheck) {
+        if (pr.isConflicted) {
+          rejections.push({
+            type: 'PULL_REQUEST_CONFLICTED',
+            detail: `PULL_REQUEST_CONFLICTED: ${pr.url}`,
+          });
+          break;
         }
       }
     }
