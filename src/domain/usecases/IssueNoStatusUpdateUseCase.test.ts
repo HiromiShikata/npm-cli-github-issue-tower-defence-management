@@ -129,14 +129,16 @@ describe('IssueNoStatusUpdateUseCase', () => {
       },
     ];
 
-    testCases.forEach(({ name, project, issues, expectedUpdateStatusCalls }) => {
-      it(name, async () => {
-        await useCase.run({ project, issues });
+    testCases.forEach(
+      ({ name, project, issues, expectedUpdateStatusCalls }) => {
+        it(name, async () => {
+          await useCase.run({ project, issues });
 
-        expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
-          expectedUpdateStatusCalls,
-        );
-      });
-    });
+          expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
+            expectedUpdateStatusCalls,
+          );
+        });
+      },
+    );
   });
 });
