@@ -479,6 +479,37 @@ test('creates an issue for a story when the add-task button and form are used', 
   );
 });
 
+test('creates a new story when the add-story button and form are used', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+
+  await page
+    .locator('.console-add-story-section .console-op-button', {
+      hasText: 'Add story',
+    })
+    .click();
+
+  await page
+    .locator('.console-add-story-section .console-inline-input-form-input')
+    .fill('My new story');
+  await page
+    .locator(
+      '.console-add-story-section .console-inline-input-form .console-op-button',
+      {
+        hasText: 'Create',
+      },
+    )
+    .click();
+
+  await expect
+    .poll(() => harness.addStoryCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.addStoryCalls[0].storyName).toBe('My new story');
+});
+
 test('reorders stories on the triage tab with up/down buttons', async ({
   page,
 }) => {

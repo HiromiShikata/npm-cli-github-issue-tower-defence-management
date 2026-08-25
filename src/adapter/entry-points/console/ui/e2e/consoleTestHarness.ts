@@ -621,6 +621,10 @@ export type ConsoleE2eReorderStoryCall = {
   storyOptionIds: string[];
 };
 
+export type ConsoleE2eAddStoryCall = {
+  storyName: string;
+};
+
 export type ConsoleE2eHarness = {
   baseUrl: string;
   appUrl: string;
@@ -630,6 +634,7 @@ export type ConsoleE2eHarness = {
   requestChangesCalls: ConsoleE2eRequestChangesCall[];
   createIssueCalls: ConsoleE2eCreateIssueCall[];
   reorderStoryCalls: ConsoleE2eReorderStoryCall[];
+  addStoryCalls: ConsoleE2eAddStoryCall[];
   stop: () => Promise<void>;
 };
 
@@ -652,6 +657,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
   const requestChangesCalls: ConsoleE2eRequestChangesCall[] = [];
   const createIssueCalls: ConsoleE2eCreateIssueCall[] = [];
   const reorderStoryCalls: ConsoleE2eReorderStoryCall[] = [];
+  const addStoryCalls: ConsoleE2eAddStoryCall[] = [];
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
@@ -676,6 +682,19 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
         return result;
       },
     },
+    resolveProjectRepository: (_projectUrl) => ({
+      updateStoryList: async (_updatedProject, stories) => {
+        const newStory = stories.find((s) => s.id === null);
+        if (newStory !== undefined) {
+          addStoryCalls.push({ storyName: newStory.name });
+        }
+        const result = stories as FieldOption[];
+        if (project.story !== null) {
+          project.story.stories = result;
+        }
+        return result;
+      },
+    }),
     resolveProject,
     isPjcodeConfigured,
     issueTitleStateCache: new IssueTitleStateCache(),
@@ -706,6 +725,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     requestChangesCalls,
     createIssueCalls,
     reorderStoryCalls,
+    addStoryCalls,
     stop: async (): Promise<void> => {
       await closeServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });
