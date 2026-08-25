@@ -91,7 +91,7 @@ export class CreateEstimationIssueUseCase {
           !!issueInStory.completionDate50PercentConfidence &&
           (issueInStory.completionDate50PercentConfidence.getTime() <
             targetDate.getTime() + 7 * 24 * 60 * 60 * 1000 ||
-            targetDate.getDay() === 1)
+            targetDate.getUTCDay() === 1)
         ) {
           await this.issueRepository.createComment(
             issueInStory,

@@ -4,6 +4,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { Project } from '../entities/Project';
 import { StoryObject } from '../entities/StoryObjectMap';
+import { Issue } from '../entities/Issue';
 
 describe('CreateEstimationIssueUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
@@ -127,6 +128,98 @@ describe('CreateEstimationIssueUseCase', () => {
           targetDates: [thursdayAt07h],
         }),
       ).rejects.toThrow('Story issue not found: Feature Story');
+    });
+  });
+
+  describe('run — completionDate50PercentConfidence Monday UTC reset', () => {
+    const mondayAt07hUTC = new Date(Date.UTC(2026, 0, 12, 7, 0, 0));
+
+    const featureStory = {
+      id: 'story-feat',
+      name: 'Feature Story',
+      color: 'BLUE' as const,
+      description: '',
+    };
+
+    const projectWithCompletionField: Project = {
+      ...mock<Project>(),
+      story: {
+        name: 'Story',
+        fieldId: 'story-field',
+        databaseId: 1,
+        stories: [featureStory],
+        workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+      },
+      remainingEstimationMinutes: null,
+      completionDate50PercentConfidence: {
+        name: 'Completion Date',
+        fieldId: 'completion-field',
+      },
+    };
+
+    const storyIssue: Issue = {
+      ...mock<Issue>(),
+      title: 'Feature Story',
+      labels: ['story', 'story:action:schedule-control'],
+      isClosed: false,
+      isPr: false,
+      url: 'https://github.com/org/repo/issues/1',
+    };
+
+    const farFutureDate = new Date(Date.UTC(2026, 5, 1, 0, 0, 0));
+    const issueInStory: Issue = {
+      ...mock<Issue>(),
+      title: 'Task issue',
+      labels: [],
+      isClosed: false,
+      isPr: false,
+      status: null,
+      estimationMinutes: null,
+      completionDate50PercentConfidence: farFutureDate,
+      assignees: ['dev-user'],
+    };
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('clears completionDate50PercentConfidence on UTC Monday even when date is far in future', async () => {
+      expect(mondayAt07hUTC.getUTCDay()).toBe(1);
+
+      mockDateRepository.formatDateWithDayOfWeek.mockReturnValue(
+        'Mon, Jun 01, 2026',
+      );
+
+      const storyObjectMap = new Map<string, StoryObject>([
+        [
+          featureStory.name,
+          { story: featureStory, storyIssue, issues: [issueInStory] },
+        ],
+      ]);
+
+      const runPromise = useCase.run({
+        project: projectWithCompletionField,
+        issues: [storyIssue],
+        cacheUsed: false,
+        manager: 'manager-user',
+        org: 'org',
+        repo: 'repo',
+        urlOfStoryView: 'https://github.com/org/repo',
+        storyObjectMap,
+        targetDates: [mondayAt07hUTC],
+      });
+      await jest.runAllTimersAsync();
+      await runPromise;
+
+      expect(mockIssueRepository.clearProjectField).toHaveBeenCalledWith(
+        projectWithCompletionField,
+        'completion-field',
+        issueInStory,
+      );
     });
   });
 });
