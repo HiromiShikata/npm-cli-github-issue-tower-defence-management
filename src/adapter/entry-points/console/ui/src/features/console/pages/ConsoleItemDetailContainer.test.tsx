@@ -405,6 +405,47 @@ describe('ConsoleItemDetailContainer', () => {
     ]);
   });
 
+  it('passes onSubmitAndMoveToAwaitingWorkspace to the composer when statusOptions includes Awaiting Workspace', () => {
+    const { getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+    expect(getByText('Comment & Awaiting Workspace')).toBeInTheDocument();
+  });
+
+  it('does not pass onSubmitAndMoveToAwaitingWorkspace to the composer when statusOptions does not include Awaiting Workspace', () => {
+    const statusOptionsWithoutAwaitingWorkspace = consoleStatusOptionsFixture.filter(
+      (o) => o.name !== 'Awaiting Workspace',
+    );
+    const { queryByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={statusOptionsWithoutAwaitingWorkspace}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+    expect(queryByText('Comment & Awaiting Workspace')).toBeNull();
+  });
+
   it('collects an inline comment on an issue related pull request diff, enables Reject, and submits it as the request-changes review for that pull request url', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();

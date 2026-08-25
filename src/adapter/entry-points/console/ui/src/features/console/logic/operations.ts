@@ -49,6 +49,7 @@ export const STATUS_BUTTON_NAMES: string[] = [
   'Awaiting Workspace',
 ];
 
+export const AWAITING_WORKSPACE_NAME = 'Awaiting Workspace';
 export const IN_TMUX_BY_HUMAN_NAME = 'In Tmux by human';
 
 export const isManualTriageTab = (tab: ConsoleTabName): boolean =>

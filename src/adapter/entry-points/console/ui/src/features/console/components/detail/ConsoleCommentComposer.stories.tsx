@@ -51,3 +51,10 @@ export const ComposerWithSavedDraft: Story = {
     initialDraft: 'Previously typed text…',
   },
 };
+
+export const ComposerWithMoveToAwaitingWorkspace: Story = {
+  args: {
+    initiallyOpen: true,
+    onSubmitAndMoveToAwaitingWorkspace: acceptComment,
+  },
+};

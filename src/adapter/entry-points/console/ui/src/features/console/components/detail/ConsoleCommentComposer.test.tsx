@@ -329,6 +329,88 @@ describe('ConsoleCommentComposer', () => {
     });
   });
 
+  it('renders only the Comment button when onSubmitAndMoveToAwaitingWorkspace is not provided', () => {
+    const { queryByText, getByText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
+    );
+    expect(getByText('Comment')).toBeInTheDocument();
+    expect(queryByText('Comment & Awaiting Workspace')).toBeNull();
+  });
+
+  it('renders both Comment and Comment & Awaiting Workspace buttons when onSubmitAndMoveToAwaitingWorkspace is provided', () => {
+    const { getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    expect(getByText('Comment')).toBeInTheDocument();
+    expect(getByText('Comment & Awaiting Workspace')).toBeInTheDocument();
+  });
+
+  it('calls onSubmit and clears draft when the left Comment button is clicked', async () => {
+    const onSubmit = jest.fn(stubSubmit);
+    const onSubmitAndMoveToAwaitingWorkspace = jest.fn(stubSubmit);
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={onSubmit}
+        onSubmitAndMoveToAwaitingWorkspace={onSubmitAndMoveToAwaitingWorkspace}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Left button comment.' },
+    });
+    fireEvent.click(getByText('Comment'));
+    await waitFor(() => {
+      expect(getByPlaceholderText('Leave a comment…')).toHaveValue('');
+    });
+    expect(onSubmit).toHaveBeenCalledWith('Left button comment.');
+    expect(onSubmitAndMoveToAwaitingWorkspace).not.toHaveBeenCalled();
+  });
+
+  it('calls onSubmitAndMoveToAwaitingWorkspace and clears draft when the right button is clicked', async () => {
+    const onSubmit = jest.fn(stubSubmit);
+    const onSubmitAndMoveToAwaitingWorkspace = jest.fn(stubSubmit);
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={onSubmit}
+        onSubmitAndMoveToAwaitingWorkspace={onSubmitAndMoveToAwaitingWorkspace}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Right button comment.' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    await waitFor(() => {
+      expect(getByPlaceholderText('Leave a comment…')).toHaveValue('');
+    });
+    expect(onSubmitAndMoveToAwaitingWorkspace).toHaveBeenCalledWith(
+      'Right button comment.',
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('shows an error message when the right button click results in an error', async () => {
+    const { getByPlaceholderText, getByText, findByRole } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onSubmitAndMoveToAwaitingWorkspace={async () => {
+          throw new Error('move failed');
+        }}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'Will fail to move.' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toContain('move failed');
+  });
+
   it('shows the upload failure reason when the upload rejects', async () => {
     const { getByLabelText, findByRole } = render(
       <ConsoleCommentComposer
