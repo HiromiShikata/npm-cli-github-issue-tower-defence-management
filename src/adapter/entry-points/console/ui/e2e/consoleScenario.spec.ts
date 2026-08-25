@@ -291,7 +291,7 @@ test('opens the comment input with the item detail, keeps it on screen while the
   await page
     .locator('.console-composer-input')
     .fill('The dock must not grow with every comment.');
-  await page.locator('.console-composer-submit').click();
+  await page.getByRole('button', { name: 'Comment', exact: true }).click();
 
   const postedComment = page.locator('.console-comment', {
     hasText: 'The dock must not grow with every comment.',
