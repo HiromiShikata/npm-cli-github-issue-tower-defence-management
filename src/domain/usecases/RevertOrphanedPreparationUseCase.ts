@@ -26,6 +26,7 @@ import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { normalizeReportBody } from './normalizeReportBody';
+import { resolveNextStepAgentDispatchRepetition } from './resolveNextStepAgentDispatchRepetition';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -121,11 +122,44 @@ export class RevertOrphanedPreparationUseCase {
       if (!isStillInPreparation) {
         continue;
       }
-      const nextStepAgent = this.resolveNextStepAgent(
-        comments,
-        params.allowedIssueAuthors,
+      const lastAgentReport = findLastAgentReport(comments, (author) =>
+        isAuthorAuthorizedForAutoStatusCheck(
+          author,
+          params.allowedIssueAuthors,
+        ),
       );
+      const nextStepAgent = lastAgentReport
+        ? extractNextStepAgent(lastAgentReport.content)
+        : null;
       if (nextStepAgent !== null) {
+        const repetition = resolveNextStepAgentDispatchRepetition({
+          agentFieldValue: issue.agent,
+          nextStepAgent,
+          commentsAfterLastAgentReport: lastAgentReport
+            ? comments.slice(comments.indexOf(lastAgentReport) + 1)
+            : [],
+          isTrustedAuthor: (author) =>
+            isAuthorAuthorizedForAutoStatusCheck(
+              author,
+              params.allowedIssueAuthors,
+            ),
+          thresholdForAutoReject: params.thresholdForAutoReject,
+        });
+        if (
+          repetition.type === 'escalateToFailedPreparation' &&
+          failedPreparationStatusOption
+        ) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            failedPreparationStatusOption.id,
+          );
+          await this.issueCommentRepository.createComment(
+            issue,
+            repetition.comment,
+          );
+          continue;
+        }
         const agentOptionId = await ensureAgentOptionAndGetId(
           this.projectRepository,
           project,
@@ -143,6 +177,12 @@ export class RevertOrphanedPreparationUseCase {
           issue,
           awaitingWorkspaceStatusOption.id,
         );
+        if (repetition.type !== 'notRepeated') {
+          await this.issueCommentRepository.createComment(
+            issue,
+            repetition.comment,
+          );
+        }
         continue;
       }
       if (outcome === 'returnToLabelSelectedAgent') {
@@ -344,18 +384,6 @@ export class RevertOrphanedPreparationUseCase {
       return [];
     }
     return [pr];
-  };
-
-  private resolveNextStepAgent = (
-    comments: Comment[],
-    allowedIssueAuthors: string[] | null | undefined,
-  ): string | null => {
-    const lastAgentReport = findLastAgentReport(comments, (author) =>
-      isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
-    );
-    return lastAgentReport
-      ? extractNextStepAgent(lastAgentReport.content)
-      : null;
   };
 
   private reportBodyHasNextStep = (body: string): boolean => {

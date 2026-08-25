@@ -31,6 +31,7 @@ import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { normalizeReportBody } from './normalizeReportBody';
+import { resolveNextStepAgentDispatchRepetition } from './resolveNextStepAgentDispatchRepetition';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -229,7 +230,37 @@ export class NotifyFinishedIssuePreparationUseCase {
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
+    const commentsAfterLastAgentReport = lastAgentReport
+      ? comments.slice(comments.indexOf(lastAgentReport) + 1)
+      : [];
     if (nextStepAgent !== null) {
+      const repetition = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: issue.agent,
+        nextStepAgent,
+        commentsAfterLastAgentReport,
+        isTrustedAuthor,
+        thresholdForAutoReject: params.thresholdForAutoReject,
+      });
+      if (repetition.type === 'escalateToFailedPreparation') {
+        issue.status = FAILED_PREPARATION_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          failedPreparationStatusOption.id,
+        );
+        await this.patchConsoleTab(issue);
+        await this.issueCommentRepository.createComment(
+          issue,
+          repetition.comment,
+        );
+        await this.sendWorkflowBlockerNotification(
+          params.issueUrl,
+          params.workflowBlockerResolvedWebhookUrl,
+          project,
+        );
+        return;
+      }
       const agentOptionId = await this.ensureAgentOptionAndGetId(
         project,
         nextStepAgent,
@@ -249,6 +280,12 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
+      if (repetition.type === 'dispatchAgain') {
+        await this.issueCommentRepository.createComment(
+          issue,
+          repetition.comment,
+        );
+      }
       return;
     }
 
