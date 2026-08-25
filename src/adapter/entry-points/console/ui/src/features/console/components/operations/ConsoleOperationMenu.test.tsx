@@ -14,6 +14,7 @@ const handlers: ConsoleOperationHandlers = {
   onSetStatus: jest.fn(),
   onSetInTmuxByHuman: jest.fn(),
   onClose: jest.fn(),
+  onOkAndAwaitingWorkspace: jest.fn(),
 };
 
 const prItem = consoleListItemsFixture[0];

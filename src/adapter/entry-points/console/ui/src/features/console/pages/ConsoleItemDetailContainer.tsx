@@ -150,6 +150,13 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.closeIssue(item, action),
       });
     },
+    onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => {
+      onQueueAction({
+        kind: { type: 'ok_and_awaiting_workspace' },
+        item,
+        commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+      });
+    },
   };
 
   const resolvedStoryName =

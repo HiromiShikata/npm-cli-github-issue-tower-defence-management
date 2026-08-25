@@ -61,6 +61,10 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     action: ConsoleCloseAction,
   ) => Promise<void>;
+  okAndMoveToAwaitingWorkspace: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
   addComment: (item: ConsoleListItem, body: string) => Promise<ConsoleComment>;
   uploadAttachment: (item: ConsoleListItem, file: File) => Promise<string>;
   addInlineReviewComment: (
@@ -276,6 +280,30 @@ export const useConsoleOperations = (
     [pjcode, markDone],
   );
 
+  const okAndMoveToAwaitingWorkspace = useCallback(
+    async (item: ConsoleListItem, option: ConsoleFieldOption) => {
+      if (pjcode === null) {
+        throw missingPjcodeError();
+      }
+      await postConsoleComment({ pjcode, url: item.url, body: 'ok' });
+      const request: ConsoleTriageRequest = {
+        pjcode,
+        action: 'set_status',
+        issueUrl: item.url,
+        projectItemId: item.projectItemId,
+        statusName: option.name,
+      };
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
+      patchOverlay(
+        overlayKeyForItem(item),
+        { done: true, status: { name: option.name, color: option.color } },
+        mode,
+      );
+    },
+    [pjcode, invalidateItemContent, patchOverlay, mode],
+  );
+
   const addComment = useCallback(
     async (item: ConsoleListItem, body: string) => {
       if (pjcode === null) {
@@ -340,6 +368,7 @@ export const useConsoleOperations = (
     setStatus,
     setInTmuxByHuman,
     closeIssue,
+    okAndMoveToAwaitingWorkspace,
     addComment,
     uploadAttachment,
     addInlineReviewComment,

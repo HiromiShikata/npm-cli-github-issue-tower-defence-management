@@ -127,6 +127,15 @@ describe('actionToastColor', () => {
       actionToastColor({ type: 'next_action_date', action: 'snooze_1day' }),
     ).toBe('amber');
     expect(actionToastColor({ type: 'close', action: 'close' })).toBe('red');
+    expect(actionToastColor({ type: 'ok_and_awaiting_workspace' })).toBe('blue');
+  });
+});
+
+describe('actionToastMessage for ok_and_awaiting_workspace', () => {
+  it('returns the composite label', () => {
+    expect(
+      actionToastMessage({ type: 'ok_and_awaiting_workspace' }, 'prs'),
+    ).toBe('ok → Awaiting Workspace');
   });
 });
 
@@ -136,6 +145,9 @@ describe('actionAdvances', () => {
       actionAdvances({ type: 'review', action: 'approve_and_merge' }, 'prs'),
     ).toBe(true);
     expect(actionAdvances({ type: 'set_status', optionName: 'x' }, 'prs')).toBe(
+      true,
+    );
+    expect(actionAdvances({ type: 'ok_and_awaiting_workspace' }, 'prs')).toBe(
       true,
     );
   });

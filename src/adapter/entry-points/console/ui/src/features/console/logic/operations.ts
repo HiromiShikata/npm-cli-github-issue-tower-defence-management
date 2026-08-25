@@ -38,6 +38,7 @@ export type ConsoleOperationHandlers = {
   onSetStatus: (option: ConsoleFieldOption) => void;
   onSetInTmuxByHuman: (option: ConsoleFieldOption) => void;
   onClose: (action: ConsoleCloseAction) => void;
+  onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => void;
 };
 
 export const STATUS_BUTTON_NAMES: string[] = [

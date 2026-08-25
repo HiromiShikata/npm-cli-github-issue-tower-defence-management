@@ -9,6 +9,7 @@ import type {
 } from '../../logic/types';
 import { ConsoleCloseActions } from './ConsoleCloseActions';
 import { ConsoleNextActionDateActions } from './ConsoleNextActionDateActions';
+import { ConsoleOkAndAwaitingWorkspaceActions } from './ConsoleOkAndAwaitingWorkspaceActions';
 import { ConsolePullRequestReviewActions } from './ConsolePullRequestReviewActions';
 import { ConsoleStatusActions } from './ConsoleStatusActions';
 import { ConsoleStoryActions } from './ConsoleStoryActions';
@@ -34,6 +35,10 @@ export const ConsoleOperationMenu = ({
   const showStory = tab === 'triage';
   return (
     <div className="console-operation-bar">
+      <ConsoleOkAndAwaitingWorkspaceActions
+        statusOptions={statusOptions}
+        onOkAndAwaitingWorkspace={handlers.onOkAndAwaitingWorkspace}
+      />
       {hasPullRequest && (
         <ConsolePullRequestReviewActions
           onReview={handlers.onReview}

@@ -415,4 +415,70 @@ describe('useConsoleOperations', () => {
     ).rejects.toThrow('No project specified in the URL path.');
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('posts an ok comment then sets status to awaiting workspace in order', async () => {
+    let callCount = 0;
+    const calls: Array<[string, unknown]> = [];
+    global.fetch = jest.fn(async (url: unknown, opts: unknown) => {
+      calls.push([url as string, opts]);
+      callCount += 1;
+      if (callCount === 1) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: { author: 'bot', body: 'ok', createdAt: '2026-01-01T00:00:00Z' },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }) as unknown as typeof fetch;
+    const { result } = setup();
+    const option = consoleStatusOptionsFixture.find(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    )!;
+    await act(async () => {
+      await result.current.operations.okAndMoveToAwaitingWorkspace(
+        issueItem,
+        option,
+      );
+    });
+    expect(calls[0][0]).toBe('/api/comment');
+    expect(JSON.parse((calls[0][1] as { body: string }).body)).toMatchObject({
+      pjcode: 'acme',
+      url: issueItem.url,
+      body: 'ok',
+    });
+    expect(calls[1][0]).toBe('/api/triage');
+    expect(JSON.parse((calls[1][1] as { body: string }).body)).toMatchObject({
+      pjcode: 'acme',
+      action: 'set_status',
+      issueUrl: issueItem.url,
+      statusName: option.name,
+    });
+  });
+
+  it('does not call the status endpoint when the comment post fails', async () => {
+    let callCount = 0;
+    global.fetch = jest.fn(async () => {
+      callCount += 1;
+      if (callCount === 1) {
+        return { ok: false, status: 500, text: async () => 'error' };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }) as unknown as typeof fetch;
+    const { result } = setup();
+    const option = consoleStatusOptionsFixture.find(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    )!;
+    await expect(
+      act(async () => {
+        await result.current.operations.okAndMoveToAwaitingWorkspace(
+          issueItem,
+          option,
+        );
+      }),
+    ).rejects.toThrow();
+    expect(callCount).toBe(1);
+  });
 });
