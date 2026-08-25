@@ -58,6 +58,10 @@ class NotifyFinishedIssuePreparationUseCase {
             else if (issue.status !== WorkflowStatus_1.PREPARATION_STATUS_NAME) {
                 throw new IllegalIssueStatusError(params.issueUrl, issue.status, WorkflowStatus_1.PREPARATION_STATUS_NAME);
             }
+            if (params.deferPreparation) {
+                await this.handleTransientFailureDeferral(issue, project, awaitingWorkspaceStatusOption, params.sessionErrorLine ?? null);
+                return;
+            }
             if (params.missingAgentName) {
                 await this.handleMissingAgentDefinition(issue, project, awaitingWorkspaceStatusOption, params.missingAgentName, params.sessionErrorLine ?? null, params.manager ?? null);
                 return;
@@ -181,6 +185,15 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.patchConsoleTab(issue);
             await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
             await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
+        };
+        this.handleTransientFailureDeferral = async (issue, project, awaitingWorkspaceStatusOption, sessionErrorLine) => {
+            const tomorrow = (0, issueReactivationTriggerIsPending_1.issueReactivationTriggerStartOfTomorrow)(new Date());
+            await this.issueRepository.updateNextActionDate(issue.url, project, tomorrow);
+            issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
+            await this.issueRepository.update(issue, project);
+            await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+            await this.patchConsoleTab(issue);
+            await this.issueCommentRepository.createComment(issue, `Preparation deferred due to transient failure; item reactivates from ${tomorrow.toISOString().split('T')[0]}\nSession stop reason: ${sessionErrorLine ?? '(not captured)'}`);
         };
         this.handleMissingAgentDefinition = async (issue, project, awaitingWorkspaceStatusOption, missingAgentName, sessionErrorLine, manager) => {
             const taskIssueTitle = `Register missing agent definition: ${missingAgentName}`;

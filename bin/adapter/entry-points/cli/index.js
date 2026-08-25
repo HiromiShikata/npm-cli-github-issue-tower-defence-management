@@ -291,6 +291,7 @@ exports.program
     .option('--workflowBlockerResolvedWebhookUrl <url>', 'Webhook URL to notify when a workflow blocker issue status changes to awaiting quality check. Supports {URL} and {MESSAGE} placeholders.')
     .option('--missingAgentName <name>', 'Agent definition name that was not found, triggering the missing-agent task creation path')
     .option('--sessionErrorLine <line>', 'Exact error line from the session log to include in the task issue body')
+    .option('--deferPreparation', 'Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) without creating any issue; use for transient upstream failures')
     .action(async (options) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -370,6 +371,7 @@ exports.program
         sessionErrorLine: options.sessionErrorLine ?? null,
         manager: config.manager ?? null,
         developerAgentName: config.developerAgentName ?? null,
+        deferPreparation: options.deferPreparation ?? null,
     });
 });
 exports.program

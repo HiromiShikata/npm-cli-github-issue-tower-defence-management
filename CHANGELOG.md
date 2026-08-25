@@ -1,3 +1,10 @@
+# [1.179.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.178.1...v1.179.0) (2026-08-25)
+
+
+### Features
+
+* **preparation:** add --deferPreparation option to avoid false missing-agent issues on transient failures ([#1738](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1738)) ([0004a7d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0004a7d1d60b9f310da0677d6b62a21362a50066)), closes [#1726](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1726)
+
 ## [1.178.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.178.0...v1.178.1) (2026-08-25)
 
 
