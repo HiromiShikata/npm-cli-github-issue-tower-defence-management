@@ -405,6 +405,8 @@ const dispatchOperation = (context, requestPath, body) => {
             return (0, consoleOperationApi_1.handleAttachmentUpload)(context, body);
         case '/api/createissue':
             return (0, consoleOperationApi_1.handleCreateIssue)(context, body);
+        case '/api/reorderstory':
+            return (0, consoleOperationApi_1.handleReorderStory)(context, body);
         default:
             return null;
     }
@@ -419,12 +421,16 @@ const handleOperationApi = async (options, requestPath, body) => {
         return null;
     }
     const resolveIssueRepository = options.resolveIssueRepository ?? (() => issueRepository);
+    const projectRepository = options.projectRepository ?? null;
     const context = {
         resolveIssueRepository,
         resolveProject,
         isPjcodeConfigured,
         consoleDataOutputDir: options.consoleDataOutputDir,
         issueAttachmentRepository: options.issueAttachmentRepository ?? null,
+        updateStoryList: projectRepository !== null
+            ? (project, stories) => projectRepository.updateStoryList(project, stories)
+            : null,
     };
     const dispatched = dispatchOperation(context, requestPath, body);
     if (dispatched === null) {

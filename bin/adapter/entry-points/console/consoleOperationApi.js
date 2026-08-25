@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleIntmux = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleReorderStory = exports.handleIntmux = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
@@ -500,4 +500,45 @@ const handleIntmux = async (context, body) => {
     return ok();
 };
 exports.handleIntmux = handleIntmux;
+const handleReorderStory = async (context, body) => {
+    const pjcode = body.pjcode;
+    const storyOptionId = body.storyOptionId;
+    const direction = body.direction;
+    if (!isNonEmptyString(pjcode)) {
+        return badRequest('pjcode is required');
+    }
+    if (!isNonEmptyString(storyOptionId)) {
+        return badRequest('storyOptionId is required');
+    }
+    if (direction !== 'up' && direction !== 'down') {
+        return badRequest('direction must be "up" or "down"');
+    }
+    const binding = await context.resolveProject(pjcode);
+    if (binding === null) {
+        return badRequest(`no project configured for pjcode "${pjcode}"`);
+    }
+    const { project } = binding;
+    if (project.story === null) {
+        return badRequest('project does not have a story field');
+    }
+    if (context.updateStoryList === null) {
+        return badRequest('updateStoryList is not configured');
+    }
+    const stories = project.story.stories;
+    const index = stories.findIndex((s) => s.id === storyOptionId);
+    if (index === -1) {
+        return badRequest('story option not found');
+    }
+    const swapIndex = index + (direction === 'up' ? -1 : 1);
+    if (swapIndex < 0 || swapIndex >= stories.length) {
+        return badRequest('cannot move in that direction');
+    }
+    const reordered = [...stories];
+    const temp = reordered[index];
+    reordered[index] = reordered[swapIndex];
+    reordered[swapIndex] = temp;
+    await context.updateStoryList(project, reordered);
+    return ok();
+};
+exports.handleReorderStory = handleReorderStory;
 //# sourceMappingURL=consoleOperationApi.js.map

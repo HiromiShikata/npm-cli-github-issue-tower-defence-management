@@ -1,6 +1,7 @@
 import * as http from 'http';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { ConsoleIssueRepositoryResolver, ConsolePjcodeValidator, ConsoleProjectResolver } from './consoleOperationApi';
 import { ImageFetcher } from './consoleImageProxy';
@@ -32,6 +33,7 @@ export type WebServerOptions = {
     resolveProject?: ConsoleProjectResolver | null;
     isPjcodeConfigured?: ConsolePjcodeValidator | null;
     issueAttachmentRepository?: IssueAttachmentRepository | null;
+    projectRepository?: Pick<ProjectRepository, 'updateStoryList'> | null;
     issueTitleStateCache?: IssueTitleStateCache | null;
     pullRequestStatusCache?: PullRequestStatusCache | null;
 };
