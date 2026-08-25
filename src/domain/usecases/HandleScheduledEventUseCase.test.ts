@@ -31,6 +31,7 @@ import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCa
 import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
 import { DailySecurityScanUseCase } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
+import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
 
 describe('HandleScheduledEventUseCase', () => {
   describe('createTargetDateTimes', () => {
@@ -133,6 +134,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockUpdateRateLimitCacheUseCase = mock<UpdateRateLimitCacheUseCase>();
     const mockDailySecurityScanUseCase = mock<DailySecurityScanUseCase>();
     const mockAdvanceQualityCheckUseCase = mock<QualityCheckAdvanceUseCase>();
+    const mockReopenedDoneIssueRevertUseCase =
+      mock<ReopenedDoneIssueRevertUseCase>();
     const mockDateRepository = mock<DateRepository>();
     const mockSpreadsheetRepository = mock<SpreadsheetRepository>();
     const mockProjectRepository = mock<ProjectRepository>();
@@ -164,6 +167,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockUpdateRateLimitCacheUseCase,
       mockDailySecurityScanUseCase,
       mockAdvanceQualityCheckUseCase,
+      mockReopenedDoneIssueRevertUseCase,
       mockDateRepository,
       mockSpreadsheetRepository,
       mockProjectRepository,
@@ -1645,6 +1649,7 @@ describe('HandleScheduledEventUseCase', () => {
       null,
       null,
       mock<QualityCheckAdvanceUseCase>(),
+      mock<ReopenedDoneIssueRevertUseCase>(),
       mock<DateRepository>(),
       mock<SpreadsheetRepository>(),
       mock<ProjectRepository>(),
@@ -1701,6 +1706,7 @@ describe('HandleScheduledEventUseCase', () => {
       author: '',
       closingIssueReferenceUrls: [],
       agent: null,
+      stateReason: null,
     };
 
     it('should return storyIssue as null when the only matching issue is closed', async () => {

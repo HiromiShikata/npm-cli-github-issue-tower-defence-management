@@ -35,6 +35,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   author: '',
   closingIssueReferenceUrls: [],
   agent: null,
+  stateReason: null,
   ...overrides,
 });
 
@@ -67,6 +68,7 @@ const createMergedPr = (
   author: '',
   closingIssueReferenceUrls: [closingIssueUrl],
   agent: null,
+  stateReason: null,
   ...overrides,
 });
 

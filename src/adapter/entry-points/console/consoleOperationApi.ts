@@ -127,6 +127,7 @@ const projectItemReference = (
   author: '',
   closingIssueReferenceUrls: [],
   agent: null,
+  stateReason: null,
 });
 
 const recordDone = (

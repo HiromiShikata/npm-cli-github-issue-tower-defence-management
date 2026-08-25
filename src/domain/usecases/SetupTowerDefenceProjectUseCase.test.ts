@@ -75,6 +75,7 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
   author: 'user',
   closingIssueReferenceUrls: [],
   agent: null,
+  stateReason: null,
   ...overrides,
 });
 

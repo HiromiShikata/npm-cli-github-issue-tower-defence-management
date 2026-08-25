@@ -687,6 +687,7 @@ export class ApiV3CheerioRestIssueRepository
       closingIssueReferenceUrls: item.closingIssueReferenceUrls,
       agent,
       isRepoArchived: item.isRepoArchived,
+      stateReason: item.stateReason,
     };
   };
   private restoreIssuesFromCache = (rawIssues: unknown): Issue[] | null => {
@@ -723,12 +724,20 @@ export class ApiV3CheerioRestIssueRepository
             ? issue.closingIssueReferenceUrls
             : [];
 
+        const stateReason =
+          'stateReason' in issue &&
+          (issue.stateReason === 'COMPLETED' ||
+            issue.stateReason === 'NOT_PLANNED' ||
+            issue.stateReason === 'REOPENED')
+            ? issue.stateReason
+            : null;
         return {
           ...issue,
           nextActionDate: nextActionDate,
           completionDate50PercentConfidence: completionDate50PercentConfidence,
           createdAt: createdAt,
           closingIssueReferenceUrls: closingIssueReferenceUrls,
+          stateReason: stateReason,
         };
       });
 

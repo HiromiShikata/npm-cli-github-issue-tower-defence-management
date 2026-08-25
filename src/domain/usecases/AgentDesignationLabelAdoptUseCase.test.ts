@@ -28,6 +28,7 @@ const createIssue = (overrides: Partial<Issue> = {}): Issue => ({
   author: 'author',
   closingIssueReferenceUrls: [],
   agent: null,
+  stateReason: null,
   ...overrides,
 });
 

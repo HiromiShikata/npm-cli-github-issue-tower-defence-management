@@ -40,6 +40,7 @@ import {
   DailySecurityScanUseCase,
 } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
+import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -141,6 +142,7 @@ export class HandleScheduledEventUseCase {
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
     readonly qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase,
+    readonly reopenedDoneIssueRevertUseCase: ReopenedDoneIssueRevertUseCase,
     readonly dateRepository: DateRepository,
     readonly spreadsheetRepository: SpreadsheetRepository,
     readonly projectRepository: ProjectRepository,
@@ -472,6 +474,14 @@ ${JSON.stringify(e)}
           labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
           allowedIssueAuthors,
         });
+      }
+      try {
+        await this.reopenedDoneIssueRevertUseCase.run({ project, issues });
+      } catch (revertError) {
+        console.error(
+          `[HandleScheduledEvent] Failed to revert reopened Done issues for project ${project.url}: ${revertError instanceof Error ? revertError.message : String(revertError)}`,
+          revertError,
+        );
       }
       if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
         try {

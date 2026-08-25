@@ -76,6 +76,7 @@ import { ProjectRequiredFieldCreateUseCase } from '../../../domain/usecases/Proj
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from '../../../domain/usecases/QualityCheckAdvanceUseCase';
+import { ReopenedDoneIssueRevertUseCase } from '../../../domain/usecases/ReopenedDoneIssueRevertUseCase';
 import { KyHttpRepository } from '../../repositories/KyHttpRepository';
 import { FileSystemKevReportWatermarkRepository } from '../../repositories/FileSystemKevReportWatermarkRepository';
 import {
@@ -520,6 +521,10 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
     );
 
+    const reopenedDoneIssueRevertUseCase = new ReopenedDoneIssueRevertUseCase(
+      issueRepository,
+    );
+
     const handleScheduledEventUseCase = new HandleScheduledEventUseCase(
       projectRequiredFieldCreateUseCase,
       setupTowerDefenceProjectUseCase,
@@ -546,6 +551,7 @@ export class HandleScheduledEventUseCaseHandler {
       updateRateLimitCacheUseCase,
       dailySecurityScanUseCase,
       qualityCheckAdvanceUseCase,
+      reopenedDoneIssueRevertUseCase,
       systemDateRepository,
       googleSpreadsheetRepository,
       projectRepository,

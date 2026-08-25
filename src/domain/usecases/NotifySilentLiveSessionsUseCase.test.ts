@@ -238,6 +238,7 @@ describe('NotifySilentLiveSessionsUseCase', () => {
     author: 'HiromiShikata',
     closingIssueReferenceUrls: [],
     agent: null,
+    stateReason: null,
     ...overrides,
   });
 
