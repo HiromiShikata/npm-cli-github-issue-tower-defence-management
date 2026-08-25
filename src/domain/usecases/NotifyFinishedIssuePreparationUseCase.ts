@@ -29,7 +29,10 @@ import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
-import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import {
+  issueReactivationTriggerIsPending,
+  issueReactivationTriggerStartOfTomorrow,
+} from './issueReactivationTriggerIsPending';
 import { normalizeReportBody } from './normalizeReportBody';
 import { resolveNextStepAgentDispatchRepetition } from './resolveNextStepAgentDispatchRepetition';
 
@@ -80,6 +83,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'setIssueAgentField'
       | 'searchIssue'
       | 'createNewIssue'
+      | 'updateNextActionDate'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -111,6 +115,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     sessionErrorLine?: string | null;
     manager?: string | null;
     developerAgentName?: string | null;
+    deferPreparation?: boolean | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -152,6 +157,16 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue.status,
         PREPARATION_STATUS_NAME,
       );
+    }
+
+    if (params.deferPreparation) {
+      await this.handleTransientFailureDeferral(
+        issue,
+        project,
+        awaitingWorkspaceStatusOption,
+        params.sessionErrorLine ?? null,
+      );
+      return;
     }
 
     if (params.missingAgentName) {
@@ -416,6 +431,32 @@ export class NotifyFinishedIssuePreparationUseCase {
     await this.issueCommentRepository.createComment(
       issue,
       rejectionStatusMessage,
+    );
+  };
+
+  private handleTransientFailureDeferral = async (
+    issue: Issue,
+    project: Project,
+    awaitingWorkspaceStatusOption: { id: string },
+    sessionErrorLine: string | null,
+  ): Promise<void> => {
+    const tomorrow = issueReactivationTriggerStartOfTomorrow(new Date());
+    await this.issueRepository.updateNextActionDate(
+      issue.url,
+      project,
+      tomorrow,
+    );
+    issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+    await this.issueRepository.update(issue, project);
+    await this.issueRepository.updateStatus(
+      project,
+      issue,
+      awaitingWorkspaceStatusOption.id,
+    );
+    await this.patchConsoleTab(issue);
+    await this.issueCommentRepository.createComment(
+      issue,
+      `Preparation deferred due to transient failure; item reactivates from ${tomorrow.toISOString().split('T')[0]}\nSession stop reason: ${sessionErrorLine ?? '(not captured)'}`,
     );
   };
 

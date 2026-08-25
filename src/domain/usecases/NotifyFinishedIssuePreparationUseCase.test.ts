@@ -109,6 +109,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     setIssueAgentField: jest.Mock;
     searchIssue: jest.Mock;
     createNewIssue: jest.Mock;
+    updateNextActionDate: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -155,6 +156,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       searchIssue: jest.fn().mockResolvedValue([]),
       createNewIssue: jest.fn().mockResolvedValue(42),
+      updateNextActionDate: jest.fn().mockResolvedValue(undefined),
     };
 
     mockIssueCommentRepository = {
@@ -4378,6 +4380,140 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       ).rejects.toThrow('manager');
 
       expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('when deferPreparation is true', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+
+    it('sets nextActionDate to start of tomorrow and returns item to Awaiting Workspace without creating any issue', async () => {
+      const now = new Date('2026-08-24T10:00:00Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        deferPreparation: true,
+      });
+
+      expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
+        issueUrl,
+        mockProject,
+        new Date('2026-08-25T00:00:00'),
+      );
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('2026-08-25'),
+      );
+
+      expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    });
+
+    it('takes precedence over missingAgentName and defers without creating any issue', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        deferPreparation: true,
+        missingAgentName: 'some-agent',
+        manager: 'alice',
+      });
+
+      expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
+    });
+
+    it('does not defer when deferPreparation is false', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        deferPreparation: false,
+      });
+
+      expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
+    });
+
+    it('states the session stop reason in the deferral comment', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        deferPreparation: true,
+        sessionErrorLine:
+          'Task failed 3 consecutive times with terminal_reason=api_error',
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining(
+          'Task failed 3 consecutive times with terminal_reason=api_error',
+        ),
+      );
+    });
+
+    it('states that no stop reason was captured when sessionErrorLine is absent', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        deferPreparation: true,
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('(not captured)'),
+      );
     });
   });
 });

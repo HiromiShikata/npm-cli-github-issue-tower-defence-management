@@ -1520,6 +1520,7 @@ mysteryKey: 'value'
         sessionErrorLine: null,
         manager: 'test-manager',
         developerAgentName: null,
+        deferPreparation: null,
       });
     });
 
@@ -1562,6 +1563,7 @@ mysteryKey: 'value'
         sessionErrorLine: null,
         manager: 'test-manager',
         developerAgentName: null,
+        deferPreparation: null,
       });
     });
 
