@@ -61,6 +61,7 @@ import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoSto
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from '../../../domain/usecases/AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from '../../../domain/usecases/UpdateIssueStatusByLabelUseCase';
+import { IssueNoStatusUpdateUseCase } from '../../../domain/usecases/IssueNoStatusUpdateUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
@@ -466,6 +467,9 @@ export class HandleScheduledEventUseCaseHandler {
     const updateIssueStatusByLabelUseCase = new UpdateIssueStatusByLabelUseCase(
       issueRepository,
     );
+    const issueNoStatusUpdateUseCase = new IssueNoStatusUpdateUseCase(
+      issueRepository,
+    );
     const nodeLocalCommandRunner = new NodeLocalCommandRunner();
     const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository(
       mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
@@ -538,6 +542,7 @@ export class HandleScheduledEventUseCaseHandler {
       createNewStoryByLabel,
       assignNoAssigneeIssueToManagerUseCase,
       updateIssueStatusByLabelUseCase,
+      issueNoStatusUpdateUseCase,
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
       revertNotReadyReviewQueueIssueUseCase,

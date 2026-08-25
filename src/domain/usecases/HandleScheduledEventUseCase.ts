@@ -21,6 +21,7 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
+import { IssueNoStatusUpdateUseCase } from './IssueNoStatusUpdateUseCase';
 import {
   RotationOrderEntry,
   StartPreparationUseCase,
@@ -133,6 +134,7 @@ export class HandleScheduledEventUseCase {
     readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase,
     readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase,
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
+    readonly issueNoStatusUpdateUseCase: IssueNoStatusUpdateUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
@@ -489,6 +491,7 @@ ${JSON.stringify(e)}
           );
         }
       }
+      await this.issueNoStatusUpdateUseCase.run({ project, issues });
       const preparationResult = await this.startPreparationUseCase.run({
         projectUrl: input.projectUrl,
         defaultAgentName: input.startPreparation.defaultAgentName,

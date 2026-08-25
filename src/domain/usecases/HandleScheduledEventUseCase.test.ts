@@ -21,6 +21,7 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
+import { IssueNoStatusUpdateUseCase } from './IssueNoStatusUpdateUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
@@ -121,6 +122,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<AssignNoAssigneeIssueToManagerUseCase>();
     const mockUpdateIssueStatusByLabelUseCase =
       mock<UpdateIssueStatusByLabelUseCase>();
+    const mockIssueNoStatusUpdateUseCase = mock<IssueNoStatusUpdateUseCase>();
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
@@ -156,6 +158,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockCreateNewStoryByLabelUseCase,
       mockAssignNoAssigneeIssueToManagerUseCase,
       mockUpdateIssueStatusByLabelUseCase,
+      mockIssueNoStatusUpdateUseCase,
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
@@ -1637,6 +1640,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<CreateNewStoryByLabelUseCase>(),
       mock<AssignNoAssigneeIssueToManagerUseCase>(),
       mock<UpdateIssueStatusByLabelUseCase>(),
+      mock<IssueNoStatusUpdateUseCase>(),
       mock<StartPreparationUseCase>(),
       mock<RevertOrphanedPreparationUseCase>(),
       mock<RevertNotReadyReviewQueueIssueUseCase>(),
