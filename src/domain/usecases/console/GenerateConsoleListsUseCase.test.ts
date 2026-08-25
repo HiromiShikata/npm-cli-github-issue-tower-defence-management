@@ -457,7 +457,7 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(allTabItems(result)).toHaveLength(1);
     });
 
-    it('keeps sibling issues with other statuses displaying as before', () => {
+    it('keeps sibling issues with other statuses on the tabs their status selects', () => {
       const result = run([
         makeIssue({
           story: 'regular / WORKFLOW BLOCKER',
@@ -472,7 +472,9 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(
         result['workflow-blocker'].items.map((item) => item.status).sort(),
       ).toEqual(['In Tmux by agent', 'In Tmux by human']);
-      expect(result.triage.items.map((item) => item.number)).toEqual([3]);
+      expect(
+        result.triage.items.map((item) => item.number).sort((a, b) => a - b),
+      ).toEqual([2, 3]);
       expect(
         result.prs.items
           .concat(result.triage.items)
