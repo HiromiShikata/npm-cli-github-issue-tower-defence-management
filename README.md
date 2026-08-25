@@ -58,7 +58,7 @@ Options for notifyFinishedIssuePreparation:
   --workflowBlockerResolvedWebhookUrl <url>        Webhook URL to notify when a workflow blocker issue status changes
   --missingAgentName <name>                        Agent definition name that was not found; triggers task issue creation (assigned to the manager from config) and blocks the item until that issue is closed
   --sessionErrorLine <line>                        Exact error line from the session log to include in the task issue body
-  --deferPreparation                               Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) and return it to Awaiting Workspace without creating any issue; use for transient upstream failures that should retry the next day
+  --deferPreparation                               Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) and return it to Awaiting Workspace without creating any issue, recording the value of --sessionErrorLine as the stop reason in the deferral comment; use for transient upstream failures that should retry the next day
 
 Options for checkIssueReviewReadiness:
   --configFilePath <path>                          Path to config file for tower defence management (required)

@@ -163,6 +163,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         issue,
         project,
         awaitingWorkspaceStatusOption,
+        params.sessionErrorLine ?? null,
       );
       return;
     }
@@ -400,6 +401,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     issue: Issue,
     project: Project,
     awaitingWorkspaceStatusOption: { id: string },
+    sessionErrorLine: string | null,
   ): Promise<void> => {
     const tomorrow = issueReactivationTriggerStartOfTomorrow(new Date());
     await this.issueRepository.updateNextActionDate(
@@ -417,7 +419,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     await this.patchConsoleTab(issue);
     await this.issueCommentRepository.createComment(
       issue,
-      `Preparation deferred due to transient failure; item reactivates from ${tomorrow.toISOString().split('T')[0]}`,
+      `Preparation deferred due to transient failure; item reactivates from ${tomorrow.toISOString().split('T')[0]}\nSession stop reason: ${sessionErrorLine ?? '(not captured)'}`,
     );
   };
 
