@@ -1617,4 +1617,110 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
   });
+
+  describe('storyIssues', () => {
+    const useCase = new HandleScheduledEventUseCase(
+      mock<ProjectRequiredFieldCreateUseCase>(),
+      mock<SetupTowerDefenceProjectUseCase>(),
+      mock<ActionAnnouncementUseCase>(),
+      mock<SetWorkflowManagementIssueToStoryUseCase>(),
+      mock<ClearPastNextActionDateHourUseCase>(),
+      mock<AnalyzeProblemByIssueUseCase>(),
+      mock<AnalyzeStoriesUseCase>(),
+      mock<ClearDependedIssueURLUseCase>(),
+      mock<SetDependedIssueUrlForOpenTaskPRsUseCase>(),
+      mock<StaleTaskPullRequestCloseUseCase>(),
+      mock<CreateEstimationIssueUseCase>(),
+      mock<ConvertCheckboxToIssueInStoryIssueUseCase>(),
+      mock<ChangeStatusByStoryColorUseCase>(),
+      mock<SetNoStoryIssueToStoryUseCase>(),
+      mock<CreateNewStoryByLabelUseCase>(),
+      mock<AssignNoAssigneeIssueToManagerUseCase>(),
+      mock<UpdateIssueStatusByLabelUseCase>(),
+      mock<StartPreparationUseCase>(),
+      mock<RevertOrphanedPreparationUseCase>(),
+      mock<RevertNotReadyReviewQueueIssueUseCase>(),
+      mock<AgentDesignationLabelAdoptUseCase>(),
+      null,
+      null,
+      mock<QualityCheckAdvanceUseCase>(),
+      mock<DateRepository>(),
+      mock<SpreadsheetRepository>(),
+      mock<ProjectRepository>(),
+      mock<IssueRepository>(),
+    );
+
+    const storyName = 'my story / feature';
+    const baseProject: Project = {
+      id: 'project-1',
+      url: 'https://github.com/orgs/user/projects/1',
+      databaseId: 1,
+      name: 'Test Project',
+      status: { name: 'Status', fieldId: 'status-field-id', statuses: [] },
+      nextActionDate: null,
+      nextActionHour: null,
+      story: {
+        name: 'Story',
+        fieldId: 'story-field-id',
+        databaseId: 1,
+        stories: [
+          { id: 'story-1', name: storyName, color: 'BLUE', description: '' },
+        ],
+        workflowManagementStory: { id: 'wms-1', name: 'workflow management' },
+      },
+      remainingEstimationMinutes: null,
+      dependedIssueUrlSeparatedByComma: null,
+      completionDate50PercentConfidence: null,
+      agent: null,
+    };
+
+    const baseIssue: Issue = {
+      nameWithOwner: 'user/repo',
+      number: 1,
+      title: storyName,
+      state: 'OPEN',
+      status: null,
+      story: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: [],
+      completionDate50PercentConfidence: null,
+      url: 'https://github.com/user/repo/issues/1',
+      assignees: [],
+      labels: [],
+      org: 'user',
+      repo: 'repo',
+      body: '',
+      itemId: 'item-1',
+      isPr: false,
+      isInProgress: false,
+      isClosed: false,
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+      author: '',
+      closingIssueReferenceUrls: [],
+      agent: null,
+    };
+
+    it('should return storyIssue as null when the only matching issue is closed', async () => {
+      const closedIssue: Issue = {
+        ...baseIssue,
+        state: 'CLOSED',
+        isClosed: true,
+      };
+      const result = await useCase.storyIssues({
+        project: baseProject,
+        issues: [closedIssue],
+      });
+      expect(result.get(storyName)?.storyIssue).toBeNull();
+    });
+
+    it('should return the open matching issue as storyIssue', async () => {
+      const result = await useCase.storyIssues({
+        project: baseProject,
+        issues: [baseIssue],
+      });
+      expect(result.get(storyName)?.storyIssue).toBe(baseIssue);
+    });
+  });
 });
