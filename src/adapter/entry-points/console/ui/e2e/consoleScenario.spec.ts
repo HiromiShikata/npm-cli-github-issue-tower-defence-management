@@ -459,10 +459,10 @@ test('creates an issue for a story when the add-task button and form are used', 
   await tdpmRow.locator('.console-op-button', { hasText: 'Add task' }).click();
 
   await page
-    .locator('.console-story-create-input')
+    .locator('.console-inline-input-form-input')
     .fill('New task for TDPM Console port');
   await page
-    .locator('.console-story-create-form .console-op-button', {
+    .locator('.console-inline-input-form .console-op-button', {
       hasText: 'Create',
     })
     .click();
