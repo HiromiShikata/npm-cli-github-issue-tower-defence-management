@@ -9,6 +9,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
@@ -488,9 +489,11 @@ export class StartPreparationUseCase {
         this.projectRepository,
         this.issueRepository,
       );
+      const isNoStory = issue.story === NO_STORY_STORY_NAME;
       const agent =
-        (issue.agent === null ? null : agentNameFromDesignation(issue.agent)) ||
-        params.defaultAgentName;
+        (isNoStory || issue.agent === null
+          ? null
+          : agentNameFromDesignation(issue.agent)) || params.defaultAgentName;
       if (issue.agent === null) {
         const agentOptionId = await ensureAgentOptionAndGetId(
           this.projectRepository,
