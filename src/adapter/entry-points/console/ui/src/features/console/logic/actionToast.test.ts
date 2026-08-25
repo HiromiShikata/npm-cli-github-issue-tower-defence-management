@@ -127,7 +127,9 @@ describe('actionToastColor', () => {
       actionToastColor({ type: 'next_action_date', action: 'snooze_1day' }),
     ).toBe('amber');
     expect(actionToastColor({ type: 'close', action: 'close' })).toBe('red');
-    expect(actionToastColor({ type: 'ok_and_awaiting_workspace' })).toBe('blue');
+    expect(actionToastColor({ type: 'ok_and_awaiting_workspace' })).toBe(
+      'blue',
+    );
   });
 });
 

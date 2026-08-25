@@ -2,13 +2,14 @@ import { fireEvent, render } from '@testing-library/react';
 import { consoleStatusOptionsFixture } from '../../testing/fixtures';
 import { ConsoleOkAndAwaitingWorkspaceActions } from './ConsoleOkAndAwaitingWorkspaceActions';
 
-const awaitingWorkspaceOption = consoleStatusOptionsFixture.find(
+const [awaitingWorkspaceOption] = consoleStatusOptionsFixture.filter(
   (o) => o.name.toLowerCase() === 'awaiting workspace',
-)!;
-
-const statusOptionsWithoutAwaitingWorkspace = consoleStatusOptionsFixture.filter(
-  (o) => o.name.toLowerCase() !== 'awaiting workspace',
 );
+
+const statusOptionsWithoutAwaitingWorkspace =
+  consoleStatusOptionsFixture.filter(
+    (o) => o.name.toLowerCase() !== 'awaiting workspace',
+  );
 
 describe('ConsoleOkAndAwaitingWorkspaceActions', () => {
   it('renders the button when the awaiting workspace option is present', () => {
@@ -42,6 +43,8 @@ describe('ConsoleOkAndAwaitingWorkspaceActions', () => {
       />,
     );
     fireEvent.click(getByRole('button', { name: 'ok & Awaiting Workspace' }));
-    expect(onOkAndAwaitingWorkspace).toHaveBeenCalledWith(awaitingWorkspaceOption);
+    expect(onOkAndAwaitingWorkspace).toHaveBeenCalledWith(
+      awaitingWorkspaceOption,
+    );
   });
 });

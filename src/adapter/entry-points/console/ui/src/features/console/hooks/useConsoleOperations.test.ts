@@ -427,16 +427,20 @@ describe('useConsoleOperations', () => {
           ok: true,
           status: 200,
           json: async () => ({
-            comment: { author: 'bot', body: 'ok', createdAt: '2026-01-01T00:00:00Z' },
+            comment: {
+              author: 'bot',
+              body: 'ok',
+              createdAt: '2026-01-01T00:00:00Z',
+            },
           }),
         };
       }
       return { ok: true, status: 200, json: async () => ({ ok: true }) };
     }) as unknown as typeof fetch;
     const { result } = setup();
-    const option = consoleStatusOptionsFixture.find(
+    const [option] = consoleStatusOptionsFixture.filter(
       (o) => o.name.toLowerCase() === 'awaiting workspace',
-    )!;
+    );
     await act(async () => {
       await result.current.operations.okAndMoveToAwaitingWorkspace(
         issueItem,
@@ -468,9 +472,9 @@ describe('useConsoleOperations', () => {
       return { ok: true, status: 200, json: async () => ({ ok: true }) };
     }) as unknown as typeof fetch;
     const { result } = setup();
-    const option = consoleStatusOptionsFixture.find(
+    const [option] = consoleStatusOptionsFixture.filter(
       (o) => o.name.toLowerCase() === 'awaiting workspace',
-    )!;
+    );
     await expect(
       act(async () => {
         await result.current.operations.okAndMoveToAwaitingWorkspace(
