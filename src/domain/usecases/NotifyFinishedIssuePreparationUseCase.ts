@@ -29,7 +29,11 @@ import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
-import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import {
+  LAST_HOUR_OF_DAY,
+  issueReactivationTriggerIsPending,
+  issueReactivationTriggerStartOfTomorrow,
+} from './issueReactivationTriggerIsPending';
 import { normalizeReportBody } from './normalizeReportBody';
 
 export class IssueNotFoundError extends Error {
@@ -79,6 +83,8 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'setIssueAgentField'
       | 'searchIssue'
       | 'createNewIssue'
+      | 'updateNextActionDate'
+      | 'updateNextActionHour'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -110,6 +116,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     sessionErrorLine?: string | null;
     manager?: string | null;
     developerAgentName?: string | null;
+    reactivateAfterHours?: number | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -161,6 +168,18 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.missingAgentName,
         params.sessionErrorLine ?? null,
         params.manager ?? null,
+      );
+      return;
+    }
+
+    const reactivateAfterHours = params.reactivateAfterHours ?? null;
+    if (reactivateAfterHours !== null) {
+      await this.handleReactivationDeferral(
+        issue,
+        project,
+        awaitingWorkspaceStatusOption,
+        reactivateAfterHours,
+        params.sessionErrorLine ?? null,
       );
       return;
     }
@@ -451,6 +470,59 @@ export class NotifyFinishedIssuePreparationUseCase {
     await this.issueCommentRepository.createComment(
       issue,
       `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`,
+    );
+  };
+
+  private handleReactivationDeferral = async (
+    issue: Issue,
+    project: Project,
+    awaitingWorkspaceStatusOption: { id: string },
+    reactivateAfterHours: number,
+    sessionErrorLine: string | null,
+  ): Promise<void> => {
+    const evaluatedAt = new Date();
+    const deferredHour = evaluatedAt.getHours() + reactivateAfterHours;
+    let reactivationTriggerDescription: string;
+
+    if (deferredHour > LAST_HOUR_OF_DAY) {
+      if (!project.nextActionDate) {
+        throw new Error(
+          `'Next Action Date' field is not configured on the project: cannot defer ${issue.url} beyond the end of the day.`,
+        );
+      }
+      const startOfTomorrow =
+        issueReactivationTriggerStartOfTomorrow(evaluatedAt);
+      await this.issueRepository.updateNextActionDate(
+        issue.url,
+        project,
+        startOfTomorrow,
+      );
+      reactivationTriggerDescription = `nextActionDate=${startOfTomorrow.toISOString()}`;
+    } else {
+      if (!project.nextActionHour) {
+        throw new Error(
+          `'Next Action Hour' field is not configured on the project: cannot defer ${issue.url}.`,
+        );
+      }
+      await this.issueRepository.updateNextActionHour(
+        { ...project, nextActionHour: project.nextActionHour },
+        issue,
+        deferredHour,
+      );
+      reactivationTriggerDescription = `nextActionHour=${deferredHour}`;
+    }
+
+    issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+    await this.issueRepository.update(issue, project);
+    await this.issueRepository.updateStatus(
+      project,
+      issue,
+      awaitingWorkspaceStatusOption.id,
+    );
+    await this.patchConsoleTab(issue);
+    await this.issueCommentRepository.createComment(
+      issue,
+      `Session ended without finishing the task, so the retry is deferred by ${reactivateAfterHours} hour(s) through the reactivation trigger (${reactivationTriggerDescription}).\nLast session error: ${sessionErrorLine ?? '(not captured)'}`,
     );
   };
 

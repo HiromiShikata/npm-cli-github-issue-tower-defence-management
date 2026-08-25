@@ -1,5 +1,7 @@
 import { Issue } from '../entities/Issue';
 
+export const LAST_HOUR_OF_DAY = 23;
+
 export const issueReactivationTriggerStartOfTomorrow = (
   evaluatedAt: Date,
 ): Date =>

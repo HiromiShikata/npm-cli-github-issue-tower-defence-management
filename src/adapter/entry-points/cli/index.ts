@@ -95,6 +95,7 @@ type NotifyFinishedOptions = {
   configFilePath: string;
   missingAgentName?: string;
   sessionErrorLine?: string;
+  reactivateAfterHours?: string;
 };
 
 type CheckIssueReviewReadinessOptions = {
@@ -507,6 +508,10 @@ program
     '--sessionErrorLine <line>',
     'Exact error line from the session log to include in the task issue body',
   )
+  .option(
+    '--reactivateAfterHours <hours>',
+    'Defer the retry by this many hours through the reactivation trigger instead of creating a blocker task issue. Use this when the session failed for a transient reason rather than a missing agent definition.',
+  )
   .action(async (options: NotifyFinishedOptions) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -570,6 +575,22 @@ program
 
     const workflowBlockerResolvedWebhookUrl: string | null =
       config.workflowBlockerResolvedWebhookUrl ?? null;
+
+    let reactivateAfterHours: number | null = null;
+    if (options.reactivateAfterHours !== undefined) {
+      const parsedReactivateAfterHours = Number(options.reactivateAfterHours);
+      if (
+        !Number.isFinite(parsedReactivateAfterHours) ||
+        !Number.isInteger(parsedReactivateAfterHours) ||
+        parsedReactivateAfterHours <= 0
+      ) {
+        console.error(
+          'Invalid value for --reactivateAfterHours. It must be a positive integer.',
+        );
+        process.exit(1);
+      }
+      reactivateAfterHours = parsedReactivateAfterHours;
+    }
 
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository();
@@ -644,6 +665,7 @@ program
       sessionErrorLine: options.sessionErrorLine ?? null,
       manager: config.manager ?? null,
       developerAgentName: config.developerAgentName ?? null,
+      reactivateAfterHours,
     });
   });
 
