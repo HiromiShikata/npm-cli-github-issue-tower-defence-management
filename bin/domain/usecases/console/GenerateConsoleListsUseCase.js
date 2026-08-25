@@ -62,9 +62,7 @@ class GenerateConsoleListsUseCase {
                     storyOptions: this.buildFieldOptions(storyOptions, []),
                     storyOrder,
                     storyColors: this.buildStoryColorsString(storyOptions),
-                    items: this.sortByStoryOrder(issues
-                        .filter((issue) => this.needsStory(issue, assigneeLogin))
-                        .map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
+                    items: this.sortByStoryOrder(actionableIssues.map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
                 },
                 stories: {
                     pjcode,
@@ -76,10 +74,6 @@ class GenerateConsoleListsUseCase {
                 },
             };
         };
-        this.needsStory = (issue, assigneeLogin) => issue.isClosed === false &&
-            issue.isPr === false &&
-            issue.assignees.includes(assigneeLogin) &&
-            (issue.story === null || issue.story.toLowerCase().includes('no story'));
         this.isActionable = (issue, assigneeLogin) => issue.isClosed === false &&
             issue.assignees.includes(assigneeLogin) &&
             issue.dependedIssueUrls.length === 0 &&

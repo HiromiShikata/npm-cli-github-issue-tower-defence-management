@@ -22,7 +22,6 @@ export declare class RevertOrphanedPreparationUseCase {
     private isStillInPreparation;
     private evaluateOutcome;
     private resolveOpenPrsForPrItem;
-    private resolveNextStepAgent;
     private reportBodyHasNextStep;
     private isOrphanedIssue;
     private isAwLogStale;

@@ -12,6 +12,7 @@ const extractNextStepAgent_1 = require("./extractNextStepAgent");
 const findLastAgentReport_1 = require("./findLastAgentReport");
 const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 const normalizeReportBody_1 = require("./normalizeReportBody");
+const resolveNextStepAgentDispatchRepetition_1 = require("./resolveNextStepAgentDispatchRepetition");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -99,7 +100,26 @@ class NotifyFinishedIssuePreparationUseCase {
             const nextStepAgent = lastAgentReport
                 ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastAgentReport.content)
                 : null;
+            const commentsAfterLastAgentReport = lastAgentReport
+                ? comments.slice(comments.indexOf(lastAgentReport) + 1)
+                : [];
             if (nextStepAgent !== null) {
+                const repetition = (0, resolveNextStepAgentDispatchRepetition_1.resolveNextStepAgentDispatchRepetition)({
+                    agentFieldValue: issue.agent,
+                    nextStepAgent,
+                    commentsAfterLastAgentReport,
+                    isTrustedAuthor,
+                    thresholdForAutoReject: params.thresholdForAutoReject,
+                });
+                if (repetition.type === 'escalateToFailedPreparation') {
+                    issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
+                    await this.issueRepository.update(issue, project);
+                    await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                    await this.patchConsoleTab(issue);
+                    await this.issueCommentRepository.createComment(issue, repetition.comment);
+                    await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
+                    return;
+                }
                 const agentOptionId = await this.ensureAgentOptionAndGetId(project, nextStepAgent);
                 if (agentOptionId) {
                     await this.issueRepository.setIssueAgentField(params.issueUrl, project, agentOptionId);
@@ -108,6 +128,9 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                 await this.patchConsoleTab(issue);
+                if (repetition.type === 'dispatchAgain') {
+                    await this.issueCommentRepository.createComment(issue, repetition.comment);
+                }
                 return;
             }
             const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), params.developerAgentName);

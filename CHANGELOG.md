@@ -1,3 +1,12 @@
+## [1.178.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.178.0...v1.178.1) (2026-08-25)
+
+
+### Bug Fixes
+
+* **GenerateConsoleListsUseCase.test.ts:** update triage assertion in 'keeps sibling issues' test to expect items from any story after story filter removal ([#1747](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1747)) ([6da02ed](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6da02ed4bc6cda9f5be5eb38e888665ecd4773c7)), closes [#1743](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1743)
+* **GenerateConsoleListsUseCase:** make triage tab show all actionable items regardless of story or isPr ([#1708](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1708)) ([ec1fad9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ec1fad96024eca08da0257f4685f0a400a0396e0)), closes [#1699](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1699)
+* **preparation:** bound repeated dispatch of an already assigned next step agent ([#1735](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1735)) ([87daa2e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/87daa2ec53f660731aa8ecbb7a5c3dcb5432bcf9))
+
 # [1.178.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.177.0...v1.178.0) (2026-08-24)
 
 
