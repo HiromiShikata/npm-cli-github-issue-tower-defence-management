@@ -116,7 +116,9 @@ class IssueRejectionEvaluator {
         this.requiresPullRequestEvaluation = (issue, labelsNotRequiringPullRequest = [], developerAgentName) => {
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
             const effectiveDeveloperAgentName = developerAgentName ?? 'developer';
-            const isNonDeveloperAgent = issue.agent != null && issue.agent !== effectiveDeveloperAgentName;
+            const isNonDeveloperAgent = issue.agent != null &&
+                issue.agent !== effectiveDeveloperAgentName &&
+                issue.agent !== 'pr-reviewer';
             const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
             return (!isNonDeveloperAgent &&
                 !hasLabelNotRequiringPullRequest &&

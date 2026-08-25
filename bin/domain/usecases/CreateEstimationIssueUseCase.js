@@ -53,7 +53,7 @@ class CreateEstimationIssueUseCase {
                         !!issueInStory.completionDate50PercentConfidence &&
                         (issueInStory.completionDate50PercentConfidence.getTime() <
                             targetDate.getTime() + 7 * 24 * 60 * 60 * 1000 ||
-                            targetDate.getDay() === 1)) {
+                            targetDate.getUTCDay() === 1)) {
                         await this.issueRepository.createComment(issueInStory, `\`${completionDate50PercentConfidenceField.name}\` field value \`${this.dateRepository.formatDateWithDayOfWeek(issueInStory.completionDate50PercentConfidence)}\` is removed to re-estimate.`);
                         await this.issueRepository.clearProjectField(input.project, completionDate50PercentConfidenceField.fieldId, issueInStory);
                         await new Promise((resolve) => setTimeout(resolve, 5000));

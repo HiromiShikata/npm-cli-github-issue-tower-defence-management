@@ -1,3 +1,18 @@
+# [1.180.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.179.0...v1.180.0) (2026-08-25)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository:** refresh project metadata every cycle and escalate to full fetch on story rename ([#1705](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1705)) ([7f49a22](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7f49a2223aa63186a4051f78e829e4de94d70857)), closes [#1696](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1696)
+* **HandleScheduledEventUseCase:** exclude closed issues when searching for existing story task ([#1706](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1706)) ([a6a56e1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a6a56e1f2a67f8a6e7eead90469526f54e2fc90c)), closes [#1697](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1697)
+* **IssueRejectionEvaluator:** restore CI/conflict checks when pr-reviewer agent is assigned ([#1749](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1749)) ([64dce55](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/64dce55ce8f5fad23b8903d8a4ac09f7eb2872b5)), closes [#1746](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1746) [#1708](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1708) [#1699](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1699)
+* **UTC:** replace all local-timezone Date methods with UTC equivalents across TDPM ([#1710](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1710)) ([34ad2c8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/34ad2c8827d48510087065914671ebb08e52ae8c)), closes [#1702](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1702)
+
+
+### Features
+
+* **console:** add up/down reorder buttons for stories in the triage tab ([#1709](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1709)) ([f9d35e8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f9d35e82c9793bcebab4c4f5a30d397fcc2b2d49)), closes [#1701](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1701) [#1708](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1708)
+
 # [1.179.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.178.1...v1.179.0) (2026-08-25)
 
 
