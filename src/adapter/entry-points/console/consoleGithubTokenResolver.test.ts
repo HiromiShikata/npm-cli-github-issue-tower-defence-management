@@ -232,11 +232,12 @@ describe('createConsoleGithubTokenResolver', () => {
       { acme: 'https://github.com/orgs/acme-labs/projects/1' },
       '/creds',
       () => {
-        const error = new Error(
-          "ENOENT: no such file or directory, open '/creds/tdpm-github-token-acme.txt'",
+        throw Object.assign(
+          new Error(
+            "ENOENT: no such file or directory, open '/creds/tdpm-github-token-acme.txt'",
+          ),
+          { code: 'ENOENT' },
         );
-        (error as NodeJS.ErrnoException).code = 'ENOENT';
-        throw error;
       },
     );
 
@@ -249,11 +250,12 @@ describe('createConsoleGithubTokenResolver', () => {
       { acme: 'https://github.com/orgs/acme-labs/projects/1' },
       '/creds',
       () => {
-        const error = new Error(
-          "EACCES: permission denied, open '/creds/tdpm-github-token-acme.txt'",
+        throw Object.assign(
+          new Error(
+            "EACCES: permission denied, open '/creds/tdpm-github-token-acme.txt'",
+          ),
+          { code: 'EACCES' },
         );
-        (error as NodeJS.ErrnoException).code = 'EACCES';
-        throw error;
       },
     );
 

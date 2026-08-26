@@ -63,6 +63,7 @@ const createConsoleGithubTokenResolver = (defaultToken, consoleProjectUrls, gith
         }
         catch (error) {
             if (error instanceof Error &&
+                'code' in error &&
                 error.code === 'ENOENT') {
                 return defaultToken;
             }

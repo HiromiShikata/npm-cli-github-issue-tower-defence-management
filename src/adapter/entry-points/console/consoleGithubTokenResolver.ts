@@ -94,7 +94,8 @@ export const createConsoleGithubTokenResolver = (
     } catch (error) {
       if (
         error instanceof Error &&
-        (error as NodeJS.ErrnoException).code === 'ENOENT'
+        'code' in error &&
+        error.code === 'ENOENT'
       ) {
         return defaultToken;
       }
