@@ -2487,3 +2487,96 @@ describe('webServer owner call file route', () => {
     }
   });
 });
+
+describe('webServer GET /api/projects', () => {
+  const testToken = 'integration-test-token-value';
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  const request = (
+    server: http.Server,
+    method: string,
+    requestPath: string,
+  ): Promise<{ statusCode: number; body: string }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    const port = address.port;
+    return new Promise((resolve, reject) => {
+      const httpRequest = http.request(
+        { host: '127.0.0.1', port, path: requestPath, method },
+        (response) => {
+          const chunks: Uint8Array[] = [];
+          response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString('utf-8'),
+            });
+          });
+        },
+      );
+      httpRequest.on('error', reject);
+      httpRequest.end();
+    });
+  };
+
+  it('returns the dashboardProjectNames with a valid token', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: ['alpha', 'beta', 'gamma'],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({
+        pjcodes: ['alpha', 'beta', 'gamma'],
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 401 without a valid token', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: ['alpha'],
+      port: 0,
+    });
+    try {
+      const response = await request(server, 'GET', '/api/projects');
+      expect(response.statusCode).toBe(401);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});

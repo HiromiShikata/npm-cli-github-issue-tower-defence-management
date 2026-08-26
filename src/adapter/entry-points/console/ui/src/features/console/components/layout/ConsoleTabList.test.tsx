@@ -145,4 +145,29 @@ describe('ConsoleTabList', () => {
     ).toBeNull();
     expect(document.querySelector('[data-from-cache]')).toBeNull();
   });
+
+  it('renders the settingsButton prop at the end of the tab bar when provided', () => {
+    const { getByTestId } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        settingsButton={
+          <button type="button" data-testid="settings-btn">
+            ⚙
+          </button>
+        }
+      />,
+    );
+    const btn = getByTestId('settings-btn');
+    expect(btn).toBeInTheDocument();
+    expect(btn.closest('nav.console-tabbar')).not.toBeNull();
+  });
+
+  it('does not render a settings slot when settingsButton is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(container.querySelector('.console-tab-settings')).toBeNull();
+  });
 });

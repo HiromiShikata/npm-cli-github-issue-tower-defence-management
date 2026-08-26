@@ -114,6 +114,145 @@ body {
   font-size: 0.6875rem;
 }
 
+.console-tab-settings {
+  align-self: center;
+  padding: 0 4px;
+}
+
+.console-timer-settings-button {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 8px;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.console-timer-settings-button:hover {
+  color: #e6edf3;
+  background: #21262d;
+}
+
+.console-timer-settings-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 48px 16px 0;
+}
+
+.console-timer-settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(1, 4, 9, 0.6);
+  border: none;
+  cursor: default;
+  z-index: -1;
+}
+
+.console-timer-settings-dialog-inner {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 280px;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.console-timer-settings-title {
+  margin: 0 0 16px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.console-timer-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.console-timer-settings-label {
+  color: #c9d1d9;
+  font-size: 0.875rem;
+}
+
+.console-timer-settings-loading {
+  color: #8b949e;
+  font-size: 0.875rem;
+  padding: 8px 0;
+}
+
+.console-timer-settings-project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.console-timer-settings-project-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #21262d;
+}
+
+.console-timer-settings-project-row:last-child {
+  border-bottom: none;
+}
+
+.console-timer-settings-pjcode {
+  flex: 1;
+  color: #c9d1d9;
+  font-size: 0.8125rem;
+  font-family: ui-monospace, "SFMono-Regular", monospace;
+}
+
+.console-timer-settings-minutes-input {
+  width: 56px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #e6edf3;
+  font-size: 0.8125rem;
+  padding: 3px 6px;
+  text-align: right;
+}
+
+.console-timer-settings-minutes-label {
+  width: 24px;
+  color: #8b949e;
+  font-size: 0.75rem;
+}
+
+.console-timer-settings-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.console-timer-settings-save {
+  background: #238636;
+  border: 1px solid rgba(240, 246, 252, 0.1);
+  border-radius: 6px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 6px 14px;
+}
+
+.console-timer-settings-save:hover {
+  background: #2ea043;
+}
+
 .console-list {
   list-style: none;
   margin: 0;

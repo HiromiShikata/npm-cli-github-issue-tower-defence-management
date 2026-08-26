@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { CONSOLE_TABS, type ConsoleTabName } from '../../logic/types';
 
 export type ConsoleTabBarProps = {
@@ -8,6 +9,7 @@ export type ConsoleTabBarProps = {
   fromCache: boolean;
   tabHref: (tab: ConsoleTabName) => string;
   onSelectTab: (tab: ConsoleTabName) => void;
+  settingsButton?: ReactNode;
 };
 
 export const ConsoleTabList = ({
@@ -18,6 +20,7 @@ export const ConsoleTabList = ({
   fromCache,
   tabHref,
   onSelectTab,
+  settingsButton,
 }: ConsoleTabBarProps) => {
   return (
     <nav aria-label="Console tabs" className="console-tabbar">
@@ -67,6 +70,9 @@ export const ConsoleTabList = ({
         >
           {fromCache ? '(cached) ' : ''}snapshot: {generatedAt}
         </span>
+      )}
+      {settingsButton !== undefined && (
+        <span className="console-tab-settings">{settingsButton}</span>
       )}
     </nav>
   );

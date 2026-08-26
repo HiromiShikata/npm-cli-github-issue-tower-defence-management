@@ -19,6 +19,11 @@ jest.mock('../lib/mermaidLoader', () => ({
   renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
 }));
 
+jest.mock('../lib/navigation', () => ({
+  navigateReplace: jest.fn(),
+  navigateAssign: jest.fn(),
+}));
+
 const listPayload = (tab: string) => ({
   pjcode: 'acme',
   generatedAt: '2026-06-19T00:00:00.000Z',
@@ -79,6 +84,13 @@ const installFetch = (): void => {
         ok: true,
         status: 200,
         json: async () => listPayload(listMatch[1]),
+      };
+    }
+    if (url === '/api/projects') {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ pjcodes: ['acme'] }),
       };
     }
     return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
@@ -858,6 +870,110 @@ describe('ConsolePage auto-advance tab', () => {
           .closest('a')
           ?.getAttribute('aria-current'),
       ).toBe('page');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('renders the gear button in the tab bar', async () => {
+    const { getByText, getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    const gearBtn = getByRole('button', { name: 'Console Settings' });
+    expect(gearBtn).toBeInTheDocument();
+    expect(gearBtn.closest('nav.console-tabbar')).not.toBeNull();
+  });
+
+  it('opens the settings dialog when the gear button is clicked', async () => {
+    const { getByText, getByRole, queryByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    expect(queryByRole('dialog')).toBeNull();
+    fireEvent.click(getByRole('button', { name: 'Console Settings' }));
+    expect(getByRole('dialog')).toBeInTheDocument();
+    expect(getByRole('dialog')).toHaveAttribute(
+      'aria-label',
+      'Console Settings',
+    );
+  });
+
+  it('saves timer settings to localStorage and closes the dialog when Save and Close is clicked', async () => {
+    const { getByText, getByRole, queryByRole, getByLabelText } = render(
+      <ConsolePage />,
+    );
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByRole('button', { name: 'Console Settings' }));
+    fireEvent.click(getByLabelText('Timer Mode'));
+    fireEvent.click(getByText('Save and Close'));
+    expect(queryByRole('dialog')).toBeNull();
+    const stored = localStorage.getItem('tdpm-timer-settings');
+    expect(stored).not.toBeNull();
+    const parsed: unknown = JSON.parse(stored as string);
+    expect(parsed).toMatchObject({ timerMode: true });
+  });
+
+  it('redirects to the first project with minutes > 0 when timer mode is on and pjcode is null', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({ timerMode: true, projectMinutes: { acme: 30 } }),
+    );
+    window.history.replaceState({}, '', '/');
+    const { navigateReplace } = jest.requireMock<{
+      navigateReplace: jest.Mock;
+    }>('../lib/navigation');
+    navigateReplace.mockClear();
+    render(<ConsolePage />);
+    await waitFor(() => {
+      expect(navigateReplace).toHaveBeenCalledWith('/projects/acme');
+    });
+  });
+
+  it('navigates to the next project when a completing action fires after the project timer elapses', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
+    );
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    jest.useFakeTimers({ now: 0 });
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      jest.setSystemTime(61 * 1000);
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve & Merge'));
+      act(() => {
+        jest.advanceTimersByTime(5100);
+      });
+      const { navigateAssign } = jest.requireMock<{
+        navigateAssign: jest.Mock;
+      }>('../lib/navigation');
+      await waitFor(() => {
+        expect(navigateAssign).toHaveBeenCalledWith('/projects/beta');
+      });
     } finally {
       jest.useRealTimers();
     }
