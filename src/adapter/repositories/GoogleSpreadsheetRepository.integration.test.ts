@@ -25,9 +25,10 @@ describe('GoogleSpreadsheetRepository integration test credential', () => {
   });
 });
 
-const describeWhenCredentials = GOOGLE_SERVICE_ACCOUNT_KEY
-  ? describe
-  : describe.skip;
+const describeWhenCredentials =
+  GOOGLE_SERVICE_ACCOUNT_KEY && integrationTestIsRequired
+    ? describe
+    : describe.skip;
 
 describeWhenCredentials('GoogleSpreadsheetRepository integration tests', () => {
   jest.setTimeout(60 * 1000);

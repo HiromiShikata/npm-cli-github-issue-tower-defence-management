@@ -41,7 +41,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.TEST_GH_TOKEN }}
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.TEST_GOOGLE_SERVICE_ACCOUNT_KEY }}
-          GOOGLE_SHEETS_INTEGRATION_REQUIRED: ${{ github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]' }}
+          GOOGLE_SHEETS_INTEGRATION_REQUIRED: 'false'
           SLACK_USER_TOKEN: ${{ secrets.TEST_SLACK_USER_TOKEN }}
           DOTENV_CONFIG_QUIET: true
 
