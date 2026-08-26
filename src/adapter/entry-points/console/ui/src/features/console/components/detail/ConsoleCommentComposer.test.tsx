@@ -26,6 +26,53 @@ describe('ConsoleCommentComposer', () => {
     expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
   });
 
+  it('initializes the textarea with initialDraft when provided', () => {
+    const { getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        initialDraft="Previously typed text"
+        onSubmit={stubSubmit}
+      />,
+    );
+    expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+      'Previously typed text',
+    );
+  });
+
+  it('calls onDraftChange with every keystroke', () => {
+    const onDraftChange = jest.fn();
+    const { getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onDraftChange={onDraftChange}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'hello' },
+    });
+    expect(onDraftChange).toHaveBeenCalledWith('hello');
+  });
+
+  it('calls onDraftChange with empty string after successful submission', async () => {
+    const onDraftChange = jest.fn();
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onDraftChange={onDraftChange}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'My comment' },
+    });
+    fireEvent.click(getByText('Comment'));
+    await waitFor(() => {
+      expect(getByPlaceholderText('Leave a comment…')).toHaveValue('');
+    });
+    expect(onDraftChange).toHaveBeenCalledWith('');
+  });
+
   it('offers the opening control and hides the form when it starts closed', () => {
     const { queryByPlaceholderText, getByText } = render(
       <ConsoleCommentComposer initiallyOpen={false} onSubmit={stubSubmit} />,

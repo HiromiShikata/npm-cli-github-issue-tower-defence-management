@@ -42,6 +42,8 @@ export type ConsoleItemDetailContainerProps = {
   storyName: string | null;
   overlayStatus: ConsoleOverlayStatus | null;
   now: number;
+  initialCommentDraft?: string;
+  onCommentDraftChange?: (draft: string) => void;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
 };
 
@@ -56,6 +58,8 @@ export const ConsoleItemDetailContainer = ({
   storyName,
   overlayStatus,
   now,
+  initialCommentDraft,
+  onCommentDraftChange,
   onQueueAction,
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item);
@@ -198,7 +202,9 @@ export const ConsoleItemDetailContainer = ({
       commentComposer={
         <ConsoleCommentComposer
           initiallyOpen
+          initialDraft={initialCommentDraft}
           onSubmit={addComment}
+          onDraftChange={onCommentDraftChange}
           onUploadFile={(file) => operations.uploadAttachment(item, file)}
         />
       }
