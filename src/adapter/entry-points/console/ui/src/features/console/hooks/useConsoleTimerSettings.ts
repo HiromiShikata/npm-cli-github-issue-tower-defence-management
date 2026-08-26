@@ -24,7 +24,6 @@ export const useConsoleTimerSettings = (): ConsoleTimerSettingsState => {
   const [draft, setDraft] = useState<TimerSettings>(saved);
 
   const openSettings = useCallback(() => {
-    setDraft((current) => current);
     setSaved((currentSaved) => {
       setDraft(currentSaved);
       return currentSaved;

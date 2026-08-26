@@ -5,9 +5,9 @@ const meta: Meta<typeof ConsoleTimerSettingsModalDialog> = {
   title: 'Console/ConsoleTimerSettingsModalDialog',
   component: ConsoleTimerSettingsModalDialog,
   args: {
-    pjcodes: ['alpha', 'beta', 'gamma'],
+    pjcodes: ['acme', 'beta'],
     isLoadingPjcodes: false,
-    projectMinutes: { alpha: 30, beta: 0, gamma: 15 },
+    projectMinutes: { acme: 25, beta: 0 },
     timerMode: false,
     onOpen: () => {},
     onToggleTimerMode: () => {},
