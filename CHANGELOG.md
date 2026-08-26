@@ -1,3 +1,16 @@
+# [1.181.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.180.1...v1.181.0) (2026-08-26)
+
+
+### Bug Fixes
+
+* **preparation:** scan every fenced json block when reading agent reports ([#1775](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1775)) ([556eb80](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/556eb807985ba4ef7f68a81f6869e1208dc3e5bd)), closes [#1773](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1773)
+
+
+### Features
+
+* **console:** add ok & Awaiting Workspace composite action button ([#1762](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1762)) ([114275d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/114275d34da9b4a376b00251d41791e398aa7fd5)), closes [#1761](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1761)
+* **GoogleSpreadsheetRepository:** add exponential backoff retry for quota errors ([#1757](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1757)) ([95399cc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/95399cc5f61e413e7c1de5ff37069ba52d9931a2)), closes [#1756](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1756)
+
 ## [1.180.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.180.0...v1.180.1) (2026-08-25)
 
 
