@@ -1078,6 +1078,104 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should escalate to Failed Preparation when two agents keep naming each other and each one reports every round', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'systems-analyst',
+    });
+    const namesReviewer = createMockComment({
+      content:
+        'From: :robot: systems-analyst\n```json\n{"nextStepAgent": "system-design-reviewer"}\n```',
+    });
+    const namesAnalyst = createMockComment({
+      content:
+        'From: :robot: system-design-reviewer\n```json\n{"nextStepAgent": "systems-analyst"}\n```',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      namesReviewer,
+      namesAnalyst,
+      namesReviewer,
+      namesAnalyst,
+      namesReviewer,
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'failed-preparation-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining(
+        'dispatched 3 times since the last human comment',
+      ),
+    );
+  });
+
+  it('should keep dispatching when a human comment separates the repeated dispatches', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'systems-analyst',
+    });
+    const namesReviewer = createMockComment({
+      content:
+        'From: :robot: systems-analyst\n```json\n{"nextStepAgent": "system-design-reviewer"}\n```',
+    });
+    const namesAnalyst = createMockComment({
+      content:
+        'From: :robot: system-design-reviewer\n```json\n{"nextStepAgent": "systems-analyst"}\n```',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      namesReviewer,
+      namesAnalyst,
+      createMockComment({ content: 'Please take the second option.' }),
+      namesReviewer,
+      namesAnalyst,
+      namesReviewer,
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: null,
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'failed-preparation-id',
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'awaiting-workspace-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('(2/3)'),
+    );
+  });
+
   it('should not modify labels when nextStepAgent is specified', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',

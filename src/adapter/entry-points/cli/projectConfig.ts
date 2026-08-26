@@ -15,6 +15,7 @@ export type ConfigFile = {
   allowedIssueAuthors?: string;
   autoAssignManagerAuthors?: string;
   thresholdForAutoReject?: number;
+  thresholdForDispatchLoop?: number;
   workflowBlockerResolvedWebhookUrl?: string;
   projectName?: string;
   preparationProcessCheckCommand?: string;

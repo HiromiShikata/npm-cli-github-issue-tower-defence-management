@@ -299,6 +299,8 @@ export class HandleScheduledEventUseCaseHandler {
         input.claudeCodeOauthTokenListJsonPath,
       thresholdForAutoReject:
         readmeConfig.thresholdForAutoReject ?? input.thresholdForAutoReject,
+      thresholdForDispatchLoop:
+        readmeConfig.thresholdForDispatchLoop ?? input.thresholdForDispatchLoop,
       developerAgentName:
         readmeConfig.developerAgentName ?? input.developerAgentName ?? null,
       startPreparation: input.startPreparation

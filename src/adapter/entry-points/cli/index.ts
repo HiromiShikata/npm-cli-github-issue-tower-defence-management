@@ -33,6 +33,7 @@ import { projectCacheDirectory } from '../../repositories/localStorageCacheDirec
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
+import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import {
@@ -89,10 +90,29 @@ type StartDaemonOptions = {
   configFilePath: string;
 };
 
+const resolvePositiveIntegerOption = (
+  rawValue: number | string | undefined,
+  optionName: string,
+  fallback: number,
+): number => {
+  if (rawValue === undefined) {
+    return fallback;
+  }
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    console.error(
+      `Invalid value for --${optionName}. It must be a positive integer.`,
+    );
+    process.exit(1);
+  }
+  return parsed;
+};
+
 type NotifyFinishedOptions = {
   issueUrl: string;
   projectUrl?: string;
   thresholdForAutoReject?: string;
+  thresholdForDispatchLoop?: string;
   workflowBlockerResolvedWebhookUrl?: string;
   configFilePath: string;
   missingAgentName?: string;
@@ -414,6 +434,7 @@ program
         projectUrl,
         preparationProcessCheckCommand,
         thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
+        thresholdForDispatchLoop: config.thresholdForDispatchLoop,
         awLogDirectoryPath: config.awLogDirectoryPath,
         awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
@@ -499,6 +520,10 @@ program
     'Threshold for auto-escalation after consecutive rejections (default: 3)',
   )
   .option(
+    '--thresholdForDispatchLoop <count>',
+    'Threshold for auto-escalation after one agent is dispatched this many times since the last human comment, whether it names itself or two agents name each other in turn (default: 6)',
+  )
+  .option(
     '--workflowBlockerResolvedWebhookUrl <url>',
     'Webhook URL to notify when a workflow blocker issue status changes to awaiting quality check. Supports {URL} and {MESSAGE} placeholders.',
   )
@@ -527,6 +552,9 @@ program
       projectUrl: options.projectUrl,
       thresholdForAutoReject: options.thresholdForAutoReject
         ? Number(options.thresholdForAutoReject)
+        : undefined,
+      thresholdForDispatchLoop: options.thresholdForDispatchLoop
+        ? Number(options.thresholdForDispatchLoop)
         : undefined,
       workflowBlockerResolvedWebhookUrl:
         options.workflowBlockerResolvedWebhookUrl,
@@ -558,22 +586,16 @@ program
       process.exit(1);
     }
 
-    let thresholdForAutoReject = 3;
-    const rawThreshold = config.thresholdForAutoReject;
-    if (rawThreshold !== undefined) {
-      const parsed = Number(rawThreshold);
-      if (
-        !Number.isFinite(parsed) ||
-        !Number.isInteger(parsed) ||
-        parsed <= 0
-      ) {
-        console.error(
-          'Invalid value for --thresholdForAutoReject. It must be a positive integer.',
-        );
-        process.exit(1);
-      }
-      thresholdForAutoReject = parsed;
-    }
+    const thresholdForAutoReject = resolvePositiveIntegerOption(
+      config.thresholdForAutoReject,
+      'thresholdForAutoReject',
+      3,
+    );
+    const thresholdForDispatchLoop = resolvePositiveIntegerOption(
+      config.thresholdForDispatchLoop,
+      'thresholdForDispatchLoop',
+      DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+    );
 
     const workflowBlockerResolvedWebhookUrl: string | null =
       config.workflowBlockerResolvedWebhookUrl ?? null;
@@ -640,6 +662,7 @@ program
       projectUrl,
       issueUrl: options.issueUrl,
       thresholdForAutoReject,
+      thresholdForDispatchLoop,
       workflowBlockerResolvedWebhookUrl,
       allowedIssueAuthors,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
