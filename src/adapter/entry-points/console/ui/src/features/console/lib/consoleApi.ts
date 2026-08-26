@@ -438,3 +438,25 @@ export const postConsoleReorderStory = async (
     throw new Error(await readOperationErrorReason(response));
   }
 };
+
+export const fetchProjectList = async (): Promise<string[]> => {
+  const response = await fetch('/api/projects');
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const payload: unknown = await response.json();
+  if (
+    payload === null ||
+    typeof payload !== 'object' ||
+    Array.isArray(payload)
+  ) {
+    return [];
+  }
+  const record = payload as Record<string, unknown>;
+  if (!Array.isArray(record.pjcodes)) {
+    return [];
+  }
+  return record.pjcodes.filter(
+    (entry): entry is string => typeof entry === 'string',
+  );
+};

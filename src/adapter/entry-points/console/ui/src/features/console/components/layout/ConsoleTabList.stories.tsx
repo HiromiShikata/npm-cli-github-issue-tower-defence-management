@@ -103,3 +103,26 @@ export const Interactive: Story = {
     );
   },
 };
+
+export const WithSettingsButton: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    settingsButton: (
+      <button
+        type="button"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: '#8b949e',
+          cursor: 'pointer',
+          fontSize: '1rem',
+          padding: '4px 8px',
+        }}
+        aria-label="Console Settings"
+      >
+        ⚙
+      </button>
+    ),
+  },
+};

@@ -464,6 +464,12 @@ const handleReadApi = async (
   requestPath: string,
   searchParams: URLSearchParams,
 ): Promise<{ statusCode: number; body: unknown } | null> => {
+  if (requestPath === '/api/projects') {
+    return {
+      statusCode: 200,
+      body: { pjcodes: options.dashboardProjectNames },
+    };
+  }
   const defaultIssueRepository = options.issueRepository ?? null;
   if (defaultIssueRepository === null) {
     return null;

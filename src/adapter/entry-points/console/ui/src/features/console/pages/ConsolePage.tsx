@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
+import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
 import { ConsoleStoryReorderPanel } from '../components/list/ConsoleStoryReorderPanel';
@@ -14,12 +15,16 @@ import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
+import { useConsoleProjectList } from '../hooks/useConsoleProjectList';
+import { useConsoleProjectTimer } from '../hooks/useConsoleProjectTimer';
 import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
+import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
   postConsoleCreateIssue,
   postConsoleReorderStory,
 } from '../lib/consoleApi';
+import { navigateAssign, navigateReplace } from '../lib/navigation';
 import {
   actionAdvances,
   actionToastColor,
@@ -40,6 +45,7 @@ import {
 } from '../logic/overlay';
 import type { ConsoleSwipeDirection } from '../logic/swipe';
 import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
+import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
 import type {
   ConsoleListItem,
   ConsoleOverlayStatus,
@@ -64,6 +70,20 @@ const OVERLAY_NAMESPACE_FALLBACK = 'console';
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
   const { snapshots, isLoading, error } = useConsoleTabData(pjcode);
+  const {
+    timerMode,
+    projectMinutes,
+    isOpen: isSettingsOpen,
+    draftTimerMode,
+    draftProjectMinutes,
+    openSettings,
+    closeSettings,
+    saveSettings,
+    toggleDraftTimerMode,
+    changeDraftMinutes,
+  } = useConsoleTimerSettings();
+  const { pjcodes, isLoading: isLoadingPjcodes } = useConsoleProjectList();
+  const { isTimerExpired } = useConsoleProjectTimer(pjcode);
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
 
   const counts = useMemo(() => {
@@ -171,6 +191,19 @@ export const ConsolePage = () => {
     window.scrollTo({ top: 0 });
   }, [selectedItemKey]);
 
+  useEffect(() => {
+    if (pjcode === null && timerMode && pjcodes.length > 0) {
+      const firstPjcode = findNextPjcodeWithMinutes(
+        pjcodes,
+        null,
+        projectMinutes,
+      );
+      if (firstPjcode !== null) {
+        navigateReplace(`/projects/${firstPjcode}`);
+      }
+    }
+  }, [pjcode, timerMode, pjcodes, projectMinutes]);
+
   const activeCount = counts[activeTab];
   const previousActiveTabCountRef = useRef<{
     tab: ConsoleTabName;
@@ -232,12 +265,35 @@ export const ConsolePage = () => {
         commit: input.commit,
         advance: () => {
           if (actionAdvances(input.kind, activeTab)) {
-            advanceToNext(actedKey);
+            if (
+              timerMode &&
+              isTimerExpired(projectMinutes[pjcode ?? ''] ?? 0)
+            ) {
+              const nextPjcode = findNextPjcodeWithMinutes(
+                pjcodes,
+                pjcode,
+                projectMinutes,
+              );
+              if (nextPjcode !== null) {
+                navigateAssign(`/projects/${nextPjcode}`);
+              }
+            } else {
+              advanceToNext(actedKey);
+            }
           }
         },
       });
     },
-    [actionQueue, activeTab, advanceToNext],
+    [
+      actionQueue,
+      activeTab,
+      advanceToNext,
+      timerMode,
+      isTimerExpired,
+      projectMinutes,
+      pjcode,
+      pjcodes,
+    ],
   );
 
   const handleSwipe = useCallback(
@@ -331,6 +387,20 @@ export const ConsolePage = () => {
         fromCache={fromCache}
         tabHref={navigation.tabHref}
         onSelectTab={navigation.selectTab}
+        settingsButton={
+          <ConsoleTimerSettingsModalDialog
+            isOpen={isSettingsOpen}
+            timerMode={draftTimerMode}
+            projectMinutes={draftProjectMinutes}
+            pjcodes={pjcodes}
+            isLoadingPjcodes={isLoadingPjcodes}
+            onOpen={openSettings}
+            onToggleTimerMode={toggleDraftTimerMode}
+            onChangeMinutes={changeDraftMinutes}
+            onSave={saveSettings}
+            onClose={closeSettings}
+          />
+        }
       />
       {activeTab === 'stories' ? (
         <ConsoleStoryList
