@@ -1,30 +1,18 @@
-import { normalizeReportBody } from './normalizeReportBody';
+import { extractFencedJsonBlocks } from './extractFencedJsonBlocks';
+
 export const extractNextStepAgent = (body: string): string | null => {
-  const reportMatch = normalizeReportBody(body).match(
-    /```json\n([\s\S]*?)\n```/,
-  );
-  if (!reportMatch || reportMatch.length < 2) {
-    return null;
+  for (const block of extractFencedJsonBlocks(body, 'nextStepAgent')) {
+    if (typeof block !== 'object' || block === null) {
+      continue;
+    }
+    if (!('nextStepAgent' in block)) {
+      continue;
+    }
+    const value = Reflect.get(block, 'nextStepAgent');
+    if (typeof value !== 'string' || value.trim() === '') {
+      continue;
+    }
+    return value.trim();
   }
-  let reportJson: unknown;
-  try {
-    reportJson = JSON.parse(reportMatch[1]);
-  } catch (error) {
-    console.warn(
-      'Invalid JSON in report body while checking nextStepAgent:',
-      error,
-    );
-    return null;
-  }
-  if (typeof reportJson !== 'object' || reportJson === null) {
-    return null;
-  }
-  if (!('nextStepAgent' in reportJson)) {
-    return null;
-  }
-  const value = Reflect.get(reportJson, 'nextStepAgent');
-  if (typeof value !== 'string' || value.trim() === '') {
-    return null;
-  }
-  return value.trim();
+  return null;
 };
