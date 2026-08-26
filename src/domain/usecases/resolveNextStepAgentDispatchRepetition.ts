@@ -109,13 +109,14 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
 This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so the issue is escalated for a decision instead of being dispatched again.`,
     };
   }
-  if (silentRedispatches !== null) {
-    return {
-      type: 'dispatchAgain',
-      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+  const silentRedispatchMessage = {
+    type: 'dispatchAgain' as const,
+    comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
 The latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${silentRedispatches}/${params.thresholdForAutoReject}).`,
-    };
+  };
+  if (silentRedispatches !== null && silentRedispatches > 1) {
+    return silentRedispatchMessage;
   }
   if (dispatchesInCycle > 1) {
     return {
@@ -124,6 +125,9 @@ The latest agent report names this agent as the next step and the agent field al
 
 The latest agent report names this agent as the next step and it has already been dispatched on this issue since the last human comment. Dispatching it again (${dispatchesInCycle}/${params.thresholdForDispatchLoop}).`,
     };
+  }
+  if (silentRedispatches !== null) {
+    return silentRedispatchMessage;
   }
   return { type: 'notRepeated' };
 };

@@ -111,6 +111,22 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('dispatchAgain');
     });
 
+    it('reports against the dispatch loop threshold, not the silent agent one, when the agent did report', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'chore',
+        nextStepAgent: 'chore',
+        comments: [report('chore'), report('chore')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+      const comment = result.type === 'dispatchAgain' ? result.comment : '';
+      expect(comment).toContain('(2/6)');
+      expect(comment).not.toContain('ended without a report');
+    });
+
     it('escalates once the repetition count reaches the auto reject threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'accounting',
