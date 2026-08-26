@@ -7,10 +7,7 @@ describe('extractFencedJsonBlocks', () => {
         'From: :robot: agent (model)\n\n```json\n{ "pullRequestRequired": false }\n```\n\ntext\n\n```json\n{ "nextStepAgent": "developer" }\n```\n',
         'test',
       ),
-    ).toEqual([
-      { pullRequestRequired: false },
-      { nextStepAgent: 'developer' },
-    ]);
+    ).toEqual([{ pullRequestRequired: false }, { nextStepAgent: 'developer' }]);
   });
 
   it('returns an empty list when the body carries no fenced json block', () => {
