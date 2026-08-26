@@ -680,9 +680,9 @@ describe('ClearDependedIssueURLUseCase', () => {
           expect(mockIssueRepository.clearProjectField.mock.calls).toEqual(
             expectedIssueRepositoryClearProjectFieldCalls,
           );
-          expect(
-            mockIssueRepository.updateProjectTextField.mock.calls,
-          ).toEqual(expectedIssueRepositoryUpdateTextFieldCalls);
+          expect(mockIssueRepository.updateProjectTextField.mock.calls).toEqual(
+            expectedIssueRepositoryUpdateTextFieldCalls,
+          );
           expect(mockIssueRepository.createComment.mock.calls).toEqual(
             expectedIssueRepositoryCreateCommentCalls,
           );
