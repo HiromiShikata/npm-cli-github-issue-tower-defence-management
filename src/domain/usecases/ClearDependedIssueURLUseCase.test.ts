@@ -3,6 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
+import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 
 describe('ClearDependedIssueURLUseCase', () => {
   jest.setTimeout(30 * 1000);
@@ -514,12 +515,162 @@ describe('ClearDependedIssueURLUseCase', () => {
           [basicIssueThree, 'Circular dependency removed:\n- url1\n- url2'],
         ],
       },
+      {
+        name: 'should call clearProjectField and Icebox comment when depended issue is open and Icebox',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...mock<Issue>(),
+              url: 'url-icebox',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: ICEBOX_STATUS_NAME,
+            },
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url-icebox'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+            'All depended issues are in Icebox, dependency field cleared:\n- url-icebox',
+          ],
+        ],
+      },
+      {
+        name: 'should call updateProjectTextField with remaining URL and Icebox comment when deps are mix of Icebox and open non-Icebox',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...mock<Issue>(),
+              url: 'url-icebox',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: ICEBOX_STATUS_NAME,
+            },
+            {
+              ...mock<Issue>(),
+              url: 'url-open',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: 'In Progress',
+            },
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url-icebox', 'url-open'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox', 'url-open'] },
+            'url-open',
+          ],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox', 'url-open'] },
+            'Some depended issues are in Icebox, removed from dependency field:\n- url-icebox',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and both closed and Icebox comments when deps are mix of closed and Icebox',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...mock<Issue>(),
+              url: 'url-icebox',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: ICEBOX_STATUS_NAME,
+            },
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url1', 'url-icebox'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url1', 'url-icebox'] },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url1', 'url-icebox'] },
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url1', 'url-icebox'] },
+            'Some depended issues are in Icebox, removed from dependency field:\n- url-icebox',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and Icebox comment when cacheUsed is true and depended issue is Icebox',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...mock<Issue>(),
+              url: 'url-icebox',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: ICEBOX_STATUS_NAME,
+            },
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url-icebox'],
+            },
+          ],
+          cacheUsed: true,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+            'All depended issues are in Icebox, dependency field cleared:\n- url-icebox',
+          ],
+        ],
+      },
     ];
     testCases.forEach(
       ({
         name,
         input,
         expectedIssueRepositoryClearProjectFieldCalls,
+        expectedIssueRepositoryUpdateTextFieldCalls,
         expectedIssueRepositoryCreateCommentCalls,
       }) => {
         it(name, async () => {
@@ -529,6 +680,9 @@ describe('ClearDependedIssueURLUseCase', () => {
           expect(mockIssueRepository.clearProjectField.mock.calls).toEqual(
             expectedIssueRepositoryClearProjectFieldCalls,
           );
+          expect(
+            mockIssueRepository.updateProjectTextField.mock.calls,
+          ).toEqual(expectedIssueRepositoryUpdateTextFieldCalls);
           expect(mockIssueRepository.createComment.mock.calls).toEqual(
             expectedIssueRepositoryCreateCommentCalls,
           );
