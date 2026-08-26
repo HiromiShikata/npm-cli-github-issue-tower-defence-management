@@ -186,7 +186,11 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         resolveNextStepAgentDispatchRepetition({
           agentFieldValue: 'analyst',
           nextStepAgent: 'developer',
-          comments: [report('analyst'), report('reviewer'), report('developer')],
+          comments: [
+            report('analyst'),
+            report('reviewer'),
+            report('developer'),
+          ],
           isTrustedAuthor: trustAll,
           thresholdForAutoReject: 3,
           thresholdForDispatchLoop: 3,
