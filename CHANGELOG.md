@@ -1,3 +1,10 @@
+## [1.181.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.181.0...v1.181.1) (2026-08-26)
+
+
+### Bug Fixes
+
+* **GoogleSpreadsheetRepository:** exclude integration tests from CI to eliminate quota errors ([#1778](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1778)) ([d5bf64e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d5bf64e92060548b3694de07f939f0f2fdcc4f78)), closes [#1774](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1774)
+
 # [1.181.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.180.1...v1.181.0) (2026-08-26)
 
 
