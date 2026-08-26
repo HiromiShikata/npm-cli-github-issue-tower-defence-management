@@ -1,3 +1,10 @@
+# [1.182.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.181.1...v1.182.0) (2026-08-26)
+
+
+### Features
+
+* **console:** add project timer mode with gear-button settings dialog ([#1784](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1784)) ([b211bb2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b211bb20989b5dd7dbbbad8c7be6dbfc74d961c8)), closes [#1781](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1781)
+
 ## [1.181.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.181.0...v1.181.1) (2026-08-26)
 
 

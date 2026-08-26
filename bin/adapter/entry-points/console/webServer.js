@@ -348,6 +348,12 @@ const parseRequestBody = (raw) => {
     return parsed;
 };
 const handleReadApi = async (options, requestPath, searchParams) => {
+    if (requestPath === '/api/projects') {
+        return {
+            statusCode: 200,
+            body: { pjcodes: options.dashboardProjectNames },
+        };
+    }
     const defaultIssueRepository = options.issueRepository ?? null;
     if (defaultIssueRepository === null) {
         return null;
