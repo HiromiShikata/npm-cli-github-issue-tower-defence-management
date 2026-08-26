@@ -31,6 +31,7 @@ const writeConsoleLists = (params) => {
         assigneeLogin,
         generatedAt,
         workflowBlockerStoryName: params.workflowBlockerStoryName ?? null,
+        urlOfStoryView: params.urlOfStoryView ?? null,
     });
     for (const tab of consoleTabNames_1.CONSOLE_LIST_TAB_NAMES) {
         writeJsonAtomic(path_1.default.join(consoleDataOutputDir, pjcode, tab, 'list.json'), lists[tab]);

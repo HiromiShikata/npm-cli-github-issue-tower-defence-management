@@ -196,6 +196,25 @@ describe('ConsoleStoryList', () => {
     expect(getByText(/HTTP 503/)).toBeInTheDocument();
   });
 
+  it('renders story name as a span when storyViewUrl is absent (old JSON format)', () => {
+    const oldFormatEntry = {
+      storyName: 'TDPM Console port',
+      storyOptionId: '1491051e',
+      color: 'BLUE',
+      openItemCount: 4,
+    } as unknown as ConsoleStoryEntry;
+    const { getByText } = render(
+      <ConsoleStoryList
+        stories={[oldFormatEntry]}
+        isLoading={false}
+        error={null}
+        onCreateIssue={() => Promise.resolve()}
+      />,
+    );
+    const nameEl = getByText('TDPM Console port');
+    expect(nameEl.tagName).toBe('SPAN');
+  });
+
   it('renders story name as a span when storyViewUrl is null', () => {
     const { getByText } = render(
       <ConsoleStoryList

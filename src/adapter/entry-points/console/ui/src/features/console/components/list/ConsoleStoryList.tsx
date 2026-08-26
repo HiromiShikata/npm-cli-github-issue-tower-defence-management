@@ -129,7 +129,7 @@ export const ConsoleStoryList = ({
         return (
           <li key={entry.storyOptionId} className="console-story-list-row">
             <div className="console-story-list-row-main">
-              {entry.storyViewUrl !== null ? (
+              {entry.storyViewUrl ? (
                 <a
                   href={entry.storyViewUrl}
                   target="_blank"

@@ -287,6 +287,7 @@ class HandleScheduledEventUseCaseHandler {
                         issues: result.issues,
                         generatedAt: (0, consoleListsWriter_1.formatConsoleGeneratedAt)(new Date(issuesFetchedAt)),
                         workflowBlockerStoryName: mergedInput.workflowBlockerStoryName ?? null,
+                        urlOfStoryView: mergedInput.urlOfStoryView,
                     });
                 }
                 catch (error) {
