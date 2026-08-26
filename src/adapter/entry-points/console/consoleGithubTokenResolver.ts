@@ -79,8 +79,10 @@ export const createConsoleGithubTokenResolver = (
     if (consoleProjectUrls === null || githubTokenFileDirPath === null) {
       return defaultToken;
     }
+    const normalizedOwner = repositoryOwner.toLowerCase();
     const matchedPjcode = Object.entries(consoleProjectUrls).find(
-      ([, projectUrl]) => extractProjectOwner(projectUrl) === repositoryOwner,
+      ([, projectUrl]) =>
+        extractProjectOwner(projectUrl)?.toLowerCase() === normalizedOwner,
     )?.[0];
     if (matchedPjcode === undefined) {
       return defaultToken;
@@ -89,8 +91,14 @@ export const createConsoleGithubTokenResolver = (
     let fileContent: string;
     try {
       fileContent = readTokenFile(filePath);
-    } catch {
-      return defaultToken;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
+        return defaultToken;
+      }
+      throw error;
     }
     const token = fileContent.trim();
     if (token.length === 0) {

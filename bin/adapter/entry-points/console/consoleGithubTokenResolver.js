@@ -51,7 +51,8 @@ const createConsoleGithubTokenResolver = (defaultToken, consoleProjectUrls, gith
         if (consoleProjectUrls === null || githubTokenFileDirPath === null) {
             return defaultToken;
         }
-        const matchedPjcode = Object.entries(consoleProjectUrls).find(([, projectUrl]) => (0, exports.extractProjectOwner)(projectUrl) === repositoryOwner)?.[0];
+        const normalizedOwner = repositoryOwner.toLowerCase();
+        const matchedPjcode = Object.entries(consoleProjectUrls).find(([, projectUrl]) => (0, exports.extractProjectOwner)(projectUrl)?.toLowerCase() === normalizedOwner)?.[0];
         if (matchedPjcode === undefined) {
             return defaultToken;
         }
@@ -60,8 +61,12 @@ const createConsoleGithubTokenResolver = (defaultToken, consoleProjectUrls, gith
         try {
             fileContent = readTokenFile(filePath);
         }
-        catch {
-            return defaultToken;
+        catch (error) {
+            if (error instanceof Error &&
+                error.code === 'ENOENT') {
+                return defaultToken;
+            }
+            throw error;
         }
         const token = fileContent.trim();
         if (token.length === 0) {

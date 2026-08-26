@@ -282,7 +282,8 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
         configFile.consoleDataOutputDir,
     consoleAccessToken: cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
     consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
-    consoleGithubTokenFileDir: cliOverrides.consoleGithubTokenFileDir ?? configFile.consoleGithubTokenFileDir,
+    consoleGithubTokenFileDir: cliOverrides.consoleGithubTokenFileDir ??
+        configFile.consoleGithubTokenFileDir,
     disks: cliOverrides.disks ?? configFile.disks,
 });
 exports.mergeConfigs = mergeConfigs;

@@ -232,10 +232,42 @@ describe('createConsoleGithubTokenResolver', () => {
       { acme: 'https://github.com/orgs/acme-labs/projects/1' },
       '/creds',
       () => {
-        throw new Error('ENOENT: no such file or directory');
+        const error = new Error(
+          "ENOENT: no such file or directory, open '/creds/tdpm-github-token-acme.txt'",
+        );
+        (error as NodeJS.ErrnoException).code = 'ENOENT';
+        throw error;
       },
     );
 
     expect(resolve('acme-labs')).toBe('default-token');
+  });
+
+  it('should rethrow a non-ENOENT error from the token file reader', () => {
+    const resolve = createConsoleGithubTokenResolver(
+      'default-token',
+      { acme: 'https://github.com/orgs/acme-labs/projects/1' },
+      '/creds',
+      () => {
+        const error = new Error(
+          "EACCES: permission denied, open '/creds/tdpm-github-token-acme.txt'",
+        );
+        (error as NodeJS.ErrnoException).code = 'EACCES';
+        throw error;
+      },
+    );
+
+    expect(() => resolve('acme-labs')).toThrow('EACCES: permission denied');
+  });
+
+  it('should match the project owner case-insensitively', () => {
+    const resolve = createConsoleGithubTokenResolver(
+      'default-token',
+      { acme: 'https://github.com/orgs/Acme-Labs/projects/1' },
+      '/creds',
+      () => 'fine-grained-token',
+    );
+
+    expect(resolve('acme-labs')).toBe('fine-grained-token');
   });
 });
