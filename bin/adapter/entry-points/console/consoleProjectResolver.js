@@ -44,7 +44,7 @@ const createPjcodeConfigChecker = (pjcodeToProjectUrl) => {
 exports.createPjcodeConfigChecker = createPjcodeConfigChecker;
 const createConsoleProjectResolver = (pjcodeToProjectUrl, loadProject) => {
     const cache = new Map();
-    return async (pjcode) => {
+    const resolve = async (pjcode) => {
         const cached = cache.get(pjcode);
         if (cached !== undefined) {
             return cached;
@@ -61,6 +61,10 @@ const createConsoleProjectResolver = (pjcodeToProjectUrl, loadProject) => {
         cache.set(pjcode, binding);
         return binding;
     };
+    const invalidate = (pjcode) => {
+        cache.delete(pjcode);
+    };
+    return { resolve, invalidate };
 };
 exports.createConsoleProjectResolver = createConsoleProjectResolver;
 //# sourceMappingURL=consoleProjectResolver.js.map

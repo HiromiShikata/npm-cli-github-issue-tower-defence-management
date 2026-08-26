@@ -2,9 +2,13 @@ export type StoryOption = FieldOption;
 export type FieldOption = {
     id: string;
     name: string;
-    color: 'GRAY' | 'BLUE' | 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED' | 'PINK' | 'PURPLE';
+    color: "GRAY" | "BLUE" | "GREEN" | "YELLOW" | "ORANGE" | "RED" | "PINK" | "PURPLE";
     description: string;
 };
+export type StoryListEntry = Omit<FieldOption, "id"> & {
+    id: FieldOption["id"] | null;
+};
+export declare const buildStoryListWithNew: (existingStories: StoryListEntry[], newName: string) => StoryListEntry[];
 export type Project = {
     id: string;
     url: string;

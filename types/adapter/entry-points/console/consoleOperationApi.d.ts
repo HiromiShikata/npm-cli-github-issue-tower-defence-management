@@ -1,7 +1,7 @@
-import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
-import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
-import { FieldOption, Project } from '../../../domain/entities/Project';
+import { type FieldOption, type Project } from "../../../domain/entities/Project";
+import type { IssueAttachmentRepository } from "../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository";
+import type { IssueRepository } from "../../../domain/usecases/adapter-interfaces/IssueRepository";
+import type { ProjectRepository } from "../../../domain/usecases/adapter-interfaces/ProjectRepository";
 export declare const AWAITING_WORKSPACE_STATUS_NAME = "awaiting workspace";
 export declare const IN_TMUX_BY_HUMAN_STATUS_NAME = "in tmux by human";
 export declare const CHORE_LABEL_NAME = "chore";
@@ -12,7 +12,7 @@ export type ConsoleProjectBinding = {
 export type ConsoleProjectResolver = (pjcode: string) => Promise<ConsoleProjectBinding | null>;
 export type ConsolePjcodeValidator = (pjcode: string) => boolean;
 export type ConsoleIssueRepositoryResolver = (issueOrPullRequestUrl: string) => IssueRepository;
-export type ConsoleProjectRepositoryResolver = (projectUrl: string) => Pick<ProjectRepository, 'updateStoryList'>;
+export type ConsoleProjectRepositoryResolver = (projectUrl: string) => Pick<ProjectRepository, "updateStoryList">;
 export type ConsoleOperationContext = {
     resolveIssueRepository: ConsoleIssueRepositoryResolver;
     resolveProject: ConsoleProjectResolver;
@@ -21,6 +21,7 @@ export type ConsoleOperationContext = {
     issueAttachmentRepository: IssueAttachmentRepository | null;
     updateStoryList: ((project: Project, stories: FieldOption[]) => Promise<FieldOption[]>) | null;
     resolveProjectRepository: ConsoleProjectRepositoryResolver | null;
+    invalidateProject: ((pjcode: string) => void) | null;
 };
 export type ConsoleOperationResponse = {
     statusCode: number;

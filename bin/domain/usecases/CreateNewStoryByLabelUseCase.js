@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateNewStoryByLabelUseCase = void 0;
-const LOG_PREFIX = '[CreateNewStoryByLabel]';
+const Project_1 = require("../entities/Project");
+const LOG_PREFIX = "[CreateNewStoryByLabel]";
 class CreateNewStoryByLabelUseCase {
     constructor(projectRepository, issueRepository) {
         this.projectRepository = projectRepository;
@@ -19,7 +20,7 @@ class CreateNewStoryByLabelUseCase {
             }
             console.log(`${LOG_PREFIX} labelled issues: ${newStoryIssues
                 .map((issue) => issue.url)
-                .join(', ')}`);
+                .join(", ")}`);
             const newStoryList = this.createNewStoryList(projectStory, input.storyObjectMap, input.issues);
             const addedStories = newStoryList.filter((story) => story.id === null);
             if (addedStories.length === 0) {
@@ -28,7 +29,7 @@ class CreateNewStoryByLabelUseCase {
             else {
                 console.log(`${LOG_PREFIX} submitting ${addedStories.length} new story options: ${addedStories
                     .map((story) => story.name)
-                    .join(', ')}`);
+                    .join(", ")}`);
             }
             const savedNewStoryList = addedStories.length === 0
                 ? projectStory.stories
@@ -42,11 +43,11 @@ class CreateNewStoryByLabelUseCase {
                 }
                 await this.issueRepository.updateStory({ ...input.project, story: projectStory }, issue, linkedStory.id);
                 console.log(`${LOG_PREFIX} linked ${issue.url} to the story option ${linkedStory.id}`);
-                await this.issueRepository.updateLabels(issue, issue.labels.filter((label) => label.toLowerCase().replace('-', '') !== 'newstory'));
+                await this.issueRepository.updateLabels(issue, issue.labels.filter((label) => label.toLowerCase().replace("-", "") !== "newstory"));
                 console.log(`${LOG_PREFIX} removed the new story label from ${issue.url}`);
             }
         };
-        this.hasNewStoryLabel = (issue) => issue.labels?.some((label) => label.toLowerCase().replace('-', '') === 'newstory') ?? false;
+        this.hasNewStoryLabel = (issue) => issue.labels?.some((label) => label.toLowerCase().replace("-", "") === "newstory") ?? false;
         this.findNewStoryIssues = (storyObjectMap, issues) => {
             const issuesInMap = Array.from(storyObjectMap.values())
                 .flatMap((storyObject) => storyObject.issues)
@@ -64,22 +65,10 @@ class CreateNewStoryByLabelUseCase {
             });
         };
         this.createNewStoryList = (projectStory, storyObjectMap, issues) => {
-            const existingStoryNames = new Set(projectStory.stories.map((story) => story.name));
-            const newStoryIssues = this.findNewStoryIssues(storyObjectMap, issues).filter((issue) => !existingStoryNames.has(issue.title));
-            const newStoryList = [];
-            if (projectStory.stories.length > 0) {
-                newStoryList.push(projectStory.stories[0]);
-            }
-            newStoryList.push(...newStoryIssues.map((i) => ({
-                id: null,
-                name: i.title,
-                color: 'RED',
-                description: '',
-            })));
-            if (projectStory.stories.length > 1) {
-                newStoryList.push(...projectStory.stories.slice(1, projectStory.stories.length));
-            }
-            return newStoryList;
+            const newStoryIssues = this.findNewStoryIssues(storyObjectMap, issues);
+            return [...newStoryIssues]
+                .reverse()
+                .reduce((acc, issue) => (0, Project_1.buildStoryListWithNew)(acc, issue.title), [...projectStory.stories]);
         };
     }
 }

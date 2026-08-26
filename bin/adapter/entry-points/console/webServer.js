@@ -34,19 +34,19 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startWebServer = exports.createWebServer = exports.handleWebRequest = exports.resolveDashboardContent = exports.resolveFlatInTmuxFilePath = exports.isOwnerCallFileRequestPath = exports.resolveDashboardFilePath = exports.IMAGE_PROXY_REQUEST_PATH = exports.DASHBOARD_REQUEST_PATH = exports.buildKeylessLocation = exports.buildTokenCookie = exports.CONSOLE_TOKEN_COOKIE_MAX_AGE_SECONDS = exports.extractProvidedToken = exports.extractCookieToken = exports.isTokenValid = exports.isConsoleAppRoute = exports.requiresToken = exports.hasDotSegment = exports.CONSOLE_TOKEN_COOKIE = exports.CONSOLE_TOKEN_HEADER = exports.DEFAULT_WEB_PORT = void 0;
-const http = __importStar(require("http"));
 const fs = __importStar(require("fs"));
+const http = __importStar(require("http"));
 const path = __importStar(require("path"));
-const consoleDataDelivery_1 = require("./consoleDataDelivery");
-const consoleReadApi_1 = require("./consoleReadApi");
-const consoleOperationApi_1 = require("./consoleOperationApi");
-const consoleImageProxy_1 = require("./consoleImageProxy");
-const consoleGithubTokenResolver_1 = require("./consoleGithubTokenResolver");
-const dashboardComposeService_1 = require("./dashboardComposeService");
 const OwnerCallFile_1 = require("../../../domain/usecases/intmux/OwnerCallFile");
+const consoleDataDelivery_1 = require("./consoleDataDelivery");
+const consoleGithubTokenResolver_1 = require("./consoleGithubTokenResolver");
+const consoleImageProxy_1 = require("./consoleImageProxy");
+const consoleOperationApi_1 = require("./consoleOperationApi");
+const consoleReadApi_1 = require("./consoleReadApi");
+const dashboardComposeService_1 = require("./dashboardComposeService");
 exports.DEFAULT_WEB_PORT = 9980;
-exports.CONSOLE_TOKEN_HEADER = 'x-pv-token';
-exports.CONSOLE_TOKEN_COOKIE = 'pv_token';
+exports.CONSOLE_TOKEN_HEADER = "x-pv-token";
+exports.CONSOLE_TOKEN_COOKIE = "pv_token";
 const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -63,41 +63,41 @@ const PLACEHOLDER_INDEX_HTML = `<!DOCTYPE html>
 </html>
 `;
 const MIME_TYPES = {
-    '.html': 'text/html; charset=utf-8',
-    '.js': 'text/javascript; charset=utf-8',
-    '.mjs': 'text/javascript; charset=utf-8',
-    '.css': 'text/css; charset=utf-8',
-    '.json': 'application/json; charset=utf-8',
-    '.svg': 'image/svg+xml',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.ico': 'image/x-icon',
-    '.map': 'application/json; charset=utf-8',
-    '.woff': 'font/woff',
-    '.woff2': 'font/woff2',
-    '.yaml': 'text/yaml; charset=utf-8',
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".ico": "image/x-icon",
+    ".map": "application/json; charset=utf-8",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".yaml": "text/yaml; charset=utf-8",
 };
 const hasDotSegment = (requestPath) => requestPath
-    .split('/')
-    .some((segment) => segment.length > 0 && segment.startsWith('.'));
+    .split("/")
+    .some((segment) => segment.length > 0 && segment.startsWith("."));
 exports.hasDotSegment = hasDotSegment;
-const requiresToken = (requestPath) => requestPath.startsWith('/api/') ||
-    requestPath === '/api' ||
-    requestPath.endsWith('.json') ||
+const requiresToken = (requestPath) => requestPath.startsWith("/api/") ||
+    requestPath === "/api" ||
+    requestPath.endsWith(".json") ||
     requestPath.endsWith(OwnerCallFile_1.OWNER_CALL_FILE_EXTENSION);
 exports.requiresToken = requiresToken;
 const SAFE_PJCODE = /^[A-Za-z0-9._-]+$/;
 const isConsoleAppRoute = (requestPath) => {
     const segments = requestPath
-        .split('/')
+        .split("/")
         .filter((segment) => segment.length > 0);
-    if (segments.length < 2 || segments[0] !== 'projects') {
+    if (segments.length < 2 || segments[0] !== "projects") {
         return false;
     }
     const pjcode = segments[1];
-    if (!SAFE_PJCODE.test(pjcode) || pjcode.startsWith('.')) {
+    if (!SAFE_PJCODE.test(pjcode) || pjcode.startsWith(".")) {
         return false;
     }
     if (segments.length === 2) {
@@ -113,11 +113,11 @@ exports.isConsoleAppRoute = isConsoleAppRoute;
 const isTokenValid = (expectedToken, providedToken) => providedToken !== null && providedToken === expectedToken;
 exports.isTokenValid = isTokenValid;
 const extractCookieToken = (cookieHeader) => {
-    if (typeof cookieHeader !== 'string' || cookieHeader.length === 0) {
+    if (typeof cookieHeader !== "string" || cookieHeader.length === 0) {
         return null;
     }
-    for (const segment of cookieHeader.split(';')) {
-        const separatorIndex = segment.indexOf('=');
+    for (const segment of cookieHeader.split(";")) {
+        const separatorIndex = segment.indexOf("=");
         if (separatorIndex === -1) {
             continue;
         }
@@ -135,10 +135,10 @@ const extractCookieToken = (cookieHeader) => {
 };
 exports.extractCookieToken = extractCookieToken;
 const extractProvidedToken = (queryToken, headerToken, cookieToken) => {
-    if (typeof queryToken === 'string' && queryToken.length > 0) {
+    if (typeof queryToken === "string" && queryToken.length > 0) {
         return queryToken;
     }
-    if (typeof headerToken === 'string' && headerToken.length > 0) {
+    if (typeof headerToken === "string" && headerToken.length > 0) {
         return headerToken;
     }
     if (cookieToken !== null && cookieToken.length > 0) {
@@ -152,7 +152,7 @@ const buildTokenCookie = (token) => `${exports.CONSOLE_TOKEN_COOKIE}=${encodeURI
 exports.buildTokenCookie = buildTokenCookie;
 const buildKeylessLocation = (requestUrl) => {
     const params = new URLSearchParams(requestUrl.searchParams);
-    params.delete('k');
+    params.delete("k");
     const query = params.toString();
     return query.length > 0
         ? `${requestUrl.pathname}?${query}`
@@ -161,13 +161,13 @@ const buildKeylessLocation = (requestUrl) => {
 exports.buildKeylessLocation = buildKeylessLocation;
 const contentTypeForPath = (filePath) => {
     const extension = path.extname(filePath).toLowerCase();
-    return MIME_TYPES[extension] ?? 'application/octet-stream';
+    return MIME_TYPES[extension] ?? "application/octet-stream";
 };
 const resolveStaticFilePath = (uiDistDir, requestPath) => {
-    const relativePath = requestPath === '/' ? '/index.html' : requestPath;
+    const relativePath = requestPath === "/" ? "/index.html" : requestPath;
     const normalized = path
         .normalize(relativePath)
-        .replace(/^(\.\.(\/|\\|$))+/, '');
+        .replace(/^(\.\.(\/|\\|$))+/, "");
     const candidate = path.join(uiDistDir, normalized);
     const resolvedRoot = path.resolve(uiDistDir);
     const resolvedCandidate = path.resolve(candidate);
@@ -189,13 +189,13 @@ const readStaticFile = (filePath) => {
         return null;
     }
 };
-const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
+const FLAT_IN_TMUX_PREFIX = "/in-tmux-by-human/";
 const FLAT_IN_TMUX_FILE = /^[A-Za-z0-9._-]+\.json$/;
-const NAME_SEGMENT = '[A-Za-z0-9_-][A-Za-z0-9._-]*';
-const OWNER_CALL_FILE = new RegExp(`^${OwnerCallFile_1.OWNER_CALL_FILE_DIRECTORY_NAME}/${NAME_SEGMENT}/${NAME_SEGMENT}${OwnerCallFile_1.OWNER_CALL_FILE_EXTENSION.replace('.', '\\.')}$`);
-exports.DASHBOARD_REQUEST_PATH = '/tdpm.txt';
-exports.IMAGE_PROXY_REQUEST_PATH = '/api/img';
-const DASHBOARD_FILE_NAME = 'tdpm.txt';
+const NAME_SEGMENT = "[A-Za-z0-9_-][A-Za-z0-9._-]*";
+const OWNER_CALL_FILE = new RegExp(`^${OwnerCallFile_1.OWNER_CALL_FILE_DIRECTORY_NAME}/${NAME_SEGMENT}/${NAME_SEGMENT}${OwnerCallFile_1.OWNER_CALL_FILE_EXTENSION.replace(".", "\\.")}$`);
+exports.DASHBOARD_REQUEST_PATH = "/tdpm.txt";
+exports.IMAGE_PROXY_REQUEST_PATH = "/api/img";
+const DASHBOARD_FILE_NAME = "tdpm.txt";
 const resolveDashboardFilePath = (dashboardDir, requestPath) => {
     if (requestPath !== exports.DASHBOARD_REQUEST_PATH) {
         return null;
@@ -232,84 +232,84 @@ const resolveFlatInTmuxFilePath = (inTmuxDataDir, requestPath) => {
 exports.resolveFlatInTmuxFilePath = resolveFlatInTmuxFilePath;
 const sendNotFound = (response) => {
     response.writeHead(404, {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-store',
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
     });
-    response.end('Not Found');
+    response.end("Not Found");
 };
 const sendUnauthorized = (response) => {
     response.writeHead(401, {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-store',
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
     });
-    response.end('Unauthorized');
+    response.end("Unauthorized");
 };
 const serveBootstrapIndex = (response) => {
     response.writeHead(200, {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'Referrer-Policy': 'no-referrer',
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
     });
     response.end(PLACEHOLDER_INDEX_HTML);
 };
 const serveIndexHtml = (options, response) => {
-    const indexFilePath = resolveStaticFilePath(options.uiDistDir, '/index.html');
+    const indexFilePath = resolveStaticFilePath(options.uiDistDir, "/index.html");
     const indexContent = indexFilePath === null ? null : readStaticFile(indexFilePath);
     if (indexContent === null) {
         serveBootstrapIndex(response);
         return;
     }
     response.writeHead(200, {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'Referrer-Policy': 'no-referrer',
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
     });
     response.end(indexContent);
 };
 const redirectStrippingToken = (response, requestUrl, token) => {
     response.writeHead(302, {
         Location: (0, exports.buildKeylessLocation)(requestUrl),
-        'Set-Cookie': (0, exports.buildTokenCookie)(token),
-        'Referrer-Policy': 'no-referrer',
-        'Cache-Control': 'no-store',
+        "Set-Cookie": (0, exports.buildTokenCookie)(token),
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "no-store",
     });
     response.end();
 };
 const sendJson = (response, statusCode, body) => {
     response.writeHead(statusCode, {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store',
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
     });
     response.end(JSON.stringify(body));
 };
 const sendImage = (response, contentType, body) => {
     response.writeHead(200, {
-        'Content-Type': contentType,
-        'Content-Length': String(body.length),
-        'Cache-Control': 'private, max-age=300',
+        "Content-Type": contentType,
+        "Content-Length": String(body.length),
+        "Cache-Control": "private, max-age=300",
     });
     response.end(body);
 };
 const handleImageProxy = async (options, response, searchParams) => {
     const resolveGithubToken = options.resolveGithubToken ?? null;
     if (resolveGithubToken === null) {
-        sendJson(response, 502, { error: 'github token is not configured' });
+        sendJson(response, 502, { error: "github token is not configured" });
         return;
     }
-    const itemUrl = searchParams.get('itemUrl') ?? '';
+    const itemUrl = searchParams.get("itemUrl") ?? "";
     const repositoryOwner = (0, consoleGithubTokenResolver_1.extractRepositoryOwner)(itemUrl);
     if (repositoryOwner === null) {
         sendJson(response, 400, {
-            error: 'missing or unreadable itemUrl parameter',
+            error: "missing or unreadable itemUrl parameter",
         });
         return;
     }
     const githubToken = resolveGithubToken(repositoryOwner);
     if (githubToken.length === 0) {
-        sendJson(response, 502, { error: 'github token is not configured' });
+        sendJson(response, 502, { error: "github token is not configured" });
         return;
     }
-    const url = searchParams.get('url') ?? '';
+    const url = searchParams.get("url") ?? "";
     const result = await (0, consoleImageProxy_1.fetchProxiedImage)(url, githubToken, options.imageFetcher ?? undefined);
     if (!result.ok) {
         sendJson(response, result.statusCode, { error: result.error });
@@ -319,18 +319,18 @@ const handleImageProxy = async (options, response, searchParams) => {
 };
 const sendDataResponse = (response, statusCode, contentType, body) => {
     response.writeHead(statusCode, {
-        'Content-Type': contentType,
-        'Cache-Control': 'no-store',
+        "Content-Type": contentType,
+        "Cache-Control": "no-store",
     });
     response.end(body);
 };
 const readRequestBody = (request) => new Promise((resolve, reject) => {
     const chunks = [];
-    request.on('data', (chunk) => chunks.push(chunk));
-    request.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-    request.on('error', reject);
+    request.on("data", (chunk) => chunks.push(chunk));
+    request.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+    request.on("error", reject);
 });
-const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const parseRequestBody = (raw) => {
     if (raw.length === 0) {
         return {};
@@ -360,27 +360,27 @@ const handleReadApi = async (options, requestPath, searchParams) => {
     }
     const cache = options.issueTitleStateCache ?? null;
     const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
-    const url = searchParams.get('url');
+    const url = searchParams.get("url");
     const issueRepository = url === null
         ? defaultIssueRepository
         : (options.resolveIssueRepository ?? (() => defaultIssueRepository))(url);
     switch (requestPath) {
-        case '/api/itembody':
+        case "/api/itembody":
             return (0, consoleReadApi_1.handleItemBody)(issueRepository, url);
-        case '/api/comments':
+        case "/api/comments":
             return (0, consoleReadApi_1.handleComments)(issueRepository, url);
-        case '/api/prfiles':
+        case "/api/prfiles":
             return (0, consoleReadApi_1.handlePrFiles)(issueRepository, url);
-        case '/api/prcommits':
+        case "/api/prcommits":
             return (0, consoleReadApi_1.handlePrCommits)(issueRepository, url);
-        case '/api/relatedprs':
+        case "/api/relatedprs":
             return (0, consoleReadApi_1.handleRelatedPrs)(issueRepository, url);
-        case '/api/issuetitle':
+        case "/api/issuetitle":
             if (cache === null) {
                 return null;
             }
             return (0, consoleReadApi_1.handleIssueTitle)(issueRepository, cache, url);
-        case '/api/pullrequeststatus':
+        case "/api/pullrequeststatus":
             if (pullRequestStatusCache === null) {
                 return null;
             }
@@ -397,23 +397,23 @@ const operationErrorMessage = (error) => {
 };
 const dispatchOperation = (context, requestPath, body) => {
     switch (requestPath) {
-        case '/api/review':
+        case "/api/review":
             return (0, consoleOperationApi_1.handleReview)(context, body);
-        case '/api/triage':
+        case "/api/triage":
             return (0, consoleOperationApi_1.handleTriage)(context, body);
-        case '/api/intmux':
+        case "/api/intmux":
             return (0, consoleOperationApi_1.handleIntmux)(context, body);
-        case '/api/comment':
+        case "/api/comment":
             return (0, consoleOperationApi_1.handleComment)(context, body);
-        case '/api/reviewcomment':
+        case "/api/reviewcomment":
             return (0, consoleOperationApi_1.handleReviewComment)(context, body);
-        case '/api/upload':
+        case "/api/upload":
             return (0, consoleOperationApi_1.handleAttachmentUpload)(context, body);
-        case '/api/createissue':
+        case "/api/createissue":
             return (0, consoleOperationApi_1.handleCreateIssue)(context, body);
-        case '/api/reorderstory':
+        case "/api/reorderstory":
             return (0, consoleOperationApi_1.handleReorderStory)(context, body);
-        case '/api/addstory':
+        case "/api/addstory":
             return (0, consoleOperationApi_1.handleStoryAdd)(context, body);
         default:
             return null;
@@ -440,6 +440,7 @@ const handleOperationApi = async (options, requestPath, body) => {
             ? (project, stories) => projectRepository.updateStoryList(project, stories)
             : null,
         resolveProjectRepository: options.resolveProjectRepository ?? null,
+        invalidateProject: options.invalidateProject ?? null,
     };
     const dispatched = dispatchOperation(context, requestPath, body);
     if (dispatched === null) {
@@ -449,7 +450,7 @@ const handleOperationApi = async (options, requestPath, body) => {
         return await dispatched;
     }
     catch (error) {
-        console.error('console operation failed', error);
+        console.error("console operation failed", error);
         return {
             statusCode: 502,
             body: { error: operationErrorMessage(error) },
@@ -468,9 +469,9 @@ const serveFlatInTmuxFile = (options, response, requestPath) => {
         return;
     }
     response.writeHead(200, {
-        'Content-Type': contentTypeForPath(filePath),
-        'Cache-Control': 'no-store',
-        'Content-Length': String(content.length),
+        "Content-Type": contentTypeForPath(filePath),
+        "Cache-Control": "no-store",
+        "Content-Length": String(content.length),
     });
     response.end(content);
 };
@@ -486,14 +487,14 @@ const removeOwnerCallFile = (options, response, requestPath) => {
     }
     fs.rmSync(filePath, { force: true });
     response.writeHead(204, {
-        'Cache-Control': 'no-store',
+        "Cache-Control": "no-store",
     });
     response.end();
 };
 const handleTokenedRequest = async (options, request, response, requestPath, searchParams) => {
-    const method = (request.method ?? 'GET').toUpperCase();
-    if (requestPath.startsWith('/api/')) {
-        if (method === 'GET') {
+    const method = (request.method ?? "GET").toUpperCase();
+    if (requestPath.startsWith("/api/")) {
+        if (method === "GET") {
             if (requestPath === exports.IMAGE_PROXY_REQUEST_PATH) {
                 await handleImageProxy(options, response, searchParams);
                 return;
@@ -506,11 +507,11 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
             sendJson(response, readResult.statusCode, readResult.body);
             return;
         }
-        if (method === 'POST') {
+        if (method === "POST") {
             const raw = await readRequestBody(request);
             const parsedBody = parseRequestBody(raw);
             if (parsedBody === null) {
-                sendJson(response, 400, { error: 'invalid JSON body' });
+                sendJson(response, 400, { error: "invalid JSON body" });
                 return;
             }
             const operationResult = await handleOperationApi(options, requestPath, parsedBody);
@@ -525,18 +526,18 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
         return;
     }
     if (requestPath.startsWith(FLAT_IN_TMUX_PREFIX)) {
-        if (method === 'GET') {
+        if (method === "GET") {
             serveFlatInTmuxFile(options, response, requestPath);
             return;
         }
-        if (method === 'DELETE' && (0, exports.isOwnerCallFileRequestPath)(requestPath)) {
+        if (method === "DELETE" && (0, exports.isOwnerCallFileRequestPath)(requestPath)) {
             removeOwnerCallFile(options, response, requestPath);
             return;
         }
         sendNotFound(response);
         return;
     }
-    if (method === 'GET') {
+    if (method === "GET") {
         const dataRoute = (0, consoleDataDelivery_1.parseConsoleDataRoute)(requestPath);
         if (dataRoute !== null && options.consoleDataOutputDir !== null) {
             const dataResponse = (0, consoleDataDelivery_1.buildConsoleDataResponse)(options.consoleDataOutputDir, dataRoute);
@@ -566,21 +567,21 @@ const resolveDashboardContent = (options, requestPath) => {
             dashboardDataDir: options.dashboardDataDir,
             projectNames: options.dashboardProjectNames,
         });
-        return Buffer.from(dashboardText, 'utf-8');
+        return Buffer.from(dashboardText, "utf-8");
     }
     return readStaticDashboardContent(options.dashboardDir, requestPath);
 };
 exports.resolveDashboardContent = resolveDashboardContent;
 const handleWebRequest = async (options, request, response) => {
-    const requestUrl = new URL(request.url ?? '/', 'http://localhost');
+    const requestUrl = new URL(request.url ?? "/", "http://localhost");
     const requestPath = requestUrl.pathname;
     if ((0, exports.hasDotSegment)(requestPath)) {
         sendNotFound(response);
         return;
     }
     if (requestPath === exports.DASHBOARD_REQUEST_PATH) {
-        const method = (request.method ?? 'GET').toUpperCase();
-        if (method !== 'GET') {
+        const method = (request.method ?? "GET").toUpperCase();
+        if (method !== "GET") {
             sendNotFound(response);
             return;
         }
@@ -590,15 +591,15 @@ const handleWebRequest = async (options, request, response) => {
             return;
         }
         response.writeHead(200, {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-store',
-            'Content-Length': String(dashboardContent.length),
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+            "Content-Length": String(dashboardContent.length),
         });
         response.end(dashboardContent);
         return;
     }
     if ((0, exports.requiresToken)(requestPath)) {
-        const providedToken = (0, exports.extractProvidedToken)(requestUrl.searchParams.get('k'), request.headers[exports.CONSOLE_TOKEN_HEADER], (0, exports.extractCookieToken)(request.headers.cookie));
+        const providedToken = (0, exports.extractProvidedToken)(requestUrl.searchParams.get("k"), request.headers[exports.CONSOLE_TOKEN_HEADER], (0, exports.extractCookieToken)(request.headers.cookie));
         if (!(0, exports.isTokenValid)(options.accessToken, providedToken)) {
             sendUnauthorized(response);
             return;
@@ -606,10 +607,10 @@ const handleWebRequest = async (options, request, response) => {
         await handleTokenedRequest(options, request, response, requestPath, requestUrl.searchParams);
         return;
     }
-    if (requestPath === '/' ||
-        requestPath === '/index.html' ||
+    if (requestPath === "/" ||
+        requestPath === "/index.html" ||
         (0, exports.isConsoleAppRoute)(requestPath)) {
-        const queryToken = requestUrl.searchParams.get('k');
+        const queryToken = requestUrl.searchParams.get("k");
         if (queryToken !== null && queryToken.length > 0) {
             redirectStrippingToken(response, requestUrl, queryToken);
             return;
@@ -628,8 +629,8 @@ const handleWebRequest = async (options, request, response) => {
         return;
     }
     response.writeHead(200, {
-        'Content-Type': contentTypeForPath(staticFilePath),
-        'Cache-Control': 'no-store',
+        "Content-Type": contentTypeForPath(staticFilePath),
+        "Cache-Control": "no-store",
     });
     response.end(staticContent);
 };
@@ -640,23 +641,23 @@ const sendInternalServerError = (response) => {
         return;
     }
     response.writeHead(500, {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-store',
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
     });
-    response.end('Internal Server Error');
+    response.end("Internal Server Error");
 };
 const createWebServer = (options) => http.createServer((request, response) => {
     (0, exports.handleWebRequest)(options, request, response).catch((error) => {
-        console.error('console request failed', error);
+        console.error("console request failed", error);
         sendInternalServerError(response);
     });
 });
 exports.createWebServer = createWebServer;
 const startWebServer = (options) => new Promise((resolve, reject) => {
     const server = (0, exports.createWebServer)(options);
-    server.once('error', reject);
+    server.once("error", reject);
     server.listen(options.port, () => {
-        server.removeListener('error', reject);
+        server.removeListener("error", reject);
         resolve(server);
     });
 });
