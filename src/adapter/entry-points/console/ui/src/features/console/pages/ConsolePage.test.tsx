@@ -931,4 +931,51 @@ describe('ConsolePage auto-advance tab', () => {
       expect(navigateReplace).toHaveBeenCalledWith('/projects/acme');
     });
   });
+
+  it('navigates to the next project when a completing action fires after the project timer elapses', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
+    );
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    jest.useFakeTimers({ now: 0 });
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      jest.setSystemTime(61 * 1000);
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve & Merge'));
+      act(() => {
+        jest.advanceTimersByTime(5100);
+      });
+      const { navigateAssign } = jest.requireMock<{
+        navigateAssign: jest.Mock;
+      }>('../lib/navigation');
+      await waitFor(() => {
+        expect(navigateAssign).toHaveBeenCalledWith('/projects/beta');
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
