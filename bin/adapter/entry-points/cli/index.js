@@ -467,8 +467,7 @@ const runServeWeb = async (options) => {
     const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
     const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, new SystemDateRepository_1.SystemDateRepository(), ...githubRepositoryParams);
-    const consoleGithubTokenFilesByRepositoryOwner = config.consoleGithubTokenFilesByRepositoryOwner ?? null;
-    const resolveGithubToken = (0, consoleGithubTokenResolver_1.createConsoleGithubTokenResolver)(token, consoleGithubTokenFilesByRepositoryOwner, (filePath) => fs_1.default.readFileSync(filePath, 'utf8'));
+    const resolveGithubToken = (0, consoleGithubTokenResolver_1.createConsoleGithubTokenResolver)(token, config.consoleProjects ?? null, config.consoleGithubTokenFileDir ?? null, (filePath) => fs_1.default.readFileSync(filePath, 'utf8'));
     const issueRepositoryByToken = new Map();
     issueRepositoryByToken.set(token, issueRepository);
     const buildIssueRepositoryForToken = (repositoryToken) => {
