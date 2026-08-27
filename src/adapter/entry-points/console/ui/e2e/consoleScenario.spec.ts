@@ -410,12 +410,8 @@ test('renders the stories tab with non-gray stories, their open item counts, and
     hasText: 'Publish product documentation site',
   });
   await expect(publishRow.locator('.console-story-count')).toHaveText('1');
-  await expect(
-    publishRow.locator('a.console-storytag'),
-  ).toHaveCount(0);
-  await expect(
-    publishRow.locator('span.console-storytag'),
-  ).toBeVisible();
+  await expect(publishRow.locator('a.console-storytag')).toHaveCount(0);
+  await expect(publishRow.locator('span.console-storytag')).toBeVisible();
 
   await expect(
     page.locator('.console-story-list-row', {
