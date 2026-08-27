@@ -41,11 +41,10 @@ export class UpdateIssueStatusByLabelUseCase {
         continue;
       }
       if (input.allowedLabelActors !== null) {
-        const actor =
-          await this.issueRepository.getRecentLabelEventActor(
-            issue,
-            statusLabel,
-          );
+        const actor = await this.issueRepository.getRecentLabelEventActor(
+          issue,
+          statusLabel,
+        );
         if (actor === null || !input.allowedLabelActors.includes(actor)) {
           try {
             await this.issueRepository.removeLabel(issue, statusLabel);

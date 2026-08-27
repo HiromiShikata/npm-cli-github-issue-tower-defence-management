@@ -356,7 +356,9 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
           allowedLabelActors: null,
         });
 
-        expect(mockIssueRepository.getRecentLabelEventActor).not.toHaveBeenCalled();
+        expect(
+          mockIssueRepository.getRecentLabelEventActor,
+        ).not.toHaveBeenCalled();
         expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
           [basicProject, issueWithStatusLabel, 'status2'],
         ]);
