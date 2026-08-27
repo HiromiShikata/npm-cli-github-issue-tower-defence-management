@@ -1,3 +1,10 @@
+# [1.185.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.184.1...v1.185.0) (2026-08-27)
+
+
+### Features
+
+* **console:** add "Add story" form to ConsoleStoryList ([#1711](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1711)) ([1b86d56](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1b86d56fe425c788f236c7d7208466e84d72aa52)), closes [#1700](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1700)
+
 ## [1.184.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.184.0...v1.184.1) (2026-08-27)
 
 
