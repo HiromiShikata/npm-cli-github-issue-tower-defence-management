@@ -75,6 +75,7 @@ import { AgentDesignationLabelAdoptUseCase } from '../../../domain/usecases/Agen
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { ProjectRequiredFieldCreateUseCase } from '../../../domain/usecases/ProjectRequiredFieldCreateUseCase';
 import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
+import { BrowserGitHubProjectRepository } from '../../repositories/BrowserGitHubProjectRepository';
 import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from '../../../domain/usecases/QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from '../../../domain/usecases/ReopenedDoneIssueRevertUseCase';
@@ -425,9 +426,15 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const projectRequiredFieldCreateUseCase =
       new ProjectRequiredFieldCreateUseCase(projectRepository);
+    const browserGitHubProjectRepository = new BrowserGitHubProjectRepository(
+      process.env.GITHUB_USERNAME,
+      process.env.GITHUB_PASSWORD,
+      process.env.GITHUB_TOTP_SECRET,
+    );
     const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase(
       projectRepository,
       issueRepository,
+      browserGitHubProjectRepository,
     );
     const actionAnnouncement = new ActionAnnouncementUseCase(issueRepository);
     const setWorkflowManagementIssueToStoryUseCase =

@@ -2,6 +2,7 @@ import { mock } from 'jest-mock-extended';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { StatusDefaultRepository } from './adapter-interfaces/StatusDefaultRepository';
 import { FieldOption, Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
 import {
@@ -111,9 +112,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -142,9 +146,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -167,9 +174,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -210,9 +220,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -312,9 +325,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -350,9 +366,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -395,9 +414,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -437,9 +459,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -470,9 +495,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -513,9 +541,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -548,9 +579,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -591,9 +625,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -632,9 +669,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -698,9 +738,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -812,9 +855,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     });
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -865,9 +911,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -899,9 +948,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     });
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -976,9 +1028,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     });
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1037,9 +1092,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     });
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1075,9 +1133,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     });
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1111,9 +1172,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1142,9 +1206,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1199,9 +1266,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     });
     mockIssueRepository.updateStatus.mockResolvedValue(undefined);
 
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
     const useCase = new SetupTowerDefenceProjectUseCase(
       mockProjectRepository,
       mockIssueRepository,
+      mockStatusDefaultRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1216,5 +1286,78 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       unreadIssue2,
       awaitingWorkspaceId,
     );
+  });
+
+  it('should call setStatusFieldDefault with Awaiting Workspace option id when statuses are already in canonical order', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const canonicalStatuses = buildCanonicalStatuses();
+    const project = buildProject(canonicalStatuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [],
+      cacheUsed: false,
+    });
+
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockStatusDefaultRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockProjectRepository.updateStatusList).not.toHaveBeenCalled();
+    expect(
+      mockStatusDefaultRepository.setStatusFieldDefault,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      mockStatusDefaultRepository.setStatusFieldDefault,
+    ).toHaveBeenCalledWith(project, canonicalStatuses[0].id);
+  });
+
+  it('should call setStatusFieldDefault with Awaiting Workspace option id after updateStatusList', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const awaitingWorkspaceId = 'existing-aws-id';
+    const statuses: FieldOption[] = [
+      {
+        id: awaitingWorkspaceId,
+        name: AWAITING_WORKSPACE_STATUS_NAME,
+        color: 'BLUE',
+        description: 'stale description',
+      },
+    ];
+    const project = buildProject(statuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [],
+      cacheUsed: false,
+    });
+
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockStatusDefaultRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
+    expect(
+      mockStatusDefaultRepository.setStatusFieldDefault,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      mockStatusDefaultRepository.setStatusFieldDefault,
+    ).toHaveBeenCalledWith(project, awaitingWorkspaceId);
   });
 });

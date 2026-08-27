@@ -1,6 +1,7 @@
 import { FieldOption } from '../entities/Project';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { StatusDefaultRepository } from './adapter-interfaces/StatusDefaultRepository';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
@@ -23,6 +24,10 @@ export class SetupTowerDefenceProjectUseCase {
     private readonly issueRepository: Pick<
       IssueRepository,
       'getAllIssues' | 'updateStatus'
+    >,
+    private readonly statusDefaultRepository: Pick<
+      StatusDefaultRepository,
+      'setStatusFieldDefault'
     >,
   ) {}
 
@@ -117,6 +122,9 @@ export class SetupTowerDefenceProjectUseCase {
       }
     }
 
+    const awaitingWorkspaceOptionId: string | undefined =
+      awaitingWorkspaceStatus?.id;
+
     const hasMigratedFromName = existing.some((s) =>
       SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES.has(s.name),
     );
@@ -126,6 +134,12 @@ export class SetupTowerDefenceProjectUseCase {
         existing,
       )
     ) {
+      if (awaitingWorkspaceOptionId !== undefined) {
+        await this.statusDefaultRepository.setStatusFieldDefault(
+          project,
+          awaitingWorkspaceOptionId,
+        );
+      }
       return;
     }
 
@@ -172,6 +186,13 @@ export class SetupTowerDefenceProjectUseCase {
     ];
 
     await this.projectRepository.updateStatusList(project, newStatusList);
+
+    if (awaitingWorkspaceOptionId !== undefined) {
+      await this.statusDefaultRepository.setStatusFieldDefault(
+        project,
+        awaitingWorkspaceOptionId,
+      );
+    }
   };
 
   private static hasRequiredStatusesInCanonicalOrder = (

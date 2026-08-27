@@ -119,6 +119,7 @@
     "ky": "^2.0.2",
     "marked": "18.0.10",
     "marked-emoji": "2.0.3",
+    "playwright": "1.62.1",
     "yaml": "^2.9.0"
   },
   "overrides": {
