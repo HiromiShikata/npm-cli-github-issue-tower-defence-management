@@ -1,3 +1,10 @@
+# [1.183.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.182.0...v1.183.0) (2026-08-27)
+
+
+### Features
+
+* **console:** preserve unsent comment draft when navigating between tasks ([#1783](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1783)) ([22e580d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/22e580d6527c3418822e7b74ec96b5cae7a6ed52)), closes [#1782](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1782)
+
 # [1.182.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.181.1...v1.182.0) (2026-08-26)
 
 
