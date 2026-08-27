@@ -35,9 +35,10 @@ const generateTotp = (secret: string): string => {
   return String(code % 1_000_000).padStart(6, '0');
 };
 
-export class BrowserGitHubProjectRepository
-  implements Pick<StatusDefaultRepository, 'setStatusFieldDefault'>
-{
+export class BrowserGitHubProjectRepository implements Pick<
+  StatusDefaultRepository,
+  'setStatusFieldDefault'
+> {
   constructor(
     private readonly username: string | undefined,
     private readonly password: string | undefined,
@@ -83,9 +84,7 @@ export class BrowserGitHubProjectRepository
       await page.click('[name="commit"]');
 
       const otpInput = page.locator('#app_totp');
-      const isOtpVisible = await otpInput
-        .isVisible()
-        .catch(() => false);
+      const isOtpVisible = await otpInput.isVisible().catch(() => false);
       if (isOtpVisible && this.totpSecret) {
         const totp = generateTotp(this.totpSecret);
         await otpInput.fill(totp);
@@ -94,7 +93,9 @@ export class BrowserGitHubProjectRepository
 
       await page.goto(settingsUrl);
 
-      const defaultSelect = page.locator('select[aria-label="Default value"]').first();
+      const defaultSelect = page
+        .locator('select[aria-label="Default value"]')
+        .first();
       await defaultSelect.waitFor({ state: 'visible' });
       const options = await defaultSelect.locator('option').allTextContents();
       const matchingOption = options.find((o) => o.trim() === optionName);
@@ -105,7 +106,10 @@ export class BrowserGitHubProjectRepository
       }
       await defaultSelect.selectOption({ label: optionName });
 
-      const saveButton = page.locator('button[type="submit"]').filter({ hasText: /save/i }).first();
+      const saveButton = page
+        .locator('button[type="submit"]')
+        .filter({ hasText: /save/i })
+        .first();
       await saveButton.click();
     } finally {
       await browser.close();
