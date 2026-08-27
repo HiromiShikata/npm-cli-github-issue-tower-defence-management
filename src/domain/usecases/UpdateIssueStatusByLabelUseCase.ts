@@ -15,6 +15,23 @@ export class UpdateIssueStatusByLabelUseCase {
   static normalizeStatus = (status: string): string =>
     status.toLowerCase().replace(/[\s\-_]/g, '');
 
+  private removeLabelOrThrow = async (
+    issue: Issue,
+    labelName: string,
+  ): Promise<void> => {
+    try {
+      await this.issueRepository.removeLabel(issue, labelName);
+    } catch (e) {
+      if (!(e instanceof Error)) {
+        throw e;
+      }
+      throw new Error(
+        `Failed to remove label ${labelName} from issue ${issue.url}: ${e.message}`,
+        { cause: e },
+      );
+    }
+  };
+
   run = async (input: {
     project: Project;
     issues: Issue[];
@@ -46,17 +63,7 @@ export class UpdateIssueStatusByLabelUseCase {
           statusLabel,
         );
         if (actor === null || !input.allowedLabelActors.includes(actor)) {
-          try {
-            await this.issueRepository.removeLabel(issue, statusLabel);
-          } catch (e) {
-            if (!(e instanceof Error)) {
-              throw e;
-            }
-            throw new Error(
-              `Failed to remove label ${statusLabel} from issue ${issue.url}: ${e.message}`,
-              { cause: e },
-            );
-          }
+          await this.removeLabelOrThrow(issue, statusLabel);
           continue;
         }
       }
@@ -72,17 +79,7 @@ export class UpdateIssueStatusByLabelUseCase {
           targetStatus.id,
         );
       }
-      try {
-        await this.issueRepository.removeLabel(issue, statusLabel);
-      } catch (e) {
-        if (!(e instanceof Error)) {
-          throw e;
-        }
-        throw new Error(
-          `Failed to remove label ${statusLabel} from issue ${issue.url}: ${e.message}`,
-          { cause: e },
-        );
-      }
+      await this.removeLabelOrThrow(issue, statusLabel);
     }
   };
 }
