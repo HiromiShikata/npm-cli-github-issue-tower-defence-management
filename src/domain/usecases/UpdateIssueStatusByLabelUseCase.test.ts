@@ -271,6 +271,7 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
         await useCase.run({
           project: basicProject,
           issues,
+          allowedLabelActors: null,
         });
 
         expect(mockIssueRepository.updateStatus.mock.calls).toEqual(
@@ -297,10 +298,89 @@ describe('UpdateIssueStatusByLabelUseCase', () => {
         useCase.run({
           project: basicProject,
           issues: [issueWithUrl],
+          allowedLabelActors: null,
         }),
       ).rejects.toThrow(
         'Failed to remove label status:In Progress from issue https://github.com/testOrg/testRepo/issues/42: Request failed with status code 403 Forbidden',
       );
+    });
+
+    describe('allowedLabelActors', () => {
+      const issueWithStatusLabel = {
+        ...mock<Issue>(),
+        labels: ['status:In Progress'],
+        status: 'ToDo',
+        url: 'https://github.com/testOrg/testRepo/issues/1',
+      };
+
+      it('should only remove label when actor is not in allowedLabelActors', async () => {
+        mockIssueRepository.getRecentLabelEventActor.mockResolvedValueOnce(
+          'unauthorized-user',
+        );
+
+        await useCase.run({
+          project: basicProject,
+          issues: [issueWithStatusLabel],
+          allowedLabelActors: ['allowed-user'],
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([]);
+        expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
+          [issueWithStatusLabel, 'status:In Progress'],
+        ]);
+      });
+
+      it('should update status and remove label when actor is in allowedLabelActors', async () => {
+        mockIssueRepository.getRecentLabelEventActor.mockResolvedValueOnce(
+          'allowed-user',
+        );
+
+        await useCase.run({
+          project: basicProject,
+          issues: [issueWithStatusLabel],
+          allowedLabelActors: ['allowed-user'],
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, issueWithStatusLabel, 'status2'],
+        ]);
+        expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
+          [issueWithStatusLabel, 'status:In Progress'],
+        ]);
+      });
+
+      it('should update status and remove label when allowedLabelActors is null', async () => {
+        await useCase.run({
+          project: basicProject,
+          issues: [issueWithStatusLabel],
+          allowedLabelActors: null,
+        });
+
+        expect(mockIssueRepository.getRecentLabelEventActor).not.toHaveBeenCalled();
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+          [basicProject, issueWithStatusLabel, 'status2'],
+        ]);
+        expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
+          [issueWithStatusLabel, 'status:In Progress'],
+        ]);
+      });
+
+      it('should only remove label when no labeled event found (actor is null)', async () => {
+        mockIssueRepository.getRecentLabelEventActor.mockResolvedValueOnce(
+          null,
+        );
+
+        await useCase.run({
+          project: basicProject,
+          issues: [issueWithStatusLabel],
+          allowedLabelActors: ['allowed-user'],
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toEqual([]);
+        expect(mockIssueRepository.removeLabel.mock.calls).toEqual([
+          [issueWithStatusLabel, 'status:In Progress'],
+        ]);
+      });
     });
   });
 });

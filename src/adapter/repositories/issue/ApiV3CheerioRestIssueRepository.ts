@@ -529,6 +529,30 @@ function isPullRequestCommitsResponse(
   return Array.isArray(value) && value.every(isPullRequestCommitsResponseItem);
 }
 
+type IssueEventItem = {
+  event: string;
+  label: { name: string } | null | undefined;
+  actor: { login: string } | null | undefined;
+};
+
+function isIssueEventItem(value: unknown): value is IssueEventItem {
+  if (!isRecord(value)) return false;
+  if (typeof value.event !== 'string') return false;
+  const labelValid =
+    value.label === null ||
+    value.label === undefined ||
+    (isRecord(value.label) && typeof value.label.name === 'string');
+  const actorValid =
+    value.actor === null ||
+    value.actor === undefined ||
+    isLoginContainer(value.actor);
+  return labelValid && actorValid;
+}
+
+function isIssueEventsResponse(value: unknown): value is IssueEventItem[] {
+  return Array.isArray(value) && value.every(isIssueEventItem);
+}
+
 export class ApiV3CheerioRestIssueRepository
   extends BaseGitHubRepository
   implements IssueRepository
@@ -1105,6 +1129,41 @@ export class ApiV3CheerioRestIssueRepository
   };
   removeLabel = (issue: Issue, label: string): Promise<void> => {
     return this.restIssueRepository.removeLabel(issue, label);
+  };
+  getRecentLabelEventActor = async (
+    issue: Issue,
+    labelName: string,
+  ): Promise<string | null> => {
+    const { owner, repo, issueNumber } = this.extractIssueFromUrl(issue.url);
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/events`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      ),
+    );
+    if (!response.ok) {
+      await this.throwGitHubError(
+        `Failed to fetch events for issue ${issue.url}`,
+        response,
+      );
+    }
+    const body: unknown = await response.json();
+    if (!isIssueEventsResponse(body)) {
+      throw new Error(
+        `Unexpected response shape when fetching events for issue ${issue.url}`,
+      );
+    }
+    const labeledEvents = body.filter(
+      (event) => event.event === 'labeled' && event.label?.name === labelName,
+    );
+    const lastEvent = labeledEvents[labeledEvents.length - 1];
+    return lastEvent?.actor?.login ?? null;
   };
   getOrCreateLabel = (
     org: string,

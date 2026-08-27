@@ -6,7 +6,7 @@ export class UpdateIssueStatusByLabelUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateStatus' | 'removeLabel'
+      'updateStatus' | 'removeLabel' | 'getRecentLabelEventActor'
     >,
   ) {}
 
@@ -15,7 +15,11 @@ export class UpdateIssueStatusByLabelUseCase {
   static normalizeStatus = (status: string): string =>
     status.toLowerCase().replace(/[\s\-_]/g, '');
 
-  run = async (input: { project: Project; issues: Issue[] }): Promise<void> => {
+  run = async (input: {
+    project: Project;
+    issues: Issue[];
+    allowedLabelActors: string[] | null;
+  }): Promise<void> => {
     for (const issue of input.issues) {
       const statusLabel = issue.labels.find((label) =>
         label
@@ -35,6 +39,27 @@ export class UpdateIssueStatusByLabelUseCase {
       );
       if (!targetStatus) {
         continue;
+      }
+      if (input.allowedLabelActors !== null) {
+        const actor =
+          await this.issueRepository.getRecentLabelEventActor(
+            issue,
+            statusLabel,
+          );
+        if (actor === null || !input.allowedLabelActors.includes(actor)) {
+          try {
+            await this.issueRepository.removeLabel(issue, statusLabel);
+          } catch (e) {
+            if (!(e instanceof Error)) {
+              throw e;
+            }
+            throw new Error(
+              `Failed to remove label ${statusLabel} from issue ${issue.url}: ${e.message}`,
+              { cause: e },
+            );
+          }
+          continue;
+        }
       }
       const currentStatusNormalized = issue.status
         ? UpdateIssueStatusByLabelUseCase.normalizeStatus(issue.status)

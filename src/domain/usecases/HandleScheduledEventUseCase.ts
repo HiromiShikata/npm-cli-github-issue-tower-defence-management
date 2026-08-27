@@ -613,9 +613,14 @@ ${JSON.stringify(e)}
       queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
       queryToAddProject: input.queryToAddProject ?? null,
     });
+    const allowedIssueAuthors = resolveAllowedIssueAuthors({
+      topLevel: input.allowedIssueAuthors,
+      startPreparation: input.startPreparation?.allowedIssueAuthors,
+    });
     await this.updateIssueStatusByLabelUseCase.run({
       project,
       issues,
+      allowedLabelActors: allowedIssueAuthors,
     });
   };
   static createTargetDateTimes = (from: Date, to: Date): Date[] => {
