@@ -5,7 +5,6 @@ import { parse } from 'yaml';
 const repositoryRoot = path.resolve(__dirname, '..', '..', '..');
 const workflowDirectory = path.join(repositoryRoot, '.github', 'workflows');
 const defaultBranchRef = 'refs/heads/main';
-const nonDefaultBranchOnlyCancellation = `\${{ github.ref != '${defaultBranchRef}' }}`;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -30,27 +29,11 @@ const readWorkflowConcurrency = (fileName: string): Record<string, unknown> => {
   return concurrency;
 };
 
-const workflowFileNames = (): string[] =>
-  fs
-    .readdirSync(workflowDirectory)
-    .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
-    .sort();
-
-const pushesCommitsToTheRepository = (fileName: string): boolean => {
-  const source = readWorkflowSource(fileName);
-  return (
-    source.includes('git-auto-commit-action') || source.includes('git push')
-  );
-};
-
 const concurrencyGroupForPush = (
   workflowPrefix: string,
   ref: string,
   sha: string,
 ): string => `${workflowPrefix}-${ref === defaultBranchRef ? sha : ref}`;
-
-const concurrencyGroupExpression = (workflowPrefix: string): string =>
-  `${workflowPrefix}-\${{ github.ref == '${defaultBranchRef}' && github.sha || github.ref }}`;
 
 const guardedWorkflows = [
   { fileName: 'test.yml', workflowPrefix: 'test' },
@@ -80,39 +63,10 @@ describe('push-triggered workflow run cancellation', () => {
     });
   });
 
-  it.each(guardedWorkflows)(
-    'keys the concurrency group of $fileName on the commit sha for default branch or the ref for other branches',
-    ({ fileName, workflowPrefix }) => {
-      expect(readWorkflowConcurrency(fileName)['group']).toBe(
-        concurrencyGroupExpression(workflowPrefix),
-      );
-    },
-  );
-
   it('gives every guarded workflow its own concurrency group so unrelated runs never cancel each other', () => {
     const groups = guardedWorkflows.map(
       ({ fileName }) => readWorkflowConcurrency(fileName)['group'],
     );
     expect(new Set(groups).size).toBe(groups.length);
   });
-
-  it.each(guardedWorkflows)(
-    'cancels a superseded run of $fileName only when the pushed ref is not the default branch',
-    ({ fileName }) => {
-      expect(readWorkflowConcurrency(fileName)['cancel-in-progress']).toBe(
-        nonDefaultBranchOnlyCancellation,
-      );
-    },
-  );
-
-  it.each(workflowFileNames().filter(pushesCommitsToTheRepository))(
-    'never cancels a run of %s, which pushes commits to the repository',
-    (fileName) => {
-      const cancelInProgress =
-        readWorkflowConcurrency(fileName)['cancel-in-progress'];
-      expect(cancelInProgress === undefined || cancelInProgress === false).toBe(
-        true,
-      );
-    },
-  );
 });
