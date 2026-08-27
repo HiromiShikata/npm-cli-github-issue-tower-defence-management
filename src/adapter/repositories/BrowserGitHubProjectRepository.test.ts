@@ -16,7 +16,12 @@ const buildProject = (url: string): Project => ({
     name: 'Status',
     fieldId: 'status-field-1',
     statuses: [
-      { id: 'opt-aw', name: 'Awaiting Workspace', color: 'BLUE', description: '' },
+      {
+        id: 'opt-aw',
+        name: 'Awaiting Workspace',
+        color: 'BLUE',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -36,7 +41,9 @@ describe('BrowserGitHubProjectRepository', () => {
       'password',
       undefined,
     );
-    const project = buildProject('https://github.com/users/testuser/projects/1');
+    const project = buildProject(
+      'https://github.com/users/testuser/projects/1',
+    );
 
     await expect(
       repo.setStatusFieldDefault(project, 'opt-aw'),
@@ -55,7 +62,9 @@ describe('BrowserGitHubProjectRepository', () => {
       undefined,
       undefined,
     );
-    const project = buildProject('https://github.com/users/testuser/projects/1');
+    const project = buildProject(
+      'https://github.com/users/testuser/projects/1',
+    );
 
     await expect(
       repo.setStatusFieldDefault(project, 'opt-aw'),
@@ -75,8 +84,8 @@ describe('BrowserGitHubProjectRepository', () => {
     );
     const project = buildProject('https://example.com/invalid/url');
 
-    await expect(
-      repo.setStatusFieldDefault(project, 'opt-aw'),
-    ).rejects.toThrow('cannot parse project URL');
+    await expect(repo.setStatusFieldDefault(project, 'opt-aw')).rejects.toThrow(
+      'cannot parse project URL',
+    );
   });
 });
