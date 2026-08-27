@@ -399,10 +399,23 @@ test('renders the stories tab with non-gray stories, their open item counts, and
     tdpmRow.locator('.console-op-button', { hasText: 'Add task' }),
   ).toBeVisible();
 
+  const tdpmLink = tdpmRow.locator('a.console-storytag');
+  await expect(tdpmLink).toBeVisible();
+  await expect(tdpmLink).toHaveAttribute(
+    'href',
+    'https://github.com/orgs/HiromiShikata/projects/6/views/1?sliceBy%5Bvalue%5D=TDPM%20Console%20port',
+  );
+
   const publishRow = page.locator('.console-story-list-row', {
     hasText: 'Publish product documentation site',
   });
   await expect(publishRow.locator('.console-story-count')).toHaveText('1');
+  await expect(
+    publishRow.locator('a.console-storytag'),
+  ).toHaveCount(0);
+  await expect(
+    publishRow.locator('span.console-storytag'),
+  ).toBeVisible();
 
   await expect(
     page.locator('.console-story-list-row', {

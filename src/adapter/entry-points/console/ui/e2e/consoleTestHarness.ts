@@ -282,12 +282,15 @@ const CONSOLE_E2E_STORIES_SNAPSHOT = {
       storyOptionId: '1491051e',
       color: 'BLUE',
       openItemCount: 4,
+      storyViewUrl:
+        'https://github.com/orgs/HiromiShikata/projects/6/views/1?sliceBy%5Bvalue%5D=TDPM%20Console%20port',
     },
     {
       storyName: 'Publish product documentation site',
       storyOptionId: 'f7cd5cbc',
       color: 'GREEN',
       openItemCount: 1,
+      storyViewUrl: null,
     },
     {
       storyName: 'regular / WORKFLOW BLOCKER',
