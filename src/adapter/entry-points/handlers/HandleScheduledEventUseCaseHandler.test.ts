@@ -498,7 +498,7 @@ allowedIssueAuthors: 'user1, user2, user3'
       });
     });
 
-    it('should default autoAssignManagerAuthors to null when omitted from the YAML config', async () => {
+    it('should default autoAssignManagerAuthors to null when omitted from the YAML config and allowedIssueAuthors is also absent', async () => {
       mockFetchReturningReadme(null);
       jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
 
@@ -507,6 +507,43 @@ allowedIssueAuthors: 'user1, user2, user3'
 
       expect(capturedRunInputs[0][0]).toMatchObject({
         autoAssignManagerAuthors: null,
+      });
+    });
+
+    it('should fall back to allowedIssueAuthors for autoAssignManagerAuthors when autoAssignManagerAuthors is omitted', async () => {
+      mockFetchReturningReadme(null);
+      const configWithAllowedIssueAuthors = {
+        ...validConfig,
+        allowedIssueAuthors: ['HiromiShikata', 'umino-bot'],
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithAllowedIssueAuthors));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        autoAssignManagerAuthors: ['HiromiShikata', 'umino-bot'],
+      });
+    });
+
+    it('should prefer explicit autoAssignManagerAuthors over allowedIssueAuthors fallback', async () => {
+      mockFetchReturningReadme(null);
+      const configWithBothAuthors = {
+        ...validConfig,
+        allowedIssueAuthors: ['HiromiShikata', 'umino-bot'],
+        autoAssignManagerAuthors: ['trusted-bot'],
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithBothAuthors));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        autoAssignManagerAuthors: ['trusted-bot'],
       });
     });
 
