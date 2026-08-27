@@ -24,6 +24,7 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
+import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { TriagerApprovalDispatchUseCase } from './TriagerApprovalDispatchUseCase';
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
@@ -124,6 +125,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
+    const mockConflictedIssueRevertUseCase =
+      mock<ConflictedIssueRevertUseCase>();
     const mockRevertNotReadyReviewQueueIssueUseCase =
       mock<RevertNotReadyReviewQueueIssueUseCase>();
     const mockTriagerApprovalDispatchUseCase =
@@ -158,6 +161,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockUpdateIssueStatusByLabelUseCase,
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
+      mockConflictedIssueRevertUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
       mockTriagerApprovalDispatchUseCase,
       mockAgentDesignationLabelAdoptUseCase,
@@ -1639,6 +1643,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<UpdateIssueStatusByLabelUseCase>(),
       mock<StartPreparationUseCase>(),
       mock<RevertOrphanedPreparationUseCase>(),
+      mock<ConflictedIssueRevertUseCase>(),
       mock<RevertNotReadyReviewQueueIssueUseCase>(),
       mock<TriagerApprovalDispatchUseCase>(),
       mock<AgentDesignationLabelAdoptUseCase>(),

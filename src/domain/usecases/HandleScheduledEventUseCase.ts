@@ -28,6 +28,7 @@ import {
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
+import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { TriagerApprovalDispatchUseCase } from './TriagerApprovalDispatchUseCase';
 import { isRecord } from './isRecord';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
@@ -135,6 +136,7 @@ export class HandleScheduledEventUseCase {
     readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
+    readonly conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
     readonly triagerApprovalDispatchUseCase: TriagerApprovalDispatchUseCase,
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
@@ -429,6 +431,9 @@ ${JSON.stringify(e)}
       project,
       issues,
       agents: input.agents ?? null,
+    });
+    await this.conflictedIssueRevertUseCase.run({
+      projectUrl: input.projectUrl,
     });
     await this.revertNotReadyReviewQueueIssueUseCase.run({
       projectUrl: input.projectUrl,
