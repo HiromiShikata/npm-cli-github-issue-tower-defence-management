@@ -62,6 +62,15 @@ export default tseslint.config(
         },
       ],
       'unused-imports/no-unused-imports': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'CallExpression[callee.type="MemberExpression"][callee.property.name=/^(getFullYear|getMonth|getDate|getDay|getHours|getMinutes|getSeconds|getMilliseconds|setFullYear|setMonth|setDate|setHours|setMinutes|setSeconds|setMilliseconds|toLocaleDateString|toLocaleTimeString|toLocaleString)$/]',
+          message:
+            'Use UTC methods (getUTCFullYear, getUTCMonth, getUTCDate, getUTCDay, getUTCHours, getUTCMinutes, getUTCSeconds, getUTCMilliseconds, or their setUTC* counterparts) instead of local-timezone methods. The fleet runs in UTC; local-timezone methods produce wrong results on UTC-negative-offset hosts.',
+        },
+      ],
     },
   },
 );
