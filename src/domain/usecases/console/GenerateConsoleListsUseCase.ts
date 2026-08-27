@@ -6,6 +6,7 @@ import {
   TODO_BY_AGENT_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
+import { encodeForURI } from '../utils';
 
 export type ConsoleColor = FieldOption['color'];
 
@@ -67,6 +68,7 @@ export type ConsoleStoryEntry = {
   storyOptionId: string;
   color: ConsoleColor;
   openItemCount: number;
+  storyViewUrl: string | null;
 };
 
 export type ConsoleStoriesTab = {
@@ -95,6 +97,7 @@ export type GenerateConsoleListsInput = {
   assigneeLogin: string;
   generatedAt: string;
   workflowBlockerStoryName: string | null;
+  urlOfStoryView: string | null;
 };
 
 const UNKNOWN_STORY_SORT_INDEX = 999999;
@@ -108,6 +111,7 @@ export class GenerateConsoleListsUseCase {
       assigneeLogin,
       generatedAt,
       workflowBlockerStoryName,
+      urlOfStoryView,
     } = input;
 
     const storyOptions = project.story ? project.story.stories : [];
@@ -176,6 +180,9 @@ export class GenerateConsoleListsUseCase {
         storyOptionId: option.id,
         color: option.color,
         openItemCount: openItemCountByStory.get(option.name) ?? 0,
+        storyViewUrl: urlOfStoryView
+          ? `${urlOfStoryView}?sliceBy%5Bvalue%5D=${encodeForURI(option.name)}`
+          : null,
       }));
 
     return {

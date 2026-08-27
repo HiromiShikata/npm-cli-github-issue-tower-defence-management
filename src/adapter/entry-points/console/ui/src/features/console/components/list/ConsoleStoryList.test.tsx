@@ -8,12 +8,14 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyOptionId: '1491051e',
     color: 'BLUE',
     openItemCount: 12,
+    storyViewUrl: null,
   },
   {
     storyName: 'Move to Okinawa',
     storyOptionId: '564803ee',
     color: 'PURPLE',
     openItemCount: 0,
+    storyViewUrl: null,
   },
 ];
 
@@ -192,5 +194,63 @@ describe('ConsoleStoryList', () => {
     );
     expect(getByRole('alert')).toBeInTheDocument();
     expect(getByText(/HTTP 503/)).toBeInTheDocument();
+  });
+
+  it('renders story name as a span when storyViewUrl is absent (old JSON format)', () => {
+    const oldFormatEntry = {
+      storyName: 'TDPM Console port',
+      storyOptionId: '1491051e',
+      color: 'BLUE',
+      openItemCount: 4,
+    } as unknown as ConsoleStoryEntry;
+    const { getByText } = render(
+      <ConsoleStoryList
+        stories={[oldFormatEntry]}
+        isLoading={false}
+        error={null}
+        onCreateIssue={() => Promise.resolve()}
+      />,
+    );
+    const nameEl = getByText('TDPM Console port');
+    expect(nameEl.tagName).toBe('SPAN');
+  });
+
+  it('renders story name as a span when storyViewUrl is null', () => {
+    const { getByText } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        onCreateIssue={() => Promise.resolve()}
+      />,
+    );
+    const nameEl = getByText('TDPM Console port');
+    expect(nameEl.tagName).toBe('SPAN');
+  });
+
+  it('renders story name as an anchor when storyViewUrl is non-null', () => {
+    const entriesWithUrl: ConsoleStoryEntry[] = [
+      {
+        ...storyEntries[0],
+        storyViewUrl:
+          'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=TDPM%20Console%20port',
+      },
+    ];
+    const { getByText } = render(
+      <ConsoleStoryList
+        stories={entriesWithUrl}
+        isLoading={false}
+        error={null}
+        onCreateIssue={() => Promise.resolve()}
+      />,
+    );
+    const nameEl = getByText('TDPM Console port');
+    expect(nameEl.tagName).toBe('A');
+    expect(nameEl).toHaveAttribute(
+      'href',
+      'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=TDPM%20Console%20port',
+    );
+    expect(nameEl).toHaveAttribute('target', '_blank');
+    expect(nameEl).toHaveAttribute('rel', 'noopener noreferrer');
   });
 });

@@ -597,6 +597,7 @@ export class HandleScheduledEventUseCaseHandler {
           generatedAt: formatConsoleGeneratedAt(new Date(issuesFetchedAt)),
           workflowBlockerStoryName:
             mergedInput.workflowBlockerStoryName ?? null,
+          urlOfStoryView: mergedInput.urlOfStoryView,
         });
       } catch (error) {
         console.error(

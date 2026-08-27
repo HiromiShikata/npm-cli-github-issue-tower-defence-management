@@ -1,38 +1,51 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ConsoleStoryList } from './ConsoleStoryList';
 
-const stories = [
+const storiesWithoutUrl = [
   {
     storyName: 'TDPM Console port',
     storyOptionId: '1491051e',
     color: 'BLUE' as const,
     openItemCount: 12,
+    storyViewUrl: null,
   },
   {
     storyName: 'Publish product documentation site',
     storyOptionId: 'f7cd5cbc',
     color: 'GREEN' as const,
     openItemCount: 3,
+    storyViewUrl: null,
   },
   {
     storyName: 'Move to Okinawa',
     storyOptionId: '564803ee',
     color: 'PURPLE' as const,
     openItemCount: 0,
+    storyViewUrl: null,
   },
   {
     storyName: 'regular / regular payment invoice tax',
     storyOptionId: 'd7cdcb61',
     color: 'YELLOW' as const,
     openItemCount: 7,
+    storyViewUrl: null,
   },
   {
     storyName: 'regular / WORKFLOW BLOCKER',
     storyOptionId: 'e35b3da2',
     color: 'RED' as const,
     openItemCount: 2,
+    storyViewUrl: null,
   },
 ];
+
+const BASE_VIEW_URL =
+  'https://github.com/orgs/HiromiShikata/projects/6/views/1';
+
+const storiesWithUrl = storiesWithoutUrl.map((s) => ({
+  ...s,
+  storyViewUrl: `${BASE_VIEW_URL}?sliceBy%5Bvalue%5D=${encodeURI(s.storyName).replace(/#/g, '%23').replace(/&/g, '%26')}`,
+}));
 
 const meta: Meta<typeof ConsoleStoryList> = {
   title: 'Console/ConsoleStoryList',
@@ -46,7 +59,15 @@ type Story = StoryObj<typeof ConsoleStoryList>;
 
 export const WithStories: Story = {
   args: {
-    stories,
+    stories: storiesWithoutUrl,
+    isLoading: false,
+    error: null,
+  },
+};
+
+export const WithStoriesLinked: Story = {
+  args: {
+    stories: storiesWithUrl,
     isLoading: false,
     error: null,
   },

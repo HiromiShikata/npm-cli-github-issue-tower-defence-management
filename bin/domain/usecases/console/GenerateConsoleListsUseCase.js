@@ -2,11 +2,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GenerateConsoleListsUseCase = void 0;
 const WorkflowStatus_1 = require("../../entities/WorkflowStatus");
+const utils_1 = require("../utils");
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 class GenerateConsoleListsUseCase {
     constructor() {
         this.run = (input) => {
-            const { project, issues, pjcode, assigneeLogin, generatedAt, workflowBlockerStoryName, } = input;
+            const { project, issues, pjcode, assigneeLogin, generatedAt, workflowBlockerStoryName, urlOfStoryView, } = input;
             const storyOptions = project.story ? project.story.stories : [];
             const storyOrder = storyOptions.map((option) => option.name);
             const statusOptions = project.status.statuses;
@@ -39,6 +40,9 @@ class GenerateConsoleListsUseCase {
                 storyOptionId: option.id,
                 color: option.color,
                 openItemCount: openItemCountByStory.get(option.name) ?? 0,
+                storyViewUrl: urlOfStoryView
+                    ? `${urlOfStoryView}?sliceBy%5Bvalue%5D=${(0, utils_1.encodeForURI)(option.name)}`
+                    : null,
             }));
             return {
                 'workflow-blocker': buildStatusTabFromSource(issues.filter((issue) => issue.isClosed === false), this.workflowBlockerSelector(workflowBlockerStoryName), ['done']),

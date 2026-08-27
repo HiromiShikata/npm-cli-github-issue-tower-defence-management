@@ -49,6 +49,7 @@ export type ConsoleStoryEntry = {
     storyOptionId: string;
     color: ConsoleColor;
     openItemCount: number;
+    storyViewUrl: string | null;
 };
 export type ConsoleStoriesTab = {
     pjcode: string;
@@ -76,6 +77,7 @@ export type GenerateConsoleListsInput = {
     assigneeLogin: string;
     generatedAt: string;
     workflowBlockerStoryName: string | null;
+    urlOfStoryView: string | null;
 };
 export declare class GenerateConsoleListsUseCase {
     run: (input: GenerateConsoleListsInput) => ConsoleLists;
