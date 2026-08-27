@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CONSOLE_TABS, type ConsoleTabName } from '../../logic/types';
 
@@ -27,14 +28,21 @@ export const ConsoleTabList = ({
   settingsButton,
 }: ConsoleTabBarProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     if (!isDropdownOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
       ) {
         setIsDropdownOpen(false);
       }
@@ -44,6 +52,17 @@ export const ConsoleTabList = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isDropdownOpen]);
+
+  const handleButtonClick = () => {
+    if (!isDropdownOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setIsDropdownOpen((prev) => !prev);
+  };
 
   return (
     <nav aria-label="Console tabs" className="console-tabbar">
@@ -86,42 +105,52 @@ export const ConsoleTabList = ({
         );
       })}
       {pjcode !== null && (
-        <div className="console-tab-pjname" ref={dropdownRef}>
+        <div className="console-tab-pjname">
           <button
+            ref={buttonRef}
             type="button"
             className="console-tab-pjname-button"
             aria-expanded={isDropdownOpen}
             aria-haspopup="listbox"
-            onClick={() => setIsDropdownOpen((prev) => !prev)}
+            onClick={handleButtonClick}
           >
             {pjcode}
             <span className="console-tab-pjname-arrow" aria-hidden="true">
               ▾
             </span>
           </button>
-          {isDropdownOpen && (
-            <ul
-              className="console-tab-pjname-dropdown"
-              role="listbox"
-              aria-label="Select project"
-            >
-              {pjcodes.map((code) => (
-                <li key={code} role="option" aria-selected={code === pjcode}>
-                  <button
-                    type="button"
-                    className="console-tab-pjname-option"
-                    data-active={code === pjcode ? 'true' : undefined}
-                    onClick={() => {
-                      onSelectProject(code);
-                      setIsDropdownOpen(false);
-                    }}
-                  >
-                    {code}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          {isDropdownOpen &&
+            dropdownPos !== null &&
+            createPortal(
+              <ul
+                ref={dropdownRef}
+                className="console-tab-pjname-dropdown"
+                role="listbox"
+                aria-label="Select project"
+                style={{
+                  position: 'fixed',
+                  top: dropdownPos.top,
+                  right: dropdownPos.right,
+                }}
+              >
+                {pjcodes.map((code) => (
+                  <li key={code} role="option" aria-selected={code === pjcode}>
+                    <button
+                      type="button"
+                      className="console-tab-pjname-option"
+                      data-active={code === pjcode ? 'true' : undefined}
+                      onClick={() => {
+                        onSelectProject(code);
+                        setIsDropdownOpen(false);
+                      }}
+                    >
+                      {code}
+                    </button>
+                  </li>
+                ))}
+              </ul>,
+              document.body,
+            )}
         </div>
       )}
       {generatedAt !== null && (
