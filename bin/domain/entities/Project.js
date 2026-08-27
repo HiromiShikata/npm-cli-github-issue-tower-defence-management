@@ -8,8 +8,8 @@ const buildStoryListWithNew = (existingStories, newName) => {
     const newEntry = {
         id: null,
         name: newName,
-        color: "RED",
-        description: "",
+        color: 'RED',
+        description: '',
     };
     if (existingStories.length === 0) {
         return [newEntry];

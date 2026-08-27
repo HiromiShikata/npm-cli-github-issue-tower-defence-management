@@ -1,5 +1,5 @@
-import { Project } from "../../../domain/entities/Project";
-import { ConsolePjcodeValidator, ConsoleProjectResolver } from "./consoleOperationApi";
+import { Project } from '../../../domain/entities/Project';
+import { ConsolePjcodeValidator, ConsoleProjectResolver } from './consoleOperationApi';
 export type ConsoleProjectLoader = (projectUrl: string) => Promise<Project | null>;
 export type ConsoleProjectIdAndProjectReader = {
     findProjectIdByUrl: (projectUrl: string) => Promise<string | null>;

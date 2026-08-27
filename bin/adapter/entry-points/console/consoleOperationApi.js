@@ -4,9 +4,9 @@ exports.handleStoryAdd = exports.handleReorderStory = exports.handleIntmux = exp
 const Project_1 = require("../../../domain/entities/Project");
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
-exports.AWAITING_WORKSPACE_STATUS_NAME = "awaiting workspace";
-exports.IN_TMUX_BY_HUMAN_STATUS_NAME = "in tmux by human";
-exports.CHORE_LABEL_NAME = "chore";
+exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
+exports.IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
+exports.CHORE_LABEL_NAME = 'chore';
 const ok = () => ({
     statusCode: 200,
     body: { ok: true },
@@ -19,11 +19,11 @@ const badGateway = (message) => ({
     statusCode: 502,
     body: { error: message },
 });
-const isNonEmptyString = (value) => typeof value === "string" && value.length > 0;
+const isNonEmptyString = (value) => typeof value === 'string' && value.length > 0;
 const isPullRequestUrl = (url) => /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url);
 const isValidIssueOrPullRequestUrl = (url) => /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/(issues|pull)\/\d+$/.test(url);
-const isReviewCommentSide = (value) => value === "LEFT" || value === "RIGHT";
-const isPositiveInteger = (value) => typeof value === "number" && Number.isInteger(value) && value > 0;
+const isReviewCommentSide = (value) => value === 'LEFT' || value === 'RIGHT';
+const isPositiveInteger = (value) => typeof value === 'number' && Number.isInteger(value) && value > 0;
 const resolveStatusId = (project, statusName) => {
     const lower = statusName.toLowerCase();
     const match = project.status.statuses.find((option) => option.name.toLowerCase() === lower);
@@ -35,10 +35,10 @@ const resolveStatusId = (project, statusName) => {
 // context). Constructing the reference locally avoids the GraphQL
 // fetchProjectItemByUrl call that issueRepository.get would otherwise perform.
 const projectItemReference = (issueUrl, projectItemId) => ({
-    nameWithOwner: "",
+    nameWithOwner: '',
     number: 0,
-    title: "",
-    state: "OPEN",
+    title: '',
+    state: 'OPEN',
     status: null,
     story: null,
     nextActionDate: null,
@@ -49,15 +49,15 @@ const projectItemReference = (issueUrl, projectItemId) => ({
     url: issueUrl,
     assignees: [],
     labels: [],
-    org: "",
-    repo: "",
-    body: "",
+    org: '',
+    repo: '',
+    body: '',
     itemId: projectItemId,
     isPr: isPullRequestUrl(issueUrl),
     isInProgress: false,
     isClosed: false,
     createdAt: new Date(0),
-    author: "",
+    author: '',
     closingIssueReferenceUrls: [],
     agent: null,
 });
@@ -82,7 +82,7 @@ const recordDoneForStoryChange = (context, pjcode, projectItemId) => {
 const resolveBinding = async (context, body) => {
     const pjcode = body.pjcode;
     if (!isNonEmptyString(pjcode)) {
-        return badRequest("pjcode is required");
+        return badRequest('pjcode is required');
     }
     const binding = await context.resolveProject(pjcode);
     if (binding === null) {
@@ -90,7 +90,7 @@ const resolveBinding = async (context, body) => {
     }
     return binding;
 };
-const isOperationResponse = (value) => Object.hasOwn(value, "statusCode");
+const isOperationResponse = (value) => Object.hasOwn(value, 'statusCode');
 // Validates that a pjcode is configured WITHOUT loading the ProjectV2 via
 // GraphQL. Close operations only need the pjcode (for recordDone namespacing)
 // and the issue/PR URL, both of which are handled through REST. Loading the
@@ -99,7 +99,7 @@ const isOperationResponse = (value) => Object.hasOwn(value, "statusCode");
 const resolveConfiguredPjcode = (context, body) => {
     const pjcode = body.pjcode;
     if (!isNonEmptyString(pjcode)) {
-        return badRequest("pjcode is required");
+        return badRequest('pjcode is required');
     }
     if (!context.isPjcodeConfigured(pjcode)) {
         return badRequest(`no project configured for pjcode "${pjcode}"`);
@@ -133,17 +133,17 @@ const handleReview = async (context, body) => {
     const prUrl = body.prUrl;
     const projectItemId = body.projectItemId;
     if (!isNonEmptyString(action)) {
-        return badRequest("action is required");
+        return badRequest('action is required');
     }
     if (!isNonEmptyString(prUrl)) {
-        return badRequest("prUrl is required");
+        return badRequest('prUrl is required');
     }
     if (!isNonEmptyString(projectItemId)) {
-        return badRequest("projectItemId is required");
+        return badRequest('projectItemId is required');
     }
-    if (action === "close") {
+    if (action === 'close') {
         const pjcodeResult = resolveConfiguredPjcode(context, body);
-        if (typeof pjcodeResult !== "string") {
+        if (typeof pjcodeResult !== 'string') {
             return pjcodeResult;
         }
         await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
@@ -160,10 +160,10 @@ const handleReview = async (context, body) => {
         return binding;
     }
     const { project, pjcode } = binding;
-    if (action === "unnecessary") {
+    if (action === 'unnecessary') {
         const issueUrl = body.issueUrl;
         if (!isNonEmptyString(issueUrl)) {
-            return badRequest("issueUrl is required for unnecessary");
+            return badRequest('issueUrl is required for unnecessary');
         }
         await context.resolveIssueRepository(prUrl).closePullRequest(prUrl);
         if (isNonEmptyString(body.commentBody)) {
@@ -187,18 +187,18 @@ const handleReview = async (context, body) => {
         recordDone(context, pjcode, projectItemId);
         return ok();
     }
-    if (action === "approve_and_merge") {
+    if (action === 'approve_and_merge') {
         const issueRepository = context.resolveIssueRepository(prUrl);
         const prStatus = await issueRepository.getOpenPullRequest(prUrl);
         if (prStatus === null) {
-            return badRequest("Cannot merge: pull request not found or already closed");
+            return badRequest('Cannot merge: pull request not found or already closed');
         }
         if (prStatus.isConflicted) {
-            return badRequest("Cannot merge: pull request has a merge conflict");
+            return badRequest('Cannot merge: pull request has a merge conflict');
         }
         if (!prStatus.isPassedAllCiJob) {
             const missing = prStatus.missingRequiredCheckNames;
-            const detail = missing.length > 0 ? `: ${missing.join(", ")}` : "";
+            const detail = missing.length > 0 ? `: ${missing.join(', ')}` : '';
             return badRequest(`Cannot merge: required checks are not green${detail}`);
         }
         const prDetail = await issueRepository.getPullRequestDetail(prUrl);
@@ -209,7 +209,7 @@ const handleReview = async (context, body) => {
                 await issueRepository.approvePullRequest(prUrl);
             }
             catch (error) {
-                if (!(error instanceof Error && error.message.includes("HTTP 422"))) {
+                if (!(error instanceof Error && error.message.includes('HTTP 422'))) {
                     throw error;
                 }
             }
@@ -222,10 +222,10 @@ const handleReview = async (context, body) => {
         recordDoneForStatusChange(context, pjcode, projectItemId);
         return ok();
     }
-    if (action === "request_changes") {
+    if (action === 'request_changes') {
         const commentBody = body.commentBody;
         if (!isNonEmptyString(commentBody)) {
-            return badRequest("commentBody is required for request_changes");
+            return badRequest('commentBody is required for request_changes');
         }
         const changedFilePath = isNonEmptyString(body.changedFilePath)
             ? body.changedFilePath
@@ -253,17 +253,17 @@ const handleTriage = async (context, body) => {
     const issueUrl = body.issueUrl;
     const projectItemId = body.projectItemId;
     if (!isNonEmptyString(action)) {
-        return badRequest("action is required");
+        return badRequest('action is required');
     }
     if (!isNonEmptyString(issueUrl)) {
-        return badRequest("issueUrl is required");
+        return badRequest('issueUrl is required');
     }
     if (!isNonEmptyString(projectItemId)) {
-        return badRequest("projectItemId is required");
+        return badRequest('projectItemId is required');
     }
-    if (action === "close" || action === "close_not_planned") {
+    if (action === 'close' || action === 'close_not_planned') {
         const pjcodeResult = resolveConfiguredPjcode(context, body);
-        if (typeof pjcodeResult !== "string") {
+        if (typeof pjcodeResult !== 'string') {
             return pjcodeResult;
         }
         if (isNonEmptyString(body.commentBody)) {
@@ -277,7 +277,7 @@ const handleTriage = async (context, body) => {
         else {
             await context
                 .resolveIssueRepository(issueUrl)
-                .closeIssueByUrl(issueUrl, action === "close_not_planned" ? "not_planned" : "completed");
+                .closeIssueByUrl(issueUrl, action === 'close_not_planned' ? 'not_planned' : 'completed');
         }
         recordDone(context, pjcodeResult, projectItemId);
         return ok();
@@ -287,10 +287,10 @@ const handleTriage = async (context, body) => {
         return binding;
     }
     const { project, pjcode } = binding;
-    if (action === "set_status") {
+    if (action === 'set_status') {
         const statusName = body.statusName;
         if (!isNonEmptyString(statusName)) {
-            return badRequest("statusName is required for set_status");
+            return badRequest('statusName is required for set_status');
         }
         const failure = await updateStatusByName(context.resolveIssueRepository(issueUrl), project, issueUrl, projectItemId, statusName);
         if (failure !== null) {
@@ -299,13 +299,13 @@ const handleTriage = async (context, body) => {
         recordDoneForStatusChange(context, pjcode, projectItemId);
         return ok();
     }
-    if (action === "set_story") {
+    if (action === 'set_story') {
         const storyOptionId = body.storyOptionId;
         if (!isNonEmptyString(storyOptionId)) {
-            return badRequest("storyOptionId is required for set_story");
+            return badRequest('storyOptionId is required for set_story');
         }
         if (project.story === null) {
-            return badRequest("project does not have a story field");
+            return badRequest('project does not have a story field');
         }
         await context
             .resolveIssueRepository(issueUrl)
@@ -313,8 +313,8 @@ const handleTriage = async (context, body) => {
         recordDoneForStoryChange(context, pjcode, projectItemId);
         return ok();
     }
-    if (action === "snooze_1day" || action === "snooze_1week") {
-        const days = action === "snooze_1day" ? 1 : 7;
+    if (action === 'snooze_1day' || action === 'snooze_1week') {
+        const days = action === 'snooze_1day' ? 1 : 7;
         const target = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
         await context
             .resolveIssueRepository(issueUrl)
@@ -329,10 +329,10 @@ const handleComment = async (context, body) => {
     const url = body.url;
     const commentBody = body.body;
     if (!isNonEmptyString(url)) {
-        return badRequest("url is required");
+        return badRequest('url is required');
     }
     if (!isNonEmptyString(commentBody)) {
-        return badRequest("body is required");
+        return badRequest('body is required');
     }
     await context
         .resolveIssueRepository(url)
@@ -346,7 +346,7 @@ const handleComment = async (context, body) => {
         body: {
             ok: true,
             comment: posted === null
-                ? { author: "", body: commentBody, createdAt: "" }
+                ? { author: '', body: commentBody, createdAt: '' }
                 : {
                     author: posted.author,
                     body: posted.body,
@@ -361,35 +361,35 @@ const handleAttachmentUpload = async (context, body) => {
     const fileName = body.fileName;
     const contentBase64 = body.contentBase64;
     if (!isNonEmptyString(url)) {
-        return badRequest("url is required");
+        return badRequest('url is required');
     }
     if (!isValidIssueOrPullRequestUrl(url)) {
-        return badRequest("url must be a github issue or pull request url");
+        return badRequest('url must be a github issue or pull request url');
     }
     if (!isNonEmptyString(fileName)) {
-        return badRequest("fileName is required");
+        return badRequest('fileName is required');
     }
     if (!isNonEmptyString(contentBase64)) {
-        return badRequest("contentBase64 is required");
+        return badRequest('contentBase64 is required');
     }
     const pjcodeResult = resolveConfiguredPjcode(context, body);
-    if (typeof pjcodeResult !== "string") {
+    if (typeof pjcodeResult !== 'string') {
         return pjcodeResult;
     }
     if (context.consoleDataOutputDir === null) {
-        return badGateway("console data output dir is not configured");
+        return badGateway('console data output dir is not configured');
     }
     const knownUrl = (0, consoleItemUrlLookup_1.findConsoleItemUrl)(context.consoleDataOutputDir, pjcodeResult, url);
     if (knownUrl === null) {
-        return badRequest("url is not a console item of this project");
+        return badRequest('url is not a console item of this project');
     }
     if (context.issueAttachmentRepository === null) {
-        return badGateway("attachment upload is not configured");
+        return badGateway('attachment upload is not configured');
     }
     const markdown = await context.issueAttachmentRepository.uploadAttachment({
         issueOrPullRequestUrl: knownUrl,
         fileName,
-        content: Buffer.from(contentBase64, "base64"),
+        content: Buffer.from(contentBase64, 'base64'),
     });
     return {
         statusCode: 200,
@@ -402,17 +402,17 @@ const handleCreateIssue = async (context, body) => {
     const storyOptionId = body.storyOptionId;
     const nameWithOwner = body.nameWithOwner;
     if (!isNonEmptyString(title)) {
-        return badRequest("title is required");
+        return badRequest('title is required');
     }
     if (!isNonEmptyString(storyOptionId)) {
-        return badRequest("storyOptionId is required");
+        return badRequest('storyOptionId is required');
     }
     if (!isNonEmptyString(nameWithOwner)) {
-        return badRequest("nameWithOwner is required");
+        return badRequest('nameWithOwner is required');
     }
-    const slashIndex = nameWithOwner.indexOf("/");
+    const slashIndex = nameWithOwner.indexOf('/');
     if (slashIndex <= 0 || slashIndex === nameWithOwner.length - 1) {
-        return badRequest("nameWithOwner must be in owner/repo format");
+        return badRequest('nameWithOwner must be in owner/repo format');
     }
     const org = nameWithOwner.slice(0, slashIndex);
     const repo = nameWithOwner.slice(slashIndex + 1);
@@ -422,7 +422,7 @@ const handleCreateIssue = async (context, body) => {
     }
     const { project } = binding;
     if (project.story === null) {
-        return badRequest("project does not have a story field");
+        return badRequest('project does not have a story field');
     }
     const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
     if (storyOption === undefined) {
@@ -430,7 +430,7 @@ const handleCreateIssue = async (context, body) => {
     }
     const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
     const issueRepository = context.resolveIssueRepository(proxyUrl);
-    const issueNumber = await issueRepository.createNewIssue(org, repo, title, "", [], []);
+    const issueNumber = await issueRepository.createNewIssue(org, repo, title, '', [], []);
     const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
     await issueRepository.addIssueToProject(project, issueUrl);
     const addedIssue = await issueRepository.get(issueUrl, project);
@@ -447,19 +447,19 @@ const handleReviewComment = async (context, body) => {
     const side = body.side;
     const commentBody = body.body;
     if (!isNonEmptyString(url)) {
-        return badRequest("url is required");
+        return badRequest('url is required');
     }
     if (!isNonEmptyString(path)) {
-        return badRequest("path is required");
+        return badRequest('path is required');
     }
     if (!isPositiveInteger(line)) {
-        return badRequest("line must be a positive integer");
+        return badRequest('line must be a positive integer');
     }
     if (!isReviewCommentSide(side)) {
         return badRequest('side must be "LEFT" or "RIGHT"');
     }
     if (!isNonEmptyString(commentBody)) {
-        return badRequest("body is required");
+        return badRequest('body is required');
     }
     try {
         await context
@@ -467,7 +467,7 @@ const handleReviewComment = async (context, body) => {
             .createPullRequestReviewComment(url, path, line, side, commentBody);
     }
     catch (error) {
-        return badGateway(error instanceof Error ? error.message : "unknown error");
+        return badGateway(error instanceof Error ? error.message : 'unknown error');
     }
     return ok();
 };
@@ -477,16 +477,16 @@ const handleIntmux = async (context, body) => {
     const issueUrl = body.issueUrl;
     const projectItemId = body.projectItemId;
     if (!isNonEmptyString(action)) {
-        return badRequest("action is required");
+        return badRequest('action is required');
     }
-    if (action !== "set_intmux") {
+    if (action !== 'set_intmux') {
         return badRequest(`unknown intmux action "${action}"`);
     }
     if (!isNonEmptyString(issueUrl)) {
-        return badRequest("issueUrl is required");
+        return badRequest('issueUrl is required');
     }
     if (!isNonEmptyString(projectItemId)) {
-        return badRequest("projectItemId is required");
+        return badRequest('projectItemId is required');
     }
     const binding = await resolveBinding(context, body);
     if (isOperationResponse(binding)) {
@@ -506,12 +506,12 @@ const handleReorderStory = async (context, body) => {
     const storyOptionId = body.storyOptionId;
     const direction = body.direction;
     if (!isNonEmptyString(pjcode)) {
-        return badRequest("pjcode is required");
+        return badRequest('pjcode is required');
     }
     if (!isNonEmptyString(storyOptionId)) {
-        return badRequest("storyOptionId is required");
+        return badRequest('storyOptionId is required');
     }
-    if (direction !== "up" && direction !== "down") {
+    if (direction !== 'up' && direction !== 'down') {
         return badRequest('direction must be "up" or "down"');
     }
     const binding = await context.resolveProject(pjcode);
@@ -520,19 +520,19 @@ const handleReorderStory = async (context, body) => {
     }
     const { project } = binding;
     if (project.story === null) {
-        return badRequest("project does not have a story field");
+        return badRequest('project does not have a story field');
     }
     if (context.updateStoryList === null) {
-        return badRequest("updateStoryList is not configured");
+        return badRequest('updateStoryList is not configured');
     }
     const stories = project.story.stories;
     const index = stories.findIndex((s) => s.id === storyOptionId);
     if (index === -1) {
-        return badRequest("story option not found");
+        return badRequest('story option not found');
     }
-    const swapIndex = index + (direction === "up" ? -1 : 1);
+    const swapIndex = index + (direction === 'up' ? -1 : 1);
     if (swapIndex < 0 || swapIndex >= stories.length) {
-        return badRequest("cannot move in that direction");
+        return badRequest('cannot move in that direction');
     }
     const reordered = [...stories];
     const temp = reordered[index];
@@ -544,11 +544,11 @@ const handleReorderStory = async (context, body) => {
 exports.handleReorderStory = handleReorderStory;
 const handleStoryAdd = async (context, body) => {
     if (context.resolveProjectRepository === null) {
-        return badGateway("project repository is not configured");
+        return badGateway('project repository is not configured');
     }
     const storyName = body.storyName;
     if (!isNonEmptyString(storyName)) {
-        return badRequest("storyName is required");
+        return badRequest('storyName is required');
     }
     const binding = await resolveBinding(context, body);
     if (isOperationResponse(binding)) {
@@ -556,7 +556,7 @@ const handleStoryAdd = async (context, body) => {
     }
     const { pjcode, project } = binding;
     if (project.story === null) {
-        return badRequest("project does not have a story field");
+        return badRequest('project does not have a story field');
     }
     const newStoryList = (0, Project_1.buildStoryListWithNew)(project.story.stories, storyName);
     const projectRepository = context.resolveProjectRepository(project.url);

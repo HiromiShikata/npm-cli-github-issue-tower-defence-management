@@ -1,11 +1,11 @@
-import * as http from "http";
-import type { IssueAttachmentRepository } from "../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository";
-import type { IssueRepository } from "../../../domain/usecases/adapter-interfaces/IssueRepository";
-import type { ProjectRepository } from "../../../domain/usecases/adapter-interfaces/ProjectRepository";
-import { type ConsoleGithubTokenResolver } from "./consoleGithubTokenResolver";
-import { type ImageFetcher } from "./consoleImageProxy";
-import { type ConsoleIssueRepositoryResolver, type ConsolePjcodeValidator, type ConsoleProjectRepositoryResolver, type ConsoleProjectResolver } from "./consoleOperationApi";
-import { type IssueTitleStateCache, type PullRequestStatusCache } from "./consoleReadApi";
+import * as http from 'http';
+import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
+import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
+import { ConsoleIssueRepositoryResolver, ConsolePjcodeValidator, ConsoleProjectRepositoryResolver, ConsoleProjectResolver } from './consoleOperationApi';
+import { ImageFetcher } from './consoleImageProxy';
+import { ConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
 export declare const DEFAULT_WEB_PORT = 9980;
 export declare const CONSOLE_TOKEN_HEADER = "x-pv-token";
 export declare const CONSOLE_TOKEN_COOKIE = "pv_token";
@@ -35,7 +35,7 @@ export type WebServerOptions = {
     resolveProjectRepository?: ConsoleProjectRepositoryResolver | null;
     invalidateProject?: ((pjcode: string) => void) | null;
     issueAttachmentRepository?: IssueAttachmentRepository | null;
-    projectRepository?: Pick<ProjectRepository, "updateStoryList"> | null;
+    projectRepository?: Pick<ProjectRepository, 'updateStoryList'> | null;
     issueTitleStateCache?: IssueTitleStateCache | null;
     pullRequestStatusCache?: PullRequestStatusCache | null;
 };

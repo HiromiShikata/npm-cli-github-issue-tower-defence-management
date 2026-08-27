@@ -68,7 +68,9 @@ export declare class GoogleSpreadsheetRepository implements SpreadsheetRepositor
     readonly localStorageRepository: LocalStorageRepository;
     keyFile: string;
     private readonly sheetsClient;
-    constructor(localStorageRepository: LocalStorageRepository, serviceAccountKey?: string, sheetsClientFactory?: () => SheetsApiClient);
+    private readonly sleepFn;
+    constructor(localStorageRepository: LocalStorageRepository, serviceAccountKey?: string, sheetsClientFactory?: () => SheetsApiClient, sleepFn?: (ms: number) => Promise<void>);
+    private callWithRetry;
     getSpreadsheetId: (spreadsheetUrl: string) => string;
     getSheet: (spreadsheetUrl: string, sheetName: string) => Promise<string[][] | null>;
     updateCell: (spreadsheetUrl: string, sheetName: string, row: number, column: number, value: string) => Promise<void>;

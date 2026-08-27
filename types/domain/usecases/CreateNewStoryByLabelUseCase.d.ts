@@ -1,12 +1,12 @@
-import type { Issue } from "../entities/Issue";
-import { type Project, type StoryListEntry } from "../entities/Project";
-import type { StoryObjectMap } from "../entities/StoryObjectMap";
-import type { IssueRepository } from "./adapter-interfaces/IssueRepository";
-import type { ProjectRepository } from "./adapter-interfaces/ProjectRepository";
+import type { Issue } from '../entities/Issue';
+import { type Project, type StoryListEntry } from '../entities/Project';
+import type { StoryObjectMap } from '../entities/StoryObjectMap';
+import type { IssueRepository } from './adapter-interfaces/IssueRepository';
+import type { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 export declare class CreateNewStoryByLabelUseCase {
-    readonly projectRepository: Pick<ProjectRepository, "updateStoryList">;
-    readonly issueRepository: Pick<IssueRepository, "updateLabels" | "updateStory">;
-    constructor(projectRepository: Pick<ProjectRepository, "updateStoryList">, issueRepository: Pick<IssueRepository, "updateLabels" | "updateStory">);
+    readonly projectRepository: Pick<ProjectRepository, 'updateStoryList'>;
+    readonly issueRepository: Pick<IssueRepository, 'updateLabels' | 'updateStory'>;
+    constructor(projectRepository: Pick<ProjectRepository, 'updateStoryList'>, issueRepository: Pick<IssueRepository, 'updateLabels' | 'updateStory'>);
     run: (input: {
         project: Project;
         cacheUsed: boolean;
