@@ -21,6 +21,7 @@ import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
+  postConsoleAddStory,
   postConsoleCreateIssue,
   postConsoleReorderStory,
 } from '../lib/consoleApi';
@@ -375,6 +376,16 @@ export const ConsolePage = () => {
     [pjcode, triageStoryOptions, activeSnapshot?.generatedAt],
   );
 
+  const handleStoryAdd = useCallback(
+    async (storyName: string): Promise<void> => {
+      if (pjcode === null) {
+        throw new Error('No project specified in the URL path.');
+      }
+      await postConsoleAddStory({ pjcode, storyName });
+    },
+    [pjcode],
+  );
+
   return (
     <main className="console-app">
       {actionQueue.pending !== null && (
@@ -421,6 +432,7 @@ export const ConsolePage = () => {
           isLoading={isLoading}
           error={error}
           onCreateIssue={handleCreateIssue}
+          onAddStory={handleStoryAdd}
         />
       ) : selectedItem === null ? (
         <>

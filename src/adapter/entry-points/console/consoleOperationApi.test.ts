@@ -1,13 +1,19 @@
 import * as fs from 'fs';
+import { mock } from 'jest-mock-extended';
 import * as os from 'os';
 import * as path from 'path';
-import { mock } from 'jest-mock-extended';
-import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { Project } from '../../../domain/entities/Project';
-import { Issue } from '../../../domain/entities/Issue';
+import type { Issue } from '../../../domain/entities/Issue';
+import type { Project } from '../../../domain/entities/Project';
+import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import {
-  ConsoleOperationContext,
-  ConsoleProjectBinding,
+  CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+  CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
+  CONSOLE_DONE_TAB_NAMES,
+  readDoneProjectItemIds,
+} from './consoleDoneStore';
+import {
+  type ConsoleOperationContext,
+  type ConsoleProjectBinding,
   handleAttachmentUpload,
   handleComment,
   handleCreateIssue,
@@ -15,14 +21,9 @@ import {
   handleReorderStory,
   handleReview,
   handleReviewComment,
+  handleStoryAdd,
   handleTriage,
 } from './consoleOperationApi';
-import {
-  CONSOLE_DONE_TAB_NAMES,
-  readDoneProjectItemIds,
-  CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
-  CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
-} from './consoleDoneStore';
 
 describe('consoleOperationApi', () => {
   let baseDir: string;
@@ -112,6 +113,8 @@ describe('consoleOperationApi', () => {
       consoleDataOutputDir: baseDir,
       issueAttachmentRepository: null,
       updateStoryList: null,
+      resolveProjectRepository: null,
+      invalidateProject: null,
     };
   });
 
@@ -125,6 +128,8 @@ describe('consoleOperationApi', () => {
     consoleDataOutputDir: baseDir,
     issueAttachmentRepository: null,
     updateStoryList: null,
+    resolveProjectRepository: null,
+    invalidateProject: null,
   });
 
   afterEach(() => {
@@ -868,6 +873,8 @@ describe('consoleOperationApi', () => {
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         updateStoryList: null,
+        resolveProjectRepository: null,
+        invalidateProject: null,
       };
     });
 
@@ -1114,6 +1121,8 @@ describe('consoleOperationApi', () => {
         consoleDataOutputDir: baseDir,
         issueAttachmentRepository: null,
         updateStoryList: null,
+        resolveProjectRepository: null,
+        invalidateProject: null,
       };
       const response = await handleTriage(multiContext, {
         pjcode: 'globex',
@@ -1904,6 +1913,227 @@ describe('consoleOperationApi', () => {
           expect.objectContaining({ id: 'opt_b' }),
           expect.objectContaining({ id: 'opt_gray' }),
         ],
+      );
+    });
+  });
+
+  describe('handleStoryAdd', () => {
+    const buildProjectWithStories = (): Project => ({
+      ...project,
+      url: 'https://github.com/orgs/acme-labs/projects/1',
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'opt_first',
+            name: 'First story',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'opt_second',
+            name: 'Second story',
+            color: 'GREEN',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    const updateStoryList = jest.fn();
+    const projectRepositoryResolver = jest.fn(() => ({ updateStoryList }));
+
+    const addStoryContext = (p: Project): ConsoleOperationContext => ({
+      ...contextForProject(p),
+      resolveProjectRepository: projectRepositoryResolver,
+    });
+
+    beforeEach(() => {
+      updateStoryList.mockResolvedValue([]);
+      projectRepositoryResolver.mockReturnValue({ updateStoryList });
+    });
+
+    it('inserts the new story at index 1 and calls updateStoryList', async () => {
+      const p = buildProjectWithStories();
+      const response = await handleStoryAdd(addStoryContext(p), {
+        pjcode: 'acme',
+        storyName: 'Brand new story',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true });
+      expect(updateStoryList).toHaveBeenCalledWith(p, [
+        {
+          id: 'opt_first',
+          name: 'First story',
+          color: 'BLUE',
+          description: '',
+        },
+        { id: null, name: 'Brand new story', color: 'RED', description: '' },
+        {
+          id: 'opt_second',
+          name: 'Second story',
+          color: 'GREEN',
+          description: '',
+        },
+      ]);
+    });
+
+    it('inserts the new story as the only entry when the story list is empty', async () => {
+      const emptyStoryProject: Project = {
+        ...buildProjectWithStories(),
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          stories: [],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const response = await handleStoryAdd(
+        addStoryContext(emptyStoryProject),
+        {
+          pjcode: 'acme',
+          storyName: 'First ever story',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(updateStoryList).toHaveBeenCalledWith(emptyStoryProject, [
+        { id: null, name: 'First ever story', color: 'RED', description: '' },
+      ]);
+    });
+
+    it('resolves the project repository using the project url', async () => {
+      const p = buildProjectWithStories();
+      await handleStoryAdd(addStoryContext(p), {
+        pjcode: 'acme',
+        storyName: 'Any story',
+      });
+      expect(projectRepositoryResolver).toHaveBeenCalledWith(p.url);
+    });
+
+    it('returns 502 when resolveProjectRepository is null', async () => {
+      const response = await handleStoryAdd(
+        {
+          ...contextForProject(buildProjectWithStories()),
+          resolveProjectRepository: null,
+        },
+        { pjcode: 'acme', storyName: 'Any story' },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'project repository is not configured' },
+      });
+    });
+
+    it('rejects when storyName is missing', async () => {
+      const response = await handleStoryAdd(
+        addStoryContext(buildProjectWithStories()),
+        {
+          pjcode: 'acme',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'storyName is required' },
+      });
+    });
+
+    it('rejects when pjcode is not configured', async () => {
+      const response = await handleStoryAdd(
+        addStoryContext(buildProjectWithStories()),
+        {
+          pjcode: 'unknown',
+          storyName: 'Any story',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'no project configured for pjcode "unknown"' },
+      });
+    });
+
+    it('rejects when the project has no story field', async () => {
+      const projectWithoutStory: Project = {
+        ...buildProjectWithStories(),
+        story: null,
+      };
+      const response = await handleStoryAdd(
+        addStoryContext(projectWithoutStory),
+        {
+          pjcode: 'acme',
+          storyName: 'Any story',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'project does not have a story field' },
+      });
+    });
+
+    it('invalidates the project cache after each successful add so consecutive adds both survive', async () => {
+      const p = buildProjectWithStories();
+      const pStory = p.story;
+      if (pStory === null) {
+        throw new Error('buildProjectWithStories must return a non-null story');
+      }
+
+      const projectAfterFirstAdd: Project = {
+        ...p,
+        story: {
+          ...pStory,
+          stories: [
+            pStory.stories[0],
+            { id: 'opt_x', name: 'Story X', color: 'RED', description: '' },
+            ...pStory.stories.slice(1),
+          ],
+        },
+      };
+
+      let invalidateCalled = false;
+      const invalidateProject = jest.fn((_pjcode: string) => {
+        invalidateCalled = true;
+      });
+
+      const resolveProject = jest.fn(async (pjcode: string) => {
+        if (pjcode !== 'acme') return null;
+        return { pjcode, project: invalidateCalled ? projectAfterFirstAdd : p };
+      });
+
+      const consecutiveUpdateStoryList = jest.fn().mockResolvedValue([]);
+      const consecutiveContext: ConsoleOperationContext = {
+        resolveIssueRepository: () => issueRepository,
+        resolveProject,
+        isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+        consoleDataOutputDir: baseDir,
+        issueAttachmentRepository: null,
+        updateStoryList: null,
+        resolveProjectRepository: jest.fn(() => ({
+          updateStoryList: consecutiveUpdateStoryList,
+        })),
+        invalidateProject,
+      };
+
+      await handleStoryAdd(consecutiveContext, {
+        pjcode: 'acme',
+        storyName: 'Story X',
+      });
+      await handleStoryAdd(consecutiveContext, {
+        pjcode: 'acme',
+        storyName: 'Story Y',
+      });
+
+      expect(invalidateProject).toHaveBeenCalledTimes(2);
+      expect(invalidateProject).toHaveBeenCalledWith('acme');
+      expect(consecutiveUpdateStoryList).toHaveBeenNthCalledWith(
+        2,
+        expect.anything(),
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'Story X' }),
+          expect.objectContaining({ name: 'Story Y' }),
+        ]),
       );
     });
   });

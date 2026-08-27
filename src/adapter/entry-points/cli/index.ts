@@ -1,51 +1,46 @@
 #!/usr/bin/env node
-import fs from 'fs';
 import { Command } from 'commander';
+import fs from 'fs';
+
 export {
   ConfigFile,
-  loadConfigFile,
-  parseProjectReadmeConfig,
-  mergeConfigs,
   fetchProjectReadme,
-} from './projectConfig';
-import {
-  ConfigFile,
   loadConfigFile,
-  parseProjectReadmeConfig,
   mergeConfigs,
-  fetchProjectReadme,
+  parseProjectReadmeConfig,
 } from './projectConfig';
-import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
-import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
-import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
-import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+
+import * as path from 'path';
+import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
-import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
+import { assertDashboardDisplayLabelsUnique } from '../../../domain/usecases/dashboard/DashboardProjectCode';
+import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerCallFile';
+import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
+import type { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
+import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
+import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
-import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
-import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
-import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
-import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
-import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
-import { SystemDateRepository } from '../../repositories/SystemDateRepository';
-import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
+import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
+import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
+import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
 import { LocalCommandIssueAttachmentRepository } from '../../repositories/LocalCommandIssueAttachmentRepository';
+import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
+import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
-import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
-import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
-import { FileSystemConsoleTabsRepository } from '../handlers/FileSystemConsoleTabsRepository';
-import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
-import * as path from 'path';
-import { DEFAULT_WEB_PORT, startWebServer } from '../console/webServer';
-import { assertDashboardDisplayLabelsUnique } from '../../../domain/usecases/dashboard/DashboardProjectCode';
-import { ensureConsoleRunning } from '../console/ensureConsoleRunning';
+import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
+import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import {
-  IssueTitleStateCache,
-  PullRequestStatusCache,
-} from '../console/consoleReadApi';
+  createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByItemUrl,
+  createConsoleIssueRepositoryResolver,
+  createConsoleProjectRepositoryResolver,
+} from '../console/consoleGithubTokenResolver';
 import {
   buildPjcodeToProjectUrl,
   createConsoleProjectLoader,
@@ -53,25 +48,32 @@ import {
   createPjcodeConfigChecker,
 } from '../console/consoleProjectResolver';
 import {
-  createConsoleGithubTokenResolver,
-  createConsoleGithubTokenResolverByItemUrl,
-  createConsoleIssueRepositoryResolver,
-  createConsoleProjectRepositoryResolver,
-} from '../console/consoleGithubTokenResolver';
-import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
-import { LiveSessionOauthTokenSelectHandler } from '../handlers/LiveSessionOauthTokenSelectHandler';
+  IssueTitleStateCache,
+  PullRequestStatusCache,
+} from '../console/consoleReadApi';
+import { ensureConsoleRunning } from '../console/ensureConsoleRunning';
+import { DEFAULT_WEB_PORT, startWebServer } from '../console/webServer';
+import { FileSystemConsoleTabsRepository } from '../handlers/FileSystemConsoleTabsRepository';
 import { InTmuxByHumanSessionTokenCountHandler } from '../handlers/InTmuxByHumanSessionTokenCountHandler';
-import {
-  loadLiveSessionOauthTokenSelectionSettings,
-  resolveFleetConfigFilePath,
-} from './fleetConfig';
-import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerCallFile';
+import { LiveSessionOauthTokenSelectHandler } from '../handlers/LiveSessionOauthTokenSelectHandler';
+import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
 import {
   ownerCallFileAppend,
   ownerCallFileDeleteInEveryProject,
   ownerCallProjectCodeInInTmuxByHumanData,
 } from '../handlers/ownerCallFileStore';
+import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
+import {
+  loadLiveSessionOauthTokenSelectionSettings,
+  resolveFleetConfigFilePath,
+} from './fleetConfig';
+import {
+  type ConfigFile,
+  fetchProjectReadme,
+  loadConfigFile,
+  mergeConfigs,
+  parseProjectReadmeConfig,
+} from './projectConfig';
 
 type StartDaemonOptions = {
   projectUrl?: string;
@@ -903,15 +905,16 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     config.consoleProjects ?? null,
   );
   const isPjcodeConfigured = createPjcodeConfigChecker(pjcodeToProjectUrl);
-  const resolveProject = createConsoleProjectResolver(
-    pjcodeToProjectUrl,
-    createConsoleProjectLoader(
-      resolveProjectRepository,
-      (targetProjectId: string) =>
-        issueRepository.getCachedProject(targetProjectId),
-      (message: string) => console.error(message),
-    ),
-  );
+  const { resolve: resolveProject, invalidate: invalidateProject } =
+    createConsoleProjectResolver(
+      pjcodeToProjectUrl,
+      createConsoleProjectLoader(
+        resolveProjectRepository,
+        (targetProjectId: string) =>
+          issueRepository.getCachedProject(targetProjectId),
+        (message: string) => console.error(message),
+      ),
+    );
 
   const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
   const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
@@ -933,6 +936,8 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
+    resolveProjectRepository,
+    invalidateProject,
     issueAttachmentRepository: new LocalCommandIssueAttachmentRepository(
       new NodeLocalCommandRunner(),
       resolveGithubTokenForItemUrl,

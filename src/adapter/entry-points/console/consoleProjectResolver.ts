@@ -68,12 +68,19 @@ export const createPjcodeConfigChecker = (
     Object.prototype.hasOwnProperty.call(pjcodeToProjectUrl, pjcode);
 };
 
+export type ConsoleProjectResolverBundle = {
+  resolve: ConsoleProjectResolver;
+  invalidate: (pjcode: string) => void;
+};
+
 export const createConsoleProjectResolver = (
   pjcodeToProjectUrl: Record<string, string>,
   loadProject: ConsoleProjectLoader,
-): ConsoleProjectResolver => {
+): ConsoleProjectResolverBundle => {
   const cache = new Map<string, ConsoleProjectBinding>();
-  return async (pjcode: string): Promise<ConsoleProjectBinding | null> => {
+  const resolve: ConsoleProjectResolver = async (
+    pjcode: string,
+  ): Promise<ConsoleProjectBinding | null> => {
     const cached = cache.get(pjcode);
     if (cached !== undefined) {
       return cached;
@@ -90,4 +97,8 @@ export const createConsoleProjectResolver = (
     cache.set(pjcode, binding);
     return binding;
   };
+  const invalidate = (pjcode: string): void => {
+    cache.delete(pjcode);
+  };
+  return { resolve, invalidate };
 };

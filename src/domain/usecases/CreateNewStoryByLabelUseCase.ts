@@ -1,8 +1,12 @@
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { FieldOption, Project } from '../entities/Project';
-import { StoryObjectMap } from '../entities/StoryObjectMap';
-import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { Issue } from '../entities/Issue';
+import type { Issue } from '../entities/Issue';
+import {
+  buildStoryListWithNew,
+  type Project,
+  type StoryListEntry,
+} from '../entities/Project';
+import type { StoryObjectMap } from '../entities/StoryObjectMap';
+import type { IssueRepository } from './adapter-interfaces/IssueRepository';
+import type { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 
 const LOG_PREFIX = '[CreateNewStoryByLabel]';
 
@@ -130,35 +134,13 @@ export class CreateNewStoryByLabelUseCase {
     projectStory: NonNullable<Project['story']>,
     storyObjectMap: StoryObjectMap,
     issues: Issue[],
-  ): (Omit<FieldOption, 'id'> & { id: FieldOption['id'] | null })[] => {
-    const existingStoryNames = new Set(
-      projectStory.stories.map((story) => story.name),
-    );
-    const newStoryIssues = this.findNewStoryIssues(
-      storyObjectMap,
-      issues,
-    ).filter((issue) => !existingStoryNames.has(issue.title));
-    const newStoryList: (Omit<FieldOption, 'id'> & {
-      id: FieldOption['id'] | null;
-    })[] = [];
-    if (projectStory.stories.length > 0) {
-      newStoryList.push(projectStory.stories[0]);
-    }
-    newStoryList.push(
-      ...newStoryIssues.map(
-        (i): Omit<FieldOption, 'id'> & { id: FieldOption['id'] | null } => ({
-          id: null,
-          name: i.title,
-          color: 'RED',
-          description: '',
-        }),
-      ),
-    );
-    if (projectStory.stories.length > 1) {
-      newStoryList.push(
-        ...projectStory.stories.slice(1, projectStory.stories.length),
+  ): StoryListEntry[] => {
+    const newStoryIssues = this.findNewStoryIssues(storyObjectMap, issues);
+    return [...newStoryIssues]
+      .reverse()
+      .reduce<StoryListEntry[]>(
+        (acc, issue) => buildStoryListWithNew(acc, issue.title),
+        [...projectStory.stories],
       );
-    }
-    return newStoryList;
   };
 }

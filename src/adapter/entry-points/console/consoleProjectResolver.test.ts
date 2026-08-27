@@ -61,18 +61,18 @@ describe('createConsoleProjectResolver', () => {
     const loadProject = jest.fn(async (url: string) =>
       url.includes('acme') ? acmeProject : globexProject,
     );
-    const resolver = createConsoleProjectResolver(
+    const { resolve } = createConsoleProjectResolver(
       {
         acme: 'https://github.com/orgs/acme/projects/1',
         globex: 'https://github.com/orgs/globex/projects/2',
       },
       loadProject,
     );
-    await expect(resolver('acme')).resolves.toEqual({
+    await expect(resolve('acme')).resolves.toEqual({
       pjcode: 'acme',
       project: acmeProject,
     });
-    await expect(resolver('globex')).resolves.toEqual({
+    await expect(resolve('globex')).resolves.toEqual({
       pjcode: 'globex',
       project: globexProject,
     });
@@ -80,32 +80,52 @@ describe('createConsoleProjectResolver', () => {
 
   it('returns null for a pjcode that has no configured project url', async () => {
     const loadProject = jest.fn(async () => acmeProject);
-    const resolver = createConsoleProjectResolver(
+    const { resolve } = createConsoleProjectResolver(
       { acme: 'https://github.com/orgs/acme/projects/1' },
       loadProject,
     );
-    await expect(resolver('unknown')).resolves.toBeNull();
+    await expect(resolve('unknown')).resolves.toBeNull();
     expect(loadProject).not.toHaveBeenCalled();
   });
 
   it('returns null when the project fails to load', async () => {
     const loadProject = jest.fn(async () => null);
-    const resolver = createConsoleProjectResolver(
+    const { resolve } = createConsoleProjectResolver(
       { acme: 'https://github.com/orgs/acme/projects/1' },
       loadProject,
     );
-    await expect(resolver('acme')).resolves.toBeNull();
+    await expect(resolve('acme')).resolves.toBeNull();
   });
 
   it('loads each project at most once and serves later calls from cache', async () => {
     const loadProject = jest.fn(async () => acmeProject);
-    const resolver = createConsoleProjectResolver(
+    const { resolve } = createConsoleProjectResolver(
       { acme: 'https://github.com/orgs/acme/projects/1' },
       loadProject,
     );
-    await resolver('acme');
-    await resolver('acme');
+    await resolve('acme');
+    await resolve('acme');
     expect(loadProject).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-fetches the project after invalidation', async () => {
+    const freshProject: Project = { ...mock<Project>(), id: 'PVT_fresh' };
+    let callCount = 0;
+    const loadProject = jest.fn(async () =>
+      callCount++ === 0 ? acmeProject : freshProject,
+    );
+    const { resolve, invalidate } = createConsoleProjectResolver(
+      { acme: 'https://github.com/orgs/acme/projects/1' },
+      loadProject,
+    );
+    await expect(resolve('acme')).resolves.toMatchObject({
+      project: acmeProject,
+    });
+    invalidate('acme');
+    await expect(resolve('acme')).resolves.toMatchObject({
+      project: freshProject,
+    });
+    expect(loadProject).toHaveBeenCalledTimes(2);
   });
 });
 

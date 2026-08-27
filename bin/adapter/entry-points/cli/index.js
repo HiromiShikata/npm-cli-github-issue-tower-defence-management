@@ -37,50 +37,50 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.runCliProgram = exports.reportFatalErrorAndExit = exports.program = exports.fetchProjectReadme = exports.mergeConfigs = exports.parseProjectReadmeConfig = exports.loadConfigFile = void 0;
-const fs_1 = __importDefault(require("fs"));
+exports.runCliProgram = exports.reportFatalErrorAndExit = exports.program = exports.parseProjectReadmeConfig = exports.mergeConfigs = exports.loadConfigFile = exports.fetchProjectReadme = void 0;
 const commander_1 = require("commander");
+const fs_1 = __importDefault(require("fs"));
 var projectConfig_1 = require("./projectConfig");
-Object.defineProperty(exports, "loadConfigFile", { enumerable: true, get: function () { return projectConfig_1.loadConfigFile; } });
-Object.defineProperty(exports, "parseProjectReadmeConfig", { enumerable: true, get: function () { return projectConfig_1.parseProjectReadmeConfig; } });
-Object.defineProperty(exports, "mergeConfigs", { enumerable: true, get: function () { return projectConfig_1.mergeConfigs; } });
 Object.defineProperty(exports, "fetchProjectReadme", { enumerable: true, get: function () { return projectConfig_1.fetchProjectReadme; } });
-const projectConfig_2 = require("./projectConfig");
-const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
-const rotationOrderFileWriter_1 = require("../handlers/rotationOrderFileWriter");
-const ProxyClaudeTokenUsageRepository_1 = require("../../repositories/ProxyClaudeTokenUsageRepository");
-const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
+Object.defineProperty(exports, "loadConfigFile", { enumerable: true, get: function () { return projectConfig_1.loadConfigFile; } });
+Object.defineProperty(exports, "mergeConfigs", { enumerable: true, get: function () { return projectConfig_1.mergeConfigs; } });
+Object.defineProperty(exports, "parseProjectReadmeConfig", { enumerable: true, get: function () { return projectConfig_1.parseProjectReadmeConfig; } });
+const path = __importStar(require("path"));
 const CheckIssueReviewReadinessUseCase_1 = require("../../../domain/usecases/CheckIssueReviewReadinessUseCase");
-const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
+const DashboardProjectCode_1 = require("../../../domain/usecases/dashboard/DashboardProjectCode");
+const OwnerCallFile_1 = require("../../../domain/usecases/intmux/OwnerCallFile");
+const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
+const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
+const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
+const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
+const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const GraphqlProjectRepository_1 = require("../../repositories/GraphqlProjectRepository");
-const ApiV3IssueRepository_1 = require("../../repositories/issue/ApiV3IssueRepository");
-const RestIssueRepository_1 = require("../../repositories/issue/RestIssueRepository");
-const GraphqlProjectItemRepository_1 = require("../../repositories/issue/GraphqlProjectItemRepository");
 const ApiV3CheerioRestIssueRepository_1 = require("../../repositories/issue/ApiV3CheerioRestIssueRepository");
-const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
-const localStorageCacheDirectory_1 = require("../../repositories/localStorageCacheDirectory");
-const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
+const ApiV3IssueRepository_1 = require("../../repositories/issue/ApiV3IssueRepository");
+const GraphqlProjectItemRepository_1 = require("../../repositories/issue/GraphqlProjectItemRepository");
+const RestIssueRepository_1 = require("../../repositories/issue/RestIssueRepository");
 const LocalCommandIssueAttachmentRepository_1 = require("../../repositories/LocalCommandIssueAttachmentRepository");
+const LocalStorageCacheRepository_1 = require("../../repositories/LocalStorageCacheRepository");
+const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
+const localStorageCacheDirectory_1 = require("../../repositories/localStorageCacheDirectory");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
 const NodeTmuxSessionRepository_1 = require("../../repositories/NodeTmuxSessionRepository");
 const ProcTakeOwnershipSpawnRepository_1 = require("../../repositories/ProcTakeOwnershipSpawnRepository");
-const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
-const FetchWebhookRepository_1 = require("../../repositories/FetchWebhookRepository");
-const FileSystemConsoleTabsRepository_1 = require("../handlers/FileSystemConsoleTabsRepository");
-const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
-const path = __importStar(require("path"));
-const webServer_1 = require("../console/webServer");
-const DashboardProjectCode_1 = require("../../../domain/usecases/dashboard/DashboardProjectCode");
-const ensureConsoleRunning_1 = require("../console/ensureConsoleRunning");
-const consoleReadApi_1 = require("../console/consoleReadApi");
-const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
+const ProxyClaudeTokenUsageRepository_1 = require("../../repositories/ProxyClaudeTokenUsageRepository");
+const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const consoleGithubTokenResolver_1 = require("../console/consoleGithubTokenResolver");
-const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
-const LiveSessionOauthTokenSelectHandler_1 = require("../handlers/LiveSessionOauthTokenSelectHandler");
+const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
+const consoleReadApi_1 = require("../console/consoleReadApi");
+const ensureConsoleRunning_1 = require("../console/ensureConsoleRunning");
+const webServer_1 = require("../console/webServer");
+const FileSystemConsoleTabsRepository_1 = require("../handlers/FileSystemConsoleTabsRepository");
 const InTmuxByHumanSessionTokenCountHandler_1 = require("../handlers/InTmuxByHumanSessionTokenCountHandler");
-const fleetConfig_1 = require("./fleetConfig");
-const OwnerCallFile_1 = require("../../../domain/usecases/intmux/OwnerCallFile");
+const LiveSessionOauthTokenSelectHandler_1 = require("../handlers/LiveSessionOauthTokenSelectHandler");
+const OauthTokenSelectHandler_1 = require("../handlers/OauthTokenSelectHandler");
 const ownerCallFileStore_1 = require("../handlers/ownerCallFileStore");
+const rotationOrderFileWriter_1 = require("../handlers/rotationOrderFileWriter");
+const fleetConfig_1 = require("./fleetConfig");
+const projectConfig_2 = require("./projectConfig");
 const DEFAULT_IN_TMUX_DATA_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 const DEFAULT_DASHBOARD_DATA_DIR = null;
@@ -496,7 +496,7 @@ const runServeWeb = async (options) => {
     const resolveProjectRepository = (0, consoleGithubTokenResolver_1.createConsoleProjectRepositoryResolver)(resolveGithubToken, buildProjectRepositoryForToken);
     const pjcodeToProjectUrl = (0, consoleProjectResolver_1.buildPjcodeToProjectUrl)(projectName, projectUrl, config.consoleProjects ?? null);
     const isPjcodeConfigured = (0, consoleProjectResolver_1.createPjcodeConfigChecker)(pjcodeToProjectUrl);
-    const resolveProject = (0, consoleProjectResolver_1.createConsoleProjectResolver)(pjcodeToProjectUrl, (0, consoleProjectResolver_1.createConsoleProjectLoader)(resolveProjectRepository, (targetProjectId) => issueRepository.getCachedProject(targetProjectId), (message) => console.error(message)));
+    const { resolve: resolveProject, invalidate: invalidateProject } = (0, consoleProjectResolver_1.createConsoleProjectResolver)(pjcodeToProjectUrl, (0, consoleProjectResolver_1.createConsoleProjectLoader)(resolveProjectRepository, (targetProjectId) => issueRepository.getCachedProject(targetProjectId), (message) => console.error(message)));
     const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
     const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
@@ -515,6 +515,8 @@ const runServeWeb = async (options) => {
         resolveIssueRepository,
         resolveProject,
         isPjcodeConfigured,
+        resolveProjectRepository,
+        invalidateProject,
         issueAttachmentRepository: new LocalCommandIssueAttachmentRepository_1.LocalCommandIssueAttachmentRepository(new NodeLocalCommandRunner_1.NodeLocalCommandRunner(), resolveGithubTokenForItemUrl),
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         pullRequestStatusCache: new consoleReadApi_1.PullRequestStatusCache(),

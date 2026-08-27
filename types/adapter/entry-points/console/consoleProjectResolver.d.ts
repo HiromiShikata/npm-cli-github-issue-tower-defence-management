@@ -8,5 +8,9 @@ export type ConsoleProjectIdAndProjectReader = {
 export declare const createConsoleProjectLoader: (resolveProjectRepository: (projectUrl: string) => ConsoleProjectIdAndProjectReader, getCachedProject: (projectId: string) => Promise<Project | null>, reportLoadFailure: (message: string) => void) => ConsoleProjectLoader;
 export declare const buildPjcodeToProjectUrl: (defaultPjcode: string, defaultProjectUrl: string, consoleProjects: Record<string, string> | null) => Record<string, string>;
 export declare const createPjcodeConfigChecker: (pjcodeToProjectUrl: Record<string, string>) => ConsolePjcodeValidator;
-export declare const createConsoleProjectResolver: (pjcodeToProjectUrl: Record<string, string>, loadProject: ConsoleProjectLoader) => ConsoleProjectResolver;
+export type ConsoleProjectResolverBundle = {
+    resolve: ConsoleProjectResolver;
+    invalidate: (pjcode: string) => void;
+};
+export declare const createConsoleProjectResolver: (pjcodeToProjectUrl: Record<string, string>, loadProject: ConsoleProjectLoader) => ConsoleProjectResolverBundle;
 //# sourceMappingURL=consoleProjectResolver.d.ts.map

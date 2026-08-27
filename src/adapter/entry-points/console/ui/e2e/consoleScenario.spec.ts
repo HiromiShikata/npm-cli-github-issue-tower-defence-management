@@ -459,10 +459,10 @@ test('creates an issue for a story when the add-task button and form are used', 
   await tdpmRow.locator('.console-op-button', { hasText: 'Add task' }).click();
 
   await page
-    .locator('.console-story-create-input')
+    .locator('.console-inline-input-form-input')
     .fill('New task for TDPM Console port');
   await page
-    .locator('.console-story-create-form .console-op-button', {
+    .locator('.console-inline-input-form .console-op-button', {
       hasText: 'Create',
     })
     .click();
@@ -477,6 +477,41 @@ test('creates an issue for a story when the add-task button and form are used', 
   expect(harness.createIssueCalls[0].repo).toBe(
     'npm-cli-github-issue-tower-defence-management',
   );
+});
+
+test('creates a new story when the add-story button and form are used', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+
+  await page
+    .locator('.console-add-story-section .console-op-button', {
+      hasText: 'Add story',
+    })
+    .click();
+
+  await page
+    .locator('.console-add-story-section .console-inline-input-form-input')
+    .fill('My new story');
+  await page
+    .locator(
+      '.console-add-story-section .console-inline-input-form .console-op-button',
+      {
+        hasText: 'Create',
+      },
+    )
+    .click();
+
+  await expect
+    .poll(() => harness.addStoryCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.addStoryCalls[0].storyName).toBe('My new story');
+
+  await expect(
+    page.locator('.console-add-story-section .console-inline-input-form'),
+  ).toHaveCount(0);
 });
 
 test('reorders stories on the triage tab with up/down buttons', async ({

@@ -24,7 +24,9 @@ import {
   ConsoleIssueRepositoryResolver,
   ConsoleOperationContext,
   ConsolePjcodeValidator,
+  ConsoleProjectRepositoryResolver,
   ConsoleProjectResolver,
+  handleStoryAdd,
   handleAttachmentUpload,
   handleComment,
   handleCreateIssue,
@@ -233,6 +235,8 @@ export type WebServerOptions = {
   resolveIssueRepository?: ConsoleIssueRepositoryResolver | null;
   resolveProject?: ConsoleProjectResolver | null;
   isPjcodeConfigured?: ConsolePjcodeValidator | null;
+  resolveProjectRepository?: ConsoleProjectRepositoryResolver | null;
+  invalidateProject?: ((pjcode: string) => void) | null;
   issueAttachmentRepository?: IssueAttachmentRepository | null;
   projectRepository?: Pick<ProjectRepository, 'updateStoryList'> | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
@@ -540,6 +544,8 @@ const dispatchOperation = (
       return handleCreateIssue(context, body);
     case '/api/reorderstory':
       return handleReorderStory(context, body);
+    case '/api/addstory':
+      return handleStoryAdd(context, body);
     default:
       return null;
   }
@@ -574,6 +580,8 @@ const handleOperationApi = async (
         ? (project, stories) =>
             projectRepository.updateStoryList(project, stories)
         : null,
+    resolveProjectRepository: options.resolveProjectRepository ?? null,
+    invalidateProject: options.invalidateProject ?? null,
   };
   const dispatched = dispatchOperation(context, requestPath, body);
   if (dispatched === null) {

@@ -2,18 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 import { colorFromEnum } from '../../logic/colors';
 import type { ConsoleStoryEntry } from '../../logic/types';
 
-type StoryCreateFormProps = {
-  storyOptionId: string;
-  onSubmit: (storyOptionId: string, title: string) => Promise<void>;
+type InlineInputFormProps = {
+  placeholder: string;
+  emptyValueError: string;
+  onSubmit: (value: string) => Promise<void>;
   onCancel: () => void;
 };
 
-const StoryCreateForm = ({
-  storyOptionId,
+const InlineInputForm = ({
+  placeholder,
+  emptyValueError,
   onSubmit,
   onCancel,
-}: StoryCreateFormProps) => {
-  const [titleInput, setTitleInput] = useState('');
+}: InlineInputFormProps) => {
+  const [valueInput, setValueInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -23,15 +25,15 @@ const StoryCreateForm = ({
   }, []);
 
   const handleSubmit = async (): Promise<void> => {
-    const trimmed = titleInput.trim();
+    const trimmed = valueInput.trim();
     if (trimmed.length === 0) {
-      setSubmitError('Title is required');
+      setSubmitError(emptyValueError);
       return;
     }
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await onSubmit(storyOptionId, trimmed);
+      await onSubmit(trimmed);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -41,7 +43,7 @@ const StoryCreateForm = ({
 
   return (
     <form
-      className="console-story-create-form"
+      className="console-inline-input-form"
       onSubmit={(event) => {
         event.preventDefault();
         void handleSubmit();
@@ -50,10 +52,10 @@ const StoryCreateForm = ({
       <input
         ref={inputRef}
         type="text"
-        className="console-story-create-input"
-        placeholder="Issue title"
-        value={titleInput}
-        onChange={(e) => setTitleInput(e.target.value)}
+        className="console-inline-input-form-input"
+        placeholder={placeholder}
+        value={valueInput}
+        onChange={(e) => setValueInput(e.target.value)}
         disabled={submitting}
       />
       <button type="submit" className="console-op-button" disabled={submitting}>
@@ -76,11 +78,31 @@ const StoryCreateForm = ({
   );
 };
 
+type StoryCreateFormProps = {
+  storyOptionId: string;
+  onSubmit: (storyOptionId: string, title: string) => Promise<void>;
+  onCancel: () => void;
+};
+
+const StoryCreateForm = ({
+  storyOptionId,
+  onSubmit,
+  onCancel,
+}: StoryCreateFormProps) => (
+  <InlineInputForm
+    placeholder="Issue title"
+    emptyValueError="Title is required"
+    onSubmit={(title) => onSubmit(storyOptionId, title)}
+    onCancel={onCancel}
+  />
+);
+
 export type ConsoleStoryListProps = {
   stories: ConsoleStoryEntry[];
   isLoading: boolean;
   error: string | null;
   onCreateIssue: (storyOptionId: string, title: string) => Promise<void>;
+  onAddStory: (storyName: string) => Promise<void>;
 };
 
 export const ConsoleStoryList = ({
@@ -88,8 +110,10 @@ export const ConsoleStoryList = ({
   isLoading,
   error,
   onCreateIssue,
+  onAddStory,
 }: ConsoleStoryListProps) => {
   const [expandedOptionId, setExpandedOptionId] = useState<string | null>(null);
+  const [addStoryExpanded, setAddStoryExpanded] = useState(false);
 
   if (error !== null) {
     return (
@@ -101,10 +125,6 @@ export const ConsoleStoryList = ({
 
   if (isLoading) {
     return <p className="console-list-message">Loading stories...</p>;
-  }
-
-  if (stories.length === 0) {
-    return <p className="console-list-empty">No active stories</p>;
   }
 
   const handleAddClick = (storyOptionId: string): void => {
@@ -122,58 +142,86 @@ export const ConsoleStoryList = ({
   };
 
   return (
-    <ul className="console-story-list">
-      {stories.map((entry) => {
-        const palette = colorFromEnum(entry.color);
-        const isExpanded = expandedOptionId === entry.storyOptionId;
-        return (
-          <li key={entry.storyOptionId} className="console-story-list-row">
-            <div className="console-story-list-row-main">
-              {entry.storyViewUrl ? (
-                <a
-                  href={entry.storyViewUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="console-storytag"
-                  style={{ color: palette.fg, borderColor: palette.border }}
-                >
-                  <span
-                    className="console-story-dot"
-                    style={{ backgroundColor: palette.dot }}
+    <div className="console-story-list-container">
+      {stories.length === 0 ? (
+        <p className="console-list-empty">No active stories</p>
+      ) : (
+        <ul className="console-story-list">
+          {stories.map((entry) => {
+            const palette = colorFromEnum(entry.color);
+            const isExpanded = expandedOptionId === entry.storyOptionId;
+            return (
+              <li key={entry.storyOptionId} className="console-story-list-row">
+                <div className="console-story-list-row-main">
+                  {entry.storyViewUrl ? (
+                    <a
+                      href={entry.storyViewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="console-storytag"
+                      style={{ color: palette.fg, borderColor: palette.border }}
+                    >
+                      <span
+                        className="console-story-dot"
+                        style={{ backgroundColor: palette.dot }}
+                      />
+                      {entry.storyName}
+                    </a>
+                  ) : (
+                    <span
+                      className="console-storytag"
+                      style={{ color: palette.fg, borderColor: palette.border }}
+                    >
+                      <span
+                        className="console-story-dot"
+                        style={{ backgroundColor: palette.dot }}
+                      />
+                      {entry.storyName}
+                    </span>
+                  )}
+                  <span className="console-story-count">
+                    {entry.openItemCount}
+                  </span>
+                  <button
+                    type="button"
+                    className="console-op-button"
+                    onClick={() => handleAddClick(entry.storyOptionId)}
+                  >
+                    Add task
+                  </button>
+                </div>
+                {isExpanded && (
+                  <StoryCreateForm
+                    storyOptionId={entry.storyOptionId}
+                    onSubmit={handleSubmit}
+                    onCancel={() => setExpandedOptionId(null)}
                   />
-                  {entry.storyName}
-                </a>
-              ) : (
-                <span
-                  className="console-storytag"
-                  style={{ color: palette.fg, borderColor: palette.border }}
-                >
-                  <span
-                    className="console-story-dot"
-                    style={{ backgroundColor: palette.dot }}
-                  />
-                  {entry.storyName}
-                </span>
-              )}
-              <span className="console-story-count">{entry.openItemCount}</span>
-              <button
-                type="button"
-                className="console-op-button"
-                onClick={() => handleAddClick(entry.storyOptionId)}
-              >
-                Add task
-              </button>
-            </div>
-            {isExpanded && (
-              <StoryCreateForm
-                storyOptionId={entry.storyOptionId}
-                onSubmit={handleSubmit}
-                onCancel={() => setExpandedOptionId(null)}
-              />
-            )}
-          </li>
-        );
-      })}
-    </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className="console-add-story-section">
+        <button
+          type="button"
+          className="console-op-button"
+          onClick={() => setAddStoryExpanded(!addStoryExpanded)}
+        >
+          Add story
+        </button>
+        {addStoryExpanded && (
+          <InlineInputForm
+            placeholder="Story name"
+            emptyValueError="Story name is required"
+            onSubmit={async (storyName) => {
+              await onAddStory(storyName);
+              setAddStoryExpanded(false);
+            }}
+            onCancel={() => setAddStoryExpanded(false)}
+          />
+        )}
+      </div>
+    </div>
   );
 };

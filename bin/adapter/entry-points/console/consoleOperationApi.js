@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleReorderStory = exports.handleIntmux = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleStoryAdd = exports.handleReorderStory = exports.handleIntmux = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+const Project_1 = require("../../../domain/entities/Project");
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
@@ -89,7 +90,7 @@ const resolveBinding = async (context, body) => {
     }
     return binding;
 };
-const isOperationResponse = (value) => Object.prototype.hasOwnProperty.call(value, 'statusCode');
+const isOperationResponse = (value) => Object.hasOwn(value, 'statusCode');
 // Validates that a pjcode is configured WITHOUT loading the ProjectV2 via
 // GraphQL. Close operations only need the pjcode (for recordDone namespacing)
 // and the issue/PR URL, both of which are handled through REST. Loading the
@@ -541,4 +542,27 @@ const handleReorderStory = async (context, body) => {
     return ok();
 };
 exports.handleReorderStory = handleReorderStory;
+const handleStoryAdd = async (context, body) => {
+    if (context.resolveProjectRepository === null) {
+        return badGateway('project repository is not configured');
+    }
+    const storyName = body.storyName;
+    if (!isNonEmptyString(storyName)) {
+        return badRequest('storyName is required');
+    }
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+        return binding;
+    }
+    const { pjcode, project } = binding;
+    if (project.story === null) {
+        return badRequest('project does not have a story field');
+    }
+    const newStoryList = (0, Project_1.buildStoryListWithNew)(project.story.stories, storyName);
+    const projectRepository = context.resolveProjectRepository(project.url);
+    await projectRepository.updateStoryList(project, newStoryList);
+    context.invalidateProject?.(pjcode);
+    return ok();
+};
+exports.handleStoryAdd = handleStoryAdd;
 //# sourceMappingURL=consoleOperationApi.js.map

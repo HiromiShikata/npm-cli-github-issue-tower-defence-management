@@ -1,5 +1,7 @@
 import {
+  ADD_STORY_OPERATION_PATH,
   createConsoleApiClient,
+  postConsoleAddStory,
   postConsoleOperation,
   postConsoleReviewComment,
 } from './consoleApi';
@@ -416,5 +418,29 @@ describe('postConsoleReviewComment', () => {
         body: 'Consider extracting this into a helper.',
       }),
     ).rejects.toThrow('line must be part of the diff');
+  });
+});
+
+describe('postConsoleAddStory', () => {
+  it('posts the story name to the addstory endpoint', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleAddStory({ pjcode: 'acme', storyName: 'My new story' });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(ADD_STORY_OPERATION_PATH);
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      pjcode: 'acme',
+      storyName: 'My new story',
+    });
+  });
+
+  it('throws the error reason surfaced by the server', async () => {
+    mockFetchFailureOnce(
+      400,
+      JSON.stringify({ error: 'storyName is required' }),
+    );
+    await expect(
+      postConsoleAddStory({ pjcode: 'acme', storyName: '' }),
+    ).rejects.toThrow('storyName is required');
   });
 });

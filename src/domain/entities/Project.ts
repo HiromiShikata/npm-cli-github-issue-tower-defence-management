@@ -6,6 +6,29 @@ export type FieldOption = {
     'GRAY' | 'BLUE' | 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED' | 'PINK' | 'PURPLE';
   description: string;
 };
+
+export type StoryListEntry = Omit<FieldOption, 'id'> & {
+  id: FieldOption['id'] | null;
+};
+
+export const buildStoryListWithNew = (
+  existingStories: StoryListEntry[],
+  newName: string,
+): StoryListEntry[] => {
+  if (existingStories.some((s) => s.name === newName)) {
+    return [...existingStories];
+  }
+  const newEntry: StoryListEntry = {
+    id: null,
+    name: newName,
+    color: 'RED',
+    description: '',
+  };
+  if (existingStories.length === 0) {
+    return [newEntry];
+  }
+  return [existingStories[0], newEntry, ...existingStories.slice(1)];
+};
 export type Project = {
   id: string;
   url: string;

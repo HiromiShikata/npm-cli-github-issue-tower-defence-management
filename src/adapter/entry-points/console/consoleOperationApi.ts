@@ -1,15 +1,20 @@
+import type { Issue } from '../../../domain/entities/Issue';
 import {
+  buildStoryListWithNew,
+  type FieldOption,
+  type Project,
+} from '../../../domain/entities/Project';
+import type { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
+import type {
   IssueRepository,
   PullRequestReviewCommentSide,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
-import { FieldOption, Project } from '../../../domain/entities/Project';
-import { Issue } from '../../../domain/entities/Issue';
+import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import {
-  recordDoneProjectItemIdAcrossTabs,
-  recordDoneProjectItemIdForTabs,
   CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
   CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
+  recordDoneProjectItemIdAcrossTabs,
+  recordDoneProjectItemIdForTabs,
 } from './consoleDoneStore';
 import { findConsoleItemUrl } from './consoleItemUrlLookup';
 
@@ -32,6 +37,10 @@ export type ConsoleIssueRepositoryResolver = (
   issueOrPullRequestUrl: string,
 ) => IssueRepository;
 
+export type ConsoleProjectRepositoryResolver = (
+  projectUrl: string,
+) => Pick<ProjectRepository, 'updateStoryList'>;
+
 export type ConsoleOperationContext = {
   resolveIssueRepository: ConsoleIssueRepositoryResolver;
   resolveProject: ConsoleProjectResolver;
@@ -41,6 +50,8 @@ export type ConsoleOperationContext = {
   updateStoryList:
     | ((project: Project, stories: FieldOption[]) => Promise<FieldOption[]>)
     | null;
+  resolveProjectRepository: ConsoleProjectRepositoryResolver | null;
+  invalidateProject: ((pjcode: string) => void) | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -193,8 +204,7 @@ const resolveBinding = async (
 
 const isOperationResponse = (
   value: ConsoleProjectBinding | ConsoleOperationResponse,
-): value is ConsoleOperationResponse =>
-  Object.prototype.hasOwnProperty.call(value, 'statusCode');
+): value is ConsoleOperationResponse => Object.hasOwn(value, 'statusCode');
 
 // Validates that a pjcode is configured WITHOUT loading the ProjectV2 via
 // GraphQL. Close operations only need the pjcode (for recordDone namespacing)
@@ -767,5 +777,31 @@ export const handleReorderStory = async (
   reordered[index] = reordered[swapIndex];
   reordered[swapIndex] = temp;
   await context.updateStoryList(project, reordered);
+  return ok();
+};
+
+export const handleStoryAdd = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  if (context.resolveProjectRepository === null) {
+    return badGateway('project repository is not configured');
+  }
+  const storyName = body.storyName;
+  if (!isNonEmptyString(storyName)) {
+    return badRequest('storyName is required');
+  }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { pjcode, project } = binding;
+  if (project.story === null) {
+    return badRequest('project does not have a story field');
+  }
+  const newStoryList = buildStoryListWithNew(project.story.stories, storyName);
+  const projectRepository = context.resolveProjectRepository(project.url);
+  await projectRepository.updateStoryList(project, newStoryList);
+  context.invalidateProject?.(pjcode);
   return ok();
 };

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreateNewStoryByLabelUseCase = void 0;
+const Project_1 = require("../entities/Project");
 const LOG_PREFIX = '[CreateNewStoryByLabel]';
 class CreateNewStoryByLabelUseCase {
     constructor(projectRepository, issueRepository) {
@@ -64,22 +65,10 @@ class CreateNewStoryByLabelUseCase {
             });
         };
         this.createNewStoryList = (projectStory, storyObjectMap, issues) => {
-            const existingStoryNames = new Set(projectStory.stories.map((story) => story.name));
-            const newStoryIssues = this.findNewStoryIssues(storyObjectMap, issues).filter((issue) => !existingStoryNames.has(issue.title));
-            const newStoryList = [];
-            if (projectStory.stories.length > 0) {
-                newStoryList.push(projectStory.stories[0]);
-            }
-            newStoryList.push(...newStoryIssues.map((i) => ({
-                id: null,
-                name: i.title,
-                color: 'RED',
-                description: '',
-            })));
-            if (projectStory.stories.length > 1) {
-                newStoryList.push(...projectStory.stories.slice(1, projectStory.stories.length));
-            }
-            return newStoryList;
+            const newStoryIssues = this.findNewStoryIssues(storyObjectMap, issues);
+            return [...newStoryIssues]
+                .reverse()
+                .reduce((acc, issue) => (0, Project_1.buildStoryListWithNew)(acc, issue.title), [...projectStory.stories]);
         };
     }
 }

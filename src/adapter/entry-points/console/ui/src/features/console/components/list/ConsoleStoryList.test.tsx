@@ -19,6 +19,11 @@ const storyEntries: ConsoleStoryEntry[] = [
   },
 ];
 
+const defaultProps = {
+  onCreateIssue: () => Promise.resolve(),
+  onAddStory: () => Promise.resolve(),
+};
+
 describe('ConsoleStoryList', () => {
   it('renders each story name and its open item count', () => {
     const { getByText } = render(
@@ -26,7 +31,7 @@ describe('ConsoleStoryList', () => {
         stories={storyEntries}
         isLoading={false}
         error={null}
-        onCreateIssue={() => Promise.resolve()}
+        {...defaultProps}
       />,
     );
     expect(getByText('TDPM Console port')).toBeInTheDocument();
@@ -41,7 +46,7 @@ describe('ConsoleStoryList', () => {
         stories={storyEntries}
         isLoading={false}
         error={null}
-        onCreateIssue={() => Promise.resolve()}
+        {...defaultProps}
       />,
     );
     const buttons = getAllByRole('button', { name: 'Add task' });
@@ -54,7 +59,7 @@ describe('ConsoleStoryList', () => {
         stories={storyEntries}
         isLoading={false}
         error={null}
-        onCreateIssue={() => Promise.resolve()}
+        {...defaultProps}
       />,
     );
     const [firstButton] = getAllByRole('button', { name: 'Add task' });
@@ -68,7 +73,7 @@ describe('ConsoleStoryList', () => {
         stories={storyEntries}
         isLoading={false}
         error={null}
-        onCreateIssue={() => Promise.resolve()}
+        {...defaultProps}
       />,
     );
     const [firstButton] = getAllByRole('button', { name: 'Add task' });
@@ -85,6 +90,7 @@ describe('ConsoleStoryList', () => {
         isLoading={false}
         error={null}
         onCreateIssue={onCreateIssue}
+        onAddStory={() => Promise.resolve()}
       />,
     );
     fireEvent.click(getAllByRole('button', { name: 'Add task' })[0]);
@@ -106,7 +112,7 @@ describe('ConsoleStoryList', () => {
         stories={storyEntries}
         isLoading={false}
         error={null}
-        onCreateIssue={() => Promise.resolve()}
+        {...defaultProps}
       />,
     );
     fireEvent.click(getAllByRole('button', { name: 'Add task' })[0]);
@@ -127,6 +133,7 @@ describe('ConsoleStoryList', () => {
         isLoading={false}
         error={null}
         onCreateIssue={onCreateIssue}
+        onAddStory={() => Promise.resolve()}
       />,
     );
     fireEvent.click(getAllByRole('button', { name: 'Add task' })[0]);
@@ -149,6 +156,7 @@ describe('ConsoleStoryList', () => {
         isLoading={false}
         error={null}
         onCreateIssue={onCreateIssue}
+        onAddStory={() => Promise.resolve()}
       />,
     );
     fireEvent.click(getAllByRole('button', { name: 'Add task' })[0]);
@@ -165,7 +173,7 @@ describe('ConsoleStoryList', () => {
         stories={[]}
         isLoading={true}
         error={null}
-        onCreateIssue={() => Promise.resolve()}
+        {...defaultProps}
       />,
     );
     expect(getByText('Loading stories...')).toBeInTheDocument();
@@ -177,7 +185,7 @@ describe('ConsoleStoryList', () => {
         stories={[]}
         isLoading={false}
         error={null}
-        onCreateIssue={() => Promise.resolve()}
+        {...defaultProps}
       />,
     );
     expect(getByText('No active stories')).toBeInTheDocument();
@@ -189,7 +197,7 @@ describe('ConsoleStoryList', () => {
         stories={[]}
         isLoading={false}
         error="HTTP 503"
-        onCreateIssue={() => Promise.resolve()}
+        {...defaultProps}
       />,
     );
     expect(getByRole('alert')).toBeInTheDocument();
@@ -209,6 +217,7 @@ describe('ConsoleStoryList', () => {
         isLoading={false}
         error={null}
         onCreateIssue={() => Promise.resolve()}
+        onAddStory={() => Promise.resolve()}
       />,
     );
     const nameEl = getByText('TDPM Console port');
@@ -222,6 +231,7 @@ describe('ConsoleStoryList', () => {
         isLoading={false}
         error={null}
         onCreateIssue={() => Promise.resolve()}
+        onAddStory={() => Promise.resolve()}
       />,
     );
     const nameEl = getByText('TDPM Console port');
@@ -242,6 +252,7 @@ describe('ConsoleStoryList', () => {
         isLoading={false}
         error={null}
         onCreateIssue={() => Promise.resolve()}
+        onAddStory={() => Promise.resolve()}
       />,
     );
     const nameEl = getByText('TDPM Console port');
@@ -252,5 +263,113 @@ describe('ConsoleStoryList', () => {
     );
     expect(nameEl).toHaveAttribute('target', '_blank');
     expect(nameEl).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('renders an Add story button', () => {
+    const { getByRole } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        {...defaultProps}
+      />,
+    );
+    expect(getByRole('button', { name: 'Add story' })).toBeInTheDocument();
+  });
+
+  it('shows the Add story form when Add story button is clicked', () => {
+    const { getByRole, getByPlaceholderText } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        {...defaultProps}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: 'Add story' }));
+    expect(getByPlaceholderText('Story name')).toBeInTheDocument();
+  });
+
+  it('hides the Add story form when Add story button is clicked again', () => {
+    const { getByRole, queryByPlaceholderText } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        {...defaultProps}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: 'Add story' }));
+    fireEvent.click(getByRole('button', { name: 'Add story' }));
+    expect(queryByPlaceholderText('Story name')).toBeNull();
+  });
+
+  it('calls onAddStory with the story name and closes the form on success', async () => {
+    const onAddStory = jest.fn().mockResolvedValue(undefined);
+    const { getByRole, getByPlaceholderText, queryByPlaceholderText } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        onCreateIssue={() => Promise.resolve()}
+        onAddStory={onAddStory}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: 'Add story' }));
+    fireEvent.change(getByPlaceholderText('Story name'), {
+      target: { value: 'My new story' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    await waitFor(() =>
+      expect(onAddStory).toHaveBeenCalledWith('My new story'),
+    );
+    await waitFor(() =>
+      expect(queryByPlaceholderText('Story name')).toBeNull(),
+    );
+  });
+
+  it('shows a validation error when Add story Create is clicked with an empty name', () => {
+    const { getByRole, getByText } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        {...defaultProps}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: 'Add story' }));
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    expect(getByText('Story name is required')).toBeInTheDocument();
+  });
+
+  it('shows an API error when onAddStory rejects', async () => {
+    const onAddStory = jest.fn().mockRejectedValue(new Error('API failure'));
+    const { getByRole, getByPlaceholderText, getByText } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        onCreateIssue={() => Promise.resolve()}
+        onAddStory={onAddStory}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: 'Add story' }));
+    fireEvent.change(getByPlaceholderText('Story name'), {
+      target: { value: 'Bad story' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(getByText('API failure')).toBeInTheDocument());
+  });
+
+  it('renders Add story button even when there are no stories', () => {
+    const { getByRole } = render(
+      <ConsoleStoryList
+        stories={[]}
+        isLoading={false}
+        error={null}
+        {...defaultProps}
+      />,
+    );
+    expect(getByRole('button', { name: 'Add story' })).toBeInTheDocument();
   });
 });
