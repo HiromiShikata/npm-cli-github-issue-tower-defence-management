@@ -1,9 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ConsoleComment } from '../../logic/types';
 
 export type ConsoleCommentComposerProps = {
   initiallyOpen: boolean;
+  initialDraft?: string;
   onSubmit: (body: string) => Promise<ConsoleComment>;
+  onDraftChange?: (draft: string) => void;
   onUploadFile?: (file: File) => Promise<string>;
 };
 
@@ -73,11 +75,16 @@ export const removePlaceholder = (draft: string, fileName: string): string => {
 
 export const ConsoleCommentComposer = ({
   initiallyOpen,
+  initialDraft,
   onSubmit,
+  onDraftChange,
   onUploadFile,
 }: ConsoleCommentComposerProps) => {
   const [open, setOpen] = useState<boolean>(initiallyOpen);
-  const [draft, setDraft] = useState<string>('');
+  const [draft, setDraft] = useState<string>(initialDraft ?? '');
+  useEffect(() => {
+    onDraftChange?.(draft);
+  }, [draft, onDraftChange]);
   const [status, setStatus] = useState<ComposerStatus>({ kind: 'idle' });
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
     kind: 'idle',

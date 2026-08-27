@@ -112,6 +112,19 @@ export const ConsolePage = () => {
   const { activeTab, selectedItemKey, openItem, closeItem, selectTab } =
     navigation;
 
+  const commentDrafts = useRef(new Map<string, string>());
+  const handleCommentDraftChange = useCallback(
+    (draft: string) => {
+      if (selectedItemKey === null) return;
+      if (draft) {
+        commentDrafts.current.set(selectedItemKey, draft);
+      } else {
+        commentDrafts.current.delete(selectedItemKey);
+      }
+    },
+    [selectedItemKey],
+  );
+
   const caches = useConsoleCaches();
   const operations = useConsoleOperations(
     pjcode,
@@ -441,6 +454,10 @@ export const ConsolePage = () => {
             storyName={storyNameForSelected}
             overlayStatus={overlayStatusForSelected}
             now={now}
+            initialCommentDraft={
+              commentDrafts.current.get(selectedItem.projectItemId) ?? ''
+            }
+            onCommentDraftChange={handleCommentDraftChange}
             onQueueAction={handleQueueAction}
           />
         </div>

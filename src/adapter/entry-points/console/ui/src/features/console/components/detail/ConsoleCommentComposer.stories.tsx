@@ -44,3 +44,10 @@ export const ComposerUploadFailure: Story = {
     },
   },
 };
+
+export const ComposerWithSavedDraft: Story = {
+  args: {
+    initiallyOpen: true,
+    initialDraft: 'Previously typed text…',
+  },
+};

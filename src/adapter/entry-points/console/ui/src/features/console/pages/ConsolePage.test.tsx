@@ -837,6 +837,68 @@ describe('ConsolePage comment composer isolation', () => {
   });
 });
 
+describe('ConsolePage draft preservation', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? twoItemPrPayload()
+              : { ...twoItemPrPayload(), items: [] },
+        };
+      }
+      void init;
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('restores the typed text when returning to a task after navigating away', async () => {
+    const { container, getByText, findByText, getByPlaceholderText } = render(
+      <ConsolePage />,
+    );
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'work in progress' },
+    });
+
+    const detailScreen = container.querySelector('.console-detail-screen');
+    expect(detailScreen).not.toBeNull();
+
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 240, clientY: 100 },
+      { clientX: 40, clientY: 110 },
+    );
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#item/PVTI_2');
+    });
+
+    swipeDetailScreen(
+      detailScreen as HTMLElement,
+      { clientX: 40, clientY: 100 },
+      { clientX: 240, clientY: 110 },
+    );
+    await waitFor(() => {
+      expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
+        'work in progress',
+      );
+    });
+  });
+});
+
 describe('ConsolePage auto-advance tab', () => {
   beforeEach(() => {
     localStorage.clear();

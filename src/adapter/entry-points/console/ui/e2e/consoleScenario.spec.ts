@@ -309,6 +309,80 @@ test('opens the comment input with the item detail, keeps it on screen while the
   expect(dockHeightAfterPosting).toBe(dockHeightBeforePosting);
 });
 
+test('preserves the unsent comment draft when swiping between tasks', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Triage').click();
+
+  await itemRowByText(
+    page,
+    'Add Sonnet to Opus weekly-limit fallback routing per token',
+  ).click();
+
+  await expect(page.locator('.console-composer-input')).toBeVisible();
+  await page.locator('.console-composer-input').fill('work in progress draft');
+
+  const swipeDetailScreen = async (
+    fromX: number,
+    toX: number,
+  ): Promise<void> => {
+    await page.evaluate(
+      ([from, to]: [number, number]) => {
+        const screen = document.querySelector('.console-detail-screen');
+        if (!screen) throw new Error('.console-detail-screen not found');
+        const mkTouch = (x: number): Touch =>
+          new Touch({
+            identifier: 1,
+            target: screen,
+            clientX: x,
+            clientY: 200,
+            pageX: x,
+            pageY: 200,
+          });
+        screen.dispatchEvent(
+          new TouchEvent('touchstart', {
+            bubbles: true,
+            cancelable: true,
+            touches: [mkTouch(from)],
+          }),
+        );
+        screen.dispatchEvent(
+          new TouchEvent('touchmove', {
+            bubbles: true,
+            cancelable: true,
+            touches: [mkTouch(to)],
+          }),
+        );
+        screen.dispatchEvent(
+          new TouchEvent('touchend', {
+            bubbles: true,
+            cancelable: true,
+            changedTouches: [mkTouch(to)],
+            touches: [],
+          }),
+        );
+      },
+      [fromX, toX] as [number, number],
+    );
+  };
+
+  await swipeDetailScreen(300, 100);
+  await expect(page).toHaveURL(/PVTI_lADOABCD1234zgTRI00692/, {
+    timeout: 3000,
+  });
+
+  await swipeDetailScreen(100, 300);
+  await expect(page).toHaveURL(/PVTI_lADOABCD1234zgTRI00778/, {
+    timeout: 3000,
+  });
+
+  await expect(page.locator('.console-composer-input')).toHaveValue(
+    'work in progress draft',
+  );
+});
+
 test('renders the stories tab with non-gray stories, their open item counts, and an add-task button', async ({
   page,
 }) => {
