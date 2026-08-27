@@ -153,7 +153,7 @@ body {
 }
 
 .console-tab-pjname-option:hover,
-.console-tab-pjname-option[data-active='true'] {
+.console-tab-pjname-option[data-active="true"] {
   background: #21262d;
 }
 
