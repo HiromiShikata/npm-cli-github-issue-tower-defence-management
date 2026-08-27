@@ -1,3 +1,10 @@
+## [1.184.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.184.0...v1.184.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* **board-ingestion:** fall back to allowedIssueAuthors when autoAssignManagerAuthors is absent ([#1801](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1801)) ([1945d89](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1945d898ff3e7419ca8baf2312b4df2eb74d5125)), closes [HiromiShikata/secretary#4406](https://github.com/HiromiShikata/secretary/issues/4406)
+
 # [1.184.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.183.0...v1.184.0) (2026-08-27)
 
 

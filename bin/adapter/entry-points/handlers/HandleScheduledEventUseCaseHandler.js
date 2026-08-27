@@ -160,7 +160,9 @@ class HandleScheduledEventUseCaseHandler {
             const mergedInput = {
                 ...input,
                 allowedIssueAuthors: normalizeAllowedIssueAuthors(input.allowedIssueAuthors),
-                autoAssignManagerAuthors: normalizeAllowedIssueAuthors(readmeConfig.autoAssignManagerAuthors ?? input.autoAssignManagerAuthors),
+                autoAssignManagerAuthors: normalizeAllowedIssueAuthors(readmeConfig.autoAssignManagerAuthors ??
+                    input.autoAssignManagerAuthors ??
+                    input.allowedIssueAuthors),
                 claudeCodeOauthTokenListJsonPath: readmeConfig.claudeCodeOauthTokenListJsonPath ??
                     input.claudeCodeOauthTokenListJsonPath,
                 thresholdForAutoReject: readmeConfig.thresholdForAutoReject ?? input.thresholdForAutoReject,
