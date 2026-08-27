@@ -1,3 +1,16 @@
+# [1.184.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.183.0...v1.184.0) (2026-08-27)
+
+
+### Bug Fixes
+
+* **console-token-resolver:** derive per-project GitHub token from pjcode-named file in consoleGithubTokenFileDir ([#1703](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1703)) ([b2cd64b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b2cd64b626ab222c83565ee30169d64e60519ec2)), closes [#1695](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1695)
+
+
+### Features
+
+* **console:** make story names in the TDPM story tab clickable to open the story view ([#1704](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1704)) ([acdffce](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/acdffceab2df78b0dc64f3b5197b8e174524f842)), closes [#1698](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1698)
+* **eslint:** add no-restricted-syntax rule to enforce UTC-only Date methods ([#1760](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1760)) ([ae65933](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ae6593366255f7f48bd8b557fba62eb16e328898)), closes [#1759](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1759)
+
 # [1.183.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.182.0...v1.183.0) (2026-08-27)
 
 
