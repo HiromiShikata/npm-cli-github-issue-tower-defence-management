@@ -182,6 +182,7 @@ export class HandleScheduledEventUseCase {
       awLogStaleThresholdMinutes?: number;
       awaitingQualityCheckStatus?: string | null;
       autoAdvanceQualityCheckEnabled?: boolean;
+      autoRevertReopenedDoneEnabled?: boolean;
       labelsAsLlmAgentName?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
@@ -475,13 +476,15 @@ ${JSON.stringify(e)}
           allowedIssueAuthors,
         });
       }
-      try {
-        await this.reopenedDoneIssueRevertUseCase.run({ project, issues });
-      } catch (revertError) {
-        console.error(
-          `[HandleScheduledEvent] Failed to revert reopened Done issues for project ${project.url}: ${revertError instanceof Error ? revertError.message : String(revertError)}`,
-          revertError,
-        );
+      if (input.startPreparation.autoRevertReopenedDoneEnabled) {
+        try {
+          await this.reopenedDoneIssueRevertUseCase.run({ project, issues });
+        } catch (revertError) {
+          console.error(
+            `[HandleScheduledEvent] Failed to revert reopened Done issues for project ${project.url}: ${revertError instanceof Error ? revertError.message : String(revertError)}`,
+            revertError,
+          );
+        }
       }
       if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
         try {

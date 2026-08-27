@@ -386,4 +386,36 @@ describe('QualityCheckAdvanceUseCase', () => {
       'done-id',
     );
   });
+
+  it('does not advance an issue with stateReason REOPENED even when it has a merged PR', async () => {
+    const issue = createMockIssue({ stateReason: 'REOPENED' });
+    const mergedPr = createMergedPr(issue.url);
+    const project = createMockProject();
+
+    await useCase.run({
+      project,
+      issues: [issue, mergedPr],
+      evaluatedAt: FIXED_NOW,
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('advances an issue whose stateReason is COMPLETED even though it was previously REOPENED', async () => {
+    const issue = createMockIssue({ stateReason: 'COMPLETED' });
+    const mergedPr = createMergedPr(issue.url);
+    const project = createMockProject();
+
+    await useCase.run({
+      project,
+      issues: [issue, mergedPr],
+      evaluatedAt: FIXED_NOW,
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      project,
+      issue,
+      'done-id',
+    );
+  });
 });

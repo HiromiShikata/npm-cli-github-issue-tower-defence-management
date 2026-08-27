@@ -1642,7 +1642,36 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockReopenedDoneIssueRevertUseCase.run).not.toHaveBeenCalled();
       });
 
-      it('calls reopenedDoneIssueRevertUseCase with project and issues when startPreparation is configured', async () => {
+      it('does not call reopenedDoneIssueRevertUseCase when autoRevertReopenedDoneEnabled is absent', async () => {
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: false,
+          },
+        });
+
+        expect(mockReopenedDoneIssueRevertUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('does not call reopenedDoneIssueRevertUseCase when autoRevertReopenedDoneEnabled is false', async () => {
+        await useCase.run({
+          ...baseInput,
+          startPreparation: {
+            defaultAgentName: 'agent1',
+            configFilePath: '/path/to/config.yml',
+            maximumPreparingIssuesCount: null,
+            autoAdvanceQualityCheckEnabled: false,
+            autoRevertReopenedDoneEnabled: false,
+          },
+        });
+
+        expect(mockReopenedDoneIssueRevertUseCase.run).not.toHaveBeenCalled();
+      });
+
+      it('calls reopenedDoneIssueRevertUseCase with project and issues when autoRevertReopenedDoneEnabled is true', async () => {
         const mockProject = mock<Project>();
         const mockIssues: Issue[] = [];
         mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -1658,6 +1687,7 @@ describe('HandleScheduledEventUseCase', () => {
             configFilePath: '/path/to/config.yml',
             maximumPreparingIssuesCount: null,
             autoAdvanceQualityCheckEnabled: false,
+            autoRevertReopenedDoneEnabled: true,
           },
         });
 
@@ -1682,6 +1712,7 @@ describe('HandleScheduledEventUseCase', () => {
             configFilePath: '/path/to/config.yml',
             maximumPreparingIssuesCount: null,
             autoAdvanceQualityCheckEnabled: false,
+            autoRevertReopenedDoneEnabled: true,
           },
         });
 
