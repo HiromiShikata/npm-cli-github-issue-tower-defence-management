@@ -85,10 +85,19 @@ const classifySession = (
         sessionName,
         name,
         issueUrl: extractIssueUrlFromText(name),
+        runsUnderWorkspacePreparationScript: false,
       };
     }
     const kind: ClaudeHandoverSessionKind = 'bareNameLeader';
-    return { kind, pid, token, sessionName, name, issueUrl: null };
+    return {
+      kind,
+      pid,
+      token,
+      sessionName,
+      name,
+      issueUrl: null,
+      runsUnderWorkspacePreparationScript: false,
+    };
   }
   const issueUrl = parseIssueUrlFromPrint(commandArguments);
   if (issueUrl === null) {
@@ -101,6 +110,7 @@ const classifySession = (
     sessionName: null,
     name: null,
     issueUrl,
+    runsUnderWorkspacePreparationScript: false,
   };
 };
 

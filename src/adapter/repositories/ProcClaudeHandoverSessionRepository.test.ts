@@ -8,6 +8,7 @@ type FakeProcess = {
   comm: string;
   cmdline: string;
   environ: Record<string, string>;
+  cgroup?: string;
 };
 
 const issueUrl = 'https://github.com/HiromiShikata/example/issues/1';
@@ -41,6 +42,12 @@ describe('ProcClaudeHandoverSessionRepository', () => {
       .map(([key, value]) => `${key}=${value}\0`)
       .join('');
     fs.writeFileSync(path.join(processDirectory, 'environ'), environBuffer);
+    if (fakeProcess.cgroup !== undefined) {
+      fs.writeFileSync(
+        path.join(processDirectory, 'cgroup'),
+        `0::${fakeProcess.cgroup}\n`,
+      );
+    }
   };
 
   it('classifies an issue-URL leader from a cl --name url launch', () => {
@@ -61,6 +68,7 @@ describe('ProcClaudeHandoverSessionRepository', () => {
         sessionName: issueUrl.replace(/[.:]/g, '_'),
         name: issueUrl,
         issueUrl,
+        runsUnderWorkspacePreparationScript: false,
       },
     ]);
   });
@@ -83,6 +91,7 @@ describe('ProcClaudeHandoverSessionRepository', () => {
         sessionName: 'app',
         name: 'app',
         issueUrl: null,
+        runsUnderWorkspacePreparationScript: false,
       },
     ]);
   });
@@ -110,6 +119,7 @@ describe('ProcClaudeHandoverSessionRepository', () => {
         sessionName: null,
         name: null,
         issueUrl,
+        runsUnderWorkspacePreparationScript: false,
       },
     ]);
   });
@@ -182,6 +192,44 @@ describe('ProcClaudeHandoverSessionRepository', () => {
       kind: 'bareNameLeader',
       name: 'secretary',
     });
+  });
+
+  it('marks a session whose cgroup scope is an aw scope as launched by the workspace preparation script', () => {
+    writeProcess({
+      pid: 209,
+      comm: 'claude',
+      cmdline: argv(
+        'claude',
+        '-p',
+        `Take ownership of ${issueUrl} and finish it`,
+      ),
+      environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-h' },
+      cgroup:
+        '/user.slice/user-1000.slice/user@1000.service/aiagents.slice/aw-HiromiShikata-example-1-4005530.scope',
+    });
+
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(
+      repository.listHandoverSessions()[0].runsUnderWorkspacePreparationScript,
+    ).toBe(true);
+  });
+
+  it('does not mark a leader session whose cgroup scope is a cl scope as launched by the workspace preparation script', () => {
+    writeProcess({
+      pid: 210,
+      comm: 'claude',
+      cmdline: argv('claude', '--name', 'uminopm'),
+      environ: { CLAUDE_CODE_OAUTH_TOKEN: 'token-i' },
+      cgroup:
+        '/user.slice/user-1000.slice/user@1000.service/aiagents.slice/cl-uminopm.scope',
+    });
+
+    const repository = new ProcClaudeHandoverSessionRepository(procDirectory);
+
+    expect(
+      repository.listHandoverSessions()[0].runsUnderWorkspacePreparationScript,
+    ).toBe(false);
   });
 
   it('returns an empty list when the proc directory cannot be read', () => {

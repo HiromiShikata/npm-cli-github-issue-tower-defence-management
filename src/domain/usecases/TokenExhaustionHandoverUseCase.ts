@@ -51,6 +51,7 @@ export type TokenExhaustionHandoverResult = {
   terminatedPids: number[];
   relaunchedLeaderNames: string[];
   leftAliveSessionNames: string[];
+  skippedWorkspacePreparationSessionNames: string[];
   state: TokenExhaustionHandoverState;
 };
 
@@ -95,6 +96,7 @@ export class TokenExhaustionHandoverUseCase {
     const terminatedPids: number[] = [];
     const relaunchedLeaderNames: string[] = [];
     const leftAliveSessionNames: string[] = [];
+    const skippedWorkspacePreparationSessionNames: string[] = [];
 
     for (const session of sessions) {
       try {
@@ -209,6 +211,7 @@ export class TokenExhaustionHandoverUseCase {
       terminatedPids,
       relaunchedLeaderNames,
       leftAliveSessionNames,
+      skippedWorkspacePreparationSessionNames,
       state: { entries: nextEntries },
     };
   };
