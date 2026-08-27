@@ -169,7 +169,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     await useCase.run(defaultInput({ enabled: false }));
 
     expect(logSpy).toHaveBeenCalledWith(
-      'Token exhaustion handover: cycle summary evaluated=0 enabled=false signaled=0 killed=0 terminatedPids=0 relaunched=0 leftAlive=0',
+      'Token exhaustion handover: cycle summary evaluated=0 enabled=false signaled=0 killed=0 terminatedPids=0 relaunched=0 leftAlive=0 skippedWorkspacePreparation=0',
     );
   });
 
