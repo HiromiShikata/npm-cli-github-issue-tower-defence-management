@@ -476,6 +476,7 @@ const createStubIssueRepository = (
   createComment: () => notImplemented('createComment'),
   updateLabels: () => notImplemented('updateLabels'),
   removeLabel: () => notImplemented('removeLabel'),
+  getRecentLabelEventActor: () => notImplemented('getRecentLabelEventActor'),
   getOrCreateLabel: () => notImplemented('getOrCreateLabel'),
   updateAssigneeList: () => notImplemented('updateAssigneeList'),
   searchIssues: () => notImplemented('searchIssues'),

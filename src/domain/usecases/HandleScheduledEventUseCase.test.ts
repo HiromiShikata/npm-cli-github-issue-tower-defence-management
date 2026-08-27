@@ -237,6 +237,7 @@ describe('HandleScheduledEventUseCase', () => {
       expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalledWith({
         project: mockProject,
         issues: [],
+        allowedLabelActors: null,
       });
     });
 
