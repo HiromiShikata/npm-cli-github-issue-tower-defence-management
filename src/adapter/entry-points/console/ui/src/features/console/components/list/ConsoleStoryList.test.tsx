@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleColor, ConsoleStoryEntry } from '../../logic/types';
 import { ConsoleStoryList } from './ConsoleStoryList';
 
@@ -32,6 +32,16 @@ const defaultProps = {
 };
 
 describe('ConsoleStoryList', () => {
+  const writeText = jest.fn(async () => {});
+
+  beforeEach(() => {
+    writeText.mockClear();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+  });
+
   it('renders each story name and its open item count', () => {
     const { getByText } = render(<ConsoleStoryList {...defaultProps} />);
     expect(getByText('TDPM Console port')).toBeInTheDocument();
@@ -344,5 +354,34 @@ describe('ConsoleStoryList', () => {
       />,
     );
     expect(getByText('Color update failed')).toBeInTheDocument();
+  });
+
+  it('renders a "Copy name" button for each story row', () => {
+    const { getAllByRole } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        {...defaultProps}
+      />,
+    );
+    const buttons = getAllByRole('button', { name: 'Copy story name' });
+    expect(buttons).toHaveLength(storyEntries.length);
+  });
+
+  it('writes the first row story name to clipboard when its "Copy name" button is clicked', async () => {
+    const { getAllByRole } = render(
+      <ConsoleStoryList
+        stories={storyEntries}
+        isLoading={false}
+        error={null}
+        {...defaultProps}
+      />,
+    );
+    const [firstButton] = getAllByRole('button', { name: 'Copy story name' });
+    await act(async () => {
+      fireEvent.click(firstButton);
+    });
+    expect(writeText).toHaveBeenCalledWith(storyEntries[0].storyName);
   });
 });

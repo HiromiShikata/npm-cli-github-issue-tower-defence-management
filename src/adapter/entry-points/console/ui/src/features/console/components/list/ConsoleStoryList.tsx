@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CONSOLE_COLOR_PALETTE, colorFromEnum } from '../../logic/colors';
 import type { ConsoleColor, ConsoleStoryEntry } from '../../logic/types';
+import { ConsoleCopyStoryNameButton } from './ConsoleCopyStoryNameButton';
 
 const ALL_COLORS = Object.keys(CONSOLE_COLOR_PALETTE) as ConsoleColor[];
 
@@ -239,6 +240,7 @@ export const ConsoleStoryList = ({
                       {entry.storyName}
                     </span>
                   )}
+                  <ConsoleCopyStoryNameButton storyName={entry.storyName} />
                   <span className="console-story-count">
                     {entry.openItemCount}
                   </span>
