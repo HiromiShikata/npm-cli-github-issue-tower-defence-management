@@ -131,7 +131,7 @@ consoleProjects:
 
 Each project's status and story options are loaded lazily the first time a `pjcode` is used and then cached for the life of the process, so the additional projects add no startup cost.
 
-When the console serves multiple projects whose owners require distinct GitHub tokens, the optional `consoleGithubTokenFilesByRepositoryOwner` config key maps each repository owner login to the path of a file containing that owner's GitHub token. When a request arrives for an owner that has an entry in the map, `serveWeb` reads that owner's token from the configured file. When the key is absent or `null`, or when an owner has no entry in the map, the fleet-wide `GH_TOKEN` is used as the fallback for that owner. This means you can start with a single entry for the first owner that needs a distinct token, and any remaining owners continue to use the default credential:
+When the console serves multiple projects whose owners require distinct GitHub tokens, set `consoleGithubTokenFileDir` to a directory that contains per-project token files named `tdpm-github-token-{pjcode}.txt`. When a request arrives for a repository owner, `serveWeb` finds the `pjcode` whose project URL owner matches, then reads the token from the corresponding file in that directory. When `consoleGithubTokenFileDir` is absent or `null`, or when no pjcode maps to the owner, the fleet-wide `GH_TOKEN` is used as the fallback for that owner. This means you can add a file for the first owner that needs a distinct token and any remaining owners continue to use the default credential:
 
 ```yaml
 consoleAccessToken: '<console access token>'
@@ -140,11 +140,10 @@ projectName: 'my-project'
 consoleProjects:
   my-project: 'https://github.com/orgs/my-org/projects/1'
   other-project: 'https://github.com/orgs/other-org/projects/2'
-consoleGithubTokenFilesByRepositoryOwner:
-  my-org: '/path/to/my-org-token.txt'
+consoleGithubTokenFileDir: '/path/to/token-files'
 ```
 
-In the example above, requests for `my-org` use the token from the configured file; requests for `other-org` fall back to `GH_TOKEN`. Each token file must contain only the token string, with an optional trailing newline. The fleet-wide `GH_TOKEN` is still required for the `startDaemon` preparation cycle; only the console HTTP server routes go through the per-owner token files.
+In the example above, a file `/path/to/token-files/tdpm-github-token-my-project.txt` provides the token for `my-org`; requests for `other-org` fall back to `GH_TOKEN`. Each token file must contain only the token string, with an optional trailing newline. An empty file throws an error rather than falling back silently. The fleet-wide `GH_TOKEN` is still required for the `startDaemon` preparation cycle; only the console HTTP server routes go through the per-project token files.
 
 The optional `storyProgressCommentEnabled` config key controls the daily story progress comment. Once per day the schedule cycle posts a comment containing a mermaid `flowchart TD` of the story and its child issues onto every story issue. Setting the key to `false` stops that comment being posted for the project; the key defaults to `true`, so omitting it leaves the existing behaviour unchanged.
 
@@ -337,6 +336,7 @@ developerAgentName?: string # Optional: The agent name treated as the "developer
 labelsAsLlmAgentName?: string[] # Optional: List of issue labels that are themselves agent names. When an issue carries any label that is included in this list, that label name is used as the agent name. Selection precedence is: (1) explicit `llm-agent:` label, (2) labelsAsLlmAgentName entry match, (3) `category:` label, (4) defaultLlmAgentName, (5) defaultAgentName
 consoleAccessToken?: string # Optional: Access token for the Console HTTP server. When set, `startDaemon` TCP-probes port 9980 before the first preparation cycle and, if nothing responds, spawns `serveWeb` as a detached background process on that port. SIGTERM and SIGINT sent to the daemon are forwarded to the console server child before the daemon exits. When unset, no console server is started automatically.
 consoleDataOutputDir?: string # Optional: Base output directory for the per-project Console list.json files. When set, the schedule cycle writes the full tab files and notifyFinishedIssuePreparation immediately patches the affected tab files after each status transition (no additional GitHub fetch). When unset, Console list generation and patching are skipped
+consoleGithubTokenFileDir?: string # Optional: Directory path containing per-project GitHub token files named tdpm-github-token-{pjcode}.txt. When set together with consoleProjects, serveWeb resolves a per-project GH token by matching the repository owner against each project URL. Falls back to the default token when no match is found or the file is absent.
 workflowBlockerStoryName?: string # Optional: Story field name that the Console "workflow-blocker" tab matches (case-insensitive). Every non-closed issue with this story is listed regardless of status or reactivation-trigger fields. When unset, the workflow-blocker list is always empty
 inTmuxDataOutputDir?: string # Optional: Base output directory for the in-tmux-by-human per-project and index JSON files written each schedule cycle. When unset, in-tmux-by-human generation is skipped
 inTmuxConsoleBaseUrl?: string # Optional: Console base URL used to build the tdpmConsoleUrl in the v3/v4 in-tmux-by-human files (for example https://console.example.com). When unset, the v3 and v4 files are skipped

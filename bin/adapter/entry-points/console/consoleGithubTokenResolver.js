@@ -41,23 +41,37 @@ const createConsoleGithubTokenResolverByItemUrl = (resolveGithubToken) => {
     };
 };
 exports.createConsoleGithubTokenResolverByItemUrl = createConsoleGithubTokenResolverByItemUrl;
-const createConsoleGithubTokenResolver = (defaultToken, githubTokenFilePathByRepositoryOwner, readTokenFile) => {
+const createConsoleGithubTokenResolver = (defaultToken, consoleProjectUrls, githubTokenFileDirPath, readTokenFile) => {
     const resolvedTokenByRepositoryOwner = new Map();
     return (repositoryOwner) => {
         const alreadyResolved = resolvedTokenByRepositoryOwner.get(repositoryOwner);
         if (alreadyResolved !== undefined) {
             return alreadyResolved;
         }
-        if (githubTokenFilePathByRepositoryOwner === null) {
+        if (consoleProjectUrls === null || githubTokenFileDirPath === null) {
             return defaultToken;
         }
-        const filePath = githubTokenFilePathByRepositoryOwner[repositoryOwner];
-        if (filePath === undefined) {
+        const normalizedOwner = repositoryOwner.toLowerCase();
+        const matchedPjcode = Object.entries(consoleProjectUrls).find(([, projectUrl]) => (0, exports.extractProjectOwner)(projectUrl)?.toLowerCase() === normalizedOwner)?.[0];
+        if (matchedPjcode === undefined) {
             return defaultToken;
         }
-        const token = readTokenFile(filePath).trim();
+        const filePath = `${githubTokenFileDirPath}/tdpm-github-token-${matchedPjcode}.txt`;
+        let fileContent;
+        try {
+            fileContent = readTokenFile(filePath);
+        }
+        catch (error) {
+            if (error instanceof Error &&
+                'code' in error &&
+                error.code === 'ENOENT') {
+                return defaultToken;
+            }
+            throw error;
+        }
+        const token = fileContent.trim();
         if (token.length === 0) {
-            throw new Error(`The GitHub token file configured for repository owner "${repositoryOwner}" contains no token: ${filePath}`);
+            throw new Error(`The GitHub token file for pjcode "${matchedPjcode}" contains no token: ${filePath}`);
         }
         resolvedTokenByRepositoryOwner.set(repositoryOwner, token);
         return token;

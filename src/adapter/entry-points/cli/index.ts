@@ -834,11 +834,10 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     ...githubRepositoryParams,
   );
 
-  const consoleGithubTokenFilesByRepositoryOwner =
-    config.consoleGithubTokenFilesByRepositoryOwner ?? null;
   const resolveGithubToken = createConsoleGithubTokenResolver(
     token,
-    consoleGithubTokenFilesByRepositoryOwner,
+    config.consoleProjects ?? null,
+    config.consoleGithubTokenFileDir ?? null,
     (filePath: string) => fs.readFileSync(filePath, 'utf8'),
   );
   const issueRepositoryByToken = new Map<string, IssueRepository>();

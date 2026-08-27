@@ -197,6 +197,64 @@ describe('parseProjectReadmeConfig consoleDataOutputDir', () => {
   });
 });
 
+describe('loadConfigFile consoleGithubTokenFileDir', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-console-github-token-file-dir-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('parses consoleGithubTokenFileDir from the config file', () => {
+    const filePath = writeConfig(
+      "projectName: 'demo'\nconsoleGithubTokenFileDir: '/home/user/.config/tdpm'\n",
+    );
+    expect(loadConfigFile(filePath).consoleGithubTokenFileDir).toBe(
+      '/home/user/.config/tdpm',
+    );
+  });
+
+  it('yields undefined consoleGithubTokenFileDir when the key is absent', () => {
+    const filePath = writeConfig("projectName: 'demo'\n");
+    expect(loadConfigFile(filePath).consoleGithubTokenFileDir).toBeUndefined();
+  });
+});
+
+describe('mergeConfigs consoleGithubTokenFileDir', () => {
+  it('prefers the cli override consoleGithubTokenFileDir over the config file value', () => {
+    const merged = mergeConfigs(
+      { consoleGithubTokenFileDir: '/config-dir' },
+      { consoleGithubTokenFileDir: '/cli-dir' },
+      {},
+    );
+    expect(merged.consoleGithubTokenFileDir).toBe('/cli-dir');
+  });
+
+  it('falls back to the config file consoleGithubTokenFileDir when no cli override is present', () => {
+    const merged = mergeConfigs(
+      { consoleGithubTokenFileDir: '/config-dir' },
+      {},
+      {},
+    );
+    expect(merged.consoleGithubTokenFileDir).toBe('/config-dir');
+  });
+
+  it('yields undefined consoleGithubTokenFileDir when neither source provides it', () => {
+    expect(mergeConfigs({}, {}, {}).consoleGithubTokenFileDir).toBeUndefined();
+  });
+});
+
 describe('loadConfigFile developerAgentName', () => {
   let dir: string;
 

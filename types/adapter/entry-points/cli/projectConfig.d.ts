@@ -25,7 +25,7 @@ export type ConfigFile = {
     consoleDataOutputDir?: string;
     consoleAccessToken?: string;
     consoleProjects?: Record<string, string>;
-    consoleGithubTokenFilesByRepositoryOwner?: Record<string, string>;
+    consoleGithubTokenFileDir?: string;
     disks?: DiskConfig[];
 };
 export type DiskConfig = {
