@@ -1320,7 +1320,10 @@ program
   .description(
     'Attach to an existing tmux session registered for the given issue URL, or create a new one. Looks up the cl session registry via cl-scope-lib.sh to find a registered session name; if that session is still alive it attaches to it, otherwise creates a new interactive session running cl for the issue URL.',
   )
-  .requiredOption('--issueUrl <url>', 'GitHub issue URL to attach to or create a session for')
+  .requiredOption(
+    '--issueUrl <url>',
+    'GitHub issue URL to attach to or create a session for',
+  )
   .action(async (options: AttachOrCreateOptions) => {
     const localCommandRunner = new NodeLocalCommandRunner();
     const tmuxSessionRepository = new NodeTmuxSessionRepository(

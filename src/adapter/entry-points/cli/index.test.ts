@@ -2469,7 +2469,10 @@ mysteryKey: 'value'
     let scopeLibPath = '';
 
     beforeEach(() => {
-      scopeLibPath = path.join(os.tmpdir(), `test-cl-scope-lib-${Date.now()}.sh`);
+      scopeLibPath = path.join(
+        os.tmpdir(),
+        `test-cl-scope-lib-${Date.now()}.sh`,
+      );
       fs.writeFileSync(scopeLibPath, '#!/bin/bash\n');
       process.env.CL_SCOPE_LIB_PATH = scopeLibPath;
     });
@@ -2510,7 +2513,11 @@ mysteryKey: 'value'
     });
 
     it('creates a new session when no registered session is found', async () => {
-      mockRunCommand.mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+      mockRunCommand.mockResolvedValueOnce({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
 
       await program.parseAsync([
         'node',
