@@ -170,7 +170,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       new Map([[prIssue.url, prDetail]]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
@@ -205,7 +207,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       new Map([[prIssue.url, prDetail]]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
@@ -233,7 +237,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       new Map([[prIssue.url, prDetail]]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
@@ -261,7 +267,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       new Map([[prIssue.url, prDetail]]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
@@ -289,7 +297,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       new Map([[prIssue.url, prDetail]]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
@@ -317,7 +327,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       new Map([[prIssue.url, prDetail]]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
@@ -345,7 +357,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       new Map([[prIssue.url, prDetail]]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
@@ -373,7 +387,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       new Map([[prIssue.url, prDetail]]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
@@ -392,7 +408,9 @@ describe('ConflictedIssueRevertUseCase', () => {
     });
     mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
@@ -432,7 +450,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       ]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
@@ -504,7 +524,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       ]),
     );
 
-    await useCase.run({ projectUrl: 'https://github.com/users/user/projects/1' });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+    });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
