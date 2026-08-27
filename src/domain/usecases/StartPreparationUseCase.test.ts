@@ -11,7 +11,6 @@ import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import { Issue } from '../entities/Issue';
 import { FieldOption, Project } from '../entities/Project';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
-import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
 const createMockStoryObjectMap = (issues: Issue[]): StoryObjectMap => {
@@ -24,7 +23,9 @@ const createMockStoryObjectMap = (issues: Issue[]): StoryObjectMap => {
       description: '',
     },
     storyIssue: null,
-    issues: issues,
+    issues: issues.map((issue) =>
+      issue.story === null ? { ...issue, story: 'Default Story' } : issue,
+    ),
   });
   return map;
 };
@@ -5494,7 +5495,8 @@ describe('StartPreparationUseCase', () => {
             url: 'url1',
             status: 'Awaiting Workspace',
             labels: [],
-            story: NO_STORY_STORY_NAME,
+            story:
+              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
             agent: 'systems-analyst',
           }),
         ]),
@@ -5536,7 +5538,8 @@ describe('StartPreparationUseCase', () => {
             url: 'url1',
             status: 'Awaiting Workspace',
             labels: [],
-            story: NO_STORY_STORY_NAME,
+            story:
+              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
             agent: null,
           }),
         ]),
