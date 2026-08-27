@@ -1,14 +1,16 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CONSOLE_TABS, type ConsoleTabName } from '../../logic/types';
 
 export type ConsoleTabBarProps = {
   activeTab: ConsoleTabName;
   counts: Record<ConsoleTabName, number>;
   pjcode: string | null;
+  pjcodes: string[];
   generatedAt: string | null;
   fromCache: boolean;
   tabHref: (tab: ConsoleTabName) => string;
   onSelectTab: (tab: ConsoleTabName) => void;
+  onSelectProject: (pjcode: string) => void;
   settingsButton?: ReactNode;
 };
 
@@ -16,12 +18,33 @@ export const ConsoleTabList = ({
   activeTab,
   counts,
   pjcode,
+  pjcodes,
   generatedAt,
   fromCache,
   tabHref,
   onSelectTab,
+  onSelectProject,
   settingsButton,
 }: ConsoleTabBarProps) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
   return (
     <nav aria-label="Console tabs" className="console-tabbar">
       {CONSOLE_TABS.filter((tab) => {
@@ -62,7 +85,45 @@ export const ConsoleTabList = ({
           </a>
         );
       })}
-      {pjcode !== null && <span className="console-tab-pjname">{pjcode}</span>}
+      {pjcode !== null && (
+        <div className="console-tab-pjname" ref={dropdownRef}>
+          <button
+            type="button"
+            className="console-tab-pjname-button"
+            aria-expanded={isDropdownOpen}
+            aria-haspopup="listbox"
+            onClick={() => setIsDropdownOpen((prev) => !prev)}
+          >
+            {pjcode}
+            <span className="console-tab-pjname-arrow" aria-hidden="true">
+              ▾
+            </span>
+          </button>
+          {isDropdownOpen && (
+            <ul
+              className="console-tab-pjname-dropdown"
+              role="listbox"
+              aria-label="Select project"
+            >
+              {pjcodes.map((code) => (
+                <li key={code} role="option" aria-selected={code === pjcode}>
+                  <button
+                    type="button"
+                    className="console-tab-pjname-option"
+                    data-active={code === pjcode ? 'true' : undefined}
+                    onClick={() => {
+                      onSelectProject(code);
+                      setIsDropdownOpen(false);
+                    }}
+                  >
+                    {code}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {generatedAt !== null && (
         <span
           className="console-tab-geninfo"
