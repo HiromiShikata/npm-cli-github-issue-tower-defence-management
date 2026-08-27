@@ -290,7 +290,9 @@ export class HandleScheduledEventUseCaseHandler {
         input.allowedIssueAuthors,
       ),
       autoAssignManagerAuthors: normalizeAllowedIssueAuthors(
-        readmeConfig.autoAssignManagerAuthors ?? input.autoAssignManagerAuthors,
+        readmeConfig.autoAssignManagerAuthors ??
+          input.autoAssignManagerAuthors ??
+          input.allowedIssueAuthors,
       ),
       claudeCodeOauthTokenListJsonPath:
         readmeConfig.claudeCodeOauthTokenListJsonPath ??
