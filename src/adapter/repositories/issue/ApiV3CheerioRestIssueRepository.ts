@@ -1137,7 +1137,7 @@ export class ApiV3CheerioRestIssueRepository
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issue.url);
     const response = await this.fetchWithRateLimitRetry(() =>
       fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/events`,
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/events?per_page=100`,
         {
           method: 'GET',
           headers: {
