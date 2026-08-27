@@ -808,7 +808,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should advance orphaned issue with non-developer agent field to Awaiting Quality Check without PR check', async () => {
+  it('should advance orphaned issue with non-developer agent field to Awaiting Quality Check when no conflicting PR exists', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -839,9 +839,51 @@ describe('RevertOrphanedPreparationUseCase', () => {
       thresholdForAutoReject: 3,
     });
 
-    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
+  it('should reject orphaned issue with non-developer agent field to Awaiting Workspace when PR is conflicted', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: [],
+      agent: 'chore',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'From: :robot: agent report',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      { ...createPassingPr(), isConflicted: true },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(
+      mockIssueCommentRepository.createComment.mock.calls[0][1],
+    ).toContain('Auto Status Check: REJECTED');
   });
 
   it('should check PR for orphaned issue with developer agent field', async () => {
@@ -880,7 +922,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
-  it('should advance orphaned issue with a labelsAsLlmAgentName label (story) to Awaiting Quality Check without PR check', async () => {
+  it('should advance orphaned issue with a labelsAsLlmAgentName label (story) to Awaiting Quality Check when no conflicting PR exists', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -911,12 +953,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
       labelsAsLlmAgentName: ['story'],
     });
 
-    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
   });
 
-  it('should advance an orphaned issue whose label is only in labelsNotRequiringPullRequest to Awaiting Quality Check without PR check', async () => {
+  it('should advance an orphaned issue whose label is only in labelsNotRequiringPullRequest to Awaiting Quality Check when no conflicting PR exists', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -948,9 +990,52 @@ describe('RevertOrphanedPreparationUseCase', () => {
       labelsNotRequiringPullRequest: ['story'],
     });
 
-    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
+  it('should reject orphaned issue with labelsNotRequiringPullRequest label to Awaiting Workspace when PR is conflicted', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: ['story'],
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: 'From: :robot: agent report',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      { ...createPassingPr(), isConflicted: true },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      labelsAsLlmAgentName: ['chore'],
+      labelsNotRequiringPullRequest: ['story'],
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(
+      mockIssueCommentRepository.createComment.mock.calls[0][1],
+    ).toContain('Auto Status Check: REJECTED');
   });
 
   it('should revert orphaned issue to Awaiting Workspace when its label is not in labelsAsLlmAgentName and no PR is found', async () => {
