@@ -254,3 +254,37 @@ describe('parseProjectReadmeConfig developerAgentName', () => {
     expect(parseProjectReadmeConfig(readme).developerAgentName).toBeUndefined();
   });
 });
+
+describe('loadConfigFile allowedLlmModelNames', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-allowed-llm-model-names-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('parses allowedLlmModelNames as a string array from the config file', () => {
+    const filePath = writeConfig(
+      'allowedLlmModelNames:\n  - claude-sonnet-4-6\n',
+    );
+    expect(loadConfigFile(filePath).allowedLlmModelNames).toEqual([
+      'claude-sonnet-4-6',
+    ]);
+  });
+
+  it('yields undefined allowedLlmModelNames when the key is absent', () => {
+    const filePath = writeConfig("projectName: 'demo'\n");
+    expect(loadConfigFile(filePath).allowedLlmModelNames).toBeUndefined();
+  });
+});

@@ -473,6 +473,7 @@ program
       utilizationPercentageThreshold:
         config.utilizationPercentageThreshold ?? 90,
       allowedIssueAuthors,
+      allowedLlmModelNames: config.allowedLlmModelNames ?? null,
       manager,
       codexHomeCandidates,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,

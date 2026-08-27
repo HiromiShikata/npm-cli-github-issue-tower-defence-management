@@ -22,6 +22,7 @@ export type ConfigFile = {
   claudeCodeOauthTokenListJsonPath?: string;
   awLogDirectoryPath?: string;
   awLogStaleThresholdMinutes?: number;
+  allowedLlmModelNames?: string[];
   labelsAsLlmAgentName?: string[];
   labelsNotRequiringPullRequest?: string[];
   changeTargetPathAliases?: Record<string, string>;
@@ -187,6 +188,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'awLogStaleThresholdMinutes',
       ),
+      allowedLlmModelNames: getStringArrayValue(parsed, 'allowedLlmModelNames'),
       labelsAsLlmAgentName: getStringArrayValue(parsed, 'labelsAsLlmAgentName'),
       labelsNotRequiringPullRequest: getStringArrayValue(
         parsed,

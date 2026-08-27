@@ -320,6 +320,7 @@ export class StartPreparationUseCase {
     maximumPreparingIssuesCount: number | null;
     utilizationPercentageThreshold: number;
     allowedIssueAuthors: string[] | null;
+    allowedLlmModelNames: string[] | null;
     manager: string;
     codexHomeCandidates: string[] | null;
     labelsAsLlmAgentName: string[] | null;
@@ -521,6 +522,20 @@ export class StartPreparationUseCase {
         .find((label: string) => label.startsWith('llm-model:'))
         ?.replace('llm-model:', '')
         .trim();
+      if (labelModelName) {
+        if (params.allowedLlmModelNames !== null) {
+          if (!params.allowedLlmModelNames.includes(labelModelName)) {
+            console.error(
+              `Skipping issue ${issue.url}: llm-model: label value "${labelModelName}" is not in the allowedLlmModelNames list.`,
+            );
+            continue;
+          }
+        } else {
+          console.warn(
+            `Issue ${issue.url} uses llm-model: label "${labelModelName}" without allowedLlmModelNames configured.`,
+          );
+        }
+      }
       if (
         !labelModelName &&
         !params.defaultLlmModelName &&

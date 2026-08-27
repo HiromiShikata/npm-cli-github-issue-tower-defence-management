@@ -181,6 +181,7 @@ export class HandleScheduledEventUseCase {
       awaitingQualityCheckStatus?: string | null;
       autoAdvanceQualityCheckEnabled?: boolean;
       labelsAsLlmAgentName?: string[] | null;
+      allowedLlmModelNames?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
     createTaskFromStoryBodyCheckboxEnabled?: boolean;
@@ -502,6 +503,8 @@ ${JSON.stringify(e)}
         utilizationPercentageThreshold:
           input.startPreparation.utilizationPercentageThreshold ?? 90,
         allowedIssueAuthors,
+        allowedLlmModelNames:
+          input.startPreparation.allowedLlmModelNames ?? null,
         manager: input.manager,
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
         labelsAsLlmAgentName,

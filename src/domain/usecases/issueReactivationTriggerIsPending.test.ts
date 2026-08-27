@@ -499,6 +499,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           maximumPreparingIssuesCount: null,
           utilizationPercentageThreshold: 90,
           allowedIssueAuthors: ['testuser'],
+          allowedLlmModelNames: null,
           manager: 'manager-user',
           codexHomeCandidates: null,
           labelsAsLlmAgentName: null,
