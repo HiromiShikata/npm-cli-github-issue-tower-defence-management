@@ -881,9 +881,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
-    expect(
-      mockIssueCommentRepository.createComment.mock.calls[0][1],
-    ).toContain('Auto Status Check: REJECTED');
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
+      'Auto Status Check: REJECTED',
+    );
   });
 
   it('should check PR for orphaned issue with developer agent field', async () => {
@@ -1033,9 +1033,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
-    expect(
-      mockIssueCommentRepository.createComment.mock.calls[0][1],
-    ).toContain('Auto Status Check: REJECTED');
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
+      'Auto Status Check: REJECTED',
+    );
   });
 
   it('should revert orphaned issue to Awaiting Workspace when its label is not in labelsAsLlmAgentName and no PR is found', async () => {
