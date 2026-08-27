@@ -15,7 +15,7 @@ describe('IssueNoStatusUpdateUseCase', () => {
   inProgressStatus.id = 'status-in-progress';
   inProgressStatus.name = 'In Progress';
 
-  const basicProject = {
+  const basicProject: Project = {
     ...mock<Project>(),
     status: {
       name: 'Status',
@@ -24,13 +24,31 @@ describe('IssueNoStatusUpdateUseCase', () => {
     },
   };
 
-  const projectWithoutAwaitingWorkspace = {
+  const projectWithoutAwaitingWorkspace: Project = {
     ...mock<Project>(),
     status: {
       name: 'Status',
       fieldId: 'statusFieldId',
       statuses: [inProgressStatus],
     },
+  };
+
+  const openNullStatusIssue: Issue = {
+    ...mock<Issue>(),
+    isClosed: false,
+    status: null,
+  };
+
+  const openInProgressIssue: Issue = {
+    ...mock<Issue>(),
+    isClosed: false,
+    status: 'In Progress',
+  };
+
+  const closedNullStatusIssue: Issue = {
+    ...mock<Issue>(),
+    isClosed: true,
+    status: null,
   };
 
   let useCase: IssueNoStatusUpdateUseCase;
@@ -45,56 +63,32 @@ describe('IssueNoStatusUpdateUseCase', () => {
       name: string;
       project: Project;
       issues: Issue[];
-      expectedUpdateStatusCalls: [unknown, unknown, string][];
+      expectedUpdateStatusCalls: [Project, Issue, string][];
     }[] = [
       {
         name: 'should call updateStatus for open issues with null status',
         project: basicProject,
-        issues: [
-          {
-            ...mock<Issue>(),
-            isClosed: false,
-            status: null,
-          },
-        ],
+        issues: [openNullStatusIssue],
         expectedUpdateStatusCalls: [
-          [expect.anything(), expect.anything(), 'status-awaiting'],
+          [basicProject, openNullStatusIssue, 'status-awaiting'],
         ],
       },
       {
         name: 'should skip issues with an existing status',
         project: basicProject,
-        issues: [
-          {
-            ...mock<Issue>(),
-            isClosed: false,
-            status: 'In Progress',
-          },
-        ],
+        issues: [openInProgressIssue],
         expectedUpdateStatusCalls: [],
       },
       {
         name: 'should skip closed issues with null status',
         project: basicProject,
-        issues: [
-          {
-            ...mock<Issue>(),
-            isClosed: true,
-            status: null,
-          },
-        ],
+        issues: [closedNullStatusIssue],
         expectedUpdateStatusCalls: [],
       },
       {
         name: 'should not call updateStatus when Awaiting Workspace status does not exist in project',
         project: projectWithoutAwaitingWorkspace,
-        issues: [
-          {
-            ...mock<Issue>(),
-            isClosed: false,
-            status: null,
-          },
-        ],
+        issues: [openNullStatusIssue],
         expectedUpdateStatusCalls: [],
       },
       {
@@ -107,24 +101,12 @@ describe('IssueNoStatusUpdateUseCase', () => {
         name: 'should call updateStatus only for open null-status issues among mixed issues',
         project: basicProject,
         issues: [
-          {
-            ...mock<Issue>(),
-            isClosed: false,
-            status: null,
-          },
-          {
-            ...mock<Issue>(),
-            isClosed: false,
-            status: 'In Progress',
-          },
-          {
-            ...mock<Issue>(),
-            isClosed: true,
-            status: null,
-          },
+          openNullStatusIssue,
+          openInProgressIssue,
+          closedNullStatusIssue,
         ],
         expectedUpdateStatusCalls: [
-          [expect.anything(), expect.anything(), 'status-awaiting'],
+          [basicProject, openNullStatusIssue, 'status-awaiting'],
         ],
       },
     ];
@@ -140,5 +122,44 @@ describe('IssueNoStatusUpdateUseCase', () => {
         });
       },
     );
+
+    it('should skip archived items and continue updating remaining issues', async () => {
+      const archivedIssue: Issue = {
+        ...mock<Issue>(),
+        isClosed: false,
+        status: null,
+      };
+      const normalIssue: Issue = {
+        ...mock<Issue>(),
+        isClosed: false,
+        status: null,
+      };
+
+      mockIssueRepository.updateStatus
+        .mockRejectedValueOnce(
+          new Error('The item is archived and cannot be updated'),
+        )
+        .mockResolvedValueOnce(undefined);
+
+      await useCase.run({
+        project: basicProject,
+        issues: [archivedIssue, normalIssue],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual([
+        [basicProject, archivedIssue, 'status-awaiting'],
+        [basicProject, normalIssue, 'status-awaiting'],
+      ]);
+    });
+
+    it('should re-throw non-archived errors from updateStatus', async () => {
+      mockIssueRepository.updateStatus.mockRejectedValueOnce(
+        new Error('GraphQL rate limit exceeded'),
+      );
+
+      await expect(
+        useCase.run({ project: basicProject, issues: [openNullStatusIssue] }),
+      ).rejects.toThrow('GraphQL rate limit exceeded');
+    });
   });
 });
