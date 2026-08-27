@@ -165,9 +165,7 @@ export const ConsoleItemDetailContainer = ({
   };
 
   const awaitingWorkspaceOption =
-    statusOptions.find(
-      (o) => o.name.toLowerCase() === AWAITING_WORKSPACE_NAME.toLowerCase(),
-    ) ?? null;
+    statusOptions.find((o) => o.name === AWAITING_WORKSPACE_NAME) ?? null;
 
   const addCommentAndMoveToAwaitingWorkspace =
     awaitingWorkspaceOption !== null

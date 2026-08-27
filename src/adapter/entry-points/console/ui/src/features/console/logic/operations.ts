@@ -41,16 +41,16 @@ export type ConsoleOperationHandlers = {
   onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => void;
 };
 
+export const IN_TMUX_BY_HUMAN_NAME = 'In Tmux by human';
+export const AWAITING_WORKSPACE_NAME = 'Awaiting Workspace';
+
 export const STATUS_BUTTON_NAMES: string[] = [
   'In Tmux by agent',
   'In Tmux by human',
   'Todo by human',
   'Todo by agent',
-  'Awaiting Workspace',
+  AWAITING_WORKSPACE_NAME,
 ];
-
-export const AWAITING_WORKSPACE_NAME = 'Awaiting Workspace';
-export const IN_TMUX_BY_HUMAN_NAME = 'In Tmux by human';
 
 export const isManualTriageTab = (tab: ConsoleTabName): boolean =>
   tab === 'todo-by-human' || tab === 'todo-by-agent';
