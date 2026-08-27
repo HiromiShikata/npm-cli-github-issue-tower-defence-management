@@ -3,7 +3,9 @@ const mockSpawnSync = jest.fn();
 
 jest.mock('child_process', () => ({
   execFile: jest.fn(),
-  spawnSync: jest.fn((...args: unknown[]) => mockSpawnSync(...args)),
+  spawnSync: jest.fn((...args: unknown[]) => {
+    mockSpawnSync(...args);
+  }),
 }));
 
 jest.mock('util', () => ({

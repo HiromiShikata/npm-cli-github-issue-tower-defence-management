@@ -436,10 +436,8 @@ describe('NodeTmuxSessionRepository', () => {
         'tmux',
         ['has-session', '-t', '=wq7x3mk'],
       ]);
-      expect(runner.spawnInteractive).toHaveBeenCalledWith('tmux', [
-        'attach-session',
-        '-t',
-        '=wq7x3mk',
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['attach-session', '-t', '=wq7x3mk']],
       ]);
     });
 
@@ -458,13 +456,8 @@ describe('NodeTmuxSessionRepository', () => {
       );
 
       expect(runner.runCommand.mock.calls).toHaveLength(1);
-      expect(runner.spawnInteractive).toHaveBeenCalledWith('tmux', [
-        'new-session',
-        '-A',
-        '-s',
-        issueUrl,
-        'cl',
-        issueUrl,
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
       ]);
     });
 
@@ -488,13 +481,8 @@ describe('NodeTmuxSessionRepository', () => {
         'tmux',
         ['has-session', '-t', '=wq7x3mk'],
       ]);
-      expect(runner.spawnInteractive).toHaveBeenCalledWith('tmux', [
-        'new-session',
-        '-A',
-        '-s',
-        issueUrl,
-        'cl',
-        issueUrl,
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
       ]);
     });
 
@@ -513,13 +501,8 @@ describe('NodeTmuxSessionRepository', () => {
       );
 
       expect(runner.runCommand.mock.calls).toHaveLength(1);
-      expect(runner.spawnInteractive).toHaveBeenCalledWith('tmux', [
-        'new-session',
-        '-A',
-        '-s',
-        issueUrl,
-        'cl',
-        issueUrl,
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
       ]);
     });
 
@@ -530,13 +513,8 @@ describe('NodeTmuxSessionRepository', () => {
       await repository.attachOrCreateInteractiveSession(issueUrl, null);
 
       expect(runner.runCommand.mock.calls).toHaveLength(0);
-      expect(runner.spawnInteractive).toHaveBeenCalledWith('tmux', [
-        'new-session',
-        '-A',
-        '-s',
-        issueUrl,
-        'cl',
-        issueUrl,
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
       ]);
     });
 
@@ -560,10 +538,8 @@ describe('NodeTmuxSessionRepository', () => {
         'tmux',
         ['has-session', '-t', '=abc123'],
       ]);
-      expect(runner.spawnInteractive).toHaveBeenCalledWith('tmux', [
-        'attach-session',
-        '-t',
-        '=abc123',
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['attach-session', '-t', '=abc123']],
       ]);
     });
   });
