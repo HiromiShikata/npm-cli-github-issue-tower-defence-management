@@ -22,6 +22,7 @@ describe('LocalProcessLiveSessionProcessSnapshotProvider', () => {
         exitCode: handler.exitCode ?? 0,
       };
     }),
+    spawnInteractive: jest.fn(),
   });
 
   const makeEnvironReader = (

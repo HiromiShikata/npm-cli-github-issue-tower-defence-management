@@ -129,6 +129,7 @@ describe('StartPreparationUseCase', () => {
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
+      spawnInteractive: jest.fn(),
     };
     mockClaudeTokenUsageRepository = {
       ensureObservable: jest.fn().mockResolvedValue(undefined),
@@ -6850,6 +6851,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
   };
   const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
     runCommand: jest.fn(),
+    spawnInteractive: jest.fn(),
   };
   const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepository> =
     {
@@ -7156,7 +7158,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
       },
-      { runCommand: jest.fn() },
+      { runCommand: jest.fn(), spawnInteractive: jest.fn() },
       {
         ensureObservable: jest.fn(),
         getAvailableTokenUsages: jest.fn(),

@@ -1,7 +1,9 @@
 const mockExecFileAsync = jest.fn();
+const mockSpawnSync = jest.fn();
 
 jest.mock('child_process', () => ({
   execFile: jest.fn(),
+  spawnSync: jest.fn((...args: unknown[]) => mockSpawnSync(...args)),
 }));
 
 jest.mock('util', () => ({
@@ -96,6 +98,18 @@ describe('NodeLocalCommandRunner', () => {
 
       await expect(runner.runCommand('command', [])).rejects.toThrow(
         'Unexpected error',
+      );
+    });
+  });
+
+  describe('spawnInteractive', () => {
+    it('calls spawnSync with stdio inherit', () => {
+      runner.spawnInteractive('tmux', ['attach-session', '-t', '=wq7x3mk']);
+
+      expect(mockSpawnSync).toHaveBeenCalledWith(
+        'tmux',
+        ['attach-session', '-t', '=wq7x3mk'],
+        { stdio: 'inherit' },
       );
     });
   });

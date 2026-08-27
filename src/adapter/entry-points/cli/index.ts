@@ -36,6 +36,7 @@ import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwn
 import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
+import * as os from 'os';
 import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
@@ -195,6 +196,27 @@ type CountInTmuxByHumanSessionsPerTokenOptions = {
 type KillTmuxSessionOptions = {
   session?: string;
   self?: boolean;
+};
+
+type AttachOrCreateOptions = {
+  issueUrl: string;
+};
+
+const resolveScopeLibPath = (): string | null => {
+  const explicitPath = process.env.CL_SCOPE_LIB_PATH;
+  if (explicitPath !== undefined && fs.existsSync(explicitPath)) {
+    return explicitPath;
+  }
+  const defaultPath = path.join(
+    os.homedir(),
+    'git',
+    'secretary',
+    'machine',
+    'sk',
+    'sh',
+    'cl-scope-lib.sh',
+  );
+  return fs.existsSync(defaultPath) ? defaultPath : null;
 };
 
 const buildGithubRepositoryParams = (
@@ -1291,6 +1313,24 @@ program
       dataDir: options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR,
       sessionName: options.session,
     });
+  });
+
+program
+  .command('attachOrCreate')
+  .description(
+    'Attach to an existing tmux session registered for the given issue URL, or create a new one. Looks up the cl session registry via cl-scope-lib.sh to find a registered session name; if that session is still alive it attaches to it, otherwise creates a new interactive session running cl for the issue URL.',
+  )
+  .requiredOption('--issueUrl <url>', 'GitHub issue URL to attach to or create a session for')
+  .action(async (options: AttachOrCreateOptions) => {
+    const localCommandRunner = new NodeLocalCommandRunner();
+    const tmuxSessionRepository = new NodeTmuxSessionRepository(
+      localCommandRunner,
+    );
+    const scopeLibPath = resolveScopeLibPath();
+    await tmuxSessionRepository.attachOrCreateInteractiveSession(
+      options.issueUrl,
+      scopeLibPath,
+    );
   });
 
 export const reportFatalErrorAndExit = (error: unknown): void => {

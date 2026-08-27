@@ -38,6 +38,7 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
     stderr: '',
     exitCode: 0,
   }),
+  spawnInteractive: jest.fn(),
 });
 
 describe('notifySilentTmuxSessions', () => {

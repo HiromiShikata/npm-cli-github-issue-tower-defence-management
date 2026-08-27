@@ -164,6 +164,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
+      spawnInteractive: jest.fn(),
     };
     useCase = new RevertOrphanedPreparationUseCase(
       mockProjectRepository,

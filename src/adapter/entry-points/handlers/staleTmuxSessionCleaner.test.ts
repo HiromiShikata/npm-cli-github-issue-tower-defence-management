@@ -60,6 +60,7 @@ type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
 const createMockRunner = (): Mocked<LocalCommandRunner> => ({
   runCommand: jest.fn(),
+  spawnInteractive: jest.fn(),
 });
 
 const createMockIssueRepository = (

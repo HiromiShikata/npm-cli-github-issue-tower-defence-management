@@ -2,7 +2,7 @@ import {
   LocalCommandRunner,
   LocalCommandRunnerOptions,
 } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
-import { execFile } from 'child_process';
+import { execFile, spawnSync } from 'child_process';
 import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
@@ -59,4 +59,8 @@ export class NodeLocalCommandRunner implements LocalCommandRunner {
       throw error;
     }
   }
+
+  spawnInteractive = (program: string, args: string[]): void => {
+    spawnSync(program, args, { stdio: 'inherit' });
+  };
 }
