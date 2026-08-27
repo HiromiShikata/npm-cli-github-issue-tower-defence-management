@@ -88,4 +88,21 @@ describe('BrowserGitHubProjectRepository', () => {
       'cannot parse project URL',
     );
   });
+
+  it('should throw when optionId is not found in project status list', async () => {
+    const repo = new BrowserGitHubProjectRepository(
+      'username',
+      'password',
+      undefined,
+    );
+    const project = buildProject(
+      'https://github.com/users/testuser/projects/1',
+    );
+
+    await expect(
+      repo.setStatusFieldDefault(project, 'nonexistent-id'),
+    ).rejects.toThrow(
+      'option with id "nonexistent-id" not found in project status list',
+    );
+  });
 });
