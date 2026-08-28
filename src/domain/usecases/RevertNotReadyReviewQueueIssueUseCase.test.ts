@@ -249,6 +249,49 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
+    it('should revert chore agent issue to Awaiting Workspace when its linked PR is conflicted', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        agent: 'chore',
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), isConflicted: true },
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('PULL_REQUEST_CONFLICTED'),
+      );
+    });
+
+    it('should not revert chore agent issue when its linked PR is not conflicted', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        agent: 'chore',
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
     it('should revert Awaiting Quality Check issue with developer agent field and no linked PR', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
