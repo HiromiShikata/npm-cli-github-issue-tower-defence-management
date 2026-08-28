@@ -652,6 +652,37 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       expect(projectRepository.updateAgentList).not.toHaveBeenCalled();
     });
 
+    it('removes agents not in agentNames by calling updateAgentList without them', async () => {
+      const project = buildProjectWithAgent([
+        { id: 'opt-impl', name: 'impl' },
+        { id: 'opt-old', name: 'old-agent' },
+        { id: 'opt-chore', name: 'chore' },
+      ]);
+      const { projectRepository, useCase } = createUseCase([], project);
+
+      await useCase.reconcileAgentOptions(project, ['impl', 'chore']);
+
+      expect(projectRepository.updateAgentList).toHaveBeenCalledWith(project, [
+        expect.objectContaining({ id: 'opt-impl', name: 'impl' }),
+        expect.objectContaining({ id: 'opt-chore', name: 'chore' }),
+      ]);
+    });
+
+    it('reorders agents to match agentNames order when order differs', async () => {
+      const project = buildProjectWithAgent([
+        { id: 'opt-chore', name: 'chore' },
+        { id: 'opt-impl', name: 'impl' },
+      ]);
+      const { projectRepository, useCase } = createUseCase([], project);
+
+      await useCase.reconcileAgentOptions(project, ['impl', 'chore']);
+
+      expect(projectRepository.updateAgentList).toHaveBeenCalledWith(project, [
+        expect.objectContaining({ id: 'opt-impl', name: 'impl' }),
+        expect.objectContaining({ id: 'opt-chore', name: 'chore' }),
+      ]);
+    });
+
     it('calls createField with AGENT_FIELD_NAME and initial agents when project has no agent field', async () => {
       const { projectRepository, useCase } = createUseCase(
         [],
