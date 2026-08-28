@@ -6,5 +6,6 @@ export type ClaudeHandoverSession = {
     sessionName: string | null;
     name: string | null;
     issueUrl: string | null;
+    runsUnderWorkspacePreparationScript: boolean;
 };
 //# sourceMappingURL=ClaudeHandoverSession.d.ts.map

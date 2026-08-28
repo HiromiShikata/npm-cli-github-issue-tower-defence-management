@@ -43,6 +43,7 @@ const NAME_ARGUMENT_PREFIX = '--name=';
 const PRINT_ARGUMENTS = ['-p', '--print'];
 const PRINT_ARGUMENT_PREFIXES = ['-p=', '--print='];
 const CLAUDE_COMM_PATTERN = /^claude(-agent)?$/;
+const WORKSPACE_PREPARATION_SCOPE_PATTERN = /\/aw-[^/]*\.scope(\/|$)/;
 const ISSUE_OR_PR_URL_PATTERN = /https:\/\/github\.com\/[^\s\0]+?\/(?:issues|pull)\/\d+/;
 const normalizeName = (value) => value.replace(/[.:]/g, '_');
 const isIssueUrl = (value) => value.startsWith('http://') || value.startsWith('https://');
@@ -85,7 +86,7 @@ const parseIssueUrlFromPrint = (commandArguments) => {
     }
     return extractIssueUrlFromText(commandArguments.join(' '));
 };
-const classifySession = (pid, commandArguments, token) => {
+const classifySession = (pid, commandArguments, token, runsUnderWorkspacePreparationScript) => {
     if (token === null || token.length === 0) {
         return null;
     }
@@ -101,10 +102,19 @@ const classifySession = (pid, commandArguments, token) => {
                 sessionName,
                 name,
                 issueUrl: extractIssueUrlFromText(name),
+                runsUnderWorkspacePreparationScript,
             };
         }
         const kind = 'bareNameLeader';
-        return { kind, pid, token, sessionName, name, issueUrl: null };
+        return {
+            kind,
+            pid,
+            token,
+            sessionName,
+            name,
+            issueUrl: null,
+            runsUnderWorkspacePreparationScript,
+        };
     }
     const issueUrl = parseIssueUrlFromPrint(commandArguments);
     if (issueUrl === null) {
@@ -117,6 +127,7 @@ const classifySession = (pid, commandArguments, token) => {
         sessionName: null,
         name: null,
         issueUrl,
+        runsUnderWorkspacePreparationScript,
     };
 };
 class ProcClaudeHandoverSessionRepository {
@@ -156,7 +167,33 @@ class ProcClaudeHandoverSessionRepository {
                 return null;
             }
             const token = environ.get(OAUTH_TOKEN_ENVIRON_KEY) ?? null;
-            return classifySession(Number(processIdDirectory), commandArguments, token);
+            return classifySession(Number(processIdDirectory), commandArguments, token, this.readRunsUnderWorkspacePreparationScript(processIdDirectory));
+        };
+        this.readRunsUnderWorkspacePreparationScript = (processIdDirectory) => {
+            const cgroupPath = path.join(this.procDirectory, processIdDirectory, 'cgroup');
+            let raw;
+            try {
+                raw = fs.readFileSync(cgroupPath, 'utf8');
+            }
+            catch (error) {
+                console.error(`ProcClaudeHandoverSessionRepository: could not read ${cgroupPath}: ${error instanceof Error ? error.message : String(error)}`);
+                return false;
+            }
+            for (const line of raw.split('\n')) {
+                const firstSeparatorIndex = line.indexOf(':');
+                if (firstSeparatorIndex < 0) {
+                    continue;
+                }
+                const secondSeparatorIndex = line.indexOf(':', firstSeparatorIndex + 1);
+                if (secondSeparatorIndex < 0) {
+                    continue;
+                }
+                const cgroupHierarchyPath = line.slice(secondSeparatorIndex + 1);
+                if (WORKSPACE_PREPARATION_SCOPE_PATTERN.test(cgroupHierarchyPath)) {
+                    return true;
+                }
+            }
+            return false;
         };
         this.readComm = (processIdDirectory) => {
             const commPath = path.join(this.procDirectory, processIdDirectory, 'comm');

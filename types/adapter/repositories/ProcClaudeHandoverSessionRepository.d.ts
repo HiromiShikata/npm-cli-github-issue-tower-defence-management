@@ -6,6 +6,7 @@ export declare class ProcClaudeHandoverSessionRepository implements ClaudeHandov
     listHandoverSessions: () => ClaudeHandoverSession[];
     private listProcessIdDirectories;
     private readHandoverSession;
+    private readRunsUnderWorkspacePreparationScript;
     private readComm;
     private readCommandArguments;
     private readEnviron;

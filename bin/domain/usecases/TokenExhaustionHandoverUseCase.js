@@ -30,8 +30,15 @@ class TokenExhaustionHandoverUseCase {
             const terminatedPids = [];
             const relaunchedLeaderNames = [];
             const leftAliveSessionNames = [];
+            const skippedWorkspacePreparationSessionNames = [];
             for (const session of sessions) {
                 try {
+                    if (session.runsUnderWorkspacePreparationScript) {
+                        console.log(`Token exhaustion handover: skipping ${this.displayName(session)} kind=${session.kind} (launched by the workspace preparation script, which owns its own lifecycle)`);
+                        skippedWorkspacePreparationSessionNames.push(this.displayName(session));
+                        delete nextEntries[this.stateKeyFor(session)];
+                        continue;
+                    }
                     const snapshot = snapshotByToken.get(session.token);
                     if (snapshot === undefined) {
                         continue;
@@ -102,13 +109,14 @@ class TokenExhaustionHandoverUseCase {
                     console.error(`Token exhaustion handover: error processing ${this.displayName(session)}: ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
-            console.log(`Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} signaled=${newlyHandoverSentSessionNames.length} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} relaunched=${relaunchedLeaderNames.length} leftAlive=${leftAliveSessionNames.length}`);
+            console.log(`Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} signaled=${newlyHandoverSentSessionNames.length} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} relaunched=${relaunchedLeaderNames.length} leftAlive=${leftAliveSessionNames.length} skippedWorkspacePreparation=${skippedWorkspacePreparationSessionNames.length}`);
             return {
                 newlyHandoverSentSessionNames,
                 killedSessionNames,
                 terminatedPids,
                 relaunchedLeaderNames,
                 leftAliveSessionNames,
+                skippedWorkspacePreparationSessionNames,
                 state: { entries: nextEntries },
             };
         };

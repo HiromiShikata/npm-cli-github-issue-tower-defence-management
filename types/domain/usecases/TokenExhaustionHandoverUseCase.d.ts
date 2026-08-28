@@ -26,6 +26,7 @@ export type TokenExhaustionHandoverResult = {
     terminatedPids: number[];
     relaunchedLeaderNames: string[];
     leftAliveSessionNames: string[];
+    skippedWorkspacePreparationSessionNames: string[];
     state: TokenExhaustionHandoverState;
 };
 export declare class TokenExhaustionHandoverUseCase {

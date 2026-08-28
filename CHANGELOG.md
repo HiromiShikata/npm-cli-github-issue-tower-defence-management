@@ -1,3 +1,10 @@
+## [1.185.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.185.0...v1.185.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* skip token exhaustion handover for workspace preparation script sessions ([#1806](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1806)) ([b752892](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b75289212e3382c355b551d54b903ef3e1357710))
+
 # [1.185.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.184.1...v1.185.0) (2026-08-27)
 
 
