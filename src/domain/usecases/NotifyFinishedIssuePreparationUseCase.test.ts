@@ -5021,8 +5021,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         status: 'Preparation',
         agent: 'chore',
       });
-      const projectWithCustomDeveloper = makeProjectWithDeveloper('custom-developer');
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithCustomDeveloper);
+      const projectWithCustomDeveloper =
+        makeProjectWithDeveloper('custom-developer');
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithCustomDeveloper,
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({ content: 'From: :robot: Test report' }),

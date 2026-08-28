@@ -2168,7 +2168,11 @@ describe('RevertOrphanedPreparationUseCase', () => {
         cacheUsed: false,
       });
       mockIssueRepository.get.mockImplementation(async (issueUrl: string) =>
-        createMockIssue({ url: issueUrl, status: 'Preparation', agent: 'chore' }),
+        createMockIssue({
+          url: issueUrl,
+          status: 'Preparation',
+          agent: 'chore',
+        }),
       );
       mockLocalCommandRunner.runCommand.mockResolvedValue({
         stdout: '',
@@ -2202,13 +2206,15 @@ describe('RevertOrphanedPreparationUseCase', () => {
       ]);
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
-      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
-      expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-        'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+        1,
       );
-      expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-        'https://github.com/user/repo/pull/99',
-      );
+      expect(
+        mockIssueCommentRepository.createComment.mock.calls[0][1],
+      ).toContain('ANY_CI_JOB_FAILED_OR_IN_PROGRESS');
+      expect(
+        mockIssueCommentRepository.createComment.mock.calls[0][1],
+      ).toContain('https://github.com/user/repo/pull/99');
     });
 
     it('should advance to Awaiting Quality Check when chore agent has exactly one linked PR where all CI passes', async () => {
@@ -2235,7 +2241,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
           createdAt: new Date(),
         },
       ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([createPassingPr()]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createPassingPr(),
+      ]);
 
       await useCase.run({
         projectUrl: 'https://github.com/user/repo',
@@ -2463,10 +2471,15 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     it('should reassign to the configured developerAgentName when chore agent has a failing CI PR', async () => {
-      const projectWithCustomDeveloper = makeProjectWithDeveloper('custom-developer');
+      const projectWithCustomDeveloper =
+        makeProjectWithDeveloper('custom-developer');
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
-      mockProjectRepository.getProject.mockResolvedValue(projectWithCustomDeveloper);
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithCustomDeveloper);
+      mockProjectRepository.getProject.mockResolvedValue(
+        projectWithCustomDeveloper,
+      );
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithCustomDeveloper,
+      );
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',

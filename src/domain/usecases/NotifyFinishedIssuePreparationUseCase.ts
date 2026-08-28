@@ -378,7 +378,8 @@ export class NotifyFinishedIssuePreparationUseCase {
       params.developerAgentName ?? null,
     );
     if (ciFailingPrUrl !== null) {
-      const effectiveDeveloperAgentName = params.developerAgentName ?? 'developer';
+      const effectiveDeveloperAgentName =
+        params.developerAgentName ?? 'developer';
       const agentOptionId = await this.ensureAgentOptionAndGetId(
         project,
         effectiveDeveloperAgentName,
