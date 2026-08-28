@@ -16,19 +16,28 @@ export const isOverlayEntryActed = (
   entry: ConsoleOverlayEntry | undefined,
 ): boolean => entry !== undefined && entry.done === true;
 
+const isActedInTab = (
+  entry: ConsoleOverlayEntry | undefined,
+  currentTab: ConsoleTabName,
+): boolean =>
+  entry !== undefined && entry.done === true && entry.mode === currentTab;
+
 export const countPendingItems = (
   items: ConsoleListItem[],
   overlay: ConsoleOverlay,
+  currentTab: ConsoleTabName,
 ): number =>
-  items.filter((item) => !isOverlayEntryActed(overlay[overlayKeyForItem(item)]))
-    .length;
+  items.filter(
+    (item) => !isActedInTab(overlay[overlayKeyForItem(item)], currentTab),
+  ).length;
 
 export const filterPendingItems = (
   items: ConsoleListItem[],
   overlay: ConsoleOverlay,
+  currentTab: ConsoleTabName,
 ): ConsoleListItem[] =>
   items.filter(
-    (item) => !isOverlayEntryActed(overlay[overlayKeyForItem(item)]),
+    (item) => !isActedInTab(overlay[overlayKeyForItem(item)], currentTab),
   );
 
 export const overlayEntriesActedSinceSnapshot = (

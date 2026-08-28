@@ -107,6 +107,7 @@ export const ConsolePage = () => {
             overlayState.overlay,
             snapshot.generatedAt,
           ),
+          tab.name,
         );
       }
     }
@@ -151,6 +152,7 @@ export const ConsolePage = () => {
         overlayState.overlay,
         activeSnapshot.generatedAt,
       ),
+      activeTab,
     );
   }, [activeSnapshot, overlayState.overlay]);
 

@@ -312,12 +312,12 @@ describe('writeConsoleLists', () => {
     expect(todoByHumanServedItemCount()).toBe(1);
   });
 
-  it('re-hides an item recorded as done until the next regeneration bounds it to one cycle', () => {
+  it('serves an item regardless of a done record accumulated between regenerations', () => {
     regenerateTodoByHuman();
     expect(todoByHumanServedItemCount()).toBe(1);
 
     recordDoneProjectItemId(outDir, 'demo', 'todo-by-human', 'item-1');
-    expect(todoByHumanServedItemCount()).toBe(0);
+    expect(todoByHumanServedItemCount()).toBe(1);
 
     regenerateTodoByHuman();
     expect(todoByHumanServedItemCount()).toBe(1);
