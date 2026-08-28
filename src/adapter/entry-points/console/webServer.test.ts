@@ -554,7 +554,10 @@ describe('webServer new routes integration', () => {
       path.join(listDir, 'list.json'),
       JSON.stringify({
         pjcode: 'acme',
-        items: [{ projectItemId: 'PVTI_keep' }, { projectItemId: 'PVTI_also_keep' }],
+        items: [
+          { projectItemId: 'PVTI_keep' },
+          { projectItemId: 'PVTI_also_keep' },
+        ],
       }),
     );
     fs.writeFileSync(
@@ -588,7 +591,10 @@ describe('webServer new routes integration', () => {
       const parsed: unknown = JSON.parse(authorized.body);
       expect(parsed).toEqual({
         pjcode: 'acme',
-        items: [{ projectItemId: 'PVTI_keep' }, { projectItemId: 'PVTI_also_keep' }],
+        items: [
+          { projectItemId: 'PVTI_keep' },
+          { projectItemId: 'PVTI_also_keep' },
+        ],
       });
     } finally {
       await closeServer(server);
