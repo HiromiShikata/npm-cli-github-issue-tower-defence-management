@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleStoryAdd = exports.handleReorderStory = exports.handleIntmux = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleStoryAdd = exports.handleReorderStory = exports.handleIntmux = exports.handleStoryColor = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const Project_1 = require("../../../domain/entities/Project");
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
@@ -472,6 +472,47 @@ const handleReviewComment = async (context, body) => {
     return ok();
 };
 exports.handleReviewComment = handleReviewComment;
+const isStoryColor = (value) => Project_1.FIELD_OPTION_COLORS.some((c) => c === value);
+const handleStoryColor = async (context, body) => {
+    const storyOptionId = body.storyOptionId;
+    const newColor = body.newColor;
+    const nameWithOwner = body.nameWithOwner;
+    if (!isNonEmptyString(storyOptionId)) {
+        return badRequest('storyOptionId is required');
+    }
+    if (!isStoryColor(newColor)) {
+        return badRequest('newColor must be one of GRAY, BLUE, GREEN, YELLOW, ORANGE, RED, PINK, PURPLE');
+    }
+    if (!isNonEmptyString(nameWithOwner)) {
+        return badRequest('nameWithOwner is required');
+    }
+    const binding = await resolveBinding(context, body);
+    if (isOperationResponse(binding)) {
+        return binding;
+    }
+    const { project, pjcode } = binding;
+    if (project.story === null) {
+        return badRequest('project does not have a story field');
+    }
+    const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
+    if (storyOption === undefined) {
+        return badRequest(`story option "${storyOptionId}" not found in project`);
+    }
+    const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
+    await context
+        .resolveIssueRepository(proxyUrl)
+        .updateStoryOptionColor({ ...project, story: project.story }, storyOptionId, newColor);
+    if (context.updateProjectCacheEntry !== null) {
+        const updatedStories = project.story.stories.map((s) => s.id === storyOptionId ? { ...s, color: newColor } : s);
+        const updatedProject = {
+            ...project,
+            story: { ...project.story, stories: updatedStories },
+        };
+        context.updateProjectCacheEntry(pjcode, updatedProject);
+    }
+    return ok();
+};
+exports.handleStoryColor = handleStoryColor;
 const handleIntmux = async (context, body) => {
     const action = body.action;
     const issueUrl = body.issueUrl;

@@ -22,6 +22,7 @@ export type ConsoleOperationContext = {
     updateStoryList: ((project: Project, stories: FieldOption[]) => Promise<FieldOption[]>) | null;
     resolveProjectRepository: ConsoleProjectRepositoryResolver | null;
     invalidateProject: ((pjcode: string) => void) | null;
+    updateProjectCacheEntry: ((pjcode: string, updatedProject: Project) => void) | null;
 };
 export type ConsoleOperationResponse = {
     statusCode: number;
@@ -33,6 +34,7 @@ export declare const handleComment: (context: ConsoleOperationContext, body: Rec
 export declare const handleAttachmentUpload: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleCreateIssue: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleReviewComment: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
+export declare const handleStoryColor: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleIntmux: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleReorderStory: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleStoryAdd: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;

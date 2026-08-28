@@ -24,6 +24,7 @@ import {
   postConsoleAddStory,
   postConsoleCreateIssue,
   postConsoleReorderStory,
+  postConsoleStoryColor,
 } from '../lib/consoleApi';
 import { navigateAssign, navigateReplace } from '../lib/navigation';
 import {
@@ -48,6 +49,7 @@ import type { ConsoleSwipeDirection } from '../logic/swipe';
 import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
 import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
 import type {
+  ConsoleColor,
   ConsoleListItem,
   ConsoleOverlayStatus,
   ConsoleTabName,
@@ -386,6 +388,73 @@ export const ConsolePage = () => {
     [pjcode],
   );
 
+  const [storyOptimisticColors, setStoryOptimisticColors] = useState<
+    Record<string, ConsoleColor>
+  >({});
+  const [storyColorChangeInFlight, setStoryColorChangeInFlight] = useState<
+    string | null
+  >(null);
+  const [storyColorErrors, setStoryColorErrors] = useState<
+    Record<string, string>
+  >({});
+
+  const handleSelectColor = useCallback(
+    (storyOptionId: string, newColor: ConsoleColor): void => {
+      const originalEntry = storyEntries.find(
+        (e) => e.storyOptionId === storyOptionId,
+      );
+      const originalColor = originalEntry?.color;
+      setStoryColorChangeInFlight(storyOptionId);
+      setStoryOptimisticColors((prev) => ({
+        ...prev,
+        [storyOptionId]: newColor,
+      }));
+      setStoryColorErrors((prev) => {
+        const next = { ...prev };
+        delete next[storyOptionId];
+        return next;
+      });
+      if (pjcode === null || defaultNameWithOwner === null) {
+        setStoryOptimisticColors((prev) =>
+          originalColor !== undefined
+            ? { ...prev, [storyOptionId]: originalColor }
+            : prev,
+        );
+        setStoryColorErrors((prev) => ({
+          ...prev,
+          [storyOptionId]: 'No project or repository configured.',
+        }));
+        setStoryColorChangeInFlight((current) =>
+          current === storyOptionId ? null : current,
+        );
+        return;
+      }
+      postConsoleStoryColor({
+        pjcode,
+        storyOptionId,
+        newColor,
+        nameWithOwner: defaultNameWithOwner,
+      })
+        .catch((err: unknown) => {
+          setStoryOptimisticColors((prev) =>
+            originalColor !== undefined
+              ? { ...prev, [storyOptionId]: originalColor }
+              : prev,
+          );
+          setStoryColorErrors((prev) => ({
+            ...prev,
+            [storyOptionId]: err instanceof Error ? err.message : String(err),
+          }));
+        })
+        .finally(() => {
+          setStoryColorChangeInFlight((current) =>
+            current === storyOptionId ? null : current,
+          );
+        });
+    },
+    [pjcode, defaultNameWithOwner, storyEntries],
+  );
+
   return (
     <main className="console-app">
       {actionQueue.pending !== null && (
@@ -433,6 +502,10 @@ export const ConsolePage = () => {
           error={error}
           onCreateIssue={handleCreateIssue}
           onAddStory={handleStoryAdd}
+          onSelectColor={handleSelectColor}
+          optimisticColors={storyOptimisticColors}
+          colorChangeInFlight={storyColorChangeInFlight}
+          colorErrors={storyColorErrors}
         />
       ) : selectedItem === null ? (
         <>

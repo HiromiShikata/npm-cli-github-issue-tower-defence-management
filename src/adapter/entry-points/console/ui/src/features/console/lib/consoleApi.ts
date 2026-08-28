@@ -1,5 +1,6 @@
 import type {
   ConsoleChangedFile,
+  ConsoleColor,
   ConsoleComment,
   ConsoleCommit,
   ConsoleIssueState,
@@ -416,6 +417,28 @@ export type ConsoleCreateIssueRequest = {
   title: string;
   storyOptionId: string;
   nameWithOwner: string;
+};
+
+export const STORY_COLOR_OPERATION_PATH = '/api/storycolor';
+
+export type ConsoleStoryColorRequest = {
+  pjcode: string;
+  storyOptionId: string;
+  newColor: ConsoleColor;
+  nameWithOwner: string;
+};
+
+export const postConsoleStoryColor = async (
+  request: ConsoleStoryColorRequest,
+): Promise<void> => {
+  const response = await fetch(STORY_COLOR_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
 };
 
 export const postConsoleCreateIssue = async (

@@ -53,6 +53,10 @@ const meta: Meta<typeof ConsoleStoryList> = {
   args: {
     onCreateIssue: () => Promise.resolve(),
     onAddStory: () => Promise.resolve(),
+    onSelectColor: () => undefined,
+    optimisticColors: {},
+    colorChangeInFlight: null,
+    colorErrors: {},
   },
 };
 

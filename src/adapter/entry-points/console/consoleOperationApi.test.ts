@@ -22,6 +22,7 @@ import {
   handleReview,
   handleReviewComment,
   handleStoryAdd,
+  handleStoryColor,
   handleTriage,
 } from './consoleOperationApi';
 
@@ -115,6 +116,7 @@ describe('consoleOperationApi', () => {
       updateStoryList: null,
       resolveProjectRepository: null,
       invalidateProject: null,
+      updateProjectCacheEntry: null,
     };
   });
 
@@ -130,6 +132,7 @@ describe('consoleOperationApi', () => {
     updateStoryList: null,
     resolveProjectRepository: null,
     invalidateProject: null,
+    updateProjectCacheEntry: null,
   });
 
   afterEach(() => {
@@ -875,6 +878,7 @@ describe('consoleOperationApi', () => {
         updateStoryList: null,
         resolveProjectRepository: null,
         invalidateProject: null,
+        updateProjectCacheEntry: null,
       };
     });
 
@@ -1123,6 +1127,7 @@ describe('consoleOperationApi', () => {
         updateStoryList: null,
         resolveProjectRepository: null,
         invalidateProject: null,
+        updateProjectCacheEntry: null,
       };
       const response = await handleTriage(multiContext, {
         pjcode: 'globex',
@@ -2114,6 +2119,7 @@ describe('consoleOperationApi', () => {
           updateStoryList: consecutiveUpdateStoryList,
         })),
         invalidateProject,
+        updateProjectCacheEntry: null,
       };
 
       await handleStoryAdd(consecutiveContext, {
@@ -2135,6 +2141,199 @@ describe('consoleOperationApi', () => {
           expect.objectContaining({ name: 'Story Y' }),
         ]),
       );
+    });
+  });
+
+  describe('handleStoryColor', () => {
+    const projectWithStory = (): Project => ({
+      ...project,
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'opt_blue',
+            name: 'Portal redesign',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'opt_green',
+            name: 'Move to Okinawa',
+            color: 'GREEN',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    beforeEach(() => {
+      issueRepository.updateStoryOptionColor.mockResolvedValue(undefined);
+    });
+
+    it('calls updateStoryOptionColor with the correct project, storyOptionId, and newColor', async () => {
+      const storyProject = projectWithStory();
+      const response = await handleStoryColor(contextForProject(storyProject), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_blue',
+        newColor: 'RED',
+        nameWithOwner: 'acme-labs/portal',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStoryOptionColor).toHaveBeenCalledWith(
+        expect.objectContaining({ story: storyProject.story }),
+        'opt_blue',
+        'RED',
+      );
+    });
+
+    it('resolves the issue repository from a proxy url of the target repo', async () => {
+      const resolvedUrls: string[] = [];
+      const recordingContext: ConsoleOperationContext = {
+        ...contextForProject(projectWithStory()),
+        resolveIssueRepository: (url: string) => {
+          resolvedUrls.push(url);
+          return issueRepository;
+        },
+      };
+
+      await handleStoryColor(recordingContext, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_blue',
+        newColor: 'GREEN',
+        nameWithOwner: 'acme-labs/portal',
+      });
+
+      expect(resolvedUrls).toContain(
+        'https://github.com/acme-labs/portal/issues/0',
+      );
+    });
+
+    it('rejects when storyOptionId is missing', async () => {
+      const response = await handleStoryColor(
+        contextForProject(projectWithStory()),
+        {
+          pjcode: 'acme',
+          newColor: 'RED',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'storyOptionId is required' },
+      });
+    });
+
+    it('rejects when newColor is not a valid ConsoleColor', async () => {
+      const response = await handleStoryColor(
+        contextForProject(projectWithStory()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_blue',
+          newColor: 'MAGENTA',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: {
+          error:
+            'newColor must be one of GRAY, BLUE, GREEN, YELLOW, ORANGE, RED, PINK, PURPLE',
+        },
+      });
+    });
+
+    it('rejects when nameWithOwner is missing', async () => {
+      const response = await handleStoryColor(
+        contextForProject(projectWithStory()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_blue',
+          newColor: 'RED',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'nameWithOwner is required' },
+      });
+    });
+
+    it('rejects when the project has no story field', async () => {
+      const projectWithoutStory: Project = { ...project, story: null };
+
+      const response = await handleStoryColor(
+        contextForProject(projectWithoutStory),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_blue',
+          newColor: 'RED',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'project does not have a story field' },
+      });
+    });
+
+    it('rejects when storyOptionId is not found in project.story.stories', async () => {
+      const response = await handleStoryColor(
+        contextForProject(projectWithStory()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_nonexistent',
+          newColor: 'RED',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'story option "opt_nonexistent" not found in project' },
+      });
+      expect(issueRepository.updateStoryOptionColor).not.toHaveBeenCalled();
+    });
+
+    it('calls updateProjectCacheEntry with the updated project after a successful color change', async () => {
+      const storyProject = projectWithStory();
+      const updatedEntries: { pjcode: string; project: Project }[] = [];
+      const contextWithCache: ConsoleOperationContext = {
+        ...contextForProject(storyProject),
+        updateProjectCacheEntry: (pjcode, updatedProject) => {
+          updatedEntries.push({ pjcode, project: updatedProject });
+        },
+      };
+
+      await handleStoryColor(contextWithCache, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_blue',
+        newColor: 'RED',
+        nameWithOwner: 'acme-labs/portal',
+      });
+
+      expect(updatedEntries).toHaveLength(1);
+      expect(updatedEntries[0].pjcode).toBe('acme');
+      expect(updatedEntries[0].project.story?.stories).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'opt_blue', color: 'RED' }),
+          expect.objectContaining({ id: 'opt_green', color: 'GREEN' }),
+        ]),
+      );
+    });
+
+    it('does not call updateProjectCacheEntry when updateProjectCacheEntry is null', async () => {
+      const response = await handleStoryColor(
+        contextForProject(projectWithStory()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_blue',
+          newColor: 'RED',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      expect(response.statusCode).toBe(200);
     });
   });
 });

@@ -64,7 +64,13 @@ const createConsoleProjectResolver = (pjcodeToProjectUrl, loadProject) => {
     const invalidate = (pjcode) => {
         cache.delete(pjcode);
     };
-    return { resolve, invalidate };
+    const updateEntry = (pjcode, updatedProject) => {
+        const existing = cache.get(pjcode);
+        if (existing !== undefined) {
+            cache.set(pjcode, { ...existing, project: updatedProject });
+        }
+    };
+    return { resolve, invalidate, updateEntry };
 };
 exports.createConsoleProjectResolver = createConsoleProjectResolver;
 //# sourceMappingURL=consoleProjectResolver.js.map

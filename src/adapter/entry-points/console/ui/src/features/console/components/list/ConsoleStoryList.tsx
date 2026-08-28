@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { colorFromEnum } from '../../logic/colors';
-import type { ConsoleStoryEntry } from '../../logic/types';
+import { CONSOLE_COLOR_PALETTE, colorFromEnum } from '../../logic/colors';
+import type { ConsoleColor, ConsoleStoryEntry } from '../../logic/types';
+
+const ALL_COLORS = Object.keys(CONSOLE_COLOR_PALETTE) as ConsoleColor[];
 
 type InlineInputFormProps = {
   placeholder: string;
@@ -97,12 +99,44 @@ const StoryCreateForm = ({
   />
 );
 
+type ColorPaletteProps = {
+  onSelectColor: (color: ConsoleColor) => void;
+  disabled: boolean;
+};
+
+const ColorPalette = ({ onSelectColor, disabled }: ColorPaletteProps) => (
+  <div className="console-story-color-palette">
+    {ALL_COLORS.map((color) => {
+      const palette = CONSOLE_COLOR_PALETTE[color];
+      return (
+        <button
+          key={color}
+          type="button"
+          className="console-story-color-swatch"
+          aria-label={color === 'GRAY' ? `${color} (disable)` : color}
+          style={{ backgroundColor: palette.dot }}
+          onClick={() => onSelectColor(color)}
+          disabled={disabled}
+        >
+          {color === 'GRAY' && (
+            <span className="console-story-color-swatch-label">disable</span>
+          )}
+        </button>
+      );
+    })}
+  </div>
+);
+
 export type ConsoleStoryListProps = {
   stories: ConsoleStoryEntry[];
   isLoading: boolean;
   error: string | null;
   onCreateIssue: (storyOptionId: string, title: string) => Promise<void>;
   onAddStory: (storyName: string) => Promise<void>;
+  onSelectColor: (storyOptionId: string, newColor: ConsoleColor) => void;
+  optimisticColors: Record<string, ConsoleColor>;
+  colorChangeInFlight: string | null;
+  colorErrors: Record<string, string>;
 };
 
 export const ConsoleStoryList = ({
@@ -111,9 +145,16 @@ export const ConsoleStoryList = ({
   error,
   onCreateIssue,
   onAddStory,
+  onSelectColor,
+  optimisticColors,
+  colorChangeInFlight,
+  colorErrors,
 }: ConsoleStoryListProps) => {
   const [expandedOptionId, setExpandedOptionId] = useState<string | null>(null);
   const [addStoryExpanded, setAddStoryExpanded] = useState(false);
+  const [colorPickerOptionId, setColorPickerOptionId] = useState<string | null>(
+    null,
+  );
 
   if (error !== null) {
     return (
@@ -141,6 +182,20 @@ export const ConsoleStoryList = ({
     setExpandedOptionId(null);
   };
 
+  const handleColorButtonClick = (storyOptionId: string): void => {
+    setColorPickerOptionId(
+      colorPickerOptionId === storyOptionId ? null : storyOptionId,
+    );
+  };
+
+  const handleSwatchClick = (
+    storyOptionId: string,
+    newColor: ConsoleColor,
+  ): void => {
+    setColorPickerOptionId(null);
+    onSelectColor(storyOptionId, newColor);
+  };
+
   return (
     <div className="console-story-list-container">
       {stories.length === 0 ? (
@@ -148,8 +203,13 @@ export const ConsoleStoryList = ({
       ) : (
         <ul className="console-story-list">
           {stories.map((entry) => {
-            const palette = colorFromEnum(entry.color);
+            const displayColor: ConsoleColor =
+              optimisticColors[entry.storyOptionId] ?? entry.color;
+            const palette = colorFromEnum(displayColor);
             const isExpanded = expandedOptionId === entry.storyOptionId;
+            const isPickerOpen = colorPickerOptionId === entry.storyOptionId;
+            const isInFlight = colorChangeInFlight === entry.storyOptionId;
+            const colorError = colorErrors[entry.storyOptionId] ?? null;
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
                 <div className="console-story-list-row-main">
@@ -189,7 +249,28 @@ export const ConsoleStoryList = ({
                   >
                     Add task
                   </button>
+                  <button
+                    type="button"
+                    className="console-op-button"
+                    onClick={() => handleColorButtonClick(entry.storyOptionId)}
+                    disabled={isInFlight}
+                  >
+                    Change color
+                  </button>
                 </div>
+                {isPickerOpen && (
+                  <ColorPalette
+                    onSelectColor={(newColor) =>
+                      handleSwatchClick(entry.storyOptionId, newColor)
+                    }
+                    disabled={isInFlight}
+                  />
+                )}
+                {colorError !== null && (
+                  <p role="alert" className="console-list-error">
+                    {colorError}
+                  </p>
+                )}
                 {isExpanded && (
                   <StoryCreateForm
                     storyOptionId={entry.storyOptionId}

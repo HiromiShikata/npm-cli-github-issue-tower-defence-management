@@ -4815,6 +4815,90 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('updateStoryOptionColor', () => {
+    it('preserves all other option ids and colors and changes only the target option color', async () => {
+      const storyProject: Project & {
+        story: NonNullable<Project['story']>;
+      } = {
+        ...buildTestProject('PVT_test'),
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          stories: [
+            { id: 'opt_a', name: 'Alpha', color: 'BLUE', description: '' },
+            { id: 'opt_b', name: 'Beta', color: 'GREEN', description: '' },
+            { id: 'opt_c', name: 'Gamma', color: 'YELLOW', description: '' },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+
+      let capturedBody: unknown;
+      jest
+        .spyOn(global, 'fetch')
+        .mockImplementationOnce(async (input): Promise<Response> => {
+          const req = input instanceof Request ? input : new Request(input);
+          capturedBody = JSON.parse(await req.text());
+          return new Response(
+            JSON.stringify({
+              data: {
+                updateProjectV2Field: {
+                  projectV2Field: { options: [] },
+                },
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          );
+        });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.updateStoryOptionColor(storyProject, 'opt_b', 'RED');
+
+      expect(capturedBody).toMatchObject({
+        variables: {
+          fieldId: 'storyField',
+          options: [
+            { id: 'opt_a', name: 'Alpha', color: 'BLUE', description: '' },
+            { id: 'opt_b', name: 'Beta', color: 'RED', description: '' },
+            { id: 'opt_c', name: 'Gamma', color: 'YELLOW', description: '' },
+          ],
+        },
+      });
+    });
+
+    it('throws when the GitHub GraphQL response contains errors', async () => {
+      const storyProject: Project & {
+        story: NonNullable<Project['story']>;
+      } = {
+        ...buildTestProject('PVT_test'),
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          stories: [
+            { id: 'opt_a', name: 'Alpha', color: 'BLUE', description: '' },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            errors: [{ message: 'insufficient permissions' }],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.updateStoryOptionColor(storyProject, 'opt_a', 'RED'),
+      ).rejects.toThrow('insufficient permissions');
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();

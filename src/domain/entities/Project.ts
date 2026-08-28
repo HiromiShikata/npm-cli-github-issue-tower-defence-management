@@ -1,9 +1,18 @@
+export const FIELD_OPTION_COLORS = [
+  'GRAY',
+  'BLUE',
+  'GREEN',
+  'YELLOW',
+  'ORANGE',
+  'RED',
+  'PINK',
+  'PURPLE',
+] as const;
 export type StoryOption = FieldOption;
 export type FieldOption = {
   id: string;
   name: string;
-  color:
-    'GRAY' | 'BLUE' | 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED' | 'PINK' | 'PURPLE';
+  color: (typeof FIELD_OPTION_COLORS)[number];
   description: string;
 };
 

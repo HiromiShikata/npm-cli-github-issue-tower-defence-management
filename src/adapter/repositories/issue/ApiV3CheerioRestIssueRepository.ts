@@ -9,7 +9,7 @@ import {
   PullRequestReviewCommentSide,
   PullRequestReviewInlineLocation,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { Project } from '../../../domain/entities/Project';
+import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
@@ -28,7 +28,10 @@ import {
   ProjectIssuesCacheRepository,
 } from '../ProjectIssuesCacheRepository';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
-import { fetchGithubGraphql } from '../githubGraphqlClient';
+import {
+  fetchGithubGraphql,
+  postGithubGraphqlJson,
+} from '../githubGraphqlClient';
 import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 import { Member } from '../../../domain/entities/Member';
@@ -1070,6 +1073,40 @@ export class ApiV3CheerioRestIssueRepository
       issue.itemId,
       { singleSelectOptionId: storyOptionId },
     );
+  };
+  updateStoryOptionColor = async (
+    project: Project & { story: NonNullable<Project['story']> },
+    storyOptionId: string,
+    newColor: FieldOption['color'],
+  ): Promise<void> => {
+    const mutation = `mutation UpdateStoryOptionColor($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    singleSelectOptions: $options
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        options { id name color description }
+      }
+    }
+  }
+}`;
+    const options = project.story.stories.map((opt) => ({
+      id: opt.id,
+      name: opt.name,
+      color: opt.id === storyOptionId ? newColor : opt.color,
+      description: opt.description,
+    }));
+    const response = await postGithubGraphqlJson<{
+      errors?: { message: string }[];
+    }>({
+      ghToken: this.ghToken,
+      query: mutation,
+      variables: { fieldId: project.story.fieldId, options },
+    });
+    if (response.errors && response.errors.length > 0) {
+      throw new Error(response.errors.map((e) => e.message).join('; '));
+    }
   };
   clearProjectField = async (
     project: Project,
