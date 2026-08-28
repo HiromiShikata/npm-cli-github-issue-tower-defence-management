@@ -33,7 +33,7 @@ export const ConsoleTabList = ({
     right: number;
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLUListElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isDropdownOpen) return;
@@ -111,7 +111,7 @@ export const ConsoleTabList = ({
             type="button"
             className="console-tab-pjname-button"
             aria-expanded={isDropdownOpen}
-            aria-haspopup="listbox"
+            aria-haspopup="menu"
             onClick={handleButtonClick}
           >
             {pjcode}
@@ -122,8 +122,9 @@ export const ConsoleTabList = ({
           {isDropdownOpen &&
             dropdownPos !== null &&
             createPortal(
-              <ul
+              <div
                 ref={dropdownRef}
+                role="menu"
                 className="console-tab-pjname-dropdown"
                 aria-label="Select project"
                 style={{
@@ -133,22 +134,21 @@ export const ConsoleTabList = ({
                 }}
               >
                 {pjcodes.map((code) => (
-                  <li key={code}>
-                    <button
-                      type="button"
-                      className="console-tab-pjname-option"
-                      data-active={code === pjcode ? 'true' : undefined}
-                      aria-pressed={code === pjcode}
-                      onClick={() => {
-                        onSelectProject(code);
-                        setIsDropdownOpen(false);
-                      }}
-                    >
-                      {code}
-                    </button>
-                  </li>
+                  <button
+                    key={code}
+                    type="button"
+                    role="menuitem"
+                    className="console-tab-pjname-option"
+                    data-active={code === pjcode ? 'true' : undefined}
+                    onClick={() => {
+                      onSelectProject(code);
+                      setIsDropdownOpen(false);
+                    }}
+                  >
+                    {code}
+                  </button>
                 ))}
-              </ul>,
+              </div>,
               document.body,
             )}
         </div>
