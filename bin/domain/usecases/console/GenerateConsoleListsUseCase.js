@@ -34,7 +34,6 @@ class GenerateConsoleListsUseCase {
             }
             const defaultNameWithOwner = issues.find((issue) => issue.nameWithOwner !== '')?.nameWithOwner ?? null;
             const storyEntries = storyOptions
-                .filter((option) => option.color !== 'GRAY')
                 .map((option) => ({
                 storyName: option.name,
                 storyOptionId: option.id,

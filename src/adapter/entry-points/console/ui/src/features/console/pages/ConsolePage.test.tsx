@@ -994,6 +994,165 @@ describe('ConsolePage auto-advance tab', () => {
     });
   });
 
+  it('shows the stories tab badge count as the number of non-GRAY stories', async () => {
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              stories: [
+                {
+                  storyName: 'TDPM Console port',
+                  storyOptionId: 'st1',
+                  color: 'BLUE',
+                  openItemCount: 3,
+                  storyViewUrl: null,
+                },
+                {
+                  storyName: 'regular / workflow improvement',
+                  storyOptionId: 'st2',
+                  color: 'GRAY',
+                  openItemCount: 2,
+                  storyViewUrl: null,
+                },
+              ],
+              defaultNameWithOwner: null,
+              storyOrder: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { container } = render(<ConsolePage />);
+
+    await waitFor(() => {
+      const tabs = [...container.querySelectorAll('.console-tab')];
+      const storiesTab = tabs.find((el) => el.textContent?.includes('Stories'));
+      expect(storiesTab).toBeTruthy();
+      expect(storiesTab?.querySelector('.console-tab-badge')?.textContent).toBe(
+        '1',
+      );
+    });
+  });
+
+  it('reads console-story-show-gray from localStorage and shows gray stories when true', async () => {
+    localStorage.setItem('console-story-show-gray', 'true');
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              stories: [
+                {
+                  storyName: 'TDPM Console port',
+                  storyOptionId: 'st1',
+                  color: 'BLUE',
+                  openItemCount: 3,
+                  storyViewUrl: null,
+                },
+                {
+                  storyName: 'regular / workflow improvement',
+                  storyOptionId: 'st2',
+                  color: 'GRAY',
+                  openItemCount: 2,
+                  storyViewUrl: null,
+                },
+              ],
+              defaultNameWithOwner: null,
+              storyOrder: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { findByText } = render(<ConsolePage />);
+    expect(
+      await findByText('regular / workflow improvement'),
+    ).toBeInTheDocument();
+  });
+
+  it('writes true to console-story-show-gray in localStorage when the toggle button is clicked', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'stories') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              generatedAt: '2026-06-19T00:00:00.000Z',
+              stories: [
+                {
+                  storyName: 'TDPM Console port',
+                  storyOptionId: 'st1',
+                  color: 'BLUE',
+                  openItemCount: 3,
+                  storyViewUrl: null,
+                },
+                {
+                  storyName: 'regular / workflow improvement',
+                  storyOptionId: 'st2',
+                  color: 'GRAY',
+                  openItemCount: 2,
+                  storyViewUrl: null,
+                },
+              ],
+              defaultNameWithOwner: null,
+              storyOrder: [],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { findByRole } = render(<ConsolePage />);
+    const toggleBtn = await findByRole('button', { name: 'Show archived' });
+    fireEvent.click(toggleBtn);
+    expect(localStorage.getItem('console-story-show-gray')).toBe('true');
+  });
+
   it('navigates to the next project when a completing action fires after the project timer elapses', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',

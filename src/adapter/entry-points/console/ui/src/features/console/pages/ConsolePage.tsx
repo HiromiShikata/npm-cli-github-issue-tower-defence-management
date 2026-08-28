@@ -97,7 +97,9 @@ export const ConsolePage = () => {
         continue;
       }
       if (tab.name === 'stories') {
-        result[tab.name] = snapshot.stories.length;
+        result[tab.name] = snapshot.stories.filter(
+          (s) => s.color !== 'GRAY',
+        ).length;
       } else {
         result[tab.name] = countPendingItems(
           snapshot.items,
@@ -330,6 +332,18 @@ export const ConsolePage = () => {
 
   const detailScreenRef = useConsoleSwipeNavigation(handleSwipe);
 
+  const [showGray, setShowGray] = useState(
+    () => localStorage.getItem('console-story-show-gray') === 'true',
+  );
+
+  const handleToggleGray = useCallback((): void => {
+    setShowGray((prev) => {
+      const next = !prev;
+      localStorage.setItem('console-story-show-gray', String(next));
+      return next;
+    });
+  }, []);
+
   const storiesSnapshot = snapshots.stories;
   const storyEntries = storiesSnapshot?.stories ?? [];
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
@@ -502,9 +516,11 @@ export const ConsolePage = () => {
           stories={storyEntries}
           isLoading={isLoading}
           error={error}
+          showGray={showGray}
           onCreateIssue={handleCreateIssue}
           onAddStory={handleStoryAdd}
           onSelectColor={handleSelectColor}
+          onToggleGray={handleToggleGray}
           optimisticColors={storyOptimisticColors}
           colorChangeInFlight={storyColorChangeInFlight}
           colorErrors={storyColorErrors}
