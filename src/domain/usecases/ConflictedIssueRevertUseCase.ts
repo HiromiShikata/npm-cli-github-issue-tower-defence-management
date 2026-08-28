@@ -125,10 +125,7 @@ export class ConflictedIssueRevertUseCase {
         if (existing) {
           existing.add(issue.url);
         } else {
-          openPrUrlsByIssueUrl.set(
-            referencedIssueUrl,
-            new Set([issue.url]),
-          );
+          openPrUrlsByIssueUrl.set(referencedIssueUrl, new Set([issue.url]));
         }
       }
     }
