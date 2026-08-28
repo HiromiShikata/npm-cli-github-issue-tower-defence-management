@@ -55,6 +55,7 @@ const issueUrlLeaderSession = (): ClaudeHandoverSession => ({
   sessionName: ISSUE_URL_SESSION,
   name: ISSUE_URL,
   issueUrl: ISSUE_URL,
+  runsUnderWorkspacePreparationScript: false,
 });
 
 const bareNameLeaderSession = (): ClaudeHandoverSession => ({
@@ -64,6 +65,7 @@ const bareNameLeaderSession = (): ClaudeHandoverSession => ({
   sessionName: BARE_NAME,
   name: BARE_NAME,
   issueUrl: null,
+  runsUnderWorkspacePreparationScript: false,
 });
 
 const implSubagentSession = (): ClaudeHandoverSession => ({
@@ -73,6 +75,12 @@ const implSubagentSession = (): ClaudeHandoverSession => ({
   sessionName: null,
   name: null,
   issueUrl: ISSUE_URL,
+  runsUnderWorkspacePreparationScript: false,
+});
+
+const workspacePreparationSession = (): ClaudeHandoverSession => ({
+  ...implSubagentSession(),
+  runsUnderWorkspacePreparationScript: true,
 });
 
 const defaultInput = (
@@ -161,7 +169,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     await useCase.run(defaultInput({ enabled: false }));
 
     expect(logSpy).toHaveBeenCalledWith(
-      'Token exhaustion handover: cycle summary evaluated=0 enabled=false signaled=0 killed=0 terminatedPids=0 relaunched=0 leftAlive=0',
+      'Token exhaustion handover: cycle summary evaluated=0 enabled=false signaled=0 killed=0 terminatedPids=0 relaunched=0 leftAlive=0 skippedWorkspacePreparation=0',
     );
   });
 
@@ -341,6 +349,56 @@ describe('TokenExhaustionHandoverUseCase', () => {
       signaledAtEpoch: nowEpochSeconds,
       pid: IMPL_PID,
     });
+  });
+
+  it('leaves a session launched by the workspace preparation script untouched instead of terminating it', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      workspacePreparationSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(processSignalRepository.terminateProcess).not.toHaveBeenCalled();
+    expect(processSignalRepository.killProcess).not.toHaveBeenCalled();
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(result.skippedWorkspacePreparationSessionNames).toEqual([
+      `pid:${IMPL_PID}`,
+    ]);
+    expect(result.state.entries).toEqual({});
+  });
+
+  it('does not force-kill a workspace preparation session whose grace period has elapsed', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      workspacePreparationSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+    processSignalRepository.isProcessAlive.mockReturnValue(true);
+
+    const result = await useCase.run(
+      defaultInput({
+        state: {
+          entries: {
+            [`pid:${IMPL_PID}`]: {
+              signaledAtEpoch:
+                nowEpochSeconds -
+                DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS -
+                1,
+              pid: IMPL_PID,
+            },
+          },
+        },
+      }),
+    );
+
+    expect(processSignalRepository.killProcess).not.toHaveBeenCalled();
+    expect(result.terminatedPids).toEqual([]);
   });
 
   it('does not treat an impl subagent as exhausted on seven-day utilization alone', async () => {

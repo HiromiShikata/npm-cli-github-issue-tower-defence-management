@@ -51,6 +51,7 @@ export type TokenExhaustionHandoverResult = {
   terminatedPids: number[];
   relaunchedLeaderNames: string[];
   leftAliveSessionNames: string[];
+  skippedWorkspacePreparationSessionNames: string[];
   state: TokenExhaustionHandoverState;
 };
 
@@ -95,9 +96,20 @@ export class TokenExhaustionHandoverUseCase {
     const terminatedPids: number[] = [];
     const relaunchedLeaderNames: string[] = [];
     const leftAliveSessionNames: string[] = [];
+    const skippedWorkspacePreparationSessionNames: string[] = [];
 
     for (const session of sessions) {
       try {
+        if (session.runsUnderWorkspacePreparationScript) {
+          console.log(
+            `Token exhaustion handover: skipping ${this.displayName(session)} kind=${session.kind} (launched by the workspace preparation script, which owns its own lifecycle)`,
+          );
+          skippedWorkspacePreparationSessionNames.push(
+            this.displayName(session),
+          );
+          delete nextEntries[this.stateKeyFor(session)];
+          continue;
+        }
         const snapshot = snapshotByToken.get(session.token);
         if (snapshot === undefined) {
           continue;
@@ -200,7 +212,7 @@ export class TokenExhaustionHandoverUseCase {
     }
 
     console.log(
-      `Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} signaled=${newlyHandoverSentSessionNames.length} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} relaunched=${relaunchedLeaderNames.length} leftAlive=${leftAliveSessionNames.length}`,
+      `Token exhaustion handover: cycle summary evaluated=${sessions.length} enabled=${input.enabled} signaled=${newlyHandoverSentSessionNames.length} killed=${killedSessionNames.length} terminatedPids=${terminatedPids.length} relaunched=${relaunchedLeaderNames.length} leftAlive=${leftAliveSessionNames.length} skippedWorkspacePreparation=${skippedWorkspacePreparationSessionNames.length}`,
     );
 
     return {
@@ -209,6 +221,7 @@ export class TokenExhaustionHandoverUseCase {
       terminatedPids,
       relaunchedLeaderNames,
       leftAliveSessionNames,
+      skippedWorkspacePreparationSessionNames,
       state: { entries: nextEntries },
     };
   };
