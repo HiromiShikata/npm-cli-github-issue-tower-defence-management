@@ -369,7 +369,10 @@ export const handleReview = async (
       );
     }
     if (prStatus.isConflicted) {
-      await issueRepository.createCommentByUrl(prUrl, CONFLICT_RETURNED_MESSAGE);
+      await issueRepository.createCommentByUrl(
+        prUrl,
+        CONFLICT_RETURNED_MESSAGE,
+      );
       const conflictFailure = await updateStatusByName(
         issueRepository,
         project,

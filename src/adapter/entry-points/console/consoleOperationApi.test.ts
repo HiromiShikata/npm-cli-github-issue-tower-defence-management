@@ -601,7 +601,10 @@ describe('consoleOperationApi', () => {
         'status_aw',
       );
       expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
-      expectRecordedOnlyIn('PVTI_conflict', CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
+      expectRecordedOnlyIn(
+        'PVTI_conflict',
+        CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
+      );
     });
 
     it('returns 400 with check names when required checks are not green', async () => {
