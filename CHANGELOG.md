@@ -1,3 +1,15 @@
+# [1.187.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.186.1...v1.187.0) (2026-08-28)
+
+
+### Bug Fixes
+
+* **RevertOrphanedPreparationUseCase:** detect conflicting PRs for non-developer agent issues ([#1804](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1804)) ([780af57](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/780af57eecb9110664c849014b3a7b96291fa89b)), closes [HiromiShikata/umino-corporait-operation#30914](https://github.com/HiromiShikata/umino-corporait-operation/issues/30914)
+
+
+### Features
+
+* **ClearDependedIssueURLUseCase:** auto-remove Icebox depended issue URLs from dependency field ([#1791](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1791)) ([22d6509](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/22d6509abcffd9604e39b91331dc472cd1152f4a)), closes [#1777](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1777)
+
 ## [1.186.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.186.0...v1.186.1) (2026-08-28)
 
 

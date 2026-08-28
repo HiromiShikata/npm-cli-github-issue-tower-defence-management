@@ -164,6 +164,12 @@ class RevertOrphanedPreparationUseCase {
             if (isNonDeveloperAgent ||
                 hasLabelNotRequiringPullRequest ||
                 (categoryLabels.length > 0 && !categoryLabels.includes('category:e2e'))) {
+                const prsToCheck = issue.isPr
+                    ? await this.resolveOpenPrsForPrItem(issue.url)
+                    : await this.issueRepository.findRelatedOpenPRs(issue.url);
+                if (prsToCheck.some((pr) => pr.isConflicted)) {
+                    return { outcome: 'reject', comments };
+                }
                 return { outcome: 'advanceToQualityCheck', comments };
             }
             const prsToCheck = issue.isPr

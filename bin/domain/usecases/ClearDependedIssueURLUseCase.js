@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClearDependedIssueURLUseCase = void 0;
+const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class ClearDependedIssueURLUseCase {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
@@ -26,15 +27,22 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 const notFoundDependedIssueUrls = absentDependedIssueIsResolvable
                     ? issue.dependedIssueUrls.filter((dependedIssueUrl) => !input.issues.some((depIssue) => depIssue.url === dependedIssueUrl))
                     : [];
-                const openDependedIssueUrls = issue.dependedIssueUrls.filter((dependedIssueUrl) => input.issues.some((depIssue) => depIssue.url === dependedIssueUrl && !depIssue.isClosed));
+                const iceboxDependedIssueUrls = issue.dependedIssueUrls.filter((dependedIssueUrl) => input.issues.some((depIssue) => depIssue.url === dependedIssueUrl &&
+                    !depIssue.isClosed &&
+                    depIssue.status === WorkflowStatus_1.ICEBOX_STATUS_NAME));
+                const openDependedIssueUrls = issue.dependedIssueUrls.filter((dependedIssueUrl) => input.issues.some((depIssue) => depIssue.url === dependedIssueUrl &&
+                    !depIssue.isClosed &&
+                    depIssue.status !== WorkflowStatus_1.ICEBOX_STATUS_NAME));
                 const closedDependedIssueUrls = issue.dependedIssueUrls.filter((dependedIssueUrl) => input.issues.some((depIssue) => depIssue.url === dependedIssueUrl && depIssue.isClosed));
                 if (notFoundDependedIssueUrls.length === 0 &&
-                    closedDependedIssueUrls.length === 0) {
+                    closedDependedIssueUrls.length === 0 &&
+                    iceboxDependedIssueUrls.length === 0) {
                     continue;
                 }
                 const remainingDependedIssueUrls = absentDependedIssueIsResolvable
                     ? openDependedIssueUrls
-                    : issue.dependedIssueUrls.filter((dependedIssueUrl) => !closedDependedIssueUrls.includes(dependedIssueUrl));
+                    : issue.dependedIssueUrls.filter((dependedIssueUrl) => !closedDependedIssueUrls.includes(dependedIssueUrl) &&
+                        !iceboxDependedIssueUrls.includes(dependedIssueUrl));
                 if (remainingDependedIssueUrls.length === 0) {
                     await this.issueRepository.clearProjectField(input.project, dependedIssueUrlSeparatedByComma.fieldId, issue);
                 }
@@ -43,13 +51,20 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 }
                 if (closedDependedIssueUrls.length > 0) {
                     const allCleared = remainingDependedIssueUrls.length === 0 &&
-                        notFoundDependedIssueUrls.length === 0;
+                        notFoundDependedIssueUrls.length === 0 &&
+                        iceboxDependedIssueUrls.length === 0;
                     await this.issueRepository.createComment(issue, `${allCleared ? 'All depended issues are already closed, dependency field cleared' : 'Some depended issues are already closed, removed from dependency field'}:
 ${closedDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 }
                 if (notFoundDependedIssueUrls.length > 0) {
                     await this.issueRepository.createComment(issue, `Dependency removed:
 ${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
+                }
+                if (iceboxDependedIssueUrls.length > 0) {
+                    const iceboxAllCleared = remainingDependedIssueUrls.length === 0 &&
+                        closedDependedIssueUrls.length === 0 &&
+                        notFoundDependedIssueUrls.length === 0;
+                    await this.issueRepository.createComment(issue, `${iceboxAllCleared ? 'All depended issues are in Icebox, dependency field cleared' : 'Some depended issues are in Icebox, removed from dependency field'}:\n${iceboxDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`);
                 }
             }
         };
