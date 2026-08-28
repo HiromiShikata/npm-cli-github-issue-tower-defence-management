@@ -111,7 +111,11 @@ export class OauthTokenSelectUseCase {
     thresholds: OauthTokenSelectionThresholds = DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
   ): OauthTokenSelectResult => {
     const evaluated = candidates.map((candidate) => {
-      const evaluatedMetric = this.evaluate(candidate, nowEpochSeconds, thresholds);
+      const evaluatedMetric = this.evaluate(
+        candidate,
+        nowEpochSeconds,
+        thresholds,
+      );
       return {
         candidate,
         metric: {
