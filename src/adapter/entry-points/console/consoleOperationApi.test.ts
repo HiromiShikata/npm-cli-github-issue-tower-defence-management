@@ -12,6 +12,7 @@ import {
   readDoneProjectItemIds,
 } from './consoleDoneStore';
 import {
+  CONFLICT_RETURNED_MESSAGE,
   type ConsoleOperationContext,
   type ConsoleProjectBinding,
   handleAttachmentUpload,
@@ -566,7 +567,7 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
     });
 
-    it('returns 400 when the pull request has a merge conflict', async () => {
+    it('posts a conflict comment, moves to Awaiting workspace, and returns 200 when the pull request has a merge conflict', async () => {
       issueRepository.getOpenPullRequest.mockResolvedValue({
         url: 'https://github.com/o/r/pull/1',
         branchName: null,
@@ -586,11 +587,21 @@ describe('consoleOperationApi', () => {
         prUrl: 'https://github.com/o/r/pull/1',
         projectItemId: 'PVTI_conflict',
       });
-      expect(response.statusCode).toBe(400);
-      expect(response.body).toMatchObject({
-        error: 'Cannot merge: pull request has a merge conflict',
-      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        CONFLICT_RETURNED_MESSAGE,
+      );
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({
+          itemId: 'PVTI_conflict',
+          url: 'https://github.com/o/r/pull/1',
+        }),
+        'status_aw',
+      );
       expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+      expectRecordedOnlyIn('PVTI_conflict', CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES);
     });
 
     it('returns 400 with check names when required checks are not green', async () => {
