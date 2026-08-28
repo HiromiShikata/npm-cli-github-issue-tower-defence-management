@@ -1,10 +1,17 @@
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { IssueRepository, RelatedPullRequest } from './adapter-interfaces/IssueRepository';
+import { Issue } from '../entities/Issue';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 export declare const DEFAULT_FALLBACK_LLM_MODEL_NAME = "claude-opus-4-8";
+export declare const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
+export type SpawnCandidateExclusionReason = 'dependedIssueUrls' | 'futureNextActionDate' | 'nextActionHourNotReached' | 'authorNotAllowed' | 'notAssignedToManager';
+export type SpawnCandidateBranchSource = {
+    openPullRequest: RelatedPullRequest | null;
+    relatedOpenPullRequests: RelatedPullRequest[];
+};
 export declare const agentNameFromDesignation: (designation: string) => string;
 export type RotationOrderEntry = {
     name: string;
@@ -29,6 +36,8 @@ export declare class StartPreparationUseCase {
     private compareBySevenDayDeadlineThenUtilization;
     private taperedConcurrentLimit;
     getTokenConcurrentLimit: (fiveHourUtilization: number, sevenDayUtilization: number, selectionWeight?: number) => number;
+    spawnCandidateExclusionReasonOf: (issue: Issue, allowedIssueAuthors: string[] | null, manager: string, now: Date) => SpawnCandidateExclusionReason | null;
+    fetchSpawnCandidateBranchSources: (issueUrls: string[]) => Promise<Map<string, SpawnCandidateBranchSource>>;
     private selectRotationTokens;
     buildRotationOrder: (tokenUsages: ClaudeTokenUsage[], utilizationPercentageThreshold: number, modelName: string | null) => RotationOrderEntry[];
     run: (params: {

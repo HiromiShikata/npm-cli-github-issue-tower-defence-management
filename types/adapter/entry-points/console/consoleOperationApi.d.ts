@@ -3,6 +3,7 @@ import type { IssueAttachmentRepository } from '../../../domain/usecases/adapter
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 export declare const AWAITING_WORKSPACE_STATUS_NAME = "awaiting workspace";
+export declare const CONFLICT_RETURNED_MESSAGE = "Auto Status Check: CONFLICT\nThis pull request has a merge conflict and has been returned to Awaiting Workspace.";
 export declare const IN_TMUX_BY_HUMAN_STATUS_NAME = "in tmux by human";
 export declare const CHORE_LABEL_NAME = "chore";
 export type ConsoleProjectBinding = {

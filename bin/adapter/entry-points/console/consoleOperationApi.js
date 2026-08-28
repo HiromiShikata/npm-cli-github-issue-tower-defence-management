@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleStoryAdd = exports.handleReorderStory = exports.handleIntmux = exports.handleStoryColor = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleStoryAdd = exports.handleReorderStory = exports.handleIntmux = exports.handleStoryColor = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.CONFLICT_RETURNED_MESSAGE = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const Project_1 = require("../../../domain/entities/Project");
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
 exports.AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
+exports.CONFLICT_RETURNED_MESSAGE = 'Auto Status Check: CONFLICT\nThis pull request has a merge conflict and has been returned to Awaiting Workspace.';
 exports.IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
 exports.CHORE_LABEL_NAME = 'chore';
 const ok = () => ({
@@ -206,7 +207,13 @@ const handleReview = async (context, body) => {
             return badRequest('Cannot merge: pull request not found or already closed');
         }
         if (prStatus.isConflicted) {
-            return badRequest('Cannot merge: pull request has a merge conflict');
+            await issueRepository.createCommentByUrl(prUrl, exports.CONFLICT_RETURNED_MESSAGE);
+            const conflictFailure = await updateStatusByName(issueRepository, project, prUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
+            if (conflictFailure !== null) {
+                return conflictFailure;
+            }
+            recordDoneForStatusChange(context, pjcode, projectItemId);
+            return ok();
         }
         if (!prStatus.isPassedAllCiJob) {
             const missing = prStatus.missingRequiredCheckNames;

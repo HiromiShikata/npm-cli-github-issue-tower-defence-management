@@ -1,3 +1,15 @@
+# [1.193.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.192.0...v1.193.0) (2026-08-28)
+
+
+### Features
+
+* **console:** post conflict comment and revert to Awaiting Workspace on merge conflict ([#1825](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1825)) ([7113a1f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7113a1f73030f60d77d90391783f5715274fde25))
+
+
+### Performance Improvements
+
+* **preparation:** resolve spawn candidate branch sources concurrently ([#1829](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1829)) ([320dd2a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/320dd2a380aa576b7e979bf3894ed084905992ad)), closes [#1827](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1827)
+
 # [1.192.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.191.0...v1.192.0) (2026-08-28)
 
 
