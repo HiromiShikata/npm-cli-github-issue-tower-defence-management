@@ -51,7 +51,7 @@ const storiesWithArchived = [
   ...storiesWithoutUrl,
   {
     storyName: 'regular / NO STORY; SET STORY FIELD',
-    storyOptionId: 's1',
+    storyOptionId: '28415d6c',
     color: 'GRAY' as const,
     openItemCount: 5,
     storyViewUrl: null,
