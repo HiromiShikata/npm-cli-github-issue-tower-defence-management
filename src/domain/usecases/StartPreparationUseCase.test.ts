@@ -7351,9 +7351,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
       observedMaxInFlight = Math.max(observedMaxInFlight, inFlightCount);
       await new Promise((resolve) => setTimeout(resolve, 1));
       inFlightCount -= 1;
-      return [
-        buildRelatedPullRequest(issueUrl.replace('/issues/', '/pull/')),
-      ];
+      return [buildRelatedPullRequest(issueUrl.replace('/issues/', '/pull/'))];
     });
     const useCase = buildUseCase({ findRelatedOpenPRs });
 

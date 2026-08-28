@@ -224,7 +224,10 @@ export class StartPreparationUseCase {
   fetchSpawnCandidateBranchSources = async (
     issueUrls: string[],
   ): Promise<Map<string, SpawnCandidateBranchSource>> => {
-    const branchSourceByIssueUrl = new Map<string, SpawnCandidateBranchSource>();
+    const branchSourceByIssueUrl = new Map<
+      string,
+      SpawnCandidateBranchSource
+    >();
     let nextIndex = 0;
     const fetchSequentially = async (): Promise<void> => {
       while (nextIndex < issueUrls.length) {
