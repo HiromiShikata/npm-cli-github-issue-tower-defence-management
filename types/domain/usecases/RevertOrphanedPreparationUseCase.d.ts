@@ -19,6 +19,7 @@ export declare class RevertOrphanedPreparationUseCase {
         labelsAsLlmAgentName?: string[] | null;
         labelsNotRequiringPullRequest?: string[] | null;
         allowedIssueAuthors?: string[] | null;
+        ownerApprovalTimeoutCycles?: number | null;
     }) => Promise<void>;
     private isStillInPreparation;
     private evaluateOutcome;

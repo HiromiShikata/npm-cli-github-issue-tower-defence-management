@@ -298,8 +298,12 @@ class StartPreparationUseCase {
                 }
                 else {
                     const relatedPRs = await this.issueRepository.findRelatedOpenPRs(issue.url);
-                    if (relatedPRs.length > 1) {
-                        const sortedPRs = [...relatedPRs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+                    const sameRepoRelatedPRs = relatedPRs.filter((pr) => {
+                        const match = /^https?:\/\/[^/]+\/([^/]+\/[^/]+)\//.exec(pr.url);
+                        return match === null || match[1] === issue.nameWithOwner;
+                    });
+                    if (sameRepoRelatedPRs.length > 1) {
+                        const sortedPRs = [...sameRepoRelatedPRs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
                         const canonicalPR = sortedPRs[0];
                         const duplicatePRs = sortedPRs.slice(1);
                         for (const duplicatePR of duplicatePRs) {
@@ -317,12 +321,12 @@ class StartPreparationUseCase {
                         }
                         branchName = canonicalPR.branchName;
                     }
-                    else if (relatedPRs.length === 1) {
-                        if (relatedPRs[0].branchName === null) {
+                    else if (sameRepoRelatedPRs.length === 1) {
+                        if (sameRepoRelatedPRs[0].branchName === null) {
                             console.warn(`Skipping issue ${issue.url}: related open PR has unavailable head branch.`);
                             continue;
                         }
-                        branchName = relatedPRs[0].branchName;
+                        branchName = sameRepoRelatedPRs[0].branchName;
                     }
                     else {
                         branchName = `i${issue.number}`;

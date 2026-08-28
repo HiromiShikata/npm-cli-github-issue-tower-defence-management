@@ -28,6 +28,7 @@ export type ConfigFile = {
     consoleProjects?: Record<string, string>;
     consoleGithubTokenFileDir?: string;
     disks?: DiskConfig[];
+    ownerApprovalTimeoutCycles?: number;
 };
 export type DiskConfig = {
     title: string;

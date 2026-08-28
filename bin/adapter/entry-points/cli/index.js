@@ -248,6 +248,7 @@ exports.program
             awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
             labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
             labelsNotRequiringPullRequest: config.labelsNotRequiringPullRequest ?? null,
+            ownerApprovalTimeoutCycles: config.ownerApprovalTimeoutCycles ?? 12,
         });
     }
     const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository_1.ProxyClaudeTokenUsageRepository(config.claudeCodeOauthTokenListJsonPath ?? null);
@@ -306,6 +307,7 @@ exports.program
     .option('--missingAgentName <name>', 'Agent definition name that was not found, triggering the missing-agent task creation path')
     .option('--sessionErrorLine <line>', 'Exact error line from the session log to include in the task issue body')
     .option('--deferPreparation', 'Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) without creating any issue; use for transient upstream failures')
+    .option('--ownerApprovalTimeoutCycles <count>', 'Number of owner-approval wait cycles before escalating to Failed Preparation (default: 12)')
     .action(async (options) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -380,6 +382,9 @@ exports.program
         manager: config.manager ?? null,
         developerAgentName: config.developerAgentName ?? null,
         deferPreparation: options.deferPreparation ?? null,
+        ownerApprovalTimeoutCycles: options.ownerApprovalTimeoutCycles
+            ? Number(options.ownerApprovalTimeoutCycles)
+            : (config.ownerApprovalTimeoutCycles ?? 12),
     });
 });
 exports.program

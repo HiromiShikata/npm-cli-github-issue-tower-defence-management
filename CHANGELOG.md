@@ -1,3 +1,10 @@
+# [1.191.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.190.0...v1.191.0) (2026-08-28)
+
+
+### Features
+
+* support waitingForOwnerApproval flag to cycle tasks through owner-approval wait ([#1813](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1813)) ([fcd3335](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fcd3335ed0116c9c78f5ef2cd69772a97a3d1fee)), closes [HiromiShikata/secretary#4290](https://github.com/HiromiShikata/secretary/issues/4290)
+
 # [1.190.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.189.2...v1.190.0) (2026-08-28)
 
 
