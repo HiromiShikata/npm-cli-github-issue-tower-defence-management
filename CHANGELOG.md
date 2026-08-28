@@ -1,3 +1,10 @@
+## [1.187.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.187.0...v1.187.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **IssueRejectionEvaluator:** resolve the pull request item itself in the conflict-only branch ([#1808](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1808)) ([10dd0a7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/10dd0a760b7975e9281b136358ec6ce2b1499f63)), closes [#1807](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1807)
+
 # [1.187.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.186.1...v1.187.0) (2026-08-28)
 
 
