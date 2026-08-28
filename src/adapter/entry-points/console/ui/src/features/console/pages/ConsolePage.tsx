@@ -476,10 +476,12 @@ export const ConsolePage = () => {
         activeTab={activeTab}
         counts={counts}
         pjcode={pjcode}
+        pjcodes={pjcodes}
         generatedAt={generatedAt}
         fromCache={fromCache}
         tabHref={navigation.tabHref}
         onSelectTab={navigation.selectTab}
+        onSelectProject={(code) => navigateAssign(`/projects/${code}`)}
         settingsButton={
           <ConsoleTimerSettingsModalDialog
             isOpen={isSettingsOpen}

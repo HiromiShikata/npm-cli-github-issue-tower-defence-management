@@ -1,17 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import type { ConsoleTabName } from '../../logic/types';
 import { ConsoleTabList } from './ConsoleTabList';
+
+const allPjcodes = ['utage3', 'cmg', 'xmile', 'xcare', 'umino'];
 
 const meta: Meta<typeof ConsoleTabList> = {
   title: 'Console/ConsoleTabList',
   component: ConsoleTabList,
   args: {
     pjcode: 'acme',
+    pjcodes: allPjcodes,
     generatedAt: '2026-06-19T08:42:11.000Z',
     fromCache: false,
     tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
     onSelectTab: () => {},
+    onSelectProject: () => {},
   },
 };
 
@@ -125,4 +129,38 @@ export const WithSettingsButton: Story = {
       </button>
     ),
   },
+};
+
+export const WithProjectSwitcherClosed: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    pjcode: 'umino',
+    pjcodes: allPjcodes,
+  },
+};
+
+const DropdownOpen = (args: ComponentProps<typeof ConsoleTabList>) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const btn = containerRef.current?.querySelector<HTMLButtonElement>(
+      '.console-tab-pjname-button',
+    );
+    btn?.click();
+  }, []);
+  return (
+    <div ref={containerRef}>
+      <ConsoleTabList {...args} />
+    </div>
+  );
+};
+
+export const WithProjectSwitcherOpen: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    pjcode: 'umino',
+    pjcodes: allPjcodes,
+  },
+  render: (args) => <DropdownOpen {...args} />,
 };

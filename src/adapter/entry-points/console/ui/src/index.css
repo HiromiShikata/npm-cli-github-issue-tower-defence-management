@@ -103,8 +103,58 @@ body {
   margin-left: auto;
   align-self: center;
   padding: 0 8px;
+}
+
+.console-tab-pjname-button {
+  background: transparent;
+  border: none;
   color: #8b949e;
+  cursor: pointer;
   font-size: 0.7188rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1;
+}
+
+.console-tab-pjname-button:hover {
+  color: #e6edf3;
+  background: #21262d;
+}
+
+.console-tab-pjname-arrow {
+  font-size: 0.625rem;
+}
+
+.console-tab-pjname-dropdown {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  min-width: 120px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(1, 4, 9, 0.5);
+}
+
+.console-tab-pjname-option {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #e6edf3;
+  cursor: pointer;
+  font-size: 0.7188rem;
+  padding: 4px 12px;
+  text-align: left;
+}
+
+.console-tab-pjname-option:hover,
+.console-tab-pjname-option[data-active="true"] {
+  background: #21262d;
 }
 
 .console-tab-geninfo {

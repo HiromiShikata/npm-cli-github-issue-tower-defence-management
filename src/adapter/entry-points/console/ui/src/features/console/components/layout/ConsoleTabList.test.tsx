@@ -14,10 +14,12 @@ const counts: Record<ConsoleTabName, number> = {
 
 const baseProps = {
   pjcode: 'acme',
+  pjcodes: ['utage3', 'cmg', 'xmile', 'xcare', 'umino'],
   generatedAt: '2026-06-19T08:42:11.000Z',
   fromCache: false,
   tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
   onSelectTab: () => {},
+  onSelectProject: () => {},
 };
 
 describe('ConsoleTabList', () => {
@@ -169,5 +171,64 @@ describe('ConsoleTabList', () => {
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
     expect(container.querySelector('.console-tab-settings')).toBeNull();
+  });
+
+  it('opens the project dropdown when the pjcode button is clicked', () => {
+    const { getByRole, baseElement } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeNull();
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeInTheDocument();
+  });
+
+  it('lists all pjcodes in the dropdown', () => {
+    const { getByRole, baseElement } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    const options = Array.from(
+      baseElement.querySelectorAll('.console-tab-pjname-option'),
+    );
+    expect(options.map((o) => o.textContent)).toEqual([
+      'utage3',
+      'cmg',
+      'xmile',
+      'xcare',
+      'umino',
+    ]);
+  });
+
+  it('calls onSelectProject with the chosen pjcode when a dropdown option is clicked', () => {
+    const onSelectProject = jest.fn();
+    const { getByRole, getByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        onSelectProject={onSelectProject}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    fireEvent.click(getByText('xmile'));
+    expect(onSelectProject).toHaveBeenCalledWith('xmile');
+  });
+
+  it('closes the dropdown after a project option is selected', () => {
+    const { getByRole, getByText, baseElement } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeInTheDocument();
+    fireEvent.click(getByText('xmile'));
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeNull();
   });
 });
