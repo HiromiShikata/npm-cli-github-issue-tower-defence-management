@@ -1522,6 +1522,7 @@ mysteryKey: 'value'
         manager: 'test-manager',
         developerAgentName: null,
         deferPreparation: null,
+        ownerApprovalTimeoutCycles: 12,
       });
     });
 
@@ -1566,6 +1567,7 @@ mysteryKey: 'value'
         manager: 'test-manager',
         developerAgentName: null,
         deferPreparation: null,
+        ownerApprovalTimeoutCycles: 12,
       });
     });
 
