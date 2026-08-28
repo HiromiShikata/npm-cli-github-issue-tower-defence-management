@@ -82,6 +82,7 @@ const makeIssue = (overrides: Partial<Issue>): Issue => {
     author: 'someone',
     closingIssueReferenceUrls: [],
     agent: null,
+    stateReason: null,
     ...overrides,
   };
 };

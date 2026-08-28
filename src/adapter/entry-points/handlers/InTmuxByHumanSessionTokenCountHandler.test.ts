@@ -47,6 +47,7 @@ const issue = (url: string, status: string): Issue => ({
   author: 'hiromi',
   closingIssueReferenceUrls: [],
   agent: null,
+  stateReason: null,
 });
 
 describe('InTmuxByHumanSessionTokenCountHandler', () => {

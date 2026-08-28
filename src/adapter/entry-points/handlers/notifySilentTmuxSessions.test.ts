@@ -501,6 +501,7 @@ describe('notifySilentTmuxSessions', () => {
     author: 'HiromiShikata',
     closingIssueReferenceUrls: [],
     agent: null,
+    stateReason: null,
   });
 
   it('skips a URL-named session whose hub task is no longer in the active status', async () => {

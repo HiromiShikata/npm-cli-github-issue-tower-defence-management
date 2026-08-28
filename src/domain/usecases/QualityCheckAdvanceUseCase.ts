@@ -45,6 +45,7 @@ export class QualityCheckAdvanceUseCase {
       (issue) =>
         issue.status === qualityCheckStatusName &&
         !issue.isClosed &&
+        issue.stateReason !== 'REOPENED' &&
         issue.dependedIssueUrls.length === 0 &&
         !issueReactivationTriggerIsPending(issue, evaluatedAt) &&
         issueUrlsWithMergedPr.has(issue.url),

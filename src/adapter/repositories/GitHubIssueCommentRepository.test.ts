@@ -27,6 +27,7 @@ const buildIssue = (url: string): Issue => ({
   author: 'testuser',
   closingIssueReferenceUrls: [],
   agent: null,
+  stateReason: null,
 });
 
 const TEST_URL = 'https://github.com/HiromiShikata/test-repo/issues/123';

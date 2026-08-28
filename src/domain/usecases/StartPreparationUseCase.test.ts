@@ -54,6 +54,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   author: 'testuser',
   closingIssueReferenceUrls: [],
   agent: null,
+  stateReason: null,
   ...overrides,
 });
 

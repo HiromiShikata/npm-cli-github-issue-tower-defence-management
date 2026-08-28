@@ -232,6 +232,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     author: '',
     closingIssueReferenceUrls: [],
     agent: null,
+    stateReason: null,
   }));
   const humResult = new InTmuxByHumanSessionTokenCountUseCase().run(
     candidates,

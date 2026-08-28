@@ -73,6 +73,7 @@ const buildProjectItem = (url: string, title: string): ProjectItem => ({
   author: '',
   closingIssueReferenceUrls: [],
   isRepoArchived: false,
+  stateReason: null,
   customFields: [],
 });
 
@@ -118,6 +119,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               'https://github.com/HiromiShikata/test-repository/issues/7',
             ],
             isRepoArchived: false,
+            stateReason: 'REOPENED' as const,
             customFields: [
               { name: 'nextActionDate', value: '2000-01-01' },
               { name: 'nextActionHour', value: '1' },
@@ -156,6 +158,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           ],
           agent: null,
           isRepoArchived: false,
+          stateReason: 'REOPENED',
         },
       },
       {
@@ -176,6 +179,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             author: '',
             closingIssueReferenceUrls: [],
             isRepoArchived: false,
+            stateReason: null,
             customFields: [
               {
                 name: 'DependedIssueUrls',
@@ -215,6 +219,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           closingIssueReferenceUrls: [],
           agent: null,
           isRepoArchived: false,
+          stateReason: null,
         },
       },
     ];
@@ -1018,6 +1023,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         author: '',
         closingIssueReferenceUrls: [],
         agent: null,
+        stateReason: null,
       };
       const statusId = 'new-status-id';
 

@@ -18,6 +18,7 @@ export type ProjectItem = {
   author: string;
   closingIssueReferenceUrls: string[];
   isRepoArchived: boolean;
+  stateReason: 'COMPLETED' | 'NOT_PLANNED' | 'REOPENED' | null;
   customFields: {
     name: string;
     value: string | null;
@@ -51,6 +52,7 @@ type ProjectV2ItemContentNode = {
   labels: { nodes: { name: string }[] };
   assignees: { nodes: { login: string }[] };
   closingIssuesReferences?: { nodes: { url: string }[] };
+  stateReason?: string | null;
 };
 type ProjectV2ItemNode = {
   id: string;
@@ -121,6 +123,7 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
               number
               title
               state
+              stateReason
               url
               body
               createdAt
@@ -185,6 +188,19 @@ export const RATE_LIMIT_MAX_BACKOFF_MS = 300000;
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+const toStateReason = (
+  value: string | null | undefined,
+): 'COMPLETED' | 'NOT_PLANNED' | 'REOPENED' | null => {
+  if (
+    value === 'COMPLETED' ||
+    value === 'NOT_PLANNED' ||
+    value === 'REOPENED'
+  ) {
+    return value;
+  }
+  return null;
+};
 
 const parseNonNegativeIntegerHeader = (value: string | null): number | null => {
   if (value === null) {
@@ -634,6 +650,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
           ?.map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       isRepoArchived: item.content.repository.isArchived ?? false,
+      stateReason: toStateReason(item.content.stateReason),
       customFields: item.fieldValues.nodes
         .filter((field) => !!field.field)
         .map((field) => {
@@ -1049,6 +1066,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       number
       title
       state
+      stateReason
       url
       body
       createdAt
@@ -1222,6 +1240,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       number: number;
       title: string;
       state: string;
+      stateReason?: string | null;
       url: string;
       body: string;
       createdAt: string;
@@ -1309,6 +1328,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           ?.map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       isRepoArchived: content.repository.isArchived ?? false,
+      stateReason: toStateReason(content.stateReason),
       customFields: item.fieldValues.nodes
         .filter((field) => !!field.field)
         .map((field) => {

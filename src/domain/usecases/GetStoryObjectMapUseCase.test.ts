@@ -70,6 +70,7 @@ describe('GetStoryObjectMapUseCase', () => {
     author: '',
     closingIssueReferenceUrls: [],
     agent: null,
+    stateReason: null,
     ...overrides,
   });
 

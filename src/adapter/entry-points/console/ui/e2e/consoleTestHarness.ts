@@ -396,6 +396,7 @@ const buildIssueForUrl = (url: string): Issue => ({
   author: 'HiromiShikata',
   closingIssueReferenceUrls: [],
   agent: null,
+  stateReason: null,
 });
 
 const notImplemented = (method: string): never => {

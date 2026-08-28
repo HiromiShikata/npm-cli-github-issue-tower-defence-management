@@ -781,6 +781,80 @@ describe('GraphqlProjectItemRepository', () => {
       );
       warnSpy.mockRestore();
     });
+
+    it('requests stateReason in the Issue content fragment of the GraphQL query', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      await repository.fetchProjectItems('test-project-id');
+
+      const sentQuery = extractRequestedQueryFromMockCall(
+        mockPost.mock.calls[0],
+      );
+      expect(sentQuery).toContain('stateReason');
+    });
+
+    it('maps stateReason REOPENED from Issue content node to ProjectItem.stateReason', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 1,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [
+                  {
+                    id: 'item-1',
+                    fieldValues: { nodes: [] },
+                    content: {
+                      repository: { nameWithOwner: 'owner/repo' },
+                      number: 1,
+                      title: 'Test Issue',
+                      state: 'OPEN',
+                      stateReason: 'REOPENED',
+                      url: 'https://github.com/owner/repo/issues/1',
+                      body: 'body',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      labels: { nodes: [] },
+                      assignees: { nodes: [] },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItems('test-project-id');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].stateReason).toBe('REOPENED');
+    });
+
+    it('maps stateReason to null when the field is absent from the content node', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(makePageResponse(false, 'cursor-1', 1));
+
+      const result = await repository.fetchProjectItems('test-project-id');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].stateReason).toBeNull();
+    });
   });
 
   const extractRequestedVariablesFromMockCall = (
@@ -1664,6 +1738,39 @@ describe('GraphqlProjectItemRepository', () => {
       expect(warnSpy).toHaveBeenCalled();
 
       warnSpy.mockRestore();
+    });
+
+    it('maps stateReason from the single-item Issue response', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: {
+                ...makeContentNode(
+                  'https://github.com/owner/repo/issues/42',
+                  42,
+                  'Reopened Issue',
+                ),
+                stateReason: 'REOPENED',
+              },
+              pullRequest: null,
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/issues/42',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.stateReason).toBe('REOPENED');
     });
   });
 });
