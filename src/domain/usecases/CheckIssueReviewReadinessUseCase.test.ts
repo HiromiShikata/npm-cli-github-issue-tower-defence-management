@@ -296,7 +296,8 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       expect(result.reviewReady).toBe(false);
       expect(result.rejections).toContainEqual({
         type: 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
-        detail: 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS: https://github.com/user/repo/pull/1',
+        detail:
+          'ANY_CI_JOB_FAILED_OR_IN_PROGRESS: https://github.com/user/repo/pull/1',
       });
     });
 
