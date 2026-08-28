@@ -32,6 +32,7 @@ export type ConfigFile = {
   consoleProjects?: Record<string, string>;
   consoleGithubTokenFileDir?: string;
   disks?: DiskConfig[];
+  ownerApprovalTimeoutCycles?: number;
 };
 
 export type DiskConfig = {
@@ -206,6 +207,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'consoleGithubTokenFileDir',
       ),
       disks: getDisksValue(parsed, 'disks'),
+      ownerApprovalTimeoutCycles: getNumberValue(
+        parsed,
+        'ownerApprovalTimeoutCycles',
+      ),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -395,6 +400,9 @@ export const mergeConfigs = (
     cliOverrides.consoleGithubTokenFileDir ??
     configFile.consoleGithubTokenFileDir,
   disks: cliOverrides.disks ?? configFile.disks,
+  ownerApprovalTimeoutCycles:
+    cliOverrides.ownerApprovalTimeoutCycles ??
+    configFile.ownerApprovalTimeoutCycles,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

@@ -20,6 +20,11 @@ import {
   RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
   RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
 } from './returnedToAwaitingWorkspaceMessage';
+import { isWaitingForOwnerApproval } from './isWaitingForOwnerApproval';
+import {
+  AWAITING_OWNER_APPROVAL_MESSAGE,
+  AWAITING_OWNER_APPROVAL_MESSAGE_HEAD,
+} from './awaitingOwnerApprovalMessage';
 import {
   ConsoleListItem,
   ConsoleTabName,
@@ -121,6 +126,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     manager?: string | null;
     developerAgentName?: string | null;
     deferPreparation?: boolean | null;
+    ownerApprovalTimeoutCycles?: number | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -306,6 +312,52 @@ export class NotifyFinishedIssuePreparationUseCase {
           repetition.comment,
         );
       }
+      return;
+    }
+
+    if (
+      lastAgentReport !== null &&
+      isWaitingForOwnerApproval(lastAgentReport.content)
+    ) {
+      const ownerApprovalTimeoutCycles =
+        params.ownerApprovalTimeoutCycles ?? 12;
+      const awaitingOwnerApprovalCount = comments.filter(
+        (comment) =>
+          isTrustedAuthor(comment.author) &&
+          comment.content.startsWith(AWAITING_OWNER_APPROVAL_MESSAGE_HEAD),
+      ).length;
+      if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
+        issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.patchConsoleTab(issue);
+        await this.issueCommentRepository.createComment(
+          issue,
+          AWAITING_OWNER_APPROVAL_MESSAGE,
+        );
+        return;
+      }
+      issue.status = FAILED_PREPARATION_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        failedPreparationStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.issueCommentRepository.createComment(
+        issue,
+        `Owner approval was not received after ${ownerApprovalTimeoutCycles} cycles. Moving to Failed Preparation.`,
+      );
+      await this.sendWorkflowBlockerNotification(
+        params.issueUrl,
+        params.workflowBlockerResolvedWebhookUrl,
+        project,
+      );
       return;
     }
 
