@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
 import { ResourceCache } from '../lib/resourceCache';
+import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
 import type {
   ConsoleChangedFile,
   ConsoleRelatedPullRequest,
@@ -427,7 +428,7 @@ describe('ConsoleItemDetailContainer', () => {
   it('does not pass onSubmitAndMoveToAwaitingWorkspace to the composer when statusOptions does not include Awaiting Workspace', () => {
     const statusOptionsWithoutAwaitingWorkspace =
       consoleStatusOptionsFixture.filter(
-        (o) => o.name !== 'Awaiting Workspace',
+        (o) => o.name !== AWAITING_WORKSPACE_NAME,
       );
     const { queryByText } = render(
       <ConsoleItemDetailContainer
@@ -477,7 +478,7 @@ describe('ConsoleItemDetailContainer', () => {
     });
     expect(onQueueAction).toHaveBeenCalledWith(
       expect.objectContaining({
-        kind: { type: 'set_status', optionName: 'Awaiting Workspace' },
+        kind: { type: 'set_status', optionName: AWAITING_WORKSPACE_NAME },
         item: issueItem,
       }),
     );
