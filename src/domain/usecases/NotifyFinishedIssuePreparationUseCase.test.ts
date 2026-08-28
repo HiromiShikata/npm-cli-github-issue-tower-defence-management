@@ -1116,7 +1116,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       thresholdForDispatchLoop: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1164,7 +1164,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       thresholdForDispatchLoop: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
