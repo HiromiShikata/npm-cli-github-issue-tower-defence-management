@@ -1,4 +1,7 @@
-import { StartPreparationUseCase } from './StartPreparationUseCase';
+import {
+  SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY,
+  StartPreparationUseCase,
+} from './StartPreparationUseCase';
 import {
   IssueRepository,
   RelatedPullRequest,
@@ -7281,5 +7284,107 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
 
   it('never lets a selection weight take the limit below one slot', () => {
     expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.01)).toBe(1);
+  });
+});
+
+describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
+  const buildRelatedPullRequest = (url: string): RelatedPullRequest => ({
+    url,
+    branchName: 'feature',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    isDraft: false,
+    isConflicted: false,
+    mergeable: 'MERGEABLE',
+    isPassedAllCiJob: true,
+    isCiStateSuccess: true,
+    isResolvedAllReviewComments: true,
+    isBranchOutOfDate: false,
+    missingRequiredCheckNames: [],
+  });
+
+  const buildUseCase = (
+    issueRepositoryOverrides: Partial<
+      ConstructorParameters<typeof StartPreparationUseCase>[1]
+    >,
+  ): StartPreparationUseCase =>
+    new StartPreparationUseCase(
+      {
+        getByUrl: jest.fn(),
+        createField: jest.fn(),
+        updateAgentList: jest.fn(),
+      },
+      {
+        getStoryObjectMap: jest.fn(),
+        getAllOpened: jest.fn(),
+        updateStatus: jest.fn(),
+        findRelatedOpenPRs: jest.fn(),
+        getOpenPullRequest: jest.fn(),
+        closePullRequest: jest.fn(),
+        deletePullRequestBranch: jest.fn(),
+        createCommentByUrl: jest.fn(),
+        setIssueAgentField: jest.fn(),
+        removeLabel: jest.fn(),
+        ...issueRepositoryOverrides,
+      },
+      { runCommand: jest.fn() },
+      {
+        ensureObservable: jest.fn(),
+        getAvailableTokenUsages: jest.fn(),
+        getTokenInFlightCounts: jest.fn(),
+        proxyBaseUrl: jest.fn(),
+      },
+      {
+        listSpawns: jest.fn().mockReturnValue([]),
+        listRunningIssueUrls: jest.fn().mockReturnValue([]),
+      },
+    );
+
+  it('looks up related open pull requests for issue urls concurrently up to the configured limit', async () => {
+    const issueUrls = Array.from(
+      { length: 20 },
+      (_, index) => `https://github.com/owner/repo/issues/${index + 1}`,
+    );
+    let inFlightCount = 0;
+    let observedMaxInFlight = 0;
+    const findRelatedOpenPRs = jest.fn(async (issueUrl: string) => {
+      inFlightCount += 1;
+      observedMaxInFlight = Math.max(observedMaxInFlight, inFlightCount);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      inFlightCount -= 1;
+      return [
+        buildRelatedPullRequest(issueUrl.replace('/issues/', '/pull/')),
+      ];
+    });
+    const useCase = buildUseCase({ findRelatedOpenPRs });
+
+    const branchSources =
+      await useCase.fetchSpawnCandidateBranchSources(issueUrls);
+
+    expect(findRelatedOpenPRs).toHaveBeenCalledTimes(20);
+    expect(observedMaxInFlight).toBe(SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY);
+    expect(branchSources.size).toBe(20);
+    for (const issueUrl of issueUrls) {
+      expect(branchSources.get(issueUrl)?.relatedOpenPullRequests).toHaveLength(
+        1,
+      );
+      expect(branchSources.get(issueUrl)?.openPullRequest).toBeNull();
+    }
+  });
+
+  it('resolves pull request urls through the open pull request lookup instead of the timeline query', async () => {
+    const prUrl = 'https://github.com/owner/repo/pull/7';
+    const openPullRequest = buildRelatedPullRequest(prUrl);
+    const getOpenPullRequest = jest.fn().mockResolvedValue(openPullRequest);
+    const findRelatedOpenPRs = jest.fn();
+    const useCase = buildUseCase({ getOpenPullRequest, findRelatedOpenPRs });
+
+    const branchSources = await useCase.fetchSpawnCandidateBranchSources([
+      prUrl,
+    ]);
+
+    expect(getOpenPullRequest).toHaveBeenCalledWith(prUrl);
+    expect(findRelatedOpenPRs).not.toHaveBeenCalled();
+    expect(branchSources.get(prUrl)?.openPullRequest).toBe(openPullRequest);
+    expect(branchSources.get(prUrl)?.relatedOpenPullRequests).toEqual([]);
   });
 });
