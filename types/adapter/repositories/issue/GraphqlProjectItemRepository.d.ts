@@ -16,6 +16,7 @@ export type ProjectItem = {
     author: string;
     closingIssueReferenceUrls: string[];
     isRepoArchived: boolean;
+    stateReason: 'COMPLETED' | 'NOT_PLANNED' | 'REOPENED' | null;
     customFields: {
         name: string;
         value: string | null;

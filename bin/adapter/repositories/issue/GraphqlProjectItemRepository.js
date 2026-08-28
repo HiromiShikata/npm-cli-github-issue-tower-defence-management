@@ -65,6 +65,7 @@ const PROJECT_V2_ITEM_FIELD_VALUES_AND_CONTENT_SELECTION = `
               number
               title
               state
+              stateReason
               url
               body
               createdAt
@@ -127,6 +128,14 @@ exports.RATE_LIMIT_MIN_BACKOFF_MS = 1000;
 exports.RATE_LIMIT_DEFAULT_BACKOFF_MS = 60000;
 exports.RATE_LIMIT_MAX_BACKOFF_MS = 300000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const toStateReason = (value) => {
+    if (value === 'COMPLETED' ||
+        value === 'NOT_PLANNED' ||
+        value === 'REOPENED') {
+        return value;
+    }
+    return null;
+};
 const parseNonNegativeIntegerHeader = (value) => {
     if (value === null) {
         return null;
@@ -361,6 +370,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                     ?.map((node) => node.url)
                     .filter((url) => url.length > 0) || [],
                 isRepoArchived: item.content.repository.isArchived ?? false,
+                stateReason: toStateReason(item.content.stateReason),
                 customFields: item.fieldValues.nodes
                     .filter((field) => !!field.field)
                     .map((field) => {
@@ -643,6 +653,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       number
       title
       state
+      stateReason
       url
       body
       createdAt
@@ -858,6 +869,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
                     ?.map((node) => node.url)
                     .filter((url) => url.length > 0) || [],
                 isRepoArchived: content.repository.isArchived ?? false,
+                stateReason: toStateReason(content.stateReason),
                 customFields: item.fieldValues.nodes
                     .filter((field) => !!field.field)
                     .map((field) => {

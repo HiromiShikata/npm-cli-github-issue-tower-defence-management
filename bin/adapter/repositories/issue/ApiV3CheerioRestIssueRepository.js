@@ -250,6 +250,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 closingIssueReferenceUrls: item.closingIssueReferenceUrls,
                 agent,
                 isRepoArchived: item.isRepoArchived,
+                stateReason: item.stateReason,
             };
         };
         this.restoreIssuesFromCache = (rawIssues) => {
@@ -276,12 +277,19 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     issue.closingIssueReferenceUrls.every((url) => typeof url === 'string')
                     ? issue.closingIssueReferenceUrls
                     : [];
+                const stateReason = 'stateReason' in issue &&
+                    (issue.stateReason === 'COMPLETED' ||
+                        issue.stateReason === 'NOT_PLANNED' ||
+                        issue.stateReason === 'REOPENED')
+                    ? issue.stateReason
+                    : null;
                 return {
                     ...issue,
                     nextActionDate: nextActionDate,
                     completionDate50PercentConfidence: completionDate50PercentConfidence,
                     createdAt: createdAt,
                     closingIssueReferenceUrls: closingIssueReferenceUrls,
+                    stateReason: stateReason,
                 };
             });
             if ((0, ProjectIssuesCacheRepository_1.isIssueArray)(issues)) {

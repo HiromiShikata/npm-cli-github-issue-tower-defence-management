@@ -25,6 +25,7 @@ class QualityCheckAdvanceUseCase {
             }
             const itemsToAdvance = params.issues.filter((issue) => issue.status === qualityCheckStatusName &&
                 !issue.isClosed &&
+                issue.stateReason !== 'REOPENED' &&
                 issue.dependedIssueUrls.length === 0 &&
                 !(0, issueReactivationTriggerIsPending_1.issueReactivationTriggerIsPending)(issue, evaluatedAt) &&
                 issueUrlsWithMergedPr.has(issue.url));

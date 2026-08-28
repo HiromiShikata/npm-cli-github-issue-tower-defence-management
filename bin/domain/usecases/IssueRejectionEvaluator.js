@@ -108,6 +108,25 @@ class IssueRejectionEvaluator {
                     }
                 }
             }
+            else if (options.detectConflictEvenIfEvaluationSkipped) {
+                let prsToCheck;
+                if (options.relatedOpenPrUrls != null) {
+                    const resolved = await this.resolveOpenPrsFromUrls(options.relatedOpenPrUrls, options.resolvedOpenPrByUrl ?? null);
+                    prsToCheck = resolved.prs;
+                }
+                else {
+                    prsToCheck = await this.issueRepository.findRelatedOpenPRs(issue.url);
+                }
+                for (const pr of prsToCheck) {
+                    if (pr.isConflicted) {
+                        rejections.push({
+                            type: 'PULL_REQUEST_CONFLICTED',
+                            detail: `PULL_REQUEST_CONFLICTED: ${pr.url}`,
+                        });
+                        break;
+                    }
+                }
+            }
             return { rejections, approvedPrUrl };
         };
         // Whether this item's pull requests are looked at at all. A caller that

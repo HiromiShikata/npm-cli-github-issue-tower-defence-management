@@ -60,6 +60,7 @@ const projectItemReference = (issueUrl, projectItemId) => ({
     author: '',
     closingIssueReferenceUrls: [],
     agent: null,
+    stateReason: null,
 });
 const recordDone = (context, pjcode, projectItemId) => {
     if (context.consoleDataOutputDir === null) {

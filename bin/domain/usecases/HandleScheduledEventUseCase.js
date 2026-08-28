@@ -63,7 +63,7 @@ const isTransientSpreadsheetApiError = (error) => {
         TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(error.message));
 };
 class HandleScheduledEventUseCase {
-    constructor(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
+    constructor(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase, dateRepository, spreadsheetRepository, projectRepository, issueRepository) {
         this.projectRequiredFieldCreateUseCase = projectRequiredFieldCreateUseCase;
         this.setupTowerDefenceProjectUseCase = setupTowerDefenceProjectUseCase;
         this.actionAnnouncementUseCase = actionAnnouncementUseCase;
@@ -90,6 +90,7 @@ class HandleScheduledEventUseCase {
         this.updateRateLimitCacheUseCase = updateRateLimitCacheUseCase;
         this.dailySecurityScanUseCase = dailySecurityScanUseCase;
         this.qualityCheckAdvanceUseCase = qualityCheckAdvanceUseCase;
+        this.reopenedDoneIssueRevertUseCase = reopenedDoneIssueRevertUseCase;
         this.dateRepository = dateRepository;
         this.spreadsheetRepository = spreadsheetRepository;
         this.projectRepository = projectRepository;
@@ -285,6 +286,14 @@ ${JSON.stringify(e)}
                         labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
                         allowedIssueAuthors,
                     });
+                }
+                if (input.startPreparation.autoRevertReopenedDoneEnabled) {
+                    try {
+                        await this.reopenedDoneIssueRevertUseCase.run({ project, issues });
+                    }
+                    catch (revertError) {
+                        console.error(`[HandleScheduledEvent] Failed to revert reopened Done issues for project ${project.url}: ${revertError instanceof Error ? revertError.message : String(revertError)}`, revertError);
+                    }
                 }
                 if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
                     try {

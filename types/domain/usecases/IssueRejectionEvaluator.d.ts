@@ -11,6 +11,7 @@ export type EvaluateOptions = {
     relatedOpenPrUrls?: string[] | null;
     resolvedOpenPrByUrl?: ReadonlyMap<string, RelatedPullRequest | null> | null;
     developerAgentName?: string | null;
+    detectConflictEvenIfEvaluationSkipped?: boolean;
 };
 export declare class IssueRejectionEvaluator {
     private readonly issueRepository;

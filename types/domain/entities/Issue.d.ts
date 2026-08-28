@@ -27,5 +27,6 @@ export type Issue = {
     closingIssueReferenceUrls: string[];
     agent: string | null;
     isRepoArchived?: boolean;
+    stateReason: 'COMPLETED' | 'NOT_PLANNED' | 'REOPENED' | null;
 };
 //# sourceMappingURL=Issue.d.ts.map

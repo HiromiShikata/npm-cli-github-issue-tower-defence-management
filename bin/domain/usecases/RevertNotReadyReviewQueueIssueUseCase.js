@@ -40,12 +40,8 @@ class RevertNotReadyReviewQueueIssueUseCase {
             const awaitingQualityCheckIssues = issues.filter((issue) => issue.status === WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME);
             const relatedOpenPrUrlsByIssueUrl = this.buildRelatedOpenPrUrlsByIssueUrl(issues);
             const labelsNotRequiringPullRequest = (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params);
-            const willBeEvaluated = (item) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(item.author, allowedIssueAuthors) &&
-                this.issueRejectionEvaluator.requiresPullRequestEvaluation(item, labelsNotRequiringPullRequest, params.developerAgentName);
             const resolvedOpenPrByUrl = await this.issueRepository.getOpenPullRequests(Array.from(new Set([
-                ...awaitingQualityCheckIssues
-                    .filter(willBeEvaluated)
-                    .flatMap((issue) => relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? []),
+                ...awaitingQualityCheckIssues.flatMap((issue) => relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? []),
             ])));
             for (const issue of awaitingQualityCheckIssues) {
                 if (!(0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(issue.author, allowedIssueAuthors)) {
@@ -56,6 +52,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
                         relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
                         resolvedOpenPrByUrl,
                         developerAgentName: params.developerAgentName,
+                        detectConflictEvenIfEvaluationSkipped: true,
                     });
                     if (rejections.length === 1 &&
                         rejections[0].type === 'PULL_REQUEST_NOT_FOUND' &&

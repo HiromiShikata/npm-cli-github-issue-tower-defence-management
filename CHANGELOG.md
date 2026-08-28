@@ -1,3 +1,13 @@
+# [1.186.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.185.1...v1.186.0) (2026-08-28)
+
+
+### Features
+
+* **console:** add color-change palette button to story rows ([#1712](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1712)) ([e688704](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e68870446423dec1d89bba6b909812b397c35d28)), closes [#1707](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1707)
+* **issue:** add stateReason field and ReopenedDoneIssueRevertUseCase ([#1771](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1771)) ([db38ee2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/db38ee255945a639de035b2eefb087cf393a4ba6)), closes [#1765](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1765)
+* **IssueNoStatusUpdateUseCase:** add IssueNoStatusUpdateUseCase to auto-set null-status issues to Awaiting Workspace ([#1769](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1769)) ([7e1865f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7e1865f8688c57eec0d85bd0675686126ee14f9c)), closes [HiromiShikata/umino-corporait-operation#30897](https://github.com/HiromiShikata/umino-corporait-operation/issues/30897)
+* **IssueRejectionEvaluator:** detect conflicts on non-developer-agent issues and revert to Awaiting Workspace ([#1767](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1767)) ([a4d378f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a4d378f5af825ffb52b303be31b73487efc2a5c0)), closes [#1763](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1763)
+
 ## [1.185.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.185.0...v1.185.1) (2026-08-28)
 
 
