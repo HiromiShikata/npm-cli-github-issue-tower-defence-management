@@ -4825,4 +4825,349 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
   });
+
+
+  describe('non-developer agent CI failure reassignment', () => {
+    const makeProjectWithDeveloper = (developerName = 'developer') =>
+      createMockProject({
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL',
+          fieldId: 'depended-field-id',
+        },
+        agent: {
+          name: 'Agent',
+          fieldId: 'agent-field-id',
+          options: [
+            {
+              id: 'opt-developer',
+              name: developerName,
+              color: 'GRAY',
+              description: '',
+            },
+          ],
+        },
+      });
+
+    it('should return issue to Awaiting Workspace and reassign to developer when chore agent has exactly one linked PR with failing CI', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'chore',
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        projectWithDeveloper,
+      );
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'https://github.com/user/repo/issues/1',
+        projectWithDeveloper,
+        'opt-developer',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://github.com/user/repo/issues/1',
+        }),
+        expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://github.com/user/repo/issues/1',
+        }),
+        expect.stringContaining('https://github.com/user/repo/pull/99'),
+      );
+    });
+
+    it('should advance to Awaiting Quality Check when chore agent has exactly one linked PR where all CI passes', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'chore',
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        projectWithDeveloper,
+      );
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+
+    it('should not trigger reassignment when chore agent has no linked PRs', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'chore',
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        projectWithDeveloper,
+      );
+    });
+
+    it('should not trigger the new path when developer agent has a failing CI PR', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'developer',
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        projectWithDeveloper,
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://github.com/user/repo/issues/1',
+        }),
+        expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      );
+    });
+
+    it('should reassign to the configured developerAgentName when chore agent has a failing CI PR', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'chore',
+      });
+      const projectWithCustomDeveloper = makeProjectWithDeveloper('custom-developer');
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithCustomDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        developerAgentName: 'custom-developer',
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'https://github.com/user/repo/issues/1',
+        projectWithCustomDeveloper,
+        'opt-developer',
+      );
+    });
+
+    it('should not trigger the new path when agent is null', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: null,
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+
+    it('should not trigger the new path when agent is pr-reviewer', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'pr-reviewer',
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+
+    it('should not trigger the new path when chore agent has two failing CI linked PRs', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'chore',
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+        {
+          url: 'https://github.com/user/repo/pull/100',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+  });
+
 });

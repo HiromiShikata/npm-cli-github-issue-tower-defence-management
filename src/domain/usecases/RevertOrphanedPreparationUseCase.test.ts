@@ -816,7 +816,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should advance orphaned issue with non-developer agent field to Awaiting Quality Check when no conflicting PR exists', async () => {
+  it('should advance orphaned issue with non-developer agent field to Awaiting Quality Check when no linked PRs exist', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -2130,6 +2130,392 @@ describe('RevertOrphanedPreparationUseCase', () => {
           (call) => call[0].url,
         ),
       ).toEqual([followingIssue.url]);
+    });
+  });
+
+  describe('non-developer agent CI failure reassignment', () => {
+    const makeProjectWithDeveloper = (developerName = 'developer') => {
+      const project = createMockProject();
+      project.agent = {
+        name: 'Agent',
+        fieldId: 'agent-field-id',
+        options: [
+          {
+            id: 'opt-developer',
+            name: developerName,
+            color: 'GRAY',
+            description: '',
+          },
+        ],
+      };
+      return project;
+    };
+
+    it('should return to Awaiting Workspace and reassign to developer when chore agent has exactly one linked PR with failing CI', async () => {
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
+      mockProjectRepository.getProject.mockResolvedValue(projectWithDeveloper);
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        labels: [],
+        agent: 'chore',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithDeveloper,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) =>
+        createMockIssue({ url: issueUrl, status: 'Preparation', agent: 'chore' }),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: 'From: :robot: agent report',
+          createdAt: new Date(),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          ...createPassingPr(),
+          url: 'https://github.com/user/repo/pull/99',
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+        [stuckIssue.url, projectWithDeveloper, 'opt-developer'],
+      ]);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+      expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
+        'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
+      );
+      expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
+        'https://github.com/user/repo/pull/99',
+      );
+    });
+
+    it('should advance to Awaiting Quality Check when chore agent has exactly one linked PR where all CI passes', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        labels: [],
+        agent: 'chore',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: 'From: :robot: agent report',
+          createdAt: new Date(),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([createPassingPr()]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    });
+
+    it('should advance to Awaiting Quality Check when chore agent has no linked PRs', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        labels: [],
+        agent: 'chore',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: 'From: :robot: agent report',
+          createdAt: new Date(),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    });
+
+    it('should not trigger the new path when developer agent has a failing CI PR', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        labels: ['llm-agent:developer'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: 'From: :robot: agent report',
+          createdAt: new Date(),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          ...createPassingPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    });
+
+    it('should not trigger the new path when agent is pr-reviewer and PR has failing CI', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        labels: [],
+        agent: 'pr-reviewer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: 'From: :robot: agent report',
+          createdAt: new Date(),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          ...createPassingPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    });
+
+    it('should not trigger the new path when agent is null and PR has failing CI', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        labels: [],
+        agent: null,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: 'From: :robot: agent report',
+          createdAt: new Date(),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          ...createPassingPr(),
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    });
+
+    it('should not trigger the new path when chore agent has two linked PRs both with failing CI', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        labels: [],
+        agent: 'chore',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: 'From: :robot: agent report',
+          createdAt: new Date(),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          ...createPassingPr(),
+          url: 'https://github.com/user/repo/pull/99',
+          isPassedAllCiJob: false,
+        },
+        {
+          ...createPassingPr(),
+          url: 'https://github.com/user/repo/pull/100',
+          isPassedAllCiJob: false,
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    });
+
+    it('should reassign to the configured developerAgentName when chore agent has a failing CI PR', async () => {
+      const projectWithCustomDeveloper = makeProjectWithDeveloper('custom-developer');
+      mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
+      mockProjectRepository.getProject.mockResolvedValue(projectWithCustomDeveloper);
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithCustomDeveloper);
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        labels: [],
+        agent: 'chore',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithCustomDeveloper,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.get.mockImplementation(async (issueUrl: string) =>
+        createMockIssue({
+          url: issueUrl,
+          status: 'Preparation',
+          agent: 'chore',
+        }),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: 'From: :robot: agent report',
+          createdAt: new Date(),
+        },
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          ...createPassingPr(),
+          url: 'https://github.com/user/repo/pull/99',
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        developerAgentName: 'custom-developer',
+      });
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+        [stuckIssue.url, projectWithCustomDeveloper, 'opt-developer'],
+      ]);
     });
   });
 
