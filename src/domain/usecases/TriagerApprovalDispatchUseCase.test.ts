@@ -838,6 +838,94 @@ describe('TriagerApprovalDispatchUseCase', () => {
       );
     });
 
+    it('should skip a candidate issue when getCommentsFromIssue throws and continue processing the remaining issues', async () => {
+      const failingIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/owner/repo/issues/1',
+        itemId: 'item-1',
+        status: 'Awaiting Quality Check',
+        author: 'owner-user',
+        createdAt: new Date('2000-01-01T00:00:00Z'),
+      });
+      const successIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/owner/repo/issues/2',
+        itemId: 'item-2',
+        status: 'Awaiting Quality Check',
+        author: 'owner-user',
+        createdAt: new Date('2000-01-02T00:00:00Z'),
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [failingIssue, successIssue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockImplementation(
+        async (issue) => {
+          if (issue.number === 1) {
+            throw new Error(
+              'Failed to fetch comments from GitHub REST API: 404 ',
+            );
+          }
+          return [
+            createComment(
+              'bot',
+              TRIAGER_PROPOSAL_COMMENT(
+                'developer',
+                'regular / workflow improvement',
+                false,
+              ),
+            ),
+            createComment('owner-user', 'ok'),
+          ];
+        },
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
+      });
+
+      expect(
+        mockIssueCommentRepository.getCommentsFromIssue,
+      ).toHaveBeenCalledTimes(2);
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        successIssue,
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('should propagate non-404 errors from getCommentsFromIssue', async () => {
+      const issue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/owner/repo/issues/1',
+        itemId: 'item-1',
+        status: 'Awaiting Quality Check',
+        author: 'owner-user',
+        createdAt: new Date('2000-01-01T00:00:00Z'),
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      const authError = new Error(
+        'Failed to fetch comments from GitHub REST API: 401 Unauthorized',
+      );
+      mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+        authError,
+      );
+
+      await expect(
+        useCase.run({
+          projectUrl: 'https://github.com/orgs/owner/projects/1',
+          allowedIssueAuthors: ['owner-user'],
+        }),
+      ).rejects.toThrow(authError);
+    });
+
     it('should use the last triager proposal when multiple proposals exist', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
