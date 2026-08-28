@@ -1,3 +1,10 @@
+## [1.189.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.189.1...v1.189.2) (2026-08-28)
+
+
+### Bug Fixes
+
+* **ConsoleTabList:** use neutral placeholder project names in fixtures ([#1820](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1820)) ([99e1107](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/99e1107316991f8a7cb1968a668c1a24d2a47121))
+
 ## [1.189.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.189.0...v1.189.1) (2026-08-28)
 
 
