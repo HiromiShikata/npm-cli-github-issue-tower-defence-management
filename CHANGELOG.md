@@ -1,3 +1,10 @@
+# [1.192.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.191.0...v1.192.0) (2026-08-28)
+
+
+### Features
+
+* **console:** split ConsoleCommentComposer button into Comment and Comment & Awaiting Workspace ([#1768](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1768)) ([7596b79](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7596b799f9a14ff9760a02eecf297453ab0f3e3d)), closes [#1764](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1764)
+
 # [1.191.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.190.0...v1.191.0) (2026-08-28)
 
 
