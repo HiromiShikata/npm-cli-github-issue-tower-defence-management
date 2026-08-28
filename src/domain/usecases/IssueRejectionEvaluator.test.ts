@@ -976,6 +976,90 @@ describe('IssueRejectionEvaluator', () => {
           'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
         );
       });
+
+      it('should resolve the pull request item itself and not call findRelatedOpenPRs when the item is a pull request', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockRejectedValue(
+          new Error(
+            'findRelatedOpenPRs only supports issue URLs, not pull request URLs',
+          ),
+        );
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue(
+          createReadyPr('https://github.com/user/repo/pull/7', {
+            isConflicted: true,
+          }),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/pull/7',
+            labels: [],
+            isPr: true,
+            agent: 'chore',
+          },
+          [],
+          {
+            detectConflictEvenIfEvaluationSkipped: true,
+            relatedOpenPrUrls: null,
+          },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+          'https://github.com/user/repo/pull/7',
+        );
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_CONFLICTED');
+      });
+
+      it('should return no rejections when the pull request item itself is not conflicted', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockRejectedValue(
+          new Error(
+            'findRelatedOpenPRs only supports issue URLs, not pull request URLs',
+          ),
+        );
+        mockIssueRepository.getOpenPullRequest.mockResolvedValue(
+          createReadyPr('https://github.com/user/repo/pull/7'),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/pull/7',
+            labels: [],
+            isPr: true,
+            agent: 'chore',
+          },
+          [],
+          {
+            detectConflictEvenIfEvaluationSkipped: true,
+            relatedOpenPrUrls: null,
+          },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(result.rejections).toHaveLength(0);
+      });
+
+      it('should return no rejections when resolving the pull request item fails transiently', async () => {
+        mockIssueRepository.getOpenPullRequest.mockRejectedValue(
+          new Error('Something went wrong while executing your query.'),
+        );
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/pull/7',
+            labels: [],
+            isPr: true,
+            agent: 'chore',
+          },
+          [],
+          {
+            detectConflictEvenIfEvaluationSkipped: true,
+            relatedOpenPrUrls: null,
+          },
+        );
+
+        expect(result.rejections).toHaveLength(0);
+      });
     });
 
     describe('change-target-must: label behavior', () => {
