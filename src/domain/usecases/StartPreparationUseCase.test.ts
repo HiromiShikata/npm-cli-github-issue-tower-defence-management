@@ -979,6 +979,82 @@ describe('StartPreparationUseCase', () => {
       ],
     ]);
   });
+  it('should not treat a cross-repository PR as duplicate when a same-repository PR exists', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/HiromiShikata/secretary/issues/4290',
+        title: 'Issue 4290',
+        nameWithOwner: 'HiromiShikata/secretary',
+        number: 4290,
+        org: 'HiromiShikata',
+        repo: 'secretary',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    const sameRepoPR: RelatedPullRequest = {
+      url: 'https://github.com/HiromiShikata/secretary/pull/4610',
+      branchName: 'i4290',
+      createdAt: new Date('2026-08-28T13:38:00Z'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
+    const crossRepoPR: RelatedPullRequest = {
+      url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/1813',
+      branchName: 'i4290',
+      createdAt: new Date('2026-08-28T10:55:00Z'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      sameRepoPR,
+      crossRepoPR,
+    ]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
+    expect(mockIssueRepository.deletePullRequestBranch).not.toHaveBeenCalled();
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
+      '--branch',
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
+      'i4290',
+    );
+  });
   it('should skip issue after resolving duplicates when adopted canonical PR has null branchName', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({

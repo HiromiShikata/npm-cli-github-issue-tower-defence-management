@@ -22,6 +22,11 @@ import {
   RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
   RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
 } from './returnedToAwaitingWorkspaceMessage';
+import { isWaitingForOwnerApproval } from './isWaitingForOwnerApproval';
+import {
+  AWAITING_OWNER_APPROVAL_MESSAGE,
+  AWAITING_OWNER_APPROVAL_MESSAGE_HEAD,
+} from './awaitingOwnerApprovalMessage';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
@@ -35,7 +40,10 @@ import {
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
 type OrphanedPreparationOutcome =
-  'advanceToQualityCheck' | 'returnToLabelSelectedAgent' | 'reject';
+  | 'advanceToQualityCheck'
+  | 'returnToLabelSelectedAgent'
+  | 'returnToOwnerApprovalCycle'
+  | 'reject';
 
 export class RevertOrphanedPreparationUseCase {
   constructor(
@@ -74,6 +82,7 @@ export class RevertOrphanedPreparationUseCase {
     labelsAsLlmAgentName?: string[] | null;
     labelsNotRequiringPullRequest?: string[] | null;
     allowedIssueAuthors?: string[] | null;
+    ownerApprovalTimeoutCycles?: number | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -187,6 +196,40 @@ export class RevertOrphanedPreparationUseCase {
           await this.issueCommentRepository.createComment(
             issue,
             repetition.comment,
+          );
+        }
+        continue;
+      }
+      if (outcome === 'returnToOwnerApprovalCycle') {
+        const ownerApprovalTimeoutCycles =
+          params.ownerApprovalTimeoutCycles ?? 12;
+        const awaitingOwnerApprovalCount = comments.filter(
+          (comment) =>
+            isAuthorAuthorizedForAutoStatusCheck(
+              comment.author,
+              params.allowedIssueAuthors,
+            ) &&
+            comment.content.startsWith(AWAITING_OWNER_APPROVAL_MESSAGE_HEAD),
+        ).length;
+        if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatusOption.id,
+          );
+          await this.issueCommentRepository.createComment(
+            issue,
+            AWAITING_OWNER_APPROVAL_MESSAGE,
+          );
+        } else if (failedPreparationStatusOption) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            failedPreparationStatusOption.id,
+          );
+          await this.issueCommentRepository.createComment(
+            issue,
+            `Owner approval was not received after ${ownerApprovalTimeoutCycles} cycles. Moving to Failed Preparation.`,
           );
         }
         continue;
@@ -324,6 +367,9 @@ export class RevertOrphanedPreparationUseCase {
       ) &&
       !this.reportBodyHasNextStep(lastReport.content)
     ) {
+      if (isWaitingForOwnerApproval(lastReport.content)) {
+        return { outcome: 'returnToOwnerApprovalCycle', comments };
+      }
       const alreadyReturnedToWorkspace = comments.some(
         (comment) =>
           isTrustedAuthor(comment.author) &&

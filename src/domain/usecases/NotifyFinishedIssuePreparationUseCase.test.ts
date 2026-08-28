@@ -4665,4 +4665,90 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
   });
+
+  describe('waitingForOwnerApproval', () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+
+    it('returns to Awaiting Workspace and posts AWAITING_OWNER_APPROVAL message when last report declares waitingForOwnerApproval', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: systems-analyst (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        mockProject,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('Auto Status Check: AWAITING_OWNER_APPROVAL'),
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        mockProject,
+        expect.anything(),
+        'failed-preparation-id',
+      );
+    });
+
+    it('escalates to Failed Preparation after ownerApprovalTimeoutCycles AWAITING_OWNER_APPROVAL messages', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: systems-analyst (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+        }),
+        createMockComment({
+          content:
+            'Auto Status Check: AWAITING_OWNER_APPROVAL\nThe last report declared that this task is waiting for owner approval. Returning to Awaiting Workspace for the next cycle.',
+        }),
+        createMockComment({
+          content:
+            'Auto Status Check: AWAITING_OWNER_APPROVAL\nThe last report declared that this task is waiting for owner approval. Returning to Awaiting Workspace for the next cycle.',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        ownerApprovalTimeoutCycles: 2,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining(
+          'Owner approval was not received after 2 cycles. Moving to Failed Preparation.',
+        ),
+      );
+    });
+  });
 });
