@@ -128,7 +128,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
-    const mockConflictedIssueRevertUseCase = mock<ConflictedIssueRevertUseCase>();
+    const mockConflictedIssueRevertUseCase =
+      mock<ConflictedIssueRevertUseCase>();
     const mockRevertNotReadyReviewQueueIssueUseCase =
       mock<RevertNotReadyReviewQueueIssueUseCase>();
     const mockTriagerApprovalDispatchUseCase =
