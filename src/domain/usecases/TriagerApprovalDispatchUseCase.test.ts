@@ -863,7 +863,9 @@ describe('TriagerApprovalDispatchUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockImplementation(
         async (issue) => {
           if (issue.number === 1) {
-            throw new Error('Failed to fetch comments from GitHub REST API: 404 ');
+            throw new Error(
+              'Failed to fetch comments from GitHub REST API: 404 ',
+            );
           }
           return [
             createComment(
@@ -884,7 +886,9 @@ describe('TriagerApprovalDispatchUseCase', () => {
         allowedIssueAuthors: ['owner-user'],
       });
 
-      expect(mockIssueCommentRepository.getCommentsFromIssue).toHaveBeenCalledTimes(2);
+      expect(
+        mockIssueCommentRepository.getCommentsFromIssue,
+      ).toHaveBeenCalledTimes(2);
       expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledTimes(1);
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
