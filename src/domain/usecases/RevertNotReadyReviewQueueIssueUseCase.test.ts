@@ -293,6 +293,41 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
+    it('should keep sweeping without calling findRelatedOpenPRs when an Awaiting Quality Check item is itself a pull request', async () => {
+      const pullRequestItem = createMockPullRequest({
+        status: 'Awaiting Quality Check',
+        url: 'https://github.com/user/repo/pull/9',
+        agent: 'chore',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [pullRequestItem],
+        cacheUsed: false,
+      });
+      mockIssueRepository.findRelatedOpenPRs.mockRejectedValue(
+        new Error(
+          'findRelatedOpenPRs only supports issue URLs, not pull request URLs',
+        ),
+      );
+      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+        ...createReadyPr('https://github.com/user/repo/pull/9'),
+        isConflicted: true,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        pullRequestItem,
+        'awaiting-workspace-id',
+      );
+    });
+
     it('should revert Awaiting Quality Check issue with developer agent field and no linked PR', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
