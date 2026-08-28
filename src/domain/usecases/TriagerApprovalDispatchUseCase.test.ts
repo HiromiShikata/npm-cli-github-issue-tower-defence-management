@@ -897,6 +897,35 @@ describe('TriagerApprovalDispatchUseCase', () => {
       );
     });
 
+    it('should propagate non-404 errors from getCommentsFromIssue', async () => {
+      const issue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/owner/repo/issues/1',
+        itemId: 'item-1',
+        status: 'Awaiting Quality Check',
+        author: 'owner-user',
+        createdAt: new Date('2000-01-01T00:00:00Z'),
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      const authError = new Error(
+        'Failed to fetch comments from GitHub REST API: 401 Unauthorized',
+      );
+      mockIssueCommentRepository.getCommentsFromIssue.mockRejectedValue(
+        authError,
+      );
+
+      await expect(
+        useCase.run({
+          projectUrl: 'https://github.com/orgs/owner/projects/1',
+          allowedIssueAuthors: ['owner-user'],
+        }),
+      ).rejects.toThrow(authError);
+    });
+
     it('should use the last triager proposal when multiple proposals exist', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',

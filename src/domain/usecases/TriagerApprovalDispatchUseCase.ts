@@ -69,6 +69,9 @@ const parseTriagerProposalBlock = (
   return null;
 };
 
+const isNotFoundError = (error: unknown): boolean =>
+  (error instanceof Error ? error.message : String(error)).includes('404');
+
 const isApprovalComment = (
   content: string,
   author: string,
@@ -166,6 +169,9 @@ export class TriagerApprovalDispatchUseCase {
         comments =
           await this.issueCommentRepository.getCommentsFromIssue(issue);
       } catch (error) {
+        if (!isNotFoundError(error)) {
+          throw error;
+        }
         console.warn(
           `[TriagerApprovalDispatch] Failed to fetch comments, skipping issue for this cycle. issueUrl: ${issue.url} error: ${error instanceof Error ? error.message : String(error)}`,
         );
