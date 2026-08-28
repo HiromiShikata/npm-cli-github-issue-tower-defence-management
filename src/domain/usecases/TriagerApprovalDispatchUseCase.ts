@@ -1,6 +1,7 @@
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
+import { Comment } from '../entities/Comment';
 import {
   isAgentReportBody,
   isAgentReportBodyFromAgent,
@@ -160,8 +161,16 @@ export class TriagerApprovalDispatchUseCase {
       const issue =
         candidateIssues[(windowStart + slot) % candidateIssues.length];
 
-      const comments =
-        await this.issueCommentRepository.getCommentsFromIssue(issue);
+      let comments: Comment[];
+      try {
+        comments =
+          await this.issueCommentRepository.getCommentsFromIssue(issue);
+      } catch (error) {
+        console.warn(
+          `[TriagerApprovalDispatch] Failed to fetch comments, skipping issue for this cycle. issueUrl: ${issue.url} error: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        continue;
+      }
 
       let firstProposalIndex = -1;
       let proposal: TriagerProposal | null = null;
