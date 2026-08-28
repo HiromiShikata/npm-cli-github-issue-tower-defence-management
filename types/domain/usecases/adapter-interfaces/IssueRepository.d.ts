@@ -94,6 +94,9 @@ export interface IssueRepository {
     updateStory: (project: Project & {
         story: NonNullable<Project['story']>;
     }, issue: Issue, storyId: FieldOption['id']) => Promise<void>;
+    updateStoryOptionColor: (project: Project & {
+        story: NonNullable<Project['story']>;
+    }, storyOptionId: string, newColor: FieldOption['color']) => Promise<void>;
     updateStatus: (project: Project, issue: Issue, statusId: string) => Promise<void>;
     clearProjectField: (project: Project, fieldId: string, issue: Issue) => Promise<void>;
     createComment: (issue: Issue, commentBody: string) => Promise<void>;

@@ -514,6 +514,46 @@ test('creates a new story when the add-story button and form are used', async ({
   ).toHaveCount(0);
 });
 
+test('changes the color of a story row via the color palette in the stories tab', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow).toBeVisible();
+
+  const changeColorButton = tdpmRow.locator('.console-op-button', {
+    hasText: 'Change color',
+  });
+  await expect(changeColorButton).toBeVisible();
+
+  await changeColorButton.click();
+
+  const palette = tdpmRow.locator('.console-story-color-palette');
+  await expect(palette).toBeVisible();
+
+  const swatches = palette.locator('.console-story-color-swatch');
+  await expect(swatches).toHaveCount(8);
+
+  const graySwatch = swatches.filter({ hasText: 'disable' });
+  await expect(graySwatch).toHaveCount(1);
+
+  const greenSwatch = palette.locator('[aria-label="GREEN"]');
+  await greenSwatch.click();
+
+  await expect
+    .poll(() => harness.storyColorCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.storyColorCalls[0].storyOptionId).toBe('1491051e');
+  expect(harness.storyColorCalls[0].newColor).toBe('GREEN');
+
+  await expect(palette).toHaveCount(0);
+});
+
 test('reorders stories on the triage tab with up/down buttons', async ({
   page,
 }) => {

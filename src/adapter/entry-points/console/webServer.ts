@@ -4,6 +4,7 @@ import * as path from 'path';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import { Project } from '../../../domain/entities/Project';
 import {
   CONSOLE_LIST_TAB_NAMES,
   buildConsoleDataResponse,
@@ -34,6 +35,7 @@ import {
   handleReorderStory,
   handleReview,
   handleReviewComment,
+  handleStoryColor,
   handleTriage,
 } from './consoleOperationApi';
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
@@ -239,6 +241,8 @@ export type WebServerOptions = {
   invalidateProject?: ((pjcode: string) => void) | null;
   issueAttachmentRepository?: IssueAttachmentRepository | null;
   projectRepository?: Pick<ProjectRepository, 'updateStoryList'> | null;
+  updateProjectCacheEntry?:
+    ((pjcode: string, updatedProject: Project) => void) | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
   pullRequestStatusCache?: PullRequestStatusCache | null;
 };
@@ -546,6 +550,8 @@ const dispatchOperation = (
       return handleReorderStory(context, body);
     case '/api/addstory':
       return handleStoryAdd(context, body);
+    case '/api/storycolor':
+      return handleStoryColor(context, body);
     default:
       return null;
   }
@@ -582,6 +588,7 @@ const handleOperationApi = async (
         : null,
     resolveProjectRepository: options.resolveProjectRepository ?? null,
     invalidateProject: options.invalidateProject ?? null,
+    updateProjectCacheEntry: options.updateProjectCacheEntry ?? null,
   };
   const dispatched = dispatchOperation(context, requestPath, body);
   if (dispatched === null) {

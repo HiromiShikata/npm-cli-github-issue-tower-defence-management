@@ -465,6 +465,34 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.updateStory = async (project, issue, storyOptionId) => {
             await this.graphqlProjectItemRepository.updateProjectField(project.id, project.story.fieldId, issue.itemId, { singleSelectOptionId: storyOptionId });
         };
+        this.updateStoryOptionColor = async (project, storyOptionId, newColor) => {
+            const mutation = `mutation UpdateStoryOptionColor($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    singleSelectOptions: $options
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        options { id name color description }
+      }
+    }
+  }
+}`;
+            const options = project.story.stories.map((opt) => ({
+                id: opt.id,
+                name: opt.name,
+                color: opt.id === storyOptionId ? newColor : opt.color,
+                description: opt.description,
+            }));
+            const response = await (0, githubGraphqlClient_1.postGithubGraphqlJson)({
+                ghToken: this.ghToken,
+                query: mutation,
+                variables: { fieldId: project.story.fieldId, options },
+            });
+            if (response.errors && response.errors.length > 0) {
+                throw new Error(response.errors.map((e) => e.message).join('; '));
+            }
+        };
         this.clearProjectField = async (project, fieldId, issue) => {
             await this.graphqlProjectItemRepository.clearProjectField(project.id, fieldId, issue.itemId);
             return;

@@ -71,6 +71,7 @@ export const createPjcodeConfigChecker = (
 export type ConsoleProjectResolverBundle = {
   resolve: ConsoleProjectResolver;
   invalidate: (pjcode: string) => void;
+  updateEntry: (pjcode: string, updatedProject: Project) => void;
 };
 
 export const createConsoleProjectResolver = (
@@ -100,5 +101,11 @@ export const createConsoleProjectResolver = (
   const invalidate = (pjcode: string): void => {
     cache.delete(pjcode);
   };
-  return { resolve, invalidate };
+  const updateEntry = (pjcode: string, updatedProject: Project): void => {
+    const existing = cache.get(pjcode);
+    if (existing !== undefined) {
+      cache.set(pjcode, { ...existing, project: updatedProject });
+    }
+  };
+  return { resolve, invalidate, updateEntry };
 };

@@ -1,8 +1,9 @@
+export declare const FIELD_OPTION_COLORS: readonly ["GRAY", "BLUE", "GREEN", "YELLOW", "ORANGE", "RED", "PINK", "PURPLE"];
 export type StoryOption = FieldOption;
 export type FieldOption = {
     id: string;
     name: string;
-    color: 'GRAY' | 'BLUE' | 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED' | 'PINK' | 'PURPLE';
+    color: (typeof FIELD_OPTION_COLORS)[number];
     description: string;
 };
 export type StoryListEntry = Omit<FieldOption, 'id'> & {

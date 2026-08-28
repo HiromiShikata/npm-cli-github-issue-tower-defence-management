@@ -47,6 +47,11 @@ export type ConsoleE2eCreateIssueCall = {
   title: string;
 };
 
+export type ConsoleE2eStoryColorCall = {
+  storyOptionId: string;
+  newColor: string;
+};
+
 type ConsoleFixtureListItem = {
   number: number;
   title: string;
@@ -453,6 +458,7 @@ const createStubIssueRepository = (
   reviewCommentCalls: ConsoleE2eReviewCommentCall[],
   requestChangesCalls: ConsoleE2eRequestChangesCall[],
   createIssueCalls: ConsoleE2eCreateIssueCall[],
+  storyColorCalls: ConsoleE2eStoryColorCall[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
@@ -615,6 +621,13 @@ const createStubIssueRepository = (
         }
       : null,
   setIssueAgentField: async (): Promise<void> => undefined,
+  updateStoryOptionColor: async (
+    _project,
+    storyOptionId: string,
+    newColor: string,
+  ): Promise<void> => {
+    storyColorCalls.push({ storyOptionId, newColor });
+  },
 });
 
 export type ConsoleE2eReorderStoryCall = {
@@ -635,6 +648,7 @@ export type ConsoleE2eHarness = {
   createIssueCalls: ConsoleE2eCreateIssueCall[];
   reorderStoryCalls: ConsoleE2eReorderStoryCall[];
   addStoryCalls: ConsoleE2eAddStoryCall[];
+  storyColorCalls: ConsoleE2eStoryColorCall[];
   stop: () => Promise<void>;
 };
 
@@ -658,6 +672,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
   const createIssueCalls: ConsoleE2eCreateIssueCall[] = [];
   const reorderStoryCalls: ConsoleE2eReorderStoryCall[] = [];
   const addStoryCalls: ConsoleE2eAddStoryCall[] = [];
+  const storyColorCalls: ConsoleE2eStoryColorCall[] = [];
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
@@ -667,6 +682,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
       reviewCommentCalls,
       requestChangesCalls,
       createIssueCalls,
+      storyColorCalls,
     ),
     projectRepository: {
       updateStoryList: async (_updatedProject, stories) => {
@@ -726,6 +742,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     createIssueCalls,
     reorderStoryCalls,
     addStoryCalls,
+    storyColorCalls,
     stop: async (): Promise<void> => {
       await closeServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });

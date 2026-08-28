@@ -11,6 +11,7 @@ export declare const createPjcodeConfigChecker: (pjcodeToProjectUrl: Record<stri
 export type ConsoleProjectResolverBundle = {
     resolve: ConsoleProjectResolver;
     invalidate: (pjcode: string) => void;
+    updateEntry: (pjcode: string, updatedProject: Project) => void;
 };
 export declare const createConsoleProjectResolver: (pjcodeToProjectUrl: Record<string, string>, loadProject: ConsoleProjectLoader) => ConsoleProjectResolverBundle;
 //# sourceMappingURL=consoleProjectResolver.d.ts.map

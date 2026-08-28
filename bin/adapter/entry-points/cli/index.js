@@ -496,7 +496,7 @@ const runServeWeb = async (options) => {
     const resolveProjectRepository = (0, consoleGithubTokenResolver_1.createConsoleProjectRepositoryResolver)(resolveGithubToken, buildProjectRepositoryForToken);
     const pjcodeToProjectUrl = (0, consoleProjectResolver_1.buildPjcodeToProjectUrl)(projectName, projectUrl, config.consoleProjects ?? null);
     const isPjcodeConfigured = (0, consoleProjectResolver_1.createPjcodeConfigChecker)(pjcodeToProjectUrl);
-    const { resolve: resolveProject, invalidate: invalidateProject } = (0, consoleProjectResolver_1.createConsoleProjectResolver)(pjcodeToProjectUrl, (0, consoleProjectResolver_1.createConsoleProjectLoader)(resolveProjectRepository, (targetProjectId) => issueRepository.getCachedProject(targetProjectId), (message) => console.error(message)));
+    const { resolve: resolveProject, invalidate: invalidateProject, updateEntry: updateProjectCacheEntry, } = (0, consoleProjectResolver_1.createConsoleProjectResolver)(pjcodeToProjectUrl, (0, consoleProjectResolver_1.createConsoleProjectLoader)(resolveProjectRepository, (targetProjectId) => issueRepository.getCachedProject(targetProjectId), (message) => console.error(message)));
     const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
     const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
     const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
@@ -517,6 +517,7 @@ const runServeWeb = async (options) => {
         isPjcodeConfigured,
         resolveProjectRepository,
         invalidateProject,
+        updateProjectCacheEntry,
         issueAttachmentRepository: new LocalCommandIssueAttachmentRepository_1.LocalCommandIssueAttachmentRepository(new NodeLocalCommandRunner_1.NodeLocalCommandRunner(), resolveGithubTokenForItemUrl),
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         pullRequestStatusCache: new consoleReadApi_1.PullRequestStatusCache(),

@@ -129,6 +129,11 @@ export interface IssueRepository {
     issue: Issue,
     storyId: FieldOption['id'],
   ) => Promise<void>;
+  updateStoryOptionColor: (
+    project: Project & { story: NonNullable<Project['story']> },
+    storyOptionId: string,
+    newColor: FieldOption['color'],
+  ) => Promise<void>;
   updateStatus: (
     project: Project,
     issue: Issue,

@@ -905,16 +905,19 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     config.consoleProjects ?? null,
   );
   const isPjcodeConfigured = createPjcodeConfigChecker(pjcodeToProjectUrl);
-  const { resolve: resolveProject, invalidate: invalidateProject } =
-    createConsoleProjectResolver(
-      pjcodeToProjectUrl,
-      createConsoleProjectLoader(
-        resolveProjectRepository,
-        (targetProjectId: string) =>
-          issueRepository.getCachedProject(targetProjectId),
-        (message: string) => console.error(message),
-      ),
-    );
+  const {
+    resolve: resolveProject,
+    invalidate: invalidateProject,
+    updateEntry: updateProjectCacheEntry,
+  } = createConsoleProjectResolver(
+    pjcodeToProjectUrl,
+    createConsoleProjectLoader(
+      resolveProjectRepository,
+      (targetProjectId: string) =>
+        issueRepository.getCachedProject(targetProjectId),
+      (message: string) => console.error(message),
+    ),
+  );
 
   const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
   const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
@@ -938,6 +941,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     isPjcodeConfigured,
     resolveProjectRepository,
     invalidateProject,
+    updateProjectCacheEntry,
     issueAttachmentRepository: new LocalCommandIssueAttachmentRepository(
       new NodeLocalCommandRunner(),
       resolveGithubTokenForItemUrl,

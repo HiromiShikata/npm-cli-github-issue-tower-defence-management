@@ -1,6 +1,7 @@
 import type { Issue } from '../../../domain/entities/Issue';
 import {
   buildStoryListWithNew,
+  FIELD_OPTION_COLORS,
   type FieldOption,
   type Project,
 } from '../../../domain/entities/Project';
@@ -52,6 +53,8 @@ export type ConsoleOperationContext = {
     | null;
   resolveProjectRepository: ConsoleProjectRepositoryResolver | null;
   invalidateProject: ((pjcode: string) => void) | null;
+  updateProjectCacheEntry:
+    ((pjcode: string, updatedProject: Project) => void) | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -695,6 +698,67 @@ export const handleReviewComment = async (
   } catch (error) {
     return badGateway(error instanceof Error ? error.message : 'unknown error');
   }
+  return ok();
+};
+
+const isStoryColor = (value: unknown): value is FieldOption['color'] =>
+  FIELD_OPTION_COLORS.some((c) => c === value);
+
+export const handleStoryColor = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const storyOptionId = body.storyOptionId;
+  const newColor = body.newColor;
+  const nameWithOwner = body.nameWithOwner;
+
+  if (!isNonEmptyString(storyOptionId)) {
+    return badRequest('storyOptionId is required');
+  }
+  if (!isStoryColor(newColor)) {
+    return badRequest(
+      'newColor must be one of GRAY, BLUE, GREEN, YELLOW, ORANGE, RED, PINK, PURPLE',
+    );
+  }
+  if (!isNonEmptyString(nameWithOwner)) {
+    return badRequest('nameWithOwner is required');
+  }
+
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { project, pjcode } = binding;
+
+  if (project.story === null) {
+    return badRequest('project does not have a story field');
+  }
+
+  const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
+  if (storyOption === undefined) {
+    return badRequest(`story option "${storyOptionId}" not found in project`);
+  }
+
+  const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
+  await context
+    .resolveIssueRepository(proxyUrl)
+    .updateStoryOptionColor(
+      { ...project, story: project.story },
+      storyOptionId,
+      newColor,
+    );
+
+  if (context.updateProjectCacheEntry !== null) {
+    const updatedStories = project.story.stories.map((s) =>
+      s.id === storyOptionId ? { ...s, color: newColor } : s,
+    );
+    const updatedProject: Project = {
+      ...project,
+      story: { ...project.story, stories: updatedStories },
+    };
+    context.updateProjectCacheEntry(pjcode, updatedProject);
+  }
+
   return ok();
 };
 

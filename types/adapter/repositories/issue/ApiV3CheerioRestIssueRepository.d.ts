@@ -1,5 +1,5 @@
 import { IssueRepository, RelatedPullRequest, OpenPullRequestCiStatus, IssueComment, PullRequestDetail, PullRequestCommit, PullRequestReviewCommentSide, PullRequestReviewInlineLocation } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { Project } from '../../../domain/entities/Project';
+import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
@@ -73,6 +73,9 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
     updateStory: (project: Project & {
         story: NonNullable<Project["story"]>;
     }, issue: Issue, storyOptionId: string) => Promise<void>;
+    updateStoryOptionColor: (project: Project & {
+        story: NonNullable<Project["story"]>;
+    }, storyOptionId: string, newColor: FieldOption["color"]) => Promise<void>;
     clearProjectField: (project: Project, fieldId: string, issue: Issue) => Promise<void>;
     createComment: (issue: Issue, comment: string) => Promise<void>;
     updateProjectTextField: (project: Project, fieldId: string, issue: Issue, text: string) => Promise<void>;

@@ -127,6 +127,32 @@ describe('createConsoleProjectResolver', () => {
     });
     expect(loadProject).toHaveBeenCalledTimes(2);
   });
+
+  it('updateEntry replaces the cached project so the next resolve returns the updated project', async () => {
+    const updatedProject: Project = { ...acmeProject, id: 'PVT_acme_updated' };
+    const loadProject = jest.fn(async () => acmeProject);
+    const { resolve, updateEntry } = createConsoleProjectResolver(
+      { acme: 'https://github.com/orgs/acme/projects/1' },
+      loadProject,
+    );
+    await resolve('acme');
+    updateEntry('acme', updatedProject);
+    const result = await resolve('acme');
+    expect(result?.project).toBe(updatedProject);
+    expect(loadProject).toHaveBeenCalledTimes(1);
+  });
+
+  it('updateEntry is a no-op for a pjcode that was never resolved', async () => {
+    const updatedProject: Project = { ...acmeProject, id: 'PVT_acme_updated' };
+    const loadProject = jest.fn(async () => acmeProject);
+    const { resolve, updateEntry } = createConsoleProjectResolver(
+      { acme: 'https://github.com/orgs/acme/projects/1' },
+      loadProject,
+    );
+    updateEntry('acme', updatedProject);
+    const result = await resolve('acme');
+    expect(result?.project).toBe(acmeProject);
+  });
 });
 
 describe('createConsoleProjectLoader', () => {
