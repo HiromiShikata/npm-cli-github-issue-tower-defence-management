@@ -1,3 +1,10 @@
+## [1.189.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.189.0...v1.189.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **console:** move issue to Awaiting workspace on Totally Wrong close ([#1818](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1818)) ([c18c996](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c18c996ac897ecb958397df6b1949bf9ea578acc)), closes [HiromiShikata/umino-corporait-operation#30924](https://github.com/HiromiShikata/umino-corporait-operation/issues/30924)
+
 # [1.189.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.188.1...v1.189.0) (2026-08-28)
 
 

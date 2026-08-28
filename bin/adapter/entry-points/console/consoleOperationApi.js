@@ -153,6 +153,17 @@ const handleReview = async (context, body) => {
                 .resolveIssueRepository(prUrl)
                 .createCommentByUrl(prUrl, body.commentBody);
         }
+        const issueUrl = body.issueUrl;
+        if (isNonEmptyString(issueUrl)) {
+            const binding = await context.resolveProject(pjcodeResult);
+            if (binding === null) {
+                return badRequest(`no project configured for pjcode "${pjcodeResult}"`);
+            }
+            const statusFailure = await updateStatusByName(context.resolveIssueRepository(issueUrl), binding.project, issueUrl, projectItemId, exports.AWAITING_WORKSPACE_STATUS_NAME);
+            if (statusFailure !== null) {
+                return statusFailure;
+            }
+        }
         recordDone(context, pjcodeResult, projectItemId);
         return ok();
     }
