@@ -342,6 +342,20 @@ body {
   display: inline-block;
 }
 
+.console-copy-story-name-button {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 0.75rem;
+}
+
+.console-copy-story-name-button:hover {
+  background-color: #21262d;
+  color: #e6edf3;
+}
+
 .console-group-count {
   color: #8b949e;
   font-size: 0.75rem;
