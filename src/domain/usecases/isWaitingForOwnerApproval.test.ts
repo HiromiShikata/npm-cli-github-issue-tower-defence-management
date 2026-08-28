@@ -16,9 +16,7 @@ describe('isWaitingForOwnerApproval', () => {
 
   it('returns false when waitingForOwnerApproval is missing', () => {
     expect(
-      isWaitingForOwnerApproval(
-        agentReport('{"pullRequestRequired": false}'),
-      ),
+      isWaitingForOwnerApproval(agentReport('{"pullRequestRequired": false}')),
     ).toBe(false);
   });
 
@@ -67,7 +65,9 @@ describe('isWaitingForOwnerApproval', () => {
   });
 
   it('returns false when the JSON block cannot be parsed', () => {
-    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const consoleWarn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
     expect(
       isWaitingForOwnerApproval(
         agentReport(

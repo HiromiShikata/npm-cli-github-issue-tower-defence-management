@@ -441,8 +441,7 @@ program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         labelsNotRequiringPullRequest:
           config.labelsNotRequiringPullRequest ?? null,
-        ownerApprovalTimeoutCycles:
-          config.ownerApprovalTimeoutCycles ?? 12,
+        ownerApprovalTimeoutCycles: config.ownerApprovalTimeoutCycles ?? 12,
       });
     }
 
