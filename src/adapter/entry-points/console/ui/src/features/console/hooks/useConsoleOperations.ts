@@ -113,6 +113,7 @@ const reviewRequest = (
       pjcode,
       action: 'close',
       prUrl,
+      issueUrl: item.url,
       projectItemId: item.projectItemId,
       commentBody: TOTALLY_WRONG_COMMENT_BODY,
     };
