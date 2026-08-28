@@ -21,6 +21,7 @@ import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
 import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
 import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
+import { IssueNoStatusUpdateUseCase } from './IssueNoStatusUpdateUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
@@ -121,6 +122,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<AssignNoAssigneeIssueToManagerUseCase>();
     const mockUpdateIssueStatusByLabelUseCase =
       mock<UpdateIssueStatusByLabelUseCase>();
+    const mockIssueNoStatusUpdateUseCase = mock<IssueNoStatusUpdateUseCase>();
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
@@ -156,6 +158,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockCreateNewStoryByLabelUseCase,
       mockAssignNoAssigneeIssueToManagerUseCase,
       mockUpdateIssueStatusByLabelUseCase,
+      mockIssueNoStatusUpdateUseCase,
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
@@ -237,6 +240,41 @@ describe('HandleScheduledEventUseCase', () => {
       expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalledWith({
         project: mockProject,
         issues: [],
+      });
+    });
+
+    it('should call IssueNoStatusUpdateUseCase with project and issues when startPreparation is configured', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'agent1',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      };
+
+      const mockProject = mock<Project>();
+      const mockIssues = [mock<Issue>()];
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: mockIssues,
+        project: mockProject,
+        cacheUsed: false,
+      });
+      await useCase.run(input);
+
+      expect(mockIssueNoStatusUpdateUseCase.run).toHaveBeenCalledWith({
+        project: mockProject,
+        issues: mockIssues,
       });
     });
 
@@ -1637,6 +1675,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<CreateNewStoryByLabelUseCase>(),
       mock<AssignNoAssigneeIssueToManagerUseCase>(),
       mock<UpdateIssueStatusByLabelUseCase>(),
+      mock<IssueNoStatusUpdateUseCase>(),
       mock<StartPreparationUseCase>(),
       mock<RevertOrphanedPreparationUseCase>(),
       mock<RevertNotReadyReviewQueueIssueUseCase>(),
