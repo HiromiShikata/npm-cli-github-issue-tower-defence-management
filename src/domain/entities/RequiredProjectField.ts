@@ -13,8 +13,10 @@ const storyOption = (
   color: FieldOption['color'],
 ): Omit<FieldOption, 'id'> => ({ name, color, description: '' });
 
+export const NO_STORY_STORY_NAME = 'regular / NO STORY';
+
 const REQUIRED_STORY_OPTIONS: Omit<FieldOption, 'id'>[] = [
-  storyOption('regular / NO STORY', 'RED'),
+  storyOption(NO_STORY_STORY_NAME, 'RED'),
   storyOption('regular / WORKFLOW BLOCKER', 'RED'),
   storyOption('regular / inquiry', 'RED'),
   storyOption('regular / high priority', 'RED'),

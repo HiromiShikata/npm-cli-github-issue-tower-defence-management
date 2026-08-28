@@ -23,7 +23,9 @@ const createMockStoryObjectMap = (issues: Issue[]): StoryObjectMap => {
       description: '',
     },
     storyIssue: null,
-    issues: issues,
+    issues: issues.map((issue) =>
+      issue.story === null ? { ...issue, story: 'Default Story' } : issue,
+    ),
   });
   return map;
 };
@@ -5464,6 +5466,113 @@ describe('StartPreparationUseCase', () => {
         labelsAsLlmAgentName: ['chore'],
       });
       expect(selectedAgent).toBe('triage-agent');
+    });
+  });
+
+  describe('NO STORY story bypasses the Agent field for agent selection', () => {
+    const projectWithAgentOption = (
+      optionId: string,
+      optionName: string,
+    ): Project => ({
+      ...createMockProject(),
+      agent: {
+        name: 'Agent',
+        fieldId: 'agent-field-id',
+        options: [
+          { id: optionId, name: optionName, color: 'GRAY', description: '' },
+        ],
+      },
+    });
+
+    it('dispatches to defaultAgentName and does not overwrite the Agent field when story is NO STORY and agent field is set', async () => {
+      const project = projectWithAgentOption(
+        'agent-option-systems-analyst',
+        'systems-analyst',
+      );
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          createMockIssue({
+            url: 'url1',
+            status: 'Awaiting Workspace',
+            labels: [],
+            story:
+              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+            agent: 'systems-analyst',
+          }),
+        ]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents: [],
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'agent1',
+      );
+    });
+
+    it('dispatches to defaultAgentName and writes defaultAgentName to the Agent field when story is NO STORY and agent field is null', async () => {
+      const project = projectWithAgentOption('agent-option-agent1', 'agent1');
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          createMockIssue({
+            url: 'url1',
+            status: 'Awaiting Workspace',
+            labels: [],
+            story:
+              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+            agent: null,
+          }),
+        ]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents: [],
+      });
+
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+        ['url1', project, 'agent-option-agent1'],
+      ]);
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'agent1',
+      );
     });
   });
 
