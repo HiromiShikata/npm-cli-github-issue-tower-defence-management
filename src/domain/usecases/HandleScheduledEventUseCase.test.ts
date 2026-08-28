@@ -508,6 +508,31 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    it('should invoke conflictedIssueRevertUseCase on every scheduled run', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(mockConflictedIssueRevertUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/test-org/test-project',
+        }),
+      );
+    });
+
     it('should invoke revertNotReadyReviewQueueIssueUseCase on every scheduled run', async () => {
       const input = {
         projectName: 'test-project',
