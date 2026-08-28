@@ -118,6 +118,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
 
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
         labelsAsLlmAgentName: ['chore'],
         labelsNotRequiringPullRequest: ['story'],
       });
@@ -182,6 +183,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
 
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
       });
 
       expect(result.reviewReady).toBe(false);
@@ -223,6 +225,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
 
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
       });
 
       expect(result.rejections).toEqual([]);
@@ -265,6 +268,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
 
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
       });
 
       expect(result.reviewReady).toBe(true);
@@ -286,15 +290,17 @@ describe('CheckIssueReviewReadinessUseCase', () => {
 
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
       });
 
       expect(result.reviewReady).toBe(false);
-      expect(result.rejections[0].type).toBe(
-        'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
-      );
+      expect(result.rejections).toContainEqual({
+        type: 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
+        detail: expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      });
     });
 
-    it('should treat all authors as trusted when allowedIssueAuthors is null', async () => {
+    it('should reject all authors when allowedIssueAuthors is null (fail-closed)', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
@@ -309,8 +315,11 @@ describe('CheckIssueReviewReadinessUseCase', () => {
         allowedIssueAuthors: null,
       });
 
-      expect(result.reviewReady).toBe(true);
-      expect(result.rejections).toEqual([]);
+      expect(result.reviewReady).toBe(false);
+      expect(result.rejections).toContainEqual({
+        type: 'NO_REPORT_FROM_AGENT_BOT',
+        detail: 'NO_REPORT_FROM_AGENT_BOT',
+      });
     });
 
     it('should reject when last comment author is not in allowedIssueAuthors list', async () => {
@@ -352,6 +361,28 @@ describe('CheckIssueReviewReadinessUseCase', () => {
 
       expect(result.reviewReady).toBe(true);
       expect(result.rejections).toEqual([]);
+    });
+
+    it('should accept author when allowedIssueAuthors is an empty array (fail-closed)', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ author: 'any-author' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: [],
+      });
+
+      expect(result.reviewReady).toBe(false);
+      expect(result.rejections).toContainEqual({
+        type: 'NO_REPORT_FROM_AGENT_BOT',
+        detail: 'NO_REPORT_FROM_AGENT_BOT',
+      });
     });
   });
 });
