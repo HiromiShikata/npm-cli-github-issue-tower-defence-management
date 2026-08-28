@@ -68,6 +68,7 @@ const SetupTowerDefenceProjectUseCase_1 = require("../../../domain/usecases/Setu
 const DailySecurityScanUseCase_1 = require("../../../domain/usecases/DailySecurityScanUseCase");
 const QualityCheckAdvanceUseCase_1 = require("../../../domain/usecases/QualityCheckAdvanceUseCase");
 const ReopenedDoneIssueRevertUseCase_1 = require("../../../domain/usecases/ReopenedDoneIssueRevertUseCase");
+const ConflictedIssueRevertUseCase_1 = require("../../../domain/usecases/ConflictedIssueRevertUseCase");
 const KyHttpRepository_1 = require("../../repositories/KyHttpRepository");
 const FileSystemKevReportWatermarkRepository_1 = require("../../repositories/FileSystemKevReportWatermarkRepository");
 const WorkflowStatus_1 = require("../../../domain/entities/WorkflowStatus");
@@ -249,6 +250,7 @@ class HandleScheduledEventUseCaseHandler {
                 : null;
             const issueCommentRepository = new GitHubIssueCommentRepository_1.GitHubIssueCommentRepository(input.credentials.bot.github.token);
             const revertOrphanedPreparationUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, issueCommentRepository, nodeLocalCommandRunner);
+            const conflictedIssueRevertUseCase = new ConflictedIssueRevertUseCase_1.ConflictedIssueRevertUseCase(projectRepository, issueRepository, issueCommentRepository);
             const revertNotReadyReviewQueueIssueUseCase = new RevertNotReadyReviewQueueIssueUseCase_1.RevertNotReadyReviewQueueIssueUseCase(projectRepository, issueRepository, issueCommentRepository);
             const triagerApprovalDispatchUseCase = new TriagerApprovalDispatchUseCase_1.TriagerApprovalDispatchUseCase(projectRepository, issueRepository, issueCommentRepository);
             const agentDesignationLabelAdoptUseCase = new AgentDesignationLabelAdoptUseCase_1.AgentDesignationLabelAdoptUseCase(projectRepository, issueRepository);
@@ -257,7 +259,7 @@ class HandleScheduledEventUseCaseHandler {
                 : null;
             const qualityCheckAdvanceUseCase = new QualityCheckAdvanceUseCase_1.QualityCheckAdvanceUseCase(issueRepository);
             const reopenedDoneIssueRevertUseCase = new ReopenedDoneIssueRevertUseCase_1.ReopenedDoneIssueRevertUseCase(issueRepository);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, conflictedIssueRevertUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             const result = await handleScheduledEventUseCase.run(mergedInput);
             if (result) {
                 if (result.rotationOrder !== null) {

@@ -1,3 +1,10 @@
+# [1.190.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.189.2...v1.190.0) (2026-08-28)
+
+
+### Features
+
+* **ConflictedIssueRevertUseCase:** auto-revert conflicted PR issues to Awaiting Workspace ([#1821](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1821)) ([22fd4a5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/22fd4a58eda62e55b971072c5dfa2e7ee21248d1))
+
 ## [1.189.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.189.1...v1.189.2) (2026-08-28)
 
 
