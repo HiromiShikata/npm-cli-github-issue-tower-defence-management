@@ -106,26 +106,32 @@ export class ProjectRequiredFieldCreateUseCase {
       });
       return;
     }
-    const existingOptions = project.agent.options;
-    const existingNames = new Set(
-      existingOptions.map((o) => normalizeProjectFieldName(o.name)),
+    const existingByNormalizedName = new Map(
+      project.agent.options.map((o) => [normalizeProjectFieldName(o.name), o]),
     );
-    const toAdd = agentNames.filter(
-      (name) => !existingNames.has(normalizeProjectFieldName(name)),
+    const targetOptions: OptionToSubmit[] = agentNames.map((name) => {
+      const existing = existingByNormalizedName.get(
+        normalizeProjectFieldName(name),
+      );
+      return existing
+        ? { ...existing }
+        : { id: null, name, color: 'GRAY' as const, description: '' };
+    });
+    const existingNormalizedNames = project.agent.options.map((o) =>
+      normalizeProjectFieldName(o.name),
     );
-    if (toAdd.length === 0) {
+    const targetNormalizedNames = targetOptions.map((o) =>
+      normalizeProjectFieldName(o.name),
+    );
+    const needsUpdate =
+      existingNormalizedNames.length !== targetNormalizedNames.length ||
+      existingNormalizedNames.some(
+        (name, i) => name !== targetNormalizedNames[i],
+      );
+    if (!needsUpdate) {
       return;
     }
-    const mergedOptions: OptionToSubmit[] = [
-      ...existingOptions.map((o) => ({ ...o })),
-      ...toAdd.map((name) => ({
-        id: null,
-        name,
-        color: 'GRAY' as const,
-        description: '',
-      })),
-    ];
-    await this.projectRepository.updateAgentList(project, mergedOptions);
+    await this.projectRepository.updateAgentList(project, targetOptions);
   };
 
   private optionNameSatisfies = (
