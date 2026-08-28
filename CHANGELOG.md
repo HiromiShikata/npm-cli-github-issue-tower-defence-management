@@ -1,3 +1,10 @@
+# [1.188.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.187.3...v1.188.0) (2026-08-28)
+
+
+### Features
+
+* **ConsoleTabList:** add project switcher dropdown to tab bar ([#1803](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1803)) ([878f4a3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/878f4a3d0fdc81244f1425f343a4bd10a58ff883)), closes [#1802](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1802)
+
 ## [1.187.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.187.2...v1.187.3) (2026-08-28)
 
 
