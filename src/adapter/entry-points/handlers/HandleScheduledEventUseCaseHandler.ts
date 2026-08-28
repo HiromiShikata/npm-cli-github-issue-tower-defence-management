@@ -78,6 +78,7 @@ import { SetupTowerDefenceProjectUseCase } from '../../../domain/usecases/SetupT
 import { DailySecurityScanUseCase } from '../../../domain/usecases/DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from '../../../domain/usecases/QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from '../../../domain/usecases/ReopenedDoneIssueRevertUseCase';
+import { ConflictedIssueRevertUseCase } from '../../../domain/usecases/ConflictedIssueRevertUseCase';
 import { KyHttpRepository } from '../../repositories/KyHttpRepository';
 import { FileSystemKevReportWatermarkRepository } from '../../repositories/FileSystemKevReportWatermarkRepository';
 import {
@@ -502,6 +503,11 @@ export class HandleScheduledEventUseCaseHandler {
         issueCommentRepository,
         nodeLocalCommandRunner,
       );
+    const conflictedIssueRevertUseCase = new ConflictedIssueRevertUseCase(
+      projectRepository,
+      issueRepository,
+      issueCommentRepository,
+    );
     const revertNotReadyReviewQueueIssueUseCase =
       new RevertNotReadyReviewQueueIssueUseCase(
         projectRepository,
@@ -554,6 +560,7 @@ export class HandleScheduledEventUseCaseHandler {
       issueNoStatusUpdateUseCase,
       startPreparationUseCase,
       revertOrphanedPreparationUseCase,
+      conflictedIssueRevertUseCase,
       revertNotReadyReviewQueueIssueUseCase,
       triagerApprovalDispatchUseCase,
       agentDesignationLabelAdoptUseCase,
