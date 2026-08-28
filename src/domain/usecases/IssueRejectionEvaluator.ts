@@ -189,7 +189,16 @@ export class IssueRejectionEvaluator {
       }
     } else if (options.detectConflictEvenIfEvaluationSkipped) {
       let prsToCheck: RelatedPullRequest[];
-      if (options.relatedOpenPrUrls != null) {
+      if (issue.isPr) {
+        const resolved = await this.resolveOpenPrsForPrItem(
+          issue.url,
+          options.resolvedOpenPrByUrl ?? null,
+        );
+        if (resolved === null) {
+          return { rejections, approvedPrUrl };
+        }
+        prsToCheck = resolved;
+      } else if (options.relatedOpenPrUrls != null) {
         const resolved = await this.resolveOpenPrsFromUrls(
           options.relatedOpenPrUrls,
           options.resolvedOpenPrByUrl ?? null,
