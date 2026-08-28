@@ -14,7 +14,7 @@ const counts: Record<ConsoleTabName, number> = {
 
 const baseProps = {
   pjcode: 'acme',
-  pjcodes: ['utage3', 'cmg', 'xmile', 'xcare', 'umino'],
+  pjcodes: ['acme', 'beta', 'gamma', 'delta', 'epsilon'],
   generatedAt: '2026-06-19T08:42:11.000Z',
   fromCache: false,
   tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
@@ -195,11 +195,11 @@ describe('ConsoleTabList', () => {
       baseElement.querySelectorAll('.console-tab-pjname-option'),
     );
     expect(options.map((o) => o.textContent)).toEqual([
-      'utage3',
-      'cmg',
-      'xmile',
-      'xcare',
-      'umino',
+      'acme',
+      'beta',
+      'gamma',
+      'delta',
+      'epsilon',
     ]);
   });
 
@@ -214,8 +214,8 @@ describe('ConsoleTabList', () => {
       />,
     );
     fireEvent.click(getByRole('button', { name: /acme/i }));
-    fireEvent.click(getByText('xmile'));
-    expect(onSelectProject).toHaveBeenCalledWith('xmile');
+    fireEvent.click(getByText('gamma'));
+    expect(onSelectProject).toHaveBeenCalledWith('gamma');
   });
 
   it('closes the dropdown after a project option is selected', () => {
@@ -226,7 +226,7 @@ describe('ConsoleTabList', () => {
     expect(
       baseElement.querySelector('.console-tab-pjname-dropdown'),
     ).toBeInTheDocument();
-    fireEvent.click(getByText('xmile'));
+    fireEvent.click(getByText('gamma'));
     expect(
       baseElement.querySelector('.console-tab-pjname-dropdown'),
     ).toBeNull();
