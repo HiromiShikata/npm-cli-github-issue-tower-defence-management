@@ -1,31 +1,32 @@
-import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { ConsoleOperationHandlers } from '../../logic/operations';
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, within } from "storybook/test";
+import type { ConsoleOperationHandlers } from "../../logic/operations";
 import {
-  consoleListItemsFixture,
-  consoleStatusOptionsFixture,
-  consoleStoryOptionsFixture,
-} from '../../testing/fixtures';
-import { ConsoleOperationMenu } from './ConsoleOperationMenu';
+	consoleListItemsFixture,
+	consoleStatusOptionsFixture,
+	consoleStoryOptionsFixture,
+} from "../../testing/fixtures";
+import { ConsoleOperationMenu } from "./ConsoleOperationMenu";
 
 const handlers: ConsoleOperationHandlers = {
-  onReview: () => {},
-  onSetNextActionDate: () => {},
-  onSetStory: () => {},
-  onSetStatus: () => {},
-  onSetInTmuxByHuman: () => {},
-  onClose: () => {},
-  onOkAndAwaitingWorkspace: () => {},
+	onReview: () => {},
+	onSetNextActionDate: () => {},
+	onSetStory: () => {},
+	onSetStatus: () => {},
+	onSetInTmuxByHuman: () => {},
+	onClose: () => {},
+	onOkAndAwaitingWorkspace: () => {},
 };
 
 const meta: Meta<typeof ConsoleOperationMenu> = {
-  title: 'Console/ConsoleOperationMenu',
-  component: ConsoleOperationMenu,
-  args: {
-    rejectEnabled: false,
-    statusOptions: consoleStatusOptionsFixture,
-    storyOptions: consoleStoryOptionsFixture,
-    handlers,
-  },
+	title: "Console/ConsoleOperationMenu",
+	component: ConsoleOperationMenu,
+	args: {
+		rejectEnabled: false,
+		statusOptions: consoleStatusOptionsFixture,
+		storyOptions: consoleStoryOptionsFixture,
+		handlers,
+	},
 };
 
 export default meta;
@@ -33,42 +34,57 @@ export default meta;
 type Story = StoryObj<typeof ConsoleOperationMenu>;
 
 export const PrsTabPullRequest: Story = {
-  args: {
-    tab: 'prs',
-    item: consoleListItemsFixture[0],
-    hasPullRequest: true,
-  },
+	args: {
+		tab: "prs",
+		item: consoleListItemsFixture[0],
+		hasPullRequest: true,
+	},
 };
 
 export const PrsTabPullRequestRejectEnabled: Story = {
-  args: {
-    tab: 'prs',
-    item: consoleListItemsFixture[0],
-    hasPullRequest: true,
-    rejectEnabled: true,
-  },
+	args: {
+		tab: "prs",
+		item: consoleListItemsFixture[0],
+		hasPullRequest: true,
+		rejectEnabled: true,
+	},
 };
 
 export const TriageTabIssueWithStoryGroup: Story = {
-  args: {
-    tab: 'triage',
-    item: consoleListItemsFixture[2],
-    hasPullRequest: false,
-  },
+	args: {
+		tab: "triage",
+		item: consoleListItemsFixture[2],
+		hasPullRequest: false,
+	},
 };
 
 export const TodoByHumanTabIssue: Story = {
-  args: {
-    tab: 'todo-by-human',
-    item: consoleListItemsFixture[2],
-    hasPullRequest: false,
-  },
+	args: {
+		tab: "todo-by-human",
+		item: consoleListItemsFixture[2],
+		hasPullRequest: false,
+	},
 };
 
 export const TodoByAgentTabIssue: Story = {
-  args: {
-    tab: 'todo-by-agent',
-    item: consoleListItemsFixture[2],
-    hasPullRequest: false,
-  },
+	args: {
+		tab: "todo-by-agent",
+		item: consoleListItemsFixture[2],
+		hasPullRequest: false,
+	},
+};
+
+export const ActionBarWithoutAwaitingWorkspaceButton: Story = {
+	args: {
+		tab: "todo-by-human",
+		item: consoleListItemsFixture[2],
+		hasPullRequest: false,
+		statusOptions: consoleStatusOptionsFixture,
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		expect(
+			canvas.queryByRole("button", { name: /awaiting workspace/i }),
+		).not.toBeInTheDocument();
+	},
 };
