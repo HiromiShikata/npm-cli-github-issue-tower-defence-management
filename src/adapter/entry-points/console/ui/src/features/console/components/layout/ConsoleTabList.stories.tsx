@@ -3,7 +3,7 @@ import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import type { ConsoleTabName } from '../../logic/types';
 import { ConsoleTabList } from './ConsoleTabList';
 
-const allPjcodes = ['utage3', 'cmg', 'xmile', 'xcare', 'umino'];
+const allPjcodes = ['acme', 'beta', 'gamma', 'delta', 'epsilon'];
 
 const meta: Meta<typeof ConsoleTabList> = {
   title: 'Console/ConsoleTabList',
@@ -135,7 +135,7 @@ export const WithProjectSwitcherClosed: Story = {
   args: {
     activeTab: 'prs',
     counts,
-    pjcode: 'umino',
+    pjcode: 'acme',
     pjcodes: allPjcodes,
   },
 };
@@ -159,7 +159,7 @@ export const WithProjectSwitcherOpen: Story = {
   args: {
     activeTab: 'prs',
     counts,
-    pjcode: 'umino',
+    pjcode: 'acme',
     pjcodes: allPjcodes,
   },
   render: (args) => <DropdownOpen {...args} />,
