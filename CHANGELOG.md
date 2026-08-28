@@ -1,3 +1,10 @@
+# [1.189.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.188.1...v1.189.0) (2026-08-28)
+
+
+### Features
+
+* **console:** add story name copy button to Console story tab ([#1739](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1739)) ([e14e8dd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e14e8dded6931095a92d607cc281ca2ede5011ea)), closes [#1737](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1737)
+
 ## [1.188.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.188.0...v1.188.1) (2026-08-28)
 
 
