@@ -136,14 +136,20 @@ describe('workflow-blocker items are filtered by the done overlay like every oth
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
     };
-    expect(countPendingItems([item(1), item(2)], overlay, 'workflow-blocker')).toBe(1);
+    expect(
+      countPendingItems([item(1), item(2)], overlay, 'workflow-blocker'),
+    ).toBe(1);
   });
 
   it('removes a processed workflow-blocker item from the list', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
     };
-    const result = filterPendingItems([item(1), item(2)], overlay, 'workflow-blocker');
+    const result = filterPendingItems(
+      [item(1), item(2)],
+      overlay,
+      'workflow-blocker',
+    );
     expect(result.map((entry) => entry.number)).toEqual([2]);
   });
 
@@ -152,8 +158,12 @@ describe('workflow-blocker items are filtered by the done overlay like every oth
       PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
       PVTI_2: { ts: 100, mode: 'workflow-blocker', done: true },
     };
-    expect(countPendingItems([item(1), item(2)], overlay, 'workflow-blocker')).toBe(0);
-    expect(filterPendingItems([item(1), item(2)], overlay, 'workflow-blocker')).toEqual([]);
+    expect(
+      countPendingItems([item(1), item(2)], overlay, 'workflow-blocker'),
+    ).toBe(0);
+    expect(
+      filterPendingItems([item(1), item(2)], overlay, 'workflow-blocker'),
+    ).toEqual([]);
   });
 });
 
@@ -172,7 +182,9 @@ describe('overlayEntriesActedSinceSnapshot', () => {
     );
     expect(acted).toEqual({});
     expect(countPendingItems([item(1)], acted, 'todo-by-human')).toBe(1);
-    expect(filterPendingItems([item(1)], acted, 'todo-by-human')).toEqual([item(1)]);
+    expect(filterPendingItems([item(1)], acted, 'todo-by-human')).toEqual([
+      item(1),
+    ]);
   });
 
   it('keeps an entry written after the snapshot was generated so the item stays hidden', () => {

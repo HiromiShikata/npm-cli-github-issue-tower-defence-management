@@ -154,7 +154,7 @@ export const ConsolePage = () => {
       ),
       activeTab,
     );
-  }, [activeSnapshot, overlayState.overlay]);
+  }, [activeSnapshot, overlayState.overlay, activeTab]);
 
   const orderedPendingKeys = useMemo(
     () => pendingItems.map((item) => overlayKeyForItem(item)),
