@@ -559,11 +559,12 @@ describe('ConflictedIssueRevertUseCase', () => {
       await useCase.run({ projectUrl });
 
       expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(1);
-      const calledUrls =
-        mockIssueRepository.getOpenPullRequests.mock.calls[0][0];
-      expect(calledUrls).toHaveLength(2);
-      expect(calledUrls).toContain('https://github.com/user/repo/pull/10');
-      expect(calledUrls).toContain('https://github.com/user/repo/pull/20');
+      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          'https://github.com/user/repo/pull/10',
+          'https://github.com/user/repo/pull/20',
+        ]),
+      );
     });
 
     it('should process multiple conflicted issues in one run', async () => {
