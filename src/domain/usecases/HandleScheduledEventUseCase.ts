@@ -42,6 +42,7 @@ import {
 } from './DailySecurityScanUseCase';
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
+import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -138,6 +139,7 @@ export class HandleScheduledEventUseCase {
     readonly issueNoStatusUpdateUseCase: IssueNoStatusUpdateUseCase,
     readonly startPreparationUseCase: StartPreparationUseCase,
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
+    readonly conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
     readonly triagerApprovalDispatchUseCase: TriagerApprovalDispatchUseCase,
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
@@ -435,6 +437,9 @@ ${JSON.stringify(e)}
       project,
       issues,
       agents: input.agents ?? null,
+    });
+    await this.conflictedIssueRevertUseCase.run({
+      projectUrl: input.projectUrl,
     });
     await this.revertNotReadyReviewQueueIssueUseCase.run({
       projectUrl: input.projectUrl,

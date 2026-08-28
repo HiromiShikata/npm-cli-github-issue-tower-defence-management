@@ -24,6 +24,7 @@ import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCa
 import { IssueNoStatusUpdateUseCase } from './IssueNoStatusUpdateUseCase';
 import { StartPreparationUseCase } from './StartPreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
+import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
 import { TriagerApprovalDispatchUseCase } from './TriagerApprovalDispatchUseCase';
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
@@ -127,6 +128,8 @@ describe('HandleScheduledEventUseCase', () => {
     const mockStartPreparationUseCase = mock<StartPreparationUseCase>();
     const mockRevertOrphanedPreparationUseCase =
       mock<RevertOrphanedPreparationUseCase>();
+    const mockConflictedIssueRevertUseCase =
+      mock<ConflictedIssueRevertUseCase>();
     const mockRevertNotReadyReviewQueueIssueUseCase =
       mock<RevertNotReadyReviewQueueIssueUseCase>();
     const mockTriagerApprovalDispatchUseCase =
@@ -164,6 +167,7 @@ describe('HandleScheduledEventUseCase', () => {
       mockIssueNoStatusUpdateUseCase,
       mockStartPreparationUseCase,
       mockRevertOrphanedPreparationUseCase,
+      mockConflictedIssueRevertUseCase,
       mockRevertNotReadyReviewQueueIssueUseCase,
       mockTriagerApprovalDispatchUseCase,
       mockAgentDesignationLabelAdoptUseCase,
@@ -500,6 +504,31 @@ describe('HandleScheduledEventUseCase', () => {
       expect(mockRevertOrphanedPreparationUseCase.run).toHaveBeenCalledWith(
         expect.objectContaining({
           awaitingQualityCheckStatus: 'Awaiting Quality Check',
+        }),
+      );
+    });
+
+    it('should invoke conflictedIssueRevertUseCase on every scheduled run', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(mockConflictedIssueRevertUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/test-org/test-project',
         }),
       );
     });
@@ -1781,6 +1810,7 @@ describe('HandleScheduledEventUseCase', () => {
       mock<IssueNoStatusUpdateUseCase>(),
       mock<StartPreparationUseCase>(),
       mock<RevertOrphanedPreparationUseCase>(),
+      mock<ConflictedIssueRevertUseCase>(),
       mock<RevertNotReadyReviewQueueIssueUseCase>(),
       mock<TriagerApprovalDispatchUseCase>(),
       mock<AgentDesignationLabelAdoptUseCase>(),
