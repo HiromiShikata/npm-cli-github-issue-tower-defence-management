@@ -357,27 +357,13 @@ describe('ConsoleStoryList', () => {
   });
 
   it('renders a "Copy name" button for each story row', () => {
-    const { getAllByRole } = render(
-      <ConsoleStoryList
-        stories={storyEntries}
-        isLoading={false}
-        error={null}
-        {...defaultProps}
-      />,
-    );
+    const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
     const buttons = getAllByRole('button', { name: 'Copy story name' });
     expect(buttons).toHaveLength(storyEntries.length);
   });
 
   it('writes the first row story name to clipboard when its "Copy name" button is clicked', async () => {
-    const { getAllByRole } = render(
-      <ConsoleStoryList
-        stories={storyEntries}
-        isLoading={false}
-        error={null}
-        {...defaultProps}
-      />,
-    );
+    const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
     const [firstButton] = getAllByRole('button', { name: 'Copy story name' });
     await act(async () => {
       fireEvent.click(firstButton);
