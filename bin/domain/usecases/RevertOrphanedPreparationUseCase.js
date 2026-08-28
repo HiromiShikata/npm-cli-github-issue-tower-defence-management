@@ -56,11 +56,11 @@ class RevertOrphanedPreparationUseCase {
                     const repetition = (0, resolveNextStepAgentDispatchRepetition_1.resolveNextStepAgentDispatchRepetition)({
                         agentFieldValue: issue.agent,
                         nextStepAgent,
-                        commentsAfterLastAgentReport: lastAgentReport
-                            ? comments.slice(comments.indexOf(lastAgentReport) + 1)
-                            : [],
+                        comments,
                         isTrustedAuthor: (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, params.allowedIssueAuthors),
                         thresholdForAutoReject: params.thresholdForAutoReject,
+                        thresholdForDispatchLoop: params.thresholdForDispatchLoop ??
+                            resolveNextStepAgentDispatchRepetition_1.DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
                     });
                     if (repetition.type === 'escalateToFailedPreparation' &&
                         failedPreparationStatusOption) {

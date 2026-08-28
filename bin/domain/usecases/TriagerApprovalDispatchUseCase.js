@@ -48,6 +48,7 @@ const parseTriagerProposalBlock = (commentContent) => {
     }
     return null;
 };
+const isNotFoundError = (error) => (error instanceof Error ? error.message : String(error)).includes('404');
 const isApprovalComment = (content, author, allowedIssueAuthors) => {
     if (!(0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors)) {
         return false;
@@ -91,7 +92,18 @@ class TriagerApprovalDispatchUseCase {
             const windowStart = (cycleIndex * MAX_COMMENT_FETCHES_PER_CYCLE) % candidateIssues.length;
             for (let slot = 0; slot < windowSize; slot++) {
                 const issue = candidateIssues[(windowStart + slot) % candidateIssues.length];
-                const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
+                let comments;
+                try {
+                    comments =
+                        await this.issueCommentRepository.getCommentsFromIssue(issue);
+                }
+                catch (error) {
+                    if (!isNotFoundError(error)) {
+                        throw error;
+                    }
+                    console.warn(`[TriagerApprovalDispatch] Failed to fetch comments, skipping issue for this cycle. issueUrl: ${issue.url} error: ${error instanceof Error ? error.message : String(error)}`);
+                    continue;
+                }
                 let firstProposalIndex = -1;
                 let proposal = null;
                 for (let i = 0; i < comments.length; i++) {

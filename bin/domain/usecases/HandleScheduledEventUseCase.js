@@ -279,6 +279,7 @@ ${JSON.stringify(e)}
                         projectUrl: input.projectUrl,
                         preparationProcessCheckCommand: input.startPreparation.preparationProcessCheckCommand,
                         thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
+                        thresholdForDispatchLoop: input.thresholdForDispatchLoop,
                         awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
                         awLogStaleThresholdMinutes: input.startPreparation.awLogStaleThresholdMinutes,
                         awaitingQualityCheckStatus: input.startPreparation.awaitingQualityCheckStatus ?? undefined,

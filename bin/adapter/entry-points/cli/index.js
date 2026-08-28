@@ -66,6 +66,7 @@ const localStorageCacheDirectory_1 = require("../../repositories/localStorageCac
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
 const NodeTmuxSessionRepository_1 = require("../../repositories/NodeTmuxSessionRepository");
 const ProcTakeOwnershipSpawnRepository_1 = require("../../repositories/ProcTakeOwnershipSpawnRepository");
+const resolveNextStepAgentDispatchRepetition_1 = require("../../../domain/usecases/resolveNextStepAgentDispatchRepetition");
 const ProxyClaudeTokenUsageRepository_1 = require("../../repositories/ProxyClaudeTokenUsageRepository");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const consoleGithubTokenResolver_1 = require("../console/consoleGithubTokenResolver");
@@ -81,6 +82,17 @@ const ownerCallFileStore_1 = require("../handlers/ownerCallFileStore");
 const rotationOrderFileWriter_1 = require("../handlers/rotationOrderFileWriter");
 const fleetConfig_1 = require("./fleetConfig");
 const projectConfig_2 = require("./projectConfig");
+const resolvePositiveIntegerOption = (rawValue, optionName, fallback) => {
+    if (rawValue === undefined) {
+        return fallback;
+    }
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+        console.error(`Invalid value for --${optionName}. It must be a positive integer.`);
+        process.exit(1);
+    }
+    return parsed;
+};
 const DEFAULT_IN_TMUX_DATA_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 const DEFAULT_DASHBOARD_DATA_DIR = null;
@@ -231,6 +243,7 @@ exports.program
             projectUrl,
             preparationProcessCheckCommand,
             thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
+            thresholdForDispatchLoop: config.thresholdForDispatchLoop,
             awLogDirectoryPath: config.awLogDirectoryPath,
             awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
             labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
@@ -288,6 +301,7 @@ exports.program
     .requiredOption('--issueUrl <url>', 'GitHub issue URL')
     .option('--projectUrl <url>', 'GitHub project URL')
     .option('--thresholdForAutoReject <count>', 'Threshold for auto-escalation after consecutive rejections (default: 3)')
+    .option('--thresholdForDispatchLoop <count>', 'Threshold for auto-escalation after one agent is dispatched this many times since the last human comment, whether it names itself or two agents name each other in turn (default: 6)')
     .option('--workflowBlockerResolvedWebhookUrl <url>', 'Webhook URL to notify when a workflow blocker issue status changes to awaiting quality check. Supports {URL} and {MESSAGE} placeholders.')
     .option('--missingAgentName <name>', 'Agent definition name that was not found, triggering the missing-agent task creation path')
     .option('--sessionErrorLine <line>', 'Exact error line from the session log to include in the task issue body')
@@ -303,6 +317,9 @@ exports.program
         projectUrl: options.projectUrl,
         thresholdForAutoReject: options.thresholdForAutoReject
             ? Number(options.thresholdForAutoReject)
+            : undefined,
+        thresholdForDispatchLoop: options.thresholdForDispatchLoop
+            ? Number(options.thresholdForDispatchLoop)
             : undefined,
         workflowBlockerResolvedWebhookUrl: options.workflowBlockerResolvedWebhookUrl,
     };
@@ -320,18 +337,8 @@ exports.program
         console.error('projectUrl is required. Provide via --projectUrl, config file, or project README.');
         process.exit(1);
     }
-    let thresholdForAutoReject = 3;
-    const rawThreshold = config.thresholdForAutoReject;
-    if (rawThreshold !== undefined) {
-        const parsed = Number(rawThreshold);
-        if (!Number.isFinite(parsed) ||
-            !Number.isInteger(parsed) ||
-            parsed <= 0) {
-            console.error('Invalid value for --thresholdForAutoReject. It must be a positive integer.');
-            process.exit(1);
-        }
-        thresholdForAutoReject = parsed;
-    }
+    const thresholdForAutoReject = resolvePositiveIntegerOption(config.thresholdForAutoReject, 'thresholdForAutoReject', 3);
+    const thresholdForDispatchLoop = resolvePositiveIntegerOption(config.thresholdForDispatchLoop, 'thresholdForDispatchLoop', resolveNextStepAgentDispatchRepetition_1.DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP);
     const workflowBlockerResolvedWebhookUrl = config.workflowBlockerResolvedWebhookUrl ?? null;
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
@@ -361,6 +368,7 @@ exports.program
         projectUrl,
         issueUrl: options.issueUrl,
         thresholdForAutoReject,
+        thresholdForDispatchLoop,
         workflowBlockerResolvedWebhookUrl,
         allowedIssueAuthors,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,

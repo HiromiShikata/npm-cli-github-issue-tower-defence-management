@@ -12,6 +12,7 @@ export declare class RevertOrphanedPreparationUseCase {
         projectUrl: string;
         preparationProcessCheckCommand: string;
         thresholdForAutoReject: number;
+        thresholdForDispatchLoop?: number;
         awLogDirectoryPath?: string;
         awLogStaleThresholdMinutes?: number;
         awaitingQualityCheckStatus?: string | null;

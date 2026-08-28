@@ -1,3 +1,11 @@
+## [1.188.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.188.0...v1.188.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **preparation:** bound dispatch loops in which the agents do report ([#1776](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1776)) ([96077fd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/96077fd6223eb2d98d0fa6ffe025ff0d6a7a66bc)), closes [#1772](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1772)
+* **TriagerApprovalDispatchUseCase:** skip candidate issues when fetching comments fails ([#1816](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1816)) ([1caeb68](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1caeb68402c770ebe53ab8b667e8c1ad9b2e0cc8)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#1814](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1814)
+
 # [1.188.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.187.3...v1.188.0) (2026-08-28)
 
 

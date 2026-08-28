@@ -106,6 +106,7 @@ export declare class HandleScheduledEventUseCase {
             labelsAsLlmAgentName?: string[] | null;
         } | null;
         thresholdForAutoReject?: number;
+        thresholdForDispatchLoop?: number;
         createTaskFromStoryBodyCheckboxEnabled?: boolean;
         queryToAddProjectEnabled?: boolean;
         queryToAddProject?: string | null;

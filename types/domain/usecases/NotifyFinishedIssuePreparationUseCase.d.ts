@@ -22,6 +22,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         projectUrl: string;
         issueUrl: string;
         thresholdForAutoReject: number;
+        thresholdForDispatchLoop?: number;
         workflowBlockerResolvedWebhookUrl: string | null;
         allowedIssueAuthors?: string[] | null;
         labelsAsLlmAgentName?: string[] | null;

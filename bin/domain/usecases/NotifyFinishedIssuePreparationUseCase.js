@@ -105,16 +105,15 @@ class NotifyFinishedIssuePreparationUseCase {
             const nextStepAgent = lastAgentReport
                 ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastAgentReport.content)
                 : null;
-            const commentsAfterLastAgentReport = lastAgentReport
-                ? comments.slice(comments.indexOf(lastAgentReport) + 1)
-                : [];
             if (nextStepAgent !== null) {
                 const repetition = (0, resolveNextStepAgentDispatchRepetition_1.resolveNextStepAgentDispatchRepetition)({
                     agentFieldValue: issue.agent,
                     nextStepAgent,
-                    commentsAfterLastAgentReport,
+                    comments,
                     isTrustedAuthor,
                     thresholdForAutoReject: params.thresholdForAutoReject,
+                    thresholdForDispatchLoop: params.thresholdForDispatchLoop ??
+                        resolveNextStepAgentDispatchRepetition_1.DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
                 });
                 if (repetition.type === 'escalateToFailedPreparation') {
                     issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
