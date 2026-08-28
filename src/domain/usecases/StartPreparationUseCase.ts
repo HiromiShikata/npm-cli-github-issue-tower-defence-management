@@ -1,4 +1,8 @@
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import {
+  IssueRepository,
+  RelatedPullRequest,
+} from './adapter-interfaces/IssueRepository';
+import { Issue } from '../entities/Issue';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
@@ -19,6 +23,19 @@ const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
+export const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
+
+export type SpawnCandidateExclusionReason =
+  | 'dependedIssueUrls'
+  | 'futureNextActionDate'
+  | 'nextActionHourNotReached'
+  | 'authorNotAllowed'
+  | 'notAssignedToManager';
+
+export type SpawnCandidateBranchSource = {
+  openPullRequest: RelatedPullRequest | null;
+  relatedOpenPullRequests: RelatedPullRequest[];
+};
 
 export const agentNameFromDesignation = (designation: string): string =>
   designation.startsWith(LLM_AGENT_LABEL_PREFIX)
@@ -171,6 +188,79 @@ export class StartPreparationUseCase {
       1,
       Math.floor(Math.min(sevenDayLimit, fiveHourLimit) * weight),
     );
+  };
+
+  spawnCandidateExclusionReasonOf = (
+    issue: Issue,
+    allowedIssueAuthors: string[] | null,
+    manager: string,
+    now: Date,
+  ): SpawnCandidateExclusionReason | null => {
+    if (issue.dependedIssueUrls.length > 0) {
+      return 'dependedIssueUrls';
+    }
+    if (issueReactivationTriggerIsPending(issue, now)) {
+      const startOfTomorrow = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+      );
+      return issue.nextActionDate !== null &&
+        issue.nextActionDate >= startOfTomorrow
+        ? 'futureNextActionDate'
+        : 'nextActionHourNotReached';
+    }
+    if (
+      allowedIssueAuthors === null ||
+      allowedIssueAuthors.length === 0 ||
+      !allowedIssueAuthors.includes(issue.author)
+    ) {
+      return 'authorNotAllowed';
+    }
+    if (!issue.assignees.includes(manager)) {
+      return 'notAssignedToManager';
+    }
+    return null;
+  };
+
+  fetchSpawnCandidateBranchSources = async (
+    issueUrls: string[],
+  ): Promise<Map<string, SpawnCandidateBranchSource>> => {
+    const branchSourceByIssueUrl = new Map<
+      string,
+      SpawnCandidateBranchSource
+    >();
+    let nextIndex = 0;
+    const fetchSequentially = async (): Promise<void> => {
+      while (nextIndex < issueUrls.length) {
+        const issueUrl = issueUrls[nextIndex];
+        nextIndex += 1;
+        branchSourceByIssueUrl.set(
+          issueUrl,
+          issueUrl.includes('/pull/')
+            ? {
+                openPullRequest:
+                  await this.issueRepository.getOpenPullRequest(issueUrl),
+                relatedOpenPullRequests: [],
+              }
+            : {
+                openPullRequest: null,
+                relatedOpenPullRequests:
+                  await this.issueRepository.findRelatedOpenPRs(issueUrl),
+              },
+        );
+      }
+    };
+    await Promise.all(
+      Array.from(
+        {
+          length: Math.min(
+            SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY,
+            issueUrls.length,
+          ),
+        },
+        fetchSequentially,
+      ),
+    );
+    return branchSourceByIssueUrl;
   };
 
   private selectRotationTokens = (
@@ -437,6 +527,21 @@ export class StartPreparationUseCase {
 
     const now = new Date();
 
+    const branchSourceByIssueUrl = await this.fetchSpawnCandidateBranchSources(
+      awaitingWorkspaceIssues
+        .filter(
+          (issue) =>
+            !runningIssueUrls.has(issue.url) &&
+            this.spawnCandidateExclusionReasonOf(
+              issue,
+              params.allowedIssueAuthors,
+              params.manager,
+              now,
+            ) === null,
+        )
+        .map((issue) => issue.url),
+    );
+
     for (
       let i = 0;
       i < awaitingWorkspaceIssues.length &&
@@ -452,34 +557,21 @@ export class StartPreparationUseCase {
         console.warn(`Skipping ${issue.url}: worker already running.`);
         continue;
       }
-      if (issueReactivationTriggerIsPending(issue, now)) {
-        const startOfTomorrow = new Date(
-          Date.UTC(
-            now.getUTCFullYear(),
-            now.getUTCMonth(),
-            now.getUTCDate() + 1,
-          ),
+      const exclusionReason = this.spawnCandidateExclusionReasonOf(
+        issue,
+        params.allowedIssueAuthors,
+        params.manager,
+        now,
+      );
+      if (exclusionReason !== null) {
+        exclusionCounts[exclusionReason]++;
+        continue;
+      }
+      const branchSource = branchSourceByIssueUrl.get(issue.url);
+      if (branchSource === undefined) {
+        console.error(
+          `Skipping ${issue.url}: no branch source was prefetched for this spawn candidate.`,
         );
-        if (
-          issue.nextActionDate !== null &&
-          issue.nextActionDate >= startOfTomorrow
-        ) {
-          exclusionCounts.futureNextActionDate++;
-        } else {
-          exclusionCounts.nextActionHourNotReached++;
-        }
-        continue;
-      }
-      if (
-        params.allowedIssueAuthors === null ||
-        params.allowedIssueAuthors.length === 0 ||
-        !params.allowedIssueAuthors.includes(issue.author)
-      ) {
-        exclusionCounts.authorNotAllowed++;
-        continue;
-      }
-      if (!issue.assignees.includes(params.manager)) {
-        exclusionCounts.notAssignedToManager++;
         continue;
       }
       await adoptIssueAgentDesignationLabel(
@@ -538,7 +630,7 @@ export class StartPreparationUseCase {
       const isPrUrl = issue.url.includes('/pull/');
       let branchName: string;
       if (isPrUrl) {
-        const pr = await this.issueRepository.getOpenPullRequest(issue.url);
+        const pr = branchSource.openPullRequest;
         if (pr === null) {
           console.warn(
             `Skipping non-OPEN PR ${issue.url}: wrapper requires an open PR.`,
@@ -551,9 +643,7 @@ export class StartPreparationUseCase {
         }
         branchName = pr.branchName;
       } else {
-        const relatedPRs = await this.issueRepository.findRelatedOpenPRs(
-          issue.url,
-        );
+        const relatedPRs = branchSource.relatedOpenPullRequests;
         const sameRepoRelatedPRs = relatedPRs.filter((pr) => {
           const match = /^https?:\/\/[^/]+\/([^/]+\/[^/]+)\//.exec(pr.url);
           return match === null || match[1] === issue.nameWithOwner;
