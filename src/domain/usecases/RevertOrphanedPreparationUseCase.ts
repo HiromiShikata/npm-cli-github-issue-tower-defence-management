@@ -27,7 +27,10 @@ import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { normalizeReportBody } from './normalizeReportBody';
-import { resolveNextStepAgentDispatchRepetition } from './resolveNextStepAgentDispatchRepetition';
+import {
+  DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+  resolveNextStepAgentDispatchRepetition,
+} from './resolveNextStepAgentDispatchRepetition';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -64,6 +67,7 @@ export class RevertOrphanedPreparationUseCase {
     projectUrl: string;
     preparationProcessCheckCommand: string;
     thresholdForAutoReject: number;
+    thresholdForDispatchLoop?: number;
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
     awaitingQualityCheckStatus?: string | null;
@@ -136,15 +140,16 @@ export class RevertOrphanedPreparationUseCase {
         const repetition = resolveNextStepAgentDispatchRepetition({
           agentFieldValue: issue.agent,
           nextStepAgent,
-          commentsAfterLastAgentReport: lastAgentReport
-            ? comments.slice(comments.indexOf(lastAgentReport) + 1)
-            : [],
+          comments,
           isTrustedAuthor: (author) =>
             isAuthorAuthorizedForAutoStatusCheck(
               author,
               params.allowedIssueAuthors,
             ),
           thresholdForAutoReject: params.thresholdForAutoReject,
+          thresholdForDispatchLoop:
+            params.thresholdForDispatchLoop ??
+            DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
         });
         if (
           repetition.type === 'escalateToFailedPreparation' &&

@@ -35,7 +35,10 @@ import {
   issueReactivationTriggerStartOfTomorrow,
 } from './issueReactivationTriggerIsPending';
 import { normalizeReportBody } from './normalizeReportBody';
-import { resolveNextStepAgentDispatchRepetition } from './resolveNextStepAgentDispatchRepetition';
+import {
+  DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+  resolveNextStepAgentDispatchRepetition,
+} from './resolveNextStepAgentDispatchRepetition';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -106,6 +109,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     projectUrl: string;
     issueUrl: string;
     thresholdForAutoReject: number;
+    thresholdForDispatchLoop?: number;
     workflowBlockerResolvedWebhookUrl: string | null;
     allowedIssueAuthors?: string[] | null;
     labelsAsLlmAgentName?: string[] | null;
@@ -246,16 +250,16 @@ export class NotifyFinishedIssuePreparationUseCase {
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
-    const commentsAfterLastAgentReport = lastAgentReport
-      ? comments.slice(comments.indexOf(lastAgentReport) + 1)
-      : [];
     if (nextStepAgent !== null) {
       const repetition = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: issue.agent,
         nextStepAgent,
-        commentsAfterLastAgentReport,
+        comments,
         isTrustedAuthor,
         thresholdForAutoReject: params.thresholdForAutoReject,
+        thresholdForDispatchLoop:
+          params.thresholdForDispatchLoop ??
+          DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
       });
       if (repetition.type === 'escalateToFailedPreparation') {
         issue.status = FAILED_PREPARATION_STATUS_NAME;

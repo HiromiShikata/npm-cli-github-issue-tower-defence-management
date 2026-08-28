@@ -188,6 +188,7 @@ export class HandleScheduledEventUseCase {
       labelsAsLlmAgentName?: string[] | null;
     } | null;
     thresholdForAutoReject?: number;
+    thresholdForDispatchLoop?: number;
     createTaskFromStoryBodyCheckboxEnabled?: boolean;
     queryToAddProjectEnabled?: boolean;
     queryToAddProject?: string | null;
@@ -468,6 +469,7 @@ ${JSON.stringify(e)}
           preparationProcessCheckCommand:
             input.startPreparation.preparationProcessCheckCommand,
           thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
+          thresholdForDispatchLoop: input.thresholdForDispatchLoop,
           awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
           awLogStaleThresholdMinutes:
             input.startPreparation.awLogStaleThresholdMinutes,

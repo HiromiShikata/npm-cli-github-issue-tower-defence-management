@@ -55,6 +55,7 @@ Options for notifyFinishedIssuePreparation:
   --issueUrl <url>                                 GitHub issue URL (required)
   --projectUrl <url>                               GitHub project URL
   --thresholdForAutoReject <count>                 Threshold for auto-escalation after consecutive rejections (default: 3)
+  --thresholdForDispatchLoop <count>               Threshold for auto-escalation after one agent is dispatched this many times since the last human comment, whether it names itself or two agents name each other in turn (default: 6)
   --workflowBlockerResolvedWebhookUrl <url>        Webhook URL to notify when a workflow blocker issue status changes
   --missingAgentName <name>                        Agent definition name that was not found; triggers task issue creation (assigned to the manager from config) and blocks the item until that issue is closed
   --sessionErrorLine <line>                        Exact error line from the session log to include in the task issue body
@@ -328,6 +329,7 @@ autoAssignManagerAuthors?: string # Optional: Comma-separated list of author log
 queryToAddProjectEnabled?: boolean # Optional: Enable the queryToAddProject search (default false). The search runs only when this is true, so setting queryToAddProject alone changes nothing
 queryToAddProject?: string # Optional: GitHub search query string, used only when queryToAddProjectEnabled is true. Each schedule cycle, issues and pull requests matching this query that are not already on the project board and whose author satisfies the effective author filter (autoAssignManagerAuthors, falling back to allowedIssueAuthors) are added to the project and assigned to the manager. Items whose author does not satisfy the filter are skipped and not added to the board. Omit to skip this search.
 thresholdForAutoReject?: number # Optional: Consecutive rejections before escalation (default: 3)
+thresholdForDispatchLoop?: number # Optional: How many times one agent may be dispatched on a single issue since the last human comment before the issue is moved to Failed Preparation instead of being dispatched again (default: 6). This bounds dispatch loops in which the agents do report each round, both when an agent names itself as the next step and when two agents name each other in turn. Any comment that is neither an agent report nor a comment this tool posts itself counts as human input and restarts the count
 workflowBlockerResolvedWebhookUrl?: string # Optional: Webhook URL. Supports {URL} and {MESSAGE} placeholders
 preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. Orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to Awaiting Quality Check; otherwise an `Auto Status Check: REJECTED` comment is posted and the issue falls back to Awaiting Workspace, except that once `thresholdForAutoReject` cumulative orphan-time rejections accumulate within the recent comment window (and no earlier escalation marker is present) the issue is transitioned to Failed Preparation instead
 codexHomeCandidates?: string[] # Optional: Ordered list of CODEX_HOME directory paths for Codex profile cycling. Absent or empty keeps current behavior
@@ -394,6 +396,7 @@ defaultLlmModelName: 'claude-opus-4-5'
 maximumPreparingIssuesCount: 3
 utilizationPercentageThreshold: 90
 thresholdForAutoReject: 3
+thresholdForDispatchLoop: 6
 workflowBlockerResolvedWebhookUrl: 'https://example.com/webhook?url={URL}&msg={MESSAGE}'
 preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"'
 awLogDirectoryPath: '/home/user/logs-aw'
