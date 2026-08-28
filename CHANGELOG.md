@@ -1,3 +1,10 @@
+## [1.187.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.187.2...v1.187.3) (2026-08-28)
+
+
+### Bug Fixes
+
+* **ProjectRequiredFieldCreateUseCase:** remove extra agents and enforce config order in reconcileAgentOptions ([#1811](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1811)) ([aaa1e24](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/aaa1e24827ca28128bfc1f2a86833e7e007c8858)), closes [HiromiShikata/umino-corporait-operation#30999](https://github.com/HiromiShikata/umino-corporait-operation/issues/30999)
+
 ## [1.187.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.187.1...v1.187.2) (2026-08-28)
 
 

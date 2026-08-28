@@ -69,22 +69,21 @@ class ProjectRequiredFieldCreateUseCase {
                 });
                 return;
             }
-            const existingOptions = project.agent.options;
-            const existingNames = new Set(existingOptions.map((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name)));
-            const toAdd = agentNames.filter((name) => !existingNames.has((0, ProjectFieldName_1.normalizeProjectFieldName)(name)));
-            if (toAdd.length === 0) {
+            const existingByNormalizedName = new Map(project.agent.options.map((o) => [(0, ProjectFieldName_1.normalizeProjectFieldName)(o.name), o]));
+            const targetOptions = agentNames.map((name) => {
+                const existing = existingByNormalizedName.get((0, ProjectFieldName_1.normalizeProjectFieldName)(name));
+                return existing
+                    ? { ...existing }
+                    : { id: null, name, color: 'GRAY', description: '' };
+            });
+            const existingNormalizedNames = project.agent.options.map((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name));
+            const targetNormalizedNames = targetOptions.map((o) => (0, ProjectFieldName_1.normalizeProjectFieldName)(o.name));
+            const needsUpdate = existingNormalizedNames.length !== targetNormalizedNames.length ||
+                existingNormalizedNames.some((name, i) => name !== targetNormalizedNames[i]);
+            if (!needsUpdate) {
                 return;
             }
-            const mergedOptions = [
-                ...existingOptions.map((o) => ({ ...o })),
-                ...toAdd.map((name) => ({
-                    id: null,
-                    name,
-                    color: 'GRAY',
-                    description: '',
-                })),
-            ];
-            await this.projectRepository.updateAgentList(project, mergedOptions);
+            await this.projectRepository.updateAgentList(project, targetOptions);
         };
         this.optionNameSatisfies = (currentName, requiredName) => (0, ProjectFieldName_1.normalizeProjectFieldName)(currentName).startsWith((0, ProjectFieldName_1.normalizeProjectFieldName)(requiredName));
     }
