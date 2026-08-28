@@ -406,8 +406,8 @@ describe('ConsoleItemDetailContainer', () => {
     ]);
   });
 
-  it('passes onSubmitAndMoveToAwaitingWorkspace to the composer when statusOptions includes Awaiting Workspace', () => {
-    const { getByText } = render(
+  it('shows Ok & MOVE and Comment & MOVE buttons when statusOptions includes Awaiting Workspace', () => {
+    const { getByRole } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
         item={issueItem}
@@ -422,15 +422,20 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={jest.fn()}
       />,
     );
-    expect(getByText('Comment & Awaiting Workspace')).toBeInTheDocument();
+    expect(
+      getByRole('button', { name: 'Ok & MOVE to Awaiting Workspace' }),
+    ).toBeInTheDocument();
+    expect(
+      getByRole('button', { name: 'Comment & MOVE to Awaiting Workspace' }),
+    ).toBeInTheDocument();
   });
 
-  it('does not pass onSubmitAndMoveToAwaitingWorkspace to the composer when statusOptions does not include Awaiting Workspace', () => {
+  it('hides Ok & MOVE and Comment & MOVE buttons when statusOptions does not include Awaiting Workspace', () => {
     const statusOptionsWithoutAwaitingWorkspace =
       consoleStatusOptionsFixture.filter(
         (o) => o.name !== AWAITING_WORKSPACE_NAME,
       );
-    const { queryByText } = render(
+    const { queryByRole } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
         item={issueItem}
@@ -445,13 +450,18 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={jest.fn()}
       />,
     );
-    expect(queryByText('Comment & Awaiting Workspace')).toBeNull();
+    expect(
+      queryByRole('button', { name: 'Ok & MOVE to Awaiting Workspace' }),
+    ).toBeNull();
+    expect(
+      queryByRole('button', { name: 'Comment & MOVE to Awaiting Workspace' }),
+    ).toBeNull();
   });
 
-  it('clicking Comment & Awaiting Workspace calls addComment and queues a set_status action for the Awaiting Workspace option', async () => {
+  it('clicking Comment & MOVE to Awaiting Workspace calls addComment and queues a set_status action', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
-    const { getByPlaceholderText, getByText } = render(
+    const { getByPlaceholderText, getByRole } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
         item={issueItem}
@@ -469,7 +479,9 @@ describe('ConsoleItemDetailContainer', () => {
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
       target: { value: 'test comment body' },
     });
-    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    fireEvent.click(
+      getByRole('button', { name: 'Comment & MOVE to Awaiting Workspace' }),
+    );
     await waitFor(() => {
       expect(operations.addComment).toHaveBeenCalledWith(
         issueItem,
