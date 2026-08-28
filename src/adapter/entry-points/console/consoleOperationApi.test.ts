@@ -292,6 +292,34 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_c');
     });
 
+    it('closes a pull request and moves linked issue to Awaiting workspace when issueUrl is provided', async () => {
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'close',
+        prUrl: 'https://github.com/o/r/pull/1',
+        issueUrl: 'https://github.com/o/r/issues/7',
+        projectItemId: 'PVTI_c_totally_wrong',
+        commentBody: 'totally wrong',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closePullRequest).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+      );
+      expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/pull/1',
+        'totally wrong',
+      );
+      expect(issueRepository.updateStatus).toHaveBeenCalledWith(
+        project,
+        expect.objectContaining({
+          itemId: 'PVTI_c_totally_wrong',
+          url: 'https://github.com/o/r/issues/7',
+        }),
+        'status_aw',
+      );
+      expectRecordedAcrossTabs('PVTI_c_totally_wrong');
+    });
+
     it('marks a pull request unnecessary by closing it, labelling the item chore and moving it to Awaiting workspace', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue({
         ...issue,

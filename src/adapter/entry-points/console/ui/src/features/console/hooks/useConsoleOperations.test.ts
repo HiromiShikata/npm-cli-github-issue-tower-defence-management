@@ -68,6 +68,7 @@ describe('useConsoleOperations', () => {
       pjcode: 'acme',
       action: 'close',
       prUrl: prItem.url,
+      issueUrl: prItem.url,
       commentBody: 'totally wrong',
     });
   });
