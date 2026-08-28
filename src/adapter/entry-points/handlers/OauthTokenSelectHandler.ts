@@ -1,4 +1,5 @@
 import {
+  CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
   DEFAULT_SELECTION_WEIGHT,
   type OauthTokenCandidate,
   type OauthTokenSelectResult,
@@ -118,6 +119,7 @@ export class OauthTokenSelectHandler {
       candidates,
       input.nowEpochSeconds,
       this.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
     return {

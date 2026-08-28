@@ -394,6 +394,84 @@ describe('OauthTokenSelectHandler', () => {
     expect(Number(drawWeightMatch?.[1])).toBeGreaterThan(0);
   });
 
+  it('excludes a token whose 5h window has only 59% free (CL script threshold is 60%)', () => {
+    writeTokenList([{ name: 'low5h', token: 'fake-low5h' }]);
+    writeCache('fake-low5h', {
+      fiveHourUtilization: 0.41,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedToken).toBeNull();
+    expect(output.diagnostics.join('\n')).toContain('5h window');
+  });
+
+  it('treats exactly 60% 5h free as eligible in the handler (CL script boundary)', () => {
+    writeTokenList([{ name: 'boundary5h', token: 'fake-boundary5h' }]);
+    writeCache('fake-boundary5h', {
+      fiveHourUtilization: 0.4,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('boundary5h');
+  });
+
+  it('excludes a token whose 7d window has only 13% free (CL script threshold is 14%)', () => {
+    writeTokenList([{ name: 'low7d', token: 'fake-low7d' }]);
+    writeCache('fake-low7d', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.87,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedToken).toBeNull();
+    expect(output.diagnostics.join('\n')).toContain('7d window');
+  });
+
+  it('treats exactly 14% 7d free as eligible in the handler (CL script boundary)', () => {
+    writeTokenList([{ name: 'boundary7d', token: 'fake-boundary7d' }]);
+    writeCache('fake-boundary7d', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.86,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('boundary7d');
+  });
+
   describe('resolveTokenListJsonPath', () => {
     it('prefers the explicit path over the environment variable', () => {
       process.env.CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH = '/from/env.json';
