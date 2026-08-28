@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StartPreparationUseCase = exports.agentNameFromDesignation = exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = void 0;
 const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
+const RequiredProjectField_1 = require("../entities/RequiredProjectField");
 const AgentDesignationLabelAdoptUseCase_1 = require("./AgentDesignationLabelAdoptUseCase");
 const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
@@ -251,8 +252,10 @@ class StartPreparationUseCase {
                     continue;
                 }
                 await (0, AgentDesignationLabelAdoptUseCase_1.adoptIssueAgentDesignationLabel)(issue, project, params.agents ?? [], this.projectRepository, this.issueRepository);
-                const agent = (issue.agent === null ? null : (0, exports.agentNameFromDesignation)(issue.agent)) ||
-                    params.defaultAgentName;
+                const isNoStory = issue.story === null || issue.story.startsWith(RequiredProjectField_1.NO_STORY_STORY_NAME);
+                const agent = (isNoStory || issue.agent === null
+                    ? null
+                    : (0, exports.agentNameFromDesignation)(issue.agent)) || params.defaultAgentName;
                 if (issue.agent === null) {
                     const agentOptionId = await (0, ensureAgentOptionAndGetId_1.ensureAgentOptionAndGetId)(this.projectRepository, project, agent);
                     if (agentOptionId !== null) {

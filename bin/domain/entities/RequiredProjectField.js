@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.REQUIRED_PROJECT_FIELDS = exports.AGENT_FIELD_NAME = exports.DEPENDED_ISSUE_URL_FIELD_NAME = exports.NEXT_ACTION_HOUR_FIELD_NAME = exports.NEXT_ACTION_DATE_FIELD_NAME = exports.STORY_FIELD_NAME = void 0;
+exports.REQUIRED_PROJECT_FIELDS = exports.AGENT_FIELD_NAME = exports.DEPENDED_ISSUE_URL_FIELD_NAME = exports.NEXT_ACTION_HOUR_FIELD_NAME = exports.NEXT_ACTION_DATE_FIELD_NAME = exports.STORY_FIELD_NAME = exports.NO_STORY_STORY_NAME = void 0;
 const storyOption = (name, color) => ({ name, color, description: '' });
+exports.NO_STORY_STORY_NAME = 'regular / NO STORY';
 const REQUIRED_STORY_OPTIONS = [
-    storyOption('regular / NO STORY', 'RED'),
+    storyOption(exports.NO_STORY_STORY_NAME, 'RED'),
     storyOption('regular / WORKFLOW BLOCKER', 'RED'),
     storyOption('regular / inquiry', 'RED'),
     storyOption('regular / high priority', 'RED'),

@@ -5,6 +5,7 @@ export type RequiredProjectFieldDefinition = {
     dataType: RequiredProjectFieldDataType;
     options: Omit<FieldOption, 'id'>[];
 };
+export declare const NO_STORY_STORY_NAME = "regular / NO STORY";
 export declare const STORY_FIELD_NAME = "Story";
 export declare const NEXT_ACTION_DATE_FIELD_NAME = "Next Action Date";
 export declare const NEXT_ACTION_HOUR_FIELD_NAME = "Next Action Hour";

@@ -1,3 +1,10 @@
+## [1.186.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.186.0...v1.186.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **preparation:** dispatch to defaultAgentName when story is regular / NO STORY regardless of agent field ([#1770](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1770)) ([ab5ed4b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ab5ed4ba12f09acb201bc14ff9e6db87326f6094)), closes [#1766](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1766)
+
 # [1.186.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.185.1...v1.186.0) (2026-08-28)
 
 
