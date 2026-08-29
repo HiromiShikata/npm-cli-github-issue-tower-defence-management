@@ -84,6 +84,7 @@ describe('LocalCommandIssueAttachmentRepository', () => {
           exitCode: 0,
         };
       },
+      spawnInteractive: jest.fn(),
     };
     const repository = new LocalCommandIssueAttachmentRepository(
       runner,
@@ -117,6 +118,7 @@ describe('LocalCommandIssueAttachmentRepository', () => {
           exitCode: 0,
         };
       },
+      spawnInteractive: jest.fn(),
     };
     const repository = new LocalCommandIssueAttachmentRepository(
       runner,
@@ -148,6 +150,7 @@ describe('LocalCommandIssueAttachmentRepository', () => {
         stderr: 'Error: No GitHub web session is available\n',
         exitCode: 1,
       }),
+      spawnInteractive: jest.fn(),
     };
     const repository = new LocalCommandIssueAttachmentRepository(
       runner,
@@ -171,6 +174,7 @@ describe('LocalCommandIssueAttachmentRepository', () => {
     const root = await mkdtemp(join(tmpdir(), 'attachment-test-root-'));
     const runner: LocalCommandRunner = {
       runCommand: async () => ({ stdout: '\n', stderr: '', exitCode: 0 }),
+      spawnInteractive: jest.fn(),
     };
     const repository = new LocalCommandIssueAttachmentRepository(
       runner,

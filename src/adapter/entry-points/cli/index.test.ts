@@ -8,6 +8,7 @@ jest.mock('fs', () => {
   return {
     ...actualFs,
     readFileSync: jest.fn(actualFs.readFileSync),
+    existsSync: jest.fn(actualFs.existsSync),
   };
 });
 import {
@@ -70,9 +71,11 @@ const mockRunCommand = jest.fn<
   Promise<{ stdout: string; stderr: string; exitCode: number }>,
   [string, string[]]
 >();
+const mockSpawnInteractive = jest.fn<void, [string, string[]]>();
 jest.mock('../../repositories/NodeLocalCommandRunner', () => ({
   NodeLocalCommandRunner: jest.fn().mockImplementation(() => ({
     runCommand: mockRunCommand,
+    spawnInteractive: mockSpawnInteractive,
   })),
 }));
 jest.mock('../../repositories/OauthAPIClaudeRepository', () => ({
@@ -2460,6 +2463,105 @@ mysteryKey: 'value'
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
+    });
+  });
+
+  describe('attachOrCreate', () => {
+    const issueUrl = 'https://github.com/owner/repo/issues/9';
+    let scopeLibPath = '';
+
+    beforeEach(() => {
+      scopeLibPath = path.join(
+        os.tmpdir(),
+        `test-cl-scope-lib-${Date.now()}.sh`,
+      );
+      fs.writeFileSync(scopeLibPath, '#!/bin/bash\n');
+      process.env.CL_SCOPE_LIB_PATH = scopeLibPath;
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(scopeLibPath)) {
+        fs.unlinkSync(scopeLibPath);
+      }
+      delete process.env.CL_SCOPE_LIB_PATH;
+    });
+
+    it('attaches to the registered session when registry returns a live session', async () => {
+      mockRunCommand
+        .mockResolvedValueOnce({ stdout: 'wq7x3mk\n', stderr: '', exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'attachOrCreate',
+        '--issueUrl',
+        issueUrl,
+      ]);
+
+      expect(mockRunCommand.mock.calls[0]).toEqual([
+        'bash',
+        [scopeLibPath, 'registry-get-session', issueUrl],
+      ]);
+      expect(mockRunCommand.mock.calls[1]).toEqual([
+        'tmux',
+        ['has-session', '-t', '=wq7x3mk'],
+      ]);
+      expect(mockSpawnInteractive).toHaveBeenCalledWith('tmux', [
+        'attach-session',
+        '-t',
+        '=wq7x3mk',
+      ]);
+    });
+
+    it('creates a new session when no registered session is found', async () => {
+      mockRunCommand.mockResolvedValueOnce({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'attachOrCreate',
+        '--issueUrl',
+        issueUrl,
+      ]);
+
+      expect(mockSpawnInteractive).toHaveBeenCalledWith('tmux', [
+        'new-session',
+        '-A',
+        '-s',
+        issueUrl,
+        'cl',
+        issueUrl,
+      ]);
+    });
+
+    it('creates a new session when no scope lib path is available', async () => {
+      jest
+        .mocked(fs.existsSync)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'attachOrCreate',
+        '--issueUrl',
+        issueUrl,
+      ]);
+
+      expect(mockRunCommand.mock.calls).toHaveLength(0);
+      expect(mockSpawnInteractive).toHaveBeenCalledWith('tmux', [
+        'new-session',
+        '-A',
+        '-s',
+        issueUrl,
+        'cl',
+        issueUrl,
+      ]);
     });
   });
 

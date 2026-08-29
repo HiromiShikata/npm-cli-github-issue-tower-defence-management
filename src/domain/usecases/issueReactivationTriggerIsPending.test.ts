@@ -394,6 +394,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           runCommand: jest
             .fn()
             .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
+          spawnInteractive: jest.fn(),
         };
         spawnMockClaudeTokenUsageRepository = {
           ensureObservable: jest.fn().mockResolvedValue(undefined),

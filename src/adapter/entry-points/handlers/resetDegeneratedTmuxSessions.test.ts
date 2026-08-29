@@ -34,7 +34,10 @@ describe('resetDegeneratedTmuxSessions', () => {
   it('wires the real adapters and runs end to end without acting when no sessions exist', async () => {
     const runCommand: jest.MockedFunction<LocalCommandRunner['runCommand']> =
       jest.fn().mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
-    const commandRunner: LocalCommandRunner = { runCommand };
+    const commandRunner: LocalCommandRunner = {
+      runCommand,
+      spawnInteractive: jest.fn(),
+    };
 
     await resetDegeneratedTmuxSessions({
       enabled: false,

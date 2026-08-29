@@ -413,6 +413,7 @@ describe('writeSituationFile', () => {
         );
       const mockRunner: LocalCommandRunner = {
         runCommand: mockRunCommand,
+        spawnInteractive: jest.fn(),
       };
       const issues = [
         createIssue({
@@ -444,6 +445,7 @@ describe('writeSituationFile', () => {
       const mockRunCommand = jest.fn();
       const mockRunner: LocalCommandRunner = {
         runCommand: mockRunCommand,
+        spawnInteractive: jest.fn(),
       };
 
       await writeSituationFile({

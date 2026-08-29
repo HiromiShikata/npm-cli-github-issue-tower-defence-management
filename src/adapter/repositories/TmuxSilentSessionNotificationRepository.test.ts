@@ -10,6 +10,7 @@ const createMockRunner = (): Mocked<LocalCommandRunner> => ({
     stderr: '',
     exitCode: 0,
   }),
+  spawnInteractive: jest.fn(),
 });
 
 const createMockSleeper = (): Mocked<Sleeper> => ({
@@ -42,6 +43,7 @@ const createPaneAwareRunner = (
       capturedPaneIndex += 1;
       return Promise.resolve({ stdout: paneText, stderr: '', exitCode: 0 });
     }),
+    spawnInteractive: jest.fn(),
   };
 };
 

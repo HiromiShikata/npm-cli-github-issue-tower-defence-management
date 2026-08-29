@@ -26,6 +26,7 @@ Commands:
   selectLiveSessionOauthToken [options] Print one Claude Code OAuth token chosen for a new live interactive session (soonest 7d reset among tokens under their concurrent session limit; read-only)
   countInTmuxByHumanSessionsPerToken [options]  Print, per OAuth token, the count of live "In Tmux by human" interactive sessions using that token (read-only)
   killTmuxSession [options]             Cleanly kill a tmux session by running tmux kill-session and stopping its cl-*.scope systemd --user unit
+  attachOrCreate [options]              Attach to an existing registered tmux session for the issue URL, or create a new one
   ownerCallFileAppend [options]         Append one owner call to the per-session owner call file (writes nothing to stdout)
   ownerCallFileDelete [options]         Delete the per-session owner call file (writes nothing to stdout; an already absent file is not an error)
   help [command]                        display help for command
@@ -93,6 +94,9 @@ Options for countInTmuxByHumanSessionsPerToken:
 Options for killTmuxSession:
   --session <name>                                 Name of the tmux session to kill
   --self                                            Terminate the current session by stopping its own cl-*.scope systemd user unit, derived from /proc/self/cgroup
+
+Options for attachOrCreate:
+  --issueUrl <url>                                 GitHub issue URL to attach to or create a session for (required)
 
 Options for ownerCallFileAppend:
   --session <name>                                 tmux session name that raised the call (required)
