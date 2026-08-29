@@ -5,6 +5,8 @@ const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 exports.DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS = {
     maxConcurrentSessionCount: 10,
     fullSpeedFiveHourFreeRatio: 0.5,
+    minFiveHourFreeRatio: 0.6,
+    minSevenDayFreeRatio: 0.14,
 };
 const liveSessionConcurrentLimitOf = (fiveHourFreeRatio, selectionWeight, settings) => {
     const fiveHourThrottleFactor = Math.min(fiveHourFreeRatio / settings.fullSpeedFiveHourFreeRatio, 1);
@@ -23,6 +25,7 @@ class LiveSessionOauthTokenSelectUseCase {
                 const rateLimitMetric = rateLimitResult.metrics[index];
                 const liveSessionCount = liveSessionCountByToken.get(candidate.token) ?? 0;
                 const concurrentSessionLimit = (0, exports.liveSessionConcurrentLimitOf)(rateLimitMetric.fiveHourFreeRatio, (0, OauthTokenSelectUseCase_1.selectionWeightOf)(candidate), settings);
+                const exclusionReason = this.liveSessionExclusionReason(rateLimitMetric.exclusionReason, rateLimitMetric.fiveHourFreeRatio, rateLimitMetric.sevenDayFreeRatio, settings);
                 return {
                     candidate,
                     metric: {
@@ -33,8 +36,8 @@ class LiveSessionOauthTokenSelectUseCase {
                         liveSessionCount,
                         concurrentSessionLimit,
                         hasConcurrencyHeadroom: liveSessionCount < concurrentSessionLimit,
-                        eligible: rateLimitMetric.eligible,
-                        exclusionReason: rateLimitMetric.exclusionReason,
+                        eligible: exclusionReason === null,
+                        exclusionReason,
                         selectionWeight: (0, OauthTokenSelectUseCase_1.selectionWeightOf)(candidate),
                     },
                 };
@@ -48,6 +51,18 @@ class LiveSessionOauthTokenSelectUseCase {
                 ? currentEntry
                 : bestEntry);
             return { selected: selected.candidate, metrics };
+        };
+        this.liveSessionExclusionReason = (rateLimitExclusionReason, fiveHourFreeRatio, sevenDayFreeRatio, settings) => {
+            if (rateLimitExclusionReason !== null) {
+                return rateLimitExclusionReason;
+            }
+            if (fiveHourFreeRatio < settings.minFiveHourFreeRatio) {
+                return `5h window only ${Math.round(fiveHourFreeRatio * 100)}% free (requires >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% for live session selection)`;
+            }
+            if (sevenDayFreeRatio < settings.minSevenDayFreeRatio) {
+                return `7d window only ${Math.round(sevenDayFreeRatio * 100)}% free (requires >= ${Math.round(settings.minSevenDayFreeRatio * 100)}% for live session selection)`;
+            }
+            return null;
         };
         this.preferred = (candidateMetric, incumbentMetric) => {
             if (candidateMetric.hasConcurrencyHeadroom !==

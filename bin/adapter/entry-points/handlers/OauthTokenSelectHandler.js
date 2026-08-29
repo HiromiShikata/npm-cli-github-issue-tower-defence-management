@@ -77,7 +77,7 @@ class OauthTokenSelectHandler {
                     selectionWeight: selectionWeight ?? OauthTokenSelectUseCase_1.DEFAULT_SELECTION_WEIGHT,
                 };
             });
-            const result = this.useCase.run(candidates, input.nowEpochSeconds, this.random);
+            const result = this.useCase.run(candidates, input.nowEpochSeconds, this.random, OauthTokenSelectUseCase_1.CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS);
             return {
                 selectedToken: result.selected?.token ?? null,
                 selectedName: result.selected?.name ?? null,

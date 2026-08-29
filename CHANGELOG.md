@@ -1,3 +1,15 @@
+# [1.196.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.195.0...v1.196.0) (2026-08-29)
+
+
+### Bug Fixes
+
+* **deps:** update dependency googleapis to v176 ([#1831](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1831)) ([b03e898](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b03e898f85d90f918d31b1efdf2acd2587962d5e))
+
+
+### Features
+
+* **select-token:** apply stricter token selection thresholds for CL scripts ([#1826](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1826)) ([6301773](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/63017733898c6336b8d0776fd2b7846b778d91bb)), closes [HiromiShikata/umino-corporait-operation#30998](https://github.com/HiromiShikata/umino-corporait-operation/issues/30998)
+
 # [1.195.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.194.2...v1.195.0) (2026-08-29)
 
 

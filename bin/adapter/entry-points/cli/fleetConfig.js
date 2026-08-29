@@ -95,6 +95,8 @@ const loadLiveSessionOauthTokenSelectionSettings = (fleetConfigFilePath) => {
     return {
         maxConcurrentSessionCount: readBoundedNumber(section, 'maxConcurrentSessionCount', fleetConfigFilePath, LiveSessionOauthTokenSelectUseCase_1.DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.maxConcurrentSessionCount, (value) => Number.isInteger(value) && value >= 1, 'integer of at least 1'),
         fullSpeedFiveHourFreeRatio: readBoundedNumber(section, 'fullSpeedFiveHourFreeRatio', fleetConfigFilePath, LiveSessionOauthTokenSelectUseCase_1.DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.fullSpeedFiveHourFreeRatio, (value) => value > 0 && value <= 1, 'above 0 and at most 1'),
+        minFiveHourFreeRatio: readBoundedNumber(section, 'minFiveHourFreeRatio', fleetConfigFilePath, LiveSessionOauthTokenSelectUseCase_1.DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minFiveHourFreeRatio, (value) => value > 0 && value <= 1, 'above 0 and at most 1'),
+        minSevenDayFreeRatio: readBoundedNumber(section, 'minSevenDayFreeRatio', fleetConfigFilePath, LiveSessionOauthTokenSelectUseCase_1.DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minSevenDayFreeRatio, (value) => value > 0 && value <= 1, 'above 0 and at most 1'),
     };
 };
 exports.loadLiveSessionOauthTokenSelectionSettings = loadLiveSessionOauthTokenSelectionSettings;

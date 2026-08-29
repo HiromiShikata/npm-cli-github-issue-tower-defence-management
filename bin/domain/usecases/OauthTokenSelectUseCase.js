@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OauthTokenSelectUseCase = exports.selectWeightedCandidate = exports.sevenDayUrgencyFactor = exports.MIN_HOURS_TO_RESET = exports.SEVEN_DAY_WINDOW_HOURS = exports.SEVEN_DAY_MIN_FREE_RATIO = exports.FIVE_HOUR_MIN_FREE_RATIO = exports.selectionWeightOf = exports.DEFAULT_SELECTION_WEIGHT = void 0;
+exports.OauthTokenSelectUseCase = exports.selectWeightedCandidate = exports.sevenDayUrgencyFactor = exports.MIN_HOURS_TO_RESET = exports.SEVEN_DAY_WINDOW_HOURS = exports.CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS = exports.DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS = exports.SEVEN_DAY_MIN_FREE_RATIO = exports.FIVE_HOUR_MIN_FREE_RATIO = exports.selectionWeightOf = exports.DEFAULT_SELECTION_WEIGHT = void 0;
 exports.DEFAULT_SELECTION_WEIGHT = 1;
 const selectionWeightOf = (candidate) => {
     const weight = candidate.selectionWeight ?? exports.DEFAULT_SELECTION_WEIGHT;
@@ -11,6 +11,14 @@ const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 exports.FIVE_HOUR_MIN_FREE_RATIO = 0.25;
 exports.SEVEN_DAY_MIN_FREE_RATIO = 0.03;
+exports.DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS = {
+    fiveHourMinFreeRatio: exports.FIVE_HOUR_MIN_FREE_RATIO,
+    sevenDayMinFreeRatio: exports.SEVEN_DAY_MIN_FREE_RATIO,
+};
+exports.CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS = {
+    fiveHourMinFreeRatio: 0.6,
+    sevenDayMinFreeRatio: 0.14,
+};
 exports.SEVEN_DAY_WINDOW_HOURS = 168;
 exports.MIN_HOURS_TO_RESET = 1;
 const SECONDS_PER_HOUR = 3600;
@@ -41,9 +49,9 @@ const selectWeightedCandidate = (eligible, weightOf, deterministicBest, random) 
 exports.selectWeightedCandidate = selectWeightedCandidate;
 class OauthTokenSelectUseCase {
     constructor() {
-        this.run = (candidates, nowEpochSeconds, random = Math.random) => {
+        this.run = (candidates, nowEpochSeconds, random = Math.random, thresholds = exports.DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS) => {
             const evaluated = candidates.map((candidate) => {
-                const evaluatedMetric = this.evaluate(candidate, nowEpochSeconds);
+                const evaluatedMetric = this.evaluate(candidate, nowEpochSeconds, thresholds);
                 return {
                     candidate,
                     metric: {
@@ -66,11 +74,11 @@ class OauthTokenSelectUseCase {
             const selected = (0, exports.selectWeightedCandidate)(eligible, (entry) => entry.metric.drawWeight, deterministicBest, random);
             return { selected: selected.candidate, metrics };
         };
-        this.evaluate = (candidate, nowEpochSeconds) => {
+        this.evaluate = (candidate, nowEpochSeconds, thresholds) => {
             const fiveHourFreeRatio = this.fiveHourFreeRatio(candidate.snapshot, nowEpochSeconds);
             const sevenDayFreeRatio = this.sevenDayFreeRatio(candidate.snapshot, nowEpochSeconds);
             const sevenDayEndEpoch = this.sevenDayEndEpoch(candidate.snapshot, nowEpochSeconds);
-            const exclusionReason = this.exclusionReason(candidate.subscriptionDisabled, candidate.unifiedRejected, candidate.fableRejected, fiveHourFreeRatio, sevenDayFreeRatio);
+            const exclusionReason = this.exclusionReason(candidate.subscriptionDisabled, candidate.unifiedRejected, candidate.fableRejected, fiveHourFreeRatio, sevenDayFreeRatio, thresholds);
             return {
                 name: candidate.name,
                 fiveHourFreeRatio,
@@ -80,7 +88,7 @@ class OauthTokenSelectUseCase {
                 exclusionReason,
             };
         };
-        this.exclusionReason = (subscriptionDisabled, unifiedRejected, fableRejected, fiveHourFreeRatio, sevenDayFreeRatio) => {
+        this.exclusionReason = (subscriptionDisabled, unifiedRejected, fableRejected, fiveHourFreeRatio, sevenDayFreeRatio, thresholds) => {
             if (subscriptionDisabled) {
                 return 'organization has disabled Claude subscription access for Claude Code';
             }
@@ -90,11 +98,11 @@ class OauthTokenSelectUseCase {
             if (fableRejected) {
                 return 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)';
             }
-            if (fiveHourFreeRatio < exports.FIVE_HOUR_MIN_FREE_RATIO) {
-                return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(exports.FIVE_HOUR_MIN_FREE_RATIO)}%)`;
+            if (fiveHourFreeRatio < thresholds.fiveHourMinFreeRatio) {
+                return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(thresholds.fiveHourMinFreeRatio)}%)`;
             }
-            if (sevenDayFreeRatio < exports.SEVEN_DAY_MIN_FREE_RATIO) {
-                return `7d window only ${this.toPercent(sevenDayFreeRatio)}% free (requires >= ${this.toPercent(exports.SEVEN_DAY_MIN_FREE_RATIO)}%)`;
+            if (sevenDayFreeRatio < thresholds.sevenDayMinFreeRatio) {
+                return `7d window only ${this.toPercent(sevenDayFreeRatio)}% free (requires >= ${this.toPercent(thresholds.sevenDayMinFreeRatio)}%)`;
             }
             return null;
         };
