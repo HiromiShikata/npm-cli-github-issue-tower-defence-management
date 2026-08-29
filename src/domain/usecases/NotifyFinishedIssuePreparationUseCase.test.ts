@@ -4675,7 +4675,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   describe('waitingForOwnerApproval', () => {
     const issueUrl = 'https://github.com/user/repo/issues/1';
 
-    it('moves to Todo by human and posts AWAITING_OWNER_APPROVAL message when last report declares waitingForOwnerApproval', async () => {
+    it('moves to Awaiting Quality Check and posts AWAITING_OWNER_APPROVAL message when last report declares waitingForOwnerApproval', async () => {
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -4696,13 +4696,13 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Todo by human' }),
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
         mockProject,
       );
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
-        expect.objectContaining({ status: 'Todo by human' }),
-        'todo-by-human-id',
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        'awaiting-quality-check-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.objectContaining({ url: issueUrl }),
@@ -4742,18 +4742,20 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('escalates to Failed Preparation instead of the dispatch pool when the project has no Todo by human status', async () => {
-      const projectWithoutTodo = {
+    it('writes no status at all when the project has no Awaiting Quality Check option', async () => {
+      const projectWithoutQualityCheck = {
         ...mockProject,
         status: {
           ...mockProject.status,
           statuses: mockProject.status.statuses.filter(
-            (status) => status.name !== 'Todo by human',
+            (status) => status.name !== 'Awaiting Quality Check',
           ),
         },
       };
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutTodo);
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithoutQualityCheck,
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -4771,16 +4773,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: null,
       });
 
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithoutTodo,
-        expect.objectContaining({ status: 'Failed Preparation' }),
-        'failed-preparation-id',
-      );
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        projectWithoutTodo,
-        expect.anything(),
-        'awaiting-workspace-id',
-      );
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     });
 
     it('escalates to Failed Preparation after ownerApprovalTimeoutCycles AWAITING_OWNER_APPROVAL messages', async () => {

@@ -8,7 +8,6 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
-  TODO_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import {
   IssueRejectionEvaluator,
@@ -158,9 +157,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
       return;
     }
-    const todoStatusOption = project.status.statuses.find(
-      (s) => s.name === TODO_STATUS_NAME,
-    );
 
     const issue = await this.issueRepository.get(params.issueUrl, project);
 
@@ -330,21 +326,13 @@ export class NotifyFinishedIssuePreparationUseCase {
           isTrustedAuthor(comment.author) &&
           comment.content.startsWith(AWAITING_OWNER_APPROVAL_MESSAGE_HEAD),
       ).length;
-      if (!todoStatusOption) {
-        console.error(
-          `Todo status option '${TODO_STATUS_NAME}' not found in project; escalating to '${FAILED_PREPARATION_STATUS_NAME}' instead of returning the task to the dispatch pool.`,
-        );
-      }
-      if (
-        awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles &&
-        todoStatusOption
-      ) {
-        issue.status = TODO_STATUS_NAME;
+      if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
+        issue.status = AWAITING_QUALITY_CHECK_STATUS_NAME;
         await this.issueRepository.update(issue, project);
         await this.issueRepository.updateStatus(
           project,
           issue,
-          todoStatusOption.id,
+          awaitingQualityCheckStatusOption.id,
         );
         await this.patchConsoleTab(issue);
         await this.issueCommentRepository.createComment(
