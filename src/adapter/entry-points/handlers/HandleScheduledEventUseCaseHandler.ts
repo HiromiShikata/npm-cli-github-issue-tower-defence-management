@@ -10,6 +10,7 @@ import {
 import { writeDashboardRow } from './dashboardRowWriter';
 import { writeMachineStatus } from './machineStatusWriter';
 import { writeTokenStatus } from './tokenStatusWriter';
+import { handleSubscriptionDisabledTokens } from './subscriptionDisabledTokenHandler';
 import { writeInTmuxByHumanData } from './inTmuxByHumanDataWriter';
 import { cleanClosedIssueOwnerCallFiles } from './ownerCallFileCleaner';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
@@ -672,6 +673,22 @@ export class HandleScheduledEventUseCaseHandler {
       } catch (error) {
         console.error(
           `Failed to write token status: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      try {
+        await handleSubscriptionDisabledTokens({
+          tokenListJsonPath:
+            mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
+          org: input.org,
+          repo: input.workingReport.repo,
+          issueRepository,
+        });
+      } catch (error) {
+        console.error(
+          `Failed to handle subscription disabled tokens: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
