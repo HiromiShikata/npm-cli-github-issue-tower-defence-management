@@ -54,6 +54,7 @@ const projectFromDefinition = (definition) => {
             ? {
                 name: nextActionHour.name,
                 fieldId: nextActionHour.fieldId,
+                options: nextActionHour.options,
             }
             : null,
         story: story && workflowManagementStory

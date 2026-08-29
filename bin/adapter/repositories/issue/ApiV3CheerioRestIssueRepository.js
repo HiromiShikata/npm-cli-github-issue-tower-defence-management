@@ -468,7 +468,11 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionDate.fieldId, itemId, { date: date.toISOString().split('T')[0] });
         };
         this.updateNextActionHour = async (project, issue, hour) => {
-            return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionHour.fieldId, issue.itemId, { number: hour });
+            const option = project.nextActionHour.options.find((o) => o.name === String(hour));
+            const value = option
+                ? { singleSelectOptionId: option.id }
+                : { number: hour };
+            return this.graphqlProjectItemRepository.updateProjectField(project.id, project.nextActionHour.fieldId, issue.itemId, value);
         };
         this.updateStory = async (project, issue, storyOptionId) => {
             await this.graphqlProjectItemRepository.updateProjectField(project.id, project.story.fieldId, issue.itemId, { singleSelectOptionId: storyOptionId });
