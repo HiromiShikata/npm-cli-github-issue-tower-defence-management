@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.0.0...v2.1.0) (2026-08-29)
+
+
+### Features
+
+* **HandleScheduledEventUseCase:** write console and dashboard snapshots immediately after getAllIssues ([#1855](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1855)) ([135cfd3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/135cfd339d2a20eadb0261fc5e3f1e5827c48cf3)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#1812](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1812)
+
 # [2.0.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.197.2...v2.0.0) (2026-08-29)
 
 

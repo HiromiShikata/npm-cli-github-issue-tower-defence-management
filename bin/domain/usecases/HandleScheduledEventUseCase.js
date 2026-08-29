@@ -117,6 +117,9 @@ class HandleScheduledEventUseCase {
                 project,
                 issues,
             });
+            if (input.afterIssuesFetched) {
+                await input.afterIssuesFetched(project, issues);
+            }
             for (const storyObject of storyIssues.values()) {
                 const projectStory = project.story;
                 if (!projectStory) {

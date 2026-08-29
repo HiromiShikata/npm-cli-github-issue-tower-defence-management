@@ -260,7 +260,43 @@ class HandleScheduledEventUseCaseHandler {
             const qualityCheckAdvanceUseCase = new QualityCheckAdvanceUseCase_1.QualityCheckAdvanceUseCase(issueRepository);
             const reopenedDoneIssueRevertUseCase = new ReopenedDoneIssueRevertUseCase_1.ReopenedDoneIssueRevertUseCase(issueRepository);
             const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, conflictedIssueRevertUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
-            const result = await handleScheduledEventUseCase.run(mergedInput);
+            const dashboardDataDir = mergedInput.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
+            const afterIssuesFetched = async (project, issues) => {
+                try {
+                    const issuesFetchedAt = issueRepository.getLastIssuesFetchedAt(project.id);
+                    if (issuesFetchedAt === null) {
+                        throw new Error(`No GitHub read time recorded for the project the console lists describe. projectId: ${project.id}`);
+                    }
+                    (0, consoleListsWriter_1.writeConsoleLists)({
+                        consoleDataOutputDir: mergedInput.consoleDataOutputDir ?? null,
+                        pjcode: input.projectName,
+                        assigneeLogin: input.manager,
+                        project,
+                        issues,
+                        generatedAt: (0, consoleListsWriter_1.formatConsoleGeneratedAt)(new Date(issuesFetchedAt)),
+                        workflowBlockerStoryName: mergedInput.workflowBlockerStoryName ?? null,
+                        urlOfStoryView: mergedInput.urlOfStoryView,
+                    });
+                }
+                catch (error) {
+                    console.error(`Failed to write console lists: ${error instanceof Error ? error.message : String(error)}`);
+                }
+                try {
+                    (0, dashboardRowWriter_1.writeDashboardRow)({
+                        dashboardDataDir,
+                        pjcode: input.projectName,
+                        assigneeLogin: input.manager,
+                        issues,
+                    });
+                }
+                catch (error) {
+                    console.error(`Failed to write dashboard row: ${error instanceof Error ? error.message : String(error)}`);
+                }
+            };
+            const result = await handleScheduledEventUseCase.run({
+                ...mergedInput,
+                afterIssuesFetched,
+            });
             if (result) {
                 if (result.rotationOrder !== null) {
                     (0, rotationOrderFileWriter_1.writeRotationOrderFile)(result.rotationOrder);
@@ -283,37 +319,6 @@ class HandleScheduledEventUseCaseHandler {
                     preparationProcessCheckCommand: mergedInput.startPreparation?.preparationProcessCheckCommand ?? null,
                     localCommandRunner: nodeLocalCommandRunner,
                 });
-                try {
-                    const issuesFetchedAt = issueRepository.getLastIssuesFetchedAt(result.project.id);
-                    if (issuesFetchedAt === null) {
-                        throw new Error(`No GitHub read time recorded for the project the console lists describe. projectId: ${result.project.id}`);
-                    }
-                    (0, consoleListsWriter_1.writeConsoleLists)({
-                        consoleDataOutputDir: mergedInput.consoleDataOutputDir ?? null,
-                        pjcode: input.projectName,
-                        assigneeLogin: input.manager,
-                        project: result.project,
-                        issues: result.issues,
-                        generatedAt: (0, consoleListsWriter_1.formatConsoleGeneratedAt)(new Date(issuesFetchedAt)),
-                        workflowBlockerStoryName: mergedInput.workflowBlockerStoryName ?? null,
-                        urlOfStoryView: mergedInput.urlOfStoryView,
-                    });
-                }
-                catch (error) {
-                    console.error(`Failed to write console lists: ${error instanceof Error ? error.message : String(error)}`);
-                }
-                const dashboardDataDir = mergedInput.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
-                try {
-                    (0, dashboardRowWriter_1.writeDashboardRow)({
-                        dashboardDataDir,
-                        pjcode: input.projectName,
-                        assigneeLogin: input.manager,
-                        issues: result.issues,
-                    });
-                }
-                catch (error) {
-                    console.error(`Failed to write dashboard row: ${error instanceof Error ? error.message : String(error)}`);
-                }
                 try {
                     await (0, machineStatusWriter_1.writeMachineStatus)({
                         dashboardDataDir,
