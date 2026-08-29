@@ -5096,7 +5096,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -5125,7 +5125,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
