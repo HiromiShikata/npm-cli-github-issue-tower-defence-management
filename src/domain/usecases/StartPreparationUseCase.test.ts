@@ -6892,6 +6892,112 @@ describe('StartPreparationUseCase', () => {
     expect(storyUnsetWarningCalls).toHaveLength(0);
     consoleWarnSpy.mockRestore();
   });
+
+  describe('token in-flight count refresh', () => {
+    it('refreshes the token in-flight counts once before abandoning a run so a freed slot is used', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-a',
+          token: 'token-a',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.1,
+          blocked: false,
+          rejected: false,
+          fiveHourRejected: false,
+          blockedUntilEpoch: 0,
+          modelWeeklyLimits: {},
+        },
+      ]);
+      mockClaudeTokenUsageRepository.getTokenInFlightCounts
+        .mockResolvedValueOnce({ 'token-a': 6 })
+        .mockResolvedValueOnce({ 'token-a': 0 });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(
+        mockClaudeTokenUsageRepository.getTokenInFlightCounts.mock.calls,
+      ).toHaveLength(2);
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+    });
+
+    it('abandons the run when the refreshed in-flight counts still leave no token slot', async () => {
+      const awaitingIssue = createMockIssue({
+        url: 'url1',
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 1,
+        itemId: 'item-1',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([awaitingIssue]),
+      );
+      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+        {
+          name: 'token-a',
+          token: 'token-a',
+          fiveHourUtilization: 0.1,
+          sevenDayUtilization: 0.1,
+          blocked: false,
+          rejected: false,
+          fiveHourRejected: false,
+          blockedUntilEpoch: 0,
+          modelWeeklyLimits: {},
+        },
+      ]);
+      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+        'token-a': 6,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    });
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
@@ -7328,7 +7434,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         removeLabel: jest.fn(),
         ...issueRepositoryOverrides,
       },
-      { runCommand: jest.fn() },
+      { runCommand: jest.fn(), spawnInteractive: jest.fn() },
       {
         ensureObservable: jest.fn(),
         getAvailableTokenUsages: jest.fn(),
