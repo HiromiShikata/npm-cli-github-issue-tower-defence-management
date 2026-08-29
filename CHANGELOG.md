@@ -1,3 +1,10 @@
+## [1.197.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.197.1...v1.197.2) (2026-08-29)
+
+
+### Bug Fixes
+
+* **console/webServer:** require token authentication for /tdpm.txt ([#1846](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1846)) ([228fa82](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/228fa820675e4f7630ea8157c9681845de473d82))
+
 ## [1.197.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.197.0...v1.197.1) (2026-08-29)
 
 

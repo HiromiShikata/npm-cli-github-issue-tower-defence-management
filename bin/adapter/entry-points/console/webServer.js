@@ -588,6 +588,11 @@ const handleWebRequest = async (options, request, response) => {
             sendNotFound(response);
             return;
         }
+        const providedToken = (0, exports.extractProvidedToken)(requestUrl.searchParams.get('k'), request.headers[exports.CONSOLE_TOKEN_HEADER], (0, exports.extractCookieToken)(request.headers.cookie));
+        if (!(0, exports.isTokenValid)(options.accessToken, providedToken)) {
+            sendUnauthorized(response);
+            return;
+        }
         const dashboardContent = (0, exports.resolveDashboardContent)(options, requestPath);
         if (dashboardContent === null) {
             sendNotFound(response);
