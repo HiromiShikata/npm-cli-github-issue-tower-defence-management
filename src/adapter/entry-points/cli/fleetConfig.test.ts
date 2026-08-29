@@ -242,7 +242,8 @@ describe('loadPreparationWorkerSettings', () => {
 
     expect(loadPreparationWorkerSettings(fleetConfigFilePath)).toEqual({
       normalConcurrentLimit: 10,
-      maxConcurrentWorkers: DEFAULT_PREPARATION_WORKER_SETTINGS.maxConcurrentWorkers,
+      maxConcurrentWorkers:
+        DEFAULT_PREPARATION_WORKER_SETTINGS.maxConcurrentWorkers,
       graphqlRateLimitFloor:
         DEFAULT_PREPARATION_WORKER_SETTINGS.graphqlRateLimitFloor,
     });

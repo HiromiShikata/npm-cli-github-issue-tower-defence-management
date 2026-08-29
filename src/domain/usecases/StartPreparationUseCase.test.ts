@@ -673,10 +673,9 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-    expect(mockLocalCommandRunner.runCommand).not.toHaveBeenCalledWith(
-      'aw',
-      expect.any(Array),
-    );
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls.map((c) => c[0]),
+    ).not.toContain('aw');
   });
 
   it('stops spawning mid-loop when workers started in the run bring the count to the cap', async () => {
@@ -760,10 +759,9 @@ describe('StartPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-    expect(mockLocalCommandRunner.runCommand).not.toHaveBeenCalledWith(
-      'aw',
-      expect.any(Array),
-    );
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls.map((c) => c[0]),
+    ).not.toContain('aw');
   });
 
   it('proceeds with spawning when GraphQL remaining equals the floor exactly', async () => {
