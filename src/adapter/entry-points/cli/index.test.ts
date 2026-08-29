@@ -801,6 +801,8 @@ mysteryKey: 'value'
         labelsAsLlmAgentName: null,
         agents: null,
         normalConcurrentLimit: 6,
+        maxConcurrentWorkers: 40,
+        graphqlRateLimitFloor: 500,
       });
     });
 
@@ -876,6 +878,8 @@ mysteryKey: 'value'
         labelsAsLlmAgentName: null,
         agents: null,
         normalConcurrentLimit: 6,
+        maxConcurrentWorkers: 40,
+        graphqlRateLimitFloor: 500,
       });
     });
 
