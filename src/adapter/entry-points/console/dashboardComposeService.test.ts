@@ -342,6 +342,38 @@ describe('buildComposeDashboardInput', () => {
     }
   });
 
+  it('keeps the red token color written for a subscription-disabled token', () => {
+    const dataDir = makeDataDir();
+    try {
+      fs.writeFileSync(
+        path.join(dataDir, 'token-status.json'),
+        JSON.stringify({
+          tokens: [
+            {
+              name: 'disabled-one',
+              fiveHourUtilizationPercent: 0,
+              fiveHourResetSeconds: 0,
+              sevenDayUtilizationPercent: 0,
+              sevenDayResetSeconds: 0,
+              color: 'R',
+              prep: 0,
+              hum: 0,
+            },
+          ],
+          capturedAt: 'x',
+        }),
+      );
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: [],
+      });
+
+      expect(input.tokens[0].color).toBe('R');
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
   it('yields an empty token list when the file is absent', () => {
     const dataDir = makeDataDir();
     try {

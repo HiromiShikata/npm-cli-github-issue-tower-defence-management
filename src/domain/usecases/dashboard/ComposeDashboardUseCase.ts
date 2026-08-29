@@ -65,6 +65,7 @@ const TOKEN_COLOR_DOT: Record<TokenStatusColor, string> = {
   G: '🟢',
   Y: '🟡',
   K: '⚪',
+  R: '🔴',
 };
 
 const padEnd = (value: string, width: number, fill: string): string => {

@@ -1,4 +1,4 @@
-export type TokenStatusColor = 'G' | 'Y' | 'K';
+export type TokenStatusColor = 'G' | 'Y' | 'K' | 'R';
 
 export type TokenRateLimitSnapshot = {
   fiveHourUtilization: number;
@@ -13,9 +13,11 @@ export type TokenRateLimitSnapshot = {
   sevenDayOpusRejected: boolean;
   hasWindowData: boolean;
   lastUpdatedEpoch: number;
+  subscriptionDisabled: boolean;
 };
 
 export type TokenRateLimitDecision = {
+  subscriptionDisabled: boolean;
   fiveHourUtilization: number | null;
   sevenDayUtilization: number | null;
   fiveHourRejected: boolean;
@@ -63,6 +65,9 @@ const ALLOWED_WARNING_STATUS = 'allowed_warning';
 export const judgeTokenColor = (
   decision: TokenRateLimitDecision | null,
 ): TokenStatusColor => {
+  if (decision !== null && decision.subscriptionDisabled) {
+    return 'R';
+  }
   if (decision === null || decision.partial) {
     return 'Y';
   }
@@ -198,6 +203,7 @@ export class GenerateTokenStatusUseCase {
         sevenDaySonnetRejected: snapshot.sevenDaySonnetRejected,
         sevenDayOpusRejected: snapshot.sevenDayOpusRejected,
         partial: true,
+        subscriptionDisabled: snapshot.subscriptionDisabled,
       };
     }
     const fiveHourExpired =
@@ -222,6 +228,7 @@ export class GenerateTokenStatusUseCase {
         snapshot.sevenDayOpusRejected ||
         (sevenDayExpired ? false : snapshot.sevenDayRejected),
       partial: false,
+      subscriptionDisabled: snapshot.subscriptionDisabled,
     };
   };
 }

@@ -19,6 +19,7 @@ const usableDecision = (
   sevenDaySonnetRejected: false,
   sevenDayOpusRejected: false,
   partial: false,
+  subscriptionDisabled: false,
   ...overrides,
 });
 
@@ -30,6 +31,21 @@ describe('judgeTokenColor', () => {
 
   it('returns G for a normal allowed low-utilization token', () => {
     expect(judgeTokenColor(usableDecision())).toBe('G');
+  });
+
+  it('returns R when the subscription is disabled, whatever the utilization says', () => {
+    expect(
+      judgeTokenColor(usableDecision({ subscriptionDisabled: true })),
+    ).toBe('R');
+    expect(
+      judgeTokenColor(
+        usableDecision({
+          subscriptionDisabled: true,
+          unifiedStatus: 'allowed_warning',
+          fiveHourUtilization: 0.9,
+        }),
+      ),
+    ).toBe('R');
   });
 
   it('returns Y for high utilization while allowed', () => {
@@ -112,6 +128,7 @@ const snapshot = (
   sevenDayOpusRejected: false,
   hasWindowData: true,
   lastUpdatedEpoch: 1_000_000,
+  subscriptionDisabled: false,
   ...overrides,
 });
 
