@@ -273,10 +273,9 @@ export class NotifyFinishedIssuePreparationUseCase {
       params.developerAgentNames ?? null,
     );
     if (ciFailingPrUrl !== null) {
-      const effectiveDeveloperAgentNames =
-        params.developerAgentNames?.length
-          ? params.developerAgentNames
-          : ['developer'];
+      const effectiveDeveloperAgentNames = params.developerAgentNames?.length
+        ? params.developerAgentNames
+        : ['developer'];
       const agentOptionId = await this.ensureAgentOptionAndGetId(
         project,
         effectiveDeveloperAgentNames[0],
@@ -686,8 +685,9 @@ export class NotifyFinishedIssuePreparationUseCase {
     issue: { url: string; agent: string | null; isPr: boolean },
     developerAgentNames: string[] | null,
   ): Promise<string | null> => {
-    const effectiveDeveloperAgentNames =
-      developerAgentNames?.length ? developerAgentNames : ['developer'];
+    const effectiveDeveloperAgentNames = developerAgentNames?.length
+      ? developerAgentNames
+      : ['developer'];
     if (
       issue.agent === null ||
       effectiveDeveloperAgentNames.includes(issue.agent) ||

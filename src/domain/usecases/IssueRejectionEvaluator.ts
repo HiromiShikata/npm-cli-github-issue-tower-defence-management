@@ -231,8 +231,9 @@ export class IssueRejectionEvaluator {
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
     );
-    const effectiveDeveloperAgentNames =
-      developerAgentNames?.length ? developerAgentNames : ['developer'];
+    const effectiveDeveloperAgentNames = developerAgentNames?.length
+      ? developerAgentNames
+      : ['developer'];
     const isNonDeveloperAgent =
       issue.agent != null &&
       !effectiveDeveloperAgentNames.includes(issue.agent) &&
