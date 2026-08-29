@@ -3,10 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CheckIssueReviewReadinessUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
-const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 const normalizeReportBody_1 = require("./normalizeReportBody");
 const isAgentReportBody_1 = require("./isAgentReportBody");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
+const extractNextStepAgentFromComments_1 = require("./extractNextStepAgentFromComments");
+const triagerAgentName_1 = require("./triagerAgentName");
 class CheckIssueReviewReadinessUseCase {
     constructor(issueRepository, issueCommentRepository) {
         this.issueRepository = issueRepository;
@@ -43,7 +44,8 @@ class CheckIssueReviewReadinessUseCase {
                 });
             }
             const { rejections: prRejections } = await this.issueRejectionEvaluator.evaluate(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), { developerAgentName: params.developerAgentName });
-            const requiredPrRejections = (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor)
+            const nextStepAgent = (0, extractNextStepAgentFromComments_1.extractNextStepAgentFromComments)(comments, isTrustedAuthor);
+            const requiredPrRejections = (0, triagerAgentName_1.isTriagerAgentName)(nextStepAgent)
                 ? prRejections.filter((rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND')
                 : prRejections;
             const allRejections = [...rejections, ...requiredPrRejections];

@@ -4,7 +4,8 @@ exports.RevertNotReadyReviewQueueIssueUseCase = void 0;
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
-const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
+const extractNextStepAgentFromComments_1 = require("./extractNextStepAgentFromComments");
+const triagerAgentName_1 = require("./triagerAgentName");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 // GitHub rejects field mutations against archived project items with
@@ -56,7 +57,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     });
                     if (rejections.length === 1 &&
                         rejections[0].type === 'PULL_REQUEST_NOT_FOUND' &&
-                        (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(await this.issueCommentRepository.getCommentsFromIssue(issue), (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors))) {
+                        (0, triagerAgentName_1.isTriagerAgentName)((0, extractNextStepAgentFromComments_1.extractNextStepAgentFromComments)(await this.issueCommentRepository.getCommentsFromIssue(issue), (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, allowedIssueAuthors)))) {
                         continue;
                     }
                     if (rejections.length > 0) {

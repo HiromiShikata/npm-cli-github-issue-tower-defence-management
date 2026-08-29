@@ -5,10 +5,7 @@ const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const IssueRejectionEvaluator_1 = require("./IssueRejectionEvaluator");
 const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestApprover");
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
-const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
-const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
-const isWaitingForOwnerApproval_1 = require("./isWaitingForOwnerApproval");
-const awaitingOwnerApprovalMessage_1 = require("./awaitingOwnerApprovalMessage");
+const triagerAgentName_1 = require("./triagerAgentName");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const extractNextStepAgent_1 = require("./extractNextStepAgent");
 const findLastAgentReport_1 = require("./findLastAgentReport");
@@ -108,17 +105,54 @@ class NotifyFinishedIssuePreparationUseCase {
             const nextStepAgent = lastAgentReport
                 ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastAgentReport.content)
                 : null;
-            if (nextStepAgent !== null) {
-                if (params.agents &&
-                    params.agents.length > 0 &&
-                    !params.agents.includes(nextStepAgent)) {
-                    issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
-                    await this.issueRepository.update(issue, project);
-                    await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
-                    await this.patchConsoleTab(issue);
-                    await this.issueCommentRepository.createComment(issue, `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`);
-                    return;
+            if (nextStepAgent !== null &&
+                params.agents &&
+                params.agents.length > 0 &&
+                !params.agents.includes(nextStepAgent)) {
+                issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
+                await this.issueRepository.update(issue, project);
+                await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                await this.patchConsoleTab(issue);
+                await this.issueCommentRepository.createComment(issue, `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`);
+                return;
+            }
+            const ciFailingPrUrl = await this.resolveLinkedPrWithCiFailure(issue, params.developerAgentName ?? null);
+            if (ciFailingPrUrl !== null) {
+                const effectiveDeveloperAgentName = params.developerAgentName ?? 'developer';
+                const agentOptionId = await this.ensureAgentOptionAndGetId(project, effectiveDeveloperAgentName);
+                if (agentOptionId !== null) {
+                    await this.issueRepository.setIssueAgentField(params.issueUrl, project, agentOptionId);
                 }
+                issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
+                await this.issueRepository.update(issue, project);
+                await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                await this.patchConsoleTab(issue);
+                await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
+                await this.issueCommentRepository.createComment(issue, `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`);
+                return;
+            }
+            const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), nextStepAgent, params.developerAgentName);
+            const rejectionStatusMessage = rejections.length > 0
+                ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
+                : 'Auto Status Check: APPROVED';
+            const lastTargetComments = comments.slice(-params.thresholdForAutoReject * 2);
+            if (rejections.length > 0 &&
+                lastTargetComments.filter((comment) => comment.content.startsWith('Auto Status Check: REJECTED') &&
+                    isTrustedAuthor(comment.author)).length >= params.thresholdForAutoReject &&
+                !lastTargetComments.some((comment) => comment.content
+                    .toLowerCase()
+                    .includes('failed to pass the check automatically') &&
+                    isTrustedAuthor(comment.author))) {
+                issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
+                await this.issueRepository.update(issue, project);
+                await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                await this.patchConsoleTab(issue);
+                await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
+                await this.issueCommentRepository.createComment(issue, `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`);
+                await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
+                return;
+            }
+            if (nextStepAgent !== null) {
                 const repetition = (0, resolveNextStepAgentDispatchRepetition_1.resolveNextStepAgentDispatchRepetition)({
                     agentFieldValue: issue.agent,
                     nextStepAgent,
@@ -145,77 +179,13 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.issueRepository.update(issue, project);
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                 await this.patchConsoleTab(issue);
+                if (rejections.length > 0) {
+                    await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
+                    await this.issueCommentRepository.createComment(issue, rejectionStatusMessage);
+                }
                 if (repetition.type === 'dispatchAgain') {
                     await this.issueCommentRepository.createComment(issue, repetition.comment);
                 }
-                return;
-            }
-            if (lastAgentReport !== null &&
-                (0, isWaitingForOwnerApproval_1.isWaitingForOwnerApproval)(lastAgentReport.content)) {
-                const ownerApprovalTimeoutCycles = params.ownerApprovalTimeoutCycles ?? 12;
-                const awaitingOwnerApprovalCount = comments.filter((comment) => isTrustedAuthor(comment.author) &&
-                    comment.content.startsWith(awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE_HEAD)).length;
-                if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
-                    issue.status = WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME;
-                    await this.issueRepository.update(issue, project);
-                    await this.issueRepository.updateStatus(project, issue, awaitingQualityCheckStatusOption.id);
-                    await this.patchConsoleTab(issue);
-                    await this.issueCommentRepository.createComment(issue, awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE);
-                    return;
-                }
-                issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
-                await this.issueRepository.update(issue, project);
-                await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
-                await this.patchConsoleTab(issue);
-                await this.issueCommentRepository.createComment(issue, `Owner approval was not received after ${ownerApprovalTimeoutCycles} cycles. Moving to Failed Preparation.`);
-                await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
-                return;
-            }
-            const ciFailingPrUrl = await this.resolveLinkedPrWithCiFailure(issue, params.developerAgentName ?? null);
-            if (ciFailingPrUrl !== null) {
-                const effectiveDeveloperAgentName = params.developerAgentName ?? 'developer';
-                const agentOptionId = await this.ensureAgentOptionAndGetId(project, effectiveDeveloperAgentName);
-                if (agentOptionId !== null) {
-                    await this.issueRepository.setIssueAgentField(params.issueUrl, project, agentOptionId);
-                }
-                issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
-                await this.issueRepository.update(issue, project);
-                await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
-                await this.patchConsoleTab(issue);
-                await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
-                await this.issueCommentRepository.createComment(issue, `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`);
-                return;
-            }
-            const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), params.developerAgentName);
-            const rejectionStatusMessage = rejections.length > 0
-                ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
-                : 'Auto Status Check: APPROVED';
-            const lastTargetComments = comments.slice(-params.thresholdForAutoReject * 2);
-            if (rejections.length > 0 &&
-                lastTargetComments.filter((comment) => comment.content.startsWith('Auto Status Check: REJECTED') &&
-                    isTrustedAuthor(comment.author)).length >= params.thresholdForAutoReject &&
-                !lastTargetComments.some((comment) => comment.content
-                    .toLowerCase()
-                    .includes('failed to pass the check automatically') &&
-                    isTrustedAuthor(comment.author))) {
-                issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
-                await this.issueRepository.update(issue, project);
-                await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
-                await this.patchConsoleTab(issue);
-                await this.setDependedIssueUrlForAllOpenPRs(issue, params.issueUrl, project);
-                await this.issueCommentRepository.createComment(issue, `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`);
-                await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
-                return;
-            }
-            if (rejections.length <= 0 &&
-                (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor) &&
-                !comments.some((comment) => isTrustedAuthor(comment.author) &&
-                    comment.content.startsWith(returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD))) {
-                issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
-                await this.issueRepository.update(issue, project);
-                await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
-                await this.patchConsoleTab(issue);
-                await this.issueCommentRepository.createComment(issue, returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE);
                 return;
             }
             if (rejections.length <= 0) {
@@ -284,7 +254,7 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.patchConsoleTab(issue);
             await this.issueCommentRepository.createComment(issue, `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`);
         };
-        this.collectRejections = async (issue, comments, isTrustedAuthor, labelsNotRequiringPullRequest, developerAgentName) => {
+        this.collectRejections = async (issue, comments, isTrustedAuthor, labelsNotRequiringPullRequest, nextStepAgent, developerAgentName) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];
             if (!lastComment ||
@@ -302,7 +272,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 });
             }
             const { rejections: prRejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsNotRequiringPullRequest, { developerAgentName });
-            const requiredPrRejections = (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(comments, isTrustedAuthor)
+            const requiredPrRejections = (0, triagerAgentName_1.isTriagerAgentName)(nextStepAgent)
                 ? prRejections.filter((rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND')
                 : prRejections;
             return {

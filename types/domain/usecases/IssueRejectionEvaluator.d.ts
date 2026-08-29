@@ -32,6 +32,5 @@ export declare class IssueRejectionEvaluator {
     private resolveOpenPrsFromUrls;
     private extractChangeTargetMustPaths;
     private isFilePathUnderPath;
-    private isPullRequestRequiredByBody;
 }
 //# sourceMappingURL=IssueRejectionEvaluator.d.ts.map

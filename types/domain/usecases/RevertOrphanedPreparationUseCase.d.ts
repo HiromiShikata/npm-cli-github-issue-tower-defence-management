@@ -20,7 +20,6 @@ export declare class RevertOrphanedPreparationUseCase {
         labelsNotRequiringPullRequest?: string[] | null;
         allowedIssueAuthors?: string[] | null;
         agents?: string[] | null;
-        ownerApprovalTimeoutCycles?: number | null;
         developerAgentName?: string | null;
     }) => Promise<void>;
     private isStillInPreparation;

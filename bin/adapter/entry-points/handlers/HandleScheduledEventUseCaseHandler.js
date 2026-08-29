@@ -61,7 +61,6 @@ const ProxyRateLimitCacheRepository_1 = require("../../repositories/ProxyRateLim
 const UpdateRateLimitCacheUseCase_1 = require("../../../domain/usecases/UpdateRateLimitCacheUseCase");
 const RevertOrphanedPreparationUseCase_1 = require("../../../domain/usecases/RevertOrphanedPreparationUseCase");
 const RevertNotReadyReviewQueueIssueUseCase_1 = require("../../../domain/usecases/RevertNotReadyReviewQueueIssueUseCase");
-const TriagerApprovalDispatchUseCase_1 = require("../../../domain/usecases/TriagerApprovalDispatchUseCase");
 const AgentDesignationLabelAdoptUseCase_1 = require("../../../domain/usecases/AgentDesignationLabelAdoptUseCase");
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const ProjectRequiredFieldCreateUseCase_1 = require("../../../domain/usecases/ProjectRequiredFieldCreateUseCase");
@@ -256,14 +255,13 @@ class HandleScheduledEventUseCaseHandler {
             const revertOrphanedPreparationUseCase = new RevertOrphanedPreparationUseCase_1.RevertOrphanedPreparationUseCase(projectRepository, issueRepository, issueCommentRepository, nodeLocalCommandRunner);
             const conflictedIssueRevertUseCase = new ConflictedIssueRevertUseCase_1.ConflictedIssueRevertUseCase(projectRepository, issueRepository, issueCommentRepository);
             const revertNotReadyReviewQueueIssueUseCase = new RevertNotReadyReviewQueueIssueUseCase_1.RevertNotReadyReviewQueueIssueUseCase(projectRepository, issueRepository, issueCommentRepository);
-            const triagerApprovalDispatchUseCase = new TriagerApprovalDispatchUseCase_1.TriagerApprovalDispatchUseCase(projectRepository, issueRepository, issueCommentRepository);
             const agentDesignationLabelAdoptUseCase = new AgentDesignationLabelAdoptUseCase_1.AgentDesignationLabelAdoptUseCase(projectRepository, issueRepository);
             const dailySecurityScanUseCase = mergedInput.dailySecurityScan
                 ? new DailySecurityScanUseCase_1.DailySecurityScanUseCase(nodeLocalCommandRunner, issueRepository, new KyHttpRepository_1.KyHttpRepository(), new FileSystemKevReportWatermarkRepository_1.FileSystemKevReportWatermarkRepository())
                 : null;
             const qualityCheckAdvanceUseCase = new QualityCheckAdvanceUseCase_1.QualityCheckAdvanceUseCase(issueRepository);
             const reopenedDoneIssueRevertUseCase = new ReopenedDoneIssueRevertUseCase_1.ReopenedDoneIssueRevertUseCase(issueRepository);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, conflictedIssueRevertUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, conflictedIssueRevertUseCase, revertNotReadyReviewQueueIssueUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             const dashboardDataDir = mergedInput.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
             const afterIssuesFetched = async (project, issues) => {
                 try {

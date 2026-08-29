@@ -34,7 +34,6 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         manager?: string | null;
         developerAgentName?: string | null;
         deferPreparation?: boolean | null;
-        ownerApprovalTimeoutCycles?: number | null;
     }) => Promise<void>;
     private handleTransientFailureDeferral;
     private handleMissingAgentDefinition;

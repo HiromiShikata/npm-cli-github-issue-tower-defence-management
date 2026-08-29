@@ -156,7 +156,6 @@ const loadConfigFile = (configFilePath) => {
             consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
             consoleGithubTokenFileDir: getStringValue(parsed, 'consoleGithubTokenFileDir'),
             disks: getDisksValue(parsed, 'disks'),
-            ownerApprovalTimeoutCycles: getNumberValue(parsed, 'ownerApprovalTimeoutCycles'),
             errorReportingRepository: getStringValue(parsed, 'errorReportingRepository'),
         };
     }
@@ -289,8 +288,6 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     consoleGithubTokenFileDir: cliOverrides.consoleGithubTokenFileDir ??
         configFile.consoleGithubTokenFileDir,
     disks: cliOverrides.disks ?? configFile.disks,
-    ownerApprovalTimeoutCycles: cliOverrides.ownerApprovalTimeoutCycles ??
-        configFile.ownerApprovalTimeoutCycles,
     errorReportingRepository: readmeOverrides.errorReportingRepository ??
         cliOverrides.errorReportingRepository ??
         configFile.errorReportingRepository,

@@ -1,3 +1,10 @@
+# [2.7.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.6.1...v2.7.0) (2026-08-29)
+
+
+### Features
+
+* **auto-status-check:** route a finished preparation by the designated next step agent ([#1856](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1856)) ([ebc76b1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ebc76b1816d6865ea9ee424c927002ac59d13660))
+
 ## [2.6.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.6.0...v2.6.1) (2026-08-29)
 
 

@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IssueRejectionEvaluator = void 0;
-const normalizeReportBody_1 = require("./normalizeReportBody");
 class IssueRejectionEvaluator {
     constructor(issueRepository) {
         this.issueRepository = issueRepository;
@@ -148,7 +147,6 @@ class IssueRejectionEvaluator {
             const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
             return (!isNonDeveloperAgent &&
                 !hasLabelNotRequiringPullRequest &&
-                this.isPullRequestRequiredByBody(issue.body) &&
                 (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e')));
         };
         // Returns null when getOpenPullRequest throws (e.g. a transient GitHub
@@ -228,27 +226,6 @@ class IssueRejectionEvaluator {
             return paths;
         };
         this.isFilePathUnderPath = (filePath, targetPath) => filePath === targetPath || filePath.startsWith(`${targetPath}/`);
-        this.isPullRequestRequiredByBody = (body) => {
-            if (!body)
-                return true;
-            const match = (0, normalizeReportBody_1.normalizeReportBody)(body)
-                .trimEnd()
-                .match(/```json\n([\s\S]*?)\n```\s*$/);
-            if (!match || !match[1])
-                return true;
-            let config;
-            try {
-                config = JSON.parse(match[1]);
-            }
-            catch {
-                return true;
-            }
-            if (typeof config !== 'object' || config === null)
-                return true;
-            if (!('pullRequestRequired' in config))
-                return true;
-            return Reflect.get(config, 'pullRequestRequired') !== false;
-        };
     }
 }
 exports.IssueRejectionEvaluator = IssueRejectionEvaluator;
