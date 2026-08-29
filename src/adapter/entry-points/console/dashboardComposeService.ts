@@ -129,7 +129,7 @@ const readMachineStatus = (
 };
 
 const isTokenColor = (value: unknown): value is TokenStatusColor =>
-  value === 'G' || value === 'Y' || value === 'K';
+  value === 'G' || value === 'Y' || value === 'K' || value === 'R';
 
 const asTokenColor = (value: unknown): TokenStatusColor =>
   isTokenColor(value) ? value : 'Y';
