@@ -4567,7 +4567,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
               description: '',
             },
           ],
-          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
         },
       });
       const blockerIssueObject = createMockIssue({
@@ -4708,12 +4711,17 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
               description: '',
             },
           ],
-          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
         },
       });
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
 
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithNoBlockerStory);
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithNoBlockerStory,
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
