@@ -40,6 +40,7 @@ class RevertOrphanedPreparationUseCase {
             const resolvedQualityCheckStatusName = params.awaitingQualityCheckStatus ?? WorkflowStatus_1.AWAITING_QUALITY_CHECK_STATUS_NAME;
             const awaitingQualityCheckStatusOption = project.status.statuses.find((s) => s.name === resolvedQualityCheckStatusName);
             const failedPreparationStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME);
+            const todoStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.TODO_STATUS_NAME);
             for (const issue of preparationIssues) {
                 const isOrphaned = await this.isOrphanedIssue(issue, params);
                 if (!isOrphaned) {
@@ -84,8 +85,9 @@ class RevertOrphanedPreparationUseCase {
                     const ownerApprovalTimeoutCycles = params.ownerApprovalTimeoutCycles ?? 12;
                     const awaitingOwnerApprovalCount = comments.filter((comment) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(comment.author, params.allowedIssueAuthors) &&
                         comment.content.startsWith(awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE_HEAD)).length;
-                    if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
-                        await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                    if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles &&
+                        todoStatusOption) {
+                        await this.issueRepository.updateStatus(project, issue, todoStatusOption.id);
                         await this.issueCommentRepository.createComment(issue, awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE);
                     }
                     else if (failedPreparationStatusOption) {

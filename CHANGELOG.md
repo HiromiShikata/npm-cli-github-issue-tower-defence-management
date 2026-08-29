@@ -1,3 +1,10 @@
+## [1.194.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.194.0...v1.194.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **preparation:** stop returning an owner-approval task to the dispatch pool ([#1837](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1837)) ([0204f0c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0204f0c7d51d4d22bb07357887d84a038583470b)), closes [#1836](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1836)
+
 # [1.194.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.193.0...v1.194.0) (2026-08-29)
 
 

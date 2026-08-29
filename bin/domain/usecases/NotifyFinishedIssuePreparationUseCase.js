@@ -54,6 +54,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 console.error(`Failed preparation status option '${WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME}' not found in project.`);
                 return;
             }
+            const todoStatusOption = project.status.statuses.find((s) => s.name === WorkflowStatus_1.TODO_STATUS_NAME);
             const issue = await this.issueRepository.get(params.issueUrl, project);
             if (!issue) {
                 throw new IssueNotFoundError(params.issueUrl);
@@ -144,10 +145,14 @@ class NotifyFinishedIssuePreparationUseCase {
                 const ownerApprovalTimeoutCycles = params.ownerApprovalTimeoutCycles ?? 12;
                 const awaitingOwnerApprovalCount = comments.filter((comment) => isTrustedAuthor(comment.author) &&
                     comment.content.startsWith(awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE_HEAD)).length;
-                if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
-                    issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
+                if (!todoStatusOption) {
+                    console.error(`Todo status option '${WorkflowStatus_1.TODO_STATUS_NAME}' not found in project; escalating to '${WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME}' instead of returning the task to the dispatch pool.`);
+                }
+                if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles &&
+                    todoStatusOption) {
+                    issue.status = WorkflowStatus_1.TODO_STATUS_NAME;
                     await this.issueRepository.update(issue, project);
-                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                    await this.issueRepository.updateStatus(project, issue, todoStatusOption.id);
                     await this.patchConsoleTab(issue);
                     await this.issueCommentRepository.createComment(issue, awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE);
                     return;
