@@ -4864,7 +4864,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -4973,7 +4973,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         ownerApprovalTimeoutCycles: 2,
       });
 
