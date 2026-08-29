@@ -116,7 +116,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     missingAgentName?: string | null;
     sessionErrorLine?: string | null;
     manager?: string | null;
-    developerAgentName?: string | null;
+    developerAgentNames?: string[] | null;
     deferPreparation?: boolean | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
@@ -270,14 +270,15 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     const ciFailingPrUrl = await this.resolveLinkedPrWithCiFailure(
       issue,
-      params.developerAgentName ?? null,
+      params.developerAgentNames ?? null,
     );
     if (ciFailingPrUrl !== null) {
-      const effectiveDeveloperAgentName =
-        params.developerAgentName ?? 'developer';
+      const effectiveDeveloperAgentNames = params.developerAgentNames?.length
+        ? params.developerAgentNames
+        : ['developer'];
       const agentOptionId = await this.ensureAgentOptionAndGetId(
         project,
-        effectiveDeveloperAgentName,
+        effectiveDeveloperAgentNames[0],
       );
       if (agentOptionId !== null) {
         await this.issueRepository.setIssueAgentField(
@@ -312,7 +313,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       isTrustedAuthor,
       resolveLabelsNotRequiringPullRequest(params),
       nextStepAgent,
-      params.developerAgentName,
+      params.developerAgentNames,
     );
 
     const rejectionStatusMessage =
@@ -590,7 +591,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     isTrustedAuthor: (author: string) => boolean,
     labelsNotRequiringPullRequest: string[],
     nextStepAgent: string | null,
-    developerAgentName?: string | null,
+    developerAgentNames?: string[] | null,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -618,7 +619,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.issueRejectionEvaluator.evaluate(
         issue,
         labelsNotRequiringPullRequest,
-        { developerAgentName },
+        { developerAgentNames },
       );
     const requiredPrRejections = isTriagerAgentName(nextStepAgent)
       ? prRejections.filter(
@@ -682,12 +683,14 @@ export class NotifyFinishedIssuePreparationUseCase {
 
   private resolveLinkedPrWithCiFailure = async (
     issue: { url: string; agent: string | null; isPr: boolean },
-    developerAgentName: string | null,
+    developerAgentNames: string[] | null,
   ): Promise<string | null> => {
-    const effectiveDeveloperName = developerAgentName ?? 'developer';
+    const effectiveDeveloperAgentNames = developerAgentNames?.length
+      ? developerAgentNames
+      : ['developer'];
     if (
       issue.agent === null ||
-      issue.agent === effectiveDeveloperName ||
+      effectiveDeveloperAgentNames.includes(issue.agent) ||
       issue.agent === 'pr-reviewer'
     ) {
       return null;

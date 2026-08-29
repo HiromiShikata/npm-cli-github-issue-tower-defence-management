@@ -312,8 +312,8 @@ export class HandleScheduledEventUseCaseHandler {
         readmeConfig.thresholdForAutoReject ?? input.thresholdForAutoReject,
       thresholdForDispatchLoop:
         readmeConfig.thresholdForDispatchLoop ?? input.thresholdForDispatchLoop,
-      developerAgentName:
-        readmeConfig.developerAgentName ?? input.developerAgentName ?? null,
+      developerAgentNames:
+        readmeConfig.developerAgentNames ?? input.developerAgentNames ?? null,
       startPreparation: input.startPreparation
         ? {
             ...input.startPreparation,

@@ -255,12 +255,12 @@ describe('mergeConfigs consoleGithubTokenFileDir', () => {
   });
 });
 
-describe('loadConfigFile developerAgentName', () => {
+describe('loadConfigFile developerAgentNames', () => {
   let dir: string;
 
   beforeEach(() => {
     dir = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'project-config-developer-agent-name-'),
+      path.join(os.tmpdir(), 'project-config-developer-agent-names-'),
     );
   });
 
@@ -274,41 +274,69 @@ describe('loadConfigFile developerAgentName', () => {
     return filePath;
   };
 
-  it('parses developerAgentName from the config file', () => {
+  it('parses developerAgentNames array from the config file', () => {
+    const filePath = writeConfig(
+      "projectName: 'demo'\ndeveloperAgentNames:\n  - my-developer\n  - second-developer\n",
+    );
+    expect(loadConfigFile(filePath).developerAgentNames).toEqual([
+      'my-developer',
+      'second-developer',
+    ]);
+  });
+
+  it('parses legacy developerAgentName string from the config file and wraps it in an array', () => {
     const filePath = writeConfig(
       "projectName: 'demo'\ndeveloperAgentName: 'my-developer'\n",
     );
-    expect(loadConfigFile(filePath).developerAgentName).toBe('my-developer');
+    expect(loadConfigFile(filePath).developerAgentNames).toEqual([
+      'my-developer',
+    ]);
   });
 
-  it('yields undefined developerAgentName when the key is absent', () => {
+  it('yields undefined developerAgentNames when neither key is present', () => {
     const filePath = writeConfig("projectName: 'demo'\n");
-    expect(loadConfigFile(filePath).developerAgentName).toBeUndefined();
+    expect(loadConfigFile(filePath).developerAgentNames).toBeUndefined();
   });
 });
 
-describe('parseProjectReadmeConfig developerAgentName', () => {
+describe('parseProjectReadmeConfig developerAgentNames', () => {
   const makeReadme = (yaml: string) =>
     `<details>\n<summary>config</summary>\n${yaml}\n</details>`;
 
-  it('returns developerAgentName from the README config section', () => {
-    const readme = makeReadme("developerAgentName: 'my-developer'\n");
+  it('returns developerAgentNames array from the README config section', () => {
+    const readme = makeReadme(
+      'developerAgentNames:\n  - my-developer\n  - second-developer\n',
+    );
     const result = parseProjectReadmeConfig(readme);
-    expect(result.developerAgentName).toBe('my-developer');
+    expect(result.developerAgentNames).toEqual([
+      'my-developer',
+      'second-developer',
+    ]);
   });
 
-  it('does not emit a warning for developerAgentName', () => {
+  it('returns developerAgentNames from legacy developerAgentName string in README config', () => {
+    const readme = makeReadme("developerAgentName: 'my-developer'\n");
+    const result = parseProjectReadmeConfig(readme);
+    expect(result.developerAgentNames).toEqual(['my-developer']);
+  });
+
+  it('does not emit a warning for developerAgentName or developerAgentNames', () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const readme = makeReadme("developerAgentName: 'my-developer'\n");
     parseProjectReadmeConfig(readme, 'https://example.com/project');
     expect(warnSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('developerAgentName'),
     );
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('developerAgentNames'),
+    );
     warnSpy.mockRestore();
   });
 
-  it('yields undefined developerAgentName when the key is absent', () => {
+  it('yields undefined developerAgentNames when neither key is present', () => {
     const readme = makeReadme('defaultAgentName: impl\n');
-    expect(parseProjectReadmeConfig(readme).developerAgentName).toBeUndefined();
+    expect(
+      parseProjectReadmeConfig(readme).developerAgentNames,
+    ).toBeUndefined();
   });
 });

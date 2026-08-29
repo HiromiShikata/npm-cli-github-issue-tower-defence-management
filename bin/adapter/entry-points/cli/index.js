@@ -401,7 +401,7 @@ exports.program
         missingAgentName: options.missingAgentName ?? null,
         sessionErrorLine: options.sessionErrorLine ?? null,
         manager: config.manager ?? null,
-        developerAgentName: config.developerAgentName ?? null,
+        developerAgentNames: config.developerAgentNames ?? null,
         deferPreparation: options.deferPreparation ?? null,
     });
 });
@@ -458,7 +458,7 @@ exports.program
         allowedIssueAuthors,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         labelsNotRequiringPullRequest: config.labelsNotRequiringPullRequest ?? null,
-        developerAgentName: config.developerAgentName ?? null,
+        developerAgentNames: config.developerAgentNames ?? null,
     });
     process.stdout.write(`${JSON.stringify(result)}\n`);
 });

@@ -116,10 +116,12 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.issueCommentRepository.createComment(issue, `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`);
                 return;
             }
-            const ciFailingPrUrl = await this.resolveLinkedPrWithCiFailure(issue, params.developerAgentName ?? null);
+            const ciFailingPrUrl = await this.resolveLinkedPrWithCiFailure(issue, params.developerAgentNames ?? null);
             if (ciFailingPrUrl !== null) {
-                const effectiveDeveloperAgentName = params.developerAgentName ?? 'developer';
-                const agentOptionId = await this.ensureAgentOptionAndGetId(project, effectiveDeveloperAgentName);
+                const effectiveDeveloperAgentNames = params.developerAgentNames?.length
+                    ? params.developerAgentNames
+                    : ['developer'];
+                const agentOptionId = await this.ensureAgentOptionAndGetId(project, effectiveDeveloperAgentNames[0]);
                 if (agentOptionId !== null) {
                     await this.issueRepository.setIssueAgentField(params.issueUrl, project, agentOptionId);
                 }
@@ -131,7 +133,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.issueCommentRepository.createComment(issue, `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`);
                 return;
             }
-            const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), nextStepAgent, params.developerAgentName);
+            const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), nextStepAgent, params.developerAgentNames);
             const rejectionStatusMessage = rejections.length > 0
                 ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
                 : 'Auto Status Check: APPROVED';
@@ -254,7 +256,7 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.patchConsoleTab(issue);
             await this.issueCommentRepository.createComment(issue, `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`);
         };
-        this.collectRejections = async (issue, comments, isTrustedAuthor, labelsNotRequiringPullRequest, nextStepAgent, developerAgentName) => {
+        this.collectRejections = async (issue, comments, isTrustedAuthor, labelsNotRequiringPullRequest, nextStepAgent, developerAgentNames) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];
             if (!lastComment ||
@@ -271,7 +273,7 @@ class NotifyFinishedIssuePreparationUseCase {
                     detail: 'REPORT_HAS_NEXT_STEP',
                 });
             }
-            const { rejections: prRejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsNotRequiringPullRequest, { developerAgentName });
+            const { rejections: prRejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsNotRequiringPullRequest, { developerAgentNames });
             const requiredPrRejections = (0, triagerAgentName_1.isTriagerAgentName)(nextStepAgent)
                 ? prRejections.filter((rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND')
                 : prRejections;
@@ -317,10 +319,10 @@ class NotifyFinishedIssuePreparationUseCase {
                 await this.issueRepository.setDependedIssueUrl(pr.url, project, issueUrl);
             }
         };
-        this.resolveLinkedPrWithCiFailure = async (issue, developerAgentName) => {
-            const effectiveDeveloperName = developerAgentName ?? 'developer';
+        this.resolveLinkedPrWithCiFailure = async (issue, developerAgentNames) => {
+            const effectiveDeveloperAgentNames = developerAgentNames?.length ? developerAgentNames : ['developer'];
             if (issue.agent === null ||
-                issue.agent === effectiveDeveloperName ||
+                effectiveDeveloperAgentNames.includes(issue.agent) ||
                 issue.agent === 'pr-reviewer') {
                 return null;
             }

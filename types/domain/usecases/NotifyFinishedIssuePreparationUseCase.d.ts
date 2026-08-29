@@ -32,7 +32,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
         missingAgentName?: string | null;
         sessionErrorLine?: string | null;
         manager?: string | null;
-        developerAgentName?: string | null;
+        developerAgentNames?: string[] | null;
         deferPreparation?: boolean | null;
     }) => Promise<void>;
     private handleTransientFailureDeferral;

@@ -7,7 +7,7 @@ class IssueRejectionEvaluator {
         this.evaluate = async (issue, labelsNotRequiringPullRequest = [], options = {}) => {
             const rejections = [];
             let approvedPrUrl = null;
-            if (this.requiresPullRequestEvaluation(issue, labelsNotRequiringPullRequest, options.developerAgentName)) {
+            if (this.requiresPullRequestEvaluation(issue, labelsNotRequiringPullRequest, options.developerAgentNames)) {
                 let prsToCheck;
                 let anyPrResolutionFailed = false;
                 if (issue.isPr) {
@@ -138,11 +138,11 @@ class IssueRejectionEvaluator {
         // Whether this item's pull requests are looked at at all. A caller that
         // resolves pull request state in one batch for a whole cycle asks this first,
         // so the batch covers exactly the items evaluate would have resolved.
-        this.requiresPullRequestEvaluation = (issue, labelsNotRequiringPullRequest = [], developerAgentName) => {
+        this.requiresPullRequestEvaluation = (issue, labelsNotRequiringPullRequest = [], developerAgentNames) => {
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
-            const effectiveDeveloperAgentName = developerAgentName ?? 'developer';
+            const effectiveDeveloperAgentNames = developerAgentNames?.length ? developerAgentNames : ['developer'];
             const isNonDeveloperAgent = issue.agent != null &&
-                issue.agent !== effectiveDeveloperAgentName &&
+                !effectiveDeveloperAgentNames.includes(issue.agent) &&
                 issue.agent !== 'pr-reviewer';
             const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
             return (!isNonDeveloperAgent &&

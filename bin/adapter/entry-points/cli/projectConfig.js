@@ -78,6 +78,17 @@ const getStringArrayValue = (obj, key) => {
 };
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 exports.isRecord = isRecord;
+const getDeveloperAgentNamesValue = (obj) => {
+    const arrayValue = getStringArrayValue(obj, 'developerAgentNames');
+    if (arrayValue !== undefined) {
+        return arrayValue;
+    }
+    const stringValue = getStringValue(obj, 'developerAgentName');
+    if (stringValue !== undefined) {
+        return [stringValue];
+    }
+    return undefined;
+};
 const getDisksValue = (obj, key) => {
     const value = obj[key];
     if (!Array.isArray(value)) {
@@ -100,6 +111,7 @@ const getDisksValue = (obj, key) => {
 const knownProjectReadmeConfigKeys = [
     'defaultAgentName',
     'developerAgentName',
+    'developerAgentNames',
     'defaultLlmModelName',
     'fallbackLlmModelName',
     'defaultLlmAgentName',
@@ -131,7 +143,7 @@ const loadConfigFile = (configFilePath) => {
             projectUrl: getStringValue(parsed, 'projectUrl'),
             manager: getStringValue(parsed, 'manager'),
             defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
-            developerAgentName: getStringValue(parsed, 'developerAgentName'),
+            developerAgentNames: getDeveloperAgentNamesValue(parsed),
             defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
             fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
             defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
@@ -190,7 +202,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
         }
         return {
             defaultAgentName: getStringValue(parsed, 'defaultAgentName'),
-            developerAgentName: getStringValue(parsed, 'developerAgentName'),
+            developerAgentNames: getDeveloperAgentNamesValue(parsed),
             defaultLlmModelName: getStringValue(parsed, 'defaultLlmModelName'),
             fallbackLlmModelName: getStringValue(parsed, 'fallbackLlmModelName'),
             defaultLlmAgentName: getStringValue(parsed, 'defaultLlmAgentName'),
@@ -224,9 +236,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     defaultAgentName: readmeOverrides.defaultAgentName ??
         cliOverrides.defaultAgentName ??
         configFile.defaultAgentName,
-    developerAgentName: readmeOverrides.developerAgentName ??
-        cliOverrides.developerAgentName ??
-        configFile.developerAgentName,
+    developerAgentNames: readmeOverrides.developerAgentNames ??
+        cliOverrides.developerAgentNames ??
+        configFile.developerAgentNames,
     defaultLlmModelName: readmeOverrides.defaultLlmModelName ??
         cliOverrides.defaultLlmModelName ??
         configFile.defaultLlmModelName,

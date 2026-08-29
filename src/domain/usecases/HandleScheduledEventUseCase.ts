@@ -191,7 +191,7 @@ export class HandleScheduledEventUseCase {
     queryToAddProject?: string | null;
     storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
-    developerAgentName?: string | null;
+    developerAgentNames?: string[] | null;
     afterIssuesFetched?:
       ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
   }): Promise<{
@@ -448,7 +448,7 @@ ${JSON.stringify(e)}
       labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
       changeTargetPathAliases: input.changeTargetPathAliases,
       allowedIssueAuthors,
-      developerAgentName: input.developerAgentName,
+      developerAgentNames: input.developerAgentNames,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({

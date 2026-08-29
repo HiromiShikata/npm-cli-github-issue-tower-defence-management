@@ -19,7 +19,7 @@ export declare class CheckIssueReviewReadinessUseCase {
         allowedIssueAuthors?: string[] | null;
         labelsAsLlmAgentName?: string[] | null;
         labelsNotRequiringPullRequest?: string[] | null;
-        developerAgentName?: string | null;
+        developerAgentNames?: string[] | null;
     }) => Promise<IssueReviewReadinessResult>;
     private reportBodyHasNextStep;
 }

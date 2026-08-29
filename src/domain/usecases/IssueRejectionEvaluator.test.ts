@@ -214,7 +214,7 @@ describe('IssueRejectionEvaluator', () => {
           agent: 'my-developer',
         },
         [],
-        { developerAgentName: 'my-developer' },
+        { developerAgentNames: ['my-developer'] },
       );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
@@ -222,7 +222,7 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
     });
 
-    it('should not require PR evaluation when issue agent does not match custom developer agent name', async () => {
+    it('should not require PR evaluation when issue agent does not match custom developer agent names', async () => {
       const result = await evaluator.evaluate(
         {
           url: 'https://github.com/user/repo/issues/1',
@@ -231,7 +231,7 @@ describe('IssueRejectionEvaluator', () => {
           agent: 'other-agent',
         },
         [],
-        { developerAgentName: 'my-developer' },
+        { developerAgentNames: ['my-developer'] },
       );
 
       expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -239,7 +239,7 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.approvedPrUrl).toBeNull();
     });
 
-    it('should default to developer when developerAgentName is null', async () => {
+    it('should default to developer when developerAgentNames is null', async () => {
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
       const result = await evaluator.evaluate(
@@ -250,12 +250,48 @@ describe('IssueRejectionEvaluator', () => {
           agent: 'developer',
         },
         [],
-        { developerAgentName: null },
+        { developerAgentNames: null },
       );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
       expect(result.rejections).toHaveLength(1);
       expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+    });
+
+    it('should require PR evaluation when issue agent matches any of multiple developer agent names', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'second-developer',
+        },
+        [],
+        { developerAgentNames: ['first-developer', 'second-developer'] },
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(1);
+      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+    });
+
+    it('should not require PR evaluation when issue agent does not match any of multiple developer agent names', async () => {
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'chore',
+        },
+        [],
+        { developerAgentNames: ['first-developer', 'second-developer'] },
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(0);
+      expect(result.approvedPrUrl).toBeNull();
     });
 
     it('should require PR evaluation and reject CI failure when issue agent is pr-reviewer', async () => {
@@ -316,7 +352,7 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.approvedPrUrl).toBe('https://github.com/user/repo/pull/10');
     });
 
-    it('should still require PR evaluation for pr-reviewer when custom developerAgentName is set', async () => {
+    it('should still require PR evaluation for pr-reviewer when custom developerAgentNames is set', async () => {
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         createReadyPr('https://github.com/user/repo/pull/10', {
           isPassedAllCiJob: false,
@@ -332,7 +368,7 @@ describe('IssueRejectionEvaluator', () => {
           agent: 'pr-reviewer',
         },
         [],
-        { developerAgentName: 'my-developer' },
+        { developerAgentNames: ['my-developer'] },
       );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();

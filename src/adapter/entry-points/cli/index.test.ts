@@ -1525,7 +1525,7 @@ mysteryKey: 'value'
         missingAgentName: null,
         sessionErrorLine: null,
         manager: 'test-manager',
-        developerAgentName: null,
+        developerAgentNames: null,
         deferPreparation: null,
       });
     });
@@ -1569,7 +1569,7 @@ mysteryKey: 'value'
         missingAgentName: null,
         sessionErrorLine: null,
         manager: 'test-manager',
-        developerAgentName: null,
+        developerAgentNames: null,
         deferPreparation: null,
       });
     });
@@ -1886,7 +1886,7 @@ mysteryKey: 'value'
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
         labelsNotRequiringPullRequest: null,
-        developerAgentName: null,
+        developerAgentNames: null,
       });
       expect(stdoutSpy).toHaveBeenCalledWith(
         `${JSON.stringify({ reviewReady: true, rejections: [] })}\n`,
@@ -1973,7 +1973,7 @@ mysteryKey: 'value'
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
         labelsNotRequiringPullRequest: null,
-        developerAgentName: null,
+        developerAgentNames: null,
       });
 
       stdoutSpy.mockRestore();

@@ -65,7 +65,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     labelsNotRequiringPullRequest?: string[] | null;
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
-    developerAgentName?: string | null;
+    developerAgentNames?: string[] | null;
   }): Promise<void> => {
     const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
     const projectId = await this.projectRepository.findProjectIdByUrl(
@@ -126,7 +126,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
               relatedOpenPrUrls:
                 relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
               resolvedOpenPrByUrl,
-              developerAgentName: params.developerAgentName,
+              developerAgentNames: params.developerAgentNames,
               detectConflictEvenIfEvaluationSkipped: true,
             },
           );

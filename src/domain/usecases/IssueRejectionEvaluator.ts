@@ -33,9 +33,9 @@ export type EvaluateOptions = {
   // getOpenPullRequest call, which keeps the transient-failure handling that
   // distinguishes an unknown state from an absent pull request.
   resolvedOpenPrByUrl?: ReadonlyMap<string, RelatedPullRequest | null> | null;
-  // The agent name treated as the developer agent for PR/CI/conflict checks.
-  // When null or undefined, defaults to 'developer'.
-  developerAgentName?: string | null;
+  // The agent names treated as developer agents for PR/CI/conflict checks.
+  // When null, undefined, or empty, defaults to ['developer'].
+  developerAgentNames?: string[] | null;
   detectConflictEvenIfEvaluationSkipped?: boolean;
 };
 
@@ -68,7 +68,7 @@ export class IssueRejectionEvaluator {
       this.requiresPullRequestEvaluation(
         issue,
         labelsNotRequiringPullRequest,
-        options.developerAgentName,
+        options.developerAgentNames,
       )
     ) {
       let prsToCheck: RelatedPullRequest[];
@@ -226,15 +226,17 @@ export class IssueRejectionEvaluator {
   requiresPullRequestEvaluation = (
     issue: { labels: string[]; body?: string | null; agent?: string | null },
     labelsNotRequiringPullRequest: string[] = [],
-    developerAgentName?: string | null,
+    developerAgentNames?: string[] | null,
   ): boolean => {
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
     );
-    const effectiveDeveloperAgentName = developerAgentName ?? 'developer';
+    const effectiveDeveloperAgentNames = developerAgentNames?.length
+      ? developerAgentNames
+      : ['developer'];
     const isNonDeveloperAgent =
       issue.agent != null &&
-      issue.agent !== effectiveDeveloperAgentName &&
+      !effectiveDeveloperAgentNames.includes(issue.agent) &&
       issue.agent !== 'pr-reviewer';
     const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
       labelsNotRequiringPullRequest.includes(label),
