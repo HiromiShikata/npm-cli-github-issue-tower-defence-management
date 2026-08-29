@@ -635,7 +635,7 @@ test('reorders stories on the triage tab with up/down buttons', async ({
   await expect(rows.nth(1)).toContainText('Publish product documentation site');
 });
 
-test('posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked', async ({
+test('posts a comment and moves the item to Awaiting Workspace when the Comment & MOVE to Awaiting Workspace button is clicked', async ({
   page,
 }) => {
   await page.goto(harness.appRootUrl);
@@ -651,7 +651,10 @@ test('posts a comment and moves the item to Awaiting Workspace when the Comment 
     .fill('handing off to awaiting workspace');
 
   await page
-    .getByRole('button', { name: 'Comment & Awaiting Workspace', exact: true })
+    .getByRole('button', {
+      name: 'Comment & MOVE to Awaiting Workspace',
+      exact: true,
+    })
     .click();
 
   await expect
