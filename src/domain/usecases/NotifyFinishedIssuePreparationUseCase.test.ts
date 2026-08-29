@@ -902,7 +902,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        content:
+          'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
