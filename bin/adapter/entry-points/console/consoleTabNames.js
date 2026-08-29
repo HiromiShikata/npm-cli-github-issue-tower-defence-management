@@ -4,7 +4,6 @@ exports.sortByStoryOrder = exports.CONSOLE_LIST_TAB_NAMES = void 0;
 exports.CONSOLE_LIST_TAB_NAMES = [
     'workflow-blocker',
     'prs',
-    'triage',
     'failed-preparation',
     'todo-by-human',
     'todo-by-agent',

@@ -58,14 +58,6 @@ class GenerateConsoleListsUseCase {
                 'todo-by-human': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_STATUS_NAME ||
                     issue.status === WorkflowStatus_1.LEGACY_TODO_STATUS_NAME, [WorkflowStatus_1.TODO_STATUS_NAME.toLowerCase(), 'done']),
                 'todo-by-agent': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_BY_AGENT_STATUS_NAME, [WorkflowStatus_1.TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done']),
-                triage: {
-                    pjcode,
-                    generatedAt,
-                    storyOptions: this.buildFieldOptions(storyOptions, []),
-                    storyOrder,
-                    storyColors: this.buildStoryColorsString(storyOptions),
-                    items: this.sortByStoryOrder(actionableIssues.map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
-                },
                 stories: {
                     pjcode,
                     generatedAt,
@@ -137,13 +129,6 @@ class GenerateConsoleListsUseCase {
             const result = {};
             for (const option of options) {
                 result[option.name] = { color: option.color };
-            }
-            return result;
-        };
-        this.buildStoryColorsString = (options) => {
-            const result = {};
-            for (const option of options) {
-                result[option.name] = option.color;
             }
             return result;
         };
