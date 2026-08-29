@@ -197,6 +197,8 @@ export class HandleScheduledEventUseCase {
     storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentName?: string | null;
+    afterIssuesFetched?:
+      ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
   }): Promise<{
     project: Project;
     issues: Issue[];
@@ -234,6 +236,9 @@ export class HandleScheduledEventUseCase {
       project,
       issues,
     });
+    if (input.afterIssuesFetched) {
+      await input.afterIssuesFetched(project, issues);
+    }
     for (const storyObject of storyIssues.values()) {
       const projectStory = project.story;
       if (!projectStory) {

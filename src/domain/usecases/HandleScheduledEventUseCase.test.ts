@@ -1073,6 +1073,77 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    describe('afterIssuesFetched callback', () => {
+      it('calls the callback with project and issues from getAllIssues, before runEachUseCases', async () => {
+        const callOrder: string[] = [];
+        const mockProject = mock<Project>();
+        const mockIssues = [mock<Issue>()];
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: mockIssues,
+          project: mockProject,
+          cacheUsed: false,
+        });
+
+        const afterIssuesFetched = jest
+          .fn()
+          .mockImplementation(async () => callOrder.push('afterIssuesFetched'));
+
+        const runEachUseCasesSpy = jest
+          .spyOn(useCase, 'runEachUseCases')
+          .mockImplementation(async () => {
+            callOrder.push('runEachUseCases');
+            return { rotationOrder: null };
+          });
+
+        try {
+          await useCase.run({
+            projectName: 'test-project',
+            org: 'test-org',
+            projectUrl: 'https://github.com/test-org/test-project',
+            manager: 'test-manager',
+            workingReport: {
+              repo: 'test-repo',
+              members: ['member1'],
+              spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+            },
+            urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+            disabled: false,
+            afterIssuesFetched,
+          });
+        } finally {
+          runEachUseCasesSpy.mockRestore();
+        }
+
+        expect(afterIssuesFetched).toHaveBeenCalledTimes(1);
+        expect(afterIssuesFetched).toHaveBeenCalledWith(
+          mockProject,
+          mockIssues,
+        );
+        expect(callOrder.indexOf('afterIssuesFetched')).toBeLessThan(
+          callOrder.indexOf('runEachUseCases'),
+        );
+      });
+
+      it('does not call afterIssuesFetched when it is null', async () => {
+        const afterIssuesFetched = jest.fn();
+        await useCase.run({
+          projectName: 'test-project',
+          org: 'test-org',
+          projectUrl: 'https://github.com/test-org/test-project',
+          manager: 'test-manager',
+          workingReport: {
+            repo: 'test-repo',
+            members: ['member1'],
+            spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+          },
+          urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+          disabled: false,
+          afterIssuesFetched: null,
+        });
+        expect(afterIssuesFetched).not.toHaveBeenCalled();
+      });
+    });
+
     describe('workflow incident issue deduplication in catch block', () => {
       const errorInput = {
         projectName: 'test-project',
