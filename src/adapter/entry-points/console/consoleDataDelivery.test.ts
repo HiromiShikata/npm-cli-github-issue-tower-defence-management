@@ -29,14 +29,14 @@ describe('parseConsoleDataRoute', () => {
   });
 
   it('parses a detail route', () => {
-    expect(
-      parseConsoleDataRoute('/projects/acme/prs/detail/123.json'),
-    ).toEqual({
-      kind: 'detail',
-      pjcode: 'acme',
-      tab: 'prs',
-      key: '123.json',
-    });
+    expect(parseConsoleDataRoute('/projects/acme/prs/detail/123.json')).toEqual(
+      {
+        kind: 'detail',
+        pjcode: 'acme',
+        tab: 'prs',
+        key: '123.json',
+      },
+    );
   });
 
   it('rejects the removed triage tab in a detail route', () => {
