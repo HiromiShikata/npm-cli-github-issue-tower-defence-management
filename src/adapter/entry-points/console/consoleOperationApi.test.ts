@@ -1755,12 +1755,12 @@ describe('consoleOperationApi', () => {
       },
     });
 
-    const contextWithUpdateStoryList = (
-      updateStoryList: ConsoleOperationContext['updateStoryList'],
+    const contextWithProjectRepository = (
+      resolveProjectRepository: ConsoleOperationContext['resolveProjectRepository'],
       baseProject: Project = projectWithOrderedStories(),
     ): ConsoleOperationContext => ({
       ...contextForProject(baseProject),
-      updateStoryList,
+      resolveProjectRepository,
     });
 
     it('returns 400 when pjcode is missing', async () => {
@@ -1797,9 +1797,25 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('returns 400 when project is not found', async () => {
+    it('returns 502 when resolveProjectRepository is null', async () => {
       const response = await handleReorderStory(
-        contextWithUpdateStoryList(jest.fn()),
+        contextWithProjectRepository(null),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_b',
+          direction: 'up',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'project repository is not configured' },
+      });
+    });
+
+    it('returns 400 when project is not found', async () => {
+      const updateStoryList = jest.fn().mockResolvedValue([]);
+      const response = await handleReorderStory(
+        contextWithProjectRepository(() => ({ updateStoryList })),
         {
           pjcode: 'unknown',
           storyOptionId: 'opt_b',
@@ -1813,8 +1829,9 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when story option is not found', async () => {
+      const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithUpdateStoryList(jest.fn()),
+        contextWithProjectRepository(() => ({ updateStoryList })),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_nonexistent',
@@ -1828,8 +1845,9 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when direction is "up" and the option is already first', async () => {
+      const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithUpdateStoryList(jest.fn()),
+        contextWithProjectRepository(() => ({ updateStoryList })),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_a',
@@ -1843,8 +1861,9 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when direction is "down" and the option is already last', async () => {
+      const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithUpdateStoryList(jest.fn()),
+        contextWithProjectRepository(() => ({ updateStoryList })),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_c',
@@ -1857,25 +1876,11 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('returns 400 when updateStoryList is not configured', async () => {
-      const response = await handleReorderStory(
-        contextWithUpdateStoryList(null),
-        {
-          pjcode: 'acme',
-          storyOptionId: 'opt_b',
-          direction: 'up',
-        },
-      );
-      expect(response).toEqual({
-        statusCode: 400,
-        body: { error: 'updateStoryList is not configured' },
-      });
-    });
-
-    it('swaps the target option with its neighbor, calls updateStoryList with reordered list, and returns 200', async () => {
+    it('swaps the target option with its neighbor, calls resolveProjectRepository updateStoryList with reordered list, and returns 200', async () => {
       const updateStoryList = jest.fn().mockResolvedValue([]);
+      const resolveProjectRepository = jest.fn(() => ({ updateStoryList }));
       const response = await handleReorderStory(
-        contextWithUpdateStoryList(updateStoryList),
+        contextWithProjectRepository(resolveProjectRepository),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_b',
@@ -1883,6 +1888,9 @@ describe('consoleOperationApi', () => {
         },
       );
       expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+      expect(resolveProjectRepository).toHaveBeenCalledWith(
+        projectWithOrderedStories().url,
+      );
       expect(updateStoryList).toHaveBeenCalledTimes(1);
       expect(updateStoryList).toHaveBeenCalledWith(
         expect.objectContaining({ id: projectWithOrderedStories().id }),
@@ -1894,13 +1902,35 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('calls invalidateProject with pjcode after successful reorder', async () => {
+      const updateStoryList = jest.fn().mockResolvedValue([]);
+      const invalidateProject = jest.fn();
+      const response = await handleReorderStory(
+        {
+          ...contextWithProjectRepository(() => ({ updateStoryList })),
+          invalidateProject,
+        },
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_b',
+          direction: 'up',
+        },
+      );
+      expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+      expect(invalidateProject).toHaveBeenCalledWith('acme');
+    });
+
     it('returns 400 when project does not have a story field', async () => {
       const projectWithoutStory = {
         ...projectWithOrderedStories(),
         story: null,
       };
+      const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithUpdateStoryList(jest.fn(), projectWithoutStory),
+        contextWithProjectRepository(
+          () => ({ updateStoryList }),
+          projectWithoutStory,
+        ),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_b',
@@ -1913,7 +1943,7 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('passes the full story list including GRAY options to updateStoryList', async () => {
+    it('passes the full story list including GRAY options to resolveProjectRepository updateStoryList', async () => {
       const projectWithGray = {
         ...projectWithOrderedStories(),
         story: {
@@ -1945,7 +1975,7 @@ describe('consoleOperationApi', () => {
       };
       const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithUpdateStoryList(updateStoryList, projectWithGray),
+        contextWithProjectRepository(() => ({ updateStoryList }), projectWithGray),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_b',
