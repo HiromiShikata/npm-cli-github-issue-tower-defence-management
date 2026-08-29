@@ -17,16 +17,27 @@ jest.mock('../../repositories/BaseGitHubRepository');
 
 type RunFn = HandleScheduledEventUseCase['run'];
 const capturedRunInputs: Parameters<RunFn>[] = [];
-const mockRun = jest.fn().mockImplementation((...args: Parameters<RunFn>) => {
-  capturedRunInputs.push(args);
-  return Promise.resolve({
-    project: { id: 'PVT_kwHOtest123' },
-    issues: [],
-    cacheUsed: false,
-    targetDateTimes: [],
-    rotationOrder: null,
+const mockRun = jest
+  .fn()
+  .mockImplementation(async (...args: Parameters<RunFn>) => {
+    capturedRunInputs.push(args);
+    const input = args[0];
+    const mockProject = { id: 'PVT_kwHOtest123' };
+    const mockIssues: unknown[] = [];
+    if (input.afterIssuesFetched) {
+      await input.afterIssuesFetched(
+        mockProject as Parameters<NonNullable<typeof input.afterIssuesFetched>>[0],
+        mockIssues as Parameters<NonNullable<typeof input.afterIssuesFetched>>[1],
+      );
+    }
+    return {
+      project: mockProject,
+      issues: mockIssues,
+      cacheUsed: false,
+      targetDateTimes: [],
+      rotationOrder: null,
+    };
   });
-});
 
 jest.mock('../../../domain/usecases/HandleScheduledEventUseCase', () => ({
   HandleScheduledEventUseCase: jest.fn().mockImplementation(() => ({
