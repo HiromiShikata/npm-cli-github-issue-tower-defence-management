@@ -7393,6 +7393,103 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
   it('never lets a selection weight take the limit below one slot', () => {
     expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.01)).toBe(1);
   });
+
+  it('uses normalConcurrentLimit as the full-speed ceiling when both utilizations are low', () => {
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, undefined, 10)).toBe(10);
+  });
+
+  it('tapers from normalConcurrentLimit when utilization is above the threshold', () => {
+    expect(useCase.getTokenConcurrentLimit(0.1, 0.9, undefined, 10)).toBe(5);
+  });
+});
+
+describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
+  it('applies a custom normalConcurrentLimit to cap token concurrency per token', async () => {
+    const mockProject = createMockProject();
+    const awaitingIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Awaiting Workspace',
+      story: 'some-story',
+    });
+    const mockProjectRepository = {
+      getByUrl: jest.fn().mockResolvedValue(mockProject),
+      createField: jest.fn().mockResolvedValue(undefined),
+      updateAgentList: jest.fn().mockResolvedValue([]),
+    };
+    const mockIssueRepository = {
+      getStoryObjectMap: jest
+        .fn()
+        .mockResolvedValue(createMockStoryObjectMap([awaitingIssue])),
+      getAllOpened: jest.fn().mockResolvedValue([awaitingIssue]),
+      updateStatus: jest.fn().mockResolvedValue(undefined),
+      findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
+      getOpenPullRequest: jest.fn().mockResolvedValue(null),
+      closePullRequest: jest.fn().mockResolvedValue(undefined),
+      deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
+      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+      removeLabel: jest.fn().mockResolvedValue(undefined),
+    };
+    const mockLocalCommandRunner = {
+      runCommand: jest
+        .fn()
+        .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
+      spawnInteractive: jest.fn(),
+    };
+    const token = 'token-a';
+    const mockClaudeTokenUsageRepository = {
+      ensureObservable: jest.fn().mockResolvedValue(undefined),
+      getAvailableTokenUsages: jest.fn().mockResolvedValue([
+        {
+          token,
+          name: 'token-a',
+          fiveHourUtilization: 0.0,
+          sevenDayUtilization: 0.0,
+          fiveHourRejected: false,
+          blocked: false,
+          blockedUntilEpoch: 0,
+          modelWeeklyLimits: {},
+          selectionWeight: undefined,
+        },
+      ]),
+      getTokenInFlightCounts: jest.fn().mockResolvedValue({ [token]: 0 }),
+      proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+    };
+    const mockTakeOwnershipSpawnRepository = {
+      listSpawns: jest.fn().mockReturnValue([]),
+      listRunningIssueUrls: jest.fn().mockReturnValue([]),
+    };
+    const useCase = new StartPreparationUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockLocalCommandRunner,
+      mockClaudeTokenUsageRepository,
+      mockTakeOwnershipSpawnRepository,
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 20,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+      normalConcurrentLimit: 10,
+    });
+
+    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledTimes(1);
+    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledWith(
+      'aw',
+      expect.any(Array),
+      expect.anything(),
+    );
+  });
 });
 
 describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {

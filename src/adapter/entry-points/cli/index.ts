@@ -68,6 +68,7 @@ import {
 import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import {
   loadLiveSessionOauthTokenSelectionSettings,
+  loadPreparationWorkerSettings,
   resolveFleetConfigFilePath,
 } from './fleetConfig';
 import {
@@ -90,6 +91,7 @@ type StartDaemonOptions = {
   allowedIssueAuthors?: string;
   preparationProcessCheckCommand?: string;
   configFilePath: string;
+  fleetConfigFilePath?: string;
 };
 
 const resolvePositiveIntegerOption = (
@@ -320,6 +322,10 @@ program
     '--preparationProcessCheckCommand <template>',
     'Shell command template with {URL} placeholder to check if a preparation process is alive',
   )
+  .option(
+    '--fleetConfigFilePath <path>',
+    'Path to the fleet-wide YAML config file holding the preparationWorker mapping (normalConcurrentLimit); falls back to the TDPM_FLEET_CONFIG environment variable, and to the built-in values when neither is set',
+  )
   .action(async (options: StartDaemonOptions) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -410,6 +416,15 @@ program
 
     console.log(
       `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
+    );
+
+    const fleetConfigFilePath = resolveFleetConfigFilePath(
+      options.fleetConfigFilePath ?? null,
+    );
+    const preparationWorkerSettings =
+      loadPreparationWorkerSettings(fleetConfigFilePath);
+    console.log(
+      `Effective normalConcurrentLimit: ${preparationWorkerSettings.normalConcurrentLimit}${fleetConfigFilePath !== null ? ' (source: fleetConfig)' : ' (source: built-in default)'}`,
     );
 
     const projectName = config.projectName ?? 'default';
@@ -530,6 +545,7 @@ program
       codexHomeCandidates,
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
       agents: config.agents ?? null,
+      normalConcurrentLimit: preparationWorkerSettings.normalConcurrentLimit,
     });
     if (preparationResult.rotationOrder !== null) {
       writeRotationOrderFile(preparationResult.rotationOrder);

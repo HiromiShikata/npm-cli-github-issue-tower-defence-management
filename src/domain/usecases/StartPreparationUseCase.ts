@@ -19,7 +19,7 @@ import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsP
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 
-const NORMAL_CONCURRENT_LIMIT = 6;
+export const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
@@ -163,26 +163,30 @@ export class StartPreparationUseCase {
   private taperedConcurrentLimit = (
     utilization: number,
     throttleStartThreshold: number,
+    normalConcurrentLimit: number,
   ): number => {
     if (utilization < throttleStartThreshold) {
-      return NORMAL_CONCURRENT_LIMIT;
+      return normalConcurrentLimit;
     }
     const remaining = (1 - utilization) / (1 - throttleStartThreshold);
-    return Math.max(1, Math.ceil(NORMAL_CONCURRENT_LIMIT * remaining));
+    return Math.max(1, Math.ceil(normalConcurrentLimit * remaining));
   };
 
   getTokenConcurrentLimit = (
     fiveHourUtilization: number,
     sevenDayUtilization: number,
     selectionWeight?: number,
+    normalConcurrentLimit: number = NORMAL_CONCURRENT_LIMIT,
   ): number => {
     const sevenDayLimit = this.taperedConcurrentLimit(
       sevenDayUtilization,
       SEVEN_DAY_THROTTLE_START_THRESHOLD,
+      normalConcurrentLimit,
     );
     const fiveHourLimit = this.taperedConcurrentLimit(
       fiveHourUtilization,
       FIVE_HOUR_THROTTLE_START_THRESHOLD,
+      normalConcurrentLimit,
     );
     const weight = selectionWeight ?? DEFAULT_SELECTION_WEIGHT;
     return Math.max(
@@ -268,6 +272,7 @@ export class StartPreparationUseCase {
     defaultModelName: string | null,
     fallbackModelName: string | null,
     maxConcurrent: number,
+    normalConcurrentLimit: number,
   ): {
     tokens: string[];
     effectiveCap: number;
@@ -317,6 +322,7 @@ export class StartPreparationUseCase {
         usage.fiveHourUtilization,
         usage.sevenDayUtilization,
         usage.selectionWeight,
+        normalConcurrentLimit,
       ),
       secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(
         usage,
@@ -414,7 +420,10 @@ export class StartPreparationUseCase {
     codexHomeCandidates: string[] | null;
     labelsAsLlmAgentName: string[] | null;
     agents?: string[] | null;
+    normalConcurrentLimit?: number;
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
+    const normalConcurrentLimit =
+      params.normalConcurrentLimit ?? NORMAL_CONCURRENT_LIMIT;
     const tokenUsages =
       await this.claudeTokenUsageRepository.getAvailableTokenUsages();
     let rotationTokens: string[] | null = null;
@@ -450,6 +459,7 @@ export class StartPreparationUseCase {
         params.defaultLlmModelName,
         fallbackLlmModelName,
         maximumPreparingIssuesCount,
+        normalConcurrentLimit,
       );
       if (selectedTokens.length === 0) {
         console.warn(

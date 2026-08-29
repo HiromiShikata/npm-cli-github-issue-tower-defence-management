@@ -3,8 +3,10 @@ import * as os from 'os';
 import * as path from 'path';
 import { DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import {
+  DEFAULT_PREPARATION_WORKER_SETTINGS,
   FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE,
   loadLiveSessionOauthTokenSelectionSettings,
+  loadPreparationWorkerSettings,
   resolveFleetConfigFilePath,
 } from './fleetConfig';
 
@@ -205,5 +207,99 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
     expect(() =>
       loadLiveSessionOauthTokenSelectionSettings(fleetConfigFilePath),
     ).toThrow('must be a mapping');
+  });
+});
+
+describe('loadPreparationWorkerSettings', () => {
+  let tempDir: string;
+
+  const writeFleetConfig = (content: string): string => {
+    const fleetConfigFilePath = path.join(tempDir, 'fleet.config.yaml');
+    fs.writeFileSync(fleetConfigFilePath, content);
+    return fleetConfigFilePath;
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-config-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('returns the built-in settings when no fleet config path is given', () => {
+    expect(loadPreparationWorkerSettings(null)).toEqual(
+      DEFAULT_PREPARATION_WORKER_SETTINGS,
+    );
+  });
+
+  it('reads normalConcurrentLimit from the fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  normalConcurrentLimit: 10'].join('\n'),
+    );
+
+    expect(loadPreparationWorkerSettings(fleetConfigFilePath)).toEqual({
+      normalConcurrentLimit: 10,
+    });
+  });
+
+  it('keeps the built-in value when the preparationWorker section is absent', () => {
+    const fleetConfigFilePath = writeFleetConfig('inTmuxLauncherCommand: cl\n');
+
+    expect(loadPreparationWorkerSettings(fleetConfigFilePath)).toEqual(
+      DEFAULT_PREPARATION_WORKER_SETTINGS,
+    );
+  });
+
+  it('returns the built-in settings for an empty fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig('');
+
+    expect(loadPreparationWorkerSettings(fleetConfigFilePath)).toEqual(
+      DEFAULT_PREPARATION_WORKER_SETTINGS,
+    );
+  });
+
+  it('throws when the fleet config file does not exist', () => {
+    expect(() =>
+      loadPreparationWorkerSettings(path.join(tempDir, 'missing.yaml')),
+    ).toThrow();
+  });
+
+  it('throws when normalConcurrentLimit is zero', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  normalConcurrentLimit: 0'].join('\n'),
+    );
+
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'normalConcurrentLimit',
+    );
+  });
+
+  it('throws when normalConcurrentLimit is not an integer', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  normalConcurrentLimit: 6.5'].join('\n'),
+    );
+
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'normalConcurrentLimit',
+    );
+  });
+
+  it('throws when normalConcurrentLimit is written as a string', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', "  normalConcurrentLimit: '8'"].join('\n'),
+    );
+
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'must be a number',
+    );
+  });
+
+  it('throws when the preparationWorker section is not a mapping', () => {
+    const fleetConfigFilePath = writeFleetConfig('preparationWorker: 10\n');
+
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'must be a mapping',
+    );
   });
 });
