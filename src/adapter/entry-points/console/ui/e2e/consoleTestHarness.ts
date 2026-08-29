@@ -625,6 +625,7 @@ const createStubIssueRepository = (
         }
       : null,
   setIssueAgentField: async (): Promise<void> => undefined,
+  updateBranch: async (): Promise<boolean> => false,
   updateStoryOptionColor: async (
     _project,
     storyOptionId: string,
