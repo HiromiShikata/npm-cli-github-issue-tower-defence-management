@@ -103,7 +103,9 @@ describe('counts driven to zero do not revive on tab switch', () => {
       PVTI_1: { ts: 100, mode: 'prs', done: true },
     };
     expect(countPendingItems([item(1)], overlay, 'todo-by-human')).toBe(1);
-    expect(filterPendingItems([item(1)], overlay, 'todo-by-human')).toEqual([item(1)]);
+    expect(filterPendingItems([item(1)], overlay, 'todo-by-human')).toEqual([
+      item(1),
+    ]);
   });
 
   it('counts an item that has no done entry', () => {
