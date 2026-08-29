@@ -262,6 +262,13 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
       });
     },
+    onDeleteAllComments: () => {
+      onQueueAction({
+        kind: { type: 'delete_all_comments' },
+        item,
+        commit: () => operations.deleteAllComments(item),
+      });
+    },
   };
 
   const awaitingWorkspaceOption =

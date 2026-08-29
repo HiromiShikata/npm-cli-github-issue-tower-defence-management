@@ -2329,6 +2329,125 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('deleteAllCommentsByUrl', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('fetches comment ids and deletes each comment', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              { id: 101, user: { login: 'alice' }, body: 'a', created_at: '2024-01-01T00:00:00Z' },
+              { id: 102, user: { login: 'bob' }, body: 'b', created_at: '2024-01-02T00:00:00Z' },
+            ]),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValueOnce(new Response(null, { status: 204 }))
+        .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.deleteAllCommentsByUrl(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        1,
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/42/comments?per_page=100&page=1',
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        2,
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/comments/101',
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+      expect(fetchSpy).toHaveBeenNthCalledWith(
+        3,
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/comments/102',
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+    });
+
+    it('paginates when a page returns exactly 100 comments', async () => {
+      const firstPage = Array.from({ length: 100 }, (_, i) => ({
+        id: i + 1,
+        user: { login: 'user' },
+        body: 'text',
+        created_at: '2024-01-01T00:00:00Z',
+      }));
+      const secondPage = [{ id: 200, user: { login: 'user' }, body: 'last', created_at: '2024-02-01T00:00:00Z' }];
+      const fetchSpy = jest.spyOn(global, 'fetch');
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify(firstPage), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      for (let i = 0; i < 100; i += 1) {
+        fetchSpy.mockResolvedValueOnce(new Response(null, { status: 204 }));
+      }
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify(secondPage), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      fetchSpy.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await repository.deleteAllCommentsByUrl(
+        'https://github.com/HiromiShikata/test-repository/issues/42',
+      );
+
+      const getCallCount = fetchSpy.mock.calls.filter(
+        ([, opts]) => (opts as { method: string }).method === 'GET',
+      ).length;
+      expect(getCallCount).toBe(2);
+      const deleteCallCount = fetchSpy.mock.calls.filter(
+        ([, opts]) => (opts as { method: string }).method === 'DELETE',
+      ).length;
+      expect(deleteCallCount).toBe(101);
+    });
+
+    it('throws when the API responds with a non-2xx status on the GET', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.deleteAllCommentsByUrl(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+        ),
+      ).rejects.toThrow('403');
+    });
+
+    it('throws when a DELETE request fails', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([{ id: 99, user: null, body: 'x', created_at: '2024-01-01T00:00:00Z' }]),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response('Unauthorized', { status: 401, statusText: 'Unauthorized' }),
+        );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      await expect(
+        repository.deleteAllCommentsByUrl(
+          'https://github.com/HiromiShikata/test-repository/issues/42',
+        ),
+      ).rejects.toThrow('401');
+    });
+  });
+
   describe('getPullRequestDetail', () => {
     afterEach(() => {
       jest.restoreAllMocks();

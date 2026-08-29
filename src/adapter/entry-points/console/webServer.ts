@@ -31,6 +31,7 @@ import {
   handleAttachmentUpload,
   handleComment,
   handleCreateIssue,
+  handleDeleteAllComments,
   handleIntmux,
   handleReorderStory,
   handleReview,
@@ -552,6 +553,8 @@ const dispatchOperation = (
       return handleStoryAdd(context, body);
     case '/api/storycolor':
       return handleStoryColor(context, body);
+    case '/api/deleteallcomments':
+      return handleDeleteAllComments(context, body);
     default:
       return null;
   }

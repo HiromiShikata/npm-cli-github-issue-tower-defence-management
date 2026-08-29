@@ -1,12 +1,12 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
-import type { ConsoleCaches } from '../hooks/useConsoleCaches';
-import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
-import { ResourceCache } from '../lib/resourceCache';
-import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
+import { fireEvent, render, waitFor } from "@testing-library/react";
+import type { ConsoleCaches } from "../hooks/useConsoleCaches";
+import type { ConsoleOperationsApi } from "../hooks/useConsoleOperations";
+import { ResourceCache } from "../lib/resourceCache";
+import { AWAITING_WORKSPACE_NAME } from "../logic/operations";
 import type {
-  ConsoleChangedFile,
-  ConsoleRelatedPullRequest,
-} from '../logic/types';
+	ConsoleChangedFile,
+	ConsoleRelatedPullRequest,
+} from "../logic/types";
 import {
   consoleChangedFilesFixture,
   consoleListItemsFixture,
@@ -16,86 +16,87 @@ import {
 } from '../testing/fixtures';
 import { ConsoleItemDetailContainer } from './ConsoleItemDetailContainer';
 
-jest.mock('../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
+jest.mock("../lib/mermaidLoader", () => ({
+	renderMermaidToSvg: jest.fn(async () => "<svg></svg>"),
 }));
 
 const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
 
 type CachesOverrides = {
-  relatedPrs?: ConsoleRelatedPullRequest[];
-  prFiles?: ConsoleChangedFile[];
-  relatedPrsNeverResolve?: boolean;
+	relatedPrs?: ConsoleRelatedPullRequest[];
+	prFiles?: ConsoleChangedFile[];
+	relatedPrsNeverResolve?: boolean;
 };
 
 const buildCaches = (overrides: CachesOverrides = {}): ConsoleCaches => {
-  const client = {
-    fetchItemBody: async () => '# body',
-    fetchComments: async () => [],
-    fetchPrFiles: async () => overrides.prFiles ?? [],
-    fetchPrCommits: async () => [],
-    fetchRelatedPrs: async () =>
-      overrides.relatedPrsNeverResolve === true
-        ? new Promise<ConsoleRelatedPullRequest[]>(() => {})
-        : (overrides.relatedPrs ?? []),
-    fetchIssueState: async () => ({
-      state: 'open',
-      merged: false,
-      isPullRequest: true,
-      title: 'Container fixture title',
-    }),
-    fetchPullRequestStatus: async () => ({
-      found: true,
-      isConflicted: false,
-      mergeableStatus: 'MERGEABLE' as const,
-      isPassedAllCiJob: true,
-      isCiStateSuccess: true,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    }),
-  };
-  return {
-    client,
-    body: new ResourceCache(client.fetchItemBody),
-    comments: new ResourceCache(client.fetchComments),
-    files: new ResourceCache(client.fetchPrFiles),
-    commits: new ResourceCache(client.fetchPrCommits),
-    relatedPrs: new ResourceCache(client.fetchRelatedPrs),
-    state: new ResourceCache(client.fetchIssueState),
-    prStatus: new ResourceCache(client.fetchPullRequestStatus),
-  };
+	const client = {
+		fetchItemBody: async () => "# body",
+		fetchComments: async () => [],
+		fetchPrFiles: async () => overrides.prFiles ?? [],
+		fetchPrCommits: async () => [],
+		fetchRelatedPrs: async () =>
+			overrides.relatedPrsNeverResolve === true
+				? new Promise<ConsoleRelatedPullRequest[]>(() => {})
+				: (overrides.relatedPrs ?? []),
+		fetchIssueState: async () => ({
+			state: "open",
+			merged: false,
+			isPullRequest: true,
+			title: "Container fixture title",
+		}),
+		fetchPullRequestStatus: async () => ({
+			found: true,
+			isConflicted: false,
+			mergeableStatus: "MERGEABLE" as const,
+			isPassedAllCiJob: true,
+			isCiStateSuccess: true,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		}),
+	};
+	return {
+		client,
+		body: new ResourceCache(client.fetchItemBody),
+		comments: new ResourceCache(client.fetchComments),
+		files: new ResourceCache(client.fetchPrFiles),
+		commits: new ResourceCache(client.fetchPrCommits),
+		relatedPrs: new ResourceCache(client.fetchRelatedPrs),
+		state: new ResourceCache(client.fetchIssueState),
+		prStatus: new ResourceCache(client.fetchPullRequestStatus),
+	};
 };
 
 const buildOperations = (): ConsoleOperationsApi => ({
-  reviewPullRequest: jest.fn(async () => {}),
-  setNextActionDate: jest.fn(async () => {}),
-  setStory: jest.fn(async () => {}),
-  setStatus: jest.fn(async () => {}),
-  setInTmuxByHuman: jest.fn(async () => {}),
-  closeIssue: jest.fn(async () => {}),
-  okAndMoveToAwaitingWorkspace: jest.fn(async () => {}),
-  addComment: jest.fn(async () => ({
-    author: 'HiromiShikata',
-    body: 'comment body',
-    createdAt: '2026-06-19T11:58:00.000Z',
-  })),
-  uploadAttachment: jest.fn(async () => ''),
-  addInlineReviewComment: jest.fn(async () => {}),
+	reviewPullRequest: jest.fn(async () => {}),
+	setNextActionDate: jest.fn(async () => {}),
+	setStory: jest.fn(async () => {}),
+	setStatus: jest.fn(async () => {}),
+	setInTmuxByHuman: jest.fn(async () => {}),
+	closeIssue: jest.fn(async () => {}),
+	okAndMoveToAwaitingWorkspace: jest.fn(async () => {}),
+	addComment: jest.fn(async () => ({
+		author: "HiromiShikata",
+		body: "comment body",
+		createdAt: "2026-06-19T11:58:00.000Z",
+	})),
+	uploadAttachment: jest.fn(async () => ""),
+	addInlineReviewComment: jest.fn(async () => {}),
+	deleteAllComments: jest.fn(async () => {}),
 });
 
 const findCommentsPanelToggle = (container: HTMLElement): HTMLElement => {
-  const toggle = Array.from(
-    container.querySelectorAll('.console-panel-toggle'),
-  ).find((element) =>
-    element
-      .querySelector('.console-panel-title')
-      ?.textContent?.startsWith('Comments'),
-  );
-  if (toggle === undefined) {
-    throw new Error('Comments panel toggle is not rendered');
-  }
-  return toggle as HTMLElement;
+	const toggle = Array.from(
+		container.querySelectorAll(".console-panel-toggle"),
+	).find((element) =>
+		element
+			.querySelector(".console-panel-title")
+			?.textContent?.startsWith("Comments"),
+	);
+	if (toggle === undefined) {
+		throw new Error("Comments panel toggle is not rendered");
+	}
+	return toggle as HTMLElement;
 };
 
 describe('ConsoleItemDetailContainer', () => {
@@ -150,8 +151,8 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
 
-    expect(getByPlaceholderText('Leave a comment…')).toBeInTheDocument();
-  });
+		expect(getByPlaceholderText("Leave a comment…")).toBeInTheDocument();
+	});
 
   it('puts a posted comment in the scrolling comment list and leaves the sticky dock holding only the input', async () => {
     const operations = buildOperations();
@@ -175,24 +176,24 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
 
-    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
-      target: { value: 'The dock must not grow with every comment.' },
-    });
-    fireEvent.click(getByText('Comment'));
+		fireEvent.change(getByPlaceholderText("Leave a comment…"), {
+			target: { value: "The dock must not grow with every comment." },
+		});
+		fireEvent.click(getByText("Comment"));
 
-    await waitFor(() => {
-      expect(
-        container.querySelector('.console-comment-list')?.textContent,
-      ).toContain('The dock must not grow with every comment.');
-    });
-    expect(
-      container.querySelector('.console-detail-dock')?.textContent,
-    ).not.toContain('The dock must not grow with every comment.');
-    expect(
-      container.querySelectorAll('.console-detail-dock .console-comment')
-        .length,
-    ).toBe(0);
-  });
+		await waitFor(() => {
+			expect(
+				container.querySelector(".console-comment-list")?.textContent,
+			).toContain("The dock must not grow with every comment.");
+		});
+		expect(
+			container.querySelector(".console-detail-dock")?.textContent,
+		).not.toContain("The dock must not grow with every comment.");
+		expect(
+			container.querySelectorAll(".console-detail-dock .console-comment")
+				.length,
+		).toBe(0);
+	});
 
   it('leaves the collapsed comments panel of a pull request item collapsed after a comment is posted', async () => {
     const operations = buildOperations();
@@ -216,30 +217,30 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(findCommentsPanelToggle(container).textContent).toContain(
-        'Comments (0)',
-      );
-    });
-    expect(
-      findCommentsPanelToggle(container).getAttribute('aria-expanded'),
-    ).toBe('false');
+		await waitFor(() => {
+			expect(findCommentsPanelToggle(container).textContent).toContain(
+				"Comments (0)",
+			);
+		});
+		expect(
+			findCommentsPanelToggle(container).getAttribute("aria-expanded"),
+		).toBe("false");
 
-    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
-      target: { value: 'Posted from the pull request item.' },
-    });
-    fireEvent.click(getByText('Comment'));
+		fireEvent.change(getByPlaceholderText("Leave a comment…"), {
+			target: { value: "Posted from the pull request item." },
+		});
+		fireEvent.click(getByText("Comment"));
 
-    await waitFor(() => {
-      expect(findCommentsPanelToggle(container).textContent).toContain(
-        'Comments (1)',
-      );
-    });
-    expect(
-      findCommentsPanelToggle(container).getAttribute('aria-expanded'),
-    ).toBe('false');
-    expect(container.querySelector('.console-comment-list')).toBeNull();
-  });
+		await waitFor(() => {
+			expect(findCommentsPanelToggle(container).textContent).toContain(
+				"Comments (1)",
+			);
+		});
+		expect(
+			findCommentsPanelToggle(container).getAttribute("aria-expanded"),
+		).toBe("false");
+		expect(container.querySelector(".console-comment-list")).toBeNull();
+	});
 
   it('keeps a reader-collapsed comments panel collapsed after a comment is posted on an issue item', async () => {
     const operations = buildOperations();
@@ -263,31 +264,31 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(findCommentsPanelToggle(container).textContent).toContain(
-        'Comments (0)',
-      );
-    });
-    fireEvent.click(findCommentsPanelToggle(container));
-    expect(
-      findCommentsPanelToggle(container).getAttribute('aria-expanded'),
-    ).toBe('false');
+		await waitFor(() => {
+			expect(findCommentsPanelToggle(container).textContent).toContain(
+				"Comments (0)",
+			);
+		});
+		fireEvent.click(findCommentsPanelToggle(container));
+		expect(
+			findCommentsPanelToggle(container).getAttribute("aria-expanded"),
+		).toBe("false");
 
-    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
-      target: { value: 'Posted from the issue item.' },
-    });
-    fireEvent.click(getByText('Comment'));
+		fireEvent.change(getByPlaceholderText("Leave a comment…"), {
+			target: { value: "Posted from the issue item." },
+		});
+		fireEvent.click(getByText("Comment"));
 
-    await waitFor(() => {
-      expect(findCommentsPanelToggle(container).textContent).toContain(
-        'Comments (1)',
-      );
-    });
-    expect(
-      findCommentsPanelToggle(container).getAttribute('aria-expanded'),
-    ).toBe('false');
-    expect(container.querySelector('.console-comment-list')).toBeNull();
-  });
+		await waitFor(() => {
+			expect(findCommentsPanelToggle(container).textContent).toContain(
+				"Comments (1)",
+			);
+		});
+		expect(
+			findCommentsPanelToggle(container).getAttribute("aria-expanded"),
+		).toBe("false");
+		expect(container.querySelector(".console-comment-list")).toBeNull();
+	});
 
   it('shows Approve for an issue item from the generated related open pull request urls before the related pull requests are fetched', () => {
     const operations = buildOperations();
@@ -313,17 +314,17 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
 
-    expect(getByText('Approve & Merge')).toBeInTheDocument();
-    fireEvent.click(getByText('Approve & Merge'));
-    const input = onQueueAction.mock.calls[0][0];
-    input.commit();
-    expect(operations.reviewPullRequest).toHaveBeenCalledWith(
-      itemWithBakedPullRequest,
-      bakedPullRequestUrl,
-      'approve_and_merge',
-      [],
-    );
-  });
+		expect(getByText("Approve & Merge")).toBeInTheDocument();
+		fireEvent.click(getByText("Approve & Merge"));
+		const input = onQueueAction.mock.calls[0][0];
+		input.commit();
+		expect(operations.reviewPullRequest).toHaveBeenCalledWith(
+			itemWithBakedPullRequest,
+			bakedPullRequestUrl,
+			"approve_and_merge",
+			[],
+		);
+	});
 
   it('disables Reject until an inline comment is entered and then commits it as the request-changes review', async () => {
     const operations = buildOperations();
@@ -349,54 +350,54 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(getByText('Reject')).toBeInTheDocument();
-    });
-    expect(getByText('Reject')).toBeDisabled();
+		await waitFor(() => {
+			expect(getByText("Reject")).toBeInTheDocument();
+		});
+		expect(getByText("Reject")).toBeDisabled();
 
-    const fileRow = await findByRole('button', {
-      name: new RegExp(
-        consoleChangedFilesFixture[0].path.split('/').at(-1) ?? '',
-      ),
-    });
-    fireEvent.click(fileRow);
-    const commentButton = getAllByRole('button', {
-      name: /^Comment on line/,
-    })[0];
-    fireEvent.click(commentButton);
-    fireEvent.change(
-      getByPlaceholderText('Leave a review comment on this line…'),
-      { target: { value: 'Please rename this variable.' } },
-    );
-    const submitButton = container.querySelector(
-      '.console-diff-composer-submit',
-    );
-    fireEvent.click(submitButton as Element);
+		const fileRow = await findByRole("button", {
+			name: new RegExp(
+				consoleChangedFilesFixture[0].path.split("/").at(-1) ?? "",
+			),
+		});
+		fireEvent.click(fileRow);
+		const commentButton = getAllByRole("button", {
+			name: /^Comment on line/,
+		})[0];
+		fireEvent.click(commentButton);
+		fireEvent.change(
+			getByPlaceholderText("Leave a review comment on this line…"),
+			{ target: { value: "Please rename this variable." } },
+		);
+		const submitButton = container.querySelector(
+			".console-diff-composer-submit",
+		);
+		fireEvent.click(submitButton as Element);
 
-    await waitFor(() => {
-      expect(getByText('Reject')).not.toBeDisabled();
-    });
+		await waitFor(() => {
+			expect(getByText("Reject")).not.toBeDisabled();
+		});
 
-    fireEvent.click(getByText('Reject'));
-    const rejectInput = onQueueAction.mock.calls.at(-1)?.[0];
-    expect(rejectInput.kind).toEqual({
-      type: 'review',
-      action: 'request_changes',
-    });
-    rejectInput.commit();
-    const reviewCall = (
-      operations.reviewPullRequest as jest.Mock
-    ).mock.calls.at(-1);
-    expect(reviewCall?.[2]).toBe('request_changes');
-    expect(reviewCall?.[3]).toEqual([
-      {
-        path: consoleChangedFilesFixture[0].path,
-        line: expect.any(Number),
-        side: expect.stringMatching(/LEFT|RIGHT/),
-        body: 'Please rename this variable.',
-      },
-    ]);
-  });
+		fireEvent.click(getByText("Reject"));
+		const rejectInput = onQueueAction.mock.calls.at(-1)?.[0];
+		expect(rejectInput.kind).toEqual({
+			type: "review",
+			action: "request_changes",
+		});
+		rejectInput.commit();
+		const reviewCall = (
+			operations.reviewPullRequest as jest.Mock
+		).mock.calls.at(-1);
+		expect(reviewCall?.[2]).toBe("request_changes");
+		expect(reviewCall?.[3]).toEqual([
+			{
+				path: consoleChangedFilesFixture[0].path,
+				line: expect.any(Number),
+				side: expect.stringMatching(/LEFT|RIGHT/),
+				body: "Please rename this variable.",
+			},
+		]);
+	});
 
   it('passes onSubmitAndMoveToAwaitingWorkspace to the composer when statusOptions includes Awaiting Workspace', () => {
     const { getByText } = render(
@@ -505,58 +506,58 @@ describe('ConsoleItemDetailContainer', () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(getByText('Reject')).toBeInTheDocument();
-    });
-    expect(getByText('Reject')).toBeDisabled();
+		await waitFor(() => {
+			expect(getByText("Reject")).toBeInTheDocument();
+		});
+		expect(getByText("Reject")).toBeDisabled();
 
-    const fileRow = await findByRole('button', {
-      name: new RegExp(
-        consoleChangedFilesFixture[0].path.split('/').at(-1) ?? '',
-      ),
-    });
-    fireEvent.click(fileRow);
+		const fileRow = await findByRole("button", {
+			name: new RegExp(
+				consoleChangedFilesFixture[0].path.split("/").at(-1) ?? "",
+			),
+		});
+		fireEvent.click(fileRow);
 
-    const commentButton = getAllByRole('button', {
-      name: /^Comment on line/,
-    })[0];
-    fireEvent.click(commentButton);
+		const commentButton = getAllByRole("button", {
+			name: /^Comment on line/,
+		})[0];
+		fireEvent.click(commentButton);
 
-    fireEvent.change(
-      getByPlaceholderText('Leave a review comment on this line…'),
-      { target: { value: 'Please rename this variable.' } },
-    );
-    const submitButton = container.querySelector(
-      '.console-diff-composer-submit',
-    );
-    expect(submitButton).not.toBeNull();
-    fireEvent.click(submitButton as Element);
+		fireEvent.change(
+			getByPlaceholderText("Leave a review comment on this line…"),
+			{ target: { value: "Please rename this variable." } },
+		);
+		const submitButton = container.querySelector(
+			".console-diff-composer-submit",
+		);
+		expect(submitButton).not.toBeNull();
+		fireEvent.click(submitButton as Element);
 
-    await waitFor(() => {
-      expect(getByText('Reject')).not.toBeDisabled();
-    });
-    expect(operations.addInlineReviewComment).not.toHaveBeenCalled();
+		await waitFor(() => {
+			expect(getByText("Reject")).not.toBeDisabled();
+		});
+		expect(operations.addInlineReviewComment).not.toHaveBeenCalled();
 
-    fireEvent.click(getByText('Reject'));
-    const rejectInput = onQueueAction.mock.calls.at(-1)?.[0];
-    expect(rejectInput.kind).toEqual({
-      type: 'review',
-      action: 'request_changes',
-    });
-    rejectInput.commit();
-    const reviewCall = (
-      operations.reviewPullRequest as jest.Mock
-    ).mock.calls.at(-1);
-    expect(reviewCall?.[1]).toBe(relatedPullRequest.url);
-    expect(reviewCall?.[2]).toBe('request_changes');
-    expect(reviewCall?.[3]).toEqual([
-      {
-        path: consoleChangedFilesFixture[0].path,
-        line: expect.any(Number),
-        side: expect.stringMatching(/LEFT|RIGHT/),
-        body: 'Please rename this variable.',
-      },
-    ]);
-    expect(reviewCall?.[3][0].body).not.toBe('');
-  });
+		fireEvent.click(getByText("Reject"));
+		const rejectInput = onQueueAction.mock.calls.at(-1)?.[0];
+		expect(rejectInput.kind).toEqual({
+			type: "review",
+			action: "request_changes",
+		});
+		rejectInput.commit();
+		const reviewCall = (
+			operations.reviewPullRequest as jest.Mock
+		).mock.calls.at(-1);
+		expect(reviewCall?.[1]).toBe(relatedPullRequest.url);
+		expect(reviewCall?.[2]).toBe("request_changes");
+		expect(reviewCall?.[3]).toEqual([
+			{
+				path: consoleChangedFilesFixture[0].path,
+				line: expect.any(Number),
+				side: expect.stringMatching(/LEFT|RIGHT/),
+				body: "Please rename this variable.",
+			},
+		]);
+		expect(reviewCall?.[3][0].body).not.toBe("");
+	});
 });

@@ -18,6 +18,7 @@ import {
   handleAttachmentUpload,
   handleComment,
   handleCreateIssue,
+  handleDeleteAllComments,
   handleIntmux,
   handleReorderStory,
   handleReview,
@@ -2488,6 +2489,24 @@ describe('consoleOperationApi', () => {
         },
       );
       expect(response.statusCode).toBe(200);
+    });
+  });
+
+  describe('handleDeleteAllComments', () => {
+    it('deletes all comments for the given issue url and returns 200', async () => {
+      issueRepository.deleteAllCommentsByUrl.mockResolvedValue(undefined);
+      const response = await handleDeleteAllComments(context, {
+        issueUrl: 'https://github.com/o/r/issues/1',
+      });
+      expect(issueRepository.deleteAllCommentsByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+      );
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('returns 400 when issueUrl is missing', async () => {
+      const response = await handleDeleteAllComments(context, {});
+      expect(response.statusCode).toBe(400);
     });
   });
 });

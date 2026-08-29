@@ -1133,6 +1133,12 @@ body {
   color: #79c0ff;
 }
 
+.console-op-button-danger {
+  background: #3a1518;
+  border-color: #f85149;
+  color: #f85149;
+}
+
 .console-pr-section {
   border: 1px solid #30363d;
   border-radius: 8px;
