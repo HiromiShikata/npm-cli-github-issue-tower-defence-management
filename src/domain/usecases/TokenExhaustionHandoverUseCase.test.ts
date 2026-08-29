@@ -9,6 +9,7 @@ import {
 import { ClaudeHandoverSession } from '../entities/ClaudeHandoverSession';
 import { TokenExhaustionHandoverState } from '../entities/TokenExhaustionHandoverState';
 import { ClaudeHandoverSessionRepository } from './adapter-interfaces/ClaudeHandoverSessionRepository';
+import { IssueCheckpointRepository } from './adapter-interfaces/IssueCheckpointRepository';
 import { ProcessSignalRepository } from './adapter-interfaces/ProcessSignalRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
 import {
@@ -121,6 +122,9 @@ describe('TokenExhaustionHandoverUseCase', () => {
     >
   >;
   let processSignalRepository: Mocked<ProcessSignalRepository>;
+  let issueCheckpointRepository: Mocked<
+    Pick<IssueCheckpointRepository, 'postCheckpoint'>
+  >;
 
   const exhaustedFiveHour = (): TokenModelWeeklyLimit[] => [];
 
@@ -146,12 +150,16 @@ describe('TokenExhaustionHandoverUseCase', () => {
       terminateProcess: jest.fn(),
       killProcess: jest.fn(),
     };
+    issueCheckpointRepository = {
+      postCheckpoint: jest.fn().mockResolvedValue(undefined),
+    };
 
     useCase = new TokenExhaustionHandoverUseCase(
       handoverSessionRepository,
       snapshotRepository,
       tmuxSessionRepository,
       processSignalRepository,
+      issueCheckpointRepository,
     );
   });
 
@@ -330,7 +338,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     );
   });
 
-  it('sends SIGTERM to an impl subagent on first detection', async () => {
+  it('posts a checkpoint comment to the task issue on first detection of an impl subagent with a known issue URL', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       implSubagentSession(),
     ]);
@@ -341,10 +349,78 @@ describe('TokenExhaustionHandoverUseCase', () => {
 
     const result = await useCase.run(defaultInput());
 
+    expect(issueCheckpointRepository.postCheckpoint).toHaveBeenCalledWith(
+      ISSUE_URL,
+    );
+    expect(processSignalRepository.terminateProcess).not.toHaveBeenCalled();
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+    expect(result.state.entries[`pid:${IMPL_PID}`]).toEqual({
+      signaledAtEpoch: nowEpochSeconds,
+      pid: IMPL_PID,
+    });
+  });
+
+  it('sends SIGTERM immediately when the impl subagent has no issue URL', async () => {
+    const noUrlSession: ClaudeHandoverSession = {
+      ...implSubagentSession(),
+      issueUrl: null,
+    };
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      noUrlSession,
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+    const logSpy = jest.spyOn(console, 'log');
+
+    const result = await useCase.run(defaultInput());
+
     expect(processSignalRepository.terminateProcess).toHaveBeenCalledWith(
       IMPL_PID,
     );
-    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+    expect(issueCheckpointRepository.postCheckpoint).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('no issue URL'),
+    );
+    expect(result.state.entries[`pid:${IMPL_PID}`]).toEqual({
+      signaledAtEpoch: nowEpochSeconds,
+      pid: IMPL_PID,
+    });
+  });
+
+  it('does not create a state entry when postCheckpoint throws, so the next cycle retries', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      implSubagentSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+    issueCheckpointRepository.postCheckpoint.mockRejectedValue(
+      new Error('network error'),
+    );
+
+    const result = await useCase.run(defaultInput());
+
+    expect(result.state.entries[`pid:${IMPL_PID}`]).toBeUndefined();
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+  });
+
+  it('creates a state entry after postCheckpoint succeeds', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      implSubagentSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput());
+
+    expect(issueCheckpointRepository.postCheckpoint).toHaveBeenCalledWith(
+      ISSUE_URL,
+    );
     expect(result.state.entries[`pid:${IMPL_PID}`]).toEqual({
       signaledAtEpoch: nowEpochSeconds,
       pid: IMPL_PID,
@@ -521,7 +597,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(result.killedSessionNames).toEqual([BARE_NAME]);
   });
 
-  it('SIGKILLs an impl subagent that is still alive after the grace period', async () => {
+  it('SIGTERMs then SIGKILLs an impl subagent that is still alive after the grace period', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       implSubagentSession(),
     ]);
@@ -547,6 +623,14 @@ describe('TokenExhaustionHandoverUseCase', () => {
       }),
     );
 
+    const terminateOrder =
+      processSignalRepository.terminateProcess.mock.invocationCallOrder[0];
+    const killOrder =
+      processSignalRepository.killProcess.mock.invocationCallOrder[0];
+    expect(terminateOrder).toBeLessThan(killOrder);
+    expect(processSignalRepository.terminateProcess).toHaveBeenCalledWith(
+      IMPL_PID,
+    );
     expect(processSignalRepository.killProcess).toHaveBeenCalledWith(IMPL_PID);
     expect(result.terminatedPids).toEqual([IMPL_PID]);
   });

@@ -5,6 +5,7 @@ import {
   DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER,
   DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS,
 } from '../../../domain/usecases/TokenExhaustionHandoverUseCase';
+import { GitHubIssueCheckpointRepository } from '../../repositories/GitHubIssueCheckpointRepository';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { RateLimitSnapshotRepository } from '../../repositories/RateLimitSnapshotRepository';
 import { ProcClaudeHandoverSessionRepository } from '../../repositories/ProcClaudeHandoverSessionRepository';
@@ -60,6 +61,7 @@ export const handleTokenExhaustionHandover = async (
     snapshotRepository,
     new NodeTmuxSessionRepository(localCommandRunner),
     new NodeProcessSignalRepository(),
+    new GitHubIssueCheckpointRepository(process.env.GH_TOKEN ?? ''),
   );
 
   const result = await useCase.run({

@@ -4,6 +4,7 @@ import {
   TokenExhaustionHandoverStateEntry,
 } from '../entities/TokenExhaustionHandoverState';
 import { ClaudeHandoverSessionRepository } from './adapter-interfaces/ClaudeHandoverSessionRepository';
+import { IssueCheckpointRepository } from './adapter-interfaces/IssueCheckpointRepository';
 import { ProcessSignalRepository } from './adapter-interfaces/ProcessSignalRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
 import {
@@ -73,6 +74,10 @@ export class TokenExhaustionHandoverUseCase {
       | 'launchBareNameLeaderSession'
     >,
     private readonly processSignalRepository: ProcessSignalRepository,
+    private readonly issueCheckpointRepository: Pick<
+      IssueCheckpointRepository,
+      'postCheckpoint'
+    >,
   ) {}
 
   run = async (
@@ -245,7 +250,14 @@ export class TokenExhaustionHandoverUseCase {
     input: TokenExhaustionHandoverInput,
   ): Promise<void> => {
     if (session.kind === 'implSubagent') {
-      this.processSignalRepository.terminateProcess(session.pid);
+      if (session.issueUrl !== null) {
+        await this.issueCheckpointRepository.postCheckpoint(session.issueUrl);
+      } else {
+        console.log(
+          `Token exhaustion handover: sending SIGTERM to impl subagent pid=${session.pid} (no issue URL, cannot post checkpoint)`,
+        );
+        this.processSignalRepository.terminateProcess(session.pid);
+      }
       return;
     }
     if (session.sessionName === null) {
@@ -263,6 +275,7 @@ export class TokenExhaustionHandoverUseCase {
     entry: TokenExhaustionHandoverStateEntry,
   ): Promise<void> => {
     if (session.kind === 'implSubagent') {
+      this.processSignalRepository.terminateProcess(entry.pid);
       this.processSignalRepository.killProcess(entry.pid);
       return;
     }
