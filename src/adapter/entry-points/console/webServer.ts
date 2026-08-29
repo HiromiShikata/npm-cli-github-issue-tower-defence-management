@@ -240,7 +240,6 @@ export type WebServerOptions = {
   resolveProjectRepository?: ConsoleProjectRepositoryResolver | null;
   invalidateProject?: ((pjcode: string) => void) | null;
   issueAttachmentRepository?: IssueAttachmentRepository | null;
-  projectRepository?: Pick<ProjectRepository, 'updateStoryList'> | null;
   updateProjectCacheEntry?:
     ((pjcode: string, updatedProject: Project) => void) | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
@@ -574,18 +573,12 @@ const handleOperationApi = async (
   }
   const resolveIssueRepository =
     options.resolveIssueRepository ?? ((): IssueRepository => issueRepository);
-  const projectRepository = options.projectRepository ?? null;
   const context: ConsoleOperationContext = {
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
     consoleDataOutputDir: options.consoleDataOutputDir,
     issueAttachmentRepository: options.issueAttachmentRepository ?? null,
-    updateStoryList:
-      projectRepository !== null
-        ? (project, stories) =>
-            projectRepository.updateStoryList(project, stories)
-        : null,
     resolveProjectRepository: options.resolveProjectRepository ?? null,
     invalidateProject: options.invalidateProject ?? null,
     updateProjectCacheEntry: options.updateProjectCacheEntry ?? null,

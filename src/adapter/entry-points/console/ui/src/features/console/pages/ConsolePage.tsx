@@ -52,6 +52,7 @@ import type {
   ConsoleColor,
   ConsoleListItem,
   ConsoleOverlayStatus,
+  ConsoleStoryEntry,
   ConsoleTabName,
 } from '../logic/types';
 import { CONSOLE_TABS } from '../logic/types';
@@ -183,6 +184,11 @@ export const ConsolePage = () => {
   const [localStoryOptionsOverride, setLocalStoryOptionsOverride] = useState<{
     generatedAt: string | undefined;
     stories: typeof storyOptions;
+  } | null>(null);
+
+  const [localStoryEntriesOverride, setLocalStoryEntriesOverride] = useState<{
+    generatedAt: string | undefined;
+    stories: ConsoleStoryEntry[];
   } | null>(null);
 
   const triageStoryOptions =
@@ -347,7 +353,12 @@ export const ConsolePage = () => {
   }, []);
 
   const storiesSnapshot = snapshots.stories;
-  const storyEntries = storiesSnapshot?.stories ?? [];
+  const rawStoryEntries = storiesSnapshot?.stories ?? [];
+  const storyEntries =
+    localStoryEntriesOverride !== null &&
+    localStoryEntriesOverride.generatedAt === storiesSnapshot?.generatedAt
+      ? localStoryEntriesOverride.stories
+      : rawStoryEntries;
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
 
   const handleCreateIssue = useCallback(
@@ -374,24 +385,49 @@ export const ConsolePage = () => {
         throw new Error('No project specified in the URL path.');
       }
       await postConsoleReorderStory({ pjcode, storyOptionId, direction });
-      const index = triageStoryOptions.findIndex((o) => o.id === storyOptionId);
-      if (index === -1) {
-        return;
+      const triageIndex = triageStoryOptions.findIndex(
+        (o) => o.id === storyOptionId,
+      );
+      if (triageIndex !== -1) {
+        const triageSwapIndex = triageIndex + (direction === 'up' ? -1 : 1);
+        if (
+          triageSwapIndex >= 0 &&
+          triageSwapIndex < triageStoryOptions.length
+        ) {
+          const nextTriage = [...triageStoryOptions];
+          const triageTemp = nextTriage[triageIndex];
+          nextTriage[triageIndex] = nextTriage[triageSwapIndex];
+          nextTriage[triageSwapIndex] = triageTemp;
+          setLocalStoryOptionsOverride({
+            generatedAt: activeSnapshot?.generatedAt,
+            stories: nextTriage,
+          });
+        }
       }
-      const swapIndex = index + (direction === 'up' ? -1 : 1);
-      if (swapIndex < 0 || swapIndex >= triageStoryOptions.length) {
-        return;
+      const entryIndex = storyEntries.findIndex(
+        (e) => e.storyOptionId === storyOptionId,
+      );
+      if (entryIndex !== -1) {
+        const entrySwapIndex = entryIndex + (direction === 'up' ? -1 : 1);
+        if (entrySwapIndex >= 0 && entrySwapIndex < storyEntries.length) {
+          const nextEntries = [...storyEntries];
+          const entryTemp = nextEntries[entryIndex];
+          nextEntries[entryIndex] = nextEntries[entrySwapIndex];
+          nextEntries[entrySwapIndex] = entryTemp;
+          setLocalStoryEntriesOverride({
+            generatedAt: storiesSnapshot?.generatedAt,
+            stories: nextEntries,
+          });
+        }
       }
-      const next = [...triageStoryOptions];
-      const temp = next[index];
-      next[index] = next[swapIndex];
-      next[swapIndex] = temp;
-      setLocalStoryOptionsOverride({
-        generatedAt: activeSnapshot?.generatedAt,
-        stories: next,
-      });
     },
-    [pjcode, triageStoryOptions, activeSnapshot?.generatedAt],
+    [
+      pjcode,
+      triageStoryOptions,
+      storyEntries,
+      activeSnapshot?.generatedAt,
+      storiesSnapshot?.generatedAt,
+    ],
   );
 
   const handleStoryAdd = useCallback(
@@ -523,6 +559,7 @@ export const ConsolePage = () => {
           onAddStory={handleStoryAdd}
           onSelectColor={handleSelectColor}
           onToggleGray={handleToggleGray}
+          onReorderStory={handleReorderStory}
           optimisticColors={storyOptimisticColors}
           colorChangeInFlight={storyColorChangeInFlight}
           colorErrors={storyColorErrors}
