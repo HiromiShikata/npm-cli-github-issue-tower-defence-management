@@ -1,4 +1,4 @@
-import { SlackRepository } from '../../domain/usecases/adapter-interfaces/SlackRepository';
+import type { SlackRepository } from '../../domain/usecases/adapter-interfaces/SlackRepository';
 export declare class KySlackRepository implements SlackRepository {
     private readonly client;
     private readonly authHeader;

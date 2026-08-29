@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KySlackRepository = void 0;
-const ky_1 = __importDefault(require("ky"));
 const fs_1 = __importDefault(require("fs"));
+const ky_1 = __importDefault(require("ky"));
 const isRecord = (data) => {
     return typeof data === 'object' && data !== null;
 };
@@ -46,6 +46,7 @@ class KySlackRepository {
                 limit: 3,
                 methods: ['get', 'post'],
                 statusCodes: [429, 500, 502, 503, 504],
+                maxRetryAfter: 10000,
             },
         });
     }
