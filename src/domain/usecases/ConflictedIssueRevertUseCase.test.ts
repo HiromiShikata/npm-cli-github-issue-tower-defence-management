@@ -387,7 +387,9 @@ describe('ConflictedIssueRevertUseCase', () => {
         new Map([[conflictedPr.url, conflictedPr]]),
       );
       mockIssueRepository.updateBranch.mockRejectedValue(
-        new Error('Failed to update branch for PR https://github.com/user/repo/pull/1: 500 Internal Server Error'),
+        new Error(
+          'Failed to update branch for PR https://github.com/user/repo/pull/1: 500 Internal Server Error',
+        ),
       );
 
       await expect(useCase.run({ projectUrl })).rejects.toThrow(
