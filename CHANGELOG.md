@@ -1,3 +1,10 @@
+## [1.196.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.196.0...v1.196.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* park an owner-approval task in Awaiting Quality Check ([#1844](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1844)) ([96e8f4c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/96e8f4c4cf8a466bccd6f8900544a1fae147597b)), closes [#1843](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1843)
+
 # [1.196.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.195.0...v1.196.0) (2026-08-29)
 
 

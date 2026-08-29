@@ -1,3 +1,3 @@
 export declare const AWAITING_OWNER_APPROVAL_MESSAGE_HEAD = "Auto Status Check: AWAITING_OWNER_APPROVAL";
-export declare const AWAITING_OWNER_APPROVAL_MESSAGE = "Auto Status Check: AWAITING_OWNER_APPROVAL\nThe last report declared that this task is waiting for owner approval. Moving it to Todo by human so that it waits in the owner's queue instead of being dispatched again.";
+export declare const AWAITING_OWNER_APPROVAL_MESSAGE = "Auto Status Check: AWAITING_OWNER_APPROVAL\nThe last report declared that this task is waiting for owner approval. Moving it to Awaiting Quality Check so that it waits for the owner's judgement instead of being dispatched again.";
 //# sourceMappingURL=awaitingOwnerApprovalMessage.d.ts.map
