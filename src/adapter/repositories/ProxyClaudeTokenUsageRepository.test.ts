@@ -76,6 +76,31 @@ describe('ProxyClaudeTokenUsageRepository', () => {
     const pastReset = Math.floor(Date.now() / 1000) - 3600;
     const observedAfterReset = Math.floor(Date.now() / 1000) - 60;
 
+    it('should leave out a token whose subscription the proxy has flagged as disabled', async () => {
+      mockLoadTokenEntries.mockReturnValue([
+        { name: 'alice', token: 'token-a' },
+        { name: 'disabled-one', token: 'token-disabled' },
+      ]);
+      mockReadRateLimit.mockImplementation((token: string) => ({
+        fiveHourUtilization: 0,
+        fiveHourReset: futureReset,
+        sevenDayUtilization: 0,
+        sevenDayReset: futureReset,
+        blocked: false,
+        rejected: false,
+        unifiedRejected: false,
+        fiveHourRejected: false,
+        sevenDayRejected: false,
+        modelWeeklyLimits: {},
+        subscriptionDisabled: token === 'token-disabled',
+      }));
+      const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+      const result = await repository.getAvailableTokenUsages();
+
+      expect(result.map((usage) => usage.token)).toEqual(['token-a']);
+    });
+
     it('should map each token to its cached utilization and include name', async () => {
       mockLoadTokenEntries.mockReturnValue([
         { name: 'alice', token: 'token-a' },
