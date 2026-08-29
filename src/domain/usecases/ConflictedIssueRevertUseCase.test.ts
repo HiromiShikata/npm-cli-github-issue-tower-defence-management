@@ -364,7 +364,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
-    it('should propagate error when update-branch throws for a non-200 non-422 response', async () => {
+    it('should propagate errors thrown by updateBranch', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -395,6 +395,8 @@ describe('ConflictedIssueRevertUseCase', () => {
       await expect(useCase.run({ projectUrl })).rejects.toThrow(
         'Failed to update branch for PR',
       );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
     it('should not update status or post comment when update-branch succeeds for the conflicted PR', async () => {
