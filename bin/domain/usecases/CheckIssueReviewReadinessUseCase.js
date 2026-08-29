@@ -43,7 +43,7 @@ class CheckIssueReviewReadinessUseCase {
                     detail: 'REPORT_HAS_NEXT_STEP',
                 });
             }
-            const { rejections: prRejections } = await this.issueRejectionEvaluator.evaluate(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), { developerAgentName: params.developerAgentName });
+            const { rejections: prRejections } = await this.issueRejectionEvaluator.evaluate(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), { developerAgentNames: params.developerAgentNames });
             const nextStepAgent = (0, extractNextStepAgentFromComments_1.extractNextStepAgentFromComments)(comments, isTrustedAuthor);
             const requiredPrRejections = (0, triagerAgentName_1.isTriagerAgentName)(nextStepAgent)
                 ? prRejections.filter((rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND')

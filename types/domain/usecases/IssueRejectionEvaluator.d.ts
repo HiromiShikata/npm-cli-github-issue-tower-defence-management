@@ -10,7 +10,7 @@ export type PrRejectionResult = {
 export type EvaluateOptions = {
     relatedOpenPrUrls?: string[] | null;
     resolvedOpenPrByUrl?: ReadonlyMap<string, RelatedPullRequest | null> | null;
-    developerAgentName?: string | null;
+    developerAgentNames?: string[] | null;
     detectConflictEvenIfEvaluationSkipped?: boolean;
 };
 export declare class IssueRejectionEvaluator {
@@ -27,7 +27,7 @@ export declare class IssueRejectionEvaluator {
         labels: string[];
         body?: string | null;
         agent?: string | null;
-    }, labelsNotRequiringPullRequest?: string[], developerAgentName?: string | null) => boolean;
+    }, labelsNotRequiringPullRequest?: string[], developerAgentNames?: string[] | null) => boolean;
     private resolveOpenPrsForPrItem;
     private resolveOpenPrsFromUrls;
     private extractChangeTargetMustPaths;

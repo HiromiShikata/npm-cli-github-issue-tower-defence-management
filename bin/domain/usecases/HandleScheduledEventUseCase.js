@@ -259,7 +259,7 @@ ${JSON.stringify(e)}
                 labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
                 changeTargetPathAliases: input.changeTargetPathAliases,
                 allowedIssueAuthors,
-                developerAgentName: input.developerAgentName,
+                developerAgentNames: input.developerAgentNames,
             });
             if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
                 await this.dailySecurityScanUseCase.run({

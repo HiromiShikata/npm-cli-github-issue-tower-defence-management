@@ -1757,7 +1757,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should reject a missing PR when the issue agent matches developerAgentName', async () => {
+  it('should reject a missing PR when the issue agent matches developerAgentNames', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1777,7 +1777,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
-      developerAgentName: 'my-agent',
+      developerAgentNames: ['my-agent'],
     });
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -4888,7 +4888,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should reassign to the configured developerAgentName when chore agent has a failing CI PR', async () => {
+    it('should reassign to the first configured developerAgentNames when chore agent has a failing CI PR', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -4921,7 +4921,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
-        developerAgentName: 'custom-developer',
+        developerAgentNames: ['custom-developer'],
       });
 
       expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(

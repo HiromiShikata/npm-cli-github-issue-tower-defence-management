@@ -52,7 +52,7 @@ class RevertNotReadyReviewQueueIssueUseCase {
                     const { rejections, approvedPrUrl } = await this.issueRejectionEvaluator.evaluate(issue, labelsNotRequiringPullRequest, {
                         relatedOpenPrUrls: relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
                         resolvedOpenPrByUrl,
-                        developerAgentName: params.developerAgentName,
+                        developerAgentNames: params.developerAgentNames,
                         detectConflictEvenIfEvaluationSkipped: true,
                     });
                     if (rejections.length === 1 &&
