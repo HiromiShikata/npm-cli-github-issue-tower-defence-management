@@ -3,9 +3,7 @@ import { IssueCheckpointRepository } from '../../domain/usecases/adapter-interfa
 const CHECKPOINT_COMMENT_BODY =
   'From: :robot: preparation-daemon (-)\n\n```json\n{"pullRequestRequired": false}\n```\n\nThis implementation session was interrupted by the preparation daemon due to token near exhaustion. The task will be re-dispatched.';
 
-export class GitHubIssueCheckpointRepository
-  implements IssueCheckpointRepository
-{
+export class GitHubIssueCheckpointRepository implements IssueCheckpointRepository {
   constructor(private readonly ghToken: string) {}
 
   postCheckpoint = async (issueUrl: string): Promise<void> => {
