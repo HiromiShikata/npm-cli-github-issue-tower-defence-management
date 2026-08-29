@@ -320,7 +320,9 @@ class NotifyFinishedIssuePreparationUseCase {
             }
         };
         this.resolveLinkedPrWithCiFailure = async (issue, developerAgentNames) => {
-            const effectiveDeveloperAgentNames = developerAgentNames?.length ? developerAgentNames : ['developer'];
+            const effectiveDeveloperAgentNames = developerAgentNames?.length
+                ? developerAgentNames
+                : ['developer'];
             if (issue.agent === null ||
                 effectiveDeveloperAgentNames.includes(issue.agent) ||
                 issue.agent === 'pr-reviewer') {

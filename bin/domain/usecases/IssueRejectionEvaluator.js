@@ -140,7 +140,9 @@ class IssueRejectionEvaluator {
         // so the batch covers exactly the items evaluate would have resolved.
         this.requiresPullRequestEvaluation = (issue, labelsNotRequiringPullRequest = [], developerAgentNames) => {
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
-            const effectiveDeveloperAgentNames = developerAgentNames?.length ? developerAgentNames : ['developer'];
+            const effectiveDeveloperAgentNames = developerAgentNames?.length
+                ? developerAgentNames
+                : ['developer'];
             const isNonDeveloperAgent = issue.agent != null &&
                 !effectiveDeveloperAgentNames.includes(issue.agent) &&
                 issue.agent !== 'pr-reviewer';

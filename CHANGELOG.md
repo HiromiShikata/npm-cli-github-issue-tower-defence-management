@@ -1,3 +1,10 @@
+# [2.10.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.9.0...v2.10.0) (2026-08-29)
+
+
+### Features
+
+* **IssueRejectionEvaluator:** accept array of developer agent names for PR evaluation ([#1871](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1871)) ([dd18fdd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dd18fdd7d4271331126b39e07e293fc0f1fc7f14)), closes [HiromiShikata/umino-corporait-operation#31053](https://github.com/HiromiShikata/umino-corporait-operation/issues/31053)
+
 # [2.9.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.8.0...v2.9.0) (2026-08-29)
 
 
