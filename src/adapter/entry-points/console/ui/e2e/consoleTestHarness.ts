@@ -87,8 +87,10 @@ type ConsoleFixtureSnapshot = {
   pjcode: string;
   generatedAt: string;
   statusOptions: ConsoleFixtureFieldOption[];
+  agentOptions: ConsoleFixtureFieldOption[];
   storyOptions: ConsoleFixtureFieldOption[];
   storyColors: Record<string, { color: string }>;
+  storyOrder: string[];
   items: ConsoleFixtureListItem[];
 };
 
@@ -130,6 +132,11 @@ const STATUS_OPTIONS: ConsoleFixtureFieldOption[] = [
   { id: 'a1e4b7c9', name: 'Todo by agent', color: 'BLUE' },
   { id: 'c2d278b2', name: 'In Tmux by human', color: 'RED' },
   { id: 'e9f6a726', name: 'In Tmux by agent', color: 'YELLOW' },
+];
+
+const AGENT_OPTIONS: ConsoleFixtureFieldOption[] = [
+  { id: 'agt00001', name: 'developer', color: 'BLUE' },
+  { id: 'agt00002', name: 'chore', color: 'GRAY' },
 ];
 
 const STORY_OPTIONS: ConsoleFixtureFieldOption[] = [
@@ -204,12 +211,16 @@ const pullRequestItem = (
 
 const buildSnapshot = (
   items: ConsoleFixtureListItem[],
+  agentOptions: ConsoleFixtureFieldOption[] = [],
+  storyOrder: string[] = [],
 ): ConsoleFixtureSnapshot => ({
   pjcode: CONSOLE_E2E_PJCODE,
   generatedAt: '2026-06-18T01:22:09.000Z',
   statusOptions: STATUS_OPTIONS,
+  agentOptions,
   storyOptions: STORY_OPTIONS,
   storyColors: STORY_COLORS,
+  storyOrder,
   items,
 });
 
@@ -265,6 +276,29 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
       agent: 'developer',
     },
   ],
+  queued: [
+    {
+      ...issueItem(
+        930,
+        'Add telemetry to the TDPM cost dashboard',
+        'QUE00930',
+        'TDPM Console port',
+        '2026-06-18T02:00:00.000Z',
+      ),
+      status: 'Awaiting Workspace',
+    },
+    {
+      ...issueItem(
+        931,
+        'Migrate the rate-limit store to a shared Redis backend',
+        'QUE00931',
+        'regular / workflow improvement',
+        '2026-06-18T02:30:00.000Z',
+      ),
+      status: 'Preparation',
+      agent: 'developer',
+    },
+  ],
 };
 
 const CONSOLE_E2E_STORIES_SNAPSHOT = {
@@ -310,13 +344,20 @@ const CONSOLE_E2E_STORIES_SNAPSHOT = {
   defaultNameWithOwner: REPO_NAME_WITH_OWNER,
 };
 
+const QUEUED_STORY_ORDER = [
+  'TDPM Console port',
+  'regular / workflow improvement',
+];
+
 const writeFixtureData = (consoleDataOutputDir: string): void => {
   for (const [tab, items] of Object.entries(CONSOLE_E2E_TAB_ITEMS)) {
     const tabDir = path.join(consoleDataOutputDir, CONSOLE_E2E_PJCODE, tab);
     fs.mkdirSync(tabDir, { recursive: true });
+    const agentOptions = tab === 'queued' ? AGENT_OPTIONS : [];
+    const storyOrder = tab === 'queued' ? QUEUED_STORY_ORDER : [];
     fs.writeFileSync(
       path.join(tabDir, 'list.json'),
-      JSON.stringify(buildSnapshot(items)),
+      JSON.stringify(buildSnapshot(items, agentOptions, storyOrder)),
     );
   }
   const storiesTabDir = path.join(
@@ -367,7 +408,16 @@ const buildE2eProject = (): Project => ({
   remainingEstimationMinutes: null,
   dependedIssueUrlSeparatedByComma: null,
   completionDate50PercentConfidence: null,
-  agent: null,
+  agent: {
+    name: 'Agent',
+    fieldId: 'PVTSSF_agent',
+    options: AGENT_OPTIONS.map((option) => ({
+      id: option.id,
+      name: option.name,
+      color: option.color as Project['status']['statuses'][number]['color'],
+      description: '',
+    })),
+  },
 });
 
 const buildIssueForUrl = (url: string): Issue => ({
