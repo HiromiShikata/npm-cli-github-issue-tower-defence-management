@@ -1,8 +1,56 @@
 import dotenv from 'dotenv';
-import { KySlackRepository } from './KySlackRepository';
 import fs from 'fs';
 import https from 'https';
 import path from 'path';
+import { KySlackRepository } from './KySlackRepository';
+
+describe('KySlackRepository', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  describe('postMessageToDirectMessage', () => {
+    it('does not hang on 429 Retry-After responses from Slack', async () => {
+      jest.useFakeTimers();
+
+      jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response('{"ok":false}', {
+          status: 429,
+          headers: { 'Retry-After': '30' },
+        }),
+      );
+
+      const slackRepository = new KySlackRepository('xoxp-test-token-unit');
+
+      // Attach .catch() immediately to prevent unhandled rejection when the
+      // promise rejects during jest.advanceTimersByTimeAsync below.
+      const settledValue: { value: unknown } = { value: 'not-yet-settled' };
+      slackRepository
+        .postMessageToDirectMessage('test message', 'non-existent-user')
+        .then(() => {
+          settledValue.value = 'resolved';
+        })
+        .catch((e: unknown) => {
+          settledValue.value = e;
+        });
+
+      // Advance 60 seconds of fake time.
+      // With maxRetryAfter bounded (e.g. 10s), all 3 retry delays (3×10s=30s) fire
+      // within this window, exhausting retries and settling the promise.
+      // With the default maxRetryAfter=INFINITY, only 2 of 3 delays fire (2×30s=60s),
+      // leaving the promise pending — causing CI to hang for the full Jest timeout.
+      await jest.advanceTimersByTimeAsync(60000);
+      jest.clearAllTimers();
+      jest.useRealTimers();
+
+      // Drain microtasks so the .then()/.catch() callbacks above have run.
+      await Promise.resolve();
+
+      expect(settledValue.value).not.toBe('not-yet-settled');
+    }, 5000);
+  });
+});
 
 dotenv.config();
 

@@ -1,6 +1,6 @@
-import ky from 'ky';
 import fs from 'fs';
-import { SlackRepository } from '../../domain/usecases/adapter-interfaces/SlackRepository';
+import ky from 'ky';
+import type { SlackRepository } from '../../domain/usecases/adapter-interfaces/SlackRepository';
 
 type ConversationsListResponse = {
   ok: boolean;
@@ -87,6 +87,7 @@ export class KySlackRepository implements SlackRepository {
         limit: 3,
         methods: ['get', 'post'],
         statusCodes: [429, 500, 502, 503, 504],
+        maxRetryAfter: 10000,
       },
     });
   }
