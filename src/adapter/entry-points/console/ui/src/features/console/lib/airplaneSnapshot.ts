@@ -151,6 +151,7 @@ const parseListItem = (item: unknown): ConsoleListItem | null => {
     relatedOpenPullRequestUrls: parseStringArray(
       item.relatedOpenPullRequestUrls,
     ),
+    agent: typeof item.agent === 'string' ? item.agent : null,
   };
 };
 

@@ -511,7 +511,7 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
                     sendNotFound(response);
                     return;
                 }
-                await (0, consoleAirplaneSnapshotApi_1.handleAirplaneSync)(response, consoleDataOutputDir, issueRepository, issueTitleStateCache, pullRequestStatusCache, options.githubToken ?? null);
+                await (0, consoleAirplaneSnapshotApi_1.handleAirplaneSync)(response, consoleDataOutputDir, issueRepository, issueTitleStateCache, pullRequestStatusCache, options.resolveGithubToken != null ? options.resolveGithubToken('') : null);
                 return;
             }
             const readResult = await handleReadApi(options, requestPath, searchParams);

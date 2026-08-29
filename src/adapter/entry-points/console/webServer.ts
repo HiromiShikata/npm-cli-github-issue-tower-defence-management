@@ -683,7 +683,7 @@ const handleTokenedRequest = async (
           issueRepository,
           issueTitleStateCache,
           pullRequestStatusCache,
-          options.githubToken ?? null,
+          options.resolveGithubToken != null ? options.resolveGithubToken('') : null,
         );
         return;
       }

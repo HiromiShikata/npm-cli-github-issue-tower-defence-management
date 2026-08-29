@@ -1,9 +1,9 @@
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type {
   AirplaneModeStatus,
   AirplaneSyncProgress,
 } from '../../hooks/useAirplaneMode';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { CONSOLE_TABS, type ConsoleTabName } from '../../logic/types';
 import { ConsoleAirplaneModeButton } from './ConsoleAirplaneModeButton';
 

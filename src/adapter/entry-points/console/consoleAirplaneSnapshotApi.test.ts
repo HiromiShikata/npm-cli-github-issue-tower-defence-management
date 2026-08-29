@@ -231,7 +231,7 @@ describe('handleAirplaneSync', () => {
     const issueRepository = mock<IssueRepository>();
     const issueUrl = 'https://github.com/owner/repo/issues/5';
 
-    writeListJson(tmpDir, 'acme', 'triage', {
+    writeListJson(tmpDir, 'acme', 'todo-by-human', {
       generatedAt: '2026-01-01T00:00:00Z',
       items: [
         {
@@ -322,7 +322,7 @@ describe('handleAirplaneSync', () => {
     const issueRepository = mock<IssueRepository>();
     const failingUrl = 'https://github.com/owner/repo/issues/99';
 
-    writeListJson(tmpDir, 'acme', 'triage', {
+    writeListJson(tmpDir, 'acme', 'todo-by-human', {
       generatedAt: '2026-01-01T00:00:00Z',
       items: [
         {
@@ -359,7 +359,7 @@ describe('handleAirplaneSync', () => {
     const url1 = 'https://github.com/owner/repo/issues/1';
     const url2 = 'https://github.com/owner/repo/issues/2';
 
-    writeListJson(tmpDir, 'acme', 'triage', {
+    writeListJson(tmpDir, 'acme', 'todo-by-human', {
       generatedAt: '2026-01-01T00:00:00Z',
       items: [
         { url: url1, isPr: false, number: 1, projectItemId: 'PVTI_1' },
@@ -634,7 +634,7 @@ describe('handleAirplaneSync', () => {
       generatedAt: '2026-01-01T00:00:00Z',
       items: [],
     });
-    writeListJson(tmpDir, 'proj2', 'triage', {
+    writeListJson(tmpDir, 'proj2', 'todo-by-human', {
       generatedAt: '2026-01-01T00:00:00Z',
       items: [],
     });
@@ -653,6 +653,6 @@ describe('handleAirplaneSync', () => {
     expect(doneEvent?.snapshot.tabs['proj1']).toBeDefined();
     expect(doneEvent?.snapshot.tabs['proj2']).toBeDefined();
     expect(doneEvent?.snapshot.tabs['proj1']?.['prs']).toBeDefined();
-    expect(doneEvent?.snapshot.tabs['proj2']?.['triage']).toBeDefined();
+    expect(doneEvent?.snapshot.tabs['proj2']?.['todo-by-human']).toBeDefined();
   });
 });
