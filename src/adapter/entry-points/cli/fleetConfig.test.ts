@@ -162,10 +162,9 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
 
   it('throws when the minimum five hour free ratio is above one', () => {
     const fleetConfigFilePath = writeFleetConfig(
-      [
-        'liveSessionOauthTokenSelection:',
-        '  minFiveHourFreeRatio: 1.5',
-      ].join('\n'),
+      ['liveSessionOauthTokenSelection:', '  minFiveHourFreeRatio: 1.5'].join(
+        '\n',
+      ),
     );
 
     expect(() =>
@@ -175,10 +174,9 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
 
   it('throws when the minimum seven day free ratio is above one', () => {
     const fleetConfigFilePath = writeFleetConfig(
-      [
-        'liveSessionOauthTokenSelection:',
-        '  minSevenDayFreeRatio: 1.5',
-      ].join('\n'),
+      ['liveSessionOauthTokenSelection:', '  minSevenDayFreeRatio: 1.5'].join(
+        '\n',
+      ),
     );
 
     expect(() =>

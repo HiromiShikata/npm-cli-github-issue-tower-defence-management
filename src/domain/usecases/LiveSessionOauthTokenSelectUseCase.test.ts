@@ -528,7 +528,10 @@ describe('LiveSessionOauthTokenSelectUseCase minimum free ratio thresholds', () 
   it('excludes a token whose seven day window has less than the minimum free ratio', () => {
     const result = useCase.run(
       [
-        candidate('nearlyUsedSevenDayMin', snapshot({ sevenDayUtilization: 0.9 })),
+        candidate(
+          'nearlyUsedSevenDayMin',
+          snapshot({ sevenDayUtilization: 0.9 }),
+        ),
         candidate('freeSevenDayMin', snapshot({})),
       ],
       [],
@@ -565,7 +568,10 @@ describe('LiveSessionOauthTokenSelectUseCase minimum free ratio thresholds', () 
   it('honours a fleet supplied minimum five hour free ratio', () => {
     const result = useCase.run(
       [
-        candidate('narrowForFleetFiveHour', snapshot({ fiveHourUtilization: 0.15 })),
+        candidate(
+          'narrowForFleetFiveHour',
+          snapshot({ fiveHourUtilization: 0.15 }),
+        ),
         candidate('freeForFleetFiveHour', snapshot({})),
       ],
       [],
