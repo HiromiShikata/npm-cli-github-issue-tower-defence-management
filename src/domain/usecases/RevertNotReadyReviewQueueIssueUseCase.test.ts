@@ -388,7 +388,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should not revert an issue whose last agent report declares pullRequestRequired as false', async () => {
+    it('should not revert an issue whose last agent report designates the triager', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
@@ -401,7 +401,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         {
           author: 'owner',
           content:
-            'From: :robot: Agent report\n```json\n{"pullRequestRequired": false}\n```',
+            'From: :robot: Agent report\n```json\n{"nextStepAgent": "triager"}\n```',
           createdAt: new Date(),
         },
       ]);
@@ -416,7 +416,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should still revert an issue whose linked PR is conflicted even when the last agent report declares pullRequestRequired as false', async () => {
+    it('should still revert an issue whose linked PR is conflicted even when the last agent report designates the triager', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
@@ -427,7 +427,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         {
           author: 'owner',
           content:
-            'From: :robot: Agent report\n```json\n{"pullRequestRequired": false}\n```',
+            'From: :robot: Agent report\n```json\n{"nextStepAgent": "triager"}\n```',
           createdAt: new Date(),
         },
       ]);
