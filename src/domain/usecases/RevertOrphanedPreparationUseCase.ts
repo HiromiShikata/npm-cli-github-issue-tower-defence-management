@@ -13,7 +13,6 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
-  TODO_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
@@ -122,10 +121,6 @@ export class RevertOrphanedPreparationUseCase {
       (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
     );
 
-    const todoStatusOption = project.status.statuses.find(
-      (s) => s.name === TODO_STATUS_NAME,
-    );
-
     for (const issue of preparationIssues) {
       const isOrphaned = await this.isOrphanedIssue(issue, params);
       if (!isOrphaned) {
@@ -221,12 +216,12 @@ export class RevertOrphanedPreparationUseCase {
         ).length;
         if (
           awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles &&
-          todoStatusOption
+          awaitingQualityCheckStatusOption
         ) {
           await this.issueRepository.updateStatus(
             project,
             issue,
-            todoStatusOption.id,
+            awaitingQualityCheckStatusOption.id,
           );
           await this.issueCommentRepository.createComment(
             issue,

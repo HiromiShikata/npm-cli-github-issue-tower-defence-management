@@ -2565,7 +2565,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should move an orphaned issue to Todo by human with AWAITING_OWNER_APPROVAL when last report declares waitingForOwnerApproval', async () => {
+  it('should move an orphaned issue to Awaiting Quality Check with AWAITING_OWNER_APPROVAL when last report declares waitingForOwnerApproval', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -2598,7 +2598,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('6');
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
       'Auto Status Check: AWAITING_OWNER_APPROVAL',
