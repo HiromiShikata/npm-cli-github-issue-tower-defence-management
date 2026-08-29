@@ -7328,7 +7328,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         removeLabel: jest.fn(),
         ...issueRepositoryOverrides,
       },
-      { runCommand: jest.fn() },
+      { runCommand: jest.fn(), spawnInteractive: jest.fn() },
       {
         ensureObservable: jest.fn(),
         getAvailableTokenUsages: jest.fn(),
