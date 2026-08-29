@@ -486,4 +486,144 @@ describe('useConsoleOperations', () => {
     ).rejects.toThrow();
     expect(callCount).toBe(1);
   });
+
+  it('marks setStatus overlay done before the API call resolves', async () => {
+    let resolveApi!: () => void;
+    global.fetch = jest.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveApi = () =>
+            resolve({
+              ok: true,
+              status: 200,
+              json: async () => ({ ok: true }),
+            } as unknown as Response);
+        }),
+    ) as unknown as typeof fetch;
+    const { result } = setup();
+    const option = consoleStatusOptionsFixture[1];
+
+    act(() => {
+      void result.current.operations.setStatus(issueItem, option);
+    });
+
+    const stored = JSON.parse(
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
+    );
+    expect(stored[issueItem.projectItemId]?.done).toBe(true);
+
+    await act(async () => {
+      resolveApi();
+      await Promise.resolve();
+    });
+  });
+
+  it('marks reviewPullRequest overlay done before the API call resolves', async () => {
+    let resolveApi!: () => void;
+    global.fetch = jest.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveApi = () =>
+            resolve({
+              ok: true,
+              status: 200,
+              json: async () => ({ ok: true }),
+            } as unknown as Response);
+        }),
+    ) as unknown as typeof fetch;
+    const { result } = setup();
+
+    act(() => {
+      void result.current.operations.reviewPullRequest(
+        prItem,
+        prItem.url,
+        'approve_and_merge',
+      );
+    });
+
+    const stored = JSON.parse(
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
+    );
+    expect(stored[prItem.projectItemId]?.done).toBe(true);
+
+    await act(async () => {
+      resolveApi();
+      await Promise.resolve();
+    });
+  });
+
+  it('marks closeIssue overlay done before the API call resolves', async () => {
+    let resolveApi!: () => void;
+    global.fetch = jest.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveApi = () =>
+            resolve({
+              ok: true,
+              status: 200,
+              json: async () => ({ ok: true }),
+            } as unknown as Response);
+        }),
+    ) as unknown as typeof fetch;
+    const { result } = setup();
+
+    act(() => {
+      void result.current.operations.closeIssue(issueItem, 'close_not_planned');
+    });
+
+    const stored = JSON.parse(
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
+    );
+    expect(stored[issueItem.projectItemId]?.done).toBe(true);
+
+    await act(async () => {
+      resolveApi();
+      await Promise.resolve();
+    });
+  });
+
+  it('marks okAndMoveToAwaitingWorkspace overlay done before API calls resolve', async () => {
+    let resolveApi!: () => void;
+    global.fetch = jest.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveApi = () =>
+            resolve({
+              ok: true,
+              status: 200,
+              json: async () => ({
+                ok: true,
+                comment: {
+                  author: 'bot',
+                  body: 'ok',
+                  createdAt: '2026-01-01T00:00:00Z',
+                },
+              }),
+            } as unknown as Response);
+        }),
+    ) as unknown as typeof fetch;
+    const { result } = setup();
+    const [option] = consoleStatusOptionsFixture.filter(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    );
+
+    act(() => {
+      void result.current.operations.okAndMoveToAwaitingWorkspace(
+        issueItem,
+        option,
+      );
+    });
+
+    const stored = JSON.parse(
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
+    );
+    expect(stored[issueItem.projectItemId]?.done).toBe(true);
+
+    await act(async () => {
+      resolveApi();
+      await Promise.resolve();
+      resolveApi();
+      await Promise.resolve();
+    });
+  });
 });
