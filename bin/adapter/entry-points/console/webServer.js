@@ -418,6 +418,8 @@ const dispatchOperation = (context, requestPath, body) => {
             return (0, consoleOperationApi_1.handleStoryAdd)(context, body);
         case '/api/storycolor':
             return (0, consoleOperationApi_1.handleStoryColor)(context, body);
+        case '/api/deleteallcomments':
+            return (0, consoleOperationApi_1.handleDeleteAllComments)(context, body);
         default:
             return null;
     }

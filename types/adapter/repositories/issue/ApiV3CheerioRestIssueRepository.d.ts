@@ -142,5 +142,6 @@ export declare class ApiV3CheerioRestIssueRepository extends BaseGitHubRepositor
         deletions: number;
         changedFiles: number;
     } | null>;
+    deleteAllCommentsByUrl: (issueOrPrUrl: string) => Promise<void>;
 }
 //# sourceMappingURL=ApiV3CheerioRestIssueRepository.d.ts.map

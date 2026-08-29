@@ -57,6 +57,10 @@ export type ConsoleE2eCommentCall = {
   body: string;
 };
 
+export type ConsoleE2eDeleteAllCommentsCall = {
+  issueUrl: string;
+};
+
 type ConsoleFixtureListItem = {
   number: number;
   title: string;
@@ -511,6 +515,7 @@ const createStubIssueRepository = (
   createIssueCalls: ConsoleE2eCreateIssueCall[],
   storyColorCalls: ConsoleE2eStoryColorCall[],
   commentCalls: ConsoleE2eCommentCall[],
+  deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
@@ -683,7 +688,9 @@ const createStubIssueRepository = (
   ): Promise<void> => {
     storyColorCalls.push({ storyOptionId, newColor });
   },
-  deleteAllCommentsByUrl: async (): Promise<void> => undefined,
+  deleteAllCommentsByUrl: async (issueUrl: string): Promise<void> => {
+    deleteAllCommentsCalls.push({ issueUrl });
+  },
 });
 
 export type ConsoleE2eReorderStoryCall = {
@@ -706,6 +713,7 @@ export type ConsoleE2eHarness = {
   reorderStoryCalls: ConsoleE2eReorderStoryCall[];
   addStoryCalls: ConsoleE2eAddStoryCall[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
+  deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
   stop: () => Promise<void>;
 };
 
@@ -731,6 +739,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
   const reorderStoryCalls: ConsoleE2eReorderStoryCall[] = [];
   const addStoryCalls: ConsoleE2eAddStoryCall[] = [];
   const storyColorCalls: ConsoleE2eStoryColorCall[] = [];
+  const deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[] = [];
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
@@ -742,6 +751,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
       createIssueCalls,
       storyColorCalls,
       commentCalls,
+      deleteAllCommentsCalls,
     ),
     resolveProjectRepository: (_projectUrl) => ({
       updateStoryList: async (_updatedProject, stories) => {
@@ -798,6 +808,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     reorderStoryCalls,
     addStoryCalls,
     storyColorCalls,
+    deleteAllCommentsCalls,
     stop: async (): Promise<void> => {
       await closeServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleStoryAdd = exports.handleReorderStory = exports.handleIntmux = exports.handleStoryColor = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.CONFLICT_RETURNED_MESSAGE = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
+exports.handleDeleteAllComments = exports.handleStoryAdd = exports.handleReorderStory = exports.handleIntmux = exports.handleStoryColor = exports.handleReviewComment = exports.handleCreateIssue = exports.handleAttachmentUpload = exports.handleComment = exports.handleTriage = exports.handleReview = exports.CHORE_LABEL_NAME = exports.IN_TMUX_BY_HUMAN_STATUS_NAME = exports.CONFLICT_RETURNED_MESSAGE = exports.AWAITING_WORKSPACE_STATUS_NAME = void 0;
 const Project_1 = require("../../../domain/entities/Project");
 const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleItemUrlLookup_1 = require("./consoleItemUrlLookup");
@@ -639,4 +639,15 @@ const handleStoryAdd = async (context, body) => {
     return ok();
 };
 exports.handleStoryAdd = handleStoryAdd;
+const handleDeleteAllComments = async (context, body) => {
+    const issueUrl = body.issueUrl;
+    if (!isNonEmptyString(issueUrl)) {
+        return badRequest('issueUrl is required');
+    }
+    await context
+        .resolveIssueRepository(issueUrl)
+        .deleteAllCommentsByUrl(issueUrl);
+    return ok();
+};
+exports.handleDeleteAllComments = handleDeleteAllComments;
 //# sourceMappingURL=consoleOperationApi.js.map

@@ -560,4 +560,70 @@ describe('ConsoleItemDetailContainer', () => {
     ]);
     expect(reviewCall?.[3][0].body).not.toBe('');
   });
+
+  it('routes delete-all-comments through onQueueAction with the correct kind and commit', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-agent"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByText('⚠')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByText('⚠'));
+    fireEvent.click(getByText('Delete All Comments'));
+
+    expect(onQueueAction).toHaveBeenCalledTimes(1);
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.kind).toEqual({ type: 'delete_all_comments' });
+    expect(input.item).toBe(issueItem);
+    expect(operations.deleteAllComments).not.toHaveBeenCalled();
+
+    await input.commit();
+    expect(operations.deleteAllComments).toHaveBeenCalledWith(issueItem);
+  });
+
+  it('surfaces errors from deleteAllComments via the queue rather than swallowing them', async () => {
+    const operations = buildOperations();
+    const error = new Error('GitHub API failure');
+    (operations.deleteAllComments as jest.Mock).mockRejectedValue(error);
+    const onQueueAction = jest.fn();
+    const { getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-agent"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getByText('⚠')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByText('⚠'));
+    fireEvent.click(getByText('Delete All Comments'));
+
+    const input = onQueueAction.mock.calls[0][0];
+    await expect(input.commit()).rejects.toThrow('GitHub API failure');
+  });
 });

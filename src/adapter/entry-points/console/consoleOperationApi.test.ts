@@ -2508,5 +2508,16 @@ describe('consoleOperationApi', () => {
       const response = await handleDeleteAllComments(context, {});
       expect(response.statusCode).toBe(400);
     });
+
+    it('propagates an error from deleteAllCommentsByUrl (resulting in 502 from webServer)', async () => {
+      issueRepository.deleteAllCommentsByUrl.mockRejectedValue(
+        new Error('API failure'),
+      );
+      await expect(
+        handleDeleteAllComments(context, {
+          issueUrl: 'https://github.com/o/r/issues/1',
+        }),
+      ).rejects.toThrow('API failure');
+    });
   });
 });
