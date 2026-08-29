@@ -268,6 +268,51 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
+  it('should transition to Failed Preparation when nextStepAgent is not in configured agents list', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content:
+          'From: :robot: triager\n\n```json\n{"nextStep":null,"nextStepAgent":"unknown-agent"}\n```',
+        createdAt: new Date('2024-01-02T00:00:00Z'),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['bot'],
+      agents: ['developer', 'triager'],
+    });
+
+    expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([]);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      stuckIssue,
+      expect.stringContaining('unknown-agent'),
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      stuckIssue,
+      expect.stringContaining('not in the configured agents list'),
+    );
+  });
+
   it('should transition to Failed Preparation when the declared next step agent is already assigned and the repetition threshold is met', async () => {
     mockProject.agent = {
       name: 'agent',

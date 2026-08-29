@@ -488,6 +488,7 @@ ${JSON.stringify(e)}
           labelsAsLlmAgentName,
           labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
           allowedIssueAuthors,
+          agents: input.agents ?? null,
         });
       }
       if (input.startPreparation.autoRevertReopenedDoneEnabled) {
