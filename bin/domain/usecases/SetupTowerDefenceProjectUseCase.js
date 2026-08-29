@@ -3,9 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SetupTowerDefenceProjectUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 class SetupTowerDefenceProjectUseCase {
-    constructor(projectRepository, issueRepository) {
+    constructor(projectRepository, issueRepository, statusDefaultRepository) {
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
+        this.statusDefaultRepository = statusDefaultRepository;
         this.run = async (params) => {
             const project = await this.projectRepository.getByUrl(params.projectUrl);
             const existing = project.status.statuses;
@@ -45,9 +46,13 @@ class SetupTowerDefenceProjectUseCase {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatus.id);
                 }
             }
+            const awaitingWorkspaceOptionId = awaitingWorkspaceStatus?.id;
             const hasMigratedFromName = existing.some((s) => SetupTowerDefenceProjectUseCase.MIGRATED_FROM_NAMES.has(s.name));
             if (!hasMigratedFromName &&
                 SetupTowerDefenceProjectUseCase.hasRequiredStatusesInCanonicalOrder(existing)) {
+                if (awaitingWorkspaceOptionId !== undefined) {
+                    await this.statusDefaultRepository.setStatusFieldDefault(project, awaitingWorkspaceOptionId);
+                }
                 return;
             }
             const requiredNames = new Set(WorkflowStatus_1.REQUIRED_WORKFLOW_STATUSES.map((s) => s.name));
@@ -79,6 +84,9 @@ class SetupTowerDefenceProjectUseCase {
                 })),
             ];
             await this.projectRepository.updateStatusList(project, newStatusList);
+            if (awaitingWorkspaceOptionId !== undefined) {
+                await this.statusDefaultRepository.setStatusFieldDefault(project, awaitingWorkspaceOptionId);
+            }
         };
     }
 }

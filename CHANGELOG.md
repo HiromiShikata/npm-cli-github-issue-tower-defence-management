@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.5.1...v2.6.0) (2026-08-29)
+
+
+### Features
+
+* **setup:** set Awaiting Workspace as default Status field during provisioning via Playwright ([#1854](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1854)) ([343297e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/343297e38383e7e12b6365a1cce7e12c5a62d263)), closes [#1786](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1786)
+
 ## [2.5.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.5.0...v2.5.1) (2026-08-29)
 
 

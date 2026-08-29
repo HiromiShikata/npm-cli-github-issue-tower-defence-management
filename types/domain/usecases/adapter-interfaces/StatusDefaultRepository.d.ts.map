@@ -1,0 +1,1 @@
+{"version":3,"file":"StatusDefaultRepository.d.ts","sourceRoot":"","sources":["../../../../src/domain/usecases/adapter-interfaces/StatusDefaultRepository.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,MAAM,wBAAwB,CAAC;AAEjD,MAAM,WAAW,uBAAuB;IACtC,qBAAqB,CAAC,OAAO,EAAE,OAAO,EAAE,QAAQ,EAAE,MAAM,GAAG,OAAO,CAAC,IAAI,CAAC,CAAC;CAC1E"}

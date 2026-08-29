@@ -66,6 +66,7 @@ const AgentDesignationLabelAdoptUseCase_1 = require("../../../domain/usecases/Ag
 const GitHubIssueCommentRepository_1 = require("../../repositories/GitHubIssueCommentRepository");
 const ProjectRequiredFieldCreateUseCase_1 = require("../../../domain/usecases/ProjectRequiredFieldCreateUseCase");
 const SetupTowerDefenceProjectUseCase_1 = require("../../../domain/usecases/SetupTowerDefenceProjectUseCase");
+const BrowserGitHubProjectRepository_1 = require("../../repositories/BrowserGitHubProjectRepository");
 const DailySecurityScanUseCase_1 = require("../../../domain/usecases/DailySecurityScanUseCase");
 const QualityCheckAdvanceUseCase_1 = require("../../../domain/usecases/QualityCheckAdvanceUseCase");
 const ReopenedDoneIssueRevertUseCase_1 = require("../../../domain/usecases/ReopenedDoneIssueRevertUseCase");
@@ -227,7 +228,8 @@ class HandleScheduledEventUseCaseHandler {
             const graphqlProjectItemRepository = new GraphqlProjectItemRepository_1.GraphqlProjectItemRepository(...githubRepositoryParams);
             const issueRepository = new ApiV3CheerioRestIssueRepository_1.ApiV3CheerioRestIssueRepository(apiV3IssueRepository, restIssueRepository, graphqlProjectItemRepository, localStorageCacheRepository, projectRepository, systemDateRepository, ...githubRepositoryParams);
             const projectRequiredFieldCreateUseCase = new ProjectRequiredFieldCreateUseCase_1.ProjectRequiredFieldCreateUseCase(projectRepository);
-            const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase_1.SetupTowerDefenceProjectUseCase(projectRepository, issueRepository);
+            const browserGitHubProjectRepository = new BrowserGitHubProjectRepository_1.BrowserGitHubProjectRepository(process.env.GITHUB_USERNAME, process.env.GITHUB_PASSWORD, process.env.GITHUB_TOTP_SECRET);
+            const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase_1.SetupTowerDefenceProjectUseCase(projectRepository, issueRepository, browserGitHubProjectRepository);
             const actionAnnouncement = new ActionAnnouncementUseCase_1.ActionAnnouncementUseCase(issueRepository);
             const setWorkflowManagementIssueToStoryUseCase = new SetWorkflowManagementIssueToStoryUseCase_1.SetWorkflowManagementIssueToStoryUseCase(issueRepository);
             const clearPastNextActionUseCase = new ClearPastNextActionDateHourUseCase_1.ClearPastNextActionDateHourUseCase(issueRepository);
