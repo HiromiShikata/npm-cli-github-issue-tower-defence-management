@@ -1,3 +1,10 @@
+# [2.11.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.10.2...v2.11.0) (2026-08-29)
+
+
+### Features
+
+* **StartPreparationUseCase:** move worker concurrency control from aw to TDPM CLI ([#1875](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1875)) ([4de4b74](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4de4b7454d76d3b0d82741c46145ddebcef5b836)), closes [#4584](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/4584)
+
 ## [2.10.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.10.1...v2.10.2) (2026-08-29)
 
 

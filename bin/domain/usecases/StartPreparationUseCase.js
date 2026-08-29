@@ -19,12 +19,13 @@ const agentNameFromDesignation = (designation) => designation.startsWith(LLM_AGE
     : designation.trim();
 exports.agentNameFromDesignation = agentNameFromDesignation;
 class StartPreparationUseCase {
-    constructor(projectRepository, issueRepository, localCommandRunner, claudeTokenUsageRepository, takeOwnershipSpawnRepository) {
+    constructor(projectRepository, issueRepository, localCommandRunner, claudeTokenUsageRepository, takeOwnershipSpawnRepository, gitHubGraphqlRateLimitRepository) {
         this.projectRepository = projectRepository;
         this.issueRepository = issueRepository;
         this.localCommandRunner = localCommandRunner;
         this.claudeTokenUsageRepository = claudeTokenUsageRepository;
         this.takeOwnershipSpawnRepository = takeOwnershipSpawnRepository;
+        this.gitHubGraphqlRateLimitRepository = gitHubGraphqlRateLimitRepository;
         this.weeklyLimitTypeForModel = (modelName) => {
             const normalized = (modelName ?? '').toLowerCase();
             if (normalized.includes('sonnet'))
@@ -265,6 +266,19 @@ class StartPreparationUseCase {
                 notAssignedToManager: 0,
             };
             const now = new Date();
+            const maxConcurrentWorkers = params.maxConcurrentWorkers ?? null;
+            const graphqlRateLimitFloor = params.graphqlRateLimitFloor ?? null;
+            if (graphqlRateLimitFloor !== null) {
+                const graphqlRemaining = await this.gitHubGraphqlRateLimitRepository.getRemainingRequestCount();
+                if (graphqlRemaining !== null &&
+                    graphqlRemaining < graphqlRateLimitFloor) {
+                    console.warn(`GraphQL rate limit low (${graphqlRemaining} remaining, floor: ${graphqlRateLimitFloor}); skipping preparation cycle.`);
+                    return { rotationOrder };
+                }
+                if (graphqlRemaining === null) {
+                    console.warn('GraphQL rate limit check failed; proceeding with spawning.');
+                }
+            }
             const branchSourceByIssueUrl = await this.fetchSpawnCandidateBranchSources(awaitingWorkspaceIssues
                 .filter((issue) => !runningIssueUrls.has(issue.url) &&
                 this.spawnCandidateExclusionReasonOf(issue, params.allowedIssueAuthors, params.manager, now) === null)
@@ -279,6 +293,13 @@ class StartPreparationUseCase {
                 if (runningIssueUrls.has(issue.url)) {
                     console.warn(`Skipping ${issue.url}: worker already running.`);
                     continue;
+                }
+                if (maxConcurrentWorkers !== null) {
+                    const activeWorkerCount = runningIssueUrls.size + startedInThisRunCount;
+                    if (activeWorkerCount >= maxConcurrentWorkers) {
+                        console.warn(`Spawn cap reached (${activeWorkerCount}/${maxConcurrentWorkers} active workers); skipping remaining candidates.`);
+                        break;
+                    }
                 }
                 const exclusionReason = this.spawnCandidateExclusionReasonOf(issue, params.allowedIssueAuthors, params.manager, now);
                 if (exclusionReason !== null) {

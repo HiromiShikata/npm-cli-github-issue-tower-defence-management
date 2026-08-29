@@ -55,6 +55,7 @@ const UpdateIssueStatusByLabelUseCase_1 = require("../../../domain/usecases/Upda
 const IssueNoStatusUpdateUseCase_1 = require("../../../domain/usecases/IssueNoStatusUpdateUseCase");
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
 const NodeLocalCommandRunner_1 = require("../../repositories/NodeLocalCommandRunner");
+const CliGitHubGraphqlRateLimitRepository_1 = require("../../repositories/CliGitHubGraphqlRateLimitRepository");
 const ProcTakeOwnershipSpawnRepository_1 = require("../../repositories/ProcTakeOwnershipSpawnRepository");
 const ProxyClaudeTokenUsageRepository_1 = require("../../repositories/ProxyClaudeTokenUsageRepository");
 const ProxyRateLimitCacheRepository_1 = require("../../repositories/ProxyRateLimitCacheRepository");
@@ -246,7 +247,7 @@ class HandleScheduledEventUseCaseHandler {
             const issueNoStatusUpdateUseCase = new IssueNoStatusUpdateUseCase_1.IssueNoStatusUpdateUseCase(issueRepository);
             const nodeLocalCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
             const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository_1.ProxyClaudeTokenUsageRepository(mergedInput.claudeCodeOauthTokenListJsonPath ?? null);
-            const startPreparationUseCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, nodeLocalCommandRunner, claudeTokenUsageRepository, new ProcTakeOwnershipSpawnRepository_1.ProcTakeOwnershipSpawnRepository());
+            const startPreparationUseCase = new StartPreparationUseCase_1.StartPreparationUseCase(projectRepository, issueRepository, nodeLocalCommandRunner, claudeTokenUsageRepository, new ProcTakeOwnershipSpawnRepository_1.ProcTakeOwnershipSpawnRepository(), new CliGitHubGraphqlRateLimitRepository_1.CliGitHubGraphqlRateLimitRepository(nodeLocalCommandRunner));
             const proxyRateLimitCacheRepository = new ProxyRateLimitCacheRepository_1.ProxyRateLimitCacheRepository(mergedInput.claudeCodeOauthTokenListJsonPath ?? null);
             const updateRateLimitCacheUseCase = mergedInput.startPreparation
                 ? new UpdateRateLimitCacheUseCase_1.UpdateRateLimitCacheUseCase(proxyRateLimitCacheRepository)

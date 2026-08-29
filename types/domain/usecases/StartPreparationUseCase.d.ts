@@ -4,6 +4,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
+import { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 export declare const NORMAL_CONCURRENT_LIMIT = 6;
 export declare const DEFAULT_FALLBACK_LLM_MODEL_NAME = "claude-opus-4-8";
@@ -28,7 +29,8 @@ export declare class StartPreparationUseCase {
     private readonly localCommandRunner;
     private readonly claudeTokenUsageRepository;
     private readonly takeOwnershipSpawnRepository;
-    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'getAllOpened' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl' | 'setIssueAgentField' | 'removeLabel'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository, takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository);
+    private readonly gitHubGraphqlRateLimitRepository;
+    constructor(projectRepository: Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>, issueRepository: Pick<IssueRepository, 'getStoryObjectMap' | 'getAllOpened' | 'updateStatus' | 'findRelatedOpenPRs' | 'getOpenPullRequest' | 'closePullRequest' | 'deletePullRequestBranch' | 'createCommentByUrl' | 'setIssueAgentField' | 'removeLabel'>, localCommandRunner: LocalCommandRunner, claudeTokenUsageRepository: ClaudeTokenUsageRepository, takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository, gitHubGraphqlRateLimitRepository: GitHubGraphqlRateLimitRepository);
     private weeklyLimitTypeForModel;
     private isWithinCooldown;
     private isModelWeeklyLimitRejected;
@@ -56,6 +58,8 @@ export declare class StartPreparationUseCase {
         labelsAsLlmAgentName: string[] | null;
         agents?: string[] | null;
         normalConcurrentLimit?: number;
+        maxConcurrentWorkers?: number | null;
+        graphqlRateLimitFloor?: number | null;
     }) => Promise<{
         rotationOrder: RotationOrderEntry[] | null;
     }>;

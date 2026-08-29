@@ -1,0 +1,1 @@
+{"version":3,"file":"GitHubGraphqlRateLimitRepository.d.ts","sourceRoot":"","sources":["../../../../src/domain/usecases/adapter-interfaces/GitHubGraphqlRateLimitRepository.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,gCAAgC;IAC/C,wBAAwB,IAAI,OAAO,CAAC,MAAM,GAAG,IAAI,CAAC,CAAC;CACpD"}

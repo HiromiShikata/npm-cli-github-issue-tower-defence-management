@@ -4,8 +4,12 @@ export declare const LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY = "liveSessi
 export declare const PREPARATION_WORKER_SECTION_KEY = "preparationWorker";
 export declare const START_PREPARATION_SECTION_KEY = "startPreparation";
 export declare const DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
+export declare const DEFAULT_MAX_CONCURRENT_WORKERS = 40;
+export declare const DEFAULT_GRAPHQL_RATE_LIMIT_FLOOR = 500;
 export type PreparationWorkerSettings = {
     normalConcurrentLimit: number;
+    maxConcurrentWorkers: number;
+    graphqlRateLimitFloor: number;
 };
 export declare const DEFAULT_PREPARATION_WORKER_SETTINGS: PreparationWorkerSettings;
 export type StartPreparationFleetSettings = {
