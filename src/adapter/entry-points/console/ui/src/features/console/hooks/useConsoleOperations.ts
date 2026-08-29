@@ -154,10 +154,9 @@ export const useConsoleOperations = (
 
   const markDone = useCallback(
     (item: ConsoleListItem) => {
-      invalidateItemContent(item);
       patchOverlay(overlayKeyForItem(item), { done: true }, mode);
     },
-    [invalidateItemContent, patchOverlay, mode],
+    [patchOverlay, mode],
   );
 
   const reviewPullRequest = useCallback(
@@ -170,13 +169,14 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
+      markDone(item);
       await postConsoleOperation(
         REVIEW_OPERATION_PATH,
         reviewRequest(pjcode, item, prUrl, action, pendingReviewComments),
       );
-      markDone(item);
+      invalidateItemContent(item);
     },
-    [pjcode, markDone],
+    [pjcode, markDone, invalidateItemContent],
   );
 
   const setNextActionDate = useCallback(
@@ -190,10 +190,11 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       markDone(item);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
     },
-    [pjcode, markDone],
+    [pjcode, markDone, invalidateItemContent],
   );
 
   const setStory = useCallback(
@@ -208,13 +209,13 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         storyOptionId: option.id,
       };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
-      invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
         { done: true, story: { name: option.name, color: option.color } },
         mode,
       );
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
     },
     [pjcode, invalidateItemContent, patchOverlay, mode],
   );
@@ -231,13 +232,13 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         statusName: option.name,
       };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
-      invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
         { done: true, status: { name: option.name, color: option.color } },
         mode,
       );
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
     },
     [pjcode, invalidateItemContent, patchOverlay, mode],
   );
@@ -253,13 +254,13 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(INTMUX_OPERATION_PATH, request);
-      invalidateItemContent(item);
       patchOverlay(
         overlayKeyForItem(item),
         { done: true, status: { name: option.name, color: option.color } },
         mode,
       );
+      await postConsoleOperation(INTMUX_OPERATION_PATH, request);
+      invalidateItemContent(item);
     },
     [pjcode, invalidateItemContent, patchOverlay, mode],
   );
@@ -275,10 +276,11 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       markDone(item);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
     },
-    [pjcode, markDone],
+    [pjcode, markDone, invalidateItemContent],
   );
 
   const okAndMoveToAwaitingWorkspace = useCallback(
@@ -286,6 +288,11 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
+      patchOverlay(
+        overlayKeyForItem(item),
+        { done: true, status: { name: option.name, color: option.color } },
+        mode,
+      );
       await postConsoleComment({ pjcode, url: item.url, body: 'ok' });
       const request: ConsoleTriageRequest = {
         pjcode,
@@ -296,11 +303,6 @@ export const useConsoleOperations = (
       };
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
-      patchOverlay(
-        overlayKeyForItem(item),
-        { done: true, status: { name: option.name, color: option.color } },
-        mode,
-      );
     },
     [pjcode, invalidateItemContent, patchOverlay, mode],
   );
