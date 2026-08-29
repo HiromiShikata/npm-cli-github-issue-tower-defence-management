@@ -1,3 +1,10 @@
+## [2.5.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.5.0...v2.5.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **console:** update overlay before API call for immediate UI response ([#1863](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1863)) ([85944a0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/85944a012423726f7291196a81e7a37d33ae7e01)), closes [HiromiShikata/umino-corporait-operation#31039](https://github.com/HiromiShikata/umino-corporait-operation/issues/31039)
+
 # [2.5.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.4.0...v2.5.0) (2026-08-29)
 
 
