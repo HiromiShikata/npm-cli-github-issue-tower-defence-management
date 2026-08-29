@@ -593,7 +593,11 @@ describe('useConsoleOperations', () => {
               status: 200,
               json: async () => ({
                 ok: true,
-                comment: { author: 'bot', body: 'ok', createdAt: '2026-01-01T00:00:00Z' },
+                comment: {
+                  author: 'bot',
+                  body: 'ok',
+                  createdAt: '2026-01-01T00:00:00Z',
+                },
               }),
             } as unknown as Response);
         }),
