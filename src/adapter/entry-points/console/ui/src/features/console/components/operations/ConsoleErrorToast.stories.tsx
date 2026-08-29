@@ -27,6 +27,7 @@ export const NetworkFailure: Story = {
 export const AirplaneModeGuard: Story = {
   args: {
     title: 'Airplane mode',
-    message: 'Operation failed: This action requires a network connection. Turn off airplane mode and try again.',
+    message:
+      'Operation failed: This action requires a network connection. Turn off airplane mode and try again.',
   },
 };

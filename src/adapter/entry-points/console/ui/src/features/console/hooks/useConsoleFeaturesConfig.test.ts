@@ -33,9 +33,7 @@ describe('useConsoleFeaturesConfig', () => {
 
   it('returns airplaneMode false on fetch failure', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
-    const consoleSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const { result } = renderHook(() => useConsoleFeaturesConfig());
     await waitFor(() => expect(consoleSpy).toHaveBeenCalled());
     expect(result.current.airplaneMode).toBe(false);

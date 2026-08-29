@@ -1262,19 +1262,73 @@ describe('ConsolePage airplane mode write guard', () => {
         prs: {
           items: [prItem],
           generatedAt: '2026-06-19T00:00:00.000Z',
-          statusOptions: [{ id: 's1', name: 'Awaiting Workspace', color: 'BLUE' }],
-          storyOptions: [{ id: 'st1', name: 'TDPM Console port', color: 'BLUE' }],
+          statusOptions: [
+            { id: 's1', name: 'Awaiting Workspace', color: 'BLUE' },
+          ],
+          storyOptions: [
+            { id: 'st1', name: 'TDPM Console port', color: 'BLUE' },
+          ],
           storyColors: { 'TDPM Console port': { color: 'BLUE' } },
           stories: [],
           defaultNameWithOwner: 'o/r',
           fromCache: false,
           storyOrder: [],
         },
-        'workflow-blocker': { items: [], generatedAt: '', statusOptions: [], storyOptions: [], storyColors: {}, stories: [], defaultNameWithOwner: null, fromCache: false, storyOrder: [] },
-        'failed-preparation': { items: [], generatedAt: '', statusOptions: [], storyOptions: [], storyColors: {}, stories: [], defaultNameWithOwner: null, fromCache: false, storyOrder: [] },
-        'todo-by-human': { items: [], generatedAt: '', statusOptions: [], storyOptions: [], storyColors: {}, stories: [], defaultNameWithOwner: null, fromCache: false, storyOrder: [] },
-        'todo-by-agent': { items: [], generatedAt: '', statusOptions: [], storyOptions: [], storyColors: {}, stories: [], defaultNameWithOwner: null, fromCache: false, storyOrder: [] },
-        stories: { items: [], generatedAt: '', statusOptions: [], storyOptions: [], storyColors: {}, stories: [], defaultNameWithOwner: null, fromCache: false, storyOrder: [] },
+        'workflow-blocker': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        'failed-preparation': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        'todo-by-human': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        'todo-by-agent': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        stories: {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
       },
     },
     items: {},
@@ -1291,7 +1345,9 @@ describe('ConsolePage airplane mode write guard', () => {
     const mockCache = {
       put: jest.fn(),
       match: jest.fn().mockResolvedValue(
-        new Response(snapshotJson, { headers: { 'Content-Type': 'application/json' } }),
+        new Response(snapshotJson, {
+          headers: { 'Content-Type': 'application/json' },
+        }),
       ),
       delete: jest.fn(),
     };
@@ -1306,10 +1362,18 @@ describe('ConsolePage airplane mode write guard', () => {
 
     global.fetch = jest.fn(async (url: string) => {
       if (url === '/api/features') {
-        return { ok: true, status: 200, json: async () => ({ airplaneMode: true }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ airplaneMode: true }),
+        };
       }
       if (url === '/api/projects') {
-        return { ok: true, status: 200, json: async () => ({ pjcodes: ['acme'] }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
       }
       return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
     }) as unknown as typeof fetch;

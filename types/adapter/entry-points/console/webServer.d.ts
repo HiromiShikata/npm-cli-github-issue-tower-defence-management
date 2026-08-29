@@ -38,6 +38,7 @@ export type WebServerOptions = {
     updateProjectCacheEntry?: ((pjcode: string, updatedProject: Project) => void) | null;
     issueTitleStateCache?: IssueTitleStateCache | null;
     pullRequestStatusCache?: PullRequestStatusCache | null;
+    enableAirplaneMode?: boolean;
 };
 export declare const DASHBOARD_REQUEST_PATH = "/tdpm.txt";
 export declare const IMAGE_PROXY_REQUEST_PATH = "/api/img";

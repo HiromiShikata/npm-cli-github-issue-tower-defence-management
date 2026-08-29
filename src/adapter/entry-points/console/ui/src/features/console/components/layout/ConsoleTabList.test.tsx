@@ -247,8 +247,6 @@ describe('ConsoleTabList', () => {
         airplaneModeEnabled={false}
       />,
     );
-    expect(
-      baseElement.querySelector('.console-airplane-mode'),
-    ).toBeNull();
+    expect(baseElement.querySelector('.console-airplane-mode')).toBeNull();
   });
 });

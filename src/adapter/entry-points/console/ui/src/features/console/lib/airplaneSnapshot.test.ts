@@ -339,7 +339,10 @@ describe('airplaneSnapshot', () => {
     });
 
     it('rejects with a user-readable message when cache.put throws QuotaExceededError', async () => {
-      const quotaError = new DOMException('QuotaExceededError', 'QuotaExceededError');
+      const quotaError = new DOMException(
+        'QuotaExceededError',
+        'QuotaExceededError',
+      );
       const mockCache = {
         put: jest.fn().mockRejectedValue(quotaError),
       };

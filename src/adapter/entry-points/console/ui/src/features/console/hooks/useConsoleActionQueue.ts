@@ -90,12 +90,9 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     setError(null);
   }, []);
 
-  const showError = useCallback(
-    (message: string, reason: string): void => {
-      setError({ message, reason });
-    },
-    [],
-  );
+  const showError = useCallback((message: string, reason: string): void => {
+    setError({ message, reason });
+  }, []);
 
   const enqueue = useCallback(
     (action: ConsoleQueuedAction): void => {

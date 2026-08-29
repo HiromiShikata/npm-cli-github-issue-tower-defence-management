@@ -499,7 +499,17 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
                 await handleImageProxy(options, response, searchParams);
                 return;
             }
+            if (requestPath === '/api/features') {
+                sendJson(response, 200, {
+                    airplaneMode: options.enableAirplaneMode === true,
+                });
+                return;
+            }
             if (requestPath === '/api/airplanesync') {
+                if (options.enableAirplaneMode !== true) {
+                    sendNotFound(response);
+                    return;
+                }
                 const issueRepository = options.issueRepository ?? null;
                 const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
                 const issueTitleStateCache = options.issueTitleStateCache ?? null;
@@ -511,7 +521,9 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
                     sendNotFound(response);
                     return;
                 }
-                await (0, consoleAirplaneSnapshotApi_1.handleAirplaneSync)(response, consoleDataOutputDir, issueRepository, issueTitleStateCache, pullRequestStatusCache, options.resolveGithubToken != null ? options.resolveGithubToken('') : null);
+                await (0, consoleAirplaneSnapshotApi_1.handleAirplaneSync)(response, consoleDataOutputDir, issueRepository, issueTitleStateCache, pullRequestStatusCache, options.resolveGithubToken != null
+                    ? options.resolveGithubToken('')
+                    : null);
                 return;
             }
             const readResult = await handleReadApi(options, requestPath, searchParams);

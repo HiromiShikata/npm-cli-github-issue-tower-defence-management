@@ -31,7 +31,10 @@ export const ConsoleAirplaneModeButton = ({
     return (
       <div className="console-airplane-mode console-airplane-mode--on">
         <span className="console-airplane-mode-label">
-          ✈ Airplane mode{capturedAt !== null ? `: ${new Date(capturedAt).toLocaleString()}` : ''}
+          ✈ Airplane mode
+          {capturedAt !== null
+            ? `: ${new Date(capturedAt).toLocaleString()}`
+            : ''}
         </span>
         <button
           type="button"

@@ -201,7 +201,10 @@ describe('useConsoleActionQueue', () => {
   it('showError sets the error state without touching pending', () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     act(() => {
-      result.current.showError('Airplane mode', 'This action requires a network connection.');
+      result.current.showError(
+        'Airplane mode',
+        'This action requires a network connection.',
+      );
     });
     expect(result.current.error).toEqual({
       message: 'Airplane mode',

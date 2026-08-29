@@ -9,9 +9,9 @@ import {
 } from '../components/operations/ConsoleUndoToast';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
-import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
+import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
 import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
