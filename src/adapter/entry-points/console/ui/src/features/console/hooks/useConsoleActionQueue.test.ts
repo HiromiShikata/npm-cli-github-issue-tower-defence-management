@@ -1,6 +1,23 @@
 import { act, renderHook } from '@testing-library/react';
 import { useConsoleActionQueue } from './useConsoleActionQueue';
 
+const OFFLINE_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
+
+const offlinePayload = {
+  itemUrl: 'https://github.com/o/r/pull/851',
+  projectItemId: 'PVTI_1',
+  itemNumber: 851,
+  repo: 'o/r',
+  isPr: true,
+  apiPath: '/api/review',
+  requestBody: {
+    pjcode: 'acme',
+    action: 'approve',
+    prUrl: 'https://github.com/o/r/pull/851',
+    projectItemId: 'PVTI_1',
+  },
+};
+
 const makeAction = (
   overrides: Partial<
     Parameters<ReturnType<typeof useConsoleActionQueue>['enqueue']>[0]
@@ -19,10 +36,12 @@ const flushMicrotasks = (): Promise<void> =>
 describe('useConsoleActionQueue', () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    localStorage.clear();
   });
 
   afterEach(() => {
     jest.useRealTimers();
+    localStorage.clear();
   });
 
   it('advances immediately but only commits after the five second window', () => {
@@ -211,5 +230,269 @@ describe('useConsoleActionQueue', () => {
       reason: 'This action requires a network connection.',
     });
     expect(result.current.pending).toBeNull();
+  });
+  it('adds the action to the offline queue when the commit rejects with a network error', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: offlinePayload,
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.offlineActions).toHaveLength(1);
+    expect(result.current.offlineActions[0].message).toBe('Approved — PR #851');
+    expect(result.current.offlineActions[0].apiPath).toBe('/api/review');
+  });
+
+  it('surfaces a server error as an error rather than queuing it offline', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new Error('HTTP 422 review cannot be requested')),
+      offline: offlinePayload,
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(result.current.error).toEqual({
+      message: 'Approved — PR #851',
+      reason: 'HTTP 422 review cannot be requested',
+    });
+    expect(result.current.offlineActions).toHaveLength(0);
+  });
+
+  it('keeps the offline queue in localStorage so it survives a remount', async () => {
+    const { result, unmount } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: offlinePayload,
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(result.current.offlineActions).toHaveLength(1);
+    unmount();
+
+    const { result: result2 } = renderHook(() => useConsoleActionQueue());
+    expect(result2.current.offlineActions).toHaveLength(1);
+    expect(result2.current.offlineActions[0].message).toBe(
+      'Approved — PR #851',
+    );
+  });
+
+  it('does not send anything before confirmOfflineAction is called', async () => {
+    const fetchMock = jest.fn();
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: offlinePayload,
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(result.current.offlineActions).toHaveLength(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('sends the stored request and removes the action when confirmOfflineAction is called', async () => {
+    const fetchMock = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: offlinePayload,
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    const id = result.current.offlineActions[0].id;
+    await act(async () => {
+      await result.current.confirmOfflineAction(id);
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/review',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(result.current.offlineActions).toHaveLength(0);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('sets an error and keeps the action when confirmOfflineAction encounters a network error', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: offlinePayload,
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    const id = result.current.offlineActions[0].id;
+    await act(async () => {
+      await result.current.confirmOfflineAction(id);
+    });
+    expect(result.current.error).toEqual({
+      message: 'Approved — PR #851',
+      reason: 'Still offline — action is still held in the queue',
+    });
+    expect(result.current.offlineActions).toHaveLength(1);
+  });
+
+  it('surfaces a server rejection from confirmOfflineAction as an error and removes the action', async () => {
+    const fetchMock = jest.fn(async () => ({
+      ok: false,
+      status: 422,
+      text: async () => 'review cannot be requested',
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: offlinePayload,
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    const id = result.current.offlineActions[0].id;
+    await act(async () => {
+      await result.current.confirmOfflineAction(id);
+    });
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.offlineActions).toHaveLength(0);
+  });
+
+  it('generates a stable action id in non-secure contexts where crypto.randomUUID is unavailable', async () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(
+      crypto,
+      'randomUUID',
+    );
+    Object.defineProperty(crypto, 'randomUUID', {
+      value: undefined,
+      configurable: true,
+    });
+    try {
+      const { result } = renderHook(() => useConsoleActionQueue());
+      const action = makeAction({
+        commit: jest
+          .fn<Promise<void>, []>()
+          .mockRejectedValue(new TypeError('Failed to fetch')),
+        offline: offlinePayload,
+      });
+      act(() => {
+        result.current.enqueue(action);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+        await flushMicrotasks();
+      });
+      expect(result.current.offlineActions).toHaveLength(1);
+      expect(typeof result.current.offlineActions[0].id).toBe('string');
+      expect(result.current.offlineActions[0].id.length).toBeGreaterThan(0);
+    } finally {
+      if (originalDescriptor !== undefined) {
+        Object.defineProperty(crypto, 'randomUUID', originalDescriptor);
+      }
+    }
+  });
+
+  it('skips malformed entries when loading the offline queue from localStorage', () => {
+    const malformed = [
+      { id: 'a', message: 'ok' },
+      {
+        id: 'b',
+        message: 'valid',
+        color: 'green',
+        enqueuedAt: 1,
+        itemUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_1',
+        itemNumber: 1,
+        repo: 'o/r',
+        isPr: true,
+        apiPath: '/api/review',
+        requestBody: { action: 'approve' },
+      },
+      null,
+    ];
+    localStorage.setItem(OFFLINE_QUEUE_STORAGE_KEY, JSON.stringify(malformed));
+    const { result } = renderHook(() => useConsoleActionQueue());
+    expect(result.current.offlineActions).toHaveLength(1);
+    expect(result.current.offlineActions[0].id).toBe('b');
+  });
+
+  it('removes the action from localStorage when discardOfflineAction is called', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction({
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new TypeError('Failed to fetch')),
+      offline: offlinePayload,
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    const id = result.current.offlineActions[0].id;
+    act(() => {
+      result.current.discardOfflineAction(id);
+    });
+    expect(result.current.offlineActions).toHaveLength(0);
+    const stored: unknown[] = JSON.parse(
+      localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY) ?? '[]',
+    );
+    expect(stored).toHaveLength(0);
   });
 });

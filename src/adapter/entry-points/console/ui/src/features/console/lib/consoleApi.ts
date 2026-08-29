@@ -293,9 +293,9 @@ const readOperationErrorReason = async (
   return raw;
 };
 
-export const postConsoleOperation = async (
+export const postConsoleOperation = async <T extends Record<string, unknown>>(
   apiPath: string,
-  body: ConsoleReviewRequest | ConsoleTriageRequest | ConsoleIntmuxRequest,
+  body: T,
 ): Promise<void> => {
   const response = await fetch(apiPath, {
     method: 'POST',

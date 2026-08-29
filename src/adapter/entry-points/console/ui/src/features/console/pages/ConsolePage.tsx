@@ -5,6 +5,10 @@ import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsoleQueuedList } from '../components/list/ConsoleQueuedList';
 import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
 import {
+  type ConsoleOfflinePendingActionItem,
+  ConsoleOfflinePendingActionsPanel,
+} from '../components/operations/ConsoleOfflinePendingActionsPanel';
+import {
   ConsoleErrorToast,
   ConsoleUndoToast,
 } from '../components/operations/ConsoleUndoToast';
@@ -52,8 +56,10 @@ import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
 import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
 import type {
   ConsoleColor,
+  ConsoleIssueState,
   ConsoleListItem,
   ConsoleOverlayStatus,
+  ConsolePullRequestStatus,
   ConsoleStoryEntry,
   ConsoleTabName,
 } from '../logic/types';
@@ -150,6 +156,119 @@ export const ConsolePage = () => {
   );
   const actionQueue = useConsoleActionQueue();
   const now = Date.now();
+
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const handleOnline = (): void => setIsOnline(true);
+    const handleOffline = (): void => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const [offlineItemStates, setOfflineItemStates] = useState<
+    Map<string, ConsoleIssueState | null>
+  >(new Map());
+
+  const [offlinePrStatuses, setOfflinePrStatuses] = useState<
+    Map<string, ConsolePullRequestStatus | null>
+  >(new Map());
+
+  const [offlineFetchErrors, setOfflineFetchErrors] = useState<Set<string>>(
+    new Set(),
+  );
+
+  useEffect(() => {
+    if (!isOnline || actionQueue.offlineActions.length === 0) return;
+    for (const action of actionQueue.offlineActions) {
+      if (offlineItemStates.has(action.id) || offlineFetchErrors.has(action.id))
+        continue;
+      setOfflineItemStates((prev) => new Map(prev).set(action.id, null));
+      caches.client
+        .fetchIssueState(action.itemUrl)
+        .then((state) => {
+          setOfflineItemStates((prev) => new Map(prev).set(action.id, state));
+          if (action.isPr) {
+            setOfflinePrStatuses((prev) => new Map(prev).set(action.id, null));
+            caches.client
+              .fetchPullRequestStatus(action.itemUrl)
+              .then((prStatus) => {
+                setOfflinePrStatuses((prev) =>
+                  new Map(prev).set(action.id, prStatus),
+                );
+              })
+              .catch((fetchError: unknown) => {
+                console.warn(
+                  'Failed to fetch PR status for offline action:',
+                  fetchError,
+                );
+              });
+          }
+        })
+        .catch((fetchError: unknown) => {
+          console.warn(
+            'Failed to fetch current state for offline action:',
+            fetchError,
+          );
+          setOfflineFetchErrors((prev) => new Set(prev).add(action.id));
+        });
+    }
+  }, [
+    isOnline,
+    actionQueue.offlineActions,
+    caches.client,
+    offlineItemStates,
+    offlineFetchErrors,
+  ]);
+
+  const [isConfirmingOffline, setIsConfirmingOffline] = useState(false);
+
+  const handleConfirmOffline = useCallback(
+    async (id: string): Promise<void> => {
+      setIsConfirmingOffline(true);
+      try {
+        await actionQueue.confirmOfflineAction(id);
+      } finally {
+        setIsConfirmingOffline(false);
+      }
+    },
+    [actionQueue],
+  );
+
+  const offlinePanelActions = useMemo(
+    (): ConsoleOfflinePendingActionItem[] =>
+      actionQueue.offlineActions.map((a) => {
+        const state = offlineItemStates.get(a.id) ?? null;
+        const prStatus = offlinePrStatuses.get(a.id) ?? null;
+        const fetchError = offlineFetchErrors.has(a.id);
+        return {
+          id: a.id,
+          message: a.message,
+          color: a.color,
+          itemNumber: a.itemNumber,
+          isPr: a.isPr,
+          currentTitle: fetchError ? null : (state?.title ?? null),
+          currentState: fetchError
+            ? null
+            : state === null
+              ? null
+              : state.merged
+                ? 'closed'
+                : (state.state as 'open' | 'closed'),
+          currentPrStatus: prStatus,
+          fetchError,
+        };
+      }),
+    [
+      actionQueue.offlineActions,
+      offlineItemStates,
+      offlinePrStatuses,
+      offlineFetchErrors,
+    ],
+  );
 
   const activeSnapshot = snapshots[activeTab];
   const pendingItems = useMemo(() => {
@@ -294,6 +413,7 @@ export const ConsolePage = () => {
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
         commit: input.commit,
+        offline: input.offline,
         advance: () => {
           if (actionAdvances(input.kind, activeTab)) {
             if (
@@ -506,6 +626,13 @@ export const ConsolePage = () => {
           onDismiss={actionQueue.dismissError}
         />
       )}
+      <ConsoleOfflinePendingActionsPanel
+        actions={offlinePanelActions}
+        isOnline={isOnline}
+        isConfirming={isConfirmingOffline}
+        onConfirm={handleConfirmOffline}
+        onDiscard={actionQueue.discardOfflineAction}
+      />
       <ConsoleTabList
         activeTab={activeTab}
         counts={counts}
@@ -585,6 +712,7 @@ export const ConsolePage = () => {
             item={selectedItem}
             caches={caches}
             operations={operations}
+            pjcode={pjcode}
             statusOptions={statusOptions}
             storyColors={storyColors}
             storyName={storyNameForSelected}

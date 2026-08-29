@@ -76,7 +76,7 @@ export type ConsoleOperationsApi = {
   ) => Promise<void>;
 };
 
-const reviewRequest = (
+export const reviewRequest = (
   pjcode: string,
   item: ConsoleListItem,
   prUrl: string,
@@ -128,6 +128,33 @@ const reviewRequest = (
     issueCommentBody: buildUnnecessaryIssueCommentBody(prUrl),
   };
 };
+
+export const buildTriageRequest = (
+  pjcode: string,
+  item: ConsoleListItem,
+  action:
+    | ConsoleNextActionDateAction
+    | ConsoleCloseAction
+    | 'set_story'
+    | 'set_status',
+  extra?: { statusName?: string; storyOptionId?: string },
+): ConsoleTriageRequest => ({
+  pjcode,
+  action,
+  issueUrl: item.url,
+  projectItemId: item.projectItemId,
+  ...(extra ?? {}),
+});
+
+export const buildIntmuxRequest = (
+  pjcode: string,
+  item: ConsoleListItem,
+): ConsoleIntmuxRequest => ({
+  pjcode,
+  action: 'set_intmux',
+  issueUrl: item.url,
+  projectItemId: item.projectItemId,
+});
 
 const missingPjcodeError = (): Error =>
   new Error('No project specified in the URL path.');
