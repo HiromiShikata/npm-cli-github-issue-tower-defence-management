@@ -1,3 +1,10 @@
+# [1.195.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.194.2...v1.195.0) (2026-08-29)
+
+
+### Features
+
+* **NotifyFinishedIssuePreparationUseCase:** reassign to developer agent when linked PR has CI failures, regardless of current agent ([#1824](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1824)) ([b5efe01](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b5efe01d2fe8640483aa6e2d66af6ad47283746a)), closes [#1800](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1800)
+
 ## [1.194.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.194.1...v1.194.2) (2026-08-29)
 
 

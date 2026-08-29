@@ -46,7 +46,7 @@ class RevertOrphanedPreparationUseCase {
                 if (!isOrphaned) {
                     continue;
                 }
-                const { outcome, comments } = await this.evaluateOutcome(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), params.allowedIssueAuthors);
+                const { outcome, comments, ciFailingPrUrl } = await this.evaluateOutcome(issue, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), params.allowedIssueAuthors, params.developerAgentName);
                 const isStillInPreparation = await this.isStillInPreparation(issue, project);
                 if (!isStillInPreparation) {
                     continue;
@@ -96,6 +96,16 @@ class RevertOrphanedPreparationUseCase {
                     }
                     continue;
                 }
+                if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
+                    const effectiveDeveloperAgentName = params.developerAgentName ?? 'developer';
+                    const agentOptionId = await (0, ensureAgentOptionAndGetId_1.ensureAgentOptionAndGetId)(this.projectRepository, project, effectiveDeveloperAgentName);
+                    if (agentOptionId !== null) {
+                        await this.issueRepository.setIssueAgentField(issue.url, project, agentOptionId);
+                    }
+                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                    await this.issueCommentRepository.createComment(issue, `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`);
+                    continue;
+                }
                 if (outcome === 'returnToLabelSelectedAgent') {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     await this.issueCommentRepository.createComment(issue, returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE);
@@ -142,7 +152,7 @@ class RevertOrphanedPreparationUseCase {
             }
             return liveIssue.status === WorkflowStatus_1.PREPARATION_STATUS_NAME;
         };
-        this.evaluateOutcome = async (issue, labelsNotRequiringPullRequest, allowedIssueAuthors) => {
+        this.evaluateOutcome = async (issue, labelsNotRequiringPullRequest, allowedIssueAuthors, developerAgentName) => {
             if (issue.isClosed) {
                 return { outcome: 'advanceToQualityCheck', comments: [] };
             }
@@ -180,7 +190,8 @@ class RevertOrphanedPreparationUseCase {
                 return { outcome: 'reject', comments };
             }
             const categoryLabels = issue.labels.filter((label) => label.startsWith('category:'));
-            const isNonDeveloperAgent = issue.agent != null && issue.agent !== 'developer';
+            const effectiveDeveloperName = developerAgentName ?? 'developer';
+            const isNonDeveloperAgent = issue.agent != null && issue.agent !== effectiveDeveloperName;
             const hasLabelNotRequiringPullRequest = issue.labels.some((label) => labelsNotRequiringPullRequest.includes(label));
             if (isNonDeveloperAgent ||
                 hasLabelNotRequiringPullRequest ||
@@ -190,6 +201,15 @@ class RevertOrphanedPreparationUseCase {
                     : await this.issueRepository.findRelatedOpenPRs(issue.url);
                 if (prsToCheck.some((pr) => pr.isConflicted)) {
                     return { outcome: 'reject', comments };
+                }
+                if (isNonDeveloperAgent && issue.agent !== 'pr-reviewer') {
+                    if (prsToCheck.length === 1 && !prsToCheck[0].isPassedAllCiJob) {
+                        return {
+                            outcome: 'reassignToDeveloper',
+                            comments,
+                            ciFailingPrUrl: prsToCheck[0].url,
+                        };
+                    }
                 }
                 return { outcome: 'advanceToQualityCheck', comments };
             }

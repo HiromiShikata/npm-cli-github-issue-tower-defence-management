@@ -42,6 +42,7 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     private collectRejections;
     private reportBodyHasNextStep;
     private setDependedIssueUrlForAllOpenPRs;
+    private resolveLinkedPrWithCiFailure;
     private resolveOpenPrsForPrItem;
     private sendWorkflowBlockerNotification;
     private resolveConsoleTargetTab;
