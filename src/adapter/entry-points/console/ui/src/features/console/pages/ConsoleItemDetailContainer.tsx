@@ -218,7 +218,13 @@ export const ConsoleItemDetailContainer = ({
           }
           onCommentAndAwaitingWorkspace={
             awaitingWorkspaceOption !== undefined
-              ? () => handlers.onSetStatus(awaitingWorkspaceOption)
+              ? () =>
+                  onQueueAction({
+                    kind: { type: 'comment_and_awaiting_workspace' },
+                    item,
+                    commit: () =>
+                      operations.setStatus(item, awaitingWorkspaceOption),
+                  })
               : undefined
           }
         />

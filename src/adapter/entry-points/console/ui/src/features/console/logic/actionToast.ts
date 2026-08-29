@@ -21,7 +21,8 @@ export type ConsoleActionKind =
   | { type: 'set_status'; optionName: string }
   | { type: 'set_in_tmux_by_human'; optionName: string }
   | { type: 'close'; action: ConsoleCloseAction }
-  | { type: 'ok_and_awaiting_workspace' };
+  | { type: 'ok_and_awaiting_workspace' }
+  | { type: 'comment_and_awaiting_workspace' };
 
 export const ACTION_TOAST_DELAY_MS = 5000;
 
@@ -59,6 +60,8 @@ export const actionToastMessage = (
       return 'Added to In Tmux by human';
     case 'ok_and_awaiting_workspace':
       return 'ok → Awaiting Workspace';
+    case 'comment_and_awaiting_workspace':
+      return 'Commented → Awaiting Workspace';
     case 'close':
       return kind.action === 'close' ? 'Closed' : 'Closed as not planned';
   }
@@ -85,6 +88,7 @@ export const actionToastColor = (
     case 'set_status':
     case 'set_in_tmux_by_human':
     case 'ok_and_awaiting_workspace':
+    case 'comment_and_awaiting_workspace':
       return 'blue';
     case 'close':
       return 'red';

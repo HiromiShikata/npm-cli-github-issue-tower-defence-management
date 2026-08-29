@@ -458,7 +458,7 @@ describe('ConsoleItemDetailContainer', () => {
     ).toBeNull();
   });
 
-  it('clicking Comment & MOVE to Awaiting Workspace calls addComment and queues a set_status action', async () => {
+  it('clicking Comment & MOVE to Awaiting Workspace calls addComment and queues a comment_and_awaiting_workspace action', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
     const { getByPlaceholderText, getByRole } = render(
@@ -490,10 +490,40 @@ describe('ConsoleItemDetailContainer', () => {
     });
     expect(onQueueAction).toHaveBeenCalledWith(
       expect.objectContaining({
-        kind: { type: 'set_status', optionName: AWAITING_WORKSPACE_NAME },
+        kind: { type: 'comment_and_awaiting_workspace' },
         item: issueItem,
       }),
     );
+  });
+
+  it('clicking Ok & MOVE to Awaiting Workspace queues an ok_and_awaiting_workspace action without calling addComment', () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByRole } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.click(
+      getByRole('button', { name: 'Ok & MOVE to Awaiting Workspace' }),
+    );
+    expect(onQueueAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: { type: 'ok_and_awaiting_workspace' },
+        item: issueItem,
+      }),
+    );
+    expect(operations.addComment).not.toHaveBeenCalled();
   });
 
   it('collects an inline comment on an issue related pull request diff, enables Reject, and submits it as the request-changes review for that pull request url', async () => {

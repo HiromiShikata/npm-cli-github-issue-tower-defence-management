@@ -141,6 +141,22 @@ describe('actionToastMessage for ok_and_awaiting_workspace', () => {
   });
 });
 
+describe('actionToastMessage for comment_and_awaiting_workspace', () => {
+  it('returns the composite label', () => {
+    expect(
+      actionToastMessage({ type: 'comment_and_awaiting_workspace' }, 'prs'),
+    ).toBe('Commented → Awaiting Workspace');
+  });
+});
+
+describe('actionToastColor for comment_and_awaiting_workspace', () => {
+  it('returns blue', () => {
+    expect(actionToastColor({ type: 'comment_and_awaiting_workspace' })).toBe(
+      'blue',
+    );
+  });
+});
+
 describe('actionAdvances', () => {
   it('advances every non-snooze action in every tab', () => {
     expect(
