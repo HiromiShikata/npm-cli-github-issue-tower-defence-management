@@ -33,10 +33,7 @@ describe('SubscriptionDisabledIssueUseCase', () => {
       );
 
       await useCase.run({
-        tokenEntries: [
-          buildEntry('dev1', false),
-          buildEntry('dev2', false),
-        ],
+        tokenEntries: [buildEntry('dev1', false), buildEntry('dev2', false)],
         org: ORG,
         repo: REPO,
       });
