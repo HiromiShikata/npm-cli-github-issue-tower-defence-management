@@ -13,7 +13,9 @@ describe('CliGitHubGraphqlRateLimitRepository', () => {
       runCommand: jest.fn(),
       spawnInteractive: jest.fn(),
     };
-    repository = new CliGitHubGraphqlRateLimitRepository(mockLocalCommandRunner);
+    repository = new CliGitHubGraphqlRateLimitRepository(
+      mockLocalCommandRunner,
+    );
   });
 
   it('returns the remaining GraphQL request count when gh succeeds', async () => {
@@ -26,11 +28,8 @@ describe('CliGitHubGraphqlRateLimitRepository', () => {
     const result = await repository.getRemainingRequestCount();
 
     expect(result).toBe(4873);
-    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledWith('gh', [
-      'api',
-      'rate_limit',
-      '--jq',
-      '.resources.graphql.remaining',
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toEqual([
+      ['gh', ['api', 'rate_limit', '--jq', '.resources.graphql.remaining']],
     ]);
   });
 

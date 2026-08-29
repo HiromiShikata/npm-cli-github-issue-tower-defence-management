@@ -415,6 +415,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           spawnMockLocalCommandRunner,
           spawnMockClaudeTokenUsageRepository,
           spawnMockTakeOwnershipSpawnRepository,
+          { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
         );
 
         const notifyProject = createNotifyMockProject();
