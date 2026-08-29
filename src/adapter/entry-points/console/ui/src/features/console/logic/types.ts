@@ -43,16 +43,7 @@ export type ConsoleStatusTab = {
   items: ConsoleListItem[];
 };
 
-export type ConsoleTriageTab = {
-  pjcode: string;
-  generatedAt: string;
-  storyOptions: ConsoleFieldOption[];
-  storyOrder: string[];
-  storyColors: Record<string, ConsoleColor>;
-  items: ConsoleListItem[];
-};
-
-export type ConsoleTabData = ConsoleStatusTab | ConsoleTriageTab;
+export type ConsoleTabData = ConsoleStatusTab;
 
 export type ConsoleStoryColorSource = Record<
   string,
@@ -144,7 +135,6 @@ export type ConsoleOverlay = Record<string, ConsoleOverlayEntry>;
 export type ConsoleTabName =
   | 'workflow-blocker'
   | 'prs'
-  | 'triage'
   | 'failed-preparation'
   | 'todo-by-human'
   | 'todo-by-agent'
@@ -166,7 +156,6 @@ export type ConsoleTab = {
 export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'workflow-blocker', label: 'Workflow Blocker' },
   { name: 'prs', label: 'Awaiting Quality Check' },
-  { name: 'triage', label: 'Triage' },
   { name: 'failed-preparation', label: 'Failed Preparation' },
   { name: 'todo-by-human', label: 'Todo by human' },
   { name: 'todo-by-agent', label: 'Todo by agent' },

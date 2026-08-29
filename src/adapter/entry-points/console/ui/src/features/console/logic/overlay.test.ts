@@ -70,7 +70,7 @@ describe('isOverlayEntryActed', () => {
   });
 
   it('treats a done entry as acted regardless of the mode it was written in', () => {
-    expect(isOverlayEntryActed({ ts: 100, mode: 'triage', done: true })).toBe(
+    expect(isOverlayEntryActed({ ts: 100, mode: 'todo-by-human', done: true })).toBe(
       true,
     );
   });
@@ -86,7 +86,7 @@ describe('counts driven to zero do not revive on tab switch', () => {
 
   it('does not subtract a done item from a tab other than the one it was processed in', () => {
     const overlay: ConsoleOverlay = {
-      PVTI_1: { ts: 100, mode: 'triage', done: true },
+      PVTI_1: { ts: 100, mode: 'todo-by-human', done: true },
     };
     expect(countPendingItems([item(1)], overlay, 'prs')).toBe(1);
   });
@@ -237,14 +237,14 @@ describe('writeOverlayEntry', () => {
       overlay,
       'PVTI_1',
       { story: { name: 'New Story', color: 'GREEN' } },
-      'triage',
+      'todo-by-human',
       999,
     );
     expect(next.PVTI_1).toEqual({
       done: true,
       story: { name: 'New Story', color: 'GREEN' },
       ts: 999,
-      mode: 'triage',
+      mode: 'todo-by-human',
     });
   });
 });

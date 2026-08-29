@@ -3,7 +3,6 @@ import type { ConsoleOperationHandlers } from '../../logic/operations';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
-  consoleStoryOptionsFixture,
 } from '../../testing/fixtures';
 import { ConsoleOperationMenu } from './ConsoleOperationMenu';
 
@@ -23,7 +22,6 @@ const meta: Meta<typeof ConsoleOperationMenu> = {
   args: {
     rejectEnabled: false,
     statusOptions: consoleStatusOptionsFixture,
-    storyOptions: consoleStoryOptionsFixture,
     handlers,
   },
 };
@@ -46,14 +44,6 @@ export const PrsTabPullRequestRejectEnabled: Story = {
     item: consoleListItemsFixture[0],
     hasPullRequest: true,
     rejectEnabled: true,
-  },
-};
-
-export const TriageTabIssueWithStoryGroup: Story = {
-  args: {
-    tab: 'triage',
-    item: consoleListItemsFixture[2],
-    hasPullRequest: false,
   },
 };
 

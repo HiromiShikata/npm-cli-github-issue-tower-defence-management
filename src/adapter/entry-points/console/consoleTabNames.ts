@@ -3,7 +3,6 @@ import type { ConsoleTabName } from '../../../domain/usecases/console/GenerateCo
 export const CONSOLE_LIST_TAB_NAMES: ConsoleTabName[] = [
   'workflow-blocker',
   'prs',
-  'triage',
   'failed-preparation',
   'todo-by-human',
   'todo-by-agent',

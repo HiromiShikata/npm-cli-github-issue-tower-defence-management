@@ -3,7 +3,6 @@ import type { ConsoleOperationHandlers } from '../../logic/operations';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
-  consoleStoryOptionsFixture,
 } from '../../testing/fixtures';
 import { ConsoleOperationMenu } from './ConsoleOperationMenu';
 
@@ -21,7 +20,7 @@ const prItem = consoleListItemsFixture[0];
 const issueItem = consoleListItemsFixture[2];
 
 describe('ConsoleOperationMenu', () => {
-  it('shows the review and close groups for a PR while hiding the story group outside triage', () => {
+  it('shows the review and close groups for a PR on the prs tab', () => {
     const { getByText, queryByText } = render(
       <ConsoleOperationMenu
         tab="prs"
@@ -29,7 +28,6 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
       />,
     );
@@ -42,23 +40,6 @@ describe('ConsoleOperationMenu', () => {
     expect(queryByText('TDPM Console port')).toBeNull();
   });
 
-  it('shows the story group on the triage tab and the close group for an issue', () => {
-    const { getByText } = render(
-      <ConsoleOperationMenu
-        tab="triage"
-        item={issueItem}
-        hasPullRequest={false}
-        rejectEnabled={false}
-        statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
-        handlers={handlers}
-      />,
-    );
-    expect(getByText('Move to Okinawa')).toBeInTheDocument();
-    expect(getByText('Close')).toBeInTheDocument();
-    expect(getByText('Close as not planned')).toBeInTheDocument();
-  });
-
   it('shows +1 week and skip on the todo-by-human tab', () => {
     const { getByText } = render(
       <ConsoleOperationMenu
@@ -67,7 +48,6 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
       />,
     );
@@ -82,7 +62,6 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
       />,
     );
@@ -97,7 +76,6 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
       />,
     );
@@ -105,7 +83,7 @@ describe('ConsoleOperationMenu', () => {
     expect(queryByText('Close')).not.toBeNull();
   });
 
-  it('shows status, close and next-action groups but hides the story group on the workflow-blocker tab', () => {
+  it('shows status, close and next-action groups on the workflow-blocker tab', () => {
     const { getByText, queryByText } = render(
       <ConsoleOperationMenu
         tab="workflow-blocker"
@@ -113,7 +91,6 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
       />,
     );
@@ -133,7 +110,6 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
       />,
     );
@@ -149,7 +125,6 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
       />,
     );
@@ -161,7 +136,6 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={true}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         handlers={handlers}
       />,
     );

@@ -100,7 +100,7 @@ describe('actionToastMessage', () => {
     expect(
       actionToastMessage(
         { type: 'set_story', optionName: 'Move to Okinawa' },
-        'triage',
+        'todo-by-human',
       ),
     ).toBe('Story → Move to Okinawa');
   });

@@ -599,42 +599,6 @@ test('changes the color of a story row via the color palette in the stories tab'
   await expect(palette).toHaveCount(0);
 });
 
-test('reorders stories on the triage tab with up/down buttons', async ({
-  page,
-}) => {
-  await page.goto(harness.appRootUrl);
-
-  await tabByLabel(page, 'Triage').click();
-
-  const reorderPanel = page.locator('.console-story-reorder-panel');
-  await expect(reorderPanel).toBeVisible();
-
-  const rows = reorderPanel.locator('.console-story-reorder-row');
-  await expect(rows).toHaveCount(3);
-
-  await expect(rows.nth(0)).toContainText('TDPM Console port');
-  await expect(rows.nth(1)).toContainText('Publish product documentation site');
-  await expect(rows.nth(2)).toContainText('regular / WORKFLOW BLOCKER');
-
-  await rows.nth(0).locator('[aria-label="Move down"]').click();
-
-  await expect
-    .poll(() => harness.reorderStoryCalls.length, { timeout: 5000 })
-    .toBe(1);
-
-  await expect(rows.nth(0)).toContainText('Publish product documentation site');
-  await expect(rows.nth(1)).toContainText('TDPM Console port');
-
-  await rows.nth(1).locator('[aria-label="Move up"]').click();
-
-  await expect
-    .poll(() => harness.reorderStoryCalls.length, { timeout: 5000 })
-    .toBe(2);
-
-  await expect(rows.nth(0)).toContainText('TDPM Console port');
-  await expect(rows.nth(1)).toContainText('Publish product documentation site');
-});
-
 test('posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked', async ({
   page,
 }) => {

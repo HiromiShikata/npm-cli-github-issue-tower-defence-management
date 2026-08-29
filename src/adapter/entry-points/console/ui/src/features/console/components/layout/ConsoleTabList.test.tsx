@@ -5,7 +5,6 @@ import { ConsoleTabList } from './ConsoleTabList';
 const counts: Record<ConsoleTabName, number> = {
   'workflow-blocker': 4,
   prs: 3,
-  triage: 0,
   'failed-preparation': 0,
   'todo-by-human': 2,
   'todo-by-agent': 3,

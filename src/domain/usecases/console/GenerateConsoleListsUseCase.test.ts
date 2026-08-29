@@ -219,139 +219,6 @@ describe('GenerateConsoleListsUseCase', () => {
       ]);
       expect(result['todo-by-agent'].items).toHaveLength(0);
     });
-
-    it('selects all actionable items for triage regardless of story', () => {
-      const result = run([
-        makeIssue({ story: 'regular / NO STORY; SET STORY FIELD' }),
-        makeIssue({ story: 'no story please' }),
-        makeIssue({ story: 'Story Alpha' }),
-        makeIssue({ story: null }),
-      ]);
-      expect(result.triage.items).toHaveLength(4);
-    });
-
-    it('excludes In Tmux by agent items from triage regardless of story', () => {
-      const result = run([
-        makeIssue({ story: 'no story', status: 'In Tmux by agent' }),
-        makeIssue({ story: 'no story', status: 'in tmux by agent' }),
-        makeIssue({ story: 'no story', status: 'Unread' }),
-      ]);
-      const statuses = result.triage.items.map((item) => item.status);
-      expect(statuses).toEqual(['Unread']);
-    });
-
-    it('excludes items with reactivation triggers from triage', () => {
-      const result = run([
-        makeIssue({
-          story: 'no story',
-          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
-        }),
-        makeIssue({
-          story: 'no story',
-          nextActionDate: new Date('2026-08-20T00:00:00.000Z'),
-        }),
-        makeIssue({ story: 'no story', nextActionHour: 9 }),
-      ]);
-      expect(result.triage.items).toHaveLength(0);
-    });
-
-    it('includes pull requests in triage when assigned, excludes unassigned and closed', () => {
-      const result = run([
-        makeIssue({ story: 'no story', isPr: true }),
-        makeIssue({ story: 'no story', assignees: ['someone-else'] }),
-        makeIssue({ story: 'no story', isClosed: true }),
-      ]);
-      expect(result.triage.items).toHaveLength(1);
-    });
-
-    it('includes all actionable items in triage including those with a real story or null story', () => {
-      const result = run([
-        makeIssue({ story: null, status: 'Awaiting Workspace' }),
-        makeIssue({ story: null, status: null }),
-        makeIssue({ story: 'regular / NO STORY' }),
-        makeIssue({ story: 'Story Alpha' }),
-      ]);
-      expect(result.triage.items).toHaveLength(4);
-    });
-
-    it('includes pull requests in triage, excludes unassigned and closed items with null story', () => {
-      const result = run([
-        makeIssue({ story: null, isPr: true }),
-        makeIssue({ story: null, assignees: ['someone-else'] }),
-        makeIssue({ story: null, isClosed: true }),
-      ]);
-      expect(result.triage.items).toHaveLength(1);
-    });
-
-    it('shows all actionable items in triage whatever status they carry, excluding In Tmux by agent', () => {
-      const result = run([
-        makeIssue({ story: 'no story', status: 'Unread' }),
-        makeIssue({ story: 'no story', status: 'Awaiting Workspace' }),
-        makeIssue({ story: 'no story', status: 'In Tmux by agent' }),
-        makeIssue({ story: 'no story', status: 'Preparation' }),
-        makeIssue({ story: 'no story', status: 'Failed Preparation' }),
-        makeIssue({ story: 'no story', status: 'Awaiting Quality Check' }),
-        makeIssue({ story: 'no story', status: 'Todo by human' }),
-        makeIssue({ story: 'no story', status: 'Todo by agent' }),
-        makeIssue({ story: 'no story', status: 'In Tmux by human' }),
-        makeIssue({ story: 'no story', status: 'Done' }),
-        makeIssue({ story: 'no story', status: 'Icebox' }),
-      ]);
-      expect(result.triage.items.map((item) => item.status)).toEqual([
-        'Unread',
-        'Awaiting Workspace',
-        'Preparation',
-        'Failed Preparation',
-        'Awaiting Quality Check',
-        'Todo by human',
-        'Todo by agent',
-        'In Tmux by human',
-        'Done',
-        'Icebox',
-      ]);
-    });
-
-    it('shows items with any story in triage at every status except In Tmux by agent', () => {
-      const result = run([
-        makeIssue({ story: 'Story Alpha', status: 'Unread' }),
-        makeIssue({ story: 'Story Alpha', status: 'Awaiting Workspace' }),
-        makeIssue({ story: 'Story Alpha', status: 'In Tmux by agent' }),
-        makeIssue({ story: 'Story Alpha', status: 'Preparation' }),
-        makeIssue({ story: 'Story Alpha', status: 'Failed Preparation' }),
-        makeIssue({ story: 'Story Alpha', status: 'Awaiting Quality Check' }),
-        makeIssue({ story: 'Story Alpha', status: 'Todo by human' }),
-        makeIssue({ story: 'Story Alpha', status: 'Todo by agent' }),
-        makeIssue({ story: 'Story Alpha', status: 'In Tmux by human' }),
-        makeIssue({ story: 'Story Alpha', status: 'Done' }),
-        makeIssue({ story: 'Story Alpha', status: 'Icebox' }),
-      ]);
-      expect(result.triage.items).toHaveLength(10);
-    });
-
-    it('keeps a no-story item whose status is written in a different case', () => {
-      const result = run([
-        makeIssue({ story: 'no story', status: 'unread' }),
-        makeIssue({ story: 'no story', status: 'awaiting workspace' }),
-        makeIssue({ story: 'no story', status: 'failed preparation' }),
-      ]);
-      expect(result.triage.items.map((item) => item.status)).toEqual([
-        'unread',
-        'awaiting workspace',
-        'failed preparation',
-      ]);
-    });
-
-    it('keeps an item carrying the story option this tool assigns automatically once its status has advanced', () => {
-      const result = run([
-        makeIssue({
-          story: 'regular / NO STORY; SET STORY FIELD',
-          status: 'Awaiting Quality Check',
-        }),
-      ]);
-      expect(result.triage.items.map((item) => item.status)).toEqual([
-        'Awaiting Quality Check',
-      ]);
-    });
   });
 
   describe('workflow-blocker tab', () => {
@@ -420,7 +287,6 @@ describe('GenerateConsoleListsUseCase', () => {
     ) => [
       ...result['workflow-blocker'].items,
       ...result.prs.items,
-      ...result.triage.items,
       ...result['failed-preparation'].items,
       ...result['todo-by-human'].items,
     ];
@@ -438,14 +304,13 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(allTabItems(result)).toHaveLength(1);
     });
 
-    it('hides a no-story In Tmux by agent issue from triage and all other tabs', () => {
+    it('hides a no-story In Tmux by agent issue from all tabs', () => {
       const result = run([
         makeIssue({
           story: 'no story',
           status: 'In Tmux by agent',
         }),
       ]);
-      expect(result.triage.items).toHaveLength(0);
       expect(allTabItems(result)).toHaveLength(0);
     });
 
@@ -475,10 +340,8 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(
         result['workflow-blocker'].items.map((item) => item.status).sort(),
       ).toEqual(['In Tmux by agent', 'In Tmux by human']);
-      expect(result.triage.items.map((item) => item.number)).toEqual([3, 2]);
       expect(
         result.prs.items
-          .concat(result.triage.items)
           .concat(result['failed-preparation'].items)
           .concat(result['todo-by-human'].items)
           .some((item) => item.status === 'In Tmux by agent'),
@@ -673,16 +536,6 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(names).toContain('Awaiting Workspace');
     });
 
-    it('emits all story options for triage and no statusOptions key', () => {
-      const triage = run([]).triage;
-      expect(triage.storyOptions.map((o) => o.name)).toEqual([
-        'regular / NO STORY; SET STORY FIELD',
-        'Story Alpha',
-        'Story Beta',
-      ]);
-      expect(triage).not.toHaveProperty('statusOptions');
-    });
-
     it('builds storyOrder from story field option order', () => {
       expect(run([]).prs.storyOrder).toEqual([
         'regular / NO STORY; SET STORY FIELD',
@@ -700,19 +553,12 @@ describe('GenerateConsoleListsUseCase', () => {
         color: 'BLUE',
       });
     });
-
-    it('uses plain string color values for triage', () => {
-      const result = run([]);
-      expect(result.triage.storyColors['Story Alpha']).toBe('BLUE');
-      expect(result.triage.storyColors['Story Beta']).toBe('GREEN');
-    });
   });
 
   describe('generatedAt and pjcode passthrough', () => {
     it('writes the provided generatedAt without milliseconds on every tab', () => {
       const result = run([]);
       expect(result.prs.generatedAt).toBe(generatedAt);
-      expect(result.triage.generatedAt).toBe(generatedAt);
       expect(result['failed-preparation'].generatedAt).toBe(generatedAt);
       expect(generatedAt).not.toMatch(/\.\d{3}Z$/);
     });
@@ -720,7 +566,6 @@ describe('GenerateConsoleListsUseCase', () => {
     it('writes the configured pjcode on every tab', () => {
       const result = run([]);
       expect(result.prs.pjcode).toBe('demo');
-      expect(result.triage.pjcode).toBe('demo');
       expect(result['failed-preparation'].pjcode).toBe('demo');
     });
   });
@@ -789,13 +634,10 @@ describe('GenerateConsoleListsUseCase', () => {
   describe('project without a story field', () => {
     const projectNoStory = baseProject(null);
 
-    it('degrades story order, colors and triage options gracefully', () => {
+    it('degrades story order and colors gracefully', () => {
       const result = run([makeIssue({ story: 'no story' })], projectNoStory);
       expect(result.prs.storyOrder).toEqual([]);
       expect(result.prs.storyColors).toEqual({});
-      expect(result.triage.storyOptions).toEqual([]);
-      expect(result.triage.storyColors).toEqual({});
-      expect(result.triage.items).toHaveLength(1);
     });
   });
 

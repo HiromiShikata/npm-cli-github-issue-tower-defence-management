@@ -3,7 +3,6 @@ import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
-import { ConsoleStoryReorderPanel } from '../components/list/ConsoleStoryReorderPanel';
 import {
   ConsoleErrorToast,
   ConsoleUndoToast,
@@ -177,25 +176,13 @@ export const ConsolePage = () => {
 
   const storyColors = activeSnapshot?.storyColors ?? {};
   const statusOptions = activeSnapshot?.statusOptions ?? [];
-  const storyOptions = activeSnapshot?.storyOptions ?? [];
   const generatedAt = activeSnapshot?.generatedAt ?? null;
   const fromCache = activeSnapshot?.fromCache ?? false;
-
-  const [localStoryOptionsOverride, setLocalStoryOptionsOverride] = useState<{
-    generatedAt: string | undefined;
-    stories: typeof storyOptions;
-  } | null>(null);
 
   const [localStoryEntriesOverride, setLocalStoryEntriesOverride] = useState<{
     generatedAt: string | undefined;
     stories: ConsoleStoryEntry[];
   } | null>(null);
-
-  const triageStoryOptions =
-    localStoryOptionsOverride !== null &&
-    localStoryOptionsOverride.generatedAt === activeSnapshot?.generatedAt
-      ? localStoryOptionsOverride.stories
-      : storyOptions.filter((o) => o.color !== 'GRAY');
 
   const selectedItem = useMemo<ConsoleListItem | null>(() => {
     if (selectedItemKey === null || activeSnapshot === null) {
@@ -385,25 +372,6 @@ export const ConsolePage = () => {
         throw new Error('No project specified in the URL path.');
       }
       await postConsoleReorderStory({ pjcode, storyOptionId, direction });
-      const triageIndex = triageStoryOptions.findIndex(
-        (o) => o.id === storyOptionId,
-      );
-      if (triageIndex !== -1) {
-        const triageSwapIndex = triageIndex + (direction === 'up' ? -1 : 1);
-        if (
-          triageSwapIndex >= 0 &&
-          triageSwapIndex < triageStoryOptions.length
-        ) {
-          const nextTriage = [...triageStoryOptions];
-          const triageTemp = nextTriage[triageIndex];
-          nextTriage[triageIndex] = nextTriage[triageSwapIndex];
-          nextTriage[triageSwapIndex] = triageTemp;
-          setLocalStoryOptionsOverride({
-            generatedAt: activeSnapshot?.generatedAt,
-            stories: nextTriage,
-          });
-        }
-      }
       const entryIndex = storyEntries.findIndex(
         (e) => e.storyOptionId === storyOptionId,
       );
@@ -421,13 +389,7 @@ export const ConsolePage = () => {
         }
       }
     },
-    [
-      pjcode,
-      triageStoryOptions,
-      storyEntries,
-      activeSnapshot?.generatedAt,
-      storiesSnapshot?.generatedAt,
-    ],
+    [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
 
   const handleStoryAdd = useCallback(
@@ -565,23 +527,15 @@ export const ConsolePage = () => {
           colorErrors={storyColorErrors}
         />
       ) : selectedItem === null ? (
-        <>
-          {activeTab === 'triage' && triageStoryOptions.length > 0 && (
-            <ConsoleStoryReorderPanel
-              stories={triageStoryOptions}
-              onReorderStory={handleReorderStory}
-            />
-          )}
-          <ConsoleItemList
-            rows={rows}
-            storyColors={storyColors}
-            activeItemId={null}
-            now={now}
-            isLoading={isLoading}
-            error={error}
-            onSelectItem={(item) => navigation.openItem(item.projectItemId)}
-          />
-        </>
+        <ConsoleItemList
+          rows={rows}
+          storyColors={storyColors}
+          activeItemId={null}
+          now={now}
+          isLoading={isLoading}
+          error={error}
+          onSelectItem={(item) => navigation.openItem(item.projectItemId)}
+        />
       ) : (
         <div className="console-detail-screen" ref={detailScreenRef}>
           <ConsoleItemDetailContainer
@@ -591,7 +545,6 @@ export const ConsolePage = () => {
             caches={caches}
             operations={operations}
             statusOptions={statusOptions}
-            storyOptions={storyOptions}
             storyColors={storyColors}
             storyName={storyNameForSelected}
             overlayStatus={overlayStatusForSelected}

@@ -41,7 +41,7 @@ describe('findConsoleItemUrl', () => {
   });
 
   it('ignores a tab file that is not valid json', () => {
-    const dir = path.join(baseDir, 'acme', 'triage');
+    const dir = path.join(baseDir, 'acme', 'failed-preparation');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'list.json'), 'not json');
     writeList('prs', [{ url: 'https://github.com/o/r/issues/1' }]);

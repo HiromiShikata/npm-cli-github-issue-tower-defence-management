@@ -8,7 +8,6 @@ import {
   consoleMermaidBodyFixture,
   consoleRelatedPullRequestsFixture,
   consoleStatusOptionsFixture,
-  consoleStoryOptionsFixture,
 } from '../../testing/fixtures';
 import { ConsoleOperationMenu } from '../operations/ConsoleOperationMenu';
 import { ConsoleItemDetail } from './ConsoleItemDetail';
@@ -257,12 +256,11 @@ export const IssueWithRichMarkdownBody: Story = {
     relatedPullRequests: [],
     operationBar: (
       <ConsoleOperationMenu
-        tab="triage"
+        tab="todo-by-human"
         item={consoleListItemsFixture[2]}
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         handlers={noopOperationHandlers}
       />
     ),
