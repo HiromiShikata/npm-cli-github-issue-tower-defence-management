@@ -703,7 +703,11 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       await useCase.run({ projectUrl });
 
-      expect(callOrder).toEqual(['updateBranch', 'updateStatus', 'createComment']);
+      expect(callOrder).toEqual([
+        'updateBranch',
+        'updateStatus',
+        'createComment',
+      ]);
     });
 
     it('should fetch all PR URLs in a single batched call', async () => {
