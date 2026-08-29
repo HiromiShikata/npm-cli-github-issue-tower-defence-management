@@ -9,7 +9,6 @@ import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
-import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
 import { DateRepository } from './adapter-interfaces/DateRepository';
 import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
@@ -112,8 +111,6 @@ describe('HandleScheduledEventUseCase', () => {
       mock<StaleTaskPullRequestCloseUseCase>();
     const mockCreateEstimationIssueUseCase =
       mock<CreateEstimationIssueUseCase>();
-    const mockConvertCheckboxToIssueInStoryIssueUseCase =
-      mock<ConvertCheckboxToIssueInStoryIssueUseCase>();
     const mockChangeStatusByStoryColorUseCase =
       mock<ChangeStatusByStoryColorUseCase>();
     const mockSetNoStoryIssueToStoryUseCase =
@@ -158,7 +155,6 @@ describe('HandleScheduledEventUseCase', () => {
       mockSetDependedIssueUrlForOpenTaskPRsUseCase,
       mockStaleTaskPullRequestCloseUseCase,
       mockCreateEstimationIssueUseCase,
-      mockConvertCheckboxToIssueInStoryIssueUseCase,
       mockChangeStatusByStoryColorUseCase,
       mockSetNoStoryIssueToStoryUseCase,
       mockCreateNewStoryByLabelUseCase,
@@ -351,57 +347,6 @@ describe('HandleScheduledEventUseCase', () => {
       const result = await useCase.run(input);
       expect(result).not.toBeNull();
       expect(mockProjectRepository.findProjectIdByUrl).toHaveBeenCalled();
-    });
-
-    it('should pass createTaskFromStoryBodyCheckboxEnabled false to ConvertCheckboxToIssueInStoryIssueUseCase when the field is absent', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabled: false,
-      };
-
-      await useCase.run(input);
-      expect(
-        mockConvertCheckboxToIssueInStoryIssueUseCase.run,
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({
-          createTaskFromStoryBodyCheckboxEnabled: false,
-        }),
-      );
-    });
-
-    it('should pass createTaskFromStoryBodyCheckboxEnabled true to ConvertCheckboxToIssueInStoryIssueUseCase when the field is true', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabled: false,
-        createTaskFromStoryBodyCheckboxEnabled: true,
-      };
-
-      await useCase.run(input);
-      expect(
-        mockConvertCheckboxToIssueInStoryIssueUseCase.run,
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({
-          createTaskFromStoryBodyCheckboxEnabled: true,
-        }),
-      );
     });
 
     it('should pass storyProgressCommentEnabled true to AnalyzeProblemByIssueUseCase when the field is absent', async () => {
@@ -1872,7 +1817,6 @@ describe('HandleScheduledEventUseCase', () => {
       mock<SetDependedIssueUrlForOpenTaskPRsUseCase>(),
       mock<StaleTaskPullRequestCloseUseCase>(),
       mock<CreateEstimationIssueUseCase>(),
-      mock<ConvertCheckboxToIssueInStoryIssueUseCase>(),
       mock<ChangeStatusByStoryColorUseCase>(),
       mock<SetNoStoryIssueToStoryUseCase>(),
       mock<CreateNewStoryByLabelUseCase>(),
