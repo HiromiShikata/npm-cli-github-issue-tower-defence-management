@@ -558,12 +558,12 @@ test('shows queued items grouped by story with colored status badges and navigat
     .first();
   await expect(awaitingStatusBadge).toHaveText('Awaiting Workspace');
   const awaitingStyle = await awaitingStatusBadge.getAttribute('style');
-  expect(awaitingStyle).toContain('rgba(56,139,253');
+  expect(awaitingStyle).toContain('rgba(56, 139, 253');
 
   const prepStatusBadge = prepRow.locator('.console-queued-item-badge').first();
   await expect(prepStatusBadge).toHaveText('Preparation');
   const prepStyle = await prepStatusBadge.getAttribute('style');
-  expect(prepStyle).toContain('rgba(187,128,9');
+  expect(prepStyle).toContain('rgba(187, 128, 9');
 
   const prepAgentBadge = prepRow.locator('.console-queued-item-badge').nth(1);
   await expect(prepAgentBadge).toHaveText('developer');
