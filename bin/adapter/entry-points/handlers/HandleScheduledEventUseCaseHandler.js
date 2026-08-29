@@ -13,6 +13,7 @@ const consoleListsWriter_1 = require("./consoleListsWriter");
 const dashboardRowWriter_1 = require("./dashboardRowWriter");
 const machineStatusWriter_1 = require("./machineStatusWriter");
 const tokenStatusWriter_1 = require("./tokenStatusWriter");
+const subscriptionDisabledTokenHandler_1 = require("./subscriptionDisabledTokenHandler");
 const inTmuxByHumanDataWriter_1 = require("./inTmuxByHumanDataWriter");
 const ownerCallFileCleaner_1 = require("./ownerCallFileCleaner");
 const inTmuxByHumanSessionReconciler_1 = require("./inTmuxByHumanSessionReconciler");
@@ -46,7 +47,6 @@ const ClearDependedIssueURLUseCase_1 = require("../../../domain/usecases/ClearDe
 const SetDependedIssueUrlForOpenTaskPRsUseCase_1 = require("../../../domain/usecases/SetDependedIssueUrlForOpenTaskPRsUseCase");
 const StaleTaskPullRequestCloseUseCase_1 = require("../../../domain/usecases/StaleTaskPullRequestCloseUseCase");
 const CreateEstimationIssueUseCase_1 = require("../../../domain/usecases/CreateEstimationIssueUseCase");
-const ConvertCheckboxToIssueInStoryIssueUseCase_1 = require("../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase");
 const ChangeStatusByStoryColorUseCase_1 = require("../../../domain/usecases/ChangeStatusByStoryColorUseCase");
 const SetNoStoryIssueToStoryUseCase_1 = require("../../../domain/usecases/SetNoStoryIssueToStoryUseCase");
 const CreateNewStoryByLabelUseCase_1 = require("../../../domain/usecases/CreateNewStoryByLabelUseCase");
@@ -237,7 +237,6 @@ class HandleScheduledEventUseCaseHandler {
             const setDependedIssueUrlForOpenTaskPRsUseCase = new SetDependedIssueUrlForOpenTaskPRsUseCase_1.SetDependedIssueUrlForOpenTaskPRsUseCase(issueRepository);
             const staleTaskPullRequestCloseUseCase = new StaleTaskPullRequestCloseUseCase_1.StaleTaskPullRequestCloseUseCase(issueRepository);
             const createEstimationIssueUseCase = new CreateEstimationIssueUseCase_1.CreateEstimationIssueUseCase(issueRepository, systemDateRepository);
-            const convertCheckboxToIssueInStoryIssueUseCase = new ConvertCheckboxToIssueInStoryIssueUseCase_1.ConvertCheckboxToIssueInStoryIssueUseCase(issueRepository);
             const changeStatusByStoryColorUseCase = new ChangeStatusByStoryColorUseCase_1.ChangeStatusByStoryColorUseCase(systemDateRepository, issueRepository);
             const setNoStoryIssueToStoryUseCase = new SetNoStoryIssueToStoryUseCase_1.SetNoStoryIssueToStoryUseCase(issueRepository);
             const createNewStoryByLabel = new CreateNewStoryByLabelUseCase_1.CreateNewStoryByLabelUseCase(projectRepository, issueRepository);
@@ -262,7 +261,7 @@ class HandleScheduledEventUseCaseHandler {
                 : null;
             const qualityCheckAdvanceUseCase = new QualityCheckAdvanceUseCase_1.QualityCheckAdvanceUseCase(issueRepository);
             const reopenedDoneIssueRevertUseCase = new ReopenedDoneIssueRevertUseCase_1.ReopenedDoneIssueRevertUseCase(issueRepository);
-            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, conflictedIssueRevertUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
+            const handleScheduledEventUseCase = new HandleScheduledEventUseCase_1.HandleScheduledEventUseCase(projectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase, actionAnnouncement, setWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase, analyzeProblemByIssueUseCase, analyzeStoriesUseCase, clearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase, createEstimationIssueUseCase, changeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase, createNewStoryByLabel, assignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase, startPreparationUseCase, revertOrphanedPreparationUseCase, conflictedIssueRevertUseCase, revertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase, dailySecurityScanUseCase, qualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase, systemDateRepository, googleSpreadsheetRepository, projectRepository, issueRepository);
             const dashboardDataDir = mergedInput.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
             const afterIssuesFetched = async (project, issues) => {
                 try {
@@ -342,6 +341,17 @@ class HandleScheduledEventUseCaseHandler {
                 }
                 catch (error) {
                     console.error(`Failed to write token status: ${error instanceof Error ? error.message : String(error)}`);
+                }
+                try {
+                    await (0, subscriptionDisabledTokenHandler_1.handleSubscriptionDisabledTokens)({
+                        tokenListJsonPath: mergedInput.claudeCodeOauthTokenListJsonPath ?? null,
+                        org: input.org,
+                        repo: input.workingReport.repo,
+                        issueRepository,
+                    });
+                }
+                catch (error) {
+                    console.error(`Failed to handle subscription disabled tokens: ${error instanceof Error ? error.message : String(error)}`);
                 }
                 const inTmuxNow = new Date();
                 const inTmuxGetuid = process.getuid?.bind(process);

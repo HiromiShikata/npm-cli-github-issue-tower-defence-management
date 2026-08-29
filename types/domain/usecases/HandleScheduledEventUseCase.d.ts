@@ -15,7 +15,6 @@ import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
-import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
@@ -49,7 +48,6 @@ export declare class HandleScheduledEventUseCase {
     readonly setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase;
     readonly staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase;
     readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase;
-    readonly convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase;
     readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase;
     readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase;
     readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase;
@@ -70,7 +68,7 @@ export declare class HandleScheduledEventUseCase {
     readonly spreadsheetRepository: SpreadsheetRepository;
     readonly projectRepository: ProjectRepository;
     readonly issueRepository: IssueRepository;
-    constructor(projectRequiredFieldCreateUseCase: ProjectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase: IssueNoStatusUpdateUseCase, startPreparationUseCase: StartPreparationUseCase, revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase, conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase, revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase: TriagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null, dailySecurityScanUseCase: DailySecurityScanUseCase | null, qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase: ReopenedDoneIssueRevertUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
+    constructor(projectRequiredFieldCreateUseCase: ProjectRequiredFieldCreateUseCase, setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase, actionAnnouncementUseCase: ActionAnnouncementUseCase, setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase, clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase, analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase, analyzeStoriesUseCase: AnalyzeStoriesUseCase, clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase, setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase, staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase, createEstimationIssueUseCase: CreateEstimationIssueUseCase, changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase, setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase, createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase, assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase, updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase, issueNoStatusUpdateUseCase: IssueNoStatusUpdateUseCase, startPreparationUseCase: StartPreparationUseCase, revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase, conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase, revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase, triagerApprovalDispatchUseCase: TriagerApprovalDispatchUseCase, agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase, updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null, dailySecurityScanUseCase: DailySecurityScanUseCase | null, qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase, reopenedDoneIssueRevertUseCase: ReopenedDoneIssueRevertUseCase, dateRepository: DateRepository, spreadsheetRepository: SpreadsheetRepository, projectRepository: ProjectRepository, issueRepository: IssueRepository);
     run: (input: {
         projectName: string;
         org: string;
@@ -109,7 +107,6 @@ export declare class HandleScheduledEventUseCase {
         } | null;
         thresholdForAutoReject?: number;
         thresholdForDispatchLoop?: number;
-        createTaskFromStoryBodyCheckboxEnabled?: boolean;
         queryToAddProjectEnabled?: boolean;
         queryToAddProject?: string | null;
         storyProgressCommentEnabled?: boolean;

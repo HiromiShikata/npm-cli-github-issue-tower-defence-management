@@ -119,15 +119,20 @@ class TriagerApprovalDispatchUseCase {
                     console.log(`[TriagerApprovalDispatch] No machine-readable triager proposal block found, skipping. issueUrl: ${issue.url}`);
                     continue;
                 }
-                let approved = false;
+                let approvalIndex = -1;
                 for (let i = firstProposalIndex + 1; i < comments.length; i++) {
                     const comment = comments[i];
                     if (isApprovalComment(comment.content, comment.author, allowedIssueAuthors ?? [])) {
-                        approved = true;
-                        break;
+                        approvalIndex = i;
                     }
                 }
-                if (!approved) {
+                if (approvalIndex === -1) {
+                    continue;
+                }
+                const alreadyDispatched = comments
+                    .slice(approvalIndex + 1)
+                    .some((c) => c.content.startsWith('Auto Status Check: TRIAGER_PROPOSAL_APPROVED'));
+                if (alreadyDispatched) {
                     continue;
                 }
                 const agentOptionId = await (0, ensureAgentOptionAndGetId_1.ensureAgentOptionAndGetId)(this.projectRepository, project, proposal.recommendedAgent);

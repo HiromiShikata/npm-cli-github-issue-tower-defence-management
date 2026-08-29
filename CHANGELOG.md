@@ -1,3 +1,16 @@
+# [2.5.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.4.0...v2.5.0) (2026-08-29)
+
+
+### Bug Fixes
+
+* **triager-approval-dispatch:** skip re-dispatch when TRIAGER_PROPOSAL_APPROVED already posted ([#1859](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1859)) ([56d8070](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/56d807088fb398f386239047d72ed1bad0b0eb36))
+
+
+### Features
+
+* remove story progress task auto-generation processing ([#1865](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1865)) ([4e6b66a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4e6b66a9941600c6517b08fa31359b93949b0603)), closes [HiromiShikata/umino-corporait-operation#31051](https://github.com/HiromiShikata/umino-corporait-operation/issues/31051)
+* **token:** create a manager-side task when a token's Claude subscription is found disabled ([#1864](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1864)) ([bce80d9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bce80d9b9367e3070a17f0c752b37b8c8af6fb1a)), closes [#1840](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1840)
+
 # [2.4.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.3.0...v2.4.0) (2026-08-29)
 
 
