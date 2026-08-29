@@ -122,7 +122,6 @@ type NotifyFinishedOptions = {
   missingAgentName?: string;
   sessionErrorLine?: string;
   deferPreparation?: boolean;
-  ownerApprovalTimeoutCycles?: string;
 };
 
 type CheckIssueReviewReadinessOptions = {
@@ -484,7 +483,6 @@ program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         labelsNotRequiringPullRequest:
           config.labelsNotRequiringPullRequest ?? null,
-        ownerApprovalTimeoutCycles: config.ownerApprovalTimeoutCycles ?? 12,
       });
     }
 
@@ -584,10 +582,6 @@ program
   .option(
     '--deferPreparation',
     'Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) without creating any issue; use for transient upstream failures',
-  )
-  .option(
-    '--ownerApprovalTimeoutCycles <count>',
-    'Number of owner-approval wait cycles before escalating to Failed Preparation (default: 12)',
   )
   .action(async (options: NotifyFinishedOptions) => {
     const token = process.env.GH_TOKEN;
@@ -730,9 +724,6 @@ program
       manager: config.manager ?? null,
       developerAgentName: config.developerAgentName ?? null,
       deferPreparation: options.deferPreparation ?? null,
-      ownerApprovalTimeoutCycles: options.ownerApprovalTimeoutCycles
-        ? Number(options.ownerApprovalTimeoutCycles)
-        : (config.ownerApprovalTimeoutCycles ?? 12),
     });
   });
 

@@ -15,16 +15,7 @@ import {
 } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
-import {
-  RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
-  RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
-} from './returnedToAwaitingWorkspaceMessage';
-import { isWaitingForOwnerApproval } from './isWaitingForOwnerApproval';
-import {
-  AWAITING_OWNER_APPROVAL_MESSAGE,
-  AWAITING_OWNER_APPROVAL_MESSAGE_HEAD,
-} from './awaitingOwnerApprovalMessage';
+import { isTriagerAgentName } from './triagerAgentName';
 import {
   ConsoleListItem,
   ConsoleTabName,
@@ -127,7 +118,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     manager?: string | null;
     developerAgentName?: string | null;
     deferPreparation?: boolean | null;
-    ownerApprovalTimeoutCycles?: number | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -257,110 +247,12 @@ export class NotifyFinishedIssuePreparationUseCase {
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
-    if (nextStepAgent !== null) {
-      if (
-        params.agents &&
-        params.agents.length > 0 &&
-        !params.agents.includes(nextStepAgent)
-      ) {
-        issue.status = FAILED_PREPARATION_STATUS_NAME;
-        await this.issueRepository.update(issue, project);
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          failedPreparationStatusOption.id,
-        );
-        await this.patchConsoleTab(issue);
-        await this.issueCommentRepository.createComment(
-          issue,
-          `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`,
-        );
-        return;
-      }
-      const repetition = resolveNextStepAgentDispatchRepetition({
-        agentFieldValue: issue.agent,
-        nextStepAgent,
-        comments,
-        isTrustedAuthor,
-        thresholdForAutoReject: params.thresholdForAutoReject,
-        thresholdForDispatchLoop:
-          params.thresholdForDispatchLoop ??
-          DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-      });
-      if (repetition.type === 'escalateToFailedPreparation') {
-        issue.status = FAILED_PREPARATION_STATUS_NAME;
-        await this.issueRepository.update(issue, project);
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          failedPreparationStatusOption.id,
-        );
-        await this.patchConsoleTab(issue);
-        await this.issueCommentRepository.createComment(
-          issue,
-          repetition.comment,
-        );
-        await this.sendWorkflowBlockerNotification(
-          params.issueUrl,
-          params.workflowBlockerResolvedWebhookUrl,
-          project,
-        );
-        return;
-      }
-      const agentOptionId = await this.ensureAgentOptionAndGetId(
-        project,
-        nextStepAgent,
-      );
-      if (agentOptionId) {
-        await this.issueRepository.setIssueAgentField(
-          params.issueUrl,
-          project,
-          agentOptionId,
-        );
-      }
-      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
-      await this.issueRepository.update(issue, project);
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingWorkspaceStatusOption.id,
-      );
-      await this.patchConsoleTab(issue);
-      if (repetition.type === 'dispatchAgain') {
-        await this.issueCommentRepository.createComment(
-          issue,
-          repetition.comment,
-        );
-      }
-      return;
-    }
-
     if (
-      lastAgentReport !== null &&
-      isWaitingForOwnerApproval(lastAgentReport.content)
+      nextStepAgent !== null &&
+      params.agents &&
+      params.agents.length > 0 &&
+      !params.agents.includes(nextStepAgent)
     ) {
-      const ownerApprovalTimeoutCycles =
-        params.ownerApprovalTimeoutCycles ?? 12;
-      const awaitingOwnerApprovalCount = comments.filter(
-        (comment) =>
-          isTrustedAuthor(comment.author) &&
-          comment.content.startsWith(AWAITING_OWNER_APPROVAL_MESSAGE_HEAD),
-      ).length;
-      if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
-        issue.status = AWAITING_QUALITY_CHECK_STATUS_NAME;
-        await this.issueRepository.update(issue, project);
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingQualityCheckStatusOption.id,
-        );
-        await this.patchConsoleTab(issue);
-        await this.issueCommentRepository.createComment(
-          issue,
-          AWAITING_OWNER_APPROVAL_MESSAGE,
-        );
-        return;
-      }
       issue.status = FAILED_PREPARATION_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -371,12 +263,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.patchConsoleTab(issue);
       await this.issueCommentRepository.createComment(
         issue,
-        `Owner approval was not received after ${ownerApprovalTimeoutCycles} cycles. Moving to Failed Preparation.`,
-      );
-      await this.sendWorkflowBlockerNotification(
-        params.issueUrl,
-        params.workflowBlockerResolvedWebhookUrl,
-        project,
+        `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`,
       );
       return;
     }
@@ -424,6 +311,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       comments,
       isTrustedAuthor,
       resolveLabelsNotRequiringPullRequest(params),
+      nextStepAgent,
       params.developerAgentName,
     );
 
@@ -475,17 +363,48 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    if (
-      rejections.length <= 0 &&
-      isPullRequestDeclaredUnnecessary(comments, isTrustedAuthor) &&
-      !comments.some(
-        (comment) =>
-          isTrustedAuthor(comment.author) &&
-          comment.content.startsWith(
-            RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
-          ),
-      )
-    ) {
+    if (nextStepAgent !== null) {
+      const repetition = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: issue.agent,
+        nextStepAgent,
+        comments,
+        isTrustedAuthor,
+        thresholdForAutoReject: params.thresholdForAutoReject,
+        thresholdForDispatchLoop:
+          params.thresholdForDispatchLoop ??
+          DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+      });
+      if (repetition.type === 'escalateToFailedPreparation') {
+        issue.status = FAILED_PREPARATION_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          failedPreparationStatusOption.id,
+        );
+        await this.patchConsoleTab(issue);
+        await this.issueCommentRepository.createComment(
+          issue,
+          repetition.comment,
+        );
+        await this.sendWorkflowBlockerNotification(
+          params.issueUrl,
+          params.workflowBlockerResolvedWebhookUrl,
+          project,
+        );
+        return;
+      }
+      const agentOptionId = await this.ensureAgentOptionAndGetId(
+        project,
+        nextStepAgent,
+      );
+      if (agentOptionId) {
+        await this.issueRepository.setIssueAgentField(
+          params.issueUrl,
+          project,
+          agentOptionId,
+        );
+      }
       issue.status = AWAITING_WORKSPACE_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
@@ -494,10 +413,23 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
-        issue,
-        RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
-      );
+      if (rejections.length > 0) {
+        await this.setDependedIssueUrlForAllOpenPRs(
+          issue,
+          params.issueUrl,
+          project,
+        );
+        await this.issueCommentRepository.createComment(
+          issue,
+          rejectionStatusMessage,
+        );
+      }
+      if (repetition.type === 'dispatchAgain') {
+        await this.issueCommentRepository.createComment(
+          issue,
+          repetition.comment,
+        );
+      }
       return;
     }
 
@@ -657,6 +589,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     comments: { author: string; content: string }[],
     isTrustedAuthor: (author: string) => boolean,
     labelsNotRequiringPullRequest: string[],
+    nextStepAgent: string | null,
     developerAgentName?: string | null,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
@@ -687,10 +620,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         labelsNotRequiringPullRequest,
         { developerAgentName },
       );
-    const requiredPrRejections = isPullRequestDeclaredUnnecessary(
-      comments,
-      isTrustedAuthor,
-    )
+    const requiredPrRejections = isTriagerAgentName(nextStepAgent)
       ? prRejections.filter(
           (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
         )

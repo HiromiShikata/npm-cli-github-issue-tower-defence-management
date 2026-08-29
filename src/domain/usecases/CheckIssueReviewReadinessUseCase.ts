@@ -5,10 +5,11 @@ import {
   PrRejectedReasonType,
 } from './IssueRejectionEvaluator';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
 import { normalizeReportBody } from './normalizeReportBody';
 import { isAgentReportBody } from './isAgentReportBody';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
+import { isTriagerAgentName } from './triagerAgentName';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -94,10 +95,11 @@ export class CheckIssueReviewReadinessUseCase {
         { developerAgentName: params.developerAgentName },
       );
 
-    const requiredPrRejections = isPullRequestDeclaredUnnecessary(
+    const nextStepAgent = extractNextStepAgentFromComments(
       comments,
       isTrustedAuthor,
-    )
+    );
+    const requiredPrRejections = isTriagerAgentName(nextStepAgent)
       ? prRejections.filter(
           (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
         )
