@@ -36,16 +36,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildConsoleDataResponse = exports.parseConsoleDataRoute = exports.CONSOLE_LIST_TAB_NAMES = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-const consoleDoneStore_1 = require("./consoleDoneStore");
 const consoleTabNames_1 = require("./consoleTabNames");
 Object.defineProperty(exports, "CONSOLE_LIST_TAB_NAMES", { enumerable: true, get: function () { return consoleTabNames_1.CONSOLE_LIST_TAB_NAMES; } });
 const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
-const isSafeSegment = (segment) => SAFE_SEGMENT.test(segment) && !segment.startsWith('.');
+const isSafeSegment = (segment) => SAFE_SEGMENT.test(segment) && !segment.startsWith(".");
 const parseConsoleDataRoute = (requestPath) => {
     const segments = requestPath
-        .split('/')
+        .split("/")
         .filter((segment) => segment.length > 0);
-    if (segments.length < 3 || segments[0] !== 'projects') {
+    if (segments.length < 3 || segments[0] !== "projects") {
         return null;
     }
     const pjcode = segments[1];
@@ -56,30 +55,29 @@ const parseConsoleDataRoute = (requestPath) => {
     if (!isSafeSegment(tab)) {
         return null;
     }
-    if (tab === 'in-tmux-by-human') {
+    if (tab === "in-tmux-by-human") {
         const rest = segments.slice(3);
         if (rest.length === 0 || rest.some((segment) => !isSafeSegment(segment))) {
             return null;
         }
-        return { kind: 'in-tmux', pjcode, relativePath: rest.join('/') };
+        return { kind: "in-tmux", pjcode, relativePath: rest.join("/") };
     }
     if (!consoleTabNames_1.CONSOLE_LIST_TAB_NAMES.some((name) => name === tab)) {
         return null;
     }
-    if (segments.length === 4 && segments[3] === 'list.json') {
-        return { kind: 'list', pjcode, tab };
+    if (segments.length === 4 && segments[3] === "list.json") {
+        return { kind: "list", pjcode, tab };
     }
-    if (segments.length === 5 && segments[3] === 'detail') {
+    if (segments.length === 5 && segments[3] === "detail") {
         const key = segments[4];
-        if (!isSafeSegment(key) || !key.endsWith('.json')) {
+        if (!isSafeSegment(key) || !key.endsWith(".json")) {
             return null;
         }
-        return { kind: 'detail', pjcode, tab, key };
+        return { kind: "detail", pjcode, tab, key };
     }
     return null;
 };
 exports.parseConsoleDataRoute = parseConsoleDataRoute;
-const isRecord = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const readJsonFile = (filePath) => {
     let raw;
     try {
@@ -87,7 +85,7 @@ const readJsonFile = (filePath) => {
         if (!stat.isFile()) {
             return { found: false };
         }
-        raw = fs.readFileSync(filePath, 'utf-8');
+        raw = fs.readFileSync(filePath, "utf-8");
     }
     catch {
         return { found: false };
@@ -95,41 +93,24 @@ const readJsonFile = (filePath) => {
     const data = JSON.parse(raw);
     return { found: true, data };
 };
-const isExcludedItem = (item, doneSet) => {
-    if (!isRecord(item)) {
-        return false;
-    }
-    const projectItemId = item.projectItemId;
-    return typeof projectItemId === 'string' && doneSet.has(projectItemId);
-};
-const applyDoneExclusion = (listData, doneProjectItemIds) => {
-    if (!isRecord(listData) || !Array.isArray(listData.items)) {
-        return listData;
-    }
-    const doneSet = new Set(doneProjectItemIds);
-    const items = listData.items.filter((item) => !isExcludedItem(item, doneSet));
-    return { ...listData, items };
-};
 const buildConsoleDataResponse = (consoleDataOutputDir, route) => {
-    if (route.kind === 'list') {
-        const filePath = path.join(consoleDataOutputDir, route.pjcode, route.tab, 'list.json');
+    if (route.kind === "list") {
+        const filePath = path.join(consoleDataOutputDir, route.pjcode, route.tab, "list.json");
         const listResult = readJsonFile(filePath);
         if (!listResult.found) {
             return notFoundJson();
         }
-        const doneProjectItemIds = (0, consoleDoneStore_1.readDoneProjectItemIds)(consoleDataOutputDir, route.pjcode, route.tab);
-        const filtered = applyDoneExclusion(listResult.data, doneProjectItemIds);
-        return okJson(filtered);
+        return okJson(listResult.data);
     }
-    if (route.kind === 'detail') {
-        const filePath = path.join(consoleDataOutputDir, route.pjcode, route.tab, 'detail', route.key);
+    if (route.kind === "detail") {
+        const filePath = path.join(consoleDataOutputDir, route.pjcode, route.tab, "detail", route.key);
         const detailResult = readJsonFile(filePath);
         if (!detailResult.found) {
             return notFoundJson();
         }
         return okJson(detailResult.data);
     }
-    const inTmuxFilePath = path.join(consoleDataOutputDir, route.pjcode, 'in-tmux-by-human', route.relativePath);
+    const inTmuxFilePath = path.join(consoleDataOutputDir, route.pjcode, "in-tmux-by-human", route.relativePath);
     const inTmuxResult = readJsonFile(inTmuxFilePath);
     if (!inTmuxResult.found) {
         return notFoundJson();
@@ -139,12 +120,12 @@ const buildConsoleDataResponse = (consoleDataOutputDir, route) => {
 exports.buildConsoleDataResponse = buildConsoleDataResponse;
 const okJson = (data) => ({
     statusCode: 200,
-    contentType: 'application/json; charset=utf-8',
+    contentType: "application/json; charset=utf-8",
     body: JSON.stringify(data),
 });
 const notFoundJson = () => ({
     statusCode: 404,
-    contentType: 'text/plain; charset=utf-8',
-    body: 'Not Found',
+    contentType: "text/plain; charset=utf-8",
+    body: "Not Found",
 });
 //# sourceMappingURL=consoleDataDelivery.js.map

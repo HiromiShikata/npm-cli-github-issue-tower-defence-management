@@ -111,12 +111,12 @@ describe('buildConsoleDataResponse', () => {
     expect(response.statusCode).toBe(404);
   });
 
-  it('serves a list file and applies the done exclusion', () => {
+  it('serves a list file without filtering items that have done records', () => {
     writeJson('acme/prs/list.json', {
       pjcode: 'acme',
       items: [
         { projectItemId: 'PVTI_1', title: 'keep' },
-        { projectItemId: 'PVTI_2', title: 'drop' },
+        { projectItemId: 'PVTI_2', title: 'also keep despite done record' },
       ],
     });
     recordDoneProjectItemId(baseDir, 'acme', 'prs', 'PVTI_2');
@@ -129,16 +129,19 @@ describe('buildConsoleDataResponse', () => {
     const parsed: unknown = JSON.parse(response.body);
     expect(parsed).toEqual({
       pjcode: 'acme',
-      items: [{ projectItemId: 'PVTI_1', title: 'keep' }],
+      items: [
+        { projectItemId: 'PVTI_1', title: 'keep' },
+        { projectItemId: 'PVTI_2', title: 'also keep despite done record' },
+      ],
     });
   });
 
-  it('applies the done exclusion to the workflow-blocker list', () => {
+  it('serves the workflow-blocker list without filtering items that have done records', () => {
     writeJson('acme/workflow-blocker/list.json', {
       pjcode: 'acme',
       items: [
         { projectItemId: 'PVTI_1', title: 'keep' },
-        { projectItemId: 'PVTI_2', title: 'processed blocker' },
+        { projectItemId: 'PVTI_2', title: 'also keep despite done record' },
       ],
     });
     recordDoneProjectItemId(baseDir, 'acme', 'workflow-blocker', 'PVTI_2');
@@ -151,7 +154,10 @@ describe('buildConsoleDataResponse', () => {
     const parsed: unknown = JSON.parse(response.body);
     expect(parsed).toEqual({
       pjcode: 'acme',
-      items: [{ projectItemId: 'PVTI_1', title: 'keep' }],
+      items: [
+        { projectItemId: 'PVTI_1', title: 'keep' },
+        { projectItemId: 'PVTI_2', title: 'also keep despite done record' },
+      ],
     });
   });
 

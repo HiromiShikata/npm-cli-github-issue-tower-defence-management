@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { readDoneProjectItemIds } from './consoleDoneStore';
 import { CONSOLE_LIST_TAB_NAMES } from './consoleTabNames';
 
 export { CONSOLE_LIST_TAB_NAMES };
@@ -55,9 +54,6 @@ export const parseConsoleDataRoute = (
   return null;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
-
 type ReadJsonResult = { found: false } | { found: true; data: unknown };
 
 const readJsonFile = (filePath: string): ReadJsonResult => {
@@ -73,26 +69,6 @@ const readJsonFile = (filePath: string): ReadJsonResult => {
   }
   const data: unknown = JSON.parse(raw);
   return { found: true, data };
-};
-
-const isExcludedItem = (item: unknown, doneSet: Set<string>): boolean => {
-  if (!isRecord(item)) {
-    return false;
-  }
-  const projectItemId = item.projectItemId;
-  return typeof projectItemId === 'string' && doneSet.has(projectItemId);
-};
-
-const applyDoneExclusion = (
-  listData: unknown,
-  doneProjectItemIds: string[],
-): unknown => {
-  if (!isRecord(listData) || !Array.isArray(listData.items)) {
-    return listData;
-  }
-  const doneSet = new Set(doneProjectItemIds);
-  const items = listData.items.filter((item) => !isExcludedItem(item, doneSet));
-  return { ...listData, items };
 };
 
 export type ConsoleDataResponse = {
@@ -116,13 +92,7 @@ export const buildConsoleDataResponse = (
     if (!listResult.found) {
       return notFoundJson();
     }
-    const doneProjectItemIds = readDoneProjectItemIds(
-      consoleDataOutputDir,
-      route.pjcode,
-      route.tab,
-    );
-    const filtered = applyDoneExclusion(listResult.data, doneProjectItemIds);
-    return okJson(filtered);
+    return okJson(listResult.data);
   }
   if (route.kind === 'detail') {
     const filePath = path.join(

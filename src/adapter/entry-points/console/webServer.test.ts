@@ -545,7 +545,7 @@ describe('webServer new routes integration', () => {
     },
   });
 
-  it('serves a data list file with the done exclusion through the token gate', async () => {
+  it('serves a data list file through the token gate without done filtering', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const dataDir = path.join(tmpDir, 'data');
     const listDir = path.join(dataDir, 'acme', 'prs');
@@ -554,12 +554,15 @@ describe('webServer new routes integration', () => {
       path.join(listDir, 'list.json'),
       JSON.stringify({
         pjcode: 'acme',
-        items: [{ projectItemId: 'PVTI_keep' }, { projectItemId: 'PVTI_drop' }],
+        items: [
+          { projectItemId: 'PVTI_keep' },
+          { projectItemId: 'PVTI_also_keep' },
+        ],
       }),
     );
     fs.writeFileSync(
       path.join(listDir, '.done.json'),
-      JSON.stringify({ projectItemIds: ['PVTI_drop'] }),
+      JSON.stringify({ projectItemIds: ['PVTI_also_keep'] }),
     );
     const server = await startWebServer({
       accessToken: testToken,
@@ -588,7 +591,10 @@ describe('webServer new routes integration', () => {
       const parsed: unknown = JSON.parse(authorized.body);
       expect(parsed).toEqual({
         pjcode: 'acme',
-        items: [{ projectItemId: 'PVTI_keep' }],
+        items: [
+          { projectItemId: 'PVTI_keep' },
+          { projectItemId: 'PVTI_also_keep' },
+        ],
       });
     } finally {
       await closeServer(server);

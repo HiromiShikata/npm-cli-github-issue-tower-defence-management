@@ -81,33 +81,33 @@ describe('counts driven to zero do not revive on tab switch', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 500, mode: 'prs', done: true },
     };
-    expect(countPendingItems([item(1)], overlay)).toBe(0);
+    expect(countPendingItems([item(1)], overlay, 'prs')).toBe(0);
   });
 
-  it('keeps a done item subtracted from every tab regardless of its mode', () => {
+  it('does not subtract a done item from a tab other than the one it was processed in', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'triage', done: true },
     };
-    expect(countPendingItems([item(1)], overlay)).toBe(0);
+    expect(countPendingItems([item(1)], overlay, 'prs')).toBe(1);
   });
 
   it('does not revive a done item even when an entry was processed before the snapshot it still appears in', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'prs', done: true },
     };
-    expect(countPendingItems([item(1)], overlay)).toBe(0);
+    expect(countPendingItems([item(1)], overlay, 'prs')).toBe(0);
   });
 
-  it('does not revive a done item when it appears in a tab other than the one it was processed in', () => {
+  it('shows a done item in a tab other than the one it was processed in', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'prs', done: true },
     };
-    expect(countPendingItems([item(1)], overlay)).toBe(0);
-    expect(filterPendingItems([item(1)], overlay)).toEqual([]);
+    expect(countPendingItems([item(1)], overlay, 'triage')).toBe(1);
+    expect(filterPendingItems([item(1)], overlay, 'triage')).toEqual([item(1)]);
   });
 
   it('counts an item that has no done entry', () => {
-    expect(countPendingItems([item(1)], {})).toBe(1);
+    expect(countPendingItems([item(1)], {}, 'prs')).toBe(1);
   });
 });
 
@@ -116,7 +116,7 @@ describe('filterPendingItems', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 500, mode: 'prs', done: true },
     };
-    const result = filterPendingItems([item(1), item(2)], overlay);
+    const result = filterPendingItems([item(1), item(2)], overlay, 'prs');
     expect(result.map((entry) => entry.number)).toEqual([2]);
   });
 
@@ -125,8 +125,8 @@ describe('filterPendingItems', () => {
       PVTI_1: { ts: 500, mode: 'prs', done: true },
     };
     const items = [item(1), item(2)];
-    expect(countPendingItems(items, overlay)).toBe(
-      filterPendingItems(items, overlay).length,
+    expect(countPendingItems(items, overlay, 'prs')).toBe(
+      filterPendingItems(items, overlay, 'prs').length,
     );
   });
 });
@@ -136,14 +136,20 @@ describe('workflow-blocker items are filtered by the done overlay like every oth
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
     };
-    expect(countPendingItems([item(1), item(2)], overlay)).toBe(1);
+    expect(
+      countPendingItems([item(1), item(2)], overlay, 'workflow-blocker'),
+    ).toBe(1);
   });
 
   it('removes a processed workflow-blocker item from the list', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
     };
-    const result = filterPendingItems([item(1), item(2)], overlay);
+    const result = filterPendingItems(
+      [item(1), item(2)],
+      overlay,
+      'workflow-blocker',
+    );
     expect(result.map((entry) => entry.number)).toEqual([2]);
   });
 
@@ -152,8 +158,12 @@ describe('workflow-blocker items are filtered by the done overlay like every oth
       PVTI_1: { ts: 100, mode: 'workflow-blocker', done: true },
       PVTI_2: { ts: 100, mode: 'workflow-blocker', done: true },
     };
-    expect(countPendingItems([item(1), item(2)], overlay)).toBe(0);
-    expect(filterPendingItems([item(1), item(2)], overlay)).toEqual([]);
+    expect(
+      countPendingItems([item(1), item(2)], overlay, 'workflow-blocker'),
+    ).toBe(0);
+    expect(
+      filterPendingItems([item(1), item(2)], overlay, 'workflow-blocker'),
+    ).toEqual([]);
   });
 });
 
@@ -171,8 +181,10 @@ describe('overlayEntriesActedSinceSnapshot', () => {
       '2026-08-04T00:26:06Z',
     );
     expect(acted).toEqual({});
-    expect(countPendingItems([item(1)], acted)).toBe(1);
-    expect(filterPendingItems([item(1)], acted)).toEqual([item(1)]);
+    expect(countPendingItems([item(1)], acted, 'todo-by-human')).toBe(1);
+    expect(filterPendingItems([item(1)], acted, 'todo-by-human')).toEqual([
+      item(1),
+    ]);
   });
 
   it('keeps an entry written after the snapshot was generated so the item stays hidden', () => {
@@ -187,7 +199,7 @@ describe('overlayEntriesActedSinceSnapshot', () => {
       overlay,
       '2026-08-04T00:26:06Z',
     );
-    expect(countPendingItems([item(1)], acted)).toBe(0);
+    expect(countPendingItems([item(1)], acted, 'todo-by-human')).toBe(0);
   });
 
   it('keeps an entry written at the exact snapshot generation time', () => {
