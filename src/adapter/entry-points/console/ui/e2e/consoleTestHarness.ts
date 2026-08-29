@@ -683,6 +683,7 @@ const createStubIssueRepository = (
   ): Promise<void> => {
     storyColorCalls.push({ storyOptionId, newColor });
   },
+  deleteAllCommentsByUrl: async (): Promise<void> => undefined,
 });
 
 export type ConsoleE2eReorderStoryCall = {
