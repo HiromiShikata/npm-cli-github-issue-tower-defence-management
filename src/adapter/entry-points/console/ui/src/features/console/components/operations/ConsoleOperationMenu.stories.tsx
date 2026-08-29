@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import type { ConsoleOperationHandlers } from "../../logic/operations";
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { ConsoleOperationHandlers } from '../../logic/operations';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
@@ -33,7 +33,7 @@ type Story = StoryObj<typeof ConsoleOperationMenu>;
 
 export const PrsTabPullRequest: Story = {
   args: {
-    tab: "prs",
+    tab: 'prs',
     item: consoleListItemsFixture[0],
     hasPullRequest: true,
   },
@@ -41,7 +41,7 @@ export const PrsTabPullRequest: Story = {
 
 export const PrsTabPullRequestRejectEnabled: Story = {
   args: {
-    tab: "prs",
+    tab: 'prs',
     item: consoleListItemsFixture[0],
     hasPullRequest: true,
     rejectEnabled: true,
@@ -50,7 +50,7 @@ export const PrsTabPullRequestRejectEnabled: Story = {
 
 export const TodoByHumanTabIssue: Story = {
   args: {
-    tab: "todo-by-human",
+    tab: 'todo-by-human',
     item: consoleListItemsFixture[2],
     hasPullRequest: false,
   },
@@ -58,7 +58,7 @@ export const TodoByHumanTabIssue: Story = {
 
 export const TodoByAgentTabIssue: Story = {
   args: {
-    tab: "todo-by-agent",
+    tab: 'todo-by-agent',
     item: consoleListItemsFixture[2],
     hasPullRequest: false,
   },

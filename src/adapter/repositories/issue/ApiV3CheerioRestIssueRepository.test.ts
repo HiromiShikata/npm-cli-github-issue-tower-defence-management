@@ -2404,11 +2404,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
 
       const getCallCount = fetchSpy.mock.calls.filter(
-        ([, opts]) => (opts as { method: string }).method === 'GET',
+        ([, opts]) => opts?.method === 'GET',
       ).length;
       expect(getCallCount).toBe(2);
       const deleteCallCount = fetchSpy.mock.calls.filter(
-        ([, opts]) => (opts as { method: string }).method === 'DELETE',
+        ([, opts]) => opts?.method === 'DELETE',
       ).length;
       expect(deleteCallCount).toBe(101);
     });

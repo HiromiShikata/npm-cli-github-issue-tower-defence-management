@@ -1,5 +1,5 @@
-import { render } from "@testing-library/react";
-import type { ConsoleOperationHandlers } from "../../logic/operations";
+import { render } from '@testing-library/react';
+import type { ConsoleOperationHandlers } from '../../logic/operations';
 import {
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
