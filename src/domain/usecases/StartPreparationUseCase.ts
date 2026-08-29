@@ -517,6 +517,7 @@ export class StartPreparationUseCase {
     let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
     let startedInThisRunCount = 0;
     const spawnedInThisRunByToken: Record<string, number> = {};
+    let tokenInFlightCountsRefreshed = false;
     const exclusionCounts = {
       dependedIssueUrls: 0,
       futureNextActionDate: 0,
@@ -730,23 +731,39 @@ export class StartPreparationUseCase {
       let routedModelName: string | null = null;
       let selectedTokenName: string | null = null;
       if (rotationTokens !== null && proxyBaseUrl !== null) {
-        const tokenWithSoonestResetAmongAvailable = selectedTokensWithLimits
-          .map((t) => ({
-            token: t.token,
-            model: t.model,
-            remaining:
-              t.limit -
-              (tokenInFlightCounts[t.token] ?? 0) -
-              (spawnedInThisRunByToken[t.token] ?? 0),
-            secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
-          }))
-          .filter((t) => t.remaining > 0)
-          .sort((a, b) => {
-            if (a.secondsUntilSevenDayReset !== b.secondsUntilSevenDayReset) {
-              return a.secondsUntilSevenDayReset - b.secondsUntilSevenDayReset;
-            }
-            return b.remaining - a.remaining;
-          })[0];
+        const tokenWithSoonestResetAmongAvailableOf = ():
+          { token: string; model: string } | undefined =>
+          selectedTokensWithLimits
+            .map((t) => ({
+              token: t.token,
+              model: t.model,
+              remaining:
+                t.limit -
+                (tokenInFlightCounts[t.token] ?? 0) -
+                (spawnedInThisRunByToken[t.token] ?? 0),
+              secondsUntilSevenDayReset: t.secondsUntilSevenDayReset,
+            }))
+            .filter((t) => t.remaining > 0)
+            .sort((a, b) => {
+              if (a.secondsUntilSevenDayReset !== b.secondsUntilSevenDayReset) {
+                return (
+                  a.secondsUntilSevenDayReset - b.secondsUntilSevenDayReset
+                );
+              }
+              return b.remaining - a.remaining;
+            })[0];
+        let tokenWithSoonestResetAmongAvailable =
+          tokenWithSoonestResetAmongAvailableOf();
+        if (
+          tokenWithSoonestResetAmongAvailable === undefined &&
+          !tokenInFlightCountsRefreshed
+        ) {
+          tokenInFlightCountsRefreshed = true;
+          tokenInFlightCounts =
+            await this.claudeTokenUsageRepository.getTokenInFlightCounts();
+          tokenWithSoonestResetAmongAvailable =
+            tokenWithSoonestResetAmongAvailableOf();
+        }
         if (tokenWithSoonestResetAmongAvailable === undefined) {
           await revertToAwaitingWorkspace(
             'every Claude OAuth token reached its concurrent worker limit',
