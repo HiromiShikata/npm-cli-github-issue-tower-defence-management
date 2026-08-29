@@ -118,6 +118,7 @@ const knownProjectReadmeConfigKeys = [
     'labelsNotRequiringPullRequest',
     'changeTargetPathAliases',
     'consoleDataOutputDir',
+    'errorReportingRepository',
 ];
 const loadConfigFile = (configFilePath) => {
     try {
@@ -156,6 +157,7 @@ const loadConfigFile = (configFilePath) => {
             consoleGithubTokenFileDir: getStringValue(parsed, 'consoleGithubTokenFileDir'),
             disks: getDisksValue(parsed, 'disks'),
             ownerApprovalTimeoutCycles: getNumberValue(parsed, 'ownerApprovalTimeoutCycles'),
+            errorReportingRepository: getStringValue(parsed, 'errorReportingRepository'),
         };
     }
     catch (error) {
@@ -208,6 +210,7 @@ const parseProjectReadmeConfig = (readme, projectUrl) => {
             labelsNotRequiringPullRequest: getStringArrayValue(parsed, 'labelsNotRequiringPullRequest'),
             changeTargetPathAliases: getStringRecordValue(parsed, 'changeTargetPathAliases'),
             consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
+            errorReportingRepository: getStringValue(parsed, 'errorReportingRepository'),
         };
     }
     catch {
@@ -288,6 +291,9 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     disks: cliOverrides.disks ?? configFile.disks,
     ownerApprovalTimeoutCycles: cliOverrides.ownerApprovalTimeoutCycles ??
         configFile.ownerApprovalTimeoutCycles,
+    errorReportingRepository: readmeOverrides.errorReportingRepository ??
+        cliOverrides.errorReportingRepository ??
+        configFile.errorReportingRepository,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {

@@ -1,3 +1,10 @@
+# [1.197.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.196.1...v1.197.0) (2026-08-29)
+
+
+### Features
+
+* **CliErrorReportUseCase:** create GitHub issue for every unhandled CLI error ([#1841](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1841)) ([becfb39](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/becfb3991e9a6b9290a6acc4bed8b4dad52408b7)), closes [#1809](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1809)
+
 ## [1.196.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.196.0...v1.196.1) (2026-08-29)
 
 

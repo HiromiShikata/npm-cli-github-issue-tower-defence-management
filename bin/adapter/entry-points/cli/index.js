@@ -47,6 +47,7 @@ Object.defineProperty(exports, "mergeConfigs", { enumerable: true, get: function
 Object.defineProperty(exports, "parseProjectReadmeConfig", { enumerable: true, get: function () { return projectConfig_1.parseProjectReadmeConfig; } });
 const path = __importStar(require("path"));
 const CheckIssueReviewReadinessUseCase_1 = require("../../../domain/usecases/CheckIssueReviewReadinessUseCase");
+const CliErrorReportUseCase_1 = require("../../../domain/usecases/CliErrorReportUseCase");
 const DashboardProjectCode_1 = require("../../../domain/usecases/dashboard/DashboardProjectCode");
 const OwnerCallFile_1 = require("../../../domain/usecases/intmux/OwnerCallFile");
 const NotifyFinishedIssuePreparationUseCase_1 = require("../../../domain/usecases/NotifyFinishedIssuePreparationUseCase");
@@ -205,6 +206,10 @@ exports.program
         }
     }
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
+    if (config.errorReportingRepository) {
+        process.env.TDPM_ERROR_REPORT_REPOSITORY =
+            config.errorReportingRepository;
+    }
     const projectUrl = config.projectUrl;
     const defaultAgentName = config.defaultAgentName;
     const manager = config.manager;
@@ -343,6 +348,10 @@ exports.program
         }
     }
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
+    if (config.errorReportingRepository) {
+        process.env.TDPM_ERROR_REPORT_REPOSITORY =
+            config.errorReportingRepository;
+    }
     const projectUrl = config.projectUrl;
     if (!projectUrl) {
         console.error('projectUrl is required. Provide via --projectUrl, config file, or project README.');
@@ -421,6 +430,10 @@ exports.program
         }
     }
     const config = (0, projectConfig_2.mergeConfigs)(configFileValues, cliOverrides, readmeOverrides);
+    if (config.errorReportingRepository) {
+        process.env.TDPM_ERROR_REPORT_REPOSITORY =
+            config.errorReportingRepository;
+    }
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
     const cachePath = (0, localStorageCacheDirectory_1.projectCacheDirectory)(projectName);
@@ -739,11 +752,64 @@ const reportFatalErrorAndExit = (error) => {
     process.exit(1);
 };
 exports.reportFatalErrorAndExit = reportFatalErrorAndExit;
+const buildCliErrorReporter = () => {
+    const token = process.env.GH_TOKEN;
+    const targetRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
+    if (!token || !targetRepo) {
+        return null;
+    }
+    const slashIndex = targetRepo.indexOf('/');
+    if (slashIndex <= 0 || slashIndex === targetRepo.length - 1) {
+        return null;
+    }
+    const owner = targetRepo.slice(0, slashIndex);
+    const repo = targetRepo.slice(slashIndex + 1);
+    const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
+    const githubRepositoryParams = buildGithubRepositoryParams(localStorageRepository, token);
+    const apiV3IssueRepository = new ApiV3IssueRepository_1.ApiV3IssueRepository(...githubRepositoryParams);
+    const restIssueRepository = new RestIssueRepository_1.RestIssueRepository(...githubRepositoryParams);
+    const useCase = new CliErrorReportUseCase_1.CliErrorReportUseCase({
+        searchIssue: apiV3IssueRepository.searchIssue.bind(apiV3IssueRepository),
+        createNewIssue: restIssueRepository.createNewIssue.bind(restIssueRepository),
+        createCommentByUrl: async (issueOrPrUrl, commentBody) => {
+            await restIssueRepository.createComment(issueOrPrUrl, commentBody);
+        },
+    });
+    return { useCase, owner, repo };
+};
 const runCliProgram = async (argv, handleFatalError) => {
+    let reported = false;
+    const safeReport = async (error) => {
+        if (reported) {
+            return;
+        }
+        reported = true;
+        const reporter = buildCliErrorReporter();
+        if (!reporter) {
+            return;
+        }
+        await reporter.useCase.run({
+            error,
+            owner: reporter.owner,
+            repo: reporter.repo,
+            commandLine: argv.join(' '),
+        });
+    };
+    process.on('uncaughtException', (error) => {
+        void safeReport(error).then(() => {
+            (0, exports.reportFatalErrorAndExit)(error);
+        });
+    });
+    process.on('unhandledRejection', (reason) => {
+        void safeReport(reason).then(() => {
+            (0, exports.reportFatalErrorAndExit)(reason);
+        });
+    });
     try {
         await exports.program.parseAsync(argv);
     }
     catch (error) {
+        await safeReport(error);
         handleFatalError(error);
     }
 };
