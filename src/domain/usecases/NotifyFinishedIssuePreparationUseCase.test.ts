@@ -4826,7 +4826,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
   });
 
-
   describe('non-developer agent CI failure reassignment', () => {
     const makeProjectWithDeveloper = (developerName = 'developer') =>
       createMockProject({
@@ -5172,5 +5171,4 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });
-
 });
