@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConflictedIssueRevertUseCase = void 0;
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const EXCLUDED_STATUSES = new Set([
-    WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME,
     WorkflowStatus_1.DONE_STATUS_NAME,
     WorkflowStatus_1.ICEBOX_STATUS_NAME,
     WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME,
@@ -48,8 +47,12 @@ class ConflictedIssueRevertUseCase {
                 if (hasUnknownMergeable) {
                     continue;
                 }
-                const hasConflict = relatedPrs.some((pr) => pr.isConflicted);
-                if (!hasConflict) {
+                const conflictedPrs = relatedPrs.filter((pr) => pr.isConflicted);
+                if (conflictedPrs.length === 0) {
+                    continue;
+                }
+                const allBranchesUpdated = (await Promise.all(conflictedPrs.map((pr) => this.issueRepository.updateBranch(pr.url)))).every(Boolean);
+                if (allBranchesUpdated) {
                     continue;
                 }
                 await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);

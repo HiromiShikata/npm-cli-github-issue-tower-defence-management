@@ -1656,6 +1656,24 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
             }
             return `${status} ${reason}`;
         };
+        this.updateBranch = async (prUrl) => {
+            const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+            const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/update-branch`, {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${this.ghToken}`,
+                    Accept: 'application/vnd.github+json',
+                },
+            }));
+            if (response.ok) {
+                return true;
+            }
+            if (response.status === 422) {
+                return false;
+            }
+            const reason = await this.formatGitHubErrorWithStatus(response);
+            throw new Error(`Failed to update branch for PR ${prUrl}: ${reason}`);
+        };
         this.deletePullRequestBranch = async (prUrl, branchName) => {
             const { owner, repo } = this.parseIssueUrl(prUrl);
             const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/refs/heads/${encodeURIComponent(branchName)}`, {

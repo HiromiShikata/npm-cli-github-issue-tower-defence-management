@@ -1,3 +1,10 @@
+## [2.10.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.10.1...v2.10.2) (2026-08-29)
+
+
+### Bug Fixes
+
+* **ConflictedIssueRevertUseCase:** auto-rebase conflicted PRs via update-branch and include Awaiting Workspace issues in detection ([#1873](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1873)) ([b7c3b88](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b7c3b88f02d02ea2edc6ebaae50bdbb00288d9da))
+
 ## [2.10.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.10.0...v2.10.1) (2026-08-29)
 
 

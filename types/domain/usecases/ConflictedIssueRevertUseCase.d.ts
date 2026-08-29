@@ -5,7 +5,7 @@ export declare class ConflictedIssueRevertUseCase {
     private readonly projectRepository;
     private readonly issueRepository;
     private readonly issueCommentRepository;
-    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'getOpenPullRequests' | 'updateStatus'>, issueCommentRepository: Pick<IssueCommentRepository, 'createComment'>);
+    constructor(projectRepository: Pick<ProjectRepository, 'findProjectIdByUrl' | 'getProject'>, issueRepository: Pick<IssueRepository, 'getAllIssues' | 'getOpenPullRequests' | 'updateStatus' | 'updateBranch'>, issueCommentRepository: Pick<IssueCommentRepository, 'createComment'>);
     run: (params: {
         projectUrl: string;
     }) => Promise<void>;
