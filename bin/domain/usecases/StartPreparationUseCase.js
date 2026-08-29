@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StartPreparationUseCase = exports.agentNameFromDesignation = exports.SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = void 0;
+exports.StartPreparationUseCase = exports.agentNameFromDesignation = exports.SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = exports.NORMAL_CONCURRENT_LIMIT = void 0;
 const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const RequiredProjectField_1 = require("../entities/RequiredProjectField");
@@ -8,7 +8,7 @@ const AgentDesignationLabelAdoptUseCase_1 = require("./AgentDesignationLabelAdop
 const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
-const NORMAL_CONCURRENT_LIMIT = 6;
+exports.NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
@@ -75,16 +75,16 @@ class StartPreparationUseCase {
             }
             return a.fiveHourUtilization - b.fiveHourUtilization;
         };
-        this.taperedConcurrentLimit = (utilization, throttleStartThreshold) => {
+        this.taperedConcurrentLimit = (utilization, throttleStartThreshold, normalConcurrentLimit) => {
             if (utilization < throttleStartThreshold) {
-                return NORMAL_CONCURRENT_LIMIT;
+                return normalConcurrentLimit;
             }
             const remaining = (1 - utilization) / (1 - throttleStartThreshold);
-            return Math.max(1, Math.ceil(NORMAL_CONCURRENT_LIMIT * remaining));
+            return Math.max(1, Math.ceil(normalConcurrentLimit * remaining));
         };
-        this.getTokenConcurrentLimit = (fiveHourUtilization, sevenDayUtilization, selectionWeight) => {
-            const sevenDayLimit = this.taperedConcurrentLimit(sevenDayUtilization, SEVEN_DAY_THROTTLE_START_THRESHOLD);
-            const fiveHourLimit = this.taperedConcurrentLimit(fiveHourUtilization, FIVE_HOUR_THROTTLE_START_THRESHOLD);
+        this.getTokenConcurrentLimit = (fiveHourUtilization, sevenDayUtilization, selectionWeight, normalConcurrentLimit = exports.NORMAL_CONCURRENT_LIMIT) => {
+            const sevenDayLimit = this.taperedConcurrentLimit(sevenDayUtilization, SEVEN_DAY_THROTTLE_START_THRESHOLD, normalConcurrentLimit);
+            const fiveHourLimit = this.taperedConcurrentLimit(fiveHourUtilization, FIVE_HOUR_THROTTLE_START_THRESHOLD, normalConcurrentLimit);
             const weight = selectionWeight ?? OauthTokenSelectUseCase_1.DEFAULT_SELECTION_WEIGHT;
             return Math.max(1, Math.floor(Math.min(sevenDayLimit, fiveHourLimit) * weight));
         };
@@ -130,7 +130,7 @@ class StartPreparationUseCase {
             }, fetchSequentially));
             return branchSourceByIssueUrl;
         };
-        this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold, defaultModelName, fallbackModelName, maxConcurrent) => {
+        this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold, defaultModelName, fallbackModelName, maxConcurrent, normalConcurrentLimit) => {
             const nowEpochSeconds = Date.now() / 1000;
             const eligibleTokens = tokenUsages
                 .filter((usage) => !usage.blocked)
@@ -150,7 +150,7 @@ class StartPreparationUseCase {
             const tokensWithLimits = eligibleTokens.map(({ usage, model }) => ({
                 token: usage.token,
                 model,
-                limit: this.getTokenConcurrentLimit(usage.fiveHourUtilization, usage.sevenDayUtilization, usage.selectionWeight),
+                limit: this.getTokenConcurrentLimit(usage.fiveHourUtilization, usage.sevenDayUtilization, usage.selectionWeight, normalConcurrentLimit),
                 secondsUntilSevenDayReset: this.secondsUntilSevenDayReset(usage, this.weeklyLimitTypeForModel(model), nowEpochSeconds),
             }));
             const totalCapacity = tokensWithLimits.reduce((sum, t) => sum + t.limit, 0);
@@ -204,6 +204,7 @@ class StartPreparationUseCase {
             return [...selectedEntries, ...excluded];
         };
         this.run = async (params) => {
+            const normalConcurrentLimit = params.normalConcurrentLimit ?? exports.NORMAL_CONCURRENT_LIMIT;
             const tokenUsages = await this.claudeTokenUsageRepository.getAvailableTokenUsages();
             let rotationTokens = null;
             let proxyBaseUrl = null;
@@ -212,11 +213,11 @@ class StartPreparationUseCase {
             const rotationOrder = tokenUsages.length > 0
                 ? this.buildRotationOrder(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName)
                 : null;
-            const maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? NORMAL_CONCURRENT_LIMIT;
+            const maximumPreparingIssuesCount = params.maximumPreparingIssuesCount ?? exports.NORMAL_CONCURRENT_LIMIT;
             let effectiveMaxPreparingIssuesCount = maximumPreparingIssuesCount;
             const fallbackLlmModelName = params.fallbackLlmModelName ?? exports.DEFAULT_FALLBACK_LLM_MODEL_NAME;
             if (tokenUsages.length > 0) {
-                const { tokens: selectedTokens, effectiveCap: selectedCap, tokensWithLimits: selectedTokensWithLimitsLocal, } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName, fallbackLlmModelName, maximumPreparingIssuesCount);
+                const { tokens: selectedTokens, effectiveCap: selectedCap, tokensWithLimits: selectedTokensWithLimitsLocal, } = this.selectRotationTokens(tokenUsages, params.utilizationPercentageThreshold, params.defaultLlmModelName, fallbackLlmModelName, maximumPreparingIssuesCount, normalConcurrentLimit);
                 if (selectedTokens.length === 0) {
                     console.warn(`All ${tokenUsages.length} configured Claude OAuth token(s) are unavailable (blocked, 5h-window rejected, within cooldown, weekly limits for every candidate model exhausted, or 5h utilization >= ${params.utilizationPercentageThreshold}%). Skipping starting preparation.`);
                     return { rotationOrder };

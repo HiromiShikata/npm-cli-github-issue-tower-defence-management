@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.1.2...v2.2.0) (2026-08-29)
+
+
+### Features
+
+* **startDaemon:** make per-token concurrent limit configurable via fleet config ([#1860](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1860)) ([c7e16e1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c7e16e1f3937a54fdf173deaa0ad117f302b1fa5)), closes [HiromiShikata/secretary#4657](https://github.com/HiromiShikata/secretary/issues/4657)
+
 ## [2.1.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.1.1...v2.1.2) (2026-08-29)
 
 

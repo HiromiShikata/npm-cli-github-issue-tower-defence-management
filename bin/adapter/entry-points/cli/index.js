@@ -174,6 +174,7 @@ exports.program
     .option('--utilizationPercentageThreshold <percent>', 'Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)')
     .option('--allowedIssueAuthors <authors>', 'Comma-separated list of allowed issue authors')
     .option('--preparationProcessCheckCommand <template>', 'Shell command template with {URL} placeholder to check if a preparation process is alive')
+    .option('--fleetConfigFilePath <path>', 'Path to the fleet-wide YAML config file holding the preparationWorker mapping (normalConcurrentLimit); falls back to the TDPM_FLEET_CONFIG environment variable, and to the built-in values when neither is set')
     .action(async (options) => {
     const token = process.env.GH_TOKEN;
     if (!token) {
@@ -238,6 +239,9 @@ exports.program
         maximumPreparingIssuesCount = parsedCount;
     }
     console.log(`maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`);
+    const fleetConfigFilePath = (0, fleetConfig_1.resolveFleetConfigFilePath)(options.fleetConfigFilePath ?? null);
+    const preparationWorkerSettings = (0, fleetConfig_1.loadPreparationWorkerSettings)(fleetConfigFilePath);
+    console.log(`Effective normalConcurrentLimit: ${preparationWorkerSettings.normalConcurrentLimit}${fleetConfigFilePath !== null ? ' (source: fleetConfig)' : ' (source: built-in default)'}`);
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository_1.LocalStorageRepository();
     const cachePath = (0, localStorageCacheDirectory_1.projectCacheDirectory)(projectName);
@@ -304,6 +308,7 @@ exports.program
         codexHomeCandidates,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         agents: config.agents ?? null,
+        normalConcurrentLimit: preparationWorkerSettings.normalConcurrentLimit,
     });
     if (preparationResult.rotationOrder !== null) {
         (0, rotationOrderFileWriter_1.writeRotationOrderFile)(preparationResult.rotationOrder);

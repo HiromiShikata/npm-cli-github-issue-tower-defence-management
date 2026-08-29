@@ -5,6 +5,7 @@ import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
+export declare const NORMAL_CONCURRENT_LIMIT = 6;
 export declare const DEFAULT_FALLBACK_LLM_MODEL_NAME = "claude-opus-4-8";
 export declare const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
 export type SpawnCandidateExclusionReason = 'dependedIssueUrls' | 'futureNextActionDate' | 'nextActionHourNotReached' | 'authorNotAllowed' | 'notAssignedToManager';
@@ -35,7 +36,7 @@ export declare class StartPreparationUseCase {
     private secondsUntilSevenDayReset;
     private compareBySevenDayDeadlineThenUtilization;
     private taperedConcurrentLimit;
-    getTokenConcurrentLimit: (fiveHourUtilization: number, sevenDayUtilization: number, selectionWeight?: number) => number;
+    getTokenConcurrentLimit: (fiveHourUtilization: number, sevenDayUtilization: number, selectionWeight?: number, normalConcurrentLimit?: number) => number;
     spawnCandidateExclusionReasonOf: (issue: Issue, allowedIssueAuthors: string[] | null, manager: string, now: Date) => SpawnCandidateExclusionReason | null;
     fetchSpawnCandidateBranchSources: (issueUrls: string[]) => Promise<Map<string, SpawnCandidateBranchSource>>;
     private selectRotationTokens;
@@ -54,6 +55,7 @@ export declare class StartPreparationUseCase {
         codexHomeCandidates: string[] | null;
         labelsAsLlmAgentName: string[] | null;
         agents?: string[] | null;
+        normalConcurrentLimit?: number;
     }) => Promise<{
         rotationOrder: RotationOrderEntry[] | null;
     }>;
