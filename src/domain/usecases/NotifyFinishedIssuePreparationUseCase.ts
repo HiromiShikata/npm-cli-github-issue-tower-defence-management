@@ -8,6 +8,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
+  TODO_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import {
   IssueRejectionEvaluator,
@@ -154,6 +155,15 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (!failedPreparationStatusOption) {
       console.error(
         `Failed preparation status option '${FAILED_PREPARATION_STATUS_NAME}' not found in project.`,
+      );
+      return;
+    }
+    const todoStatusOption = project.status.statuses.find(
+      (s) => s.name === TODO_STATUS_NAME,
+    );
+    if (!todoStatusOption) {
+      console.error(
+        `Todo status option '${TODO_STATUS_NAME}' not found in project.`,
       );
       return;
     }
@@ -327,12 +337,12 @@ export class NotifyFinishedIssuePreparationUseCase {
           comment.content.startsWith(AWAITING_OWNER_APPROVAL_MESSAGE_HEAD),
       ).length;
       if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
-        issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+        issue.status = TODO_STATUS_NAME;
         await this.issueRepository.update(issue, project);
         await this.issueRepository.updateStatus(
           project,
           issue,
-          awaitingWorkspaceStatusOption.id,
+          todoStatusOption.id,
         );
         await this.patchConsoleTab(issue);
         await this.issueCommentRepository.createComment(
