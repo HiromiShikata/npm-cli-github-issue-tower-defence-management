@@ -772,7 +772,9 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
       const call = issueRepository.updateNextActionHour.mock.calls[0];
-      expect(call[0]).toMatchObject({ nextActionHour: { fieldId: 'nahField' } });
+      expect(call[0]).toMatchObject({
+        nextActionHour: { fieldId: 'nahField' },
+      });
       expect(call[2]).toBeGreaterThanOrEqual(new Date().getUTCHours());
       expectRecordedAcrossTabs('PVTI_1h');
     });
@@ -791,7 +793,9 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
       const call = issueRepository.updateNextActionHour.mock.calls[0];
-      expect(call[0]).toMatchObject({ nextActionHour: { fieldId: 'nahField' } });
+      expect(call[0]).toMatchObject({
+        nextActionHour: { fieldId: 'nahField' },
+      });
       expect(call[2]).toBeGreaterThanOrEqual(new Date().getUTCHours() + 2);
       expectRecordedAcrossTabs('PVTI_3h');
     });
