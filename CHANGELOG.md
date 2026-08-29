@@ -1,3 +1,10 @@
+# [2.8.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.7.0...v2.8.0) (2026-08-29)
+
+
+### Features
+
+* **console:** add airplane mode for offline-capable board viewing ([#1628](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1628)) ([e500b1e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e500b1ed41f9ba858b0136d0830d4d86686f3867)), closes [#1624](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1624) [#1627](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1627) [#1627](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1627) [#1803](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1803)
+
 # [2.7.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.6.1...v2.7.0) (2026-08-29)
 
 
