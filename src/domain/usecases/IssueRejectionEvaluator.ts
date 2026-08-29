@@ -335,5 +335,4 @@ export class IssueRejectionEvaluator {
     targetPath: string,
   ): boolean =>
     filePath === targetPath || filePath.startsWith(`${targetPath}/`);
-
 }

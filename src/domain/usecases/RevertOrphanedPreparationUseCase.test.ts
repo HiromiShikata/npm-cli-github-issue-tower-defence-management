@@ -2389,5 +2389,4 @@ describe('RevertOrphanedPreparationUseCase', () => {
       'Auto Status Check: REJECTED',
     );
   });
-
 });

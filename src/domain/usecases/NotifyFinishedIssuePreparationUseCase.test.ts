@@ -4697,7 +4697,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
     });
-
   });
 
   describe('non-developer agent CI failure reassignment', () => {
