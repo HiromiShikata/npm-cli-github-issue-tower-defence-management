@@ -74,8 +74,12 @@ class GenerateTokenStatusUseCase {
             }
             const fiveHourReset = snapshot.fiveHourReset > 0 ? snapshot.fiveHourReset : null;
             const sevenDayReset = snapshot.sevenDayReset > 0 ? snapshot.sevenDayReset : null;
-            const fiveHourExpired = fiveHourReset !== null && fiveHourReset < nowEpochSeconds;
-            const sevenDayExpired = sevenDayReset !== null && sevenDayReset < nowEpochSeconds;
+            const fiveHourExpired = fiveHourReset !== null &&
+                fiveHourReset < nowEpochSeconds &&
+                snapshot.lastUpdatedEpoch >= fiveHourReset;
+            const sevenDayExpired = sevenDayReset !== null &&
+                sevenDayReset < nowEpochSeconds &&
+                snapshot.lastUpdatedEpoch >= sevenDayReset;
             return {
                 fiveHourUtilizationPercent: fiveHourExpired
                     ? 0
@@ -108,8 +112,12 @@ class GenerateTokenStatusUseCase {
                     partial: true,
                 };
             }
-            const fiveHourExpired = snapshot.fiveHourReset > 0 && snapshot.fiveHourReset < nowEpochSeconds;
-            const sevenDayExpired = snapshot.sevenDayReset > 0 && snapshot.sevenDayReset < nowEpochSeconds;
+            const fiveHourExpired = snapshot.fiveHourReset > 0 &&
+                snapshot.fiveHourReset < nowEpochSeconds &&
+                snapshot.lastUpdatedEpoch >= snapshot.fiveHourReset;
+            const sevenDayExpired = snapshot.sevenDayReset > 0 &&
+                snapshot.sevenDayReset < nowEpochSeconds &&
+                snapshot.lastUpdatedEpoch >= snapshot.sevenDayReset;
             return {
                 fiveHourUtilization: fiveHourExpired ? 0 : snapshot.fiveHourUtilization,
                 sevenDayUtilization: sevenDayExpired ? 0 : snapshot.sevenDayUtilization,

@@ -8,5 +8,6 @@ export interface TmuxSessionRepository {
     killOwnSession: () => Promise<void>;
     sendKeys: (sessionName: string, literalText: string) => Promise<void>;
     launchBareNameLeaderSession: (name: string) => Promise<void>;
+    attachOrCreateInteractiveSession: (issueUrl: string, scopeLibPath: string | null) => Promise<void>;
 }
 //# sourceMappingURL=TmuxSessionRepository.d.ts.map

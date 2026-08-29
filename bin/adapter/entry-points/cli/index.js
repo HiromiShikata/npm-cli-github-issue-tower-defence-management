@@ -69,6 +69,7 @@ const ProcTakeOwnershipSpawnRepository_1 = require("../../repositories/ProcTakeO
 const resolveNextStepAgentDispatchRepetition_1 = require("../../../domain/usecases/resolveNextStepAgentDispatchRepetition");
 const ProxyClaudeTokenUsageRepository_1 = require("../../repositories/ProxyClaudeTokenUsageRepository");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
+const os = __importStar(require("os"));
 const consoleGithubTokenResolver_1 = require("../console/consoleGithubTokenResolver");
 const consoleProjectResolver_1 = require("../console/consoleProjectResolver");
 const consoleReadApi_1 = require("../console/consoleReadApi");
@@ -113,6 +114,14 @@ const parseDashboardProjectNames = (raw) => {
         return process.exit(1);
     }
     return names;
+};
+const resolveScopeLibPath = () => {
+    const explicitPath = process.env.CL_SCOPE_LIB_PATH;
+    if (explicitPath !== undefined && fs_1.default.existsSync(explicitPath)) {
+        return explicitPath;
+    }
+    const defaultPath = path.join(os.homedir(), 'git', 'secretary', 'machine', 'sk', 'sh', 'cl-scope-lib.sh');
+    return fs_1.default.existsSync(defaultPath) ? defaultPath : null;
 };
 const buildGithubRepositoryParams = (localStorageRepository, token) => [
     localStorageRepository,
@@ -714,6 +723,16 @@ exports.program
         dataDir: options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR,
         sessionName: options.session,
     });
+});
+exports.program
+    .command('attachOrCreate')
+    .description('Attach to an existing tmux session registered for the given issue URL, or create a new one. Looks up the cl session registry via cl-scope-lib.sh to find a registered session name; if that session is still alive it attaches to it, otherwise creates a new interactive session running cl for the issue URL.')
+    .requiredOption('--issueUrl <url>', 'GitHub issue URL to attach to or create a session for')
+    .action(async (options) => {
+    const localCommandRunner = new NodeLocalCommandRunner_1.NodeLocalCommandRunner();
+    const tmuxSessionRepository = new NodeTmuxSessionRepository_1.NodeTmuxSessionRepository(localCommandRunner);
+    const scopeLibPath = resolveScopeLibPath();
+    await tmuxSessionRepository.attachOrCreateInteractiveSession(options.issueUrl, scopeLibPath);
 });
 const reportFatalErrorAndExit = (error) => {
     console.error(error);

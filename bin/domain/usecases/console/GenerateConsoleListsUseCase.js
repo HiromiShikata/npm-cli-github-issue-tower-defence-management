@@ -33,8 +33,7 @@ class GenerateConsoleListsUseCase {
                 }
             }
             const defaultNameWithOwner = issues.find((issue) => issue.nameWithOwner !== '')?.nameWithOwner ?? null;
-            const storyEntries = storyOptions
-                .map((option) => ({
+            const storyEntries = storyOptions.map((option) => ({
                 storyName: option.name,
                 storyOptionId: option.id,
                 color: option.color,

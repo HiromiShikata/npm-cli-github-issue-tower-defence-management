@@ -6,6 +6,11 @@ const util_1 = require("util");
 const execFileAsync = (0, util_1.promisify)(child_process_1.execFile);
 const MAX_COMMAND_OUTPUT_BYTES = 1024 * 1024 * 256;
 class NodeLocalCommandRunner {
+    constructor() {
+        this.spawnInteractive = (program, args) => {
+            (0, child_process_1.spawnSync)(program, args, { stdio: 'inherit' });
+        };
+    }
     async runCommand(program, args, options) {
         const execOptions = {
             encoding: 'utf8',

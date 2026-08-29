@@ -7,5 +7,6 @@ export interface LocalCommandRunner {
         stderr: string;
         exitCode: number;
     }>;
+    spawnInteractive(program: string, args: string[]): void;
 }
 //# sourceMappingURL=LocalCommandRunner.d.ts.map

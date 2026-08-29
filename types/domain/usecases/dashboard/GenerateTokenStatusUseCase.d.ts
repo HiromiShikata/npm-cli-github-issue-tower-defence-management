@@ -11,6 +11,7 @@ export type TokenRateLimitSnapshot = {
     sevenDaySonnetRejected: boolean;
     sevenDayOpusRejected: boolean;
     hasWindowData: boolean;
+    lastUpdatedEpoch: number;
 };
 export type TokenRateLimitDecision = {
     fiveHourUtilization: number | null;

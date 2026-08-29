@@ -14,6 +14,7 @@ export declare class NodeTmuxSessionRepository implements TmuxSessionRepository 
     killOwnSession: () => Promise<void>;
     private stopScopeUnit;
     sendKeys: (sessionName: string, literalText: string) => Promise<void>;
+    attachOrCreateInteractiveSession: (issueUrl: string, scopeLibPath: string | null) => Promise<void>;
     launchBareNameLeaderSession: (name: string) => Promise<void>;
     private sendEnter;
     private delaySubmit;

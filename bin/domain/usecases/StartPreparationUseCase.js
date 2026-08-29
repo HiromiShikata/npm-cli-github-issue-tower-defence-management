@@ -256,6 +256,7 @@ class StartPreparationUseCase {
             let updatedCurrentPreparationIssueCount = currentPreparationIssueCount;
             let startedInThisRunCount = 0;
             const spawnedInThisRunByToken = {};
+            let tokenInFlightCountsRefreshed = false;
             const exclusionCounts = {
                 dependedIssueUrls: 0,
                 futureNextActionDate: 0,
@@ -389,7 +390,7 @@ class StartPreparationUseCase {
                 let routedModelName = null;
                 let selectedTokenName = null;
                 if (rotationTokens !== null && proxyBaseUrl !== null) {
-                    const tokenWithSoonestResetAmongAvailable = selectedTokensWithLimits
+                    const tokenWithSoonestResetAmongAvailableOf = () => selectedTokensWithLimits
                         .map((t) => ({
                         token: t.token,
                         model: t.model,
@@ -401,10 +402,19 @@ class StartPreparationUseCase {
                         .filter((t) => t.remaining > 0)
                         .sort((a, b) => {
                         if (a.secondsUntilSevenDayReset !== b.secondsUntilSevenDayReset) {
-                            return a.secondsUntilSevenDayReset - b.secondsUntilSevenDayReset;
+                            return (a.secondsUntilSevenDayReset - b.secondsUntilSevenDayReset);
                         }
                         return b.remaining - a.remaining;
                     })[0];
+                    let tokenWithSoonestResetAmongAvailable = tokenWithSoonestResetAmongAvailableOf();
+                    if (tokenWithSoonestResetAmongAvailable === undefined &&
+                        !tokenInFlightCountsRefreshed) {
+                        tokenInFlightCountsRefreshed = true;
+                        tokenInFlightCounts =
+                            await this.claudeTokenUsageRepository.getTokenInFlightCounts();
+                        tokenWithSoonestResetAmongAvailable =
+                            tokenWithSoonestResetAmongAvailableOf();
+                    }
                     if (tokenWithSoonestResetAmongAvailable === undefined) {
                         await revertToAwaitingWorkspace('every Claude OAuth token reached its concurrent worker limit');
                         break;

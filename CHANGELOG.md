@@ -1,3 +1,17 @@
+# [1.194.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.193.0...v1.194.0) (2026-08-29)
+
+
+### Bug Fixes
+
+* **preparation:** refresh token in-flight counts before abandoning a run ([#1835](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1835)) ([d05da15](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d05da1523fe0c35f01bce92460e98f2a5fa906ab)), closes [#1834](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1834)
+* **token-status:** infer a window rollover only from a snapshot captured after that reset ([#1833](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1833)) ([3c386d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3c386d151a24df2cd9064aa158e620940ec7ba10)), closes [#1832](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1832)
+
+
+### Features
+
+* **attach-or-create:** check session registry before creating new tmux session to prevent duplicate sessions ([#1797](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1797)) ([4d501dc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4d501dc40327dde66a97884b57299bf1b3058914)), closes [#1787](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1787)
+* **console:** add toggle to show/hide gray (archived) stories in stories tab ([#1793](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1793)) ([6940113](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/694011395ff79b6696159ed9f58825b3ea7d3bcf)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#1779](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1779)
+
 # [1.193.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.192.0...v1.193.0) (2026-08-28)
 
 
