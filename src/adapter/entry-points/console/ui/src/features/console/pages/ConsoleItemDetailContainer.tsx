@@ -1,239 +1,239 @@
-import { useCallback, useState } from "react";
-import { ConsoleCommentComposer } from "../components/detail/ConsoleCommentComposer";
-import type { ConsoleAddInlineComment } from "../components/detail/ConsoleFileDiff";
-import { ConsoleItemDetail } from "../components/detail/ConsoleItemDetail";
-import { ConsoleOperationMenu } from "../components/operations/ConsoleOperationMenu";
-import type { ConsoleCaches } from "../hooks/useConsoleCaches";
-import { useConsoleItemDetailData } from "../hooks/useConsoleItemDetailData";
-import type { ConsoleOperationsApi } from "../hooks/useConsoleOperations";
-import { buildImageProxyUrl } from "../lib/imageProxy";
-import type { ConsoleActionKind } from "../logic/actionToast";
-import { resolveStoryColorEnum } from "../logic/grouping";
+import { useCallback, useState } from 'react';
+import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
+import type { ConsoleAddInlineComment } from '../components/detail/ConsoleFileDiff';
+import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
+import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
+import type { ConsoleCaches } from '../hooks/useConsoleCaches';
+import { useConsoleItemDetailData } from '../hooks/useConsoleItemDetailData';
+import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
+import { buildImageProxyUrl } from '../lib/imageProxy';
+import type { ConsoleActionKind } from '../logic/actionToast';
+import { resolveStoryColorEnum } from '../logic/grouping';
 import {
-	AWAITING_WORKSPACE_NAME,
-	type ConsoleOperationHandlers,
-	type ConsolePendingReviewComment,
-} from "../logic/operations";
-import { mergePostedComments } from "../logic/postedComments";
+  AWAITING_WORKSPACE_NAME,
+  type ConsoleOperationHandlers,
+  type ConsolePendingReviewComment,
+} from '../logic/operations';
+import { mergePostedComments } from '../logic/postedComments';
 import type {
-	ConsoleColor,
-	ConsoleComment,
-	ConsoleFieldOption,
-	ConsoleListItem,
-	ConsoleOverlayStatus,
-	ConsoleStoryColorSource,
-	ConsoleTabName,
-} from "../logic/types";
-import { ConsoleReferenceLinkContainer } from "./ConsoleReferenceLinkContainer";
+  ConsoleColor,
+  ConsoleComment,
+  ConsoleFieldOption,
+  ConsoleListItem,
+  ConsoleOverlayStatus,
+  ConsoleStoryColorSource,
+  ConsoleTabName,
+} from '../logic/types';
+import { ConsoleReferenceLinkContainer } from './ConsoleReferenceLinkContainer';
 
 export type ConsoleQueueActionInput = {
-	kind: ConsoleActionKind;
-	item: ConsoleListItem;
-	commit: () => Promise<void>;
+  kind: ConsoleActionKind;
+  item: ConsoleListItem;
+  commit: () => Promise<void>;
 };
 
 export type ConsoleItemDetailContainerProps = {
-	tab: ConsoleTabName;
-	item: ConsoleListItem;
-	caches: ConsoleCaches;
-	operations: ConsoleOperationsApi;
-	statusOptions: ConsoleFieldOption[];
-	storyOptions: ConsoleFieldOption[];
-	storyColors: ConsoleStoryColorSource;
-	storyName: string | null;
-	overlayStatus: ConsoleOverlayStatus | null;
-	now: number;
-	initialCommentDraft?: string;
-	onCommentDraftChange?: (draft: string) => void;
-	onQueueAction: (input: ConsoleQueueActionInput) => void;
+  tab: ConsoleTabName;
+  item: ConsoleListItem;
+  caches: ConsoleCaches;
+  operations: ConsoleOperationsApi;
+  statusOptions: ConsoleFieldOption[];
+  storyOptions: ConsoleFieldOption[];
+  storyColors: ConsoleStoryColorSource;
+  storyName: string | null;
+  overlayStatus: ConsoleOverlayStatus | null;
+  now: number;
+  initialCommentDraft?: string;
+  onCommentDraftChange?: (draft: string) => void;
+  onQueueAction: (input: ConsoleQueueActionInput) => void;
 };
 
 export const ConsoleItemDetailContainer = ({
-	tab,
-	item,
-	caches,
-	operations,
-	statusOptions,
-	storyOptions,
-	storyColors,
-	storyName,
-	overlayStatus,
-	now,
-	initialCommentDraft,
-	onCommentDraftChange,
-	onQueueAction,
+  tab,
+  item,
+  caches,
+  operations,
+  statusOptions,
+  storyOptions,
+  storyColors,
+  storyName,
+  overlayStatus,
+  now,
+  initialCommentDraft,
+  onCommentDraftChange,
+  onQueueAction,
 }: ConsoleItemDetailContainerProps) => {
-	const detail = useConsoleItemDetailData(caches, item);
-	const resolveImageProxyUrl = useCallback(
-		(src: string): string => buildImageProxyUrl(src, item.url),
-		[item.url],
-	);
-	const renderReferenceLink = useCallback(
-		(href: string, fallbackText: string) => (
-			<ConsoleReferenceLinkContainer
-				cache={caches.state}
-				href={href}
-				fallbackText={fallbackText}
-			/>
-		),
-		[caches.state],
-	);
-	const hasPullRequest =
-		item.isPr ||
-		item.relatedOpenPullRequestUrls.length > 0 ||
-		detail.relatedPullRequests.length > 0;
-	const [pendingReviewComments, setPendingReviewComments] = useState<
-		ConsolePendingReviewComment[]
-	>([]);
-	const addInlineComment = useCallback<ConsoleAddInlineComment>(
-		async (path, line, side, body) => {
-			setPendingReviewComments((previous) => [
-				...previous,
-				{ path, line, side, body },
-			]);
-		},
-		[],
-	);
-	const [postedComments, setPostedComments] = useState<ConsoleComment[]>([]);
-	const addComment = useCallback(
-		async (body: string): Promise<ConsoleComment> => {
-			const comment = await operations.addComment(item, body);
-			setPostedComments((previous) => [...previous, comment]);
-			return comment;
-		},
-		[item, operations],
-	);
+  const detail = useConsoleItemDetailData(caches, item);
+  const resolveImageProxyUrl = useCallback(
+    (src: string): string => buildImageProxyUrl(src, item.url),
+    [item.url],
+  );
+  const renderReferenceLink = useCallback(
+    (href: string, fallbackText: string) => (
+      <ConsoleReferenceLinkContainer
+        cache={caches.state}
+        href={href}
+        fallbackText={fallbackText}
+      />
+    ),
+    [caches.state],
+  );
+  const hasPullRequest =
+    item.isPr ||
+    item.relatedOpenPullRequestUrls.length > 0 ||
+    detail.relatedPullRequests.length > 0;
+  const [pendingReviewComments, setPendingReviewComments] = useState<
+    ConsolePendingReviewComment[]
+  >([]);
+  const addInlineComment = useCallback<ConsoleAddInlineComment>(
+    async (path, line, side, body) => {
+      setPendingReviewComments((previous) => [
+        ...previous,
+        { path, line, side, body },
+      ]);
+    },
+    [],
+  );
+  const [postedComments, setPostedComments] = useState<ConsoleComment[]>([]);
+  const addComment = useCallback(
+    async (body: string): Promise<ConsoleComment> => {
+      const comment = await operations.addComment(item, body);
+      setPostedComments((previous) => [...previous, comment]);
+      return comment;
+    },
+    [item, operations],
+  );
 
-	const handlers: ConsoleOperationHandlers = {
-		onReview: (action) => {
-			const prUrl = item.isPr
-				? item.url
-				: (detail.relatedPullRequests[0]?.pullRequest.url ??
-					item.relatedOpenPullRequestUrls[0] ??
-					item.url);
-			const reviewComments =
-				action === "request_changes" ? pendingReviewComments : [];
-			onQueueAction({
-				kind: { type: "review", action },
-				item,
-				commit: () =>
-					operations.reviewPullRequest(item, prUrl, action, reviewComments),
-			});
-		},
-		onSetNextActionDate: (action) => {
-			onQueueAction({
-				kind: { type: "next_action_date", action },
-				item,
-				commit: () => operations.setNextActionDate(item, action),
-			});
-		},
-		onSetStory: (option: ConsoleFieldOption) => {
-			onQueueAction({
-				kind: { type: "set_story", optionName: option.name },
-				item,
-				commit: () => operations.setStory(item, option),
-			});
-		},
-		onSetStatus: (option: ConsoleFieldOption) => {
-			onQueueAction({
-				kind: { type: "set_status", optionName: option.name },
-				item,
-				commit: () => operations.setStatus(item, option),
-			});
-		},
-		onSetInTmuxByHuman: (option: ConsoleFieldOption) => {
-			onQueueAction({
-				kind: { type: "set_in_tmux_by_human", optionName: option.name },
-				item,
-				commit: () => operations.setInTmuxByHuman(item, option),
-			});
-		},
-		onClose: (action) => {
-			onQueueAction({
-				kind: { type: "close", action },
-				item,
-				commit: () => operations.closeIssue(item, action),
-			});
-		},
-		onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => {
-			onQueueAction({
-				kind: { type: "ok_and_awaiting_workspace" },
-				item,
-				commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
-			});
-		},
-	};
+  const handlers: ConsoleOperationHandlers = {
+    onReview: (action) => {
+      const prUrl = item.isPr
+        ? item.url
+        : (detail.relatedPullRequests[0]?.pullRequest.url ??
+          item.relatedOpenPullRequestUrls[0] ??
+          item.url);
+      const reviewComments =
+        action === 'request_changes' ? pendingReviewComments : [];
+      onQueueAction({
+        kind: { type: 'review', action },
+        item,
+        commit: () =>
+          operations.reviewPullRequest(item, prUrl, action, reviewComments),
+      });
+    },
+    onSetNextActionDate: (action) => {
+      onQueueAction({
+        kind: { type: 'next_action_date', action },
+        item,
+        commit: () => operations.setNextActionDate(item, action),
+      });
+    },
+    onSetStory: (option: ConsoleFieldOption) => {
+      onQueueAction({
+        kind: { type: 'set_story', optionName: option.name },
+        item,
+        commit: () => operations.setStory(item, option),
+      });
+    },
+    onSetStatus: (option: ConsoleFieldOption) => {
+      onQueueAction({
+        kind: { type: 'set_status', optionName: option.name },
+        item,
+        commit: () => operations.setStatus(item, option),
+      });
+    },
+    onSetInTmuxByHuman: (option: ConsoleFieldOption) => {
+      onQueueAction({
+        kind: { type: 'set_in_tmux_by_human', optionName: option.name },
+        item,
+        commit: () => operations.setInTmuxByHuman(item, option),
+      });
+    },
+    onClose: (action) => {
+      onQueueAction({
+        kind: { type: 'close', action },
+        item,
+        commit: () => operations.closeIssue(item, action),
+      });
+    },
+    onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => {
+      onQueueAction({
+        kind: { type: 'ok_and_awaiting_workspace' },
+        item,
+        commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+      });
+    },
+  };
 
-	const resolvedStoryName =
-		storyName ?? (item.story.trim() !== "" ? item.story : null);
-	const storyColorEnum: ConsoleColor | null =
-		resolvedStoryName !== null
-			? resolveStoryColorEnum(storyColors, resolvedStoryName)
-			: null;
+  const resolvedStoryName =
+    storyName ?? (item.story.trim() !== '' ? item.story : null);
+  const storyColorEnum: ConsoleColor | null =
+    resolvedStoryName !== null
+      ? resolveStoryColorEnum(storyColors, resolvedStoryName)
+      : null;
 
-	const awaitingWorkspaceOption = statusOptions.find(
-		(o) => o.name === AWAITING_WORKSPACE_NAME,
-	);
+  const awaitingWorkspaceOption = statusOptions.find(
+    (o) => o.name === AWAITING_WORKSPACE_NAME,
+  );
 
-	return (
-		<ConsoleItemDetail
-			item={item}
-			storyName={resolvedStoryName}
-			storyColorEnum={storyColorEnum}
-			overlayStatus={overlayStatus}
-			statusOptions={statusOptions}
-			state={detail.state}
-			stateError={detail.stateError}
-			body={detail.body}
-			bodyIsLoading={detail.bodyIsLoading}
-			bodyError={detail.bodyError}
-			comments={mergePostedComments(detail.comments, postedComments)}
-			commentsAreLoading={detail.commentsAreLoading}
-			commentsError={detail.commentsError}
-			files={detail.files}
-			filesAreLoading={detail.filesAreLoading}
-			filesError={detail.filesError}
-			commits={detail.commits}
-			commitsAreLoading={detail.commitsAreLoading}
-			commitsError={detail.commitsError}
-			pullRequestStatus={detail.pullRequestStatus}
-			pullRequestStatusError={detail.pullRequestStatusError}
-			relatedPullRequests={detail.relatedPullRequests}
-			relatedPullRequestsError={detail.relatedPullRequestsError}
-			now={now}
-			buildImageProxyUrl={resolveImageProxyUrl}
-			renderReferenceLink={renderReferenceLink}
-			onAddInlineComment={addInlineComment}
-			commentComposer={
-				<ConsoleCommentComposer
-					initiallyOpen
-					initialDraft={initialCommentDraft}
-					onSubmit={addComment}
-					onDraftChange={onCommentDraftChange}
-					onUploadFile={(file) => operations.uploadAttachment(item, file)}
-					onOkAndAwaitingWorkspace={
-						awaitingWorkspaceOption !== undefined
-							? () => handlers.onOkAndAwaitingWorkspace(awaitingWorkspaceOption)
-							: undefined
-					}
-					onCommentAndAwaitingWorkspace={
-						awaitingWorkspaceOption !== undefined
-							? () => handlers.onSetStatus(awaitingWorkspaceOption)
-							: undefined
-					}
-				/>
-			}
-			operationBar={
-				<ConsoleOperationMenu
-					tab={tab}
-					item={item}
-					hasPullRequest={hasPullRequest}
-					rejectEnabled={pendingReviewComments.length > 0}
-					statusOptions={statusOptions}
-					storyOptions={storyOptions}
-					handlers={handlers}
-				/>
-			}
-		/>
-	);
+  return (
+    <ConsoleItemDetail
+      item={item}
+      storyName={resolvedStoryName}
+      storyColorEnum={storyColorEnum}
+      overlayStatus={overlayStatus}
+      statusOptions={statusOptions}
+      state={detail.state}
+      stateError={detail.stateError}
+      body={detail.body}
+      bodyIsLoading={detail.bodyIsLoading}
+      bodyError={detail.bodyError}
+      comments={mergePostedComments(detail.comments, postedComments)}
+      commentsAreLoading={detail.commentsAreLoading}
+      commentsError={detail.commentsError}
+      files={detail.files}
+      filesAreLoading={detail.filesAreLoading}
+      filesError={detail.filesError}
+      commits={detail.commits}
+      commitsAreLoading={detail.commitsAreLoading}
+      commitsError={detail.commitsError}
+      pullRequestStatus={detail.pullRequestStatus}
+      pullRequestStatusError={detail.pullRequestStatusError}
+      relatedPullRequests={detail.relatedPullRequests}
+      relatedPullRequestsError={detail.relatedPullRequestsError}
+      now={now}
+      buildImageProxyUrl={resolveImageProxyUrl}
+      renderReferenceLink={renderReferenceLink}
+      onAddInlineComment={addInlineComment}
+      commentComposer={
+        <ConsoleCommentComposer
+          initiallyOpen
+          initialDraft={initialCommentDraft}
+          onSubmit={addComment}
+          onDraftChange={onCommentDraftChange}
+          onUploadFile={(file) => operations.uploadAttachment(item, file)}
+          onOkAndAwaitingWorkspace={
+            awaitingWorkspaceOption !== undefined
+              ? () => handlers.onOkAndAwaitingWorkspace(awaitingWorkspaceOption)
+              : undefined
+          }
+          onCommentAndAwaitingWorkspace={
+            awaitingWorkspaceOption !== undefined
+              ? () => handlers.onSetStatus(awaitingWorkspaceOption)
+              : undefined
+          }
+        />
+      }
+      operationBar={
+        <ConsoleOperationMenu
+          tab={tab}
+          item={item}
+          hasPullRequest={hasPullRequest}
+          rejectEnabled={pendingReviewComments.length > 0}
+          statusOptions={statusOptions}
+          storyOptions={storyOptions}
+          handlers={handlers}
+        />
+      }
+    />
+  );
 };
