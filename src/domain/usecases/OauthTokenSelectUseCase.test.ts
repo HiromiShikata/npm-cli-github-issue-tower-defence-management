@@ -1,4 +1,5 @@
 import {
+  CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
   OauthTokenCandidate,
   OauthTokenSelectUseCase,
   OauthTokenWindowSnapshot,
@@ -548,5 +549,103 @@ describe('sevenDayUrgencyFactor', () => {
     const almostReset = sevenDayUrgencyFactor(1, now + 60, now);
 
     expect(almostReset).toBe(SEVEN_DAY_WINDOW_HOURS);
+  });
+});
+
+describe('OauthTokenSelectUseCase with CL script thresholds', () => {
+  const useCase = new OauthTokenSelectUseCase();
+
+  it('excludes a token whose 5h window is less than 60% free when using CL script thresholds', () => {
+    const result = useCase.run(
+      [
+        candidate('busy5h', snapshot({ fiveHourUtilization: 0.41 })),
+        candidate('ok', snapshot({ fiveHourUtilization: 0.4 })),
+      ],
+      NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    );
+
+    expect(result.selected?.name).toBe('ok');
+    const busy = result.metrics.find((m) => m.name === 'busy5h');
+    expect(busy?.eligible).toBe(false);
+    expect(busy?.exclusionReason).toContain('5h window');
+  });
+
+  it('treats exactly 40% used 5h utilization as eligible under CL script thresholds (boundary)', () => {
+    const result = useCase.run(
+      [candidate('boundary', snapshot({ fiveHourUtilization: 0.4 }))],
+      NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    );
+
+    expect(result.selected?.name).toBe('boundary');
+    const boundary = result.metrics.find((m) => m.name === 'boundary');
+    expect(boundary?.fiveHourFreeRatio).toBeCloseTo(0.6, 9);
+  });
+
+  it('excludes a token whose 7d window is less than 14% free when using CL script thresholds', () => {
+    const result = useCase.run(
+      [
+        candidate('busy7d', snapshot({ sevenDayUtilization: 0.87 })),
+        candidate('ok', snapshot({ sevenDayUtilization: 0.86 })),
+      ],
+      NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    );
+
+    expect(result.selected?.name).toBe('ok');
+    const busy = result.metrics.find((m) => m.name === 'busy7d');
+    expect(busy?.eligible).toBe(false);
+    expect(busy?.exclusionReason).toContain('7d window');
+  });
+
+  it('treats exactly 86% used 7d utilization as eligible under CL script thresholds (boundary)', () => {
+    const result = useCase.run(
+      [candidate('boundary', snapshot({ sevenDayUtilization: 0.86 }))],
+      NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    );
+
+    expect(result.selected?.name).toBe('boundary');
+    const boundary = result.metrics.find((m) => m.name === 'boundary');
+    expect(boundary?.sevenDayFreeRatio).toBeCloseTo(0.14, 9);
+  });
+
+  it('returns null when only a token with 59% 5h free is available under CL script thresholds', () => {
+    const result = useCase.run(
+      [candidate('marginal', snapshot({ fiveHourUtilization: 0.41 }))],
+      NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    );
+
+    expect(result.selected).toBeNull();
+  });
+
+  it('returns null when only a token with 13% 7d free is available under CL script thresholds', () => {
+    const result = useCase.run(
+      [candidate('marginal', snapshot({ sevenDayUtilization: 0.87 }))],
+      NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    );
+
+    expect(result.selected).toBeNull();
+  });
+
+  it('includes the correct threshold percentages in the exclusion reason message', () => {
+    const result = useCase.run(
+      [candidate('low5h', snapshot({ fiveHourUtilization: 0.5 }))],
+      NOW,
+      Math.random,
+      CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
+    );
+
+    const low5h = result.metrics.find((m) => m.name === 'low5h');
+    expect(low5h?.exclusionReason).toContain('60%');
   });
 });

@@ -39,11 +39,28 @@ export type OauthTokenSelectResult = {
   metrics: OauthTokenCandidateMetrics[];
 };
 
+export type OauthTokenSelectionThresholds = {
+  fiveHourMinFreeRatio: number;
+  sevenDayMinFreeRatio: number;
+};
+
 const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 
 export const FIVE_HOUR_MIN_FREE_RATIO = 0.25;
 export const SEVEN_DAY_MIN_FREE_RATIO = 0.03;
+
+export const DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThresholds =
+  {
+    fiveHourMinFreeRatio: FIVE_HOUR_MIN_FREE_RATIO,
+    sevenDayMinFreeRatio: SEVEN_DAY_MIN_FREE_RATIO,
+  };
+
+export const CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThresholds =
+  {
+    fiveHourMinFreeRatio: 0.6,
+    sevenDayMinFreeRatio: 0.14,
+  };
 
 export const SEVEN_DAY_WINDOW_HOURS = 168;
 export const MIN_HOURS_TO_RESET = 1;
@@ -91,9 +108,14 @@ export class OauthTokenSelectUseCase {
     candidates: OauthTokenCandidate[],
     nowEpochSeconds: number,
     random: SelectionRandom = Math.random,
+    thresholds: OauthTokenSelectionThresholds = DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
   ): OauthTokenSelectResult => {
     const evaluated = candidates.map((candidate) => {
-      const evaluatedMetric = this.evaluate(candidate, nowEpochSeconds);
+      const evaluatedMetric = this.evaluate(
+        candidate,
+        nowEpochSeconds,
+        thresholds,
+      );
       return {
         candidate,
         metric: {
@@ -136,6 +158,7 @@ export class OauthTokenSelectUseCase {
   private evaluate = (
     candidate: OauthTokenCandidate,
     nowEpochSeconds: number,
+    thresholds: OauthTokenSelectionThresholds,
   ): Omit<OauthTokenCandidateMetrics, 'drawWeight'> => {
     const fiveHourFreeRatio = this.fiveHourFreeRatio(
       candidate.snapshot,
@@ -156,6 +179,7 @@ export class OauthTokenSelectUseCase {
       candidate.fableRejected,
       fiveHourFreeRatio,
       sevenDayFreeRatio,
+      thresholds,
     );
 
     return {
@@ -174,6 +198,7 @@ export class OauthTokenSelectUseCase {
     fableRejected: boolean,
     fiveHourFreeRatio: number,
     sevenDayFreeRatio: number,
+    thresholds: OauthTokenSelectionThresholds,
   ): string | null => {
     if (subscriptionDisabled) {
       return 'organization has disabled Claude subscription access for Claude Code';
@@ -184,11 +209,11 @@ export class OauthTokenSelectUseCase {
     if (fableRejected) {
       return 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)';
     }
-    if (fiveHourFreeRatio < FIVE_HOUR_MIN_FREE_RATIO) {
-      return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(FIVE_HOUR_MIN_FREE_RATIO)}%)`;
+    if (fiveHourFreeRatio < thresholds.fiveHourMinFreeRatio) {
+      return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(thresholds.fiveHourMinFreeRatio)}%)`;
     }
-    if (sevenDayFreeRatio < SEVEN_DAY_MIN_FREE_RATIO) {
-      return `7d window only ${this.toPercent(sevenDayFreeRatio)}% free (requires >= ${this.toPercent(SEVEN_DAY_MIN_FREE_RATIO)}%)`;
+    if (sevenDayFreeRatio < thresholds.sevenDayMinFreeRatio) {
+      return `7d window only ${this.toPercent(sevenDayFreeRatio)}% free (requires >= ${this.toPercent(thresholds.sevenDayMinFreeRatio)}%)`;
     }
     return null;
   };
