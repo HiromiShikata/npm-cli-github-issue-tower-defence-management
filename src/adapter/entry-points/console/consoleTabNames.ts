@@ -6,6 +6,7 @@ export const CONSOLE_LIST_TAB_NAMES: ConsoleTabName[] = [
   'failed-preparation',
   'todo-by-human',
   'todo-by-agent',
+  'queued',
   'stories',
 ];
 

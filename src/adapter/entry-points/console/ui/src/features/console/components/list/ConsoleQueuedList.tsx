@@ -7,30 +7,30 @@ import type {
   ConsoleListItem,
   ConsoleStoryColorSource,
 } from '../../logic/types';
-import { ConsoleItemSummary } from './ConsoleItemSummary';
+import { ConsoleQueuedItemRow } from './ConsoleQueuedItemRow';
 import { ConsoleStorySummary } from './ConsoleStorySummary';
 
-export type ConsoleListViewProps = {
+export type ConsoleQueuedListProps = {
   rows: ConsoleListRow[];
   storyColors: ConsoleStoryColorSource;
-  statusOptions?: ConsoleFieldOption[];
+  statusOptions: ConsoleFieldOption[];
+  agentOptions: ConsoleFieldOption[];
   activeItemId: string | null;
-  now: number;
   isLoading: boolean;
   error: string | null;
   onSelectItem: (item: ConsoleListItem) => void;
 };
 
-export const ConsoleItemList = ({
+export const ConsoleQueuedList = ({
   rows,
   storyColors,
-  statusOptions = [],
+  statusOptions,
+  agentOptions,
   activeItemId,
-  now,
   isLoading,
   error,
   onSelectItem,
-}: ConsoleListViewProps) => {
+}: ConsoleQueuedListProps) => {
   if (error !== null) {
     return (
       <p role="alert" className="console-list-message console-list-error">
@@ -60,11 +60,11 @@ export const ConsoleItemList = ({
           </li>
         ) : (
           <li key={row.item.itemId} className="console-list-row">
-            <ConsoleItemSummary
+            <ConsoleQueuedItemRow
               item={row.item}
               isActive={row.item.itemId === activeItemId}
-              now={now}
               statusOptions={statusOptions}
+              agentOptions={agentOptions}
               onSelect={onSelectItem}
             />
           </li>

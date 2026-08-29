@@ -21,6 +21,20 @@ export const consoleStatusOptionsFixture: ConsoleFieldOption[] = [
   { id: 'bd8358eb', name: 'Icebox', color: 'GRAY' },
 ];
 
+export const consoleAgentOptionsFixture: ConsoleFieldOption[] = [
+  { id: '2301e20d', name: 'chore', color: 'GRAY' },
+  { id: 'ffb35756', name: 'accounting', color: 'GRAY' },
+  { id: 'd2317bef', name: 'triager', color: 'GRAY' },
+  { id: 'cfde902a', name: 'liaison', color: 'GRAY' },
+  { id: '91b9185d', name: 'systems-analyst', color: 'GRAY' },
+  { id: '95c55dd3', name: 'developer', color: 'GRAY' },
+  { id: 'a3f73530', name: 'pr-reviewer', color: 'GRAY' },
+  { id: 'eb8ccd60', name: 'gift', color: 'GRAY' },
+  { id: '68f1f4d6', name: 'tdpm-workflow-improver', color: 'GRAY' },
+  { id: 'e8f370d9', name: '7sea', color: 'GRAY' },
+  { id: '30ecd1b3', name: 'system-design-reviewer', color: 'GRAY' },
+];
+
 export const consoleStoryOptionsFixture: ConsoleFieldOption[] = [
   { id: '28415d6c', name: 'regular / workflow improvement', color: 'GRAY' },
   { id: '1491051e', name: 'TDPM Console port', color: 'BLUE' },

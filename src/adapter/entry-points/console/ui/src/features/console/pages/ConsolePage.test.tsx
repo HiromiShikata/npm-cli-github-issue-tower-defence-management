@@ -1083,6 +1083,64 @@ describe('ConsolePage auto-advance tab', () => {
     });
   });
 
+  it('shows the queued tab badge count when queued items are present', async () => {
+    const queuedItem = {
+      number: 900,
+      title: 'Queued task waiting',
+      url: 'https://github.com/o/r/issues/900',
+      repo: 'o/r',
+      nameWithOwner: 'o/r',
+      projectItemId: 'PVTI_900',
+      itemId: 'PVTI_900',
+      isPr: false,
+      relatedOpenPullRequestUrls: [],
+      story: 'TDPM Console port',
+      status: 'Awaiting Workspace',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+      labels: [],
+      createdAt: '2026-06-17T00:00:00.000Z',
+    };
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        if (tab === 'queued') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ...listPayload(''),
+              agentOptions: [],
+              items: [queuedItem],
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+
+    const { container } = render(<ConsolePage />);
+
+    await waitFor(() => {
+      const tabs = [...container.querySelectorAll('.console-tab')];
+      const queuedTab = tabs.find((el) => el.textContent?.includes('Queued'));
+      expect(queuedTab).toBeTruthy();
+      expect(queuedTab?.querySelector('.console-tab-badge')?.textContent).toBe(
+        '1',
+      );
+    });
+  });
+
   it('reads console-story-show-gray from localStorage and shows gray stories when true', async () => {
     localStorage.setItem('console-story-show-gray', 'true');
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');

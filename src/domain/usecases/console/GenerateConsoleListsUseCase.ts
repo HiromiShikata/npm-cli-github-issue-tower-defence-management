@@ -1,8 +1,10 @@
 import { Issue } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
 import {
+  AWAITING_WORKSPACE_STATUS_NAME,
   IN_TMUX_BY_AGENT_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
+  PREPARATION_STATUS_NAME,
   TODO_BY_AGENT_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
@@ -45,12 +47,23 @@ export type ConsoleStatusTab = {
   items: ConsoleListItem[];
 };
 
+export type ConsoleQueuedTab = {
+  pjcode: string;
+  generatedAt: string;
+  statusOptions: ConsoleFieldOption[];
+  agentOptions: ConsoleFieldOption[];
+  storyOrder: string[];
+  storyColors: Record<string, { color: ConsoleColor }>;
+  items: ConsoleListItem[];
+};
+
 export type ConsoleTabName =
   | 'workflow-blocker'
   | 'prs'
   | 'failed-preparation'
   | 'todo-by-human'
   | 'todo-by-agent'
+  | 'queued'
   | 'stories';
 
 export type ConsoleStoryEntry = {
@@ -76,6 +89,7 @@ export type ConsoleLists = {
   'failed-preparation': ConsoleStatusTab;
   'todo-by-human': ConsoleStatusTab;
   'todo-by-agent': ConsoleStatusTab;
+  queued: ConsoleQueuedTab;
   stories: ConsoleStoriesTab;
 };
 
@@ -206,6 +220,31 @@ export class GenerateConsoleListsUseCase {
         (issue) => issue.status === TODO_BY_AGENT_STATUS_NAME,
         [TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done'],
       ),
+      queued: {
+        pjcode,
+        generatedAt,
+        statusOptions: this.buildFieldOptions(statusOptions, []),
+        agentOptions: this.buildFieldOptions(project.agent?.options ?? [], []),
+        storyOrder,
+        storyColors: this.buildStoryColorsObject(storyOptions),
+        items: this.sortByStoryOrder(
+          visibleIssues
+            .filter(
+              (issue) =>
+                !issue.isClosed &&
+                (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
+                  issue.status === PREPARATION_STATUS_NAME) &&
+                issue.dependedIssueUrls.length === 0,
+            )
+            .map((issue) =>
+              this.projectItem(
+                issue,
+                relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [],
+              ),
+            ),
+          storyOrder,
+        ),
+      },
       stories: {
         pjcode,
         generatedAt,
