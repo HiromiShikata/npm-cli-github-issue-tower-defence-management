@@ -311,7 +311,6 @@ test('opens the comment input with the item detail, keeps it on screen while the
   expect(dockHeightAfterPosting).toBe(dockHeightBeforePosting);
 });
 
-
 test('renders the stories tab with non-gray stories, their open item counts, and an add-task button', async ({
   page,
 }) => {
