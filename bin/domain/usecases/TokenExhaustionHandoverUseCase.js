@@ -11,11 +11,12 @@ exports.TOKEN_EXHAUSTION_SEVEN_DAY_FREE_THRESHOLD = 0.05;
 exports.TOKEN_EXHAUSTION_FIVE_HOUR_WARNING_FREE_THRESHOLD = 0.25;
 exports.TOKEN_EXHAUSTION_SEVEN_DAY_WARNING_FREE_THRESHOLD = 0.15;
 class TokenExhaustionHandoverUseCase {
-    constructor(handoverSessionRepository, snapshotRepository, tmuxSessionRepository, processSignalRepository) {
+    constructor(handoverSessionRepository, snapshotRepository, tmuxSessionRepository, processSignalRepository, issueCheckpointRepository) {
         this.handoverSessionRepository = handoverSessionRepository;
         this.snapshotRepository = snapshotRepository;
         this.tmuxSessionRepository = tmuxSessionRepository;
         this.processSignalRepository = processSignalRepository;
+        this.issueCheckpointRepository = issueCheckpointRepository;
         this.run = async (input) => {
             const nowEpochSeconds = Math.floor(input.now.getTime() / 1000);
             const sessions = this.handoverSessionRepository.listHandoverSessions();
@@ -130,7 +131,13 @@ class TokenExhaustionHandoverUseCase {
         };
         this.sendHandover = async (session, input) => {
             if (session.kind === 'implSubagent') {
-                this.processSignalRepository.terminateProcess(session.pid);
+                if (session.issueUrl !== null) {
+                    await this.issueCheckpointRepository.postCheckpoint(session.issueUrl);
+                }
+                else {
+                    console.log(`Token exhaustion handover: sending SIGTERM to impl subagent pid=${session.pid} (no issue URL, cannot post checkpoint)`);
+                    this.processSignalRepository.terminateProcess(session.pid);
+                }
                 return;
             }
             if (session.sessionName === null) {
@@ -143,6 +150,7 @@ class TokenExhaustionHandoverUseCase {
         };
         this.forceKill = async (session, entry) => {
             if (session.kind === 'implSubagent') {
+                this.processSignalRepository.terminateProcess(entry.pid);
                 this.processSignalRepository.killProcess(entry.pid);
                 return;
             }

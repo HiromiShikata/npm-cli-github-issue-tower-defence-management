@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleTokenExhaustionHandover = void 0;
 const TokenExhaustionHandoverUseCase_1 = require("../../../domain/usecases/TokenExhaustionHandoverUseCase");
+const GitHubIssueCheckpointRepository_1 = require("../../repositories/GitHubIssueCheckpointRepository");
 const NodeTmuxSessionRepository_1 = require("../../repositories/NodeTmuxSessionRepository");
 const RateLimitSnapshotRepository_1 = require("../../repositories/RateLimitSnapshotRepository");
 const ProcClaudeHandoverSessionRepository_1 = require("../../repositories/ProcClaudeHandoverSessionRepository");
@@ -15,7 +16,7 @@ const handleTokenExhaustionHandover = async (params) => {
     }
     const snapshotRepository = new RateLimitSnapshotRepository_1.RateLimitSnapshotRepository(tokenListJsonPath, tokenRateLimitSnapshotBaseDir ?? undefined);
     const stateRepository = new FileHandoverStateRepository_1.FileHandoverStateRepository(stateFilePath ?? (0, FileHandoverStateRepository_1.defaultHandoverStateFilePath)());
-    const useCase = new TokenExhaustionHandoverUseCase_1.TokenExhaustionHandoverUseCase(new ProcClaudeHandoverSessionRepository_1.ProcClaudeHandoverSessionRepository(), snapshotRepository, new NodeTmuxSessionRepository_1.NodeTmuxSessionRepository(localCommandRunner), new NodeProcessSignalRepository_1.NodeProcessSignalRepository());
+    const useCase = new TokenExhaustionHandoverUseCase_1.TokenExhaustionHandoverUseCase(new ProcClaudeHandoverSessionRepository_1.ProcClaudeHandoverSessionRepository(), snapshotRepository, new NodeTmuxSessionRepository_1.NodeTmuxSessionRepository(localCommandRunner), new NodeProcessSignalRepository_1.NodeProcessSignalRepository(), new GitHubIssueCheckpointRepository_1.GitHubIssueCheckpointRepository(process.env.GH_TOKEN ?? ''));
     const result = await useCase.run({
         enabled,
         issueUrlLeaderMessage: handoverMessage ?? TokenExhaustionHandoverUseCase_1.DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE,

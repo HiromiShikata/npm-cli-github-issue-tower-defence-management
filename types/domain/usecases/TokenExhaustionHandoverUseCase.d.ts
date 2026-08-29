@@ -1,5 +1,6 @@
 import { TokenExhaustionHandoverState } from '../entities/TokenExhaustionHandoverState';
 import { ClaudeHandoverSessionRepository } from './adapter-interfaces/ClaudeHandoverSessionRepository';
+import { IssueCheckpointRepository } from './adapter-interfaces/IssueCheckpointRepository';
 import { ProcessSignalRepository } from './adapter-interfaces/ProcessSignalRepository';
 import { TmuxSessionRepository } from './adapter-interfaces/TmuxSessionRepository';
 import { TokenRateLimitSnapshotRepository } from './adapter-interfaces/TokenRateLimitSnapshotRepository';
@@ -34,7 +35,8 @@ export declare class TokenExhaustionHandoverUseCase {
     private readonly snapshotRepository;
     private readonly tmuxSessionRepository;
     private readonly processSignalRepository;
-    constructor(handoverSessionRepository: Pick<ClaudeHandoverSessionRepository, 'listHandoverSessions'>, snapshotRepository: Pick<TokenRateLimitSnapshotRepository, 'listSnapshots'>, tmuxSessionRepository: Pick<TmuxSessionRepository, 'sendKeys' | 'killSession' | 'listLiveSessionNames' | 'launchBareNameLeaderSession'>, processSignalRepository: ProcessSignalRepository);
+    private readonly issueCheckpointRepository;
+    constructor(handoverSessionRepository: Pick<ClaudeHandoverSessionRepository, 'listHandoverSessions'>, snapshotRepository: Pick<TokenRateLimitSnapshotRepository, 'listSnapshots'>, tmuxSessionRepository: Pick<TmuxSessionRepository, 'sendKeys' | 'killSession' | 'listLiveSessionNames' | 'launchBareNameLeaderSession'>, processSignalRepository: ProcessSignalRepository, issueCheckpointRepository: Pick<IssueCheckpointRepository, 'postCheckpoint'>);
     run: (input: TokenExhaustionHandoverInput) => Promise<TokenExhaustionHandoverResult>;
     private needsRelaunch;
     private relaunchBareNameLeader;

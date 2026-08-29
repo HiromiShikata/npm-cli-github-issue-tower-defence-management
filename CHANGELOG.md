@@ -1,3 +1,10 @@
+## [2.6.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.6.0...v2.6.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **token-exhaustion:** post checkpoint comment on task issue before SIGTERMing impl subagent ([#1858](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1858)) ([9e6d05a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9e6d05abaf3e55060d6dc56a3fdd778b198c4f17)), closes [#1823](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1823)
+
 # [2.6.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.5.1...v2.6.0) (2026-08-29)
 
 
