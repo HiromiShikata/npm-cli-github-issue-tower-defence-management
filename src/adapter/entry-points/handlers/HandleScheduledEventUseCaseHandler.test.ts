@@ -261,7 +261,11 @@ describe('HandleScheduledEventUseCaseHandler', () => {
   });
 
   it('should pass bot github credentials from config to BrowserGitHubProjectRepository when env vars are absent', async () => {
-    const envKeys = ['GITHUB_USERNAME', 'GITHUB_PASSWORD', 'GITHUB_TOTP_SECRET'] as const;
+    const envKeys = [
+      'GITHUB_USERNAME',
+      'GITHUB_PASSWORD',
+      'GITHUB_TOTP_SECRET',
+    ] as const;
     const saved: Record<string, string | undefined> = {};
     for (const key of envKeys) {
       saved[key] = process.env[key];
@@ -282,7 +286,9 @@ describe('HandleScheduledEventUseCaseHandler', () => {
           },
         },
       };
-      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(configWithBotCreds));
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithBotCreds));
       const handler = new HandleScheduledEventUseCaseHandler();
       await handler.handle('config.yml', false);
       expect(BrowserGitHubProjectRepository).toHaveBeenCalledWith(
@@ -315,7 +321,9 @@ describe('HandleScheduledEventUseCaseHandler', () => {
           },
         },
       };
-      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(configWithBotCreds));
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithBotCreds));
       const handler = new HandleScheduledEventUseCaseHandler();
       await handler.handle('config.yml', false);
       expect(BrowserGitHubProjectRepository).toHaveBeenCalledWith(
