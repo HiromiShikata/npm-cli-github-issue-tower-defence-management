@@ -1,173 +1,172 @@
-import dotenv from "dotenv";
-import fs from "fs";
-import https from "https";
-import path from "path";
-import { KySlackRepository } from "./KySlackRepository";
+import dotenv from 'dotenv';
+import fs from 'fs';
+import https from 'https';
+import path from 'path';
+import { KySlackRepository } from './KySlackRepository';
 
-describe("KySlackRepository", () => {
-	afterEach(() => {
-		jest.useRealTimers();
-	});
+describe('KySlackRepository', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
 
-	describe("postMessageToDirectMessage", () => {
-		it("does not hang on 429 Retry-After responses from Slack", async () => {
-			jest.useFakeTimers();
-			const originalFetch = globalThis.fetch;
+  describe('postMessageToDirectMessage', () => {
+    it('does not hang on 429 Retry-After responses from Slack', async () => {
+      jest.useFakeTimers();
 
-			globalThis.fetch = jest.fn().mockResolvedValue(
-				new Response('{"ok":false}', {
-					status: 429,
-					headers: { "Retry-After": "30" },
-				}),
-			) as typeof globalThis.fetch;
+      jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response('{"ok":false}', {
+          status: 429,
+          headers: { 'Retry-After': '30' },
+        }),
+      );
 
-			const slackRepository = new KySlackRepository("xoxp-test-token-unit");
+      const slackRepository = new KySlackRepository('xoxp-test-token-unit');
 
-			// Attach .catch() immediately to prevent unhandled rejection when the
-			// promise rejects during jest.advanceTimersByTimeAsync below.
-			const settledValue: { value: unknown } = { value: "not-yet-settled" };
-			slackRepository
-				.postMessageToDirectMessage("test message", "non-existent-user")
-				.then(() => {
-					settledValue.value = "resolved";
-				})
-				.catch((e: unknown) => {
-					settledValue.value = e;
-				});
+      // Attach .catch() immediately to prevent unhandled rejection when the
+      // promise rejects during jest.advanceTimersByTimeAsync below.
+      const settledValue: { value: unknown } = { value: 'not-yet-settled' };
+      slackRepository
+        .postMessageToDirectMessage('test message', 'non-existent-user')
+        .then(() => {
+          settledValue.value = 'resolved';
+        })
+        .catch((e: unknown) => {
+          settledValue.value = e;
+        });
 
-			// Advance 60 seconds of fake time.
-			// With maxRetryAfter bounded (e.g. 10s), all 3 retry delays (3×10s=30s) fire
-			// within this window, exhausting retries and settling the promise.
-			// With the default maxRetryAfter=INFINITY, only 2 of 3 delays fire (2×30s=60s),
-			// leaving the promise pending — causing CI to hang for the full Jest timeout.
-			await jest.advanceTimersByTimeAsync(60000);
-			jest.clearAllTimers();
-			jest.useRealTimers();
+      // Advance 60 seconds of fake time.
+      // With maxRetryAfter bounded (e.g. 10s), all 3 retry delays (3×10s=30s) fire
+      // within this window, exhausting retries and settling the promise.
+      // With the default maxRetryAfter=INFINITY, only 2 of 3 delays fire (2×30s=60s),
+      // leaving the promise pending — causing CI to hang for the full Jest timeout.
+      await jest.advanceTimersByTimeAsync(60000);
+      jest.clearAllTimers();
+      jest.useRealTimers();
 
-			// Drain microtasks so the .then()/.catch() callbacks above have run.
-			await Promise.resolve();
+      // Drain microtasks so the .then()/.catch() callbacks above have run.
+      await Promise.resolve();
 
-			globalThis.fetch = originalFetch;
-			expect(settledValue.value).not.toBe("not-yet-settled");
-		}, 5000);
-	});
+      expect(settledValue.value).not.toBe('not-yet-settled');
+    }, 5000);
+  });
 });
 
 dotenv.config();
 
 const SLACK_USER_TOKEN = process.env.SLACK_USER_TOKEN;
-const TEST_CHANNEL_NAME = "test-integration";
-const TEST_USER_NAME = "shikata.hiromi_test2";
-const TEST_IMAGE_URL = "https://i.imgur.com/Zi3qToQ.jpeg";
-const TEST_IMAGE_PATH = "./tmp/test/fixtures/test-image.png";
+const TEST_CHANNEL_NAME = 'test-integration';
+const TEST_USER_NAME = 'shikata.hiromi_test2';
+const TEST_IMAGE_URL = 'https://i.imgur.com/Zi3qToQ.jpeg';
+const TEST_IMAGE_PATH = './tmp/test/fixtures/test-image.png';
 
 const describeWhenCredentials = SLACK_USER_TOKEN ? describe : describe.skip;
 
-describeWhenCredentials("KySlackRepository Integration Tests", () => {
-	jest.setTimeout(60 * 1000);
-	jest.retryTimes(3, { logErrorsBeforeRetry: true });
-	let slackRepository: KySlackRepository;
+describeWhenCredentials('KySlackRepository Integration Tests', () => {
+  jest.setTimeout(60 * 1000);
+  jest.retryTimes(3, { logErrorsBeforeRetry: true });
+  let slackRepository: KySlackRepository;
 
-	beforeAll(() => {
-		if (!SLACK_USER_TOKEN) {
-			return;
-		}
-		slackRepository = new KySlackRepository(SLACK_USER_TOKEN);
-	});
-	beforeEach(async () => {
-		await new Promise((resolve) => setTimeout(resolve, 2000));
-	});
+  beforeAll(() => {
+    if (!SLACK_USER_TOKEN) {
+      return;
+    }
+    slackRepository = new KySlackRepository(SLACK_USER_TOKEN);
+  });
+  beforeEach(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  });
 
-	describe("postMessageToChannel", () => {
-		it("should post a message to a channel", async () => {
-			const message = `Test message ${new Date().toISOString()}`;
+  describe('postMessageToChannel', () => {
+    it('should post a message to a channel', async () => {
+      const message = `Test message ${new Date().toISOString()}`;
 
-			await expect(
-				slackRepository.postMessageToChannel(message, TEST_CHANNEL_NAME),
-			).resolves.not.toThrow();
-		});
+      await expect(
+        slackRepository.postMessageToChannel(message, TEST_CHANNEL_NAME),
+      ).resolves.not.toThrow();
+    });
 
-		it("should throw error for non-existent channel", async () => {
-			const message = "Test message";
+    it('should throw error for non-existent channel', async () => {
+      const message = 'Test message';
 
-			await expect(
-				slackRepository.postMessageToChannel(message, "non-existent-channel"),
-			).rejects.toThrow("Channel non-existent-channel not found");
-		});
-	});
+      await expect(
+        slackRepository.postMessageToChannel(message, 'non-existent-channel'),
+      ).rejects.toThrow('Channel non-existent-channel not found');
+    });
+  });
 
-	describe("postMessageToChannelThread", () => {
-		it("should post a message to a thread", async () => {
-			const message = `Test thread message ${new Date().toISOString()}`;
-			const { threadTs } = await slackRepository.postMessageToChannel(
-				`message for thread`,
-				TEST_CHANNEL_NAME,
-			);
+  describe('postMessageToChannelThread', () => {
+    it('should post a message to a thread', async () => {
+      const message = `Test thread message ${new Date().toISOString()}`;
+      const { threadTs } = await slackRepository.postMessageToChannel(
+        `message for thread`,
+        TEST_CHANNEL_NAME,
+      );
 
-			await expect(
-				slackRepository.postMessageToChannelThread(
-					message,
-					TEST_CHANNEL_NAME,
-					threadTs,
-				),
-			).resolves.not.toThrow();
-		});
-	});
+      await expect(
+        slackRepository.postMessageToChannelThread(
+          message,
+          TEST_CHANNEL_NAME,
+          threadTs,
+        ),
+      ).resolves.not.toThrow();
+    });
+  });
 
-	describe("postMessageToChannelWithImage", () => {
-		it.skip("should post a message with image", async () => {
-			const message = `Test image message ${new Date().toISOString()}`;
-			if (!fs.existsSync(path.dirname(TEST_IMAGE_PATH))) {
-				fs.mkdirSync(path.dirname(TEST_IMAGE_PATH), { recursive: true });
-				const res = https.get(TEST_IMAGE_URL, (res) =>
-					res.pipe(fs.createWriteStream(TEST_IMAGE_PATH)),
-				);
-				await new Promise((resolve, reject) => {
-					res.on("end", resolve);
-					res.on("error", reject);
-				});
-			}
+  describe('postMessageToChannelWithImage', () => {
+    it.skip('should post a message with image', async () => {
+      const message = `Test image message ${new Date().toISOString()}`;
+      if (!fs.existsSync(path.dirname(TEST_IMAGE_PATH))) {
+        fs.mkdirSync(path.dirname(TEST_IMAGE_PATH), { recursive: true });
+        const res = https.get(TEST_IMAGE_URL, (res) =>
+          res.pipe(fs.createWriteStream(TEST_IMAGE_PATH)),
+        );
+        await new Promise((resolve, reject) => {
+          res.on('end', resolve);
+          res.on('error', reject);
+        });
+      }
 
-			await expect(
-				slackRepository.postMessageToChannelWithImage(
-					message,
-					TEST_CHANNEL_NAME,
-					TEST_IMAGE_PATH,
-				),
-			).resolves.not.toThrow();
-		});
+      await expect(
+        slackRepository.postMessageToChannelWithImage(
+          message,
+          TEST_CHANNEL_NAME,
+          TEST_IMAGE_PATH,
+        ),
+      ).resolves.not.toThrow();
+    });
 
-		it("should throw error for non-existent image", async () => {
-			const message = "Test message";
+    it('should throw error for non-existent image', async () => {
+      const message = 'Test message';
 
-			await expect(
-				slackRepository.postMessageToChannelWithImage(
-					message,
-					TEST_CHANNEL_NAME,
-					"non-existent-image.png",
-				),
-			).rejects.toThrow();
-		});
-	});
+      await expect(
+        slackRepository.postMessageToChannelWithImage(
+          message,
+          TEST_CHANNEL_NAME,
+          'non-existent-image.png',
+        ),
+      ).rejects.toThrow();
+    });
+  });
 
-	describe("postMessageToDirectMessage", () => {
-		it("should post a direct message", async () => {
-			const message = `Test DM ${new Date().toISOString()}`;
+  describe('postMessageToDirectMessage', () => {
+    it('should post a direct message', async () => {
+      const message = `Test DM ${new Date().toISOString()}`;
 
-			await expect(
-				slackRepository.postMessageToDirectMessage(message, TEST_USER_NAME),
-			).resolves.not.toThrow();
-		});
+      await expect(
+        slackRepository.postMessageToDirectMessage(message, TEST_USER_NAME),
+      ).resolves.not.toThrow();
+    });
 
-		it("should throw error for non-existent user", async () => {
-			const message = "Test message";
+    it('should throw error for non-existent user', async () => {
+      const message = 'Test message';
 
-			await expect(
-				slackRepository.postMessageToDirectMessage(
-					message,
-					"non-existent-user",
-				),
-			).rejects.toThrow("User non-existent-user not found");
-		});
-	});
+      await expect(
+        slackRepository.postMessageToDirectMessage(
+          message,
+          'non-existent-user',
+        ),
+      ).rejects.toThrow('User non-existent-user not found');
+    });
+  });
 });
