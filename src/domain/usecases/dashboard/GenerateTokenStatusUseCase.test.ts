@@ -111,6 +111,7 @@ const snapshot = (
   sevenDaySonnetRejected: false,
   sevenDayOpusRejected: false,
   hasWindowData: true,
+  lastUpdatedEpoch: 1_000_000,
   ...overrides,
 });
 
@@ -278,5 +279,67 @@ describe('computeSevenDayWindowAggregate', () => {
 
   it('returns null when there is no token at all', () => {
     expect(computeSevenDayWindowAggregate([])).toBeNull();
+  });
+});
+
+describe('GenerateTokenStatusUseCase window rollover inference', () => {
+  const usecase = new GenerateTokenStatusUseCase();
+  const now = 2_000_000;
+
+  const runFor = (
+    snapshotOverrides: Partial<TokenRateLimitSnapshot>,
+  ): TokenStatus =>
+    usecase.run({
+      tokens: [
+        {
+          name: 'alice',
+          token: 'token-a',
+          snapshot: snapshot(snapshotOverrides),
+        },
+      ],
+      prepCountByToken: new Map(),
+      humCountByToken: new Map(),
+      nowEpochSeconds: now,
+    })[0];
+
+  it('keeps the last observed utilization when the snapshot predates the reset it reports', () => {
+    const result = runFor({
+      sevenDayUtilization: 0.98,
+      sevenDayReset: now - 3600,
+      lastUpdatedEpoch: now - 72000,
+    });
+
+    expect(result.sevenDayUtilizationPercent).toBe(98);
+  });
+
+  it('keeps a seven day rejection visible when the snapshot predates the reset it reports', () => {
+    const result = runFor({
+      sevenDayUtilization: 0.98,
+      sevenDayReset: now - 3600,
+      sevenDayRejected: true,
+      lastUpdatedEpoch: now - 72000,
+    });
+
+    expect(result.color).toBe('K');
+  });
+
+  it('reports a rolled over window as unused when the snapshot was captured after that reset', () => {
+    const result = runFor({
+      sevenDayUtilization: 0.98,
+      sevenDayReset: now - 3600,
+      lastUpdatedEpoch: now - 1800,
+    });
+
+    expect(result.sevenDayUtilizationPercent).toBe(0);
+  });
+
+  it('keeps the last observed five hour utilization when the snapshot predates the five hour reset', () => {
+    const result = runFor({
+      fiveHourUtilization: 0.91,
+      fiveHourReset: now - 600,
+      lastUpdatedEpoch: now - 72000,
+    });
+
+    expect(result.fiveHourUtilizationPercent).toBe(91);
   });
 });

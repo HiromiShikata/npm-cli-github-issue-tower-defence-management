@@ -43,8 +43,12 @@ export class ProxyClaudeTokenUsageRepository implements ClaudeTokenUsageReposito
           selectionWeight,
         };
       }
-      const fiveHourExpired = nowEpochSeconds > snapshot.fiveHourReset;
-      const sevenDayExpired = nowEpochSeconds > snapshot.sevenDayReset;
+      const fiveHourExpired =
+        nowEpochSeconds > snapshot.fiveHourReset &&
+        snapshot.lastUpdatedEpoch >= snapshot.fiveHourReset;
+      const sevenDayExpired =
+        nowEpochSeconds > snapshot.sevenDayReset &&
+        snapshot.lastUpdatedEpoch >= snapshot.sevenDayReset;
       const fiveHourUtilization = fiveHourExpired
         ? 0
         : snapshot.fiveHourUtilization;

@@ -12,6 +12,7 @@ export type TokenRateLimitSnapshot = {
   sevenDaySonnetRejected: boolean;
   sevenDayOpusRejected: boolean;
   hasWindowData: boolean;
+  lastUpdatedEpoch: number;
 };
 
 export type TokenRateLimitDecision = {
@@ -154,9 +155,13 @@ export class GenerateTokenStatusUseCase {
     const sevenDayReset =
       snapshot.sevenDayReset > 0 ? snapshot.sevenDayReset : null;
     const fiveHourExpired =
-      fiveHourReset !== null && fiveHourReset < nowEpochSeconds;
+      fiveHourReset !== null &&
+      fiveHourReset < nowEpochSeconds &&
+      snapshot.lastUpdatedEpoch >= fiveHourReset;
     const sevenDayExpired =
-      sevenDayReset !== null && sevenDayReset < nowEpochSeconds;
+      sevenDayReset !== null &&
+      sevenDayReset < nowEpochSeconds &&
+      snapshot.lastUpdatedEpoch >= sevenDayReset;
     return {
       fiveHourUtilizationPercent: fiveHourExpired
         ? 0
@@ -196,9 +201,13 @@ export class GenerateTokenStatusUseCase {
       };
     }
     const fiveHourExpired =
-      snapshot.fiveHourReset > 0 && snapshot.fiveHourReset < nowEpochSeconds;
+      snapshot.fiveHourReset > 0 &&
+      snapshot.fiveHourReset < nowEpochSeconds &&
+      snapshot.lastUpdatedEpoch >= snapshot.fiveHourReset;
     const sevenDayExpired =
-      snapshot.sevenDayReset > 0 && snapshot.sevenDayReset < nowEpochSeconds;
+      snapshot.sevenDayReset > 0 &&
+      snapshot.sevenDayReset < nowEpochSeconds &&
+      snapshot.lastUpdatedEpoch >= snapshot.sevenDayReset;
     return {
       fiveHourUtilization: fiveHourExpired ? 0 : snapshot.fiveHourUtilization,
       sevenDayUtilization: sevenDayExpired ? 0 : snapshot.sevenDayUtilization,

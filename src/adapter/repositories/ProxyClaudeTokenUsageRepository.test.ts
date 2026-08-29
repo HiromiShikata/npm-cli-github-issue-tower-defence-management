@@ -74,6 +74,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
 
     const futureReset = Math.floor(Date.now() / 1000) + 3600;
     const pastReset = Math.floor(Date.now() / 1000) - 3600;
+    const observedAfterReset = Math.floor(Date.now() / 1000) - 60;
 
     it('should map each token to its cached utilization and include name', async () => {
       mockLoadTokenEntries.mockReturnValue([
@@ -210,6 +211,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       mockReadRateLimit.mockReturnValue({
         fiveHourUtilization: 100,
         fiveHourReset: pastReset,
+        lastUpdatedEpoch: observedAfterReset,
         sevenDayUtilization: 30,
         sevenDayReset: futureReset,
         blocked: false,
@@ -284,6 +286,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       mockReadRateLimit.mockReturnValue({
         fiveHourUtilization: 100,
         fiveHourReset: pastReset,
+        lastUpdatedEpoch: observedAfterReset,
         sevenDayUtilization: 0,
         sevenDayReset: futureReset,
         blocked: false,
@@ -323,6 +326,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         fiveHourReset: futureReset,
         sevenDayUtilization: 100,
         sevenDayReset: pastReset,
+        lastUpdatedEpoch: observedAfterReset,
         blocked: false,
         rejected: true,
         unifiedRejected: false,
@@ -393,6 +397,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       mockReadRateLimit.mockReturnValue({
         fiveHourUtilization: 100,
         fiveHourReset: pastReset,
+        lastUpdatedEpoch: observedAfterReset,
         sevenDayUtilization: 100,
         sevenDayReset: futureReset,
         blocked: false,
@@ -430,6 +435,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
       mockReadRateLimit.mockReturnValue({
         fiveHourUtilization: 100,
         fiveHourReset: pastReset,
+        lastUpdatedEpoch: observedAfterReset,
         sevenDayUtilization: 0,
         sevenDayReset: futureReset,
         blocked: false,
@@ -734,6 +740,7 @@ describe('ProxyClaudeTokenUsageRepository', () => {
         fiveHourReset: futureReset,
         sevenDayUtilization: 0,
         sevenDayReset: pastReset,
+        lastUpdatedEpoch: observedAfterReset,
         blocked: false,
         rejected: false,
         unifiedRejected: false,
@@ -1128,5 +1135,36 @@ describe('ProxyClaudeTokenUsageRepository', () => {
 
       expect(result).toEqual({});
     });
+  });
+});
+
+describe('ProxyClaudeTokenUsageRepository window rollover inference', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should keep the last observed sevenDayUtilization when the snapshot predates the 7d reset it reports', async () => {
+    const pastReset = Math.floor(Date.now() / 1000) - 3600;
+    const observedBeforeReset = pastReset - 72000;
+    mockLoadTokenEntries.mockReturnValue([{ name: 'alice', token: 'token-a' }]);
+    mockReadRateLimit.mockReturnValue({
+      fiveHourUtilization: 0,
+      fiveHourReset: Math.floor(Date.now() / 1000) + 3600,
+      sevenDayUtilization: 98,
+      sevenDayReset: pastReset,
+      blocked: false,
+      rejected: true,
+      unifiedRejected: false,
+      fiveHourRejected: false,
+      sevenDayRejected: true,
+      lastUpdatedEpoch: observedBeforeReset,
+      modelWeeklyLimits: {},
+    });
+    const repository = new ProxyClaudeTokenUsageRepository('/tokens.json');
+
+    const result = await repository.getAvailableTokenUsages();
+
+    expect(result[0].sevenDayUtilization).toBe(98);
+    expect(result[0].rejected).toBe(true);
   });
 });
