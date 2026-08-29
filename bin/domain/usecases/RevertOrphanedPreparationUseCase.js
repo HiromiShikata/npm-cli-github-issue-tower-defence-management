@@ -55,6 +55,15 @@ class RevertOrphanedPreparationUseCase {
                     ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastAgentReport.content)
                     : null;
                 if (nextStepAgent !== null) {
+                    if (params.agents &&
+                        params.agents.length > 0 &&
+                        !params.agents.includes(nextStepAgent)) {
+                        if (failedPreparationStatusOption) {
+                            await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                        }
+                        await this.issueCommentRepository.createComment(issue, `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`);
+                        continue;
+                    }
                     const repetition = (0, resolveNextStepAgentDispatchRepetition_1.resolveNextStepAgentDispatchRepetition)({
                         agentFieldValue: issue.agent,
                         nextStepAgent,

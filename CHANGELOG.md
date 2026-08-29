@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.1.0...v2.1.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **RevertOrphanedPreparation:** reject unregistered nextStepAgent before re-dispatch ([#1857](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1857)) ([3bccb73](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3bccb7392a3ae8557c9a9cc1fb06b8e458938563)), closes [HiromiShikata/secretary#4626](https://github.com/HiromiShikata/secretary/issues/4626)
+
 # [2.1.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.0.0...v2.1.0) (2026-08-29)
 
 
