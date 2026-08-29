@@ -140,6 +140,7 @@ const knownProjectReadmeConfigKeys = [
   'labelsNotRequiringPullRequest',
   'changeTargetPathAliases',
   'consoleDataOutputDir',
+  'errorReportingRepository',
 ] as const;
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
@@ -302,6 +303,7 @@ export const parseProjectReadmeConfig = (
         'changeTargetPathAliases',
       ),
       consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
+      errorReportingRepository: getStringValue(parsed, 'errorReportingRepository'),
     };
   } catch {
     console.warn('Failed to parse YAML from project README config section');
@@ -409,6 +411,7 @@ export const mergeConfigs = (
     cliOverrides.ownerApprovalTimeoutCycles ??
     configFile.ownerApprovalTimeoutCycles,
   errorReportingRepository:
+    readmeOverrides.errorReportingRepository ??
     cliOverrides.errorReportingRepository ??
     configFile.errorReportingRepository,
 });
