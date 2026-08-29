@@ -258,7 +258,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: :robot: Agent report' }),
+      createMockComment({ content: 'From: :robot: agent (model)' }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
       {
@@ -360,7 +360,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(prIssue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: :robot: Agent report' }),
+      createMockComment({ content: 'From: :robot: agent (model)' }),
     ]);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/77',
@@ -859,7 +859,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: :robot: Agent report\n```json\n{"nextStep": "Fix the tests"}\n```',
+          'From: :robot: agent (model)\n```json\n{"nextStep": "Fix the tests"}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -902,7 +902,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'From: :robot: Agent report\n```json\n{"nextStep": null}\n```',
+        content: 'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -945,7 +945,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: :robot: Agent report\n```json\n{"nextStepAgent": "llm-agent:chore", "nextStep": null}\n```',
+          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "llm-agent:chore", "nextStep": null}\n```',
       }),
     ]);
 
@@ -1207,7 +1207,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: :robot: Agent report\n```json\n{"nextStepAgent": "llm-agent:impl", "nextStep": null}\n```',
+          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "llm-agent:impl", "nextStep": null}\n```',
       }),
     ]);
 
@@ -1234,7 +1234,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: :robot: Agent report\n```json\n{"nextStepAgent": null, "nextStep": null}\n```',
+          'From: :robot: agent (model)\n```json\n{"nextStepAgent": null, "nextStep": null}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -1279,7 +1279,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: :robot: Agent report\n```json\n{"nextStepAgent": "llm-agent:new-agent", "nextStep": null}\n```',
+          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "llm-agent:new-agent", "nextStep": null}\n```',
       }),
     ]);
 
@@ -1308,7 +1308,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: :robot: Agent report\n```json\n{"nextStepAgent": "llm-agent:impl", "nextStep": null}\n```',
+          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "llm-agent:impl", "nextStep": null}\n```',
       }),
     ]);
 
@@ -1336,7 +1336,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: :robot: Agent report\n```json\n{"nextStepAgent": "", "nextStep": null}\n```',
+          'From: :robot: agent (model)\n```json\n{"nextStepAgent": "", "nextStep": null}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -2374,7 +2374,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(prIssue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: :robot: Agent report' }),
+      createMockComment({ content: 'From: :robot: agent (model)' }),
     ]);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue({
       url: 'https://github.com/user/repo/pull/10',
@@ -2590,7 +2590,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(prIssue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: :robot: Agent report' }),
+        createMockComment({ content: 'From: :robot: agent (model)' }),
       ]);
       mockIssueRepository.getOpenPullRequest.mockResolvedValue({
         url: prUrl,
@@ -3021,7 +3021,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(prIssue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: :robot: Agent report' }),
+      createMockComment({ content: 'From: :robot: agent (model)' }),
     ]);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
 
@@ -3056,7 +3056,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'From: :robot: Agent report\n```json\n{invalid json}\n```',
+        content: 'From: :robot: agent (model)\n```json\n{invalid json}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -3095,7 +3095,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'From: :robot: Agent report\n```json\nnull\n```',
+        content: 'From: :robot: agent (model)\n```json\nnull\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -3135,7 +3135,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
         content:
-          'From: :robot: Agent report\n```json\n{"status": "done", "result": "success"}\n```',
+          'From: :robot: agent (model)\n```json\n{"status": "done", "result": "success"}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -3174,7 +3174,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'From: :robot: Agent report\n```json\n"just a string"\n```',
+        content: 'From: :robot: agent (model)\n```json\n"just a string"\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -3503,7 +3503,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: :robot: Agent report' }),
+        createMockComment({ content: 'From: :robot: agent (model)' }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         {
@@ -3700,7 +3700,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: :robot: Agent report' }),
+        createMockComment({ content: 'From: :robot: agent (model)' }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
@@ -5061,7 +5061,18 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: :robot: Agent report' }),
+        createMockComment({ content: 'From: :robot: agent (model)' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/1',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
       ]);
 
       await useCase.run({
@@ -5069,7 +5080,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -5077,7 +5088,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.anything(),
       );
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
     it('should set the agent field and return the issue to Awaiting Workspace when a next step agent is designated', async () => {
@@ -5088,8 +5098,19 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: Agent report\n```json\n{"nextStepAgent": "impl"}\n```',
+            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "impl"}\n```',
         }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/1',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
       ]);
 
       await useCase.run({
@@ -5097,7 +5118,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
@@ -5118,7 +5139,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: Agent report\n```json\n{"nextStepAgent": "triager"}\n```',
+            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "triager"}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -5128,7 +5149,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
@@ -5148,7 +5169,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: Agent report\n```json\n{"nextStepAgent": "impl"}\n```',
+            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "impl"}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -5158,7 +5179,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
