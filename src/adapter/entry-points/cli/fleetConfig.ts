@@ -105,5 +105,21 @@ export const loadLiveSessionOauthTokenSelectionSettings = (
       (value) => value > 0 && value <= 1,
       'above 0 and at most 1',
     ),
+    minFiveHourFreeRatio: readBoundedNumber(
+      section,
+      'minFiveHourFreeRatio',
+      fleetConfigFilePath,
+      DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minFiveHourFreeRatio,
+      (value) => value > 0 && value <= 1,
+      'above 0 and at most 1',
+    ),
+    minSevenDayFreeRatio: readBoundedNumber(
+      section,
+      'minSevenDayFreeRatio',
+      fleetConfigFilePath,
+      DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minSevenDayFreeRatio,
+      (value) => value > 0 && value <= 1,
+      'above 0 and at most 1',
+    ),
   };
 };

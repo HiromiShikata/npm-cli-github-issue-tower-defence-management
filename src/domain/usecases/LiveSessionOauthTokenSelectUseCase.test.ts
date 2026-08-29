@@ -145,11 +145,11 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('keeps the full concurrent session limit on a nearly used seven day window so the expiring allowance is drained', () => {
+  it('excludes a seven day window that has fallen below the minimum free ratio even when sessions are below the concurrent limit', () => {
     const result = useCase.run(
       [
         candidate(
-          'soonResetNearlyUsedSevenDay',
+          'nearlyUsedSevenDay',
           snapshot({
             sevenDayReset: NOW + 3 * DAY,
             sevenDayUtilization: 0.9,
@@ -160,29 +160,27 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
           snapshot({ sevenDayReset: NOW + 6 * DAY }),
         ),
       ],
-      sessionsFor('soonResetNearlyUsedSevenDay', 5),
+      sessionsFor('nearlyUsedSevenDay', 5),
       NOW,
       SETTINGS,
     );
 
     const nearlyUsed = result.metrics.find(
-      (m) => m.name === 'soonResetNearlyUsedSevenDay',
+      (m) => m.name === 'nearlyUsedSevenDay',
     );
-    expect(nearlyUsed?.concurrentSessionLimit).toBe(
-      MAX_CONCURRENT_SESSION_COUNT,
-    );
-    expect(result.selected?.name).toBe('soonResetNearlyUsedSevenDay');
+    expect(nearlyUsed?.eligible).toBe(false);
+    expect(nearlyUsed?.exclusionReason).toContain('7d window');
+    expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('keeps the full concurrent session limit on a seven day window that resets within the hour while its five hour window is still half free', () => {
+  it('excludes a token whose seven day window is below the minimum even when it resets within the hour', () => {
     const result = useCase.run(
       [
         candidate(
-          'aboutToResetHalfFreeFiveHour',
+          'aboutToResetNearlyUsedSevenDay',
           snapshot({
             sevenDayReset: NOW + HOUR,
             sevenDayUtilization: 0.9,
-            fiveHourUtilization: 0.5,
           }),
         ),
         candidate(
@@ -190,18 +188,16 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
           snapshot({ sevenDayReset: NOW + 6 * DAY }),
         ),
       ],
-      sessionsFor('aboutToResetHalfFreeFiveHour', 5),
+      sessionsFor('aboutToResetNearlyUsedSevenDay', 5),
       NOW,
       SETTINGS,
     );
 
     const aboutToReset = result.metrics.find(
-      (m) => m.name === 'aboutToResetHalfFreeFiveHour',
+      (m) => m.name === 'aboutToResetNearlyUsedSevenDay',
     );
-    expect(aboutToReset?.concurrentSessionLimit).toBe(
-      MAX_CONCURRENT_SESSION_COUNT,
-    );
-    expect(result.selected?.name).toBe('aboutToResetHalfFreeFiveHour');
+    expect(aboutToReset?.eligible).toBe(false);
+    expect(result.selected?.name).toBe('distantResetIdle');
   });
 
   it('still throttles a seven day window that resets within the hour once its five hour window falls below half free', () => {
@@ -506,6 +502,124 @@ describe('LiveSessionOauthTokenCandidateMetrics selectionWeight', () => {
 
     const implicit = result.metrics.find((m) => m.name === 'implicit');
     expect(implicit?.selectionWeight).toBe(1);
+  });
+});
+
+describe('LiveSessionOauthTokenSelectUseCase minimum free ratio thresholds', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it('excludes a token whose five hour window has less than the minimum free ratio', () => {
+    const result = useCase.run(
+      [
+        candidate('narrowFiveHourMin', snapshot({ fiveHourUtilization: 0.5 })),
+        candidate('freeFiveHourMin', snapshot({})),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const narrow = result.metrics.find((m) => m.name === 'narrowFiveHourMin');
+    expect(narrow?.eligible).toBe(false);
+    expect(narrow?.exclusionReason).toContain('5h window');
+    expect(result.selected?.name).toBe('freeFiveHourMin');
+  });
+
+  it('excludes a token whose seven day window has less than the minimum free ratio', () => {
+    const result = useCase.run(
+      [
+        candidate('nearlyUsedSevenDayMin', snapshot({ sevenDayUtilization: 0.9 })),
+        candidate('freeSevenDayMin', snapshot({})),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const nearlyUsed = result.metrics.find(
+      (m) => m.name === 'nearlyUsedSevenDayMin',
+    );
+    expect(nearlyUsed?.eligible).toBe(false);
+    expect(nearlyUsed?.exclusionReason).toContain('7d window');
+    expect(result.selected?.name).toBe('freeSevenDayMin');
+  });
+
+  it('selects a token whose ratios are at exactly the minimum free ratio thresholds', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'atThreshold',
+          snapshot({ fiveHourUtilization: 0.4, sevenDayUtilization: 0.86 }),
+        ),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const atThreshold = result.metrics.find((m) => m.name === 'atThreshold');
+    expect(atThreshold?.eligible).toBe(true);
+    expect(result.selected?.name).toBe('atThreshold');
+  });
+
+  it('honours a fleet supplied minimum five hour free ratio', () => {
+    const result = useCase.run(
+      [
+        candidate('narrowForFleetFiveHour', snapshot({ fiveHourUtilization: 0.15 })),
+        candidate('freeForFleetFiveHour', snapshot({})),
+      ],
+      [],
+      NOW,
+      settingsWith({ minFiveHourFreeRatio: 0.9 }),
+    );
+
+    const narrow = result.metrics.find(
+      (m) => m.name === 'narrowForFleetFiveHour',
+    );
+    expect(narrow?.eligible).toBe(false);
+    expect(narrow?.exclusionReason).toContain('5h window');
+    expect(result.selected?.name).toBe('freeForFleetFiveHour');
+  });
+
+  it('honours a fleet supplied minimum seven day free ratio', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'narrowForFleetSevenDay',
+          snapshot({ sevenDayUtilization: 0.5 }),
+        ),
+        candidate('freeForFleetSevenDay', snapshot({})),
+      ],
+      [],
+      NOW,
+      settingsWith({ minSevenDayFreeRatio: 0.6 }),
+    );
+
+    const narrow = result.metrics.find(
+      (m) => m.name === 'narrowForFleetSevenDay',
+    );
+    expect(narrow?.eligible).toBe(false);
+    expect(narrow?.exclusionReason).toContain('7d window');
+    expect(result.selected?.name).toBe('freeForFleetSevenDay');
+  });
+
+  it('reports the five hour window exclusion reason when both windows are below their minimums', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'bothNarrow',
+          snapshot({ fiveHourUtilization: 0.5, sevenDayUtilization: 0.9 }),
+        ),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const bothNarrow = result.metrics.find((m) => m.name === 'bothNarrow');
+    expect(bothNarrow?.eligible).toBe(false);
+    expect(bothNarrow?.exclusionReason).toContain('5h window');
+    expect(bothNarrow?.exclusionReason).not.toContain('7d window');
   });
 });
 

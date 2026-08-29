@@ -67,13 +67,15 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
     );
   });
 
-  it('reads both tuning numbers from the fleet config file', () => {
+  it('reads all tuning numbers from the fleet config file', () => {
     const fleetConfigFilePath = writeFleetConfig(
       [
         'inTmuxLauncherCommand: cl',
         'liveSessionOauthTokenSelection:',
         '  maxConcurrentSessionCount: 16',
         '  fullSpeedFiveHourFreeRatio: 0.4',
+        '  minFiveHourFreeRatio: 0.7',
+        '  minSevenDayFreeRatio: 0.2',
       ].join('\n'),
     );
 
@@ -82,6 +84,8 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
     ).toEqual({
       maxConcurrentSessionCount: 16,
       fullSpeedFiveHourFreeRatio: 0.4,
+      minFiveHourFreeRatio: 0.7,
+      minSevenDayFreeRatio: 0.2,
     });
   });
 
@@ -99,6 +103,10 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
       maxConcurrentSessionCount: 16,
       fullSpeedFiveHourFreeRatio:
         DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.fullSpeedFiveHourFreeRatio,
+      minFiveHourFreeRatio:
+        DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minFiveHourFreeRatio,
+      minSevenDayFreeRatio:
+        DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS.minSevenDayFreeRatio,
     });
   });
 
@@ -150,6 +158,32 @@ describe('loadLiveSessionOauthTokenSelectionSettings', () => {
     expect(() =>
       loadLiveSessionOauthTokenSelectionSettings(fleetConfigFilePath),
     ).toThrow('fullSpeedFiveHourFreeRatio');
+  });
+
+  it('throws when the minimum five hour free ratio is above one', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  minFiveHourFreeRatio: 1.5',
+      ].join('\n'),
+    );
+
+    expect(() =>
+      loadLiveSessionOauthTokenSelectionSettings(fleetConfigFilePath),
+    ).toThrow('minFiveHourFreeRatio');
+  });
+
+  it('throws when the minimum seven day free ratio is above one', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'liveSessionOauthTokenSelection:',
+        '  minSevenDayFreeRatio: 1.5',
+      ].join('\n'),
+    );
+
+    expect(() =>
+      loadLiveSessionOauthTokenSelectionSettings(fleetConfigFilePath),
+    ).toThrow('minSevenDayFreeRatio');
   });
 
   it('throws when a tuning number is written as a string', () => {

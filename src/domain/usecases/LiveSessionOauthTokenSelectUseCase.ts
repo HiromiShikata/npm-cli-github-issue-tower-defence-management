@@ -8,12 +8,16 @@ import {
 export type LiveSessionOauthTokenSelectionSettings = {
   maxConcurrentSessionCount: number;
   fullSpeedFiveHourFreeRatio: number;
+  minFiveHourFreeRatio: number;
+  minSevenDayFreeRatio: number;
 };
 
 export const DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS: LiveSessionOauthTokenSelectionSettings =
   {
     maxConcurrentSessionCount: 10,
     fullSpeedFiveHourFreeRatio: 0.5,
+    minFiveHourFreeRatio: 0.6,
+    minSevenDayFreeRatio: 0.14,
   };
 
 export const liveSessionConcurrentLimitOf = (
@@ -80,6 +84,12 @@ export class LiveSessionOauthTokenSelectUseCase {
         selectionWeightOf(candidate),
         settings,
       );
+      const exclusionReason = this.liveSessionExclusionReason(
+        rateLimitMetric.exclusionReason,
+        rateLimitMetric.fiveHourFreeRatio,
+        rateLimitMetric.sevenDayFreeRatio,
+        settings,
+      );
       return {
         candidate,
         metric: {
@@ -90,8 +100,8 @@ export class LiveSessionOauthTokenSelectUseCase {
           liveSessionCount,
           concurrentSessionLimit,
           hasConcurrencyHeadroom: liveSessionCount < concurrentSessionLimit,
-          eligible: rateLimitMetric.eligible,
-          exclusionReason: rateLimitMetric.exclusionReason,
+          eligible: exclusionReason === null,
+          exclusionReason,
           selectionWeight: selectionWeightOf(candidate),
         },
       };
@@ -111,6 +121,24 @@ export class LiveSessionOauthTokenSelectUseCase {
     );
 
     return { selected: selected.candidate, metrics };
+  };
+
+  private liveSessionExclusionReason = (
+    rateLimitExclusionReason: string | null,
+    fiveHourFreeRatio: number,
+    sevenDayFreeRatio: number,
+    settings: LiveSessionOauthTokenSelectionSettings,
+  ): string | null => {
+    if (rateLimitExclusionReason !== null) {
+      return rateLimitExclusionReason;
+    }
+    if (fiveHourFreeRatio < settings.minFiveHourFreeRatio) {
+      return `5h window only ${Math.round(fiveHourFreeRatio * 100)}% free (requires >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% for CL script selection)`;
+    }
+    if (sevenDayFreeRatio < settings.minSevenDayFreeRatio) {
+      return `7d window only ${Math.round(sevenDayFreeRatio * 100)}% free (requires >= ${Math.round(settings.minSevenDayFreeRatio * 100)}% for CL script selection)`;
+    }
+    return null;
   };
 
   private preferred = (
