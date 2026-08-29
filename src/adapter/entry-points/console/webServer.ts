@@ -791,6 +791,15 @@ export const handleWebRequest = async (
       sendNotFound(response);
       return;
     }
+    const providedToken = extractProvidedToken(
+      requestUrl.searchParams.get('k'),
+      request.headers[CONSOLE_TOKEN_HEADER],
+      extractCookieToken(request.headers.cookie),
+    );
+    if (!isTokenValid(options.accessToken, providedToken)) {
+      sendUnauthorized(response);
+      return;
+    }
     const dashboardContent = resolveDashboardContent(options, requestPath);
     if (dashboardContent === null) {
       sendNotFound(response);
