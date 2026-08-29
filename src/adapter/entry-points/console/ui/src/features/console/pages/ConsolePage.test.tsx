@@ -30,6 +30,15 @@ const listPayload = (tab: string) => ({
   statusOptions: [{ id: 's1', name: 'Awaiting Workspace', color: 'BLUE' }],
   storyOptions: [{ id: 'st1', name: 'TDPM Console port', color: 'BLUE' }],
   storyColors: { 'TDPM Console port': { color: 'BLUE' } },
+  stories: [
+    {
+      storyName: 'TDPM Console port',
+      storyOptionId: 'st1',
+      color: 'BLUE',
+      openItemCount: 1,
+      storyViewUrl: null,
+    },
+  ],
   items:
     tab === 'prs'
       ? [
@@ -515,6 +524,30 @@ describe('ConsolePage', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('renders reorder buttons in the Stories tab', async () => {
+    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
+    const { getAllByRole, getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByText('snapshot: 2026-06-19T00:00:00.000Z'),
+      ).toBeInTheDocument();
+    });
+    expect(getAllByRole('button', { name: 'Move up' }).length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('does not render reorder buttons in the Triage tab', async () => {
+    window.history.replaceState({}, '', '/projects/acme/triage?k=token');
+    const { queryAllByRole, getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByText('snapshot: 2026-06-19T00:00:00.000Z'),
+      ).toBeInTheDocument();
+    });
+    expect(queryAllByRole('button', { name: 'Move up' })).toHaveLength(0);
   });
 });
 
