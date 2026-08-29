@@ -83,6 +83,7 @@ export class RevertOrphanedPreparationUseCase {
     labelsAsLlmAgentName?: string[] | null;
     labelsNotRequiringPullRequest?: string[] | null;
     allowedIssueAuthors?: string[] | null;
+    agents?: string[] | null;
     ownerApprovalTimeoutCycles?: number | null;
     developerAgentName?: string | null;
   }): Promise<void> => {
@@ -149,6 +150,24 @@ export class RevertOrphanedPreparationUseCase {
         ? extractNextStepAgent(lastAgentReport.content)
         : null;
       if (nextStepAgent !== null) {
+        if (
+          params.agents &&
+          params.agents.length > 0 &&
+          !params.agents.includes(nextStepAgent)
+        ) {
+          if (failedPreparationStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              failedPreparationStatusOption.id,
+            );
+          }
+          await this.issueCommentRepository.createComment(
+            issue,
+            `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`,
+          );
+          continue;
+        }
         const repetition = resolveNextStepAgentDispatchRepetition({
           agentFieldValue: issue.agent,
           nextStepAgent,
