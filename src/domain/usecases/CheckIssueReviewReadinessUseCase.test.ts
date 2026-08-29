@@ -210,13 +210,13 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       });
     });
 
-    it('should return reviewReady=true when the last report declares pullRequestRequired as false and no related PR exists', async () => {
+    it('should return reviewReady=true when the last report designates the triager and no related PR exists', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: Agent report\n```json\n{"pullRequestRequired": false}\n```',
+            'From: :robot: Agent report\n```json\n{"nextStepAgent": "triager"}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -229,13 +229,35 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       expect(result.reviewReady).toBe(true);
     });
 
-    it('should keep every rejection other than PULL_REQUEST_NOT_FOUND when the last report declares pullRequestRequired as false', async () => {
+    it('should keep rejecting a missing PR when the last report designates an agent other than the triager', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: Agent report\n```json\n{"pullRequestRequired": false}\n```',
+            'From: :robot: Agent report\n```json\n{"nextStepAgent": "developer"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+      });
+
+      expect(result.reviewReady).toBe(false);
+      expect(result.rejections).toContainEqual({
+        type: 'PULL_REQUEST_NOT_FOUND',
+        detail: 'PULL_REQUEST_NOT_FOUND',
+      });
+    });
+
+    it('should keep every rejection other than PULL_REQUEST_NOT_FOUND when the last report designates the triager', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: Agent report\n```json\n{"nextStepAgent": "triager"}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([

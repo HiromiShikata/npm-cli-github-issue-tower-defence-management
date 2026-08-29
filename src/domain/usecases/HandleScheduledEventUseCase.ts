@@ -29,7 +29,6 @@ import {
 import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
 import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
 import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
-import { TriagerApprovalDispatchUseCase } from './TriagerApprovalDispatchUseCase';
 import { isRecord } from './isRecord';
 import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
 import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
@@ -141,7 +140,6 @@ export class HandleScheduledEventUseCase {
     readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
     readonly conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase,
     readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
-    readonly triagerApprovalDispatchUseCase: TriagerApprovalDispatchUseCase,
     readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
     readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
     readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
@@ -449,10 +447,6 @@ ${JSON.stringify(e)}
       changeTargetPathAliases: input.changeTargetPathAliases,
       allowedIssueAuthors,
       developerAgentName: input.developerAgentName,
-    });
-    await this.triagerApprovalDispatchUseCase.run({
-      projectUrl: input.projectUrl,
-      allowedIssueAuthors,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({

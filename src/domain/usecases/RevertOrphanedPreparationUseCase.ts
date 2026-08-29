@@ -15,18 +15,8 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
 import { dropTrailingAutoStatusCheckComments } from './autoStatusCheckComments';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
-import {
-  RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
-  RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
-} from './returnedToAwaitingWorkspaceMessage';
-import { isWaitingForOwnerApproval } from './isWaitingForOwnerApproval';
-import {
-  AWAITING_OWNER_APPROVAL_MESSAGE,
-  AWAITING_OWNER_APPROVAL_MESSAGE_HEAD,
-} from './awaitingOwnerApprovalMessage';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
@@ -41,8 +31,6 @@ const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
 type OrphanedPreparationOutcome =
   | 'advanceToQualityCheck'
-  | 'returnToLabelSelectedAgent'
-  | 'returnToOwnerApprovalCycle'
   | 'reject'
   | 'reassignToDeveloper';
 
@@ -83,7 +71,6 @@ export class RevertOrphanedPreparationUseCase {
     labelsAsLlmAgentName?: string[] | null;
     labelsNotRequiringPullRequest?: string[] | null;
     allowedIssueAuthors?: string[] | null;
-    ownerApprovalTimeoutCycles?: number | null;
     developerAgentName?: string | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
@@ -203,43 +190,6 @@ export class RevertOrphanedPreparationUseCase {
         }
         continue;
       }
-      if (outcome === 'returnToOwnerApprovalCycle') {
-        const ownerApprovalTimeoutCycles =
-          params.ownerApprovalTimeoutCycles ?? 12;
-        const awaitingOwnerApprovalCount = comments.filter(
-          (comment) =>
-            isAuthorAuthorizedForAutoStatusCheck(
-              comment.author,
-              params.allowedIssueAuthors,
-            ) &&
-            comment.content.startsWith(AWAITING_OWNER_APPROVAL_MESSAGE_HEAD),
-        ).length;
-        if (
-          awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles &&
-          awaitingQualityCheckStatusOption
-        ) {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            awaitingQualityCheckStatusOption.id,
-          );
-          await this.issueCommentRepository.createComment(
-            issue,
-            AWAITING_OWNER_APPROVAL_MESSAGE,
-          );
-        } else if (failedPreparationStatusOption) {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            failedPreparationStatusOption.id,
-          );
-          await this.issueCommentRepository.createComment(
-            issue,
-            `Owner approval was not received after ${ownerApprovalTimeoutCycles} cycles. Moving to Failed Preparation.`,
-          );
-        }
-        continue;
-      }
       if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
         const effectiveDeveloperAgentName =
           params.developerAgentName ?? 'developer';
@@ -263,18 +213,6 @@ export class RevertOrphanedPreparationUseCase {
         await this.issueCommentRepository.createComment(
           issue,
           `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
-        );
-        continue;
-      }
-      if (outcome === 'returnToLabelSelectedAgent') {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
-        await this.issueCommentRepository.createComment(
-          issue,
-          RETURNED_TO_AWAITING_WORKSPACE_MESSAGE,
         );
         continue;
       }
@@ -393,32 +331,6 @@ export class RevertOrphanedPreparationUseCase {
       commentsBeforeOwnStatusComments[
         commentsBeforeOwnStatusComments.length - 1
       ] ?? null;
-    if (
-      lastReport !== null &&
-      isPullRequestDeclaredUnnecessary(
-        commentsBeforeOwnStatusComments,
-        isTrustedAuthor,
-      ) &&
-      !this.reportBodyHasNextStep(lastReport.content)
-    ) {
-      if (isWaitingForOwnerApproval(lastReport.content)) {
-        return { outcome: 'returnToOwnerApprovalCycle', comments };
-      }
-      const alreadyReturnedToWorkspace = comments.some(
-        (comment) =>
-          isTrustedAuthor(comment.author) &&
-          comment.content.startsWith(
-            RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD,
-          ),
-      );
-      return {
-        outcome: alreadyReturnedToWorkspace
-          ? 'advanceToQualityCheck'
-          : 'returnToLabelSelectedAgent',
-        comments,
-      };
-    }
-
     const lastComment = comments[comments.length - 1];
     if (!lastComment || !isAgentReportBody(lastComment.content)) {
       return { outcome: 'reject', comments };

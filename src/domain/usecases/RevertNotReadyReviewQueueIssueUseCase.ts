@@ -5,7 +5,8 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
+import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
+import { isTriagerAgentName } from './triagerAgentName';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
@@ -132,10 +133,15 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         if (
           rejections.length === 1 &&
           rejections[0].type === 'PULL_REQUEST_NOT_FOUND' &&
-          isPullRequestDeclaredUnnecessary(
-            await this.issueCommentRepository.getCommentsFromIssue(issue),
-            (author) =>
-              isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+          isTriagerAgentName(
+            extractNextStepAgentFromComments(
+              await this.issueCommentRepository.getCommentsFromIssue(issue),
+              (author) =>
+                isAuthorAuthorizedForAutoStatusCheck(
+                  author,
+                  allowedIssueAuthors,
+                ),
+            ),
           )
         ) {
           continue;

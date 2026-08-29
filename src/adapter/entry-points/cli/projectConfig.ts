@@ -32,7 +32,6 @@ export type ConfigFile = {
   consoleProjects?: Record<string, string>;
   consoleGithubTokenFileDir?: string;
   disks?: DiskConfig[];
-  ownerApprovalTimeoutCycles?: number;
   errorReportingRepository?: string;
 };
 
@@ -209,10 +208,6 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'consoleGithubTokenFileDir',
       ),
       disks: getDisksValue(parsed, 'disks'),
-      ownerApprovalTimeoutCycles: getNumberValue(
-        parsed,
-        'ownerApprovalTimeoutCycles',
-      ),
       errorReportingRepository: getStringValue(
         parsed,
         'errorReportingRepository',
@@ -410,9 +405,6 @@ export const mergeConfigs = (
     cliOverrides.consoleGithubTokenFileDir ??
     configFile.consoleGithubTokenFileDir,
   disks: cliOverrides.disks ?? configFile.disks,
-  ownerApprovalTimeoutCycles:
-    cliOverrides.ownerApprovalTimeoutCycles ??
-    configFile.ownerApprovalTimeoutCycles,
   errorReportingRepository:
     readmeOverrides.errorReportingRepository ??
     cliOverrides.errorReportingRepository ??
