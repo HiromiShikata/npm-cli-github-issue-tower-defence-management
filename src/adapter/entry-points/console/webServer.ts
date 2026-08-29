@@ -3,7 +3,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { Project } from '../../../domain/entities/Project';
 import {
   CONSOLE_LIST_TAB_NAMES,

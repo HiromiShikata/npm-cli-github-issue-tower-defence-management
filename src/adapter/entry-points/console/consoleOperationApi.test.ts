@@ -1971,7 +1971,10 @@ describe('consoleOperationApi', () => {
       };
       const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithProjectRepository(() => ({ updateStoryList }), projectWithGray),
+        contextWithProjectRepository(
+          () => ({ updateStoryList }),
+          projectWithGray,
+        ),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_b',
