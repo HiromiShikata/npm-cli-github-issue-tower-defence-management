@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.3.0...v2.4.0) (2026-08-29)
+
+
+### Features
+
+* add fleet-level maximumPreparingIssuesCount with 80 as default ([#1862](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1862)) ([e020239](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e02023901ea60bad2ce09a13f04522924b26540a))
+
 # [2.3.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.2.0...v2.3.0) (2026-08-29)
 
 

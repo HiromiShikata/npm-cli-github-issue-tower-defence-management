@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadPreparationWorkerSettings = exports.loadLiveSessionOauthTokenSelectionSettings = exports.resolveFleetConfigFilePath = exports.DEFAULT_PREPARATION_WORKER_SETTINGS = exports.PREPARATION_WORKER_SECTION_KEY = exports.LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY = exports.FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = void 0;
+exports.loadStartPreparationFleetSettings = exports.loadPreparationWorkerSettings = exports.loadLiveSessionOauthTokenSelectionSettings = exports.resolveFleetConfigFilePath = exports.DEFAULT_START_PREPARATION_FLEET_SETTINGS = exports.DEFAULT_PREPARATION_WORKER_SETTINGS = exports.DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = exports.START_PREPARATION_SECTION_KEY = exports.PREPARATION_WORKER_SECTION_KEY = exports.LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY = exports.FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = void 0;
 const yaml_1 = __importDefault(require("yaml"));
 const fs = __importStar(require("fs"));
 const LiveSessionOauthTokenSelectUseCase_1 = require("../../../domain/usecases/LiveSessionOauthTokenSelectUseCase");
@@ -44,8 +44,13 @@ const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPrepara
 exports.FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = 'TDPM_FLEET_CONFIG';
 exports.LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY = 'liveSessionOauthTokenSelection';
 exports.PREPARATION_WORKER_SECTION_KEY = 'preparationWorker';
+exports.START_PREPARATION_SECTION_KEY = 'startPreparation';
+exports.DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 exports.DEFAULT_PREPARATION_WORKER_SETTINGS = {
     normalConcurrentLimit: StartPreparationUseCase_1.NORMAL_CONCURRENT_LIMIT,
+};
+exports.DEFAULT_START_PREPARATION_FLEET_SETTINGS = {
+    maximumPreparingIssuesCount: exports.DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT,
 };
 const resolveFleetConfigFilePath = (cliValue) => {
     if (cliValue !== null && cliValue !== '') {
@@ -118,4 +123,17 @@ const loadPreparationWorkerSettings = (fleetConfigFilePath) => {
     };
 };
 exports.loadPreparationWorkerSettings = loadPreparationWorkerSettings;
+const loadStartPreparationFleetSettings = (fleetConfigFilePath) => {
+    if (fleetConfigFilePath === null) {
+        return exports.DEFAULT_START_PREPARATION_FLEET_SETTINGS;
+    }
+    const section = readFleetConfigSection(fleetConfigFilePath, exports.START_PREPARATION_SECTION_KEY);
+    if (section === null) {
+        return exports.DEFAULT_START_PREPARATION_FLEET_SETTINGS;
+    }
+    return {
+        maximumPreparingIssuesCount: readBoundedNumber(section, exports.START_PREPARATION_SECTION_KEY, 'maximumPreparingIssuesCount', fleetConfigFilePath, exports.DEFAULT_START_PREPARATION_FLEET_SETTINGS.maximumPreparingIssuesCount, (value) => Number.isInteger(value) && value >= 1, 'integer of at least 1'),
+    };
+};
+exports.loadStartPreparationFleetSettings = loadStartPreparationFleetSettings;
 //# sourceMappingURL=fleetConfig.js.map

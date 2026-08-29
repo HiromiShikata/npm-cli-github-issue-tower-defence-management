@@ -25,6 +25,7 @@ const NoUnansweredOwnerCallStatusProvider_1 = require("../../repositories/NoUnan
 const resetDegeneratedTmuxSessions_1 = require("./resetDegeneratedTmuxSessions");
 const rotationOrderFileWriter_1 = require("./rotationOrderFileWriter");
 const projectConfig_1 = require("../cli/projectConfig");
+const fleetConfig_1 = require("../cli/fleetConfig");
 const SystemDateRepository_1 = require("../../repositories/SystemDateRepository");
 const LocalStorageRepository_1 = require("../../repositories/LocalStorageRepository");
 const GoogleSpreadsheetRepository_1 = require("../../repositories/GoogleSpreadsheetRepository");
@@ -148,6 +149,7 @@ class HandleScheduledEventUseCaseHandler {
             const readmeConfig = readme
                 ? (0, projectConfig_1.parseProjectReadmeConfig)(readme, input.projectUrl)
                 : {};
+            const startPreparationFleetSettings = (0, fleetConfig_1.loadStartPreparationFleetSettings)((0, fleetConfig_1.resolveFleetConfigFilePath)(null));
             const normalizeAllowedIssueAuthors = (value) => {
                 if (value === null || value === undefined) {
                     return null;
@@ -183,7 +185,8 @@ class HandleScheduledEventUseCaseHandler {
                         defaultLlmAgentName: readmeConfig.defaultLlmAgentName ??
                             input.startPreparation.defaultLlmAgentName,
                         maximumPreparingIssuesCount: readmeConfig.maximumPreparingIssuesCount ??
-                            input.startPreparation.maximumPreparingIssuesCount,
+                            input.startPreparation.maximumPreparingIssuesCount ??
+                            startPreparationFleetSettings.maximumPreparingIssuesCount,
                         utilizationPercentageThreshold: readmeConfig.utilizationPercentageThreshold ??
                             input.startPreparation.utilizationPercentageThreshold,
                         allowedIssueAuthors: readmeConfig.allowedIssueAuthors
