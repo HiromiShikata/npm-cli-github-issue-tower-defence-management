@@ -6,6 +6,7 @@ const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequir
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 const normalizeReportBody_1 = require("./normalizeReportBody");
 const isAgentReportBody_1 = require("./isAgentReportBody");
+const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 class CheckIssueReviewReadinessUseCase {
     constructor(issueRepository, issueCommentRepository) {
         this.issueRepository = issueRepository;
@@ -25,7 +26,7 @@ class CheckIssueReviewReadinessUseCase {
             }
             const rejections = [];
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
-            const isTrustedAuthor = (author) => this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
+            const isTrustedAuthor = (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, params.allowedIssueAuthors);
             const lastComment = comments[comments.length - 1];
             if (!lastComment ||
                 !isTrustedAuthor(lastComment.author) ||
@@ -51,7 +52,6 @@ class CheckIssueReviewReadinessUseCase {
                 rejections: allRejections,
             };
         };
-        this.isAuthorTrusted = (author, allowedIssueAuthors) => allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
         this.reportBodyHasNextStep = (body) => {
             const reportMatch = (0, normalizeReportBody_1.normalizeReportBody)(body).match(/```json\n([\s\S]*?)\n```/);
             if (!reportMatch || reportMatch.length < 2) {

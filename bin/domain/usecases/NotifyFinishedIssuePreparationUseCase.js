@@ -16,6 +16,7 @@ const isAgentReportBody_1 = require("./isAgentReportBody");
 const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 const normalizeReportBody_1 = require("./normalizeReportBody");
 const resolveNextStepAgentDispatchRepetition_1 = require("./resolveNextStepAgentDispatchRepetition");
+const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 class IssueNotFoundError extends Error {
     constructor(issueUrl) {
         super(`Issue not found: ${issueUrl}`);
@@ -102,12 +103,22 @@ class NotifyFinishedIssuePreparationUseCase {
                 return;
             }
             const comments = await this.issueCommentRepository.getCommentsFromIssue(issue);
-            const isTrustedAuthor = (author) => this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
+            const isTrustedAuthor = (author) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(author, params.allowedIssueAuthors);
             const lastAgentReport = (0, findLastAgentReport_1.findLastAgentReport)(comments, isTrustedAuthor);
             const nextStepAgent = lastAgentReport
                 ? (0, extractNextStepAgent_1.extractNextStepAgent)(lastAgentReport.content)
                 : null;
             if (nextStepAgent !== null) {
+                if (params.agents &&
+                    params.agents.length > 0 &&
+                    !params.agents.includes(nextStepAgent)) {
+                    issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
+                    await this.issueRepository.update(issue, project);
+                    await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                    await this.patchConsoleTab(issue);
+                    await this.issueCommentRepository.createComment(issue, `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`);
+                    return;
+                }
                 const repetition = (0, resolveNextStepAgentDispatchRepetition_1.resolveNextStepAgentDispatchRepetition)({
                     agentFieldValue: issue.agent,
                     nextStepAgent,
@@ -273,7 +284,6 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.patchConsoleTab(issue);
             await this.issueCommentRepository.createComment(issue, `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`);
         };
-        this.isAuthorTrusted = (author, allowedIssueAuthors) => allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
         this.collectRejections = async (issue, comments, isTrustedAuthor, labelsNotRequiringPullRequest, developerAgentName) => {
             const rejections = [];
             const lastComment = comments[comments.length - 1];

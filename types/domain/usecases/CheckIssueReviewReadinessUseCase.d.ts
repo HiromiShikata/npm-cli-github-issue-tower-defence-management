@@ -21,7 +21,6 @@ export declare class CheckIssueReviewReadinessUseCase {
         labelsNotRequiringPullRequest?: string[] | null;
         developerAgentName?: string | null;
     }) => Promise<IssueReviewReadinessResult>;
-    private isAuthorTrusted;
     private reportBodyHasNextStep;
 }
 export {};

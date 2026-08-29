@@ -38,7 +38,6 @@ export declare class NotifyFinishedIssuePreparationUseCase {
     }) => Promise<void>;
     private handleTransientFailureDeferral;
     private handleMissingAgentDefinition;
-    private isAuthorTrusted;
     private collectRejections;
     private reportBodyHasNextStep;
     private setDependedIssueUrlForAllOpenPRs;

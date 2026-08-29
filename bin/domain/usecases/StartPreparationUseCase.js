@@ -7,6 +7,7 @@ const RequiredProjectField_1 = require("../entities/RequiredProjectField");
 const AgentDesignationLabelAdoptUseCase_1 = require("./AgentDesignationLabelAdoptUseCase");
 const issueReactivationTriggerIsPending_1 = require("./issueReactivationTriggerIsPending");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
+const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
@@ -98,9 +99,7 @@ class StartPreparationUseCase {
                     ? 'futureNextActionDate'
                     : 'nextActionHourNotReached';
             }
-            if (allowedIssueAuthors === null ||
-                allowedIssueAuthors.length === 0 ||
-                !allowedIssueAuthors.includes(issue.author)) {
+            if (!(0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(issue.author, allowedIssueAuthors)) {
                 return 'authorNotAllowed';
             }
             if (!issue.assignees.includes(manager)) {

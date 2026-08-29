@@ -1,3 +1,17 @@
+# [2.0.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.197.2...v2.0.0) (2026-08-29)
+
+
+### Bug Fixes
+
+* **security:** unify author trust check to fail-closed and validate nextStepAgent against agents list ([#1815](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1815)) ([ee32b17](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ee32b17b969b4c8884b553cf9008012bd8d12522)), closes [HiromiShikata/secretary#4412](https://github.com/HiromiShikata/secretary/issues/4412) [#1837](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1837)
+
+
+### BREAKING CHANGES
+
+* **security:** allowedIssueAuthors null is now fail-closed (trusts nobody).
+In v1.x it was fail-open (trusted all). Set an explicit list of GitHub
+usernames to preserve the previous behavior.
+
 ## [1.197.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.197.1...v1.197.2) (2026-08-29)
 
 
