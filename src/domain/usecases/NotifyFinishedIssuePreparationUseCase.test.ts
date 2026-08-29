@@ -38,6 +38,12 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
         color: 'BLUE',
         description: '',
       },
+      {
+        id: 'todo-by-human-id',
+        name: 'Todo by human',
+        color: 'GREEN',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -4669,7 +4675,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   describe('waitingForOwnerApproval', () => {
     const issueUrl = 'https://github.com/user/repo/issues/1';
 
-    it('returns to Awaiting Workspace and posts AWAITING_OWNER_APPROVAL message when last report declares waitingForOwnerApproval', async () => {
+    it('moves to Todo by human and posts AWAITING_OWNER_APPROVAL message when last report declares waitingForOwnerApproval', async () => {
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -4690,13 +4696,13 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        expect.objectContaining({ status: 'Todo by human' }),
         mockProject,
       );
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
-        'awaiting-workspace-id',
+        expect.objectContaining({ status: 'Todo by human' }),
+        'todo-by-human-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.objectContaining({ url: issueUrl }),
@@ -4706,6 +4712,74 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.anything(),
         'failed-preparation-id',
+      );
+    });
+
+    it('does not return the issue to the dispatch pool when it is waiting for owner approval', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: systems-analyst (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        mockProject,
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+    });
+
+    it('escalates to Failed Preparation instead of the dispatch pool when the project has no Todo by human status', async () => {
+      const projectWithoutTodo = {
+        ...mockProject,
+        status: {
+          ...mockProject.status,
+          statuses: mockProject.status.statuses.filter(
+            (status) => status.name !== 'Todo by human',
+          ),
+        },
+      };
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutTodo);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: systems-analyst (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithoutTodo,
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        projectWithoutTodo,
+        expect.anything(),
+        'awaiting-workspace-id',
       );
     });
 
