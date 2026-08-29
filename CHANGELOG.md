@@ -1,3 +1,10 @@
+## [1.197.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.197.0...v1.197.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **console:** restrict overlay done-filtering to the tab where operation was performed ([#1822](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1822)) ([a400901](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a400901830c2961796357be3ae0f429f86bd12c2)), closes [#1810](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1810)
+
 # [1.197.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.196.1...v1.197.0) (2026-08-29)
 
 

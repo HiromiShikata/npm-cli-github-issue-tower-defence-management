@@ -39,12 +39,12 @@ const path = __importStar(require("path"));
 const consoleTabNames_1 = require("./consoleTabNames");
 Object.defineProperty(exports, "CONSOLE_LIST_TAB_NAMES", { enumerable: true, get: function () { return consoleTabNames_1.CONSOLE_LIST_TAB_NAMES; } });
 const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
-const isSafeSegment = (segment) => SAFE_SEGMENT.test(segment) && !segment.startsWith(".");
+const isSafeSegment = (segment) => SAFE_SEGMENT.test(segment) && !segment.startsWith('.');
 const parseConsoleDataRoute = (requestPath) => {
     const segments = requestPath
-        .split("/")
+        .split('/')
         .filter((segment) => segment.length > 0);
-    if (segments.length < 3 || segments[0] !== "projects") {
+    if (segments.length < 3 || segments[0] !== 'projects') {
         return null;
     }
     const pjcode = segments[1];
@@ -55,25 +55,25 @@ const parseConsoleDataRoute = (requestPath) => {
     if (!isSafeSegment(tab)) {
         return null;
     }
-    if (tab === "in-tmux-by-human") {
+    if (tab === 'in-tmux-by-human') {
         const rest = segments.slice(3);
         if (rest.length === 0 || rest.some((segment) => !isSafeSegment(segment))) {
             return null;
         }
-        return { kind: "in-tmux", pjcode, relativePath: rest.join("/") };
+        return { kind: 'in-tmux', pjcode, relativePath: rest.join('/') };
     }
     if (!consoleTabNames_1.CONSOLE_LIST_TAB_NAMES.some((name) => name === tab)) {
         return null;
     }
-    if (segments.length === 4 && segments[3] === "list.json") {
-        return { kind: "list", pjcode, tab };
+    if (segments.length === 4 && segments[3] === 'list.json') {
+        return { kind: 'list', pjcode, tab };
     }
-    if (segments.length === 5 && segments[3] === "detail") {
+    if (segments.length === 5 && segments[3] === 'detail') {
         const key = segments[4];
-        if (!isSafeSegment(key) || !key.endsWith(".json")) {
+        if (!isSafeSegment(key) || !key.endsWith('.json')) {
             return null;
         }
-        return { kind: "detail", pjcode, tab, key };
+        return { kind: 'detail', pjcode, tab, key };
     }
     return null;
 };
@@ -85,7 +85,7 @@ const readJsonFile = (filePath) => {
         if (!stat.isFile()) {
             return { found: false };
         }
-        raw = fs.readFileSync(filePath, "utf-8");
+        raw = fs.readFileSync(filePath, 'utf-8');
     }
     catch {
         return { found: false };
@@ -94,23 +94,23 @@ const readJsonFile = (filePath) => {
     return { found: true, data };
 };
 const buildConsoleDataResponse = (consoleDataOutputDir, route) => {
-    if (route.kind === "list") {
-        const filePath = path.join(consoleDataOutputDir, route.pjcode, route.tab, "list.json");
+    if (route.kind === 'list') {
+        const filePath = path.join(consoleDataOutputDir, route.pjcode, route.tab, 'list.json');
         const listResult = readJsonFile(filePath);
         if (!listResult.found) {
             return notFoundJson();
         }
         return okJson(listResult.data);
     }
-    if (route.kind === "detail") {
-        const filePath = path.join(consoleDataOutputDir, route.pjcode, route.tab, "detail", route.key);
+    if (route.kind === 'detail') {
+        const filePath = path.join(consoleDataOutputDir, route.pjcode, route.tab, 'detail', route.key);
         const detailResult = readJsonFile(filePath);
         if (!detailResult.found) {
             return notFoundJson();
         }
         return okJson(detailResult.data);
     }
-    const inTmuxFilePath = path.join(consoleDataOutputDir, route.pjcode, "in-tmux-by-human", route.relativePath);
+    const inTmuxFilePath = path.join(consoleDataOutputDir, route.pjcode, 'in-tmux-by-human', route.relativePath);
     const inTmuxResult = readJsonFile(inTmuxFilePath);
     if (!inTmuxResult.found) {
         return notFoundJson();
@@ -120,12 +120,12 @@ const buildConsoleDataResponse = (consoleDataOutputDir, route) => {
 exports.buildConsoleDataResponse = buildConsoleDataResponse;
 const okJson = (data) => ({
     statusCode: 200,
-    contentType: "application/json; charset=utf-8",
+    contentType: 'application/json; charset=utf-8',
     body: JSON.stringify(data),
 });
 const notFoundJson = () => ({
     statusCode: 404,
-    contentType: "text/plain; charset=utf-8",
-    body: "Not Found",
+    contentType: 'text/plain; charset=utf-8',
+    body: 'Not Found',
 });
 //# sourceMappingURL=consoleDataDelivery.js.map
