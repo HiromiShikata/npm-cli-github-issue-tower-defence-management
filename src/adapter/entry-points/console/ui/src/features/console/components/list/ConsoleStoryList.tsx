@@ -3,6 +3,11 @@ import { CONSOLE_COLOR_PALETTE, colorFromEnum } from '../../logic/colors';
 import type { ConsoleColor, ConsoleStoryEntry } from '../../logic/types';
 import { ConsoleCopyStoryNameButton } from './ConsoleCopyStoryNameButton';
 
+type RowReorderState = {
+  inProgress: boolean;
+  error: string | null;
+};
+
 const ALL_COLORS = Object.keys(CONSOLE_COLOR_PALETTE) as ConsoleColor[];
 
 type InlineInputFormProps = {
@@ -137,6 +142,10 @@ export type ConsoleStoryListProps = {
   onAddStory: (storyName: string) => Promise<void>;
   onSelectColor: (storyOptionId: string, newColor: ConsoleColor) => void;
   onToggleGray: () => void;
+  onReorderStory: (
+    storyOptionId: string,
+    direction: 'up' | 'down',
+  ) => Promise<void>;
   optimisticColors: Record<string, ConsoleColor>;
   colorChangeInFlight: string | null;
   colorErrors: Record<string, string>;
@@ -151,6 +160,7 @@ export const ConsoleStoryList = ({
   onAddStory,
   onSelectColor,
   onToggleGray,
+  onReorderStory,
   optimisticColors,
   colorChangeInFlight,
   colorErrors,
@@ -160,6 +170,37 @@ export const ConsoleStoryList = ({
   const [colorPickerOptionId, setColorPickerOptionId] = useState<string | null>(
     null,
   );
+  const [rowReorderStates, setRowReorderStates] = useState<
+    Record<string, RowReorderState>
+  >({});
+
+  const getRowReorderState = (id: string): RowReorderState =>
+    rowReorderStates[id] ?? { inProgress: false, error: null };
+
+  const handleReorder = async (
+    storyOptionId: string,
+    direction: 'up' | 'down',
+  ): Promise<void> => {
+    setRowReorderStates((prev) => ({
+      ...prev,
+      [storyOptionId]: { inProgress: true, error: null },
+    }));
+    try {
+      await onReorderStory(storyOptionId, direction);
+      setRowReorderStates((prev) => ({
+        ...prev,
+        [storyOptionId]: { inProgress: false, error: null },
+      }));
+    } catch (err) {
+      setRowReorderStates((prev) => ({
+        ...prev,
+        [storyOptionId]: {
+          inProgress: false,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      }));
+    }
+  };
 
   if (error !== null) {
     return (
@@ -212,7 +253,7 @@ export const ConsoleStoryList = ({
         <p className="console-list-empty">No active stories</p>
       ) : (
         <ul className="console-story-list">
-          {visibleStories.map((entry) => {
+          {visibleStories.map((entry, index) => {
             const displayColor: ConsoleColor =
               optimisticColors[entry.storyOptionId] ?? entry.color;
             const palette = colorFromEnum(displayColor);
@@ -220,6 +261,10 @@ export const ConsoleStoryList = ({
             const isPickerOpen = colorPickerOptionId === entry.storyOptionId;
             const isInFlight = colorChangeInFlight === entry.storyOptionId;
             const colorError = colorErrors[entry.storyOptionId] ?? null;
+            const { inProgress: reorderInProgress, error: reorderError } =
+              getRowReorderState(entry.storyOptionId);
+            const isFirst = index === 0;
+            const isLast = index === visibleStories.length - 1;
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
                 <div className="console-story-list-row-main">
@@ -268,7 +313,34 @@ export const ConsoleStoryList = ({
                   >
                     Change color
                   </button>
+                  <button
+                    type="button"
+                    className="console-op-button"
+                    aria-label="Move up"
+                    disabled={isFirst || reorderInProgress}
+                    onClick={() =>
+                      void handleReorder(entry.storyOptionId, 'up')
+                    }
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="console-op-button"
+                    aria-label="Move down"
+                    disabled={isLast || reorderInProgress}
+                    onClick={() =>
+                      void handleReorder(entry.storyOptionId, 'down')
+                    }
+                  >
+                    ↓
+                  </button>
                 </div>
+                {reorderError !== null && (
+                  <p role="alert" className="console-list-error">
+                    {reorderError}
+                  </p>
+                )}
                 {isPickerOpen && (
                   <ColorPalette
                     onSelectColor={(newColor) =>

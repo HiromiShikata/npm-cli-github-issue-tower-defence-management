@@ -50,9 +50,6 @@ export type ConsoleOperationContext = {
   isPjcodeConfigured: ConsolePjcodeValidator;
   consoleDataOutputDir: string | null;
   issueAttachmentRepository: IssueAttachmentRepository | null;
-  updateStoryList:
-    | ((project: Project, stories: FieldOption[]) => Promise<FieldOption[]>)
-    | null;
   resolveProjectRepository: ConsoleProjectRepositoryResolver | null;
   invalidateProject: ((pjcode: string) => void) | null;
   updateProjectCacheEntry:
@@ -851,6 +848,9 @@ export const handleReorderStory = async (
   if (direction !== 'up' && direction !== 'down') {
     return badRequest('direction must be "up" or "down"');
   }
+  if (context.resolveProjectRepository === null) {
+    return badGateway('project repository is not configured');
+  }
   const binding = await context.resolveProject(pjcode);
   if (binding === null) {
     return badRequest(`no project configured for pjcode "${pjcode}"`);
@@ -858,9 +858,6 @@ export const handleReorderStory = async (
   const { project } = binding;
   if (project.story === null) {
     return badRequest('project does not have a story field');
-  }
-  if (context.updateStoryList === null) {
-    return badRequest('updateStoryList is not configured');
   }
   const stories = project.story.stories;
   const index = stories.findIndex((s) => s.id === storyOptionId);
@@ -875,7 +872,9 @@ export const handleReorderStory = async (
   const temp = reordered[index];
   reordered[index] = reordered[swapIndex];
   reordered[swapIndex] = temp;
-  await context.updateStoryList(project, reordered);
+  const projectRepository = context.resolveProjectRepository(project.url);
+  await projectRepository.updateStoryList(project, reordered);
+  context.invalidateProject?.(pjcode);
   return ok();
 };
 

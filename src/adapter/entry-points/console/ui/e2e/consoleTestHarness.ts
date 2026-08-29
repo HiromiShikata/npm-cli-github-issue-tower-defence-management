@@ -703,25 +703,20 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
       storyColorCalls,
       commentCalls,
     ),
-    projectRepository: {
-      updateStoryList: async (_updatedProject, stories) => {
-        reorderStoryCalls.push({
-          storyOptionIds: stories
-            .map((s) => s.id)
-            .filter((id): id is string => id !== null),
-        });
-        const result = stories as FieldOption[];
-        if (project.story !== null) {
-          project.story.stories = result;
-        }
-        return result;
-      },
-    },
     resolveProjectRepository: (_projectUrl) => ({
       updateStoryList: async (_updatedProject, stories) => {
-        const newStory = stories.find((s) => s.id === null);
-        if (newStory !== undefined) {
-          addStoryCalls.push({ storyName: newStory.name });
+        const currentCount = project.story?.stories.length ?? 0;
+        if (stories.length > currentCount) {
+          const newStory = stories.find((s) => s.id === null);
+          if (newStory !== undefined) {
+            addStoryCalls.push({ storyName: newStory.name });
+          }
+        } else {
+          reorderStoryCalls.push({
+            storyOptionIds: stories
+              .map((s) => s.id)
+              .filter((id): id is string => id !== null),
+          });
         }
         const result = stories as FieldOption[];
         if (project.story !== null) {

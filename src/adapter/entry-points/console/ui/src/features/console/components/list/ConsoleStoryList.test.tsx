@@ -38,6 +38,7 @@ const defaultProps = {
   onAddStory: () => Promise.resolve(),
   onSelectColor: () => undefined,
   onToggleGray: () => undefined,
+  onReorderStory: () => Promise.resolve(),
   optimisticColors: {} as Record<string, ConsoleColor>,
   colorChangeInFlight: null as string | null,
   colorErrors: {} as Record<string, string>,
@@ -464,6 +465,90 @@ describe('ConsoleStoryList', () => {
         />,
       );
       expect(getByText('No active stories')).toBeInTheDocument();
+    });
+  });
+
+  describe('reorder buttons', () => {
+    it('renders Move up and Move down buttons for each visible story', () => {
+      const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
+      const upButtons = getAllByRole('button', { name: 'Move up' });
+      const downButtons = getAllByRole('button', { name: 'Move down' });
+      expect(upButtons).toHaveLength(storyEntries.length);
+      expect(downButtons).toHaveLength(storyEntries.length);
+    });
+
+    it('disables the Move up button for the first story', () => {
+      const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
+      const upButtons = getAllByRole('button', { name: 'Move up' });
+      expect(upButtons[0]).toBeDisabled();
+      expect(upButtons[1]).not.toBeDisabled();
+    });
+
+    it('disables the Move down button for the last story', () => {
+      const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
+      const downButtons = getAllByRole('button', { name: 'Move down' });
+      expect(downButtons[0]).not.toBeDisabled();
+      expect(downButtons[1]).toBeDisabled();
+    });
+
+    it('calls onReorderStory with storyOptionId and up when Move up is clicked', async () => {
+      const onReorderStory = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole } = render(
+        <ConsoleStoryList {...defaultProps} onReorderStory={onReorderStory} />,
+      );
+      const upButtons = getAllByRole('button', { name: 'Move up' });
+      await act(async () => {
+        fireEvent.click(upButtons[1]);
+      });
+      expect(onReorderStory).toHaveBeenCalledWith('564803ee', 'up');
+    });
+
+    it('calls onReorderStory with storyOptionId and down when Move down is clicked', async () => {
+      const onReorderStory = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole } = render(
+        <ConsoleStoryList {...defaultProps} onReorderStory={onReorderStory} />,
+      );
+      const downButtons = getAllByRole('button', { name: 'Move down' });
+      await act(async () => {
+        fireEvent.click(downButtons[0]);
+      });
+      expect(onReorderStory).toHaveBeenCalledWith('1491051e', 'down');
+    });
+
+    it('disables Move up and Move down buttons while reorder is in progress', async () => {
+      let resolveReorder: () => void;
+      const reorderPromise = new Promise<void>((resolve) => {
+        resolveReorder = resolve;
+      });
+      const onReorderStory = jest.fn().mockReturnValue(reorderPromise);
+      const { getAllByRole } = render(
+        <ConsoleStoryList {...defaultProps} onReorderStory={onReorderStory} />,
+      );
+      const downButtons = getAllByRole('button', { name: 'Move down' });
+      fireEvent.click(downButtons[0]);
+      await waitFor(() => {
+        const upButtons = getAllByRole('button', { name: 'Move up' });
+        expect(upButtons[0]).toBeDisabled();
+        expect(downButtons[0]).toBeDisabled();
+      });
+      await act(async () => {
+        resolveReorder!();
+      });
+    });
+
+    it('shows an error message when onReorderStory throws', async () => {
+      const onReorderStory = jest
+        .fn()
+        .mockRejectedValue(new Error('Reorder failed'));
+      const { getAllByRole, findByRole } = render(
+        <ConsoleStoryList {...defaultProps} onReorderStory={onReorderStory} />,
+      );
+      const downButtons = getAllByRole('button', { name: 'Move down' });
+      await act(async () => {
+        fireEvent.click(downButtons[0]);
+      });
+      const alert = await findByRole('alert');
+      expect(alert).toHaveTextContent('Reorder failed');
     });
   });
 });
