@@ -44,7 +44,8 @@ type OrphanedPreparationOutcome =
   | 'advanceToQualityCheck'
   | 'returnToLabelSelectedAgent'
   | 'returnToOwnerApprovalCycle'
-  | 'reject';
+  | 'reject'
+  | 'reassignToDeveloper';
 
 export class RevertOrphanedPreparationUseCase {
   constructor(
@@ -84,6 +85,7 @@ export class RevertOrphanedPreparationUseCase {
     labelsNotRequiringPullRequest?: string[] | null;
     allowedIssueAuthors?: string[] | null;
     ownerApprovalTimeoutCycles?: number | null;
+    developerAgentName?: string | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -129,10 +131,11 @@ export class RevertOrphanedPreparationUseCase {
       if (!isOrphaned) {
         continue;
       }
-      const { outcome, comments } = await this.evaluateOutcome(
+      const { outcome, comments, ciFailingPrUrl } = await this.evaluateOutcome(
         issue,
         resolveLabelsNotRequiringPullRequest(params),
         params.allowedIssueAuthors,
+        params.developerAgentName,
       );
       const isStillInPreparation = await this.isStillInPreparation(
         issue,
@@ -242,6 +245,32 @@ export class RevertOrphanedPreparationUseCase {
         }
         continue;
       }
+      if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
+        const effectiveDeveloperAgentName =
+          params.developerAgentName ?? 'developer';
+        const agentOptionId = await ensureAgentOptionAndGetId(
+          this.projectRepository,
+          project,
+          effectiveDeveloperAgentName,
+        );
+        if (agentOptionId !== null) {
+          await this.issueRepository.setIssueAgentField(
+            issue.url,
+            project,
+            agentOptionId,
+          );
+        }
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.issueCommentRepository.createComment(
+          issue,
+          `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
+        );
+        continue;
+      }
       if (outcome === 'returnToLabelSelectedAgent') {
         await this.issueRepository.updateStatus(
           project,
@@ -340,9 +369,11 @@ export class RevertOrphanedPreparationUseCase {
     issue: Issue,
     labelsNotRequiringPullRequest: string[],
     allowedIssueAuthors: string[] | null | undefined,
+    developerAgentName?: string | null,
   ): Promise<{
     outcome: OrphanedPreparationOutcome;
     comments: Comment[];
+    ciFailingPrUrl?: string;
   }> => {
     if (issue.isClosed) {
       return { outcome: 'advanceToQualityCheck', comments: [] };
@@ -404,8 +435,9 @@ export class RevertOrphanedPreparationUseCase {
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
     );
+    const effectiveDeveloperName = developerAgentName ?? 'developer';
     const isNonDeveloperAgent =
-      issue.agent != null && issue.agent !== 'developer';
+      issue.agent != null && issue.agent !== effectiveDeveloperName;
     const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
       labelsNotRequiringPullRequest.includes(label),
     );
@@ -419,6 +451,15 @@ export class RevertOrphanedPreparationUseCase {
         : await this.issueRepository.findRelatedOpenPRs(issue.url);
       if (prsToCheck.some((pr) => pr.isConflicted)) {
         return { outcome: 'reject', comments };
+      }
+      if (isNonDeveloperAgent && issue.agent !== 'pr-reviewer') {
+        if (prsToCheck.length === 1 && !prsToCheck[0].isPassedAllCiJob) {
+          return {
+            outcome: 'reassignToDeveloper',
+            comments,
+            ciFailingPrUrl: prsToCheck[0].url,
+          };
+        }
       }
       return { outcome: 'advanceToQualityCheck', comments };
     }

@@ -373,6 +373,44 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
+    const ciFailingPrUrl = await this.resolveLinkedPrWithCiFailure(
+      issue,
+      params.developerAgentName ?? null,
+    );
+    if (ciFailingPrUrl !== null) {
+      const effectiveDeveloperAgentName =
+        params.developerAgentName ?? 'developer';
+      const agentOptionId = await this.ensureAgentOptionAndGetId(
+        project,
+        effectiveDeveloperAgentName,
+      );
+      if (agentOptionId !== null) {
+        await this.issueRepository.setIssueAgentField(
+          params.issueUrl,
+          project,
+          agentOptionId,
+        );
+      }
+      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingWorkspaceStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.setDependedIssueUrlForAllOpenPRs(
+        issue,
+        params.issueUrl,
+        project,
+      );
+      await this.issueCommentRepository.createComment(
+        issue,
+        `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
+      );
+      return;
+    }
+
     const { rejections, approvedPrUrl } = await this.collectRejections(
       issue,
       comments,
@@ -708,6 +746,32 @@ export class NotifyFinishedIssuePreparationUseCase {
       }
       await this.issueRepository.setDependedIssueUrl(pr.url, project, issueUrl);
     }
+  };
+
+  private resolveLinkedPrWithCiFailure = async (
+    issue: { url: string; agent: string | null; isPr: boolean },
+    developerAgentName: string | null,
+  ): Promise<string | null> => {
+    const effectiveDeveloperName = developerAgentName ?? 'developer';
+    if (
+      issue.agent === null ||
+      issue.agent === effectiveDeveloperName ||
+      issue.agent === 'pr-reviewer'
+    ) {
+      return null;
+    }
+    let openPrs: { url: string; isPassedAllCiJob: boolean }[];
+    if (issue.isPr) {
+      const pr = await this.issueRepository.getOpenPullRequest(issue.url);
+      openPrs = pr === null ? [] : [pr];
+    } else {
+      openPrs = await this.issueRepository.findRelatedOpenPRs(issue.url);
+    }
+    if (openPrs.length !== 1) {
+      return null;
+    }
+    const pr = openPrs[0];
+    return !pr.isPassedAllCiJob ? pr.url : null;
   };
 
   private resolveOpenPrsForPrItem = async (
