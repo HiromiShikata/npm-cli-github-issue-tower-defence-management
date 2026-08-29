@@ -15,12 +15,19 @@ export const START_PREPARATION_SECTION_KEY = 'startPreparation';
 
 export const DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 
+export const DEFAULT_MAX_CONCURRENT_WORKERS = 40;
+export const DEFAULT_GRAPHQL_RATE_LIMIT_FLOOR = 500;
+
 export type PreparationWorkerSettings = {
   normalConcurrentLimit: number;
+  maxConcurrentWorkers: number;
+  graphqlRateLimitFloor: number;
 };
 
 export const DEFAULT_PREPARATION_WORKER_SETTINGS: PreparationWorkerSettings = {
   normalConcurrentLimit: NORMAL_CONCURRENT_LIMIT,
+  maxConcurrentWorkers: DEFAULT_MAX_CONCURRENT_WORKERS,
+  graphqlRateLimitFloor: DEFAULT_GRAPHQL_RATE_LIMIT_FLOOR,
 };
 
 export type StartPreparationFleetSettings = {
@@ -177,6 +184,24 @@ export const loadPreparationWorkerSettings = (
       DEFAULT_PREPARATION_WORKER_SETTINGS.normalConcurrentLimit,
       (value) => Number.isInteger(value) && value >= 1,
       'integer of at least 1',
+    ),
+    maxConcurrentWorkers: readBoundedNumber(
+      section,
+      PREPARATION_WORKER_SECTION_KEY,
+      'maxConcurrentWorkers',
+      fleetConfigFilePath,
+      DEFAULT_PREPARATION_WORKER_SETTINGS.maxConcurrentWorkers,
+      (value) => Number.isInteger(value) && value >= 1,
+      'integer of at least 1',
+    ),
+    graphqlRateLimitFloor: readBoundedNumber(
+      section,
+      PREPARATION_WORKER_SECTION_KEY,
+      'graphqlRateLimitFloor',
+      fleetConfigFilePath,
+      DEFAULT_PREPARATION_WORKER_SETTINGS.graphqlRateLimitFloor,
+      (value) => Number.isInteger(value) && value >= 0,
+      'non-negative integer',
     ),
   };
 };

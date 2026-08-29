@@ -10,6 +10,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
+import { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import { Issue } from '../entities/Issue';
 import { FieldOption, Project } from '../entities/Project';
@@ -109,6 +110,7 @@ describe('StartPreparationUseCase', () => {
   let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
   let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepository>;
   let mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository>;
+  let mockGitHubGraphqlRateLimitRepository: Mocked<GitHubGraphqlRateLimitRepository>;
   let mockProject: Project;
   beforeEach(() => {
     jest.resetAllMocks();
@@ -144,12 +146,16 @@ describe('StartPreparationUseCase', () => {
       listSpawns: jest.fn().mockReturnValue([]),
       listRunningIssueUrls: jest.fn().mockReturnValue([]),
     };
+    mockGitHubGraphqlRateLimitRepository = {
+      getRemainingRequestCount: jest.fn().mockResolvedValue(null),
+    };
     useCase = new StartPreparationUseCase(
       mockProjectRepository,
       mockIssueRepository,
       mockLocalCommandRunner,
       mockClaudeTokenUsageRepository,
       mockTakeOwnershipSpawnRepository,
+      mockGitHubGraphqlRateLimitRepository,
     );
   });
   it('should run aw command for awaiting workspace issues', async () => {
@@ -625,6 +631,225 @@ describe('StartPreparationUseCase', () => {
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
+  it('skips all spawning when active worker count meets the maxConcurrentWorkers cap', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+      }),
+      createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/11',
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockReturnValue([
+      'https://github.com/user/repo/issues/1',
+      'https://github.com/user/repo/issues/2',
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+      maxConcurrentWorkers: 2,
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls.map((c) => c[0]),
+    ).not.toContain('aw');
+  });
+
+  it('stops spawning mid-loop when workers started in the run bring the count to the cap', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+      }),
+      createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/11',
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
+    mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockReturnValue([]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+      maxConcurrentWorkers: 1,
+    });
+
+    const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+      (call) => call[0] === 'aw',
+    );
+    expect(awCalls).toHaveLength(1);
+  });
+
+  it('skips the preparation cycle when GraphQL rate limit is below the floor', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockGitHubGraphqlRateLimitRepository.getRemainingRequestCount.mockResolvedValue(
+      499,
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+      graphqlRateLimitFloor: 500,
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(
+      mockLocalCommandRunner.runCommand.mock.calls.map((c) => c[0]),
+    ).not.toContain('aw');
+  });
+
+  it('proceeds with spawning when GraphQL remaining equals the floor exactly', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
+    mockGitHubGraphqlRateLimitRepository.getRemainingRequestCount.mockResolvedValue(
+      500,
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+      graphqlRateLimitFloor: 500,
+    });
+
+    const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+      (call) => call[0] === 'aw',
+    );
+    expect(awCalls).toHaveLength(1);
+  });
+
+  it('proceeds with spawning when GraphQL rate limit check returns null', async () => {
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
+    mockGitHubGraphqlRateLimitRepository.getRemainingRequestCount.mockResolvedValue(
+      null,
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+      graphqlRateLimitFloor: 500,
+    });
+
+    const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+      (call) => call[0] === 'aw',
+    );
+    expect(awCalls).toHaveLength(1);
   });
 
   it('should pass --branch to aw command when issue has an existing linked PR', async () => {
@@ -7055,6 +7280,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       listSpawns: jest.fn().mockReturnValue([]),
       listRunningIssueUrls: jest.fn().mockReturnValue([]),
     },
+    { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
   );
 
   it('lists selected tokens first in ascending 7-day reset deadline order then excluded tokens', () => {
@@ -7354,6 +7580,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         listSpawns: jest.fn().mockReturnValue([]),
         listRunningIssueUrls: jest.fn().mockReturnValue([]),
       },
+      { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
     );
   });
 
@@ -7465,6 +7692,7 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       mockLocalCommandRunner,
       mockClaudeTokenUsageRepository,
       mockTakeOwnershipSpawnRepository,
+      { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
     );
 
     await useCase.run({
@@ -7542,6 +7770,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         listSpawns: jest.fn().mockReturnValue([]),
         listRunningIssueUrls: jest.fn().mockReturnValue([]),
       },
+      { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
     );
 
   it('looks up related open pull requests for issue urls concurrently up to the configured limit', async () => {

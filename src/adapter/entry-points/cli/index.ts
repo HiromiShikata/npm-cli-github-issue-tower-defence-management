@@ -34,6 +34,7 @@ import { projectCacheDirectory } from '../../repositories/localStorageCacheDirec
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
+import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
 import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
@@ -324,7 +325,7 @@ program
   )
   .option(
     '--fleetConfigFilePath <path>',
-    'Path to the fleet-wide YAML config file holding the preparationWorker mapping (normalConcurrentLimit); falls back to the TDPM_FLEET_CONFIG environment variable, and to the built-in values when neither is set',
+    'Path to the fleet-wide YAML config file holding the preparationWorker mapping (normalConcurrentLimit, maxConcurrentWorkers, graphqlRateLimitFloor); falls back to the TDPM_FLEET_CONFIG environment variable, and to the built-in values when neither is set',
   )
   .action(async (options: StartDaemonOptions) => {
     const token = process.env.GH_TOKEN;
@@ -423,8 +424,18 @@ program
     );
     const preparationWorkerSettings =
       loadPreparationWorkerSettings(fleetConfigFilePath);
+    const fleetConfigSource =
+      fleetConfigFilePath !== null
+        ? ' (source: fleetConfig)'
+        : ' (source: built-in default)';
     console.log(
-      `Effective normalConcurrentLimit: ${preparationWorkerSettings.normalConcurrentLimit}${fleetConfigFilePath !== null ? ' (source: fleetConfig)' : ' (source: built-in default)'}`,
+      `Effective normalConcurrentLimit: ${preparationWorkerSettings.normalConcurrentLimit}${fleetConfigSource}`,
+    );
+    console.log(
+      `Effective maxConcurrentWorkers: ${preparationWorkerSettings.maxConcurrentWorkers}${fleetConfigSource}`,
+    );
+    console.log(
+      `Effective graphqlRateLimitFloor: ${preparationWorkerSettings.graphqlRateLimitFloor}${fleetConfigSource}`,
     );
 
     const projectName = config.projectName ?? 'default';
@@ -496,6 +507,7 @@ program
       localCommandRunner,
       claudeTokenUsageRepository,
       new ProcTakeOwnershipSpawnRepository(),
+      new CliGitHubGraphqlRateLimitRepository(localCommandRunner),
     );
 
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;
@@ -545,6 +557,8 @@ program
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
       agents: config.agents ?? null,
       normalConcurrentLimit: preparationWorkerSettings.normalConcurrentLimit,
+      maxConcurrentWorkers: preparationWorkerSettings.maxConcurrentWorkers,
+      graphqlRateLimitFloor: preparationWorkerSettings.graphqlRateLimitFloor,
     });
     if (preparationResult.rotationOrder !== null) {
       writeRotationOrderFile(preparationResult.rotationOrder);

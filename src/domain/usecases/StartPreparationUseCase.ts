@@ -7,6 +7,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
 import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
+import { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import { DEFAULT_SELECTION_WEIGHT } from './OauthTokenSelectUseCase';
 import {
@@ -74,6 +75,7 @@ export class StartPreparationUseCase {
     private readonly localCommandRunner: LocalCommandRunner,
     private readonly claudeTokenUsageRepository: ClaudeTokenUsageRepository,
     private readonly takeOwnershipSpawnRepository: TakeOwnershipSpawnRepository,
+    private readonly gitHubGraphqlRateLimitRepository: GitHubGraphqlRateLimitRepository,
   ) {}
 
   private weeklyLimitTypeForModel = (modelName: string | null): string => {
@@ -421,6 +423,8 @@ export class StartPreparationUseCase {
     labelsAsLlmAgentName: string[] | null;
     agents?: string[] | null;
     normalConcurrentLimit?: number;
+    maxConcurrentWorkers?: number | null;
+    graphqlRateLimitFloor?: number | null;
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     const normalConcurrentLimit =
       params.normalConcurrentLimit ?? NORMAL_CONCURRENT_LIMIT;
@@ -537,6 +541,28 @@ export class StartPreparationUseCase {
 
     const now = new Date();
 
+    const maxConcurrentWorkers = params.maxConcurrentWorkers ?? null;
+    const graphqlRateLimitFloor = params.graphqlRateLimitFloor ?? null;
+
+    if (graphqlRateLimitFloor !== null) {
+      const graphqlRemaining =
+        await this.gitHubGraphqlRateLimitRepository.getRemainingRequestCount();
+      if (
+        graphqlRemaining !== null &&
+        graphqlRemaining < graphqlRateLimitFloor
+      ) {
+        console.warn(
+          `GraphQL rate limit low (${graphqlRemaining} remaining, floor: ${graphqlRateLimitFloor}); skipping preparation cycle.`,
+        );
+        return { rotationOrder };
+      }
+      if (graphqlRemaining === null) {
+        console.warn(
+          'GraphQL rate limit check failed; proceeding with spawning.',
+        );
+      }
+    }
+
     const branchSourceByIssueUrl = await this.fetchSpawnCandidateBranchSources(
       awaitingWorkspaceIssues
         .filter(
@@ -566,6 +592,15 @@ export class StartPreparationUseCase {
       if (runningIssueUrls.has(issue.url)) {
         console.warn(`Skipping ${issue.url}: worker already running.`);
         continue;
+      }
+      if (maxConcurrentWorkers !== null) {
+        const activeWorkerCount = runningIssueUrls.size + startedInThisRunCount;
+        if (activeWorkerCount >= maxConcurrentWorkers) {
+          console.warn(
+            `Spawn cap reached (${activeWorkerCount}/${maxConcurrentWorkers} active workers); skipping remaining candidates.`,
+          );
+          break;
+        }
       }
       const exclusionReason = this.spawnCandidateExclusionReasonOf(
         issue,
