@@ -761,7 +761,11 @@ describe('consoleOperationApi', () => {
     it('snoozes for one hour via updateNextActionHour', async () => {
       const projectWithHour: Project = {
         ...project,
-        nextActionHour: { name: 'Next Action Hour', fieldId: 'nahField' },
+        nextActionHour: {
+          name: 'Next Action Hour',
+          fieldId: 'nahField',
+          options: [],
+        },
       };
       const response = await handleTriage(contextForProject(projectWithHour), {
         pjcode: 'acme',
@@ -782,7 +786,11 @@ describe('consoleOperationApi', () => {
     it('snoozes for three hours via updateNextActionHour', async () => {
       const projectWithHour: Project = {
         ...project,
-        nextActionHour: { name: 'Next Action Hour', fieldId: 'nahField' },
+        nextActionHour: {
+          name: 'Next Action Hour',
+          fieldId: 'nahField',
+          options: [],
+        },
       };
       const response = await handleTriage(contextForProject(projectWithHour), {
         pjcode: 'acme',

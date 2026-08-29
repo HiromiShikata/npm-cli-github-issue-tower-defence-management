@@ -1064,11 +1064,17 @@ export class ApiV3CheerioRestIssueRepository
     issue: Issue,
     hour: number,
   ): Promise<void> => {
+    const option = project.nextActionHour.options.find(
+      (o) => o.name === String(hour),
+    );
+    const value = option
+      ? { singleSelectOptionId: option.id }
+      : { number: hour };
     return this.graphqlProjectItemRepository.updateProjectField(
       project.id,
       project.nextActionHour.fieldId,
       issue.itemId,
-      { number: hour },
+      value,
     );
   };
   updateStory = async (

@@ -56,6 +56,7 @@ export type Project = {
   nextActionHour: {
     name: string;
     fieldId: string;
+    options: FieldOption[];
   } | null;
   story: {
     name: string;

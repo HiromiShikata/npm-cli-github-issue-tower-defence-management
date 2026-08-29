@@ -120,6 +120,7 @@ describe('projectFromDefinition', () => {
       nextActionHour: {
         name: 'nextactionhour',
         fieldId: 'PVTSSF_nextactionhour',
+        options: [],
       },
       story: {
         name: 'story',
