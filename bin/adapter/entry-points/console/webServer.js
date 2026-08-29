@@ -39,6 +39,7 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const consoleDataDelivery_1 = require("./consoleDataDelivery");
 const consoleReadApi_1 = require("./consoleReadApi");
+const consoleAirplaneSnapshotApi_1 = require("./consoleAirplaneSnapshotApi");
 const consoleOperationApi_1 = require("./consoleOperationApi");
 const consoleImageProxy_1 = require("./consoleImageProxy");
 const consoleGithubTokenResolver_1 = require("./consoleGithubTokenResolver");
@@ -496,6 +497,33 @@ const handleTokenedRequest = async (options, request, response, requestPath, sea
         if (method === 'GET') {
             if (requestPath === exports.IMAGE_PROXY_REQUEST_PATH) {
                 await handleImageProxy(options, response, searchParams);
+                return;
+            }
+            if (requestPath === '/api/features') {
+                sendJson(response, 200, {
+                    airplaneMode: options.enableAirplaneMode === true,
+                });
+                return;
+            }
+            if (requestPath === '/api/airplanesync') {
+                if (options.enableAirplaneMode !== true) {
+                    sendNotFound(response);
+                    return;
+                }
+                const issueRepository = options.issueRepository ?? null;
+                const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+                const issueTitleStateCache = options.issueTitleStateCache ?? null;
+                const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
+                if (issueRepository === null ||
+                    consoleDataOutputDir === null ||
+                    issueTitleStateCache === null ||
+                    pullRequestStatusCache === null) {
+                    sendNotFound(response);
+                    return;
+                }
+                await (0, consoleAirplaneSnapshotApi_1.handleAirplaneSync)(response, consoleDataOutputDir, issueRepository, issueTitleStateCache, pullRequestStatusCache, options.resolveGithubToken != null
+                    ? options.resolveGithubToken('')
+                    : null);
                 return;
             }
             const readResult = await handleReadApi(options, requestPath, searchParams);

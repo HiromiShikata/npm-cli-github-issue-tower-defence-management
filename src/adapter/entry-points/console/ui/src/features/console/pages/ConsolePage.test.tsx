@@ -1233,3 +1233,179 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 });
+
+describe('ConsolePage airplane mode write guard', () => {
+  const prItem = {
+    number: 851,
+    title: 'Add serveConsole subcommand',
+    url: 'https://github.com/o/r/pull/851',
+    repo: 'o/r',
+    nameWithOwner: 'o/r',
+    projectItemId: 'PVTI_1',
+    itemId: 'PVTI_1',
+    isPr: true,
+    relatedOpenPullRequestUrls: [],
+    story: 'TDPM Console port',
+    status: 'Awaiting Quality Check',
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: '2026-06-17T00:00:00.000Z',
+    agent: null,
+  };
+
+  const airplaneSnapshot = {
+    capturedAt: '2026-06-19T00:00:00.000Z',
+    tabs: {
+      acme: {
+        prs: {
+          items: [prItem],
+          generatedAt: '2026-06-19T00:00:00.000Z',
+          statusOptions: [
+            { id: 's1', name: 'Awaiting Workspace', color: 'BLUE' },
+          ],
+          storyOptions: [
+            { id: 'st1', name: 'TDPM Console port', color: 'BLUE' },
+          ],
+          storyColors: { 'TDPM Console port': { color: 'BLUE' } },
+          stories: [],
+          defaultNameWithOwner: 'o/r',
+          fromCache: false,
+          storyOrder: [],
+        },
+        'workflow-blocker': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        'failed-preparation': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        'todo-by-human': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        'todo-by-agent': {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+        stories: {
+          items: [],
+          generatedAt: '',
+          statusOptions: [],
+          storyOptions: [],
+          storyColors: {},
+          stories: [],
+          defaultNameWithOwner: null,
+          fromCache: false,
+          storyOrder: [],
+        },
+      },
+    },
+    items: {},
+    failures: [],
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+
+    localStorage.setItem('tdpm_airplane_mode_on', '1');
+
+    const snapshotJson = JSON.stringify(airplaneSnapshot);
+    const mockCache = {
+      put: jest.fn(),
+      match: jest.fn().mockResolvedValue(
+        new Response(snapshotJson, {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+      delete: jest.fn(),
+    };
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: {
+        open: jest.fn().mockResolvedValue(mockCache),
+        delete: jest.fn().mockResolvedValue(true),
+      },
+    });
+
+    global.fetch = jest.fn(async (url: string) => {
+      if (url === '/api/features') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ airplaneMode: true }),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      configurable: true,
+      value: undefined,
+    });
+  });
+
+  it('shows an airplane mode error toast instead of enqueuing when airplane mode is on', async () => {
+    const { getByText, findByText } = render(<ConsolePage />);
+
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(getByText('Turn off')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+    fireEvent.click(getByText('Approve & Merge'));
+
+    await waitFor(() => {
+      expect(getByText('Airplane mode')).toBeInTheDocument();
+    });
+    expect(getByText(/network connection/i)).toBeInTheDocument();
+    expect(document.querySelector('.console-undo-toast')).toBeNull();
+  });
+});

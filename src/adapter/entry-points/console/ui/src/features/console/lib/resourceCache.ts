@@ -51,6 +51,10 @@ export class ResourceCache<T> {
       });
   };
 
+  seed(key: string, value: T): void {
+    this.cache.set(key, value);
+  }
+
   invalidate = (key: string): void => {
     this.cache.delete(key);
   };

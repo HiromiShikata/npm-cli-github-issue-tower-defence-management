@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { AirplaneSnapshot } from '../lib/airplaneSnapshot';
 import type {
   ConsoleFieldOption,
   ConsoleListItem,
@@ -205,6 +206,7 @@ const fetchSnapshots = async (
 
 export const useConsoleTabData = (
   pjcode: string | null,
+  airplaneSnapshot: AirplaneSnapshot | null = null,
 ): ConsoleTabDataState => {
   const [snapshots, setSnapshots] =
     useState<Record<ConsoleTabName, ConsoleTabSnapshot | null>>(emptySnapshots);
@@ -212,6 +214,23 @@ export const useConsoleTabData = (
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (airplaneSnapshot !== null && pjcode !== null) {
+      const pjTabs = airplaneSnapshot.tabs[pjcode];
+      if (pjTabs !== undefined) {
+        const next = emptySnapshots();
+        for (const tab of CONSOLE_TABS) {
+          const stored = pjTabs[tab.name];
+          if (stored !== undefined) {
+            next[tab.name] = stored;
+          }
+        }
+        setSnapshots(next);
+        setIsLoading(false);
+        setError(null);
+        return;
+      }
+    }
+
     let cancelled = false;
     setIsLoading(true);
     setError(null);
@@ -251,7 +270,7 @@ export const useConsoleTabData = (
       cancelled = true;
       clearInterval(timer);
     };
-  }, [pjcode]);
+  }, [pjcode, airplaneSnapshot]);
 
   return { snapshots, isLoading, error };
 };

@@ -197,4 +197,19 @@ describe('useConsoleActionQueue', () => {
     });
     expect(result.current.error).toBeNull();
   });
+
+  it('showError sets the error state without touching pending', () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    act(() => {
+      result.current.showError(
+        'Airplane mode',
+        'This action requires a network connection.',
+      );
+    });
+    expect(result.current.error).toEqual({
+      message: 'Airplane mode',
+      reason: 'This action requires a network connection.',
+    });
+    expect(result.current.pending).toBeNull();
+  });
 });

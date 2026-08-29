@@ -557,6 +557,7 @@ const runServeWeb = async (options) => {
         issueTitleStateCache: new consoleReadApi_1.IssueTitleStateCache(),
         pullRequestStatusCache: new consoleReadApi_1.PullRequestStatusCache(),
         port,
+        enableAirplaneMode: options.enableAirplaneMode === true,
     });
     console.log(`TDPM web server listening on port ${port}`);
 };
@@ -567,7 +568,8 @@ const addServeWebOptions = (command) => command
     .option('--inTmuxDataDir <path>', `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`)
     .option('--dashboardDir <path>', `Directory containing the static dashboard HTML fragment tdpm.txt served at /tdpm.txt when compose mode is not active (default: ${DEFAULT_DASHBOARD_DIR})`)
     .option('--dashboardDataDir <path>', 'Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)')
-    .option('--dashboardProjectNames <names>', 'Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names');
+    .option('--dashboardProjectNames <names>', 'Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names')
+    .option('--enableAirplaneMode', 'Enable the airplane mode feature');
 addServeWebOptions(exports.program.command('serveWeb'))
     .description('Start the local TDPM web server (console tabs, dashboard, and in-tmux session list)')
     .action(async (options) => {

@@ -20,6 +20,7 @@ import {
   handlePullRequestStatus,
   handleRelatedPrs,
 } from './consoleReadApi';
+import { handleAirplaneSync } from './consoleAirplaneSnapshotApi';
 import {
   ConsoleIssueRepositoryResolver,
   ConsoleOperationContext,
@@ -243,6 +244,7 @@ export type WebServerOptions = {
     ((pjcode: string, updatedProject: Project) => void) | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
   pullRequestStatusCache?: PullRequestStatusCache | null;
+  enableAirplaneMode?: boolean;
 };
 
 const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
@@ -660,6 +662,42 @@ const handleTokenedRequest = async (
     if (method === 'GET') {
       if (requestPath === IMAGE_PROXY_REQUEST_PATH) {
         await handleImageProxy(options, response, searchParams);
+        return;
+      }
+      if (requestPath === '/api/features') {
+        sendJson(response, 200, {
+          airplaneMode: options.enableAirplaneMode === true,
+        });
+        return;
+      }
+      if (requestPath === '/api/airplanesync') {
+        if (options.enableAirplaneMode !== true) {
+          sendNotFound(response);
+          return;
+        }
+        const issueRepository = options.issueRepository ?? null;
+        const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+        const issueTitleStateCache = options.issueTitleStateCache ?? null;
+        const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
+        if (
+          issueRepository === null ||
+          consoleDataOutputDir === null ||
+          issueTitleStateCache === null ||
+          pullRequestStatusCache === null
+        ) {
+          sendNotFound(response);
+          return;
+        }
+        await handleAirplaneSync(
+          response,
+          consoleDataOutputDir,
+          issueRepository,
+          issueTitleStateCache,
+          pullRequestStatusCache,
+          options.resolveGithubToken != null
+            ? options.resolveGithubToken('')
+            : null,
+        );
         return;
       }
       const readResult = await handleReadApi(

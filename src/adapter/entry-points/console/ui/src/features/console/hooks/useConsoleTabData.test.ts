@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import type { AirplaneSnapshot } from '../lib/airplaneSnapshot';
 import { CONSOLE_TABS } from '../logic/types';
 import {
   CONSOLE_TAB_REFRESH_INTERVAL_MS,
@@ -256,5 +257,219 @@ describe('useConsoleTabData', () => {
     });
     expect(result.current.error).toBe('No project specified in the URL path.');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('renders board items from airplane snapshot without fetching when network rejects', async () => {
+    const fetchMock = jest.fn().mockRejectedValue(new Error('network down'));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const airplaneSnapshot: AirplaneSnapshot = {
+      capturedAt: '2026-08-01T10:00:00Z',
+      failures: [],
+      items: {},
+      tabs: {
+        acme: {
+          prs: {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+            items: [
+              {
+                number: 1,
+                title: 'Offline PR',
+                url: 'https://github.com/o/r/pull/1',
+                repo: 'o/r',
+                nameWithOwner: 'o/r',
+                projectItemId: 'PVTI_1',
+                itemId: 'PVTI_1',
+                isPr: true,
+                story: 'regular',
+                status: 'Awaiting Quality Check',
+                nextActionDate: null,
+                nextActionHour: null,
+                dependedIssueUrls: [],
+                labels: [],
+                createdAt: '2026-08-01T00:00:00Z',
+                relatedOpenPullRequestUrls: [],
+                agent: null,
+              },
+            ],
+          },
+          'workflow-blocker': {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          'failed-preparation': {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          'todo-by-human': {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          'todo-by-agent': {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          stories: {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+        },
+      },
+    };
+
+    const { result } = renderHook(() =>
+      useConsoleTabData('acme', airplaneSnapshot),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.error).toBeNull();
+    expect(result.current.snapshots.prs?.items).toHaveLength(1);
+    expect(result.current.snapshots.prs?.items[0].title).toBe('Offline PR');
+    expect(result.current.snapshots.prs?.generatedAt).toBe(
+      '2026-08-01T10:00:00Z',
+    );
+  });
+
+  it('stops the 60-second periodic refresh while an airplane snapshot is in use', async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest.fn().mockRejectedValue(new Error('network down'));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const airplaneSnapshot: AirplaneSnapshot = {
+      capturedAt: '2026-08-01T10:00:00Z',
+      failures: [],
+      items: {},
+      tabs: {
+        acme: {
+          prs: {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          'workflow-blocker': {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          'failed-preparation': {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          'todo-by-human': {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          'todo-by-agent': {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          stories: {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+        },
+      },
+    };
+
+    const { result } = renderHook(() =>
+      useConsoleTabData('acme', airplaneSnapshot),
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS * 3);
+    });
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    jest.useRealTimers();
   });
 });

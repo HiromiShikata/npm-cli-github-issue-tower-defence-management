@@ -1,6 +1,11 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import type {
+  AirplaneModeStatus,
+  AirplaneSyncProgress,
+} from '../../hooks/useAirplaneMode';
 import { CONSOLE_TABS, type ConsoleTabName } from '../../logic/types';
+import { ConsoleAirplaneModeButton } from './ConsoleAirplaneModeButton';
 
 export type ConsoleTabBarProps = {
   activeTab: ConsoleTabName;
@@ -13,6 +18,13 @@ export type ConsoleTabBarProps = {
   onSelectTab: (tab: ConsoleTabName) => void;
   onSelectProject: (pjcode: string) => void;
   settingsButton?: ReactNode;
+  airplaneModeEnabled: boolean;
+  airplaneModeStatus: AirplaneModeStatus;
+  airplaneModeProgress: AirplaneSyncProgress | null;
+  airplaneModeCapturedAt: string | null;
+  airplaneModeFailures: string[];
+  onAirplaneModeStartSync: () => void;
+  onAirplaneModeTurnOff: () => void;
 };
 
 export const ConsoleTabList = ({
@@ -26,6 +38,13 @@ export const ConsoleTabList = ({
   onSelectTab,
   onSelectProject,
   settingsButton,
+  airplaneModeEnabled,
+  airplaneModeStatus,
+  airplaneModeProgress,
+  airplaneModeCapturedAt,
+  airplaneModeFailures,
+  onAirplaneModeStartSync,
+  onAirplaneModeTurnOff,
 }: ConsoleTabBarProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{
@@ -153,7 +172,7 @@ export const ConsoleTabList = ({
             )}
         </div>
       )}
-      {generatedAt !== null && (
+      {generatedAt !== null && airplaneModeStatus !== 'on' && (
         <span
           className="console-tab-geninfo"
           data-from-cache={fromCache ? 'true' : undefined}
@@ -163,6 +182,16 @@ export const ConsoleTabList = ({
       )}
       {settingsButton !== undefined && (
         <span className="console-tab-settings">{settingsButton}</span>
+      )}
+      {airplaneModeEnabled && (
+        <ConsoleAirplaneModeButton
+          status={airplaneModeStatus}
+          progress={airplaneModeProgress}
+          capturedAt={airplaneModeCapturedAt}
+          failures={airplaneModeFailures}
+          onStartSync={onAirplaneModeStartSync}
+          onTurnOff={onAirplaneModeTurnOff}
+        />
       )}
     </nav>
   );

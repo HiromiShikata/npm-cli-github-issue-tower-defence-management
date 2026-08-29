@@ -7,9 +7,11 @@ import {
   ConsoleErrorToast,
   ConsoleUndoToast,
 } from '../components/operations/ConsoleUndoToast';
+import { useAirplaneMode } from '../hooks/useAirplaneMode';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
+import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
 import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
 import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
@@ -72,7 +74,14 @@ const OVERLAY_NAMESPACE_FALLBACK = 'console';
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
-  const { snapshots, isLoading, error } = useConsoleTabData(pjcode);
+  const featuresConfig = useConsoleFeaturesConfig();
+  const airplaneMode = useAirplaneMode();
+  const airplaneSnapshot =
+    airplaneMode.status === 'on' ? airplaneMode.snapshot : null;
+  const { snapshots, isLoading, error } = useConsoleTabData(
+    pjcode,
+    airplaneSnapshot,
+  );
   const {
     timerMode,
     projectMinutes,
@@ -131,7 +140,7 @@ export const ConsolePage = () => {
     [selectedItemKey],
   );
 
-  const caches = useConsoleCaches();
+  const caches = useConsoleCaches(airplaneSnapshot);
   const operations = useConsoleOperations(
     pjcode,
     activeTab,
@@ -271,6 +280,13 @@ export const ConsolePage = () => {
 
   const handleQueueAction = useCallback(
     (input: ConsoleQueueActionInput): void => {
+      if (airplaneMode.status === 'on') {
+        actionQueue.showError(
+          'Airplane mode',
+          'This action requires a network connection. Turn off airplane mode and try again.',
+        );
+        return;
+      }
       const actedKey = overlayKeyForItem(input.item);
       actionQueue.enqueue({
         message: formatActionToast(input.kind, input.item, activeTab),
@@ -301,6 +317,7 @@ export const ConsolePage = () => {
       actionQueue,
       activeTab,
       advanceToNext,
+      airplaneMode.status,
       timerMode,
       isTimerExpired,
       projectMinutes,
@@ -482,6 +499,7 @@ export const ConsolePage = () => {
       )}
       {actionQueue.error !== null && (
         <ConsoleErrorToast
+          title={actionQueue.error.message}
           message={`Operation failed: ${actionQueue.error.reason}`}
           onDismiss={actionQueue.dismissError}
         />
@@ -510,6 +528,13 @@ export const ConsolePage = () => {
             onClose={closeSettings}
           />
         }
+        airplaneModeEnabled={featuresConfig.airplaneMode}
+        airplaneModeStatus={airplaneMode.status}
+        airplaneModeProgress={airplaneMode.progress}
+        airplaneModeCapturedAt={airplaneSnapshot?.capturedAt ?? null}
+        airplaneModeFailures={airplaneMode.failures}
+        onAirplaneModeStartSync={airplaneMode.startSync}
+        onAirplaneModeTurnOff={airplaneMode.turnOff}
       />
       {activeTab === 'stories' ? (
         <ConsoleStoryList

@@ -16,6 +16,13 @@ const meta: Meta<typeof ConsoleTabList> = {
     tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
     onSelectTab: () => {},
     onSelectProject: () => {},
+    airplaneModeEnabled: true,
+    airplaneModeStatus: 'off',
+    airplaneModeProgress: null,
+    airplaneModeCapturedAt: null,
+    airplaneModeFailures: [],
+    onAirplaneModeStartSync: () => {},
+    onAirplaneModeTurnOff: () => {},
   },
 };
 
@@ -36,6 +43,14 @@ export const AllTabsWithCounts: Story = {
   args: {
     activeTab: 'prs',
     counts,
+  },
+};
+
+export const AirplaneModeDisabled: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    airplaneModeEnabled: false,
   },
 };
 

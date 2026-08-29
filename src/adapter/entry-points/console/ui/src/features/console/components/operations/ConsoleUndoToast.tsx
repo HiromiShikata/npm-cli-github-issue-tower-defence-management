@@ -36,23 +36,24 @@ export const ConsoleUndoToast = ({
 );
 
 export type ConsoleErrorToastProps = {
+  title?: string;
   message: string;
   onDismiss: () => void;
 };
 
 export const ConsoleErrorToast = ({
+  title,
   message,
   onDismiss,
 }: ConsoleErrorToastProps) => (
-  <div
-    className="console-undo-toast console-undo-toast-error"
-    role="alert"
-    aria-live="assertive"
-  >
-    <span className="console-undo-toast-message">{message}</span>
+  <div className="console-error-toast" role="alert" aria-live="assertive">
+    {title !== undefined && (
+      <span className="console-error-toast-title">{title}</span>
+    )}
+    <span className="console-error-toast-message">{message}</span>
     <button
       type="button"
-      className="console-undo-toast-undo"
+      className="console-error-toast-dismiss"
       onClick={onDismiss}
     >
       Dismiss

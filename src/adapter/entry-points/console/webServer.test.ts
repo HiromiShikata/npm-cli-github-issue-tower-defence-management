@@ -2805,4 +2805,108 @@ describe('webServer GET /api/projects', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('GET /api/features returns { airplaneMode: false } when enableAirplaneMode is absent', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/features?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ airplaneMode: false });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('GET /api/features returns { airplaneMode: true } when enableAirplaneMode is true', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      enableAirplaneMode: true,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/features?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ airplaneMode: true });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('GET /api/airplanesync returns 404 when enableAirplaneMode is absent', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/airplanesync?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(404);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('GET /api/airplanesync returns 404 when enableAirplaneMode is false', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      enableAirplaneMode: false,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/airplanesync?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(404);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
