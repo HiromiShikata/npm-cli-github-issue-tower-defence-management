@@ -197,7 +197,8 @@ export class HandleScheduledEventUseCase {
     storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentName?: string | null;
-    afterIssuesFetched?: ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
+    afterIssuesFetched?:
+      ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
   }): Promise<{
     project: Project;
     issues: Issue[];

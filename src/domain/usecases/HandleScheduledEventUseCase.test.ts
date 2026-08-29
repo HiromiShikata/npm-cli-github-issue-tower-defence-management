@@ -1115,8 +1115,10 @@ describe('HandleScheduledEventUseCase', () => {
         }
 
         expect(afterIssuesFetched).toHaveBeenCalledTimes(1);
-        expect(afterIssuesFetched.mock.calls[0][0]).toBe(mockProject);
-        expect(afterIssuesFetched.mock.calls[0][1]).toBe(mockIssues);
+        expect(afterIssuesFetched).toHaveBeenCalledWith(
+          mockProject,
+          mockIssues,
+        );
         expect(callOrder.indexOf('afterIssuesFetched')).toBeLessThan(
           callOrder.indexOf('runEachUseCases'),
         );

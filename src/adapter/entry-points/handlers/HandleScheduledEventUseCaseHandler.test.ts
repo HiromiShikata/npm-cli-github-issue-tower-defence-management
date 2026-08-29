@@ -1,6 +1,9 @@
 import fs from 'fs';
 import YAML from 'yaml';
+import { mock } from 'jest-mock-extended';
 import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
+import type { Project } from '../../../domain/entities/Project';
+import type { Issue } from '../../../domain/entities/Issue';
 import type { HandleScheduledEventUseCase } from '../../../domain/usecases/HandleScheduledEventUseCase';
 
 jest.mock('fs');
@@ -22,13 +25,10 @@ const mockRun = jest
   .mockImplementation(async (...args: Parameters<RunFn>) => {
     capturedRunInputs.push(args);
     const input = args[0];
-    const mockProject = { id: 'PVT_kwHOtest123' };
-    const mockIssues: unknown[] = [];
+    const mockProject = mock<Project>({ id: 'PVT_kwHOtest123' });
+    const mockIssues: Issue[] = [];
     if (input.afterIssuesFetched) {
-      await input.afterIssuesFetched(
-        mockProject as Parameters<NonNullable<typeof input.afterIssuesFetched>>[0],
-        mockIssues as Parameters<NonNullable<typeof input.afterIssuesFetched>>[1],
-      );
+      await input.afterIssuesFetched(mockProject, mockIssues);
     }
     return {
       project: mockProject,
