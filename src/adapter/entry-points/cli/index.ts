@@ -13,6 +13,7 @@ export {
 import * as path from 'path';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import { CliErrorReportUseCase } from '../../../domain/usecases/CliErrorReportUseCase';
 import { assertDashboardDisplayLabelsUnique } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
@@ -362,6 +363,10 @@ program
       readmeOverrides,
     );
 
+    if (config.errorReportingRepository) {
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = config.errorReportingRepository;
+    }
+
     const projectUrl = config.projectUrl;
     const defaultAgentName = config.defaultAgentName;
     const manager = config.manager;
@@ -605,6 +610,10 @@ program
       readmeOverrides,
     );
 
+    if (config.errorReportingRepository) {
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = config.errorReportingRepository;
+    }
+
     const projectUrl = config.projectUrl;
 
     if (!projectUrl) {
@@ -749,6 +758,10 @@ program
       cliOverrides,
       readmeOverrides,
     );
+
+    if (config.errorReportingRepository) {
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = config.errorReportingRepository;
+    }
 
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository();
@@ -1350,13 +1363,81 @@ export const reportFatalErrorAndExit = (error: unknown): void => {
   process.exit(1);
 };
 
+const buildCliErrorReporter = (): {
+  useCase: CliErrorReportUseCase;
+  owner: string;
+  repo: string;
+} | null => {
+  const token = process.env.GH_TOKEN;
+  const targetRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
+  if (!token || !targetRepo) {
+    return null;
+  }
+  const slashIndex = targetRepo.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === targetRepo.length - 1) {
+    return null;
+  }
+  const owner = targetRepo.slice(0, slashIndex);
+  const repo = targetRepo.slice(slashIndex + 1);
+  const localStorageRepository = new LocalStorageRepository();
+  const githubRepositoryParams = buildGithubRepositoryParams(
+    localStorageRepository,
+    token,
+  );
+  const apiV3IssueRepository = new ApiV3IssueRepository(
+    ...githubRepositoryParams,
+  );
+  const restIssueRepository = new RestIssueRepository(
+    ...githubRepositoryParams,
+  );
+  const useCase = new CliErrorReportUseCase({
+    searchIssue: apiV3IssueRepository.searchIssue.bind(apiV3IssueRepository),
+    createNewIssue: restIssueRepository.createNewIssue.bind(restIssueRepository),
+    createCommentByUrl: async (issueOrPrUrl: string, commentBody: string) => {
+      await restIssueRepository.createComment(issueOrPrUrl, commentBody);
+    },
+  });
+  return { useCase, owner, repo };
+};
+
 export const runCliProgram = async (
   argv: string[],
   handleFatalError: (error: unknown) => void,
 ): Promise<void> => {
+  let reported = false;
+
+  const safeReport = async (error: unknown): Promise<void> => {
+    if (reported) {
+      return;
+    }
+    reported = true;
+    const reporter = buildCliErrorReporter();
+    if (!reporter) {
+      return;
+    }
+    await reporter.useCase.run({
+      error,
+      owner: reporter.owner,
+      repo: reporter.repo,
+      commandLine: argv.join(' '),
+    });
+  };
+
+  process.on('uncaughtException', (error: Error) => {
+    void safeReport(error).then(() => {
+      reportFatalErrorAndExit(error);
+    });
+  });
+  process.on('unhandledRejection', (reason: unknown) => {
+    void safeReport(reason).then(() => {
+      reportFatalErrorAndExit(reason);
+    });
+  });
+
   try {
     await program.parseAsync(argv);
   } catch (error) {
+    await safeReport(error);
     handleFatalError(error);
   }
 };
