@@ -32,6 +32,10 @@ import {
   fetchProjectReadme,
   parseProjectReadmeConfig,
 } from '../cli/projectConfig';
+import {
+  loadStartPreparationFleetSettings,
+  resolveFleetConfigFilePath,
+} from '../cli/fleetConfig';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
 import { GoogleSpreadsheetRepository } from '../../repositories/GoogleSpreadsheetRepository';
@@ -272,6 +276,10 @@ export class HandleScheduledEventUseCaseHandler {
       ? parseProjectReadmeConfig(readme, input.projectUrl)
       : {};
 
+    const startPreparationFleetSettings = loadStartPreparationFleetSettings(
+      resolveFleetConfigFilePath(null),
+    );
+
     const normalizeAllowedIssueAuthors = (
       value: string | string[] | null | undefined,
     ): string[] | null => {
@@ -323,7 +331,8 @@ export class HandleScheduledEventUseCaseHandler {
               input.startPreparation.defaultLlmAgentName,
             maximumPreparingIssuesCount:
               readmeConfig.maximumPreparingIssuesCount ??
-              input.startPreparation.maximumPreparingIssuesCount,
+              input.startPreparation.maximumPreparingIssuesCount ??
+              startPreparationFleetSettings.maximumPreparingIssuesCount,
             utilizationPercentageThreshold:
               readmeConfig.utilizationPercentageThreshold ??
               input.startPreparation.utilizationPercentageThreshold,

@@ -11,6 +11,9 @@ export const FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = 'TDPM_FLEET_CONFIG';
 export const LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY =
   'liveSessionOauthTokenSelection';
 export const PREPARATION_WORKER_SECTION_KEY = 'preparationWorker';
+export const START_PREPARATION_SECTION_KEY = 'startPreparation';
+
+export const DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 
 export type PreparationWorkerSettings = {
   normalConcurrentLimit: number;
@@ -19,6 +22,15 @@ export type PreparationWorkerSettings = {
 export const DEFAULT_PREPARATION_WORKER_SETTINGS: PreparationWorkerSettings = {
   normalConcurrentLimit: NORMAL_CONCURRENT_LIMIT,
 };
+
+export type StartPreparationFleetSettings = {
+  maximumPreparingIssuesCount: number;
+};
+
+export const DEFAULT_START_PREPARATION_FLEET_SETTINGS: StartPreparationFleetSettings =
+  {
+    maximumPreparingIssuesCount: DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT,
+  };
 
 export const resolveFleetConfigFilePath = (
   cliValue: string | null,
@@ -163,6 +175,32 @@ export const loadPreparationWorkerSettings = (
       'normalConcurrentLimit',
       fleetConfigFilePath,
       DEFAULT_PREPARATION_WORKER_SETTINGS.normalConcurrentLimit,
+      (value) => Number.isInteger(value) && value >= 1,
+      'integer of at least 1',
+    ),
+  };
+};
+
+export const loadStartPreparationFleetSettings = (
+  fleetConfigFilePath: string | null,
+): StartPreparationFleetSettings => {
+  if (fleetConfigFilePath === null) {
+    return DEFAULT_START_PREPARATION_FLEET_SETTINGS;
+  }
+  const section = readFleetConfigSection(
+    fleetConfigFilePath,
+    START_PREPARATION_SECTION_KEY,
+  );
+  if (section === null) {
+    return DEFAULT_START_PREPARATION_FLEET_SETTINGS;
+  }
+  return {
+    maximumPreparingIssuesCount: readBoundedNumber(
+      section,
+      START_PREPARATION_SECTION_KEY,
+      'maximumPreparingIssuesCount',
+      fleetConfigFilePath,
+      DEFAULT_START_PREPARATION_FLEET_SETTINGS.maximumPreparingIssuesCount,
       (value) => Number.isInteger(value) && value >= 1,
       'integer of at least 1',
     ),

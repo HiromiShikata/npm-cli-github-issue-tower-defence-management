@@ -419,6 +419,30 @@ allowedIssueAuthors: 'user1, user2, user3'
       });
     });
 
+    it('applies the fleet default maximumPreparingIssuesCount when neither README nor YAML provides it', async () => {
+      const configWithPreparationNoMax = {
+        ...validConfig,
+        startPreparation: {
+          defaultAgentName: 'yaml-agent',
+          configFilePath: '/path/to/config.yml',
+          utilizationPercentageThreshold: 90,
+        },
+      };
+      mockFetchReturningReadme(null);
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithPreparationNoMax));
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        startPreparation: {
+          maximumPreparingIssuesCount: 80,
+        },
+      });
+    });
+
     it('should use README token from manager credentials to fetch README', async () => {
       mockFetchReturningReadme(null);
       jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
