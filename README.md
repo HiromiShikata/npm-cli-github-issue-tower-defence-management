@@ -777,12 +777,6 @@ In v1.x, passing `null` (or omitting) `allowedIssueAuthors` caused `notifyFinish
 To preserve the v1.x behavior of processing agent reports, set `allowedIssueAuthors` to an explicit list of trusted GitHub usernames in your config file:
 
 ```yaml
-allowedIssueAuthors: 'HiromiShikata'
-```
-
-Or in the YAML config block:
-
-```yaml
 startPreparation:
   allowedIssueAuthors:
     - HiromiShikata
