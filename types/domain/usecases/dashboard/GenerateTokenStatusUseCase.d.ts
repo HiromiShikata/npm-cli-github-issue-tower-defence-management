@@ -1,4 +1,4 @@
-export type TokenStatusColor = 'G' | 'Y' | 'K';
+export type TokenStatusColor = 'G' | 'Y' | 'K' | 'R';
 export type TokenRateLimitSnapshot = {
     fiveHourUtilization: number;
     fiveHourReset: number;
@@ -12,8 +12,10 @@ export type TokenRateLimitSnapshot = {
     sevenDayOpusRejected: boolean;
     hasWindowData: boolean;
     lastUpdatedEpoch: number;
+    subscriptionDisabled: boolean;
 };
 export type TokenRateLimitDecision = {
+    subscriptionDisabled: boolean;
     fiveHourUtilization: number | null;
     sevenDayUtilization: number | null;
     fiveHourRejected: boolean;

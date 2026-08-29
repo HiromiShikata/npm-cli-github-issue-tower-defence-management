@@ -21,6 +21,7 @@ const TOKEN_COLOR_DOT = {
     G: '🟢',
     Y: '🟡',
     K: '⚪',
+    R: '🔴',
 };
 const padEnd = (value, width, fill) => {
     let result = value;

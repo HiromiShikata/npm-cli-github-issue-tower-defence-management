@@ -92,6 +92,7 @@ const toTokenRateLimitSnapshot = (snapshot) => {
         sevenDayOpusRejected: snapshot.modelWeeklyLimits[SEVEN_DAY_OPUS_LIMIT_TYPE]?.rejected ?? false,
         hasWindowData,
         lastUpdatedEpoch: snapshot.lastUpdatedEpoch,
+        subscriptionDisabled: snapshot.subscriptionDisabled,
     };
 };
 exports.toTokenRateLimitSnapshot = toTokenRateLimitSnapshot;

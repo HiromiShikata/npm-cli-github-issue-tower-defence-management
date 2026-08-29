@@ -1,3 +1,10 @@
+## [1.194.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.194.1...v1.194.2) (2026-08-29)
+
+
+### Bug Fixes
+
+* **token:** stop giving concurrency slots to a subscription-disabled token and show it red ([#1839](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1839)) ([365b710](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/365b710f7a1636512ccccac307e65586191b32bb))
+
 ## [1.194.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.194.0...v1.194.1) (2026-08-29)
 
 

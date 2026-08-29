@@ -4,6 +4,9 @@ exports.GenerateTokenStatusUseCase = exports.computeSevenDayWindowAggregate = ex
 const HIGH_UTILIZATION_THRESHOLD = 0.7;
 const ALLOWED_WARNING_STATUS = 'allowed_warning';
 const judgeTokenColor = (decision) => {
+    if (decision !== null && decision.subscriptionDisabled) {
+        return 'R';
+    }
     if (decision === null || decision.partial) {
         return 'Y';
     }
@@ -110,6 +113,7 @@ class GenerateTokenStatusUseCase {
                     sevenDaySonnetRejected: snapshot.sevenDaySonnetRejected,
                     sevenDayOpusRejected: snapshot.sevenDayOpusRejected,
                     partial: true,
+                    subscriptionDisabled: snapshot.subscriptionDisabled,
                 };
             }
             const fiveHourExpired = snapshot.fiveHourReset > 0 &&
@@ -130,6 +134,7 @@ class GenerateTokenStatusUseCase {
                 sevenDayOpusRejected: snapshot.sevenDayOpusRejected ||
                     (sevenDayExpired ? false : snapshot.sevenDayRejected),
                 partial: false,
+                subscriptionDisabled: snapshot.subscriptionDisabled,
             };
         };
     }

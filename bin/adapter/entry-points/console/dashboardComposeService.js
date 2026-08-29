@@ -123,7 +123,7 @@ const readMachineStatus = (dashboardDataDir) => {
         cycleMinutes,
     };
 };
-const isTokenColor = (value) => value === 'G' || value === 'Y' || value === 'K';
+const isTokenColor = (value) => value === 'G' || value === 'Y' || value === 'K' || value === 'R';
 const asTokenColor = (value) => isTokenColor(value) ? value : 'Y';
 const asNullableNumber = (value) => value === null ? null : asFiniteNumber(value);
 const asCount = (value) => {

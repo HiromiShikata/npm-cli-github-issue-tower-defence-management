@@ -56,8 +56,12 @@ class ProxyClaudeTokenUsageRepository {
                 return [];
             }
             const nowEpochSeconds = Date.now() / 1000;
-            return entries.map(({ name, token, selectionWeight }) => {
+            const usages = entries.map(({ name, token, selectionWeight }) => {
                 const snapshot = (0, RateLimitCache_1.readRateLimit)(token);
+                if (snapshot !== null && snapshot.subscriptionDisabled) {
+                    console.error(`Claude subscription access is disabled for token '${name}'; leaving it out of the preparation concurrency allocation.`);
+                    return null;
+                }
                 if (snapshot === null) {
                     return {
                         name,
@@ -123,6 +127,7 @@ class ProxyClaudeTokenUsageRepository {
                     selectionWeight,
                 };
             });
+            return usages.filter((usage) => usage !== null);
         };
         this.getTokenInFlightCounts = async () => {
             const counts = {};
