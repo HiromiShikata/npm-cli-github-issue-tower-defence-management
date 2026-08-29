@@ -964,5 +964,88 @@ describe('TriagerApprovalDispatchUseCase', () => {
       expect(mockIssueRepository.updateStory.mock.calls).toEqual([]);
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(1);
     });
+
+    it('should not dispatch again when TRIAGER_PROPOSAL_APPROVED was already posted after the approval', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Workspace',
+        author: 'owner-user',
+        agent: null,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createComment(
+          'bot',
+          TRIAGER_PROPOSAL_COMMENT(
+            'developer',
+            'regular / workflow improvement',
+            false,
+          ),
+        ),
+        createComment('owner-user', 'ok'),
+        createComment(
+          'bot',
+          'Auto Status Check: TRIAGER_PROPOSAL_APPROVED\nAgent: developer\nStory: regular / workflow improvement',
+        ),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toEqual([]);
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([]);
+      expect(mockIssueCommentRepository.createComment.mock.calls).toEqual([]);
+    });
+
+    it('should dispatch again when the issue returns to AW after the agent ran and TRIAGER_PROPOSAL_APPROVED was posted without a subsequent new proposal+approval', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Workspace',
+        author: 'owner-user',
+        agent: null,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      // second proposal after TRIAGER_PROPOSAL_APPROVED, with a new owner approval
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createComment(
+          'bot',
+          TRIAGER_PROPOSAL_COMMENT(
+            'developer',
+            'regular / workflow improvement',
+            false,
+          ),
+        ),
+        createComment('owner-user', 'ok'),
+        createComment(
+          'bot',
+          'Auto Status Check: TRIAGER_PROPOSAL_APPROVED\nAgent: developer\nStory: regular / workflow improvement',
+        ),
+        createComment(
+          'bot',
+          TRIAGER_PROPOSAL_COMMENT(
+            'developer',
+            'regular / workflow improvement',
+            true,
+          ),
+        ),
+        createComment('owner-user', 'ok'),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/orgs/owner/projects/1',
+        allowedIssueAuthors: ['owner-user'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(1);
+    });
   });
 });
