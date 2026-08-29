@@ -1212,7 +1212,12 @@ describe('webServer new routes integration', () => {
         fieldId: 'storyField',
         databaseId: 1,
         stories: [
-          { id: 'opt_first', name: 'First story', color: 'BLUE', description: '' },
+          {
+            id: 'opt_first',
+            name: 'First story',
+            color: 'BLUE',
+            description: '',
+          },
           {
             id: 'opt_second',
             name: 'Second story',
@@ -1255,7 +1260,12 @@ describe('webServer new routes integration', () => {
           color: 'GREEN',
           description: '',
         },
-        { id: 'opt_first', name: 'First story', color: 'BLUE', description: '' },
+        {
+          id: 'opt_first',
+          name: 'First story',
+          color: 'BLUE',
+          description: '',
+        },
       ]);
     } finally {
       await closeServer(server);
