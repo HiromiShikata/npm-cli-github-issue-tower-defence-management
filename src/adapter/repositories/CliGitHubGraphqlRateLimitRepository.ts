@@ -14,7 +14,8 @@ export class CliGitHubGraphqlRateLimitRepository implements GitHubGraphqlRateLim
     if (result.exitCode !== 0) {
       return null;
     }
-    const parsed = parseInt(result.stdout.trim(), 10);
-    return Number.isNaN(parsed) ? null : parsed;
+    const trimmed = result.stdout.trim();
+    const parsed = Number(trimmed);
+    return trimmed !== '' && Number.isInteger(parsed) ? parsed : null;
   };
 }

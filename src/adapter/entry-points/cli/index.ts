@@ -424,8 +424,18 @@ program
     );
     const preparationWorkerSettings =
       loadPreparationWorkerSettings(fleetConfigFilePath);
+    const fleetConfigSource =
+      fleetConfigFilePath !== null
+        ? ' (source: fleetConfig)'
+        : ' (source: built-in default)';
     console.log(
-      `Effective normalConcurrentLimit: ${preparationWorkerSettings.normalConcurrentLimit}${fleetConfigFilePath !== null ? ' (source: fleetConfig)' : ' (source: built-in default)'}`,
+      `Effective normalConcurrentLimit: ${preparationWorkerSettings.normalConcurrentLimit}${fleetConfigSource}`,
+    );
+    console.log(
+      `Effective maxConcurrentWorkers: ${preparationWorkerSettings.maxConcurrentWorkers}${fleetConfigSource}`,
+    );
+    console.log(
+      `Effective graphqlRateLimitFloor: ${preparationWorkerSettings.graphqlRateLimitFloor}${fleetConfigSource}`,
     );
 
     const projectName = config.projectName ?? 'default';
