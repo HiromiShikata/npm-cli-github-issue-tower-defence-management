@@ -194,6 +194,9 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       await useCase.run({ projectUrl });
 
+      expect(mockIssueRepository.updateBranch).toHaveBeenCalledWith(
+        conflictedPr.url,
+      );
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         issue,
@@ -203,6 +206,36 @@ describe('ConflictedIssueRevertUseCase', () => {
         issue,
         'conflict',
       );
+    });
+
+    it('should not update status or post comment when Awaiting Workspace PR update-branch succeeds', async () => {
+      const issue = createMockIssue({ status: 'Awaiting Workspace' });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      const conflictedPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[conflictedPr.url, conflictedPr]]),
+      );
+      mockIssueRepository.updateBranch.mockResolvedValue(true);
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueRepository.updateBranch).toHaveBeenCalledWith(
+        conflictedPr.url,
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
     it('should skip PR items when scanning for target task issues', async () => {
@@ -317,6 +350,9 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       await useCase.run({ projectUrl });
 
+      expect(mockIssueRepository.updateBranch).toHaveBeenCalledWith(
+        conflictedPr.url,
+      );
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         issue,
@@ -325,6 +361,37 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
         'conflict',
+      );
+    });
+
+    it('should propagate error when update-branch throws for a non-200 non-422 response', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      const conflictedPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[conflictedPr.url, conflictedPr]]),
+      );
+      mockIssueRepository.updateBranch.mockRejectedValue(
+        new Error('Failed to update branch for PR https://github.com/user/repo/pull/1: 500 Internal Server Error'),
+      );
+
+      await expect(useCase.run({ projectUrl })).rejects.toThrow(
+        'Failed to update branch for PR',
       );
     });
 
