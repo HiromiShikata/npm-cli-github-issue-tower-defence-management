@@ -7484,7 +7484,11 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
     });
 
     expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledTimes(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][0]).toBe('aw');
+    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledWith(
+      'aw',
+      expect.any(Array),
+      expect.anything(),
+    );
   });
 });
 
