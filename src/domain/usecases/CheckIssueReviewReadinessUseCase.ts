@@ -8,6 +8,7 @@ import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequirin
 import { isPullRequestDeclaredUnnecessary } from './isPullRequestDeclaredUnnecessary';
 import { normalizeReportBody } from './normalizeReportBody';
 import { isAgentReportBody } from './isAgentReportBody';
+import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -67,7 +68,7 @@ export class CheckIssueReviewReadinessUseCase {
       await this.issueCommentRepository.getCommentsFromIssue(issue);
 
     const isTrustedAuthor = (author: string): boolean =>
-      this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
+      isAuthorAuthorizedForAutoStatusCheck(author, params.allowedIssueAuthors);
 
     const lastComment = comments[comments.length - 1];
     if (
@@ -109,12 +110,6 @@ export class CheckIssueReviewReadinessUseCase {
       rejections: allRejections,
     };
   };
-
-  private isAuthorTrusted = (
-    author: string,
-    allowedIssueAuthors: string[] | null,
-  ): boolean =>
-    allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
 
   private reportBodyHasNextStep = (body: string): boolean => {
     const reportMatch = normalizeReportBody(body).match(

@@ -17,6 +17,7 @@ import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
+import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 
 const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -209,9 +210,7 @@ export class StartPreparationUseCase {
         : 'nextActionHourNotReached';
     }
     if (
-      allowedIssueAuthors === null ||
-      allowedIssueAuthors.length === 0 ||
-      !allowedIssueAuthors.includes(issue.author)
+      !isAuthorAuthorizedForAutoStatusCheck(issue.author, allowedIssueAuthors)
     ) {
       return 'authorNotAllowed';
     }

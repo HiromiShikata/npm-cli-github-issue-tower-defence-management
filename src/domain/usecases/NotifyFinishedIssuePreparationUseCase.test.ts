@@ -211,7 +211,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledTimes(1);
@@ -267,7 +267,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
@@ -287,7 +287,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/999',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       }),
     ).rejects.toThrow(
       'Issue not found: https://github.com/user/repo/issues/999',
@@ -304,7 +304,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/pull/999',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       }),
     ).rejects.toThrow('Issue not found: https://github.com/user/repo/pull/999');
     expect(mockIssueRepository.update).not.toHaveBeenCalled();
@@ -328,7 +328,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: issueUrlOnAnotherProjectOnly,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       }),
     ).rejects.toThrow(`Issue not found: ${issueUrlOnAnotherProjectOnly}`);
     expect(mockIssueRepository.get.mock.calls).toEqual([
@@ -367,7 +367,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/pull/77',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.get).toHaveBeenCalledWith(
@@ -406,7 +406,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       }),
     ).rejects.toThrow(
       'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation, but got Done',
@@ -431,7 +431,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -484,7 +484,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -513,7 +513,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -547,7 +547,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -595,7 +595,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -640,7 +640,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -685,7 +685,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -735,7 +735,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -783,7 +783,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -826,7 +826,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -869,7 +869,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -912,7 +912,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -944,7 +944,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
@@ -977,7 +977,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1021,7 +1021,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -1068,7 +1068,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1116,7 +1116,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       thresholdForDispatchLoop: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1164,7 +1164,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       thresholdForDispatchLoop: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
@@ -1206,7 +1206,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
@@ -1244,7 +1244,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
@@ -1278,7 +1278,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
@@ -1307,7 +1307,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
       labelsAsLlmAgentName: ['chore', 'accounting'],
     });
 
@@ -1346,7 +1346,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
@@ -1377,7 +1377,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -1439,7 +1439,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -1492,7 +1492,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -1537,7 +1537,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
@@ -1584,7 +1584,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
@@ -1629,7 +1629,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
@@ -1656,7 +1656,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -1694,7 +1694,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
@@ -1730,7 +1730,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1771,7 +1771,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -1817,7 +1817,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -1898,7 +1898,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -1928,7 +1928,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
       labelsAsLlmAgentName: ['chore', 'accounting'],
       labelsNotRequiringPullRequest: ['story'],
     });
@@ -1958,7 +1958,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
       developerAgentName: 'my-agent',
     });
 
@@ -2007,7 +2007,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2052,7 +2052,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2097,7 +2097,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2142,7 +2142,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2193,7 +2193,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2244,7 +2244,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -2283,7 +2283,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2329,7 +2329,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2365,7 +2365,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2405,7 +2405,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
@@ -2438,7 +2438,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2475,7 +2475,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2504,7 +2504,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2534,7 +2534,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2574,7 +2574,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/pull/10',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
@@ -2617,7 +2617,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
@@ -2656,7 +2656,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
@@ -2705,7 +2705,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
@@ -2751,7 +2751,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledTimes(1);
@@ -2790,7 +2790,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: prUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setDependedIssueUrl).not.toHaveBeenCalled();
@@ -2833,7 +2833,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -2916,7 +2916,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/webhook?url={URL}&msg={MESSAGE}',
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockWebhookRepository.sendGetRequest).toHaveBeenCalledWith(
@@ -2956,7 +2956,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/notify={MESSAGE}',
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockWebhookRepository.sendGetRequest).toHaveBeenCalledTimes(1);
@@ -2997,7 +2997,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/webhook?msg={MESSAGE}',
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockWebhookRepository.sendGetRequest).not.toHaveBeenCalled();
@@ -3031,7 +3031,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockWebhookRepository.sendGetRequest).not.toHaveBeenCalled();
@@ -3076,7 +3076,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/webhook?msg={MESSAGE}',
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -3127,7 +3127,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl:
           'https://example.com/runTasker/notify=:={MESSAGE}',
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockWebhookRepository.sendGetRequest).toHaveBeenCalledTimes(1);
@@ -3179,7 +3179,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -3213,7 +3213,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/pull/10',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
@@ -3259,7 +3259,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -3298,7 +3298,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -3338,7 +3338,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -3377,7 +3377,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       issueUrl: 'https://github.com/user/repo/issues/1',
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: null,
+      allowedIssueAuthors: ['test-user'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -3610,7 +3610,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should accept any author when allowedIssueAuthors is null (backward compatibility)', async () => {
+    it('should reject author not in allowedIssueAuthors list (fail-closed)', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -3624,33 +3624,29 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           content: 'From: :robot: Report',
         }),
       ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        {
-          url: 'https://github.com/user/repo/pull/1',
-          isConflicted: false,
-          isPassedAllCiJob: true,
-          isCiStateSuccess: true,
-          isResolvedAllReviewComments: true,
-          isBranchOutOfDate: false,
-          missingRequiredCheckNames: [],
-        },
-      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['trusted-bot'],
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
         mockProject,
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://github.com/user/repo/issues/1',
+        }),
+        expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
       );
     });
 
-    it('should accept any author when allowedIssueAuthors is omitted (backward compatibility)', async () => {
+    it('should reject all authors when allowedIssueAuthors is omitted (fail-closed)', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -3664,17 +3660,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           content: 'From: :robot: Report',
         }),
       ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        {
-          url: 'https://github.com/user/repo/pull/1',
-          isConflicted: false,
-          isPassedAllCiJob: true,
-          isCiStateSuccess: true,
-          isResolvedAllReviewComments: true,
-          isBranchOutOfDate: false,
-          missingRequiredCheckNames: [],
-        },
-      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -3684,7 +3670,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
         mockProject,
       );
     });
@@ -3723,7 +3709,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(
@@ -3748,7 +3734,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(
@@ -3775,7 +3761,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(
@@ -3802,7 +3788,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
@@ -3826,7 +3812,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
@@ -3844,7 +3830,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
@@ -3862,7 +3848,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
@@ -3879,7 +3865,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(
@@ -3906,7 +3892,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(
@@ -3926,7 +3912,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
@@ -3945,7 +3931,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
@@ -3964,7 +3950,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         changeTargetPathAliases: {
           adapters: 'src/domain/usecases/adapter-interfaces',
         },
@@ -3986,7 +3972,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         changeTargetPathAliases: {
           adapters: 'src/domain/usecases/adapter-interfaces',
         },
@@ -4026,7 +4012,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
@@ -4058,7 +4044,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -4086,7 +4072,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockProjectRepository.updateAgentList).toHaveBeenCalledWith(
@@ -4131,7 +4117,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -4156,7 +4142,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockProjectRepository.createField).toHaveBeenCalledWith(
@@ -4216,7 +4202,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(
@@ -4243,7 +4229,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(
@@ -4290,7 +4276,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(capturedArg).toMatchObject({
@@ -4321,7 +4307,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           issueUrl: 'https://github.com/user/repo/issues/1',
           thresholdForAutoReject: 3,
           workflowBlockerResolvedWebhookUrl: null,
-          allowedIssueAuthors: null,
+          allowedIssueAuthors: ['test-user'],
         }),
       ).resolves.not.toThrow();
       expect(
@@ -4347,7 +4333,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         missingAgentName: 'impl',
         manager: 'alice',
         sessionErrorLine:
@@ -4420,7 +4406,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         missingAgentName: 'impl',
       });
 
@@ -4449,7 +4435,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         missingAgentName: 'impl',
         manager: 'alice',
       });
@@ -4475,7 +4461,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         missingAgentName: 'impl',
         manager: 'alice',
       });
@@ -4502,7 +4488,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         missingAgentName: 'impl',
         manager: 'alice',
       });
@@ -4529,7 +4515,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           issueUrl,
           thresholdForAutoReject: 3,
           workflowBlockerResolvedWebhookUrl: null,
-          allowedIssueAuthors: null,
+          allowedIssueAuthors: ['test-user'],
           missingAgentName: 'impl',
         }),
       ).rejects.toThrow('manager');
@@ -4555,7 +4541,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         deferPreparation: true,
       });
 
@@ -4593,7 +4579,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         deferPreparation: true,
         missingAgentName: 'some-agent',
         manager: 'alice',
@@ -4619,7 +4605,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         deferPreparation: false,
       });
 
@@ -4636,7 +4622,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         deferPreparation: true,
         sessionErrorLine:
           'Task failed 3 consecutive times with terminal_reason=api_error',
@@ -4661,13 +4647,199 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         deferPreparation: true,
       });
 
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.objectContaining({ url: issueUrl }),
         expect.stringContaining('(not captured)'),
+      );
+    });
+  });
+
+  describe('nextStepAgent validation against agents list', () => {
+    it('should transition to Failed Preparation when nextStepAgent is not in configured agents list', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        mockProject,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://github.com/user/repo/issues/1',
+        }),
+        expect.stringContaining('unknown-agent'),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://github.com/user/repo/issues/1',
+        }),
+        expect.stringContaining('not in the configured agents list'),
+      );
+    });
+
+    it('should dispatch normally when nextStepAgent is in the configured agents list', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "developer"}\n```',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        mockProject,
+      );
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        mockProject,
+      );
+    });
+
+    it('should skip nextStepAgent validation when agents list is null', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "any-arbitrary-agent"}\n```',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: null,
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        mockProject,
+      );
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        mockProject,
+      );
+    });
+
+    it('should skip nextStepAgent validation when agents list is empty', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "any-arbitrary-agent"}\n```',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: [],
+      });
+
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        mockProject,
+      );
+    });
+  });
+
+  describe('allowedIssueAuthors fail-closed behavior', () => {
+    it('should reject agent reports from any author when allowedIssueAuthors is null (fail-closed)', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          author: 'any-author',
+          content: 'From: :robot: Real report',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        mockProject,
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://github.com/user/repo/issues/1',
+        }),
+        expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
       );
     });
   });
@@ -4692,7 +4864,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -4732,7 +4904,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
@@ -4770,7 +4942,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
@@ -4801,7 +4973,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl,
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
         ownerApprovalTimeoutCycles: 2,
       });
 
@@ -4924,7 +5096,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -4953,7 +5125,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         issueUrl: 'https://github.com/user/repo/issues/1',
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
+        allowedIssueAuthors: ['test-user'],
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();

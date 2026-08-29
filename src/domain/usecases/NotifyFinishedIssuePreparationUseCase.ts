@@ -44,6 +44,7 @@ import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
+import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -250,13 +251,32 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.issueCommentRepository.getCommentsFromIssue(issue);
 
     const isTrustedAuthor = (author: string): boolean =>
-      this.isAuthorTrusted(author, params.allowedIssueAuthors ?? null);
+      isAuthorAuthorizedForAutoStatusCheck(author, params.allowedIssueAuthors);
 
     const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
     if (nextStepAgent !== null) {
+      if (
+        params.agents &&
+        params.agents.length > 0 &&
+        !params.agents.includes(nextStepAgent)
+      ) {
+        issue.status = FAILED_PREPARATION_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          failedPreparationStatusOption.id,
+        );
+        await this.patchConsoleTab(issue);
+        await this.issueCommentRepository.createComment(
+          issue,
+          `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`,
+        );
+        return;
+      }
       const repetition = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: issue.agent,
         nextStepAgent,
@@ -626,12 +646,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`,
     );
   };
-
-  private isAuthorTrusted = (
-    author: string,
-    allowedIssueAuthors: string[] | null,
-  ): boolean =>
-    allowedIssueAuthors === null || allowedIssueAuthors.includes(author);
 
   private collectRejections = async (
     issue: {

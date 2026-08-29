@@ -243,7 +243,7 @@ startPreparation?: # Optional: Enable automatic issue preparation workflow
   defaultLlmAgentName?: string | null # Optional: Default LLM agent name (overridable via llm-agent: label)
   maximumPreparingIssuesCount: number | null # Max concurrent preparing issues. When token rotation is active, effective concurrency is also capped at 6 per available token. When null, the default is 6 per available token, or 6 without token rotation
   utilizationPercentageThreshold?: number # Optional: 5-hour utilization hard threshold (percentage, default 90). Tokens at or above this value are excluded from rotation
-  allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null = all authors)
+  allowedIssueAuthors?: string[] | null # Optional: Only start preparation for issues from these authors (null or omitted = no authors allowed; set an explicit list)
   preparationProcessCheckCommand?: string # Optional: Shell command template with {URL} placeholder to check if a preparation process is alive. When set, orphaned Preparation issues (process exits non-zero, or stale aw log) are evaluated for completion: if work is done they advance to Awaiting Quality Check; otherwise they fall back to Awaiting Workspace
   awaitingQualityCheckStatus?: string | null # Optional: Project status name for issues awaiting quality check. When set with preparationProcessCheckCommand, orphaned issues with no rejections advance to this status instead of awaitingWorkspaceStatus
   autoAdvanceQualityCheckEnabled?: boolean # Optional: When true, issues in the Awaiting Quality Check status are automatically advanced to Done on each scheduled cycle. Default false (issues remain in Awaiting Quality Check for human review). Use awaitingQualityCheckStatus to configure the status name when it differs from the default
@@ -765,6 +765,26 @@ The issue repository keeps a single always-latest JSON file per project at `${XD
 - Within a single process the refresh runs at most once per project; every subsequent `getAllIssues` call for the same project returns the memoized result, so the many in-cycle reads do not each call GitHub.
 - The two-phase incremental fetch (shipped in v1.123.0) is live on the default branch and available via `npm install npm-cli-github-issue-tower-defence-management@latest`.
 - `ConvertCheckboxToIssueInStoryIssueUseCase` always fetches the latest story-issue body directly via `getIssueByUrl`, ensuring story bodies are never stale when converting checkboxes to issues.
+
+## Migration Guide
+
+### v1.x → v2.0.0
+
+**Breaking change: `allowedIssueAuthors: null` is now fail-closed**
+
+In v1.x, passing `null` (or omitting) `allowedIssueAuthors` caused `notifyFinishedIssuePreparation` and `checkIssueReviewReadiness` to trust every comment author. In v2.0.0, `null` or an omitted value means no author is trusted — agent reports from any author are rejected.
+
+To preserve the v1.x behavior of processing agent reports, set `allowedIssueAuthors` to an explicit list of trusted GitHub usernames in your config file:
+
+```yaml
+startPreparation:
+  allowedIssueAuthors:
+    - HiromiShikata
+```
+
+**Breaking change: unknown `nextStepAgent` values are now rejected**
+
+In v1.x, a `nextStepAgent` value not present in the configured `agents` list was silently accepted and added as a new agent field option. In v2.0.0, when `agents` is configured as a non-empty list, any `nextStepAgent` value not in that list causes the issue to transition to `Failed Preparation` with an error comment.
 
 ## Contributing
 
