@@ -1,9 +1,7 @@
 import { GitHubGraphqlRateLimitRepository } from '../../domain/usecases/adapter-interfaces/GitHubGraphqlRateLimitRepository';
 import { LocalCommandRunner } from '../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 
-export class CliGitHubGraphqlRateLimitRepository
-  implements GitHubGraphqlRateLimitRepository
-{
+export class CliGitHubGraphqlRateLimitRepository implements GitHubGraphqlRateLimitRepository {
   constructor(private readonly localCommandRunner: LocalCommandRunner) {}
 
   getRemainingRequestCount = async (): Promise<number | null> => {

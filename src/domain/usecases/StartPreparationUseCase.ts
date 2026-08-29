@@ -547,7 +547,10 @@ export class StartPreparationUseCase {
     if (graphqlRateLimitFloor !== null) {
       const graphqlRemaining =
         await this.gitHubGraphqlRateLimitRepository.getRemainingRequestCount();
-      if (graphqlRemaining !== null && graphqlRemaining < graphqlRateLimitFloor) {
+      if (
+        graphqlRemaining !== null &&
+        graphqlRemaining < graphqlRateLimitFloor
+      ) {
         console.warn(
           `GraphQL rate limit low (${graphqlRemaining} remaining, floor: ${graphqlRateLimitFloor}); skipping preparation cycle.`,
         );
