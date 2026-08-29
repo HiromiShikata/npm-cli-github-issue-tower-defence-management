@@ -540,6 +540,23 @@ export const handleTriage = async (
     return ok();
   }
 
+  if (action === 'snooze_1hour' || action === 'snooze_3hours') {
+    if (project.nextActionHour === null) {
+      return badRequest('project does not have a nextActionHour field');
+    }
+    const hoursToAdd = action === 'snooze_1hour' ? 1 : 3;
+    const targetHour = new Date().getUTCHours() + hoursToAdd;
+    await context
+      .resolveIssueRepository(issueUrl)
+      .updateNextActionHour(
+        { ...project, nextActionHour: project.nextActionHour },
+        projectItemReference(issueUrl, projectItemId),
+        targetHour,
+      );
+    recordDone(context, pjcode, projectItemId);
+    return ok();
+  }
+
   if (action === 'snooze_1day' || action === 'snooze_1week') {
     const days = action === 'snooze_1day' ? 1 : 7;
     const target = new Date(Date.now() + days * 24 * 60 * 60 * 1000);

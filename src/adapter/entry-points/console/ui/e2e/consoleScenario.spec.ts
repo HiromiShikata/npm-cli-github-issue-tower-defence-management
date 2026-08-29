@@ -120,6 +120,12 @@ test('renders the Workflow Blocker tab leftmost and shows its detail operations'
     page.locator('.console-op-button', { hasText: 'Close as not planned' }),
   ).toBeVisible();
   await expect(
+    page.locator('.console-op-button', { hasText: '+1 hour' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+3 hours' }),
+  ).toBeVisible();
+  await expect(
     page.locator('.console-op-button', { hasText: '+1 day' }),
   ).toBeVisible();
 });

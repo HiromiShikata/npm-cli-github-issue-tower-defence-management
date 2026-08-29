@@ -11,6 +11,7 @@ describe('ClearPastNextActionDateHourUseCase', () => {
   const nextActionHourField = {
     name: 'Next Action Hour',
     fieldId: 'hourFieldId',
+    options: [],
   };
   const nextActionDateField = {
     name: 'Next Action Date',

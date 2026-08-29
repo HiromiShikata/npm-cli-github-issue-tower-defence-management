@@ -72,6 +72,28 @@ describe('actionToastMessage', () => {
     );
   });
 
+  it('labels the +1 hour snooze the same on every tab', () => {
+    const kind: ConsoleActionKind = {
+      type: 'next_action_date',
+      action: 'snooze_1hour',
+    };
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Hour +1 hour');
+    expect(actionToastMessage(kind, 'todo-by-human')).toBe(
+      'Next Action Hour +1 hour',
+    );
+  });
+
+  it('labels the +3 hours snooze the same on every tab', () => {
+    const kind: ConsoleActionKind = {
+      type: 'next_action_date',
+      action: 'snooze_3hours',
+    };
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Hour +3 hours');
+    expect(actionToastMessage(kind, 'todo-by-human')).toBe(
+      'Next Action Hour +3 hours',
+    );
+  });
+
   it('labels close actions', () => {
     expect(actionToastMessage({ type: 'close', action: 'close' }, 'prs')).toBe(
       'Closed',

@@ -347,7 +347,11 @@ const buildE2eProject = (): Project => ({
     })),
   },
   nextActionDate: { name: 'Next Action Date', fieldId: 'PVTF_nad' },
-  nextActionHour: { name: 'Next Action Hour', fieldId: 'PVTF_nah' },
+  nextActionHour: {
+    name: 'Next Action Hour',
+    fieldId: 'PVTF_nah',
+    options: [],
+  },
   story: {
     name: 'Story',
     fieldId: 'PVTSSF_story',

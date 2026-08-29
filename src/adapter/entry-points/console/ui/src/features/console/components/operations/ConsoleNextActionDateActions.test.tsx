@@ -2,13 +2,15 @@ import { fireEvent, render } from '@testing-library/react';
 import { ConsoleNextActionDateActions } from './ConsoleNextActionDateActions';
 
 describe('ConsoleNextActionDateActions', () => {
-  it('shows +1 day and +1 week outside manual triage tabs', () => {
+  it('shows +1 hour, +3 hours, +1 day and +1 week outside manual triage tabs', () => {
     const { getByText, queryByText } = render(
       <ConsoleNextActionDateActions
         isManualTriage={false}
         onSetNextActionDate={() => {}}
       />,
     );
+    expect(getByText('+1 hour')).toBeInTheDocument();
+    expect(getByText('+3 hours')).toBeInTheDocument();
     expect(getByText('+1 day')).toBeInTheDocument();
     expect(getByText('+1 week')).toBeInTheDocument();
     expect(queryByText('+1 week and skip')).toBeNull();
@@ -32,9 +34,13 @@ describe('ConsoleNextActionDateActions', () => {
         onSetNextActionDate={onSetNextActionDate}
       />,
     );
+    fireEvent.click(getByText('+1 hour'));
+    fireEvent.click(getByText('+3 hours'));
     fireEvent.click(getByText('+1 day'));
     fireEvent.click(getByText('+1 week'));
     expect(onSetNextActionDate.mock.calls.map((call) => call[0])).toEqual([
+      'snooze_1hour',
+      'snooze_3hours',
       'snooze_1day',
       'snooze_1week',
     ]);

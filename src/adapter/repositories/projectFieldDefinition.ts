@@ -102,6 +102,7 @@ export const projectFromDefinition = (
       ? {
           name: nextActionHour.name,
           fieldId: nextActionHour.fieldId,
+          options: nextActionHour.options,
         }
       : null,
     story:

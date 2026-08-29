@@ -1,20 +1,21 @@
 import { mock } from 'jest-mock-extended';
+import type { Issue } from '../../../domain/entities/Issue';
+import type { Project } from '../../../domain/entities/Project';
+import type { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
+import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
+import type { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
+import type { LocalStorageRepository } from '../LocalStorageRepository';
 import {
   ApiV3CheerioRestIssueRepository,
   REQUIRED_CHECKS_CACHE_TTL_MS,
 } from './ApiV3CheerioRestIssueRepository';
-import { ApiV3IssueRepository } from './ApiV3IssueRepository';
-import { RestIssueRepository } from './RestIssueRepository';
-import {
+import type { ApiV3IssueRepository } from './ApiV3IssueRepository';
+import type {
   GraphqlProjectItemRepository,
   ProjectItem,
   ProjectItemLight,
 } from './GraphqlProjectItemRepository';
-import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
-import { LocalStorageRepository } from '../LocalStorageRepository';
-import { Project } from '../../../domain/entities/Project';
-import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
-import { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
+import type { RestIssueRepository } from './RestIssueRepository';
 
 const buildTestProject = (id: string): Project => ({
   id,
@@ -1136,6 +1137,60 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         graphqlProjectItemRepository.updateProjectField,
       ).toHaveBeenCalledWith('nad-project', 'nad-field', 'item-fallback', {
         date: '2026-07-20',
+      });
+    });
+  });
+
+  describe('updateNextActionHour', () => {
+    const buildProjectWithHourOptions = (
+      optionEntries: { id: string; name: string }[],
+    ): Project & {
+      nextActionHour: NonNullable<Project['nextActionHour']>;
+    } => ({
+      ...buildTestProject('hour-project'),
+      nextActionHour: {
+        name: 'Next Action Hour',
+        fieldId: 'nah-field',
+        options: optionEntries.map((o) => ({
+          ...o,
+          color: 'GRAY' as const,
+          description: '',
+        })),
+      },
+    });
+
+    const testIssue = {
+      ...mock<Issue>(),
+      itemId: 'test-item-id',
+    };
+
+    it('submits singleSelectOptionId when a matching option exists', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      const project = buildProjectWithHourOptions([{ id: 'opt9', name: '9' }]);
+
+      await repository.updateNextActionHour(project, testIssue, 9);
+
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith('hour-project', 'nah-field', 'test-item-id', {
+        singleSelectOptionId: 'opt9',
+      });
+    });
+
+    it('falls back to number when no matching option exists', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+      const project = buildProjectWithHourOptions([]);
+
+      await repository.updateNextActionHour(project, testIssue, 9);
+
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith('hour-project', 'nah-field', 'test-item-id', {
+        number: 9,
       });
     });
   });

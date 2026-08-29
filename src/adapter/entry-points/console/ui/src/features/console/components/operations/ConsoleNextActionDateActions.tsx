@@ -13,6 +13,20 @@ export const ConsoleNextActionDateActions = ({
     <button
       type="button"
       className="console-op-button console-op-button-snooze"
+      onClick={() => onSetNextActionDate('snooze_1hour')}
+    >
+      +1 hour
+    </button>
+    <button
+      type="button"
+      className="console-op-button console-op-button-snooze"
+      onClick={() => onSetNextActionDate('snooze_3hours')}
+    >
+      +3 hours
+    </button>
+    <button
+      type="button"
+      className="console-op-button console-op-button-snooze"
       onClick={() => onSetNextActionDate('snooze_1day')}
     >
       +1 day

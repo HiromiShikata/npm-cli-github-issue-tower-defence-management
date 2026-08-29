@@ -27,7 +27,11 @@ export type ConsoleReviewAction =
   | 'unnecessary'
   | 'totally_wrong';
 
-export type ConsoleNextActionDateAction = 'snooze_1day' | 'snooze_1week';
+export type ConsoleNextActionDateAction =
+  | 'snooze_1hour'
+  | 'snooze_3hours'
+  | 'snooze_1day'
+  | 'snooze_1week';
 
 export type ConsoleCloseAction = 'close' | 'close_not_planned';
 

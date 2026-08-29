@@ -45,6 +45,12 @@ export const actionToastMessage = (
       }
       return 'Marked unnecessary';
     case 'next_action_date':
+      if (kind.action === 'snooze_1hour') {
+        return 'Next Action Hour +1 hour';
+      }
+      if (kind.action === 'snooze_3hours') {
+        return 'Next Action Hour +3 hours';
+      }
       if (kind.action === 'snooze_1day') {
         return 'Next Action Date +1 day';
       }
