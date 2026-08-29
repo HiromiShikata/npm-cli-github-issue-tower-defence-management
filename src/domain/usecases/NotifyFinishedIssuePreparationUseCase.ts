@@ -161,12 +161,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     const todoStatusOption = project.status.statuses.find(
       (s) => s.name === TODO_STATUS_NAME,
     );
-    if (!todoStatusOption) {
-      console.error(
-        `Todo status option '${TODO_STATUS_NAME}' not found in project.`,
-      );
-      return;
-    }
 
     const issue = await this.issueRepository.get(params.issueUrl, project);
 
@@ -336,7 +330,15 @@ export class NotifyFinishedIssuePreparationUseCase {
           isTrustedAuthor(comment.author) &&
           comment.content.startsWith(AWAITING_OWNER_APPROVAL_MESSAGE_HEAD),
       ).length;
-      if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
+      if (!todoStatusOption) {
+        console.error(
+          `Todo status option '${TODO_STATUS_NAME}' not found in project; escalating to '${FAILED_PREPARATION_STATUS_NAME}' instead of returning the task to the dispatch pool.`,
+        );
+      }
+      if (
+        awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles &&
+        todoStatusOption
+      ) {
         issue.status = TODO_STATUS_NAME;
         await this.issueRepository.update(issue, project);
         await this.issueRepository.updateStatus(

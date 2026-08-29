@@ -4742,6 +4742,47 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
+    it('escalates to Failed Preparation instead of the dispatch pool when the project has no Todo by human status', async () => {
+      const projectWithoutTodo = {
+        ...mockProject,
+        status: {
+          ...mockProject.status,
+          statuses: mockProject.status.statuses.filter(
+            (status) => status.name !== 'Todo by human',
+          ),
+        },
+      };
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutTodo);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: systems-analyst (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithoutTodo,
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        projectWithoutTodo,
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+    });
+
     it('escalates to Failed Preparation after ownerApprovalTimeoutCycles AWAITING_OWNER_APPROVAL messages', async () => {
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
