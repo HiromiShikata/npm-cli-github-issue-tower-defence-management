@@ -133,10 +133,10 @@ export class LiveSessionOauthTokenSelectUseCase {
       return rateLimitExclusionReason;
     }
     if (fiveHourFreeRatio < settings.minFiveHourFreeRatio) {
-      return `5h window only ${Math.round(fiveHourFreeRatio * 100)}% free (requires >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% for CL script selection)`;
+      return `5h window only ${Math.round(fiveHourFreeRatio * 100)}% free (requires >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% for live session selection)`;
     }
     if (sevenDayFreeRatio < settings.minSevenDayFreeRatio) {
-      return `7d window only ${Math.round(sevenDayFreeRatio * 100)}% free (requires >= ${Math.round(settings.minSevenDayFreeRatio * 100)}% for CL script selection)`;
+      return `7d window only ${Math.round(sevenDayFreeRatio * 100)}% free (requires >= ${Math.round(settings.minSevenDayFreeRatio * 100)}% for live session selection)`;
     }
     return null;
   };
