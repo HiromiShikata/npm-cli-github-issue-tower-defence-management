@@ -224,4 +224,5 @@ export interface IssueRepository {
     deletions: number;
     changedFiles: number;
   } | null>;
+  updateBranch: (prUrl: string) => Promise<boolean>;
 }

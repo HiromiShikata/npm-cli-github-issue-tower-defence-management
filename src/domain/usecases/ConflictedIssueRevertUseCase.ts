@@ -11,7 +11,6 @@ import {
 } from '../entities/WorkflowStatus';
 
 const EXCLUDED_STATUSES = new Set([
-  AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
   ICEBOX_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -26,7 +25,7 @@ export class ConflictedIssueRevertUseCase {
     >,
     private readonly issueRepository: Pick<
       IssueRepository,
-      'getAllIssues' | 'getOpenPullRequests' | 'updateStatus'
+      'getAllIssues' | 'getOpenPullRequests' | 'updateStatus' | 'updateBranch'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -98,8 +97,17 @@ export class ConflictedIssueRevertUseCase {
         continue;
       }
 
-      const hasConflict = relatedPrs.some((pr) => pr.isConflicted);
-      if (!hasConflict) {
+      const conflictedPrs = relatedPrs.filter((pr) => pr.isConflicted);
+      if (conflictedPrs.length === 0) {
+        continue;
+      }
+
+      const allBranchesUpdated = (
+        await Promise.all(
+          conflictedPrs.map((pr) => this.issueRepository.updateBranch(pr.url)),
+        )
+      ).every(Boolean);
+      if (allBranchesUpdated) {
         continue;
       }
 

@@ -2786,6 +2786,30 @@ export class ApiV3CheerioRestIssueRepository
     return `${status} ${reason}`;
   };
 
+  updateBranch = async (prUrl: string): Promise<boolean> => {
+    const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/update-branch`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        },
+      ),
+    );
+    if (response.ok) {
+      return true;
+    }
+    if (response.status === 422) {
+      return false;
+    }
+    const reason = await this.formatGitHubErrorWithStatus(response);
+    throw new Error(`Failed to update branch for PR ${prUrl}: ${reason}`);
+  };
+
   deletePullRequestBranch = async (
     prUrl: string,
     branchName: string,
