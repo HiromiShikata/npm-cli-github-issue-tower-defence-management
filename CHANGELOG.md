@@ -1,3 +1,29 @@
+# [1.193.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.192.0...v1.193.0) (2026-08-28)
+
+
+### Features
+
+* **console:** post conflict comment and revert to Awaiting Workspace on merge conflict ([#1825](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1825)) ([7113a1f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7113a1f73030f60d77d90391783f5715274fde25))
+
+
+### Performance Improvements
+
+* **preparation:** resolve spawn candidate branch sources concurrently ([#1829](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1829)) ([320dd2a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/320dd2a380aa576b7e979bf3894ed084905992ad)), closes [#1827](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1827)
+
+# [1.192.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.191.0...v1.192.0) (2026-08-28)
+
+
+### Features
+
+* **console:** split ConsoleCommentComposer button into Comment and Comment & Awaiting Workspace ([#1768](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1768)) ([7596b79](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7596b799f9a14ff9760a02eecf297453ab0f3e3d)), closes [#1764](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1764)
+
+# [1.191.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.190.0...v1.191.0) (2026-08-28)
+
+
+### Features
+
+* support waitingForOwnerApproval flag to cycle tasks through owner-approval wait ([#1813](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1813)) ([fcd3335](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fcd3335ed0116c9c78f5ef2cd69772a97a3d1fee)), closes [HiromiShikata/secretary#4290](https://github.com/HiromiShikata/secretary/issues/4290)
+
 # [1.190.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v1.189.2...v1.190.0) (2026-08-28)
 
 

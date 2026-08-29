@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.StartPreparationUseCase = exports.agentNameFromDesignation = exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = void 0;
+exports.StartPreparationUseCase = exports.agentNameFromDesignation = exports.SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = void 0;
 const OauthTokenSelectUseCase_1 = require("./OauthTokenSelectUseCase");
 const WorkflowStatus_1 = require("../entities/WorkflowStatus");
 const RequiredProjectField_1 = require("../entities/RequiredProjectField");
@@ -12,6 +12,7 @@ const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 exports.DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
+exports.SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
 const agentNameFromDesignation = (designation) => designation.startsWith(LLM_AGENT_LABEL_PREFIX)
     ? designation.slice(LLM_AGENT_LABEL_PREFIX.length).trim()
     : designation.trim();
@@ -85,6 +86,50 @@ class StartPreparationUseCase {
             const fiveHourLimit = this.taperedConcurrentLimit(fiveHourUtilization, FIVE_HOUR_THROTTLE_START_THRESHOLD);
             const weight = selectionWeight ?? OauthTokenSelectUseCase_1.DEFAULT_SELECTION_WEIGHT;
             return Math.max(1, Math.floor(Math.min(sevenDayLimit, fiveHourLimit) * weight));
+        };
+        this.spawnCandidateExclusionReasonOf = (issue, allowedIssueAuthors, manager, now) => {
+            if (issue.dependedIssueUrls.length > 0) {
+                return 'dependedIssueUrls';
+            }
+            if ((0, issueReactivationTriggerIsPending_1.issueReactivationTriggerIsPending)(issue, now)) {
+                const startOfTomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+                return issue.nextActionDate !== null &&
+                    issue.nextActionDate >= startOfTomorrow
+                    ? 'futureNextActionDate'
+                    : 'nextActionHourNotReached';
+            }
+            if (allowedIssueAuthors === null ||
+                allowedIssueAuthors.length === 0 ||
+                !allowedIssueAuthors.includes(issue.author)) {
+                return 'authorNotAllowed';
+            }
+            if (!issue.assignees.includes(manager)) {
+                return 'notAssignedToManager';
+            }
+            return null;
+        };
+        this.fetchSpawnCandidateBranchSources = async (issueUrls) => {
+            const branchSourceByIssueUrl = new Map();
+            let nextIndex = 0;
+            const fetchSequentially = async () => {
+                while (nextIndex < issueUrls.length) {
+                    const issueUrl = issueUrls[nextIndex];
+                    nextIndex += 1;
+                    branchSourceByIssueUrl.set(issueUrl, issueUrl.includes('/pull/')
+                        ? {
+                            openPullRequest: await this.issueRepository.getOpenPullRequest(issueUrl),
+                            relatedOpenPullRequests: [],
+                        }
+                        : {
+                            openPullRequest: null,
+                            relatedOpenPullRequests: await this.issueRepository.findRelatedOpenPRs(issueUrl),
+                        });
+                }
+            };
+            await Promise.all(Array.from({
+                length: Math.min(exports.SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY, issueUrls.length),
+            }, fetchSequentially));
+            return branchSourceByIssueUrl;
         };
         this.selectRotationTokens = (tokenUsages, utilizationPercentageThreshold, defaultModelName, fallbackModelName, maxConcurrent) => {
             const nowEpochSeconds = Date.now() / 1000;
@@ -219,6 +264,10 @@ class StartPreparationUseCase {
                 notAssignedToManager: 0,
             };
             const now = new Date();
+            const branchSourceByIssueUrl = await this.fetchSpawnCandidateBranchSources(awaitingWorkspaceIssues
+                .filter((issue) => !runningIssueUrls.has(issue.url) &&
+                this.spawnCandidateExclusionReasonOf(issue, params.allowedIssueAuthors, params.manager, now) === null)
+                .map((issue) => issue.url));
             for (let i = 0; i < awaitingWorkspaceIssues.length &&
                 updatedCurrentPreparationIssueCount < effectiveMaxPreparingIssuesCount; i++) {
                 const issue = awaitingWorkspaceIssues[i];
@@ -230,25 +279,14 @@ class StartPreparationUseCase {
                     console.warn(`Skipping ${issue.url}: worker already running.`);
                     continue;
                 }
-                if ((0, issueReactivationTriggerIsPending_1.issueReactivationTriggerIsPending)(issue, now)) {
-                    const startOfTomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
-                    if (issue.nextActionDate !== null &&
-                        issue.nextActionDate >= startOfTomorrow) {
-                        exclusionCounts.futureNextActionDate++;
-                    }
-                    else {
-                        exclusionCounts.nextActionHourNotReached++;
-                    }
+                const exclusionReason = this.spawnCandidateExclusionReasonOf(issue, params.allowedIssueAuthors, params.manager, now);
+                if (exclusionReason !== null) {
+                    exclusionCounts[exclusionReason]++;
                     continue;
                 }
-                if (params.allowedIssueAuthors === null ||
-                    params.allowedIssueAuthors.length === 0 ||
-                    !params.allowedIssueAuthors.includes(issue.author)) {
-                    exclusionCounts.authorNotAllowed++;
-                    continue;
-                }
-                if (!issue.assignees.includes(params.manager)) {
-                    exclusionCounts.notAssignedToManager++;
+                const branchSource = branchSourceByIssueUrl.get(issue.url);
+                if (branchSource === undefined) {
+                    console.error(`Skipping ${issue.url}: no branch source was prefetched for this spawn candidate.`);
                     continue;
                 }
                 await (0, AgentDesignationLabelAdoptUseCase_1.adoptIssueAgentDesignationLabel)(issue, project, params.agents ?? [], this.projectRepository, this.issueRepository);
@@ -285,7 +323,7 @@ class StartPreparationUseCase {
                 const isPrUrl = issue.url.includes('/pull/');
                 let branchName;
                 if (isPrUrl) {
-                    const pr = await this.issueRepository.getOpenPullRequest(issue.url);
+                    const pr = branchSource.openPullRequest;
                     if (pr === null) {
                         console.warn(`Skipping non-OPEN PR ${issue.url}: wrapper requires an open PR.`);
                         continue;
@@ -297,9 +335,13 @@ class StartPreparationUseCase {
                     branchName = pr.branchName;
                 }
                 else {
-                    const relatedPRs = await this.issueRepository.findRelatedOpenPRs(issue.url);
-                    if (relatedPRs.length > 1) {
-                        const sortedPRs = [...relatedPRs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+                    const relatedPRs = branchSource.relatedOpenPullRequests;
+                    const sameRepoRelatedPRs = relatedPRs.filter((pr) => {
+                        const match = /^https?:\/\/[^/]+\/([^/]+\/[^/]+)\//.exec(pr.url);
+                        return match === null || match[1] === issue.nameWithOwner;
+                    });
+                    if (sameRepoRelatedPRs.length > 1) {
+                        const sortedPRs = [...sameRepoRelatedPRs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
                         const canonicalPR = sortedPRs[0];
                         const duplicatePRs = sortedPRs.slice(1);
                         for (const duplicatePR of duplicatePRs) {
@@ -317,12 +359,12 @@ class StartPreparationUseCase {
                         }
                         branchName = canonicalPR.branchName;
                     }
-                    else if (relatedPRs.length === 1) {
-                        if (relatedPRs[0].branchName === null) {
+                    else if (sameRepoRelatedPRs.length === 1) {
+                        if (sameRepoRelatedPRs[0].branchName === null) {
                             console.warn(`Skipping issue ${issue.url}: related open PR has unavailable head branch.`);
                             continue;
                         }
-                        branchName = relatedPRs[0].branchName;
+                        branchName = sameRepoRelatedPRs[0].branchName;
                     }
                     else {
                         branchName = `i${issue.number}`;

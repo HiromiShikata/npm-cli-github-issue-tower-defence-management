@@ -20,6 +20,8 @@ import {
 import { findConsoleItemUrl } from './consoleItemUrlLookup';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
+export const CONFLICT_RETURNED_MESSAGE =
+  'Auto Status Check: CONFLICT\nThis pull request has a merge conflict and has been returned to Awaiting Workspace.';
 export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
 export const CHORE_LABEL_NAME = 'chore';
 
@@ -367,7 +369,22 @@ export const handleReview = async (
       );
     }
     if (prStatus.isConflicted) {
-      return badRequest('Cannot merge: pull request has a merge conflict');
+      await issueRepository.createCommentByUrl(
+        prUrl,
+        CONFLICT_RETURNED_MESSAGE,
+      );
+      const conflictFailure = await updateStatusByName(
+        issueRepository,
+        project,
+        prUrl,
+        projectItemId,
+        AWAITING_WORKSPACE_STATUS_NAME,
+      );
+      if (conflictFailure !== null) {
+        return conflictFailure;
+      }
+      recordDoneForStatusChange(context, pjcode, projectItemId);
+      return ok();
     }
     if (!prStatus.isPassedAllCiJob) {
       const missing = prStatus.missingRequiredCheckNames;

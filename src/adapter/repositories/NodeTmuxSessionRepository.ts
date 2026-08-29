@@ -165,6 +165,43 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
     await this.sendEnter(sessionName);
   };
 
+  attachOrCreateInteractiveSession = async (
+    issueUrl: string,
+    scopeLibPath: string | null,
+  ): Promise<void> => {
+    if (scopeLibPath !== null) {
+      const { stdout, exitCode } = await this.localCommandRunner.runCommand(
+        'bash',
+        [scopeLibPath, 'registry-get-session', issueUrl],
+      );
+      if (exitCode === 0 && stdout.trim().length > 0) {
+        const registeredSessionName = stdout.trim();
+        const { exitCode: hasSessionExitCode } =
+          await this.localCommandRunner.runCommand('tmux', [
+            'has-session',
+            '-t',
+            `=${registeredSessionName}`,
+          ]);
+        if (hasSessionExitCode === 0) {
+          this.localCommandRunner.spawnInteractive('tmux', [
+            'attach-session',
+            '-t',
+            `=${registeredSessionName}`,
+          ]);
+          return;
+        }
+      }
+    }
+    this.localCommandRunner.spawnInteractive('tmux', [
+      'new-session',
+      '-A',
+      '-s',
+      issueUrl,
+      'cl',
+      issueUrl,
+    ]);
+  };
+
   launchBareNameLeaderSession = async (name: string): Promise<void> => {
     const sessionName = name.replace(/[.:]/g, '_');
     const leaderCommand = `cl ${shellSingleQuote(name)}; exec /bin/bash`;

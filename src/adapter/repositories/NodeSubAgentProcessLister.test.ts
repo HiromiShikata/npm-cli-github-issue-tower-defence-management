@@ -8,6 +8,7 @@ const createRunner = (
   exitCode = 0,
 ): Mocked<LocalCommandRunner> => ({
   runCommand: jest.fn().mockResolvedValue({ stdout, stderr: '', exitCode }),
+  spawnInteractive: jest.fn(),
 });
 
 describe('NodeSubAgentProcessLister', () => {

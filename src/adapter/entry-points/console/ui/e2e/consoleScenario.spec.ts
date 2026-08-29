@@ -291,7 +291,7 @@ test('opens the comment input with the item detail, keeps it on screen while the
   await page
     .locator('.console-composer-input')
     .fill('The dock must not grow with every comment.');
-  await page.locator('.console-composer-submit').click();
+  await page.getByRole('button', { name: 'Comment', exact: true }).click();
 
   const postedComment = page.locator('.console-comment', {
     hasText: 'The dock must not grow with every comment.',
@@ -588,4 +588,38 @@ test('reorders stories on the triage tab with up/down buttons', async ({
 
   await expect(rows.nth(0)).toContainText('TDPM Console port');
   await expect(rows.nth(1)).toContainText('Publish product documentation site');
+});
+
+test('posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  await expect(page.locator('.console-composer-input')).toBeInViewport();
+  await page
+    .locator('.console-composer-input')
+    .fill('handing off to awaiting workspace');
+
+  await page
+    .getByRole('button', { name: 'Comment & Awaiting Workspace', exact: true })
+    .click();
+
+  await expect
+    .poll(
+      () =>
+        harness.commentCalls.some(
+          (c) => c.body === 'handing off to awaiting workspace',
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+
+  await expect(tabByLabel(page, 'Workflow Blocker')).toHaveCount(0, {
+    timeout: 8000,
+  });
 });

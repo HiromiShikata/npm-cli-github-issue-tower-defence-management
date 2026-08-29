@@ -164,6 +164,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     };
     mockLocalCommandRunner = {
       runCommand: jest.fn(),
+      spawnInteractive: jest.fn(),
     };
     useCase = new RevertOrphanedPreparationUseCase(
       mockProjectRepository,
@@ -2156,6 +2157,99 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
       'Auto Status Check: REJECTED',
+    );
+  });
+
+  it('should return orphaned issue to Awaiting Workspace with AWAITING_OWNER_APPROVAL when last report declares waitingForOwnerApproval', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content:
+          'From: :robot: systems-analyst (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
+      'Auto Status Check: AWAITING_OWNER_APPROVAL',
+    );
+  });
+
+  it('should escalate to Failed Preparation after ownerApprovalTimeoutCycles AWAITING_OWNER_APPROVAL messages in RevertOrphaned', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content:
+          'From: :robot: systems-analyst (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+        createdAt: new Date(),
+      },
+      {
+        author: 'agent-bot',
+        content:
+          'Auto Status Check: AWAITING_OWNER_APPROVAL\nThe last report declared that this task is waiting for owner approval. Returning to Awaiting Workspace for the next cycle.',
+        createdAt: new Date(),
+      },
+      {
+        author: 'agent-bot',
+        content:
+          'Auto Status Check: AWAITING_OWNER_APPROVAL\nThe last report declared that this task is waiting for owner approval. Returning to Awaiting Workspace for the next cycle.',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+      ownerApprovalTimeoutCycles: 2,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+    expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
+    expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
+      'Owner approval was not received after 2 cycles. Moving to Failed Preparation.',
     );
   });
 });

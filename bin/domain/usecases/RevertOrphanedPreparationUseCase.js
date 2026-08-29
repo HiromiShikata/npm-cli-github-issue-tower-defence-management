@@ -7,6 +7,8 @@ const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnec
 const autoStatusCheckComments_1 = require("./autoStatusCheckComments");
 const isAuthorAuthorizedForAutoStatusCheck_1 = require("./isAuthorAuthorizedForAutoStatusCheck");
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
+const isWaitingForOwnerApproval_1 = require("./isWaitingForOwnerApproval");
+const awaitingOwnerApprovalMessage_1 = require("./awaitingOwnerApprovalMessage");
 const extractNextStepAgent_1 = require("./extractNextStepAgent");
 const findLastAgentReport_1 = require("./findLastAgentReport");
 const isAgentReportBody_1 = require("./isAgentReportBody");
@@ -78,6 +80,20 @@ class RevertOrphanedPreparationUseCase {
                     }
                     continue;
                 }
+                if (outcome === 'returnToOwnerApprovalCycle') {
+                    const ownerApprovalTimeoutCycles = params.ownerApprovalTimeoutCycles ?? 12;
+                    const awaitingOwnerApprovalCount = comments.filter((comment) => (0, isAuthorAuthorizedForAutoStatusCheck_1.isAuthorAuthorizedForAutoStatusCheck)(comment.author, params.allowedIssueAuthors) &&
+                        comment.content.startsWith(awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE_HEAD)).length;
+                    if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
+                        await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                        await this.issueCommentRepository.createComment(issue, awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE);
+                    }
+                    else if (failedPreparationStatusOption) {
+                        await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                        await this.issueCommentRepository.createComment(issue, `Owner approval was not received after ${ownerApprovalTimeoutCycles} cycles. Moving to Failed Preparation.`);
+                    }
+                    continue;
+                }
                 if (outcome === 'returnToLabelSelectedAgent') {
                     await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
                     await this.issueCommentRepository.createComment(issue, returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE);
@@ -142,6 +158,9 @@ class RevertOrphanedPreparationUseCase {
             if (lastReport !== null &&
                 (0, isPullRequestDeclaredUnnecessary_1.isPullRequestDeclaredUnnecessary)(commentsBeforeOwnStatusComments, isTrustedAuthor) &&
                 !this.reportBodyHasNextStep(lastReport.content)) {
+                if ((0, isWaitingForOwnerApproval_1.isWaitingForOwnerApproval)(lastReport.content)) {
+                    return { outcome: 'returnToOwnerApprovalCycle', comments };
+                }
                 const alreadyReturnedToWorkspace = comments.some((comment) => isTrustedAuthor(comment.author) &&
                     comment.content.startsWith(returnedToAwaitingWorkspaceMessage_1.RETURNED_TO_AWAITING_WORKSPACE_MESSAGE_HEAD));
                 return {

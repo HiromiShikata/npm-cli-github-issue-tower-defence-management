@@ -155,6 +155,7 @@ const loadConfigFile = (configFilePath) => {
             consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
             consoleGithubTokenFileDir: getStringValue(parsed, 'consoleGithubTokenFileDir'),
             disks: getDisksValue(parsed, 'disks'),
+            ownerApprovalTimeoutCycles: getNumberValue(parsed, 'ownerApprovalTimeoutCycles'),
         };
     }
     catch (error) {
@@ -285,6 +286,8 @@ const mergeConfigs = (configFile, cliOverrides, readmeOverrides) => ({
     consoleGithubTokenFileDir: cliOverrides.consoleGithubTokenFileDir ??
         configFile.consoleGithubTokenFileDir,
     disks: cliOverrides.disks ?? configFile.disks,
+    ownerApprovalTimeoutCycles: cliOverrides.ownerApprovalTimeoutCycles ??
+        configFile.ownerApprovalTimeoutCycles,
 });
 exports.mergeConfigs = mergeConfigs;
 const isGraphqlProjectV2ReadmeResponse = (value) => {

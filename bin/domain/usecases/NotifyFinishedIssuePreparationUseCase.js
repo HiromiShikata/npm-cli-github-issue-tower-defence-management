@@ -7,6 +7,8 @@ const ChangeTargetPullRequestApprover_1 = require("./ChangeTargetPullRequestAppr
 const resolveLabelsNotRequiringPullRequest_1 = require("./resolveLabelsNotRequiringPullRequest");
 const isPullRequestDeclaredUnnecessary_1 = require("./isPullRequestDeclaredUnnecessary");
 const returnedToAwaitingWorkspaceMessage_1 = require("./returnedToAwaitingWorkspaceMessage");
+const isWaitingForOwnerApproval_1 = require("./isWaitingForOwnerApproval");
+const awaitingOwnerApprovalMessage_1 = require("./awaitingOwnerApprovalMessage");
 const ensureAgentOptionAndGetId_1 = require("./ensureAgentOptionAndGetId");
 const extractNextStepAgent_1 = require("./extractNextStepAgent");
 const findLastAgentReport_1 = require("./findLastAgentReport");
@@ -135,6 +137,27 @@ class NotifyFinishedIssuePreparationUseCase {
                 if (repetition.type === 'dispatchAgain') {
                     await this.issueCommentRepository.createComment(issue, repetition.comment);
                 }
+                return;
+            }
+            if (lastAgentReport !== null &&
+                (0, isWaitingForOwnerApproval_1.isWaitingForOwnerApproval)(lastAgentReport.content)) {
+                const ownerApprovalTimeoutCycles = params.ownerApprovalTimeoutCycles ?? 12;
+                const awaitingOwnerApprovalCount = comments.filter((comment) => isTrustedAuthor(comment.author) &&
+                    comment.content.startsWith(awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE_HEAD)).length;
+                if (awaitingOwnerApprovalCount < ownerApprovalTimeoutCycles) {
+                    issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
+                    await this.issueRepository.update(issue, project);
+                    await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+                    await this.patchConsoleTab(issue);
+                    await this.issueCommentRepository.createComment(issue, awaitingOwnerApprovalMessage_1.AWAITING_OWNER_APPROVAL_MESSAGE);
+                    return;
+                }
+                issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
+                await this.issueRepository.update(issue, project);
+                await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
+                await this.patchConsoleTab(issue);
+                await this.issueCommentRepository.createComment(issue, `Owner approval was not received after ${ownerApprovalTimeoutCycles} cycles. Moving to Failed Preparation.`);
+                await this.sendWorkflowBlockerNotification(params.issueUrl, params.workflowBlockerResolvedWebhookUrl, project);
                 return;
             }
             const { rejections, approvedPrUrl } = await this.collectRejections(issue, comments, isTrustedAuthor, (0, resolveLabelsNotRequiringPullRequest_1.resolveLabelsNotRequiringPullRequest)(params), params.developerAgentName);

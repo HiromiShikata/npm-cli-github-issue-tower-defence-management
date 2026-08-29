@@ -52,6 +52,11 @@ export type ConsoleE2eStoryColorCall = {
   newColor: string;
 };
 
+export type ConsoleE2eCommentCall = {
+  url: string;
+  body: string;
+};
+
 type ConsoleFixtureListItem = {
   number: number;
   title: string;
@@ -460,6 +465,7 @@ const createStubIssueRepository = (
   requestChangesCalls: ConsoleE2eRequestChangesCall[],
   createIssueCalls: ConsoleE2eCreateIssueCall[],
   storyColorCalls: ConsoleE2eStoryColorCall[],
+  commentCalls: ConsoleE2eCommentCall[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
@@ -563,7 +569,9 @@ const createStubIssueRepository = (
   closePullRequest: async (): Promise<void> => undefined,
   closeIssueByUrl: async (): Promise<void> => undefined,
   deletePullRequestBranch: () => notImplemented('deletePullRequestBranch'),
-  createCommentByUrl: async (): Promise<void> => undefined,
+  createCommentByUrl: async (url: string, body: string): Promise<void> => {
+    commentCalls.push({ url, body });
+  },
   getAllOpened: () => notImplemented('getAllOpened'),
   getStoryObjectMap: () => notImplemented('getStoryObjectMap'),
   addIssueToProject: async (): Promise<void> => undefined,
@@ -647,6 +655,7 @@ export type ConsoleE2eHarness = {
   reviewCommentCalls: ConsoleE2eReviewCommentCall[];
   requestChangesCalls: ConsoleE2eRequestChangesCall[];
   createIssueCalls: ConsoleE2eCreateIssueCall[];
+  commentCalls: ConsoleE2eCommentCall[];
   reorderStoryCalls: ConsoleE2eReorderStoryCall[];
   addStoryCalls: ConsoleE2eAddStoryCall[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
@@ -671,6 +680,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
   const reviewCommentCalls: ConsoleE2eReviewCommentCall[] = [];
   const requestChangesCalls: ConsoleE2eRequestChangesCall[] = [];
   const createIssueCalls: ConsoleE2eCreateIssueCall[] = [];
+  const commentCalls: ConsoleE2eCommentCall[] = [];
   const reorderStoryCalls: ConsoleE2eReorderStoryCall[] = [];
   const addStoryCalls: ConsoleE2eAddStoryCall[] = [];
   const storyColorCalls: ConsoleE2eStoryColorCall[] = [];
@@ -684,6 +694,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
       requestChangesCalls,
       createIssueCalls,
       storyColorCalls,
+      commentCalls,
     ),
     projectRepository: {
       updateStoryList: async (_updatedProject, stories) => {
@@ -741,6 +752,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     reviewCommentCalls,
     requestChangesCalls,
     createIssueCalls,
+    commentCalls,
     reorderStoryCalls,
     addStoryCalls,
     storyColorCalls,

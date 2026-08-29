@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
 import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
 import { ResourceCache } from '../lib/resourceCache';
+import { AWAITING_WORKSPACE_NAME } from '../logic/operations';
 import type {
   ConsoleChangedFile,
   ConsoleRelatedPullRequest,
@@ -403,6 +404,84 @@ describe('ConsoleItemDetailContainer', () => {
         body: 'Please rename this variable.',
       },
     ]);
+  });
+
+  it('passes onSubmitAndMoveToAwaitingWorkspace to the composer when statusOptions includes Awaiting Workspace', () => {
+    const { getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+    expect(getByText('Comment & Awaiting Workspace')).toBeInTheDocument();
+  });
+
+  it('does not pass onSubmitAndMoveToAwaitingWorkspace to the composer when statusOptions does not include Awaiting Workspace', () => {
+    const statusOptionsWithoutAwaitingWorkspace =
+      consoleStatusOptionsFixture.filter(
+        (o) => o.name !== AWAITING_WORKSPACE_NAME,
+      );
+    const { queryByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={buildOperations()}
+        statusOptions={statusOptionsWithoutAwaitingWorkspace}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+      />,
+    );
+    expect(queryByText('Comment & Awaiting Workspace')).toBeNull();
+  });
+
+  it('clicking Comment & Awaiting Workspace calls addComment and queues a set_status action for the Awaiting Workspace option', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'test comment body' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    await waitFor(() => {
+      expect(operations.addComment).toHaveBeenCalledWith(
+        issueItem,
+        'test comment body',
+      );
+    });
+    expect(onQueueAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: { type: 'set_status', optionName: AWAITING_WORKSPACE_NAME },
+        item: issueItem,
+      }),
+    );
   });
 
   it('collects an inline comment on an issue related pull request diff, enables Reject, and submits it as the request-changes review for that pull request url', async () => {

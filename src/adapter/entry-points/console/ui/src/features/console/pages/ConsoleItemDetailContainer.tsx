@@ -9,9 +9,10 @@ import type { ConsoleOperationsApi } from '../hooks/useConsoleOperations';
 import { buildImageProxyUrl } from '../lib/imageProxy';
 import type { ConsoleActionKind } from '../logic/actionToast';
 import { resolveStoryColorEnum } from '../logic/grouping';
-import type {
-  ConsoleOperationHandlers,
-  ConsolePendingReviewComment,
+import {
+  AWAITING_WORKSPACE_NAME,
+  type ConsoleOperationHandlers,
+  type ConsolePendingReviewComment,
 } from '../logic/operations';
 import { mergePostedComments } from '../logic/postedComments';
 import type {
@@ -163,6 +164,18 @@ export const ConsoleItemDetailContainer = ({
     },
   };
 
+  const awaitingWorkspaceOption =
+    statusOptions.find((o) => o.name === AWAITING_WORKSPACE_NAME) ?? null;
+
+  const addCommentAndMoveToAwaitingWorkspace =
+    awaitingWorkspaceOption !== null
+      ? async (body: string): Promise<ConsoleComment> => {
+          const comment = await addComment(body);
+          handlers.onSetStatus(awaitingWorkspaceOption);
+          return comment;
+        }
+      : undefined;
+
   const resolvedStoryName =
     storyName ?? (item.story.trim() !== '' ? item.story : null);
   const storyColorEnum: ConsoleColor | null =
@@ -205,6 +218,9 @@ export const ConsoleItemDetailContainer = ({
           initialDraft={initialCommentDraft}
           onSubmit={addComment}
           onDraftChange={onCommentDraftChange}
+          onSubmitAndMoveToAwaitingWorkspace={
+            addCommentAndMoveToAwaitingWorkspace
+          }
           onUploadFile={(file) => operations.uploadAttachment(item, file)}
         />
       }

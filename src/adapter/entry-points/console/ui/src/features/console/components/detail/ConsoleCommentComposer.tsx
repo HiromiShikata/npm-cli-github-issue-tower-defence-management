@@ -6,6 +6,9 @@ export type ConsoleCommentComposerProps = {
   initialDraft?: string;
   onSubmit: (body: string) => Promise<ConsoleComment>;
   onDraftChange?: (draft: string) => void;
+  onSubmitAndMoveToAwaitingWorkspace?: (
+    body: string,
+  ) => Promise<ConsoleComment>;
   onUploadFile?: (file: File) => Promise<string>;
 };
 
@@ -78,6 +81,7 @@ export const ConsoleCommentComposer = ({
   initialDraft,
   onSubmit,
   onDraftChange,
+  onSubmitAndMoveToAwaitingWorkspace,
   onUploadFile,
 }: ConsoleCommentComposerProps) => {
   const [open, setOpen] = useState<boolean>(initiallyOpen);
@@ -91,14 +95,18 @@ export const ConsoleCommentComposer = ({
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const submit = async (): Promise<void> => {
+  const submit = async (withMove: boolean): Promise<void> => {
     const body = draft.trim();
     if (body.length === 0 || status.kind === 'posting') {
       return;
     }
     setStatus({ kind: 'posting' });
     try {
-      await onSubmit(body);
+      if (withMove && onSubmitAndMoveToAwaitingWorkspace !== undefined) {
+        await onSubmitAndMoveToAwaitingWorkspace(body);
+      } else {
+        await onSubmit(body);
+      }
       setDraft('');
       setStatus({ kind: 'idle' });
     } catch (error) {
@@ -231,11 +239,23 @@ export const ConsoleCommentComposer = ({
               className="console-composer-submit"
               disabled={status.kind === 'posting'}
               onClick={() => {
-                void submit();
+                void submit(false);
               }}
             >
               Comment
             </button>
+            {onSubmitAndMoveToAwaitingWorkspace !== undefined && (
+              <button
+                type="button"
+                className="console-composer-submit"
+                disabled={status.kind === 'posting'}
+                onClick={() => {
+                  void submit(true);
+                }}
+              >
+                Comment & Awaiting Workspace
+              </button>
+            )}
           </div>
         </div>
       )}
