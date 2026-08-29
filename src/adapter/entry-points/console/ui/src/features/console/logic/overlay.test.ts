@@ -70,9 +70,9 @@ describe('isOverlayEntryActed', () => {
   });
 
   it('treats a done entry as acted regardless of the mode it was written in', () => {
-    expect(isOverlayEntryActed({ ts: 100, mode: 'todo-by-human', done: true })).toBe(
-      true,
-    );
+    expect(
+      isOverlayEntryActed({ ts: 100, mode: 'todo-by-human', done: true }),
+    ).toBe(true);
   });
 });
 

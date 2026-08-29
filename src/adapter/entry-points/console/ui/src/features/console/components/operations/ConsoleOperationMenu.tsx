@@ -3,8 +3,8 @@ import {
   isManualTriageTab,
 } from '../../logic/operations';
 import type {
-  ConsoleListItem,
   ConsoleFieldOption,
+  ConsoleListItem,
   ConsoleTabName,
 } from '../../logic/types';
 import { ConsoleCloseActions } from './ConsoleCloseActions';

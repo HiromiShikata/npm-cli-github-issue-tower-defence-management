@@ -82,7 +82,7 @@ describe('webServer pure helpers', () => {
     it('matches a per-project tab route for every list tab', () => {
       expect(isConsoleAppRoute('/projects/acme/workflow-blocker')).toBe(true);
       expect(isConsoleAppRoute('/projects/acme/prs')).toBe(true);
-      expect(isConsoleAppRoute('/projects/globex/triage')).toBe(true);
+      expect(isConsoleAppRoute('/projects/globex/todo-by-agent')).toBe(true);
       expect(isConsoleAppRoute('/projects/initech/todo-by-human')).toBe(true);
       expect(isConsoleAppRoute('/projects/umbrella/failed-preparation')).toBe(
         true,
@@ -379,7 +379,7 @@ describe('webServer integration', () => {
       port: 0,
     });
     try {
-      const projectRoot = await requestServer(server, '/projects/acme/triage');
+      const projectRoot = await requestServer(server, '/projects/acme/prs');
       expect(projectRoot.statusCode).toBe(200);
       expect(projectRoot.body).toContain('TDPM Console');
     } finally {
