@@ -364,7 +364,8 @@ program
     );
 
     if (config.errorReportingRepository) {
-      process.env.TDPM_ERROR_REPORT_REPOSITORY = config.errorReportingRepository;
+      process.env.TDPM_ERROR_REPORT_REPOSITORY =
+        config.errorReportingRepository;
     }
 
     const projectUrl = config.projectUrl;
@@ -611,7 +612,8 @@ program
     );
 
     if (config.errorReportingRepository) {
-      process.env.TDPM_ERROR_REPORT_REPOSITORY = config.errorReportingRepository;
+      process.env.TDPM_ERROR_REPORT_REPOSITORY =
+        config.errorReportingRepository;
     }
 
     const projectUrl = config.projectUrl;
@@ -760,7 +762,8 @@ program
     );
 
     if (config.errorReportingRepository) {
-      process.env.TDPM_ERROR_REPORT_REPOSITORY = config.errorReportingRepository;
+      process.env.TDPM_ERROR_REPORT_REPOSITORY =
+        config.errorReportingRepository;
     }
 
     const projectName = config.projectName ?? 'default';
@@ -1392,7 +1395,8 @@ const buildCliErrorReporter = (): {
   );
   const useCase = new CliErrorReportUseCase({
     searchIssue: apiV3IssueRepository.searchIssue.bind(apiV3IssueRepository),
-    createNewIssue: restIssueRepository.createNewIssue.bind(restIssueRepository),
+    createNewIssue:
+      restIssueRepository.createNewIssue.bind(restIssueRepository),
     createCommentByUrl: async (issueOrPrUrl: string, commentBody: string) => {
       await restIssueRepository.createComment(issueOrPrUrl, commentBody);
     },

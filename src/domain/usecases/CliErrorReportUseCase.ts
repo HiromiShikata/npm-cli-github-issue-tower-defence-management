@@ -17,8 +17,7 @@ export class CliErrorReportUseCase {
     const { error, owner, repo, commandLine } = params;
     const errorName =
       error instanceof Error ? (error.name ?? 'Error') : 'Error';
-    const message =
-      error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : String(error);
     const stack =
       error instanceof Error && error.stack ? error.stack : String(error);
     const title = `CLI error: ${errorName}: ${message.slice(0, 80)}`;

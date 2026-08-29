@@ -212,7 +212,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'ownerApprovalTimeoutCycles',
       ),
-      errorReportingRepository: getStringValue(parsed, 'errorReportingRepository'),
+      errorReportingRepository: getStringValue(
+        parsed,
+        'errorReportingRepository',
+      ),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -14,7 +14,8 @@ describe('CliErrorReportUseCase', () => {
 
   const owner = 'test-owner';
   const repo = 'test-repo';
-  const commandLine = 'github-issue-tower-defence-management startDaemon --configFilePath config.yml';
+  const commandLine =
+    'github-issue-tower-defence-management startDaemon --configFilePath config.yml';
 
   describe('run', () => {
     it('should call createNewIssue when searchIssue returns no matching open issue', async () => {
@@ -47,7 +48,8 @@ describe('CliErrorReportUseCase', () => {
       const error = new Error('something went wrong');
       error.name = 'TypeError';
       const title = 'CLI error: TypeError: something went wrong';
-      const existingIssueUrl = 'https://github.com/test-owner/test-repo/issues/10';
+      const existingIssueUrl =
+        'https://github.com/test-owner/test-repo/issues/10';
       mockIssueRepository.searchIssue.mockResolvedValue([
         { url: existingIssueUrl, title, number: '10' },
       ]);
@@ -104,10 +106,16 @@ describe('CliErrorReportUseCase', () => {
 
     it('should not throw when searchIssue rejects', async () => {
       const error = new Error('some error');
-      mockIssueRepository.searchIssue.mockRejectedValue(new Error('network error'));
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      mockIssueRepository.searchIssue.mockRejectedValue(
+        new Error('network error'),
+      );
+      const consoleSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
 
-      await expect(useCase.run({ error, owner, repo, commandLine })).resolves.toBeUndefined();
+      await expect(
+        useCase.run({ error, owner, repo, commandLine }),
+      ).resolves.toBeUndefined();
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
