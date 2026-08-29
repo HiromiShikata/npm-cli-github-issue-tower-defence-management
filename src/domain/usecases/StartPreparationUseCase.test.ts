@@ -7431,7 +7431,9 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       removeLabel: jest.fn().mockResolvedValue(undefined),
     };
     const mockLocalCommandRunner = {
-      runCommand: jest.fn().mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
+      runCommand: jest
+        .fn()
+        .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
       spawnInteractive: jest.fn(),
     };
     const token = 'token-a';
