@@ -800,6 +800,7 @@ mysteryKey: 'value'
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: null,
+        normalConcurrentLimit: 6,
       });
     });
 
@@ -874,6 +875,7 @@ mysteryKey: 'value'
         codexHomeCandidates: null,
         labelsAsLlmAgentName: null,
         agents: null,
+        normalConcurrentLimit: 6,
       });
     });
 

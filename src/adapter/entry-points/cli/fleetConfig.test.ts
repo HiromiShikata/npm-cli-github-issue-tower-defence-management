@@ -270,9 +270,9 @@ describe('loadPreparationWorkerSettings', () => {
       ['preparationWorker:', '  normalConcurrentLimit: 0'].join('\n'),
     );
 
-    expect(() =>
-      loadPreparationWorkerSettings(fleetConfigFilePath),
-    ).toThrow('normalConcurrentLimit');
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'normalConcurrentLimit',
+    );
   });
 
   it('throws when normalConcurrentLimit is not an integer', () => {
@@ -280,9 +280,9 @@ describe('loadPreparationWorkerSettings', () => {
       ['preparationWorker:', '  normalConcurrentLimit: 6.5'].join('\n'),
     );
 
-    expect(() =>
-      loadPreparationWorkerSettings(fleetConfigFilePath),
-    ).toThrow('normalConcurrentLimit');
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'normalConcurrentLimit',
+    );
   });
 
   it('throws when normalConcurrentLimit is written as a string', () => {
@@ -290,16 +290,16 @@ describe('loadPreparationWorkerSettings', () => {
       ['preparationWorker:', "  normalConcurrentLimit: '8'"].join('\n'),
     );
 
-    expect(() =>
-      loadPreparationWorkerSettings(fleetConfigFilePath),
-    ).toThrow('must be a number');
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'must be a number',
+    );
   });
 
   it('throws when the preparationWorker section is not a mapping', () => {
     const fleetConfigFilePath = writeFleetConfig('preparationWorker: 10\n');
 
-    expect(() =>
-      loadPreparationWorkerSettings(fleetConfigFilePath),
-    ).toThrow('must be a mapping');
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'must be a mapping',
+    );
   });
 });
