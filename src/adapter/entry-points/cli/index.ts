@@ -34,6 +34,7 @@ import { projectCacheDirectory } from '../../repositories/localStorageCacheDirec
 import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
+import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
 import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
@@ -496,6 +497,7 @@ program
       localCommandRunner,
       claudeTokenUsageRepository,
       new ProcTakeOwnershipSpawnRepository(),
+      new CliGitHubGraphqlRateLimitRepository(localCommandRunner),
     );
 
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;
@@ -545,6 +547,8 @@ program
       labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
       agents: config.agents ?? null,
       normalConcurrentLimit: preparationWorkerSettings.normalConcurrentLimit,
+      maxConcurrentWorkers: preparationWorkerSettings.maxConcurrentWorkers,
+      graphqlRateLimitFloor: preparationWorkerSettings.graphqlRateLimitFloor,
     });
     if (preparationResult.rotationOrder !== null) {
       writeRotationOrderFile(preparationResult.rotationOrder);

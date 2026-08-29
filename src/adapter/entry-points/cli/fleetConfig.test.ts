@@ -242,7 +242,105 @@ describe('loadPreparationWorkerSettings', () => {
 
     expect(loadPreparationWorkerSettings(fleetConfigFilePath)).toEqual({
       normalConcurrentLimit: 10,
+      maxConcurrentWorkers: DEFAULT_PREPARATION_WORKER_SETTINGS.maxConcurrentWorkers,
+      graphqlRateLimitFloor:
+        DEFAULT_PREPARATION_WORKER_SETTINGS.graphqlRateLimitFloor,
     });
+  });
+
+  it('reads maxConcurrentWorkers from the fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  maxConcurrentWorkers: 25'].join('\n'),
+    );
+
+    expect(loadPreparationWorkerSettings(fleetConfigFilePath)).toEqual({
+      normalConcurrentLimit:
+        DEFAULT_PREPARATION_WORKER_SETTINGS.normalConcurrentLimit,
+      maxConcurrentWorkers: 25,
+      graphqlRateLimitFloor:
+        DEFAULT_PREPARATION_WORKER_SETTINGS.graphqlRateLimitFloor,
+    });
+  });
+
+  it('reads graphqlRateLimitFloor from the fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  graphqlRateLimitFloor: 300'].join('\n'),
+    );
+
+    expect(loadPreparationWorkerSettings(fleetConfigFilePath)).toEqual({
+      normalConcurrentLimit:
+        DEFAULT_PREPARATION_WORKER_SETTINGS.normalConcurrentLimit,
+      maxConcurrentWorkers:
+        DEFAULT_PREPARATION_WORKER_SETTINGS.maxConcurrentWorkers,
+      graphqlRateLimitFloor: 300,
+    });
+  });
+
+  it('reads all three worker settings from the fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      [
+        'preparationWorker:',
+        '  normalConcurrentLimit: 10',
+        '  maxConcurrentWorkers: 60',
+        '  graphqlRateLimitFloor: 200',
+      ].join('\n'),
+    );
+
+    expect(loadPreparationWorkerSettings(fleetConfigFilePath)).toEqual({
+      normalConcurrentLimit: 10,
+      maxConcurrentWorkers: 60,
+      graphqlRateLimitFloor: 200,
+    });
+  });
+
+  it('throws when maxConcurrentWorkers is zero', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  maxConcurrentWorkers: 0'].join('\n'),
+    );
+
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'maxConcurrentWorkers',
+    );
+  });
+
+  it('throws when maxConcurrentWorkers is not an integer', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  maxConcurrentWorkers: 10.5'].join('\n'),
+    );
+
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'maxConcurrentWorkers',
+    );
+  });
+
+  it('accepts graphqlRateLimitFloor of zero', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  graphqlRateLimitFloor: 0'].join('\n'),
+    );
+
+    expect(loadPreparationWorkerSettings(fleetConfigFilePath)).toMatchObject({
+      graphqlRateLimitFloor: 0,
+    });
+  });
+
+  it('throws when graphqlRateLimitFloor is negative', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  graphqlRateLimitFloor: -1'].join('\n'),
+    );
+
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'graphqlRateLimitFloor',
+    );
+  });
+
+  it('throws when graphqlRateLimitFloor is not an integer', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      ['preparationWorker:', '  graphqlRateLimitFloor: 100.5'].join('\n'),
+    );
+
+    expect(() => loadPreparationWorkerSettings(fleetConfigFilePath)).toThrow(
+      'graphqlRateLimitFloor',
+    );
   });
 
   it('keeps the built-in value when the preparationWorker section is absent', () => {
