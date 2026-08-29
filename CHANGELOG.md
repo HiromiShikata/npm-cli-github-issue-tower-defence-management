@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.2.0...v2.3.0) (2026-08-29)
+
+
+### Features
+
+* remove Triage tab from TDPM console ([#1848](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1848)) ([7335b75](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7335b75eab27e0090393f4bbc3b03d8643727e55)), closes [#30982](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/30982) [#1845](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1845)
+
 # [2.2.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.1.2...v2.2.0) (2026-08-29)
 
 
