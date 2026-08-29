@@ -1,16 +1,16 @@
-import { CONSOLE_LIST_TAB_NAMES } from './consoleTabNames';
+import { CONSOLE_LIST_TAB_NAMES } from "./consoleTabNames";
 export { CONSOLE_LIST_TAB_NAMES };
 export type ConsoleDataRoute = {
-    kind: 'list';
+    kind: "list";
     pjcode: string;
     tab: string;
 } | {
-    kind: 'detail';
+    kind: "detail";
     pjcode: string;
     tab: string;
     key: string;
 } | {
-    kind: 'in-tmux';
+    kind: "in-tmux";
     pjcode: string;
     relativePath: string;
 };
