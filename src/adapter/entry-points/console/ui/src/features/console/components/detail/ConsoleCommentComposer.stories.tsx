@@ -77,10 +77,3 @@ export const ComposerAwaitingWorkspaceButtonsPosting: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Comment' }));
   },
 };
-
-export const ComposerWithMoveToAwaitingWorkspace: Story = {
-  args: {
-    initiallyOpen: true,
-    onSubmitAndMoveToAwaitingWorkspace: acceptComment,
-  },
-};
