@@ -325,7 +325,7 @@ program
   )
   .option(
     '--fleetConfigFilePath <path>',
-    'Path to the fleet-wide YAML config file holding the preparationWorker mapping (normalConcurrentLimit); falls back to the TDPM_FLEET_CONFIG environment variable, and to the built-in values when neither is set',
+    'Path to the fleet-wide YAML config file holding the preparationWorker mapping (normalConcurrentLimit, maxConcurrentWorkers, graphqlRateLimitFloor); falls back to the TDPM_FLEET_CONFIG environment variable, and to the built-in values when neither is set',
   )
   .action(async (options: StartDaemonOptions) => {
     const token = process.env.GH_TOKEN;
