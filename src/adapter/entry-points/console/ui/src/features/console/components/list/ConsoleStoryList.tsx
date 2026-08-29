@@ -132,9 +132,11 @@ export type ConsoleStoryListProps = {
   stories: ConsoleStoryEntry[];
   isLoading: boolean;
   error: string | null;
+  showGray: boolean;
   onCreateIssue: (storyOptionId: string, title: string) => Promise<void>;
   onAddStory: (storyName: string) => Promise<void>;
   onSelectColor: (storyOptionId: string, newColor: ConsoleColor) => void;
+  onToggleGray: () => void;
   optimisticColors: Record<string, ConsoleColor>;
   colorChangeInFlight: string | null;
   colorErrors: Record<string, string>;
@@ -144,9 +146,11 @@ export const ConsoleStoryList = ({
   stories,
   isLoading,
   error,
+  showGray,
   onCreateIssue,
   onAddStory,
   onSelectColor,
+  onToggleGray,
   optimisticColors,
   colorChangeInFlight,
   colorErrors,
@@ -197,13 +201,18 @@ export const ConsoleStoryList = ({
     onSelectColor(storyOptionId, newColor);
   };
 
+  const visibleStories = showGray
+    ? stories
+    : stories.filter((s) => s.color !== 'GRAY');
+  const hasGrayStories = stories.some((s) => s.color === 'GRAY');
+
   return (
     <div className="console-story-list-container">
-      {stories.length === 0 ? (
+      {visibleStories.length === 0 ? (
         <p className="console-list-empty">No active stories</p>
       ) : (
         <ul className="console-story-list">
-          {stories.map((entry) => {
+          {visibleStories.map((entry) => {
             const displayColor: ConsoleColor =
               optimisticColors[entry.storyOptionId] ?? entry.color;
             const palette = colorFromEnum(displayColor);
@@ -284,6 +293,15 @@ export const ConsoleStoryList = ({
             );
           })}
         </ul>
+      )}
+      {hasGrayStories && (
+        <button
+          type="button"
+          className="console-op-button"
+          onClick={onToggleGray}
+        >
+          {showGray ? 'Hide archived' : 'Show archived'}
+        </button>
       )}
       <div className="console-add-story-section">
         <button

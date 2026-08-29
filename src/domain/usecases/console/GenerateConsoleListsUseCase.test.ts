@@ -800,19 +800,20 @@ describe('GenerateConsoleListsUseCase', () => {
   });
 
   describe('stories tab', () => {
-    it('includes one entry per non-GRAY story option', () => {
+    it('includes one entry per story option including GRAY', () => {
       const result = run([]);
-      expect(result.stories.stories).toHaveLength(2);
+      expect(result.stories.stories).toHaveLength(3);
       expect(result.stories.stories.map((s) => s.storyName)).toEqual([
+        'regular / NO STORY; SET STORY FIELD',
         'Story Alpha',
         'Story Beta',
       ]);
     });
 
-    it('excludes story options whose color is GRAY', () => {
+    it('includes story options whose color is GRAY', () => {
       const result = run([]);
       const names = result.stories.stories.map((s) => s.storyName);
-      expect(names).not.toContain('regular / NO STORY; SET STORY FIELD');
+      expect(names).toContain('regular / NO STORY; SET STORY FIELD');
     });
 
     it('counts open items per story from all open issues on the board', () => {

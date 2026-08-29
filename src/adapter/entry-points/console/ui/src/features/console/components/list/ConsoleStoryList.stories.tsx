@@ -47,13 +47,26 @@ const storiesWithUrl = storiesWithoutUrl.map((s) => ({
   storyViewUrl: `${BASE_VIEW_URL}?sliceBy%5Bvalue%5D=${encodeURI(s.storyName).replace(/#/g, '%23').replace(/&/g, '%26')}`,
 }));
 
+const storiesWithArchived = [
+  ...storiesWithoutUrl,
+  {
+    storyName: 'regular / NO STORY; SET STORY FIELD',
+    storyOptionId: '28415d6c',
+    color: 'GRAY' as const,
+    openItemCount: 5,
+    storyViewUrl: null,
+  },
+];
+
 const meta: Meta<typeof ConsoleStoryList> = {
   title: 'Console/ConsoleStoryList',
   component: ConsoleStoryList,
   args: {
+    showGray: false,
     onCreateIssue: () => Promise.resolve(),
     onAddStory: () => Promise.resolve(),
     onSelectColor: () => undefined,
+    onToggleGray: () => undefined,
     optimisticColors: {},
     colorChangeInFlight: null,
     colorErrors: {},
@@ -101,5 +114,23 @@ export const ErrorState: Story = {
     stories: [],
     isLoading: false,
     error: 'HTTP 404',
+  },
+};
+
+export const WithArchivedHidden: Story = {
+  args: {
+    stories: storiesWithArchived,
+    isLoading: false,
+    error: null,
+    showGray: false,
+  },
+};
+
+export const WithArchivedShown: Story = {
+  args: {
+    stories: storiesWithArchived,
+    isLoading: false,
+    error: null,
+    showGray: true,
   },
 };

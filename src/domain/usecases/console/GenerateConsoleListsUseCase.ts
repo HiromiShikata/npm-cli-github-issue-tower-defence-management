@@ -173,17 +173,15 @@ export class GenerateConsoleListsUseCase {
     const defaultNameWithOwner =
       issues.find((issue) => issue.nameWithOwner !== '')?.nameWithOwner ?? null;
 
-    const storyEntries: ConsoleStoryEntry[] = storyOptions
-      .filter((option) => option.color !== 'GRAY')
-      .map((option) => ({
-        storyName: option.name,
-        storyOptionId: option.id,
-        color: option.color,
-        openItemCount: openItemCountByStory.get(option.name) ?? 0,
-        storyViewUrl: urlOfStoryView
-          ? `${urlOfStoryView}?sliceBy%5Bvalue%5D=${encodeForURI(option.name)}`
-          : null,
-      }));
+    const storyEntries: ConsoleStoryEntry[] = storyOptions.map((option) => ({
+      storyName: option.name,
+      storyOptionId: option.id,
+      color: option.color,
+      openItemCount: openItemCountByStory.get(option.name) ?? 0,
+      storyViewUrl: urlOfStoryView
+        ? `${urlOfStoryView}?sliceBy%5Bvalue%5D=${encodeForURI(option.name)}`
+        : null,
+    }));
 
     return {
       'workflow-blocker': buildStatusTabFromSource(

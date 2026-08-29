@@ -19,13 +19,25 @@ const storyEntries: ConsoleStoryEntry[] = [
   },
 ];
 
+const grayStoryEntry: ConsoleStoryEntry = {
+  storyName: 'Archived Story',
+  storyOptionId: 'gray-id',
+  color: 'GRAY',
+  openItemCount: 3,
+  storyViewUrl: null,
+};
+
+const entriesWithGray: ConsoleStoryEntry[] = [...storyEntries, grayStoryEntry];
+
 const defaultProps = {
   stories: storyEntries,
   isLoading: false,
   error: null,
+  showGray: false,
   onCreateIssue: () => Promise.resolve(),
   onAddStory: () => Promise.resolve(),
   onSelectColor: () => undefined,
+  onToggleGray: () => undefined,
   optimisticColors: {} as Record<string, ConsoleColor>,
   colorChangeInFlight: null as string | null,
   colorErrors: {} as Record<string, string>,
@@ -369,5 +381,89 @@ describe('ConsoleStoryList', () => {
       fireEvent.click(firstButton);
     });
     expect(writeText).toHaveBeenCalledWith(storyEntries[0].storyName);
+  });
+
+  describe('gray story toggle', () => {
+    it('hides gray stories when showGray is false', () => {
+      const { queryByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={entriesWithGray}
+          showGray={false}
+        />,
+      );
+      expect(queryByText('Archived Story')).toBeNull();
+      expect(queryByText('TDPM Console port')).toBeInTheDocument();
+    });
+
+    it('shows gray stories when showGray is true', () => {
+      const { getByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={entriesWithGray}
+          showGray={true}
+        />,
+      );
+      expect(getByText('Archived Story')).toBeInTheDocument();
+    });
+
+    it('shows the toggle button labeled Show archived when at least one gray story exists and showGray is false', () => {
+      const { getByRole } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={entriesWithGray}
+          showGray={false}
+        />,
+      );
+      expect(
+        getByRole('button', { name: 'Show archived' }),
+      ).toBeInTheDocument();
+    });
+
+    it('shows the toggle button labeled Hide archived when showGray is true', () => {
+      const { getByRole } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={entriesWithGray}
+          showGray={true}
+        />,
+      );
+      expect(
+        getByRole('button', { name: 'Hide archived' }),
+      ).toBeInTheDocument();
+    });
+
+    it('does not show the toggle button when no gray stories exist', () => {
+      const { queryByRole } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyEntries} />,
+      );
+      expect(queryByRole('button', { name: 'Show archived' })).toBeNull();
+      expect(queryByRole('button', { name: 'Hide archived' })).toBeNull();
+    });
+
+    it('calls onToggleGray when the toggle button is clicked', () => {
+      const onToggleGray = jest.fn();
+      const { getByRole } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={entriesWithGray}
+          showGray={false}
+          onToggleGray={onToggleGray}
+        />,
+      );
+      fireEvent.click(getByRole('button', { name: 'Show archived' }));
+      expect(onToggleGray).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows No active stories when all stories are gray and showGray is false', () => {
+      const { getByText } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={[grayStoryEntry]}
+          showGray={false}
+        />,
+      );
+      expect(getByText('No active stories')).toBeInTheDocument();
+    });
   });
 });
