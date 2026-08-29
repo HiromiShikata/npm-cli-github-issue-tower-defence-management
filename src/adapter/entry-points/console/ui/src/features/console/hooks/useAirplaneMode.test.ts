@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
   type AirplaneSnapshot,
+  readAirplaneModeFlag,
   writeAirplaneModeFlag,
 } from '../lib/airplaneSnapshot';
 import { useAirplaneMode } from './useAirplaneMode';
@@ -275,5 +276,29 @@ describe('useAirplaneMode', () => {
     await waitFor(() => {
       expect(result.current.status).toBe('on');
     });
+  });
+
+  it('sets status to error and does not write the flag when storeAirplaneSnapshot rejects', async () => {
+    Object.defineProperty(global, 'caches', {
+      writable: true,
+      value: {
+        open: jest.fn().mockRejectedValue(new Error('Cache API unavailable')),
+        delete: jest.fn().mockResolvedValue(true),
+      },
+    });
+    mockFetchSse([{ type: 'done', snapshot: makeMinimalSnapshot() }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+
+    act(() => {
+      result.current.startSync();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(readAirplaneModeFlag()).toBe(false);
+    expect(result.current.snapshot).toBeNull();
   });
 });

@@ -67,15 +67,24 @@ export const storeAirplaneSnapshot = async (
   snapshot: AirplaneSnapshot,
 ): Promise<void> => {
   if (typeof caches === 'undefined') {
-    return;
+    throw new Error('Cache API unavailable');
   }
-  const cache = await caches.open(AIRPLANE_CACHE_NAME);
-  await cache.put(
-    AIRPLANE_SNAPSHOT_REQUEST_URL,
-    new Response(JSON.stringify(snapshot), {
-      headers: { 'Content-Type': 'application/json' },
-    }),
-  );
+  try {
+    const cache = await caches.open(AIRPLANE_CACHE_NAME);
+    await cache.put(
+      AIRPLANE_SNAPSHOT_REQUEST_URL,
+      new Response(JSON.stringify(snapshot), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+  } catch (err) {
+    if (err instanceof Error && err.name === 'QuotaExceededError') {
+      throw new Error(
+        'Not enough browser storage to save the offline snapshot. Free up storage and retry.',
+      );
+    }
+    throw err;
+  }
 };
 
 export const loadAirplaneSnapshot =

@@ -9,6 +9,7 @@ import {
 } from '../components/operations/ConsoleUndoToast';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
+import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
 import { useConsoleNavigation } from '../hooks/useConsoleNavigation';
@@ -73,6 +74,7 @@ const OVERLAY_NAMESPACE_FALLBACK = 'console';
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
+  const featuresConfig = useConsoleFeaturesConfig();
   const airplaneMode = useAirplaneMode();
   const airplaneSnapshot =
     airplaneMode.status === 'on' ? airplaneMode.snapshot : null;
@@ -278,6 +280,13 @@ export const ConsolePage = () => {
 
   const handleQueueAction = useCallback(
     (input: ConsoleQueueActionInput): void => {
+      if (airplaneMode.status === 'on') {
+        actionQueue.showError(
+          'Airplane mode',
+          'This action requires a network connection. Turn off airplane mode and try again.',
+        );
+        return;
+      }
       const actedKey = overlayKeyForItem(input.item);
       actionQueue.enqueue({
         message: formatActionToast(input.kind, input.item, activeTab),
@@ -308,6 +317,7 @@ export const ConsolePage = () => {
       actionQueue,
       activeTab,
       advanceToNext,
+      airplaneMode.status,
       timerMode,
       isTimerExpired,
       projectMinutes,
@@ -489,6 +499,7 @@ export const ConsolePage = () => {
       )}
       {actionQueue.error !== null && (
         <ConsoleErrorToast
+          title={actionQueue.error.message}
           message={`Operation failed: ${actionQueue.error.reason}`}
           onDismiss={actionQueue.dismissError}
         />
@@ -517,6 +528,7 @@ export const ConsolePage = () => {
             onClose={closeSettings}
           />
         }
+        airplaneModeEnabled={featuresConfig.airplaneMode}
         airplaneModeStatus={airplaneMode.status}
         airplaneModeProgress={airplaneMode.progress}
         airplaneModeCapturedAt={airplaneSnapshot?.capturedAt ?? null}

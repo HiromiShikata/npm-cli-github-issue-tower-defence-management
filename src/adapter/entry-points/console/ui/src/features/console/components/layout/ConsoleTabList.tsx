@@ -18,6 +18,7 @@ export type ConsoleTabBarProps = {
   onSelectTab: (tab: ConsoleTabName) => void;
   onSelectProject: (pjcode: string) => void;
   settingsButton?: ReactNode;
+  airplaneModeEnabled: boolean;
   airplaneModeStatus: AirplaneModeStatus;
   airplaneModeProgress: AirplaneSyncProgress | null;
   airplaneModeCapturedAt: string | null;
@@ -37,6 +38,7 @@ export const ConsoleTabList = ({
   onSelectTab,
   onSelectProject,
   settingsButton,
+  airplaneModeEnabled,
   airplaneModeStatus,
   airplaneModeProgress,
   airplaneModeCapturedAt,
@@ -181,14 +183,16 @@ export const ConsoleTabList = ({
       {settingsButton !== undefined && (
         <span className="console-tab-settings">{settingsButton}</span>
       )}
-      <ConsoleAirplaneModeButton
-        status={airplaneModeStatus}
-        progress={airplaneModeProgress}
-        capturedAt={airplaneModeCapturedAt}
-        failures={airplaneModeFailures}
-        onStartSync={onAirplaneModeStartSync}
-        onTurnOff={onAirplaneModeTurnOff}
-      />
+      {airplaneModeEnabled && (
+        <ConsoleAirplaneModeButton
+          status={airplaneModeStatus}
+          progress={airplaneModeProgress}
+          capturedAt={airplaneModeCapturedAt}
+          failures={airplaneModeFailures}
+          onStartSync={onAirplaneModeStartSync}
+          onTurnOff={onAirplaneModeTurnOff}
+        />
+      )}
     </nav>
   );
 };

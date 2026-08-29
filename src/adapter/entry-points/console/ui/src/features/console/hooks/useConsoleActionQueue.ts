@@ -42,6 +42,7 @@ export type ConsoleActionQueue = {
   pending: ConsolePendingActionView | null;
   error: ConsoleActionError | null;
   enqueue: (action: ConsoleQueuedAction) => void;
+  showError: (message: string, reason: string) => void;
   undo: () => void;
   dismissError: () => void;
 };
@@ -89,6 +90,13 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     setError(null);
   }, []);
 
+  const showError = useCallback(
+    (message: string, reason: string): void => {
+      setError({ message, reason });
+    },
+    [],
+  );
+
   const enqueue = useCallback(
     (action: ConsoleQueuedAction): void => {
       if (actionRef.current !== null && !committedRef.current) {
@@ -126,5 +134,5 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
 
   useEffect(() => clearTimer, [clearTimer]);
 
-  return { pending, error, enqueue, undo, dismissError };
+  return { pending, error, enqueue, showError, undo, dismissError };
 };

@@ -1,8 +1,16 @@
 import {
   parseAirplaneSnapshot,
   readAirplaneModeFlag,
+  storeAirplaneSnapshot,
   writeAirplaneModeFlag,
 } from './airplaneSnapshot';
+
+const minimalSnapshot = () => ({
+  capturedAt: '2026-01-01T00:00:00Z',
+  tabs: {},
+  items: {},
+  failures: [],
+});
 
 describe('airplaneSnapshot', () => {
   describe('parseAirplaneSnapshot', () => {
@@ -309,6 +317,42 @@ describe('airplaneSnapshot', () => {
       writeAirplaneModeFlag(true);
       writeAirplaneModeFlag(false);
       expect(readAirplaneModeFlag()).toBe(false);
+    });
+  });
+
+  describe('storeAirplaneSnapshot', () => {
+    it('rejects when Cache API is unavailable', async () => {
+      const originalCaches = globalThis.caches;
+      Object.defineProperty(globalThis, 'caches', {
+        configurable: true,
+        writable: true,
+        value: undefined,
+      });
+      await expect(storeAirplaneSnapshot(minimalSnapshot())).rejects.toThrow(
+        'Cache API unavailable',
+      );
+      Object.defineProperty(globalThis, 'caches', {
+        configurable: true,
+        writable: true,
+        value: originalCaches,
+      });
+    });
+
+    it('rejects with a user-readable message when cache.put throws QuotaExceededError', async () => {
+      const quotaError = new DOMException('QuotaExceededError', 'QuotaExceededError');
+      const mockCache = {
+        put: jest.fn().mockRejectedValue(quotaError),
+      };
+      Object.defineProperty(globalThis, 'caches', {
+        configurable: true,
+        writable: true,
+        value: {
+          open: jest.fn().mockResolvedValue(mockCache),
+        },
+      });
+      await expect(storeAirplaneSnapshot(minimalSnapshot())).rejects.toThrow(
+        'browser storage',
+      );
     });
   });
 });

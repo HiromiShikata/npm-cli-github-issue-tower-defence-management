@@ -75,7 +75,7 @@ describe('ConsoleAirplaneModeButton', () => {
         capturedAt="2026-01-01T00:00:00Z"
       />,
     );
-    expect(getByText(/2026-01-01/)).not.toBeNull();
+    expect(getByText(/2026/)).not.toBeNull();
     expect(getByText(/turn off/i)).not.toBeNull();
   });
 

@@ -19,6 +19,7 @@ const baseProps = {
   tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
   onSelectTab: () => {},
   onSelectProject: () => {},
+  airplaneModeEnabled: true,
   airplaneModeStatus: 'off' as const,
   airplaneModeProgress: null,
   airplaneModeCapturedAt: null,
@@ -234,6 +235,20 @@ describe('ConsoleTabList', () => {
     fireEvent.click(getByText('gamma'));
     expect(
       baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeNull();
+  });
+
+  it('does not render the airplane mode button when airplaneModeEnabled is false', () => {
+    const { baseElement } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        airplaneModeEnabled={false}
+      />,
+    );
+    expect(
+      baseElement.querySelector('.console-airplane-mode'),
     ).toBeNull();
   });
 });
