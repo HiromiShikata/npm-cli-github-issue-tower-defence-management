@@ -15,7 +15,6 @@ import {
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { dropTrailingAutoStatusCheckComments } from './autoStatusCheckComments';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
@@ -340,16 +339,6 @@ export class RevertOrphanedPreparationUseCase {
       );
       return { outcome: 'reject', comments: [] };
     }
-    const isTrustedAuthor = (author: string): boolean =>
-      isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors);
-    const commentsBeforeOwnStatusComments = dropTrailingAutoStatusCheckComments(
-      comments,
-      isTrustedAuthor,
-    );
-    const lastReport =
-      commentsBeforeOwnStatusComments[
-        commentsBeforeOwnStatusComments.length - 1
-      ] ?? null;
     const lastComment = comments[comments.length - 1];
     if (!lastComment || !isAgentReportBody(lastComment.content)) {
       return { outcome: 'reject', comments };

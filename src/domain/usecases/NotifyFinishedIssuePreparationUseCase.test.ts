@@ -5166,7 +5166,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.anything(),
         expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
       );
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
     });
   });
 });

@@ -2,7 +2,6 @@ import {
   IssueRepository,
   RelatedPullRequest,
 } from './adapter-interfaces/IssueRepository';
-import { normalizeReportBody } from './normalizeReportBody';
 
 export type PrRejectedReasonType =
   | 'PULL_REQUEST_NOT_FOUND'

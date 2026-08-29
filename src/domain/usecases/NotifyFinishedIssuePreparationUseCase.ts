@@ -363,7 +363,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    if (rejections.length <= 0 && nextStepAgent !== null) {
+    if (nextStepAgent !== null) {
       const repetition = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: issue.agent,
         nextStepAgent,
@@ -413,6 +413,17 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
+      if (rejections.length > 0) {
+        await this.setDependedIssueUrlForAllOpenPRs(
+          issue,
+          params.issueUrl,
+          project,
+        );
+        await this.issueCommentRepository.createComment(
+          issue,
+          rejectionStatusMessage,
+        );
+      }
       if (repetition.type === 'dispatchAgain') {
         await this.issueCommentRepository.createComment(
           issue,
