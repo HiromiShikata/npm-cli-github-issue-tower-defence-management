@@ -33,6 +33,7 @@ export type ConfigFile = {
   consoleGithubTokenFileDir?: string;
   disks?: DiskConfig[];
   ownerApprovalTimeoutCycles?: number;
+  errorReportingRepository?: string;
 };
 
 export type DiskConfig = {
@@ -139,6 +140,7 @@ const knownProjectReadmeConfigKeys = [
   'labelsNotRequiringPullRequest',
   'changeTargetPathAliases',
   'consoleDataOutputDir',
+  'errorReportingRepository',
 ] as const;
 
 export const loadConfigFile = (configFilePath: string): ConfigFile => {
@@ -210,6 +212,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       ownerApprovalTimeoutCycles: getNumberValue(
         parsed,
         'ownerApprovalTimeoutCycles',
+      ),
+      errorReportingRepository: getStringValue(
+        parsed,
+        'errorReportingRepository',
       ),
     };
   } catch (error) {
@@ -297,6 +303,10 @@ export const parseProjectReadmeConfig = (
         'changeTargetPathAliases',
       ),
       consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
+      errorReportingRepository: getStringValue(
+        parsed,
+        'errorReportingRepository',
+      ),
     };
   } catch {
     console.warn('Failed to parse YAML from project README config section');
@@ -403,6 +413,10 @@ export const mergeConfigs = (
   ownerApprovalTimeoutCycles:
     cliOverrides.ownerApprovalTimeoutCycles ??
     configFile.ownerApprovalTimeoutCycles,
+  errorReportingRepository:
+    readmeOverrides.errorReportingRepository ??
+    cliOverrides.errorReportingRepository ??
+    configFile.errorReportingRepository,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
