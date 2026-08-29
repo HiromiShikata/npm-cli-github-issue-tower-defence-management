@@ -929,6 +929,8 @@ export const handleDeleteAllComments = async (
   if (!isNonEmptyString(issueUrl)) {
     return badRequest('issueUrl is required');
   }
-  await context.resolveIssueRepository(issueUrl).deleteAllCommentsByUrl(issueUrl);
+  await context
+    .resolveIssueRepository(issueUrl)
+    .deleteAllCommentsByUrl(issueUrl);
   return ok();
 };

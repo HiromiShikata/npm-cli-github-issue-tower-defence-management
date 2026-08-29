@@ -2340,8 +2340,18 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify([
-              { id: 101, user: { login: 'alice' }, body: 'a', created_at: '2024-01-01T00:00:00Z' },
-              { id: 102, user: { login: 'bob' }, body: 'b', created_at: '2024-01-02T00:00:00Z' },
+              {
+                id: 101,
+                user: { login: 'alice' },
+                body: 'a',
+                created_at: '2024-01-01T00:00:00Z',
+              },
+              {
+                id: 102,
+                user: { login: 'bob' },
+                body: 'b',
+                created_at: '2024-01-02T00:00:00Z',
+              },
             ]),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
           ),
@@ -2379,7 +2389,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         body: 'text',
         created_at: '2024-01-01T00:00:00Z',
       }));
-      const secondPage = [{ id: 200, user: { login: 'user' }, body: 'last', created_at: '2024-02-01T00:00:00Z' }];
+      const secondPage = [
+        {
+          id: 200,
+          user: { login: 'user' },
+          body: 'last',
+          created_at: '2024-02-01T00:00:00Z',
+        },
+      ];
       const fetchSpy = jest.spyOn(global, 'fetch');
       fetchSpy.mockResolvedValueOnce(
         new Response(JSON.stringify(firstPage), {
@@ -2414,9 +2431,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('throws when the API responds with a non-2xx status on the GET', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
-      );
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
+        );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       await expect(
@@ -2431,12 +2450,22 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         .spyOn(global, 'fetch')
         .mockResolvedValueOnce(
           new Response(
-            JSON.stringify([{ id: 99, user: null, body: 'x', created_at: '2024-01-01T00:00:00Z' }]),
+            JSON.stringify([
+              {
+                id: 99,
+                user: null,
+                body: 'x',
+                created_at: '2024-01-01T00:00:00Z',
+              },
+            ]),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
           ),
         )
         .mockResolvedValueOnce(
-          new Response('Unauthorized', { status: 401, statusText: 'Unauthorized' }),
+          new Response('Unauthorized', {
+            status: 401,
+            statusText: 'Unauthorized',
+          }),
         );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
