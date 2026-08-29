@@ -1,3 +1,10 @@
+## [2.10.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.10.0...v2.10.1) (2026-08-29)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** raise workflow blocker task when next step agent is absent from agents list ([#1870](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1870)) ([52807ae](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/52807ae71f536b8575adac0e2d1beb2d46dfe3ec)), closes [#1861](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1861)
+
 # [2.10.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.9.0...v2.10.0) (2026-08-29)
 
 

@@ -109,11 +109,7 @@ class NotifyFinishedIssuePreparationUseCase {
                 params.agents &&
                 params.agents.length > 0 &&
                 !params.agents.includes(nextStepAgent)) {
-                issue.status = WorkflowStatus_1.FAILED_PREPARATION_STATUS_NAME;
-                await this.issueRepository.update(issue, project);
-                await this.issueRepository.updateStatus(project, issue, failedPreparationStatusOption.id);
-                await this.patchConsoleTab(issue);
-                await this.issueCommentRepository.createComment(issue, `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`);
+                await this.handleUnregisteredNextStepAgent(issue, project, awaitingWorkspaceStatusOption, nextStepAgent);
                 return;
             }
             const ciFailingPrUrl = await this.resolveLinkedPrWithCiFailure(issue, params.developerAgentNames ?? null);
@@ -255,6 +251,52 @@ class NotifyFinishedIssuePreparationUseCase {
             await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
             await this.patchConsoleTab(issue);
             await this.issueCommentRepository.createComment(issue, `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`);
+        };
+        this.handleUnregisteredNextStepAgent = async (issue, project, awaitingWorkspaceStatusOption, nextStepAgent) => {
+            const blockerIssueTitle = `Unregistered agent in workflow configuration: ${nextStepAgent}`;
+            const searchResults = await this.issueRepository.searchIssue({
+                owner: issue.org,
+                repositoryName: issue.repo,
+                type: 'issue',
+                state: 'open',
+                title: blockerIssueTitle,
+            });
+            const exactMatch = searchResults.find((i) => i.title === blockerIssueTitle);
+            let blockerIssueUrl;
+            if (exactMatch) {
+                blockerIssueUrl = exactMatch.url;
+            }
+            else {
+                const body = [
+                    `The last agent report on ${issue.url} designated \`nextStepAgent\` as \`${nextStepAgent}\`, which is absent from the configured agents list.`,
+                    '',
+                    `- Missing agent name: \`${nextStepAgent}\``,
+                    `- Declaring task: ${issue.url}`,
+                ].join('\n');
+                const issueNumber = await this.issueRepository.createNewIssue(issue.org, issue.repo, blockerIssueTitle, body, [], []);
+                blockerIssueUrl = `https://github.com/${issue.org}/${issue.repo}/issues/${issueNumber}`;
+            }
+            if (project.story) {
+                const workflowBlockerStory = project.story.stories.find((s) => s.name.toLowerCase().includes('workflow blocker'));
+                if (workflowBlockerStory) {
+                    await this.issueRepository.addIssueToProject(project, blockerIssueUrl);
+                    const blockerIssue = await this.issueRepository.getIssueByUrl(blockerIssueUrl);
+                    if (blockerIssue) {
+                        await this.issueRepository.updateStory({ ...project, story: project.story }, blockerIssue, workflowBlockerStory.id);
+                    }
+                }
+            }
+            if (project.dependedIssueUrlSeparatedByComma) {
+                await this.issueRepository.setDependedIssueUrl(issue.url, project, blockerIssueUrl);
+            }
+            else {
+                console.warn(`dependedIssueUrlSeparatedByComma not configured; cannot block ${issue.url} via ${blockerIssueUrl}`);
+            }
+            issue.status = WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME;
+            await this.issueRepository.update(issue, project);
+            await this.issueRepository.updateStatus(project, issue, awaitingWorkspaceStatusOption.id);
+            await this.patchConsoleTab(issue);
+            await this.issueCommentRepository.createComment(issue, `nextStepAgent \`${nextStepAgent}\` is not in the configured agents list. Created workflow blocker task:\n${blockerIssueUrl}`);
         };
         this.collectRejections = async (issue, comments, isTrustedAuthor, labelsNotRequiringPullRequest, nextStepAgent, developerAgentNames) => {
             const rejections = [];
