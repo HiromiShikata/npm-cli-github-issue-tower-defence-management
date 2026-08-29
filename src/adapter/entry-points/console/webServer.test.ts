@@ -1493,6 +1493,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
     server: http.Server,
     requestPath: string,
     method = 'GET',
+    headers?: Record<string, string>,
   ): Promise<{
     statusCode: number;
     body: string;
@@ -1508,7 +1509,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
     const port = address.port;
     return new Promise((resolve, reject) => {
       const httpRequest = http.request(
-        { host: '127.0.0.1', port, path: requestPath, method },
+        { host: '127.0.0.1', port, path: requestPath, method, headers },
         (response) => {
           const chunks: Uint8Array[] = [];
           response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
@@ -1647,7 +1648,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       dashboardDataDir: dataDir,
     });
     try {
-      const response = await requestServer(server, '/tdpm.txt');
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
       expect(response.statusCode).toBe(200);
       expect(response.body).toBe(expectedComposed);
       expect(response.contentType).toBe('text/html; charset=utf-8');
@@ -1674,7 +1675,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       dashboardDataDir: null,
     });
     try {
-      const response = await requestServer(server, '/tdpm.txt');
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
       expect(response.statusCode).toBe(200);
       expect(response.body).toBe(staticDashboardRaw);
       expect(response.contentType).toBe('text/html; charset=utf-8');
@@ -1700,7 +1701,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       dashboardDataDir: dataDir,
     });
     try {
-      const response = await requestServer(server, '/tdpm.txt');
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
       expect(response.statusCode).toBe(200);
       expect(response.body).toBe(staticDashboardRaw);
     } finally {
@@ -1733,7 +1734,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       dashboardDataDir: dataDir,
     });
     try {
-      const response = await requestServer(server, '/tdpm.txt');
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
       expect(response.statusCode).toBe(200);
       expect(response.body).toBe(staticDashboardRaw);
     } finally {
@@ -1753,7 +1754,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       dashboardDataDir: null,
     });
     try {
-      const response = await requestServer(server, '/tdpm.txt');
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
       expect(response.statusCode).toBe(404);
     } finally {
       await closeServer(server);
@@ -1768,7 +1769,7 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       dashboardDataDir: null,
     });
     try {
-      const response = await requestServer(server, '/tdpm.txt');
+      const response = await requestServer(server, `/tdpm.txt?k=${testToken}`);
       expect(response.statusCode).toBe(404);
     } finally {
       await closeServer(server);
@@ -1794,6 +1795,66 @@ describe('webServer dashboard /tdpm.txt route integration', () => {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
       fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 401 for GET /tdpm.txt without a token', async () => {
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: null,
+    });
+    try {
+      const response = await requestServer(server, '/tdpm.txt');
+      expect(response.statusCode).toBe(401);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 401 for GET /tdpm.txt with wrong token via query param', async () => {
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: null,
+    });
+    try {
+      const response = await requestServer(server, '/tdpm.txt?k=wrong-token');
+      expect(response.statusCode).toBe(401);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      fs.rmSync(staticDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns 200 for GET /tdpm.txt with valid token via x-pv-token header', async () => {
+    const staticDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'dashboard-static-'),
+    );
+    writeStaticDashboard(staticDir);
+    const { server, tmpDir } = await startServer({
+      dashboardDir: staticDir,
+      dashboardDataDir: null,
+    });
+    try {
+      const response = await requestServer(server, '/tdpm.txt', 'GET', {
+        [CONSOLE_TOKEN_HEADER]: testToken,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe(staticDashboardRaw);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
       fs.rmSync(staticDir, { recursive: true, force: true });
     }
   });
