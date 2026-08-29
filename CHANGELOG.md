@@ -1,3 +1,10 @@
+## [2.1.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.1.1...v2.1.2) (2026-08-29)
+
+
+### Bug Fixes
+
+* **story-reorder:** add up/down buttons to Stories tab and fix 400 error ([#1845](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1845)) ([a49dbf1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a49dbf187a8cff3849c057dd1f8ecbd811decbfa))
+
 ## [2.1.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.1.0...v2.1.1) (2026-08-29)
 
 

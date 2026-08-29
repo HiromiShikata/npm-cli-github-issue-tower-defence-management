@@ -1,4 +1,4 @@
-import { type FieldOption, type Project } from '../../../domain/entities/Project';
+import { type Project } from '../../../domain/entities/Project';
 import type { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
@@ -20,7 +20,6 @@ export type ConsoleOperationContext = {
     isPjcodeConfigured: ConsolePjcodeValidator;
     consoleDataOutputDir: string | null;
     issueAttachmentRepository: IssueAttachmentRepository | null;
-    updateStoryList: ((project: Project, stories: FieldOption[]) => Promise<FieldOption[]>) | null;
     resolveProjectRepository: ConsoleProjectRepositoryResolver | null;
     invalidateProject: ((pjcode: string) => void) | null;
     updateProjectCacheEntry: ((pjcode: string, updatedProject: Project) => void) | null;

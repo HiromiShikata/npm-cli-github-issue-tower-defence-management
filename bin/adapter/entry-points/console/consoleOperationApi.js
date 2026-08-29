@@ -574,6 +574,9 @@ const handleReorderStory = async (context, body) => {
     if (direction !== 'up' && direction !== 'down') {
         return badRequest('direction must be "up" or "down"');
     }
+    if (context.resolveProjectRepository === null) {
+        return badGateway('project repository is not configured');
+    }
     const binding = await context.resolveProject(pjcode);
     if (binding === null) {
         return badRequest(`no project configured for pjcode "${pjcode}"`);
@@ -581,9 +584,6 @@ const handleReorderStory = async (context, body) => {
     const { project } = binding;
     if (project.story === null) {
         return badRequest('project does not have a story field');
-    }
-    if (context.updateStoryList === null) {
-        return badRequest('updateStoryList is not configured');
     }
     const stories = project.story.stories;
     const index = stories.findIndex((s) => s.id === storyOptionId);
@@ -598,7 +598,9 @@ const handleReorderStory = async (context, body) => {
     const temp = reordered[index];
     reordered[index] = reordered[swapIndex];
     reordered[swapIndex] = temp;
-    await context.updateStoryList(project, reordered);
+    const projectRepository = context.resolveProjectRepository(project.url);
+    await projectRepository.updateStoryList(project, reordered);
+    context.invalidateProject?.(pjcode);
     return ok();
 };
 exports.handleReorderStory = handleReorderStory;

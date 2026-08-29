@@ -431,16 +431,12 @@ const handleOperationApi = async (options, requestPath, body) => {
         return null;
     }
     const resolveIssueRepository = options.resolveIssueRepository ?? (() => issueRepository);
-    const projectRepository = options.projectRepository ?? null;
     const context = {
         resolveIssueRepository,
         resolveProject,
         isPjcodeConfigured,
         consoleDataOutputDir: options.consoleDataOutputDir,
         issueAttachmentRepository: options.issueAttachmentRepository ?? null,
-        updateStoryList: projectRepository !== null
-            ? (project, stories) => projectRepository.updateStoryList(project, stories)
-            : null,
         resolveProjectRepository: options.resolveProjectRepository ?? null,
         invalidateProject: options.invalidateProject ?? null,
         updateProjectCacheEntry: options.updateProjectCacheEntry ?? null,

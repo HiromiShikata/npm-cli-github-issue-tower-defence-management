@@ -1,7 +1,6 @@
 import * as http from 'http';
 import { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
-import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { Project } from '../../../domain/entities/Project';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { ConsoleIssueRepositoryResolver, ConsolePjcodeValidator, ConsoleProjectRepositoryResolver, ConsoleProjectResolver } from './consoleOperationApi';
@@ -36,7 +35,6 @@ export type WebServerOptions = {
     resolveProjectRepository?: ConsoleProjectRepositoryResolver | null;
     invalidateProject?: ((pjcode: string) => void) | null;
     issueAttachmentRepository?: IssueAttachmentRepository | null;
-    projectRepository?: Pick<ProjectRepository, 'updateStoryList'> | null;
     updateProjectCacheEntry?: ((pjcode: string, updatedProject: Project) => void) | null;
     issueTitleStateCache?: IssueTitleStateCache | null;
     pullRequestStatusCache?: PullRequestStatusCache | null;
