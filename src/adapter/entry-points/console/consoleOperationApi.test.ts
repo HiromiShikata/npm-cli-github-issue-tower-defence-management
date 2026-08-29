@@ -758,6 +758,74 @@ describe('consoleOperationApi', () => {
       expectRecordedAcrossTabs('PVTI_g');
     });
 
+    it('snoozes for one hour via updateNextActionHour', async () => {
+      const projectWithHour: Project = {
+        ...project,
+        nextActionHour: { name: 'Next Action Hour', fieldId: 'nahField' },
+      };
+      const response = await handleTriage(contextForProject(projectWithHour), {
+        pjcode: 'acme',
+        action: 'snooze_1hour',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_1h',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+      const call = issueRepository.updateNextActionHour.mock.calls[0];
+      expect(call[0]).toMatchObject({ nextActionHour: { fieldId: 'nahField' } });
+      expect(call[2]).toBeGreaterThanOrEqual(new Date().getUTCHours());
+      expectRecordedAcrossTabs('PVTI_1h');
+    });
+
+    it('snoozes for three hours via updateNextActionHour', async () => {
+      const projectWithHour: Project = {
+        ...project,
+        nextActionHour: { name: 'Next Action Hour', fieldId: 'nahField' },
+      };
+      const response = await handleTriage(contextForProject(projectWithHour), {
+        pjcode: 'acme',
+        action: 'snooze_3hours',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_3h',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+      const call = issueRepository.updateNextActionHour.mock.calls[0];
+      expect(call[0]).toMatchObject({ nextActionHour: { fieldId: 'nahField' } });
+      expect(call[2]).toBeGreaterThanOrEqual(new Date().getUTCHours() + 2);
+      expectRecordedAcrossTabs('PVTI_3h');
+    });
+
+    it('returns 400 when snooze_1hour is used on a project without nextActionHour', async () => {
+      const projectWithoutHour: Project = { ...project, nextActionHour: null };
+      const response = await handleTriage(
+        contextForProject(projectWithoutHour),
+        {
+          pjcode: 'acme',
+          action: 'snooze_1hour',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_nah',
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when snooze_3hours is used on a project without nextActionHour', async () => {
+      const projectWithoutHour: Project = { ...project, nextActionHour: null };
+      const response = await handleTriage(
+        contextForProject(projectWithoutHour),
+        {
+          pjcode: 'acme',
+          action: 'snooze_3hours',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_nah3',
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+    });
+
     it('closes an issue as completed via the triage close action', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',
