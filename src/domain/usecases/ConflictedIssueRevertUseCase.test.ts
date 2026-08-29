@@ -395,6 +395,9 @@ describe('ConflictedIssueRevertUseCase', () => {
       await expect(useCase.run({ projectUrl })).rejects.toThrow(
         'Failed to update branch for PR',
       );
+      expect(mockIssueRepository.updateBranch).toHaveBeenCalledWith(
+        conflictedPr.url,
+      );
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
