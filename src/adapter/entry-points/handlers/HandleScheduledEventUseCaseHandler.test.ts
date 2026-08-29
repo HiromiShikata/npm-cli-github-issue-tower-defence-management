@@ -17,6 +17,7 @@ jest.mock('../../repositories/issue/GraphqlProjectItemRepository');
 jest.mock('../../repositories/issue/ApiV3CheerioRestIssueRepository');
 jest.mock('../../repositories/LocalStorageCacheRepository');
 jest.mock('../../repositories/BaseGitHubRepository');
+jest.mock('../../repositories/BrowserGitHubProjectRepository');
 
 type RunFn = HandleScheduledEventUseCase['run'];
 const capturedRunInputs: Parameters<RunFn>[] = [];
@@ -154,6 +155,7 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
+import { BrowserGitHubProjectRepository } from '../../repositories/BrowserGitHubProjectRepository';
 
 const MockedGraphqlProjectRepository = jest.mocked(GraphqlProjectRepository);
 const MockedApiV3IssueRepository = jest.mocked(ApiV3IssueRepository);
@@ -256,6 +258,75 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       expect.anything(),
       'test-token',
     );
+  });
+
+  it('should pass bot github credentials from config to BrowserGitHubProjectRepository when env vars are absent', async () => {
+    const envKeys = ['GITHUB_USERNAME', 'GITHUB_PASSWORD', 'GITHUB_TOTP_SECRET'] as const;
+    const saved: Record<string, string | undefined> = {};
+    for (const key of envKeys) {
+      saved[key] = process.env[key];
+      delete process.env[key];
+    }
+    try {
+      const configWithBotCreds = {
+        ...validConfig,
+        credentials: {
+          ...validConfig.credentials,
+          bot: {
+            github: {
+              token: 'test-token',
+              name: 'umino-bot',
+              password: 'bot-password',
+              authenticatorKey: 'BOT_TOTP_SECRET',
+            },
+          },
+        },
+      };
+      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(configWithBotCreds));
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+      expect(BrowserGitHubProjectRepository).toHaveBeenCalledWith(
+        'umino-bot',
+        'bot-password',
+        'BOT_TOTP_SECRET',
+      );
+    } finally {
+      for (const key of envKeys) {
+        if (saved[key] !== undefined) process.env[key] = saved[key];
+      }
+    }
+  });
+
+  it('should prefer GITHUB_USERNAME and GITHUB_PASSWORD env vars over config bot github credentials', async () => {
+    process.env.GITHUB_USERNAME = 'env-username';
+    process.env.GITHUB_PASSWORD = 'env-password';
+    delete process.env.GITHUB_TOTP_SECRET;
+    try {
+      const configWithBotCreds = {
+        ...validConfig,
+        credentials: {
+          ...validConfig.credentials,
+          bot: {
+            github: {
+              token: 'test-token',
+              name: 'umino-bot',
+              password: 'bot-password',
+            },
+          },
+        },
+      };
+      jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(configWithBotCreds));
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+      expect(BrowserGitHubProjectRepository).toHaveBeenCalledWith(
+        'env-username',
+        'env-password',
+        undefined,
+      );
+    } finally {
+      delete process.env.GITHUB_USERNAME;
+      delete process.env.GITHUB_PASSWORD;
+    }
   });
 
   it('should write situation file after successful run with resolved config values', async () => {

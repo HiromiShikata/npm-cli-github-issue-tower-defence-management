@@ -190,6 +190,9 @@ export class HandleScheduledEventUseCaseHandler {
         bot: {
           github: {
             token: string;
+            name?: string;
+            password?: string;
+            authenticatorKey?: string;
           };
         };
       };
@@ -434,10 +437,11 @@ export class HandleScheduledEventUseCaseHandler {
     );
     const projectRequiredFieldCreateUseCase =
       new ProjectRequiredFieldCreateUseCase(projectRepository);
+    const botGithub = input.credentials.bot.github;
     const browserGitHubProjectRepository = new BrowserGitHubProjectRepository(
-      process.env.GITHUB_USERNAME,
-      process.env.GITHUB_PASSWORD,
-      process.env.GITHUB_TOTP_SECRET,
+      process.env.GITHUB_USERNAME ?? botGithub.name,
+      process.env.GITHUB_PASSWORD ?? botGithub.password,
+      process.env.GITHUB_TOTP_SECRET ?? botGithub.authenticatorKey,
     );
     const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase(
       projectRepository,
