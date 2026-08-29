@@ -3,6 +3,9 @@ import { GitHubIssueCheckpointRepository } from './GitHubIssueCheckpointReposito
 const VALID_URL = 'https://github.com/owner/repo/issues/42';
 const EXPECTED_API_URL =
   'https://api.github.com/repos/owner/repo/issues/42/comments';
+const EXPECTED_BODY = JSON.stringify({
+  body: 'From: :robot: preparation-daemon (-)\n\n```json\n{"pullRequestRequired": false}\n```\n\nThis implementation session was interrupted by the preparation daemon due to token near exhaustion. The task will be re-dispatched.',
+});
 
 describe('GitHubIssueCheckpointRepository', () => {
   let repository: GitHubIssueCheckpointRepository;
@@ -19,18 +22,15 @@ describe('GitHubIssueCheckpointRepository', () => {
 
     await repository.postCheckpoint(VALID_URL);
 
-    expect(fetchSpy).toHaveBeenCalledWith(
-      EXPECTED_API_URL,
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          Authorization: 'Bearer test-token',
-          Accept: 'application/vnd.github+json',
-          'Content-Type': 'application/json',
-        }),
-        body: expect.stringContaining('\\"pullRequestRequired\\"'),
-      }),
-    );
+    expect(fetchSpy).toHaveBeenCalledWith(EXPECTED_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-token',
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+      },
+      body: EXPECTED_BODY,
+    });
   });
 
   it('throws when the response is not 2xx', async () => {
