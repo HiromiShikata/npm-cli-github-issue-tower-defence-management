@@ -12,7 +12,6 @@ import { ConsoleNextActionDateActions } from './ConsoleNextActionDateActions';
 import { ConsoleOkAndAwaitingWorkspaceActions } from './ConsoleOkAndAwaitingWorkspaceActions';
 import { ConsolePullRequestReviewActions } from './ConsolePullRequestReviewActions';
 import { ConsoleStatusActions } from './ConsoleStatusActions';
-import { ConsoleStoryActions } from './ConsoleStoryActions';
 
 export type ConsoleOperationBarProps = {
   tab: ConsoleTabName;
@@ -20,7 +19,6 @@ export type ConsoleOperationBarProps = {
   hasPullRequest: boolean;
   rejectEnabled: boolean;
   statusOptions: ConsoleFieldOption[];
-  storyOptions: ConsoleFieldOption[];
   handlers: ConsoleOperationHandlers;
 };
 
@@ -29,10 +27,8 @@ export const ConsoleOperationMenu = ({
   hasPullRequest,
   rejectEnabled,
   statusOptions,
-  storyOptions,
   handlers,
 }: ConsoleOperationBarProps) => {
-  const showStory = tab === 'triage';
   return (
     <div className="console-operation-bar">
       <ConsoleOkAndAwaitingWorkspaceActions
@@ -49,12 +45,6 @@ export const ConsoleOperationMenu = ({
         isManualTriage={isManualTriageTab(tab)}
         onSetNextActionDate={handlers.onSetNextActionDate}
       />
-      {showStory && (
-        <ConsoleStoryActions
-          storyOptions={storyOptions}
-          onSetStory={handlers.onSetStory}
-        />
-      )}
       <ConsoleStatusActions
         statusOptions={statusOptions}
         onSetStatus={handlers.onSetStatus}

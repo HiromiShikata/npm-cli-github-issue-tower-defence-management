@@ -29,14 +29,20 @@ describe('parseConsoleDataRoute', () => {
   });
 
   it('parses a detail route', () => {
+    expect(parseConsoleDataRoute('/projects/acme/prs/detail/123.json')).toEqual(
+      {
+        kind: 'detail',
+        pjcode: 'acme',
+        tab: 'prs',
+        key: '123.json',
+      },
+    );
+  });
+
+  it('rejects the removed triage tab in a detail route', () => {
     expect(
       parseConsoleDataRoute('/projects/acme/triage/detail/123.json'),
-    ).toEqual({
-      kind: 'detail',
-      pjcode: 'acme',
-      tab: 'triage',
-      key: '123.json',
-    });
+    ).toBeNull();
   });
 
   it('parses an in-tmux route', () => {
@@ -173,11 +179,11 @@ describe('buildConsoleDataResponse', () => {
   });
 
   it('serves a detail file without exclusion', () => {
-    writeJson('acme/triage/detail/123.json', { number: 123 });
+    writeJson('acme/prs/detail/123.json', { number: 123 });
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'detail',
       pjcode: 'acme',
-      tab: 'triage',
+      tab: 'prs',
       key: '123.json',
     });
     expect(response.statusCode).toBe(200);
@@ -188,7 +194,7 @@ describe('buildConsoleDataResponse', () => {
     const response = buildConsoleDataResponse(baseDir, {
       kind: 'detail',
       pjcode: 'acme',
-      tab: 'triage',
+      tab: 'prs',
       key: '404.json',
     });
     expect(response.statusCode).toBe(404);

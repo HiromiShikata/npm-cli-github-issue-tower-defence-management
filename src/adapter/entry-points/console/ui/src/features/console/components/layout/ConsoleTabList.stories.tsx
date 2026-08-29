@@ -26,7 +26,6 @@ type Story = StoryObj<typeof ConsoleTabList>;
 const counts: Record<ConsoleTabName, number> = {
   'workflow-blocker': 5,
   prs: 35,
-  triage: 132,
   'failed-preparation': 2,
   'todo-by-human': 66,
   'todo-by-agent': 24,
@@ -46,7 +45,6 @@ export const ZeroCountTabsHidden: Story = {
     counts: {
       'workflow-blocker': 0,
       prs: 35,
-      triage: 0,
       'failed-preparation': 0,
       'todo-by-human': 18,
       'todo-by-agent': 0,
@@ -61,7 +59,6 @@ export const ZeroCountActiveTabStaysVisible: Story = {
     counts: {
       'workflow-blocker': 0,
       prs: 35,
-      triage: 0,
       'failed-preparation': 0,
       'todo-by-human': 18,
       'todo-by-agent': 0,
@@ -76,7 +73,6 @@ export const AfterAutoAdvanceToNextTab: Story = {
     counts: {
       'workflow-blocker': 0,
       prs: 0,
-      triage: 0,
       'failed-preparation': 2,
       'todo-by-human': 4,
       'todo-by-agent': 0,

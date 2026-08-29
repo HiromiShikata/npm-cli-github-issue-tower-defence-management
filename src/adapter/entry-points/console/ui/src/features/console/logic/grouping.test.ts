@@ -47,7 +47,7 @@ describe('resolveItemStory', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: {
         ts: 1,
-        mode: 'triage',
+        mode: 'todo-by-human',
         story: { name: 'Overlay', color: 'BLUE' },
       },
     };
@@ -73,7 +73,7 @@ describe('resolveItemStory', () => {
     const overlay: ConsoleOverlay = {
       PVTI_4: {
         ts: snapshotTs,
-        mode: 'triage',
+        mode: 'todo-by-human',
         story: { name: 'FreshOverlay', color: 'GREEN' },
       },
     };
@@ -92,7 +92,7 @@ describe('resolveItemStory', () => {
     const overlay: ConsoleOverlay = {
       PVTI_5: {
         ts: overlayTs,
-        mode: 'triage',
+        mode: 'todo-by-human',
         story: { name: 'StaleOverlay', color: 'RED' },
       },
     };
@@ -109,7 +109,7 @@ describe('resolveItemStory', () => {
     const overlay: ConsoleOverlay = {
       PVTI_6: {
         ts: 1,
-        mode: 'triage',
+        mode: 'todo-by-human',
         story: { name: 'OverlayStory', color: 'BLUE' },
       },
     };
@@ -122,7 +122,7 @@ describe('resolveItemStory', () => {
     const overlay: ConsoleOverlay = {
       PVTI_7: {
         ts: 1,
-        mode: 'triage',
+        mode: 'todo-by-human',
         story: { name: 'OverlayStory', color: 'BLUE' },
       },
     };
@@ -166,7 +166,7 @@ describe('buildConsoleListRows', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: {
         ts: 1,
-        mode: 'triage',
+        mode: 'todo-by-human',
         story: { name: 'Alpha', color: 'BLUE' },
       },
     };
@@ -212,7 +212,7 @@ describe('buildConsoleListRows', () => {
     const overlay: ConsoleOverlay = {
       PVTI_1: {
         ts: overlayTs,
-        mode: 'triage',
+        mode: 'todo-by-human',
         story: { name: 'StaleStory', color: 'RED' },
       },
     };

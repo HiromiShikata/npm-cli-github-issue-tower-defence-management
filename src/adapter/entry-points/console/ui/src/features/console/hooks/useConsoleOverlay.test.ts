@@ -19,10 +19,10 @@ describe('useConsoleOverlay', () => {
   it('patches and persists overlay entries with timestamp and mode', () => {
     const { result } = renderHook(() => useConsoleOverlay('acme'));
     act(() => {
-      result.current.patchOverlay('PVTI_2', { done: true }, 'triage');
+      result.current.patchOverlay('PVTI_2', { done: true }, 'todo-by-human');
     });
     expect(result.current.overlay.PVTI_2?.done).toBe(true);
-    expect(result.current.overlay.PVTI_2?.mode).toBe('triage');
+    expect(result.current.overlay.PVTI_2?.mode).toBe('todo-by-human');
     const stored = JSON.parse(
       localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );

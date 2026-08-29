@@ -232,22 +232,6 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
       '2026-06-17T23:41:08.000Z',
     ),
   ],
-  triage: [
-    issueItem(
-      778,
-      'Add Sonnet to Opus weekly-limit fallback routing per token',
-      'TRI00778',
-      'regular / workflow improvement',
-      '2026-06-12T23:01:55.000Z',
-    ),
-    issueItem(
-      692,
-      'Publish the generated documentation site to GitHub Pages',
-      'TRI00692',
-      'Publish product documentation site',
-      '2026-06-10T11:42:00.000Z',
-    ),
-  ],
   'failed-preparation': [
     {
       ...issueItem(

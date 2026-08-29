@@ -45,19 +45,9 @@ export type ConsoleStatusTab = {
   items: ConsoleListItem[];
 };
 
-export type ConsoleTriageTab = {
-  pjcode: string;
-  generatedAt: string;
-  storyOptions: ConsoleFieldOption[];
-  storyOrder: string[];
-  storyColors: Record<string, ConsoleColor>;
-  items: ConsoleListItem[];
-};
-
 export type ConsoleTabName =
   | 'workflow-blocker'
   | 'prs'
-  | 'triage'
   | 'failed-preparation'
   | 'todo-by-human'
   | 'todo-by-agent'
@@ -83,7 +73,6 @@ export type ConsoleStoriesTab = {
 export type ConsoleLists = {
   'workflow-blocker': ConsoleStatusTab;
   prs: ConsoleStatusTab;
-  triage: ConsoleTriageTab;
   'failed-preparation': ConsoleStatusTab;
   'todo-by-human': ConsoleStatusTab;
   'todo-by-agent': ConsoleStatusTab;
@@ -217,22 +206,6 @@ export class GenerateConsoleListsUseCase {
         (issue) => issue.status === TODO_BY_AGENT_STATUS_NAME,
         [TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done'],
       ),
-      triage: {
-        pjcode,
-        generatedAt,
-        storyOptions: this.buildFieldOptions(storyOptions, []),
-        storyOrder,
-        storyColors: this.buildStoryColorsString(storyOptions),
-        items: this.sortByStoryOrder(
-          actionableIssues.map((issue) =>
-            this.projectItem(
-              issue,
-              relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [],
-            ),
-          ),
-          storyOrder,
-        ),
-      },
       stories: {
         pjcode,
         generatedAt,
@@ -328,16 +301,6 @@ export class GenerateConsoleListsUseCase {
     const result: Record<string, { color: ConsoleColor }> = {};
     for (const option of options) {
       result[option.name] = { color: option.color };
-    }
-    return result;
-  };
-
-  private buildStoryColorsString = (
-    options: FieldOption[],
-  ): Record<string, ConsoleColor> => {
-    const result: Record<string, ConsoleColor> = {};
-    for (const option of options) {
-      result[option.name] = option.color;
     }
     return result;
   };

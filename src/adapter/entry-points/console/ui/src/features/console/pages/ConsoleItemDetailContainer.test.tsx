@@ -13,7 +13,6 @@ import {
   consoleRelatedPullRequestsFixture,
   consoleStatusOptionsFixture,
   consoleStoryColorsFixture,
-  consoleStoryOptionsFixture,
 } from '../testing/fixtures';
 import { ConsoleItemDetailContainer } from './ConsoleItemDetailContainer';
 
@@ -110,7 +109,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches()}
         operations={operations}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -144,7 +142,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches()}
         operations={buildOperations()}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -170,7 +167,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches()}
         operations={operations}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -212,7 +208,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches()}
         operations={operations}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -260,7 +255,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches()}
         operations={operations}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -311,7 +305,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches({ relatedPrsNeverResolve: true })}
         operations={operations}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -348,7 +341,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches({ prFiles: consoleChangedFilesFixture })}
         operations={operations}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -414,7 +406,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches()}
         operations={buildOperations()}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -437,7 +428,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches()}
         operations={buildOperations()}
         statusOptions={statusOptionsWithoutAwaitingWorkspace}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -458,7 +448,6 @@ describe('ConsoleItemDetailContainer', () => {
         caches={buildCaches()}
         operations={operations}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}
@@ -508,7 +497,6 @@ describe('ConsoleItemDetailContainer', () => {
         })}
         operations={operations}
         statusOptions={consoleStatusOptionsFixture}
-        storyOptions={consoleStoryOptionsFixture}
         storyColors={consoleStoryColorsFixture}
         storyName="TDPM Console port"
         overlayStatus={null}

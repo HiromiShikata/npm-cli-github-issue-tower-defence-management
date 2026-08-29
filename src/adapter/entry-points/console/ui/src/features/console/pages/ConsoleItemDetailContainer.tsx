@@ -38,7 +38,6 @@ export type ConsoleItemDetailContainerProps = {
   caches: ConsoleCaches;
   operations: ConsoleOperationsApi;
   statusOptions: ConsoleFieldOption[];
-  storyOptions: ConsoleFieldOption[];
   storyColors: ConsoleStoryColorSource;
   storyName: string | null;
   overlayStatus: ConsoleOverlayStatus | null;
@@ -54,7 +53,6 @@ export const ConsoleItemDetailContainer = ({
   caches,
   operations,
   statusOptions,
-  storyOptions,
   storyColors,
   storyName,
   overlayStatus,
@@ -231,7 +229,6 @@ export const ConsoleItemDetailContainer = ({
           hasPullRequest={hasPullRequest}
           rejectEnabled={pendingReviewComments.length > 0}
           statusOptions={statusOptions}
-          storyOptions={storyOptions}
           handlers={handlers}
         />
       }

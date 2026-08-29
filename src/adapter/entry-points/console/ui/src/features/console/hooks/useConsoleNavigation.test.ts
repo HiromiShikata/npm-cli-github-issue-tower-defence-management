@@ -11,7 +11,6 @@ const counts = (
 ): Record<ConsoleTabName, number> => ({
   'workflow-blocker': 0,
   prs: 0,
-  triage: 0,
   'failed-preparation': 0,
   'todo-by-human': 0,
   'todo-by-agent': 0,
@@ -21,11 +20,15 @@ const counts = (
 
 describe('parseTabFromPath', () => {
   it('reads a known tab from the project path', () => {
-    expect(parseTabFromPath('/projects/acme/triage')).toBe('triage');
+    expect(parseTabFromPath('/projects/acme/prs')).toBe('prs');
   });
 
   it('returns null for an unknown tab segment', () => {
     expect(parseTabFromPath('/projects/acme/unknown')).toBeNull();
+  });
+
+  it('returns null for the removed triage segment', () => {
+    expect(parseTabFromPath('/projects/acme/triage')).toBeNull();
   });
 
   it('returns null when there is no tab segment', () => {
@@ -56,16 +59,18 @@ describe('useConsoleNavigation', () => {
 
   it('builds a project tab href', () => {
     const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
-    expect(result.current.tabHref('triage')).toBe('/projects/acme/triage');
+    expect(result.current.tabHref('todo-by-human')).toBe(
+      '/projects/acme/todo-by-human',
+    );
   });
 
   it('selects a tab and updates the path', () => {
     const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
     act(() => {
-      result.current.selectTab('triage');
+      result.current.selectTab('todo-by-human');
     });
-    expect(result.current.activeTab).toBe('triage');
-    expect(window.location.pathname).toBe('/projects/acme/triage');
+    expect(result.current.activeTab).toBe('todo-by-human');
+    expect(window.location.pathname).toBe('/projects/acme/todo-by-human');
   });
 
   it('opens an item and reflects it in the hash', () => {
@@ -101,7 +106,6 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
         counts({
           'workflow-blocker': 3,
           prs: 5,
-          triage: 2,
           'failed-preparation': 1,
           'todo-by-human': 4,
         }),
@@ -114,10 +118,10 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
     const { result } = renderHook(() =>
       useConsoleNavigation(
         'acme',
-        counts({ 'workflow-blocker': 0, prs: 0, triage: 8 }),
+        counts({ 'workflow-blocker': 0, prs: 0, 'failed-preparation': 8 }),
       ),
     );
-    expect(result.current.activeTab).toBe('triage');
+    expect(result.current.activeTab).toBe('failed-preparation');
   });
 
   it('falls back to the first tab when every tab is empty', () => {
@@ -132,15 +136,15 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
       { initialProps: { tabCounts: counts() } },
     );
     expect(result.current.activeTab).toBe('workflow-blocker');
-    rerender({ tabCounts: counts({ triage: 6 }) });
-    expect(result.current.activeTab).toBe('triage');
+    rerender({ tabCounts: counts({ 'failed-preparation': 6 }) });
+    expect(result.current.activeTab).toBe('failed-preparation');
   });
 
   it('keeps the tab from the path even when counts are present', () => {
-    window.history.replaceState({}, '', '/projects/acme/triage?k=token');
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
     const { result } = renderHook(() =>
-      useConsoleNavigation('acme', counts({ triage: 6 })),
+      useConsoleNavigation('acme', counts({ 'todo-by-human': 6 })),
     );
-    expect(result.current.activeTab).toBe('triage');
+    expect(result.current.activeTab).toBe('todo-by-human');
   });
 });

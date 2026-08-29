@@ -81,7 +81,6 @@ export const recordDoneProjectItemId = (
 export const CONSOLE_DONE_TAB_NAMES: string[] = [
   'workflow-blocker',
   'prs',
-  'triage',
   'failed-preparation',
   'todo-by-human',
   'todo-by-agent',
@@ -98,7 +97,6 @@ export const CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES: string[] = [
 
 export const CONSOLE_DONE_STORY_SELECTED_TAB_NAMES: string[] = [
   'workflow-blocker',
-  'triage',
 ];
 
 export const recordDoneProjectItemIdForTabs = (

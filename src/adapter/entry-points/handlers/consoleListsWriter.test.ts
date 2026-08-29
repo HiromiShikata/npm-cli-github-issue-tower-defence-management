@@ -99,7 +99,6 @@ describe('writeConsoleLists', () => {
     for (const tab of [
       'workflow-blocker',
       'prs',
-      'triage',
       'failed-preparation',
       'todo-by-human',
       'todo-by-agent',

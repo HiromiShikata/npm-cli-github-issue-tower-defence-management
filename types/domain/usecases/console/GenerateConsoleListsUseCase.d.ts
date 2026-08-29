@@ -35,15 +35,7 @@ export type ConsoleStatusTab = {
     }>;
     items: ConsoleListItem[];
 };
-export type ConsoleTriageTab = {
-    pjcode: string;
-    generatedAt: string;
-    storyOptions: ConsoleFieldOption[];
-    storyOrder: string[];
-    storyColors: Record<string, ConsoleColor>;
-    items: ConsoleListItem[];
-};
-export type ConsoleTabName = 'workflow-blocker' | 'prs' | 'triage' | 'failed-preparation' | 'todo-by-human' | 'todo-by-agent' | 'stories';
+export type ConsoleTabName = 'workflow-blocker' | 'prs' | 'failed-preparation' | 'todo-by-human' | 'todo-by-agent' | 'stories';
 export type ConsoleStoryEntry = {
     storyName: string;
     storyOptionId: string;
@@ -64,7 +56,6 @@ export type ConsoleStoriesTab = {
 export type ConsoleLists = {
     'workflow-blocker': ConsoleStatusTab;
     prs: ConsoleStatusTab;
-    triage: ConsoleTriageTab;
     'failed-preparation': ConsoleStatusTab;
     'todo-by-human': ConsoleStatusTab;
     'todo-by-agent': ConsoleStatusTab;
@@ -87,7 +78,6 @@ export declare class GenerateConsoleListsUseCase {
     private projectItem;
     private buildFieldOptions;
     private buildStoryColorsObject;
-    private buildStoryColorsString;
     private sortByStoryOrder;
 }
 //# sourceMappingURL=GenerateConsoleListsUseCase.d.ts.map
