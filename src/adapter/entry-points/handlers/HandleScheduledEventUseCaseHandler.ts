@@ -55,7 +55,6 @@ import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDepe
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from '../../../domain/usecases/SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { StaleTaskPullRequestCloseUseCase } from '../../../domain/usecases/StaleTaskPullRequestCloseUseCase';
 import { CreateEstimationIssueUseCase } from '../../../domain/usecases/CreateEstimationIssueUseCase';
-import { ConvertCheckboxToIssueInStoryIssueUseCase } from '../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from '../../../domain/usecases/ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from '../../../domain/usecases/SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from '../../../domain/usecases/CreateNewStoryByLabelUseCase';
@@ -454,8 +453,6 @@ export class HandleScheduledEventUseCaseHandler {
       issueRepository,
       systemDateRepository,
     );
-    const convertCheckboxToIssueInStoryIssueUseCase =
-      new ConvertCheckboxToIssueInStoryIssueUseCase(issueRepository);
     const changeStatusByStoryColorUseCase = new ChangeStatusByStoryColorUseCase(
       systemDateRepository,
       issueRepository,
@@ -551,7 +548,6 @@ export class HandleScheduledEventUseCaseHandler {
       setDependedIssueUrlForOpenTaskPRsUseCase,
       staleTaskPullRequestCloseUseCase,
       createEstimationIssueUseCase,
-      convertCheckboxToIssueInStoryIssueUseCase,
       changeStatusByStoryColorUseCase,
       setNoStoryIssueToStoryUseCase,
       createNewStoryByLabel,

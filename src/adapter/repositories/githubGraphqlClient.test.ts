@@ -126,12 +126,12 @@ describe('githubGraphqlClient', () => {
         '    at postGithubGraphqlJson (/app/bin/adapter/repositories/githubGraphqlClient.js:120:22)',
         '    at GraphqlProjectItemRepository.fetchProjectItemByUrl (/app/bin/adapter/repositories/issue/GraphqlProjectItemRepository.js:1042:11)',
         '    at ApiV3CheerioRestIssueRepository.getIssueByUrl (/app/bin/adapter/repositories/issue/ApiV3CheerioRestIssueRepository.js:813:11)',
-        '    at async ConvertCheckboxToIssueInStoryIssueUseCase.run (/app/bin/domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase.js:63:31)',
+        '    at async ChangeStatusByStoryColorUseCase.run (/app/bin/domain/usecases/ChangeStatusByStoryColorUseCase.js:63:31)',
         '    at async HandleScheduledEventUseCase.runSlowSweepUseCases (/app/bin/domain/usecases/HandleScheduledEventUseCase.js:552:5)',
       ].join('\n');
 
       expect(extractGraphqlCallSite(stack)).toBe(
-        'GraphqlProjectItemRepository<-ApiV3CheerioRestIssueRepository<-ConvertCheckboxToIssueInStoryIssueUseCase',
+        'GraphqlProjectItemRepository<-ApiV3CheerioRestIssueRepository<-ChangeStatusByStoryColorUseCase',
       );
     });
 

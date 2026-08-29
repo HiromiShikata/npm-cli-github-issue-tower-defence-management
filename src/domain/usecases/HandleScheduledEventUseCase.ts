@@ -15,7 +15,6 @@ import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
 import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
-import { ConvertCheckboxToIssueInStoryIssueUseCase } from './ConvertCheckboxToIssueInStoryIssueUseCase';
 import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
 import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
 import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
@@ -130,7 +129,6 @@ export class HandleScheduledEventUseCase {
     readonly setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase,
     readonly staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase,
     readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase,
-    readonly convertCheckboxToIssueInStoryIssueUseCase: ConvertCheckboxToIssueInStoryIssueUseCase,
     readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase,
     readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase,
     readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase,
@@ -191,7 +189,6 @@ export class HandleScheduledEventUseCase {
     } | null;
     thresholdForAutoReject?: number;
     thresholdForDispatchLoop?: number;
-    createTaskFromStoryBodyCheckboxEnabled?: boolean;
     queryToAddProjectEnabled?: boolean;
     queryToAddProject?: string | null;
     storyProgressCommentEnabled?: boolean;
@@ -614,16 +611,6 @@ ${JSON.stringify(e)}
       repo: input.workingReport.repo,
       urlOfStoryView: input.urlOfStoryView,
       storyObjectMap: storyObjectMap,
-    });
-    await this.convertCheckboxToIssueInStoryIssueUseCase.run({
-      project,
-      issues,
-      cacheUsed,
-      urlOfStoryView: input.urlOfStoryView,
-      storyObjectMap: storyObjectMap,
-      manager: input.manager,
-      createTaskFromStoryBodyCheckboxEnabled:
-        input.createTaskFromStoryBodyCheckboxEnabled ?? false,
     });
     await this.changeStatusByStoryColorUseCase.run({
       project,

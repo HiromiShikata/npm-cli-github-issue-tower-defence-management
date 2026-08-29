@@ -83,14 +83,6 @@ jest.mock(
 jest.mock('../../../domain/usecases/CreateEstimationIssueUseCase', () => ({
   CreateEstimationIssueUseCase: jest.fn().mockImplementation(() => ({})),
 }));
-jest.mock(
-  '../../../domain/usecases/ConvertCheckboxToIssueInStoryIssueUseCase',
-  () => ({
-    ConvertCheckboxToIssueInStoryIssueUseCase: jest
-      .fn()
-      .mockImplementation(() => ({})),
-  }),
-);
 jest.mock('../../../domain/usecases/ChangeStatusByStoryColorUseCase', () => ({
   ChangeStatusByStoryColorUseCase: jest.fn().mockImplementation(() => ({})),
 }));
