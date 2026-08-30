@@ -172,9 +172,9 @@ describe('OauthTokenSelectHandler', () => {
     writeTokenList([{ name: 'busy', token: 'fake-busy' }]);
     writeCache('fake-busy', {
       fiveHourUtilization: 0.9,
-      fiveHourReset: NOW + HOUR,
+      fiveHourReset: NOW + 5 * HOUR,
       sevenDayUtilization: 0.1,
-      sevenDayReset: NOW + DAY,
+      sevenDayReset: NOW + 7 * DAY,
     });
 
     const handler = new OauthTokenSelectHandler();
@@ -398,9 +398,9 @@ describe('OauthTokenSelectHandler', () => {
     writeTokenList([{ name: 'low5h', token: 'fake-low5h' }]);
     writeCache('fake-low5h', {
       fiveHourUtilization: 0.41,
-      fiveHourReset: NOW + HOUR,
+      fiveHourReset: NOW + 5 * HOUR,
       sevenDayUtilization: 0.1,
-      sevenDayReset: NOW + DAY,
+      sevenDayReset: NOW + 7 * DAY,
     });
 
     const handler = new OauthTokenSelectHandler();
@@ -437,9 +437,9 @@ describe('OauthTokenSelectHandler', () => {
     writeTokenList([{ name: 'low7d', token: 'fake-low7d' }]);
     writeCache('fake-low7d', {
       fiveHourUtilization: 0.1,
-      fiveHourReset: NOW + HOUR,
+      fiveHourReset: NOW + 5 * HOUR,
       sevenDayUtilization: 0.87,
-      sevenDayReset: NOW + DAY,
+      sevenDayReset: NOW + 7 * DAY,
     });
 
     const handler = new OauthTokenSelectHandler();

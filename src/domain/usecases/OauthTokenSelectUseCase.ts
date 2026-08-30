@@ -64,6 +64,8 @@ export const CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThre
 
 export const SEVEN_DAY_WINDOW_HOURS = 168;
 export const MIN_HOURS_TO_RESET = 1;
+export const SEVEN_DAY_SPEND_DEADLINE_HOURS = 24;
+export const FIVE_HOUR_SPEND_DEADLINE_HOURS = 1;
 const SECONDS_PER_HOUR = 3600;
 
 export const sevenDayUrgencyFactor = (
@@ -71,11 +73,12 @@ export const sevenDayUrgencyFactor = (
   sevenDayEndEpoch: number,
   nowEpochSeconds: number,
 ): number => {
-  const hoursToReset = Math.max(
-    (sevenDayEndEpoch - nowEpochSeconds) / SECONDS_PER_HOUR,
+  const hoursToReset = (sevenDayEndEpoch - nowEpochSeconds) / SECONDS_PER_HOUR;
+  const hoursToDeadline = Math.max(
+    hoursToReset - SEVEN_DAY_SPEND_DEADLINE_HOURS,
     MIN_HOURS_TO_RESET,
   );
-  return sevenDayFreeRatio * (SEVEN_DAY_WINDOW_HOURS / hoursToReset);
+  return sevenDayFreeRatio * (SEVEN_DAY_WINDOW_HOURS / hoursToDeadline);
 };
 
 export const selectWeightedCandidate = <Entry>(
@@ -172,6 +175,20 @@ export class OauthTokenSelectUseCase {
       candidate.snapshot,
       nowEpochSeconds,
     );
+    const fiveHourDeadlinePassed =
+      candidate.snapshot !== null &&
+      this.deadlinePassed(
+        candidate.snapshot.fiveHourReset,
+        FIVE_HOUR_SPEND_DEADLINE_HOURS,
+        nowEpochSeconds,
+      );
+    const sevenDayDeadlinePassed =
+      candidate.snapshot !== null &&
+      this.deadlinePassed(
+        candidate.snapshot.sevenDayReset,
+        SEVEN_DAY_SPEND_DEADLINE_HOURS,
+        nowEpochSeconds,
+      );
 
     const exclusionReason = this.exclusionReason(
       candidate.subscriptionDisabled,
@@ -180,6 +197,8 @@ export class OauthTokenSelectUseCase {
       fiveHourFreeRatio,
       sevenDayFreeRatio,
       thresholds,
+      fiveHourDeadlinePassed,
+      sevenDayDeadlinePassed,
     );
 
     return {
@@ -199,6 +218,8 @@ export class OauthTokenSelectUseCase {
     fiveHourFreeRatio: number,
     sevenDayFreeRatio: number,
     thresholds: OauthTokenSelectionThresholds,
+    fiveHourDeadlinePassed: boolean,
+    sevenDayDeadlinePassed: boolean,
   ): string | null => {
     if (subscriptionDisabled) {
       return 'organization has disabled Claude subscription access for Claude Code';
@@ -209,14 +230,28 @@ export class OauthTokenSelectUseCase {
     if (fableRejected) {
       return 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)';
     }
-    if (fiveHourFreeRatio < thresholds.fiveHourMinFreeRatio) {
+    if (
+      !fiveHourDeadlinePassed &&
+      fiveHourFreeRatio < thresholds.fiveHourMinFreeRatio
+    ) {
       return `5h window only ${this.toPercent(fiveHourFreeRatio)}% free (requires >= ${this.toPercent(thresholds.fiveHourMinFreeRatio)}%)`;
     }
-    if (sevenDayFreeRatio < thresholds.sevenDayMinFreeRatio) {
+    if (
+      !sevenDayDeadlinePassed &&
+      sevenDayFreeRatio < thresholds.sevenDayMinFreeRatio
+    ) {
       return `7d window only ${this.toPercent(sevenDayFreeRatio)}% free (requires >= ${this.toPercent(thresholds.sevenDayMinFreeRatio)}%)`;
     }
     return null;
   };
+
+  private deadlinePassed = (
+    resetEpoch: number,
+    deadlineHours: number,
+    nowEpochSeconds: number,
+  ): boolean =>
+    resetEpoch > 0 &&
+    nowEpochSeconds >= resetEpoch - deadlineHours * SECONDS_PER_HOUR;
 
   private fiveHourFreeRatio = (
     snapshot: OauthTokenWindowSnapshot | null,

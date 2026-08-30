@@ -1,8 +1,11 @@
 import type { ClaudeLiveSession } from './adapter-interfaces/ClaudeLiveSessionRepository';
 import {
+  FIVE_HOUR_SPEND_DEADLINE_HOURS,
   type OauthTokenCandidate,
   OauthTokenSelectUseCase,
+  SEVEN_DAY_SPEND_DEADLINE_HOURS,
   selectionWeightOf,
+  sevenDayUrgencyFactor,
 } from './OauthTokenSelectUseCase';
 
 export type LiveSessionOauthTokenSelectionSettings = {
@@ -24,18 +27,26 @@ export const liveSessionConcurrentLimitOf = (
   fiveHourFreeRatio: number,
   selectionWeight: number,
   settings: LiveSessionOauthTokenSelectionSettings,
+  sevenDayUrgencyBoost = 1,
 ): number => {
   const fiveHourThrottleFactor = Math.min(
     fiveHourFreeRatio / settings.fullSpeedFiveHourFreeRatio,
     1,
   );
-  return Math.max(
+  const base = Math.max(
     Math.floor(
       settings.maxConcurrentSessionCount *
         selectionWeight *
         fiveHourThrottleFactor,
     ),
     1,
+  );
+  if (sevenDayUrgencyBoost <= 1) {
+    return base;
+  }
+  return Math.min(
+    Math.floor(base * sevenDayUrgencyBoost),
+    settings.maxConcurrentSessionCount,
   );
 };
 
@@ -79,16 +90,35 @@ export class LiveSessionOauthTokenSelectUseCase {
       const rateLimitMetric = rateLimitResult.metrics[index];
       const liveSessionCount =
         liveSessionCountByToken.get(candidate.token) ?? 0;
+      const urgencyBoost = sevenDayUrgencyFactor(
+        rateLimitMetric.sevenDayFreeRatio,
+        rateLimitMetric.sevenDayEndEpoch,
+        nowEpochSeconds,
+      );
       const concurrentSessionLimit = liveSessionConcurrentLimitOf(
         rateLimitMetric.fiveHourFreeRatio,
         selectionWeightOf(candidate),
         settings,
+        urgencyBoost,
       );
+      const snapshot = candidate.snapshot;
+      const sevenDayDeadlinePassed =
+        snapshot !== null &&
+        snapshot.sevenDayReset > 0 &&
+        nowEpochSeconds >=
+          snapshot.sevenDayReset - SEVEN_DAY_SPEND_DEADLINE_HOURS * 3600;
+      const fiveHourDeadlinePassed =
+        snapshot !== null &&
+        snapshot.fiveHourReset > 0 &&
+        nowEpochSeconds >=
+          snapshot.fiveHourReset - FIVE_HOUR_SPEND_DEADLINE_HOURS * 3600;
       const exclusionReason = this.liveSessionExclusionReason(
         rateLimitMetric.exclusionReason,
         rateLimitMetric.fiveHourFreeRatio,
         rateLimitMetric.sevenDayFreeRatio,
         settings,
+        fiveHourDeadlinePassed,
+        sevenDayDeadlinePassed,
       );
       return {
         candidate,
@@ -128,14 +158,22 @@ export class LiveSessionOauthTokenSelectUseCase {
     fiveHourFreeRatio: number,
     sevenDayFreeRatio: number,
     settings: LiveSessionOauthTokenSelectionSettings,
+    fiveHourDeadlinePassed: boolean,
+    sevenDayDeadlinePassed: boolean,
   ): string | null => {
     if (rateLimitExclusionReason !== null) {
       return rateLimitExclusionReason;
     }
-    if (fiveHourFreeRatio < settings.minFiveHourFreeRatio) {
+    if (
+      !fiveHourDeadlinePassed &&
+      fiveHourFreeRatio < settings.minFiveHourFreeRatio
+    ) {
       return `5h window only ${Math.round(fiveHourFreeRatio * 100)}% free (requires >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% for live session selection)`;
     }
-    if (sevenDayFreeRatio < settings.minSevenDayFreeRatio) {
+    if (
+      !sevenDayDeadlinePassed &&
+      sevenDayFreeRatio < settings.minSevenDayFreeRatio
+    ) {
       return `7d window only ${Math.round(sevenDayFreeRatio * 100)}% free (requires >= ${Math.round(settings.minSevenDayFreeRatio * 100)}% for live session selection)`;
     }
     return null;

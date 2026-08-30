@@ -275,15 +275,15 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     ]);
     writeCache('fake-blocked', {
       fiveHourUtilization: 0.9,
-      fiveHourReset: NOW + HOUR,
+      fiveHourReset: NOW + 5 * HOUR,
       sevenDayUtilization: 0.1,
-      sevenDayReset: NOW + DAY,
+      sevenDayReset: NOW + 7 * DAY,
     });
     writeCache('fake-free', {
       fiveHourUtilization: 0.1,
-      fiveHourReset: NOW + HOUR,
+      fiveHourReset: NOW + 5 * HOUR,
       sevenDayUtilization: 0.1,
-      sevenDayReset: NOW + DAY,
+      sevenDayReset: NOW + 7 * DAY,
     });
 
     const handler = buildHandler([
@@ -303,9 +303,9 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     writeTokenList([{ name: 'busy', token: 'fake-busy' }]);
     writeCache('fake-busy', {
       fiveHourUtilization: 0.9,
-      fiveHourReset: NOW + HOUR,
+      fiveHourReset: NOW + 5 * HOUR,
       sevenDayUtilization: 0.1,
-      sevenDayReset: NOW + DAY,
+      sevenDayReset: NOW + 7 * DAY,
     });
 
     const handler = buildHandler([]);
