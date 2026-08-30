@@ -33,6 +33,7 @@ export type ConfigFile = {
   consoleGithubTokenFileDir?: string;
   disks?: DiskConfig[];
   errorReportingRepository?: string;
+  skipAgentAuthoredIssues?: boolean;
 };
 
 export type DiskConfig = {
@@ -72,6 +73,14 @@ const getStringRecordValue = (
     result[k] = v;
   }
   return result;
+};
+
+const getBooleanValue = (
+  obj: Record<string, unknown>,
+  key: string,
+): boolean | undefined => {
+  const value = obj[key];
+  return typeof value === 'boolean' ? value : undefined;
 };
 
 const getStringArrayValue = (
@@ -226,6 +235,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       errorReportingRepository: getStringValue(
         parsed,
         'errorReportingRepository',
+      ),
+      skipAgentAuthoredIssues: getBooleanValue(
+        parsed,
+        'skipAgentAuthoredIssues',
       ),
     };
   } catch (error) {
@@ -424,6 +437,8 @@ export const mergeConfigs = (
     readmeOverrides.errorReportingRepository ??
     cliOverrides.errorReportingRepository ??
     configFile.errorReportingRepository,
+  skipAgentAuthoredIssues:
+    cliOverrides.skipAgentAuthoredIssues ?? configFile.skipAgentAuthoredIssues,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

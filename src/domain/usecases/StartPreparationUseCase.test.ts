@@ -6947,7 +6947,7 @@ describe('StartPreparationUseCase', () => {
     );
     expect(summaryCalls).toHaveLength(1);
     expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1',
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1, agentAuthoredIssue=0',
     );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
@@ -6997,9 +6997,114 @@ describe('StartPreparationUseCase', () => {
     );
     expect(summaryCalls).toHaveLength(1);
     expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0',
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0, agentAuthoredIssue=0',
     );
     consoleLogSpy.mockRestore();
+  });
+
+  it('should skip agent-authored issues when skipAgentAuthoredIssues is true', async () => {
+    const agentAuthoredBody =
+      'From: :robot: some-agent (claude-sonnet-4-5)\nSome content written by the agent.';
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/41',
+        title: 'Agent Authored Issue',
+        status: 'Awaiting Workspace',
+        number: 41,
+        body: agentAuthoredBody,
+      }),
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/42',
+        title: 'Human Authored Issue',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 42,
+        body: 'This issue was written by a human.',
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    const consoleLogSpy = jest
+      .spyOn(console, 'log')
+      .mockImplementation(() => {});
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+      skipAgentAuthoredIssues: true,
+    });
+    const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('Spawn candidate exclusion summary'),
+    );
+    expect(summaryCalls).toHaveLength(1);
+    expect(summaryCalls[0][0]).toBe(
+      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0, agentAuthoredIssue=1',
+    );
+    const spawnedUrls = mockLocalCommandRunner.runCommand.mock.calls.map(
+      (call) => call[1][0],
+    );
+    expect(spawnedUrls).not.toContain('https://github.com/user/repo/issues/41');
+    expect(spawnedUrls).toContain('https://github.com/user/repo/issues/42');
+    consoleLogSpy.mockRestore();
+  });
+
+  it('should spawn agent-authored issues when skipAgentAuthoredIssues is false', async () => {
+    const agentAuthoredBody =
+      'From: :robot: some-agent (claude-sonnet-4-5)\nSome content written by the agent.';
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: 'https://github.com/user/repo/issues/51',
+        title: 'Agent Authored Issue',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        number: 51,
+        body: agentAuthoredBody,
+      }),
+    ];
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(awaitingIssues),
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+      skipAgentAuthoredIssues: false,
+    });
+    const spawnedUrls = mockLocalCommandRunner.runCommand.mock.calls.map(
+      (call) => call[1][0],
+    );
+    expect(spawnedUrls).toContain('https://github.com/user/repo/issues/51');
   });
 
   it('should warn with URLs of Awaiting Workspace issues invisible to selection because Story is unset', async () => {
