@@ -29,7 +29,10 @@ const parseTimerData = (raw: string): ProjectTimerData | null => {
   ) {
     return null;
   }
-  return { startedAt: parsed.startedAt, durationSeconds: parsed.durationSeconds };
+  return {
+    startedAt: parsed.startedAt,
+    durationSeconds: parsed.durationSeconds,
+  };
 };
 
 export const readProjectTimer = (

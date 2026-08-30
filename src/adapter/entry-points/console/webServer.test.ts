@@ -2990,7 +2990,10 @@ describe('webServer GET /api/projects', () => {
       expect(JSON.parse(response.body)).toEqual({ ok: true });
       const timerPath = path.join(tmpDir, 'acme', 'timer.json');
       expect(fs.existsSync(timerPath)).toBe(true);
-      const written = JSON.parse(fs.readFileSync(timerPath, 'utf-8')) as Record<string, unknown>;
+      const written = JSON.parse(fs.readFileSync(timerPath, 'utf-8')) as Record<
+        string,
+        unknown
+      >;
       expect(typeof written.startedAt).toBe('string');
       expect(written.durationSeconds).toBe(1800);
     } finally {
@@ -3006,7 +3009,10 @@ describe('webServer GET /api/projects', () => {
     fs.mkdirSync(timerDir, { recursive: true });
     fs.writeFileSync(
       path.join(timerDir, 'timer.json'),
-      JSON.stringify({ startedAt: '2026-08-30T10:00:00.000Z', durationSeconds: 1800 }),
+      JSON.stringify({
+        startedAt: '2026-08-30T10:00:00.000Z',
+        durationSeconds: 1800,
+      }),
     );
     const server = await startWebServer({
       accessToken: testToken,
