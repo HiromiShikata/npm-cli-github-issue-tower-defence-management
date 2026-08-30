@@ -607,3 +607,22 @@ test('posts a comment and moves the item to Awaiting Workspace when the Comment 
     timeout: 8000,
   });
 });
+
+test('project switcher appears at the left end of the tab bar and opens a dropdown on click', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  const nav = page.locator('nav.console-tabbar');
+  const pjnameDiv = nav.locator('.console-tab-pjname');
+  await expect(pjnameDiv).toBeVisible();
+
+  const firstChild = nav.locator(':scope > *').first();
+  await expect(firstChild).toHaveClass(/console-tab-pjname/);
+
+  await expect(page.locator('.console-tab-pjname-dropdown')).toHaveCount(0);
+
+  await pjnameDiv.locator('button').click();
+
+  await expect(page.locator('.console-tab-pjname-dropdown')).toBeVisible();
+});
