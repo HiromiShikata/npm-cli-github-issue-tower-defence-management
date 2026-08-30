@@ -232,7 +232,10 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
       agentDesignationLabelsToKeep: ['story'],
     });
 
-    expect(mockIssueRepository.removeLabel).toHaveBeenCalledWith(issue, 'chore');
+    expect(mockIssueRepository.removeLabel).toHaveBeenCalledWith(
+      issue,
+      'chore',
+    );
     expect(issue.agent).toBe('chore');
     expect(issue.labels).not.toContain('chore');
   });
