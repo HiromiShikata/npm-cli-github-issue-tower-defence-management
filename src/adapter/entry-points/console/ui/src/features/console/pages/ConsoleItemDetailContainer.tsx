@@ -325,6 +325,11 @@ export const ConsoleItemDetailContainer = ({
           initialDraft={initialCommentDraft}
           onSubmit={addComment}
           onDraftChange={onCommentDraftChange}
+          onOkAndAwaitingWorkspace={
+            awaitingWorkspaceOption !== null
+              ? () => handlers.onOkAndAwaitingWorkspace(awaitingWorkspaceOption)
+              : undefined
+          }
           onSubmitAndMoveToAwaitingWorkspace={
             addCommentAndMoveToAwaitingWorkspace
           }

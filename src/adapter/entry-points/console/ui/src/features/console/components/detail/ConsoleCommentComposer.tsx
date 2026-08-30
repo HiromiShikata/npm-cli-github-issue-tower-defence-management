@@ -9,6 +9,7 @@ export type ConsoleCommentComposerProps = {
   onSubmitAndMoveToAwaitingWorkspace?: (
     body: string,
   ) => Promise<ConsoleComment>;
+  onOkAndAwaitingWorkspace?: () => void;
   onUploadFile?: (file: File) => Promise<string>;
 };
 
@@ -82,6 +83,7 @@ export const ConsoleCommentComposer = ({
   onSubmit,
   onDraftChange,
   onSubmitAndMoveToAwaitingWorkspace,
+  onOkAndAwaitingWorkspace,
   onUploadFile,
 }: ConsoleCommentComposerProps) => {
   const [open, setOpen] = useState<boolean>(initiallyOpen);
@@ -244,6 +246,16 @@ export const ConsoleCommentComposer = ({
             >
               Comment
             </button>
+            {onOkAndAwaitingWorkspace !== undefined && (
+              <button
+                type="button"
+                className="console-composer-submit"
+                disabled={status.kind === 'posting'}
+                onClick={onOkAndAwaitingWorkspace}
+              >
+                ok &amp; Awaiting Workspace
+              </button>
+            )}
             {onSubmitAndMoveToAwaitingWorkspace !== undefined && (
               <button
                 type="button"

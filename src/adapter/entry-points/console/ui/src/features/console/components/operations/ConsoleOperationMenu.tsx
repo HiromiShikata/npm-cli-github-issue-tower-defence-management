@@ -10,7 +10,6 @@ import type {
 import { ConsoleCloseActions } from './ConsoleCloseActions';
 import { ConsoleDangerousActions } from './ConsoleDangerousActions';
 import { ConsoleNextActionDateActions } from './ConsoleNextActionDateActions';
-import { ConsoleOkAndAwaitingWorkspaceActions } from './ConsoleOkAndAwaitingWorkspaceActions';
 import { ConsolePullRequestReviewActions } from './ConsolePullRequestReviewActions';
 import { ConsoleStatusActions } from './ConsoleStatusActions';
 
@@ -34,10 +33,6 @@ export const ConsoleOperationMenu = ({
     <div className="console-operation-bar">
       <ConsoleDangerousActions
         onDeleteAllComments={handlers.onDeleteAllComments}
-      />
-      <ConsoleOkAndAwaitingWorkspaceActions
-        statusOptions={statusOptions}
-        onOkAndAwaitingWorkspace={handlers.onOkAndAwaitingWorkspace}
       />
       {hasPullRequest && (
         <ConsolePullRequestReviewActions

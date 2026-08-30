@@ -1,3 +1,10 @@
+# [2.18.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.17.0...v2.18.0) (2026-08-30)
+
+
+### Features
+
+* **console-ui:** move ok & Awaiting Workspace button between Comment buttons ([#1883](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1883)) ([eded335](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/eded335d0007da2be189296d5ab3c44f36d17acc)), closes [HiromiShikata/umino-corporait-operation#31107](https://github.com/HiromiShikata/umino-corporait-operation/issues/31107)
+
 # [2.17.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.16.0...v2.17.0) (2026-08-30)
 
 

@@ -58,3 +58,11 @@ export const ComposerWithMoveToAwaitingWorkspace: Story = {
     onSubmitAndMoveToAwaitingWorkspace: acceptComment,
   },
 };
+
+export const ComposerWithAllActionButtons: Story = {
+  args: {
+    initiallyOpen: true,
+    onOkAndAwaitingWorkspace: () => {},
+    onSubmitAndMoveToAwaitingWorkspace: acceptComment,
+  },
+};
