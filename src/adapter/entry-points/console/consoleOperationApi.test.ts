@@ -2687,7 +2687,9 @@ describe('consoleOperationApi', () => {
 
     it('returns 400 when attempting to delete the workflow management story', async () => {
       const p = projectWithStoriesToDelete();
-      const wmsId = p.story!.workflowManagementStory.id;
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const wmsId = story.workflowManagementStory.id;
       const response = await handleDeleteStory(deleteStoryContext(p), {
         pjcode: 'acme',
         storyOptionId: wmsId,
