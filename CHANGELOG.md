@@ -1,3 +1,10 @@
+# [2.28.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.27.1...v2.28.0) (2026-08-30)
+
+
+### Features
+
+* **console-ui:** sticky detail header and remove duplicate type labels in subbar ([#1889](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1889)) ([10edeef](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/10edeef57de651c775b3d1d9244c77edb819092a)), closes [HiromiShikata/umino-corporait-operation#31114](https://github.com/HiromiShikata/umino-corporait-operation/issues/31114)
+
 ## [2.27.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.27.0...v2.27.1) (2026-08-30)
 
 
