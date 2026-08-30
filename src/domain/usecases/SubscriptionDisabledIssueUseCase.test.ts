@@ -60,8 +60,8 @@ describe('SubscriptionDisabledIssueUseCase', () => {
       expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
         'dev3',
       );
-      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
-        'From: :robot: SubscriptionDisabledIssueUseCase',
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).not.toContain(
+        'From: :robot:',
       );
       expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(0);
     });

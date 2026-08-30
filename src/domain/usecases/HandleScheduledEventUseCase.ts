@@ -253,7 +253,7 @@ export class HandleScheduledEventUseCase {
         input.org,
         input.workingReport.repo,
         storyObject.story.name,
-        `From: :robot: HandleScheduledEventUseCase\n\n${storyObject.story.description}`,
+        storyObject.story.description,
         [input.manager],
         ['story'],
       );
@@ -379,7 +379,7 @@ ${JSON.stringify(e)}
             input.org,
             input.workingReport.repo,
             WORKFLOW_INCIDENT_ISSUE_TITLE,
-            `From: :robot: HandleScheduledEventUseCase\n\n${errorBody}`,
+            errorBody,
             [input.manager],
             ['error'],
           );
@@ -673,7 +673,7 @@ ${JSON.stringify(e)}
         org,
         repo,
         `Error in HandleScheduledEvent / spreadsheet ${operation} failure`,
-        `From: :robot: HandleScheduledEventUseCase\n\nSpreadsheet URL: ${spreadsheetUrl}
+        `Spreadsheet URL: ${spreadsheetUrl}
 Operation: ${operation}
 
 ${e.message}

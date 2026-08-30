@@ -62,7 +62,7 @@ export class SubscriptionDisabledIssueUseCase {
         org,
         repo,
         issueTitle,
-        `From: :robot: SubscriptionDisabledIssueUseCase\n\nThe Claude subscription access for the token displayed as \`${tokenName}\` has been disabled.\n\nPlease restore the account's Claude Code subscription access to resume operations.`,
+        `The Claude subscription access for the token displayed as \`${tokenName}\` has been disabled.\n\nPlease restore the account's Claude Code subscription access to resume operations.`,
         [],
         [],
       );

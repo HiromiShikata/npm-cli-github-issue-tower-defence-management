@@ -161,8 +161,6 @@ export class SetWorkflowManagementIssueToStoryUseCase {
       SetWorkflowManagementIssueToStoryUseCase.STORY_LABEL_PREFIX.length,
     );
     return [
-      'From: :robot: SetWorkflowManagementIssueToStoryUseCase',
-      '',
       `The issue below carries the label \`${storyLabel}\`, but the project has no matching \`${SetWorkflowManagementIssueToStoryUseCase.REGULAR_STORY_PREFIX}${labelSuffix}\` Story option.`,
       '',
       issue.url,

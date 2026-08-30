@@ -221,7 +221,7 @@ describe('CreateEstimationIssueUseCase', () => {
         issueInStory,
       );
       const body = mockIssueRepository.createNewIssue.mock.calls[0]?.[3];
-      expect(body).toContain('From: :robot: CreateEstimationIssueUseCase');
+      expect(body).not.toContain('From: :robot:');
     });
   });
 });

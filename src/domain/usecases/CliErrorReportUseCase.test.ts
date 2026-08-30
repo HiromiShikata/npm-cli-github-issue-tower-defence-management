@@ -135,7 +135,7 @@ describe('CliErrorReportUseCase', () => {
       expect(bodyArg).toContain(commandLine);
     });
 
-    it('should include the From: :robot: prefix in the new issue body', async () => {
+    it('should not include the From: :robot: prefix in the new issue body', async () => {
       const error = new Error('prefix check');
       mockIssueRepository.searchIssue.mockResolvedValue([]);
       mockIssueRepository.createNewIssue.mockResolvedValue(5);
@@ -143,7 +143,7 @@ describe('CliErrorReportUseCase', () => {
       await useCase.run({ error, owner, repo, commandLine });
 
       const bodyArg = mockIssueRepository.createNewIssue.mock.calls[0][3];
-      expect(bodyArg).toContain('From: :robot: CliErrorReportUseCase');
+      expect(bodyArg).not.toContain('From: :robot:');
     });
 
     it('should handle non-Error values', async () => {
