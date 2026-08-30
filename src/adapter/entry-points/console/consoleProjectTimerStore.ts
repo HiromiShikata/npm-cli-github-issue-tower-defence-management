@@ -29,6 +29,9 @@ const parseTimerData = (raw: string): ProjectTimerData | null => {
   ) {
     return null;
   }
+  if (isNaN(new Date(parsed.startedAt).getTime())) {
+    return null;
+  }
   return {
     startedAt: parsed.startedAt,
     durationSeconds: parsed.durationSeconds,

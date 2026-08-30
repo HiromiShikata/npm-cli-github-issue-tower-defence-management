@@ -237,8 +237,8 @@ export const useConsoleTabData = (
           if (stored !== undefined) {
             next[tab.name] = {
               ...stored,
-              timerEndsAt: stored.timerEndsAt ?? null,
-              timerTotalSeconds: stored.timerTotalSeconds ?? null,
+              timerEndsAt: stored.timerEndsAt,
+              timerTotalSeconds: stored.timerTotalSeconds,
             };
           }
         }

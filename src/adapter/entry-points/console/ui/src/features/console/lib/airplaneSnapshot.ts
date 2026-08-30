@@ -23,8 +23,8 @@ export type AirplaneTabSnapshot = {
   defaultNameWithOwner: string | null;
   fromCache: boolean;
   storyOrder: string[];
-  timerEndsAt?: string | null;
-  timerTotalSeconds?: number | null;
+  timerEndsAt: string | null;
+  timerTotalSeconds: number | null;
 };
 
 export type AirplaneItemSnapshot = {
