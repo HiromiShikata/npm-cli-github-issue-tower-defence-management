@@ -2531,9 +2531,24 @@ describe('consoleOperationApi', () => {
         fieldId: 'storyField',
         databaseId: 1,
         stories: [
-          { id: 'opt_keep', name: 'Keep this story', color: 'BLUE', description: '' },
-          { id: 'opt_remove', name: 'Remove this story', color: 'GREEN', description: '' },
-          { id: 'opt_also_keep', name: 'Also keep', color: 'RED', description: '' },
+          {
+            id: 'opt_keep',
+            name: 'Keep this story',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'opt_remove',
+            name: 'Remove this story',
+            color: 'GREEN',
+            description: '',
+          },
+          {
+            id: 'opt_also_keep',
+            name: 'Also keep',
+            color: 'RED',
+            description: '',
+          },
         ],
         workflowManagementStory: { id: 'wms', name: 'workflow' },
       },
@@ -2561,8 +2576,18 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(response.body).toEqual({ ok: true });
       expect(updateStoryList).toHaveBeenCalledWith(p, [
-        { id: 'opt_keep', name: 'Keep this story', color: 'BLUE', description: '' },
-        { id: 'opt_also_keep', name: 'Also keep', color: 'RED', description: '' },
+        {
+          id: 'opt_keep',
+          name: 'Keep this story',
+          color: 'BLUE',
+          description: '',
+        },
+        {
+          id: 'opt_also_keep',
+          name: 'Also keep',
+          color: 'RED',
+          description: '',
+        },
       ]);
     });
 
