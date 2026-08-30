@@ -317,6 +317,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
             items: [
               {
                 number: 1,
@@ -350,6 +352,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           'failed-preparation': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -362,6 +366,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           'todo-by-human': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -374,6 +380,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           'todo-by-agent': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -386,6 +394,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           queued: {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -398,6 +408,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           stories: {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -410,6 +422,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
         },
       },
@@ -454,6 +468,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           'workflow-blocker': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -466,6 +482,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           'failed-preparation': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -478,6 +496,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           'todo-by-human': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -490,6 +510,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           'todo-by-agent': {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -502,6 +524,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           queued: {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -514,6 +538,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
           stories: {
             generatedAt: '2026-08-01T10:00:00Z',
@@ -526,6 +552,8 @@ describe('useConsoleTabData', () => {
             defaultNameWithOwner: null,
             fromCache: false,
             storyOrder: [],
+            timerEndsAt: null,
+            timerTotalSeconds: null,
           },
         },
       },
