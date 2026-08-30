@@ -194,6 +194,7 @@ export class HandleScheduledEventUseCase {
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentNames?: string[] | null;
     workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
+    allowedDependencyRepoNameWithOwner?: string | null;
     afterIssuesFetched?:
       ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
   }): Promise<{
@@ -591,6 +592,8 @@ ${JSON.stringify(e)}
       project,
       issues,
       cacheUsed,
+      allowedExternalRepoNameWithOwner:
+        input.allowedDependencyRepoNameWithOwner ?? null,
     });
     await this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
       project,

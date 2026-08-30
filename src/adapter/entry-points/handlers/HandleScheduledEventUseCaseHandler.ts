@@ -36,6 +36,7 @@ import {
 import {
   loadStartPreparationFleetSettings,
   loadWorkflowIssueReporterSettings,
+  loadWorkflowImprovementIssueUrl,
   resolveFleetConfigFilePath,
 } from '../cli/fleetConfig';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
@@ -283,6 +284,16 @@ export class HandleScheduledEventUseCaseHandler {
       loadStartPreparationFleetSettings(fleetConfigFilePath);
     const workflowIssueReporterSettings =
       loadWorkflowIssueReporterSettings(fleetConfigFilePath);
+    const workflowImprovementIssueUrl =
+      loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
+    const allowedDependencyRepoNameWithOwner = (() => {
+      if (!workflowImprovementIssueUrl) return null;
+      const match =
+        /^https:\/\/github\.com\/([^/]+\/[^/]+)\//.exec(
+          workflowImprovementIssueUrl,
+        );
+      return match ? match[1] : null;
+    })();
 
     const normalizeAllowedIssueAuthors = (
       value: string | string[] | null | undefined,
@@ -647,6 +658,7 @@ export class HandleScheduledEventUseCaseHandler {
       ...mergedInput,
       workflowIssueReporterSettings,
       afterIssuesFetched,
+      allowedDependencyRepoNameWithOwner,
     });
     if (result) {
       if (result.rotationOrder !== null) {

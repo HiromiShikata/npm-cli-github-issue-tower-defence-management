@@ -40,6 +40,7 @@ describe('ClearDependedIssueURLUseCase', () => {
         project: Project;
         issues: Issue[];
         cacheUsed: boolean;
+        allowedExternalRepoNameWithOwner?: string | null;
       };
       expectedIssueRepositoryClearProjectFieldCalls: [Project, string, Issue][];
       expectedIssueRepositoryUpdateTextFieldCalls: [
@@ -661,6 +662,150 @@ describe('ClearDependedIssueURLUseCase', () => {
           [
             { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
             'All depended issues are in Icebox, dependency field cleared:\n- url-icebox',
+          ],
+        ],
+      },
+      {
+        name: 'should not remove dependency URL from allowed external repo when absent from project issues',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+          ],
+          cacheUsed: false,
+          allowedExternalRepoNameWithOwner: 'allowed-owner/allowed-repo',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should still remove closed project issue URL when allowed external repo URL is also present',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'url1',
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+          ],
+          cacheUsed: false,
+          allowedExternalRepoNameWithOwner: 'allowed-owner/allowed-repo',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'url1',
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+            'https://github.com/allowed-owner/allowed-repo/issues/99',
+          ],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'url1',
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+        ],
+      },
+      {
+        name: 'should remove dependency URL from a different external repo even when allowedExternalRepoNameWithOwner is set',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/other-owner/other-repo/issues/99',
+              ],
+            },
+          ],
+          cacheUsed: false,
+          allowedExternalRepoNameWithOwner: 'allowed-owner/allowed-repo',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/other-owner/other-repo/issues/99',
+              ],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/other-owner/other-repo/issues/99',
+              ],
+            },
+            'Dependency removed:\n- https://github.com/other-owner/other-repo/issues/99',
+          ],
+        ],
+      },
+      {
+        name: 'should not remove dependency URL from allowed external repo when cacheUsed is false and allowedExternalRepoNameWithOwner is null',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+          ],
+          cacheUsed: false,
+          allowedExternalRepoNameWithOwner: null,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+            'Dependency removed:\n- https://github.com/allowed-owner/allowed-repo/issues/99',
           ],
         ],
       },
