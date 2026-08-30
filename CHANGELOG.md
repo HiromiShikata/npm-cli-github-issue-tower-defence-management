@@ -1,3 +1,10 @@
+## [2.12.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.12.0...v2.12.1) (2026-08-30)
+
+
+### Bug Fixes
+
+* **console:** apply green approve style to ok & Awaiting Workspace button ([#1876](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1876)) ([248b997](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/248b997a613e16f5c6990aec67885a1d4ebfa79e)), closes [HiromiShikata/umino-corporait-operation#31087](https://github.com/HiromiShikata/umino-corporait-operation/issues/31087)
+
 # [2.12.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.11.0...v2.12.0) (2026-08-30)
 
 
