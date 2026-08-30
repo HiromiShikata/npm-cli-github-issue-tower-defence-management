@@ -582,25 +582,18 @@ export const handleComment = async (
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
   }
-  await context
+  const posted = await context
     .resolveIssueRepository(url)
     .createCommentByUrl(url, commentBody);
-  const comments = await context
-    .resolveIssueRepository(url)
-    .getIssueOrPullRequestComments(url);
-  const posted = comments[comments.length - 1] ?? null;
   return {
     statusCode: 200,
     body: {
       ok: true,
-      comment:
-        posted === null
-          ? { author: '', body: commentBody, createdAt: '' }
-          : {
-              author: posted.author,
-              body: posted.body,
-              createdAt: posted.createdAt.toISOString(),
-            },
+      comment: {
+        author: posted.author,
+        body: posted.body,
+        createdAt: posted.createdAt.toISOString(),
+      },
     },
   };
 };

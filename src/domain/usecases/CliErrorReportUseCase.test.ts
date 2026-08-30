@@ -53,7 +53,11 @@ describe('CliErrorReportUseCase', () => {
       mockIssueRepository.searchIssue.mockResolvedValue([
         { url: existingIssueUrl, title, number: '10' },
       ]);
-      mockIssueRepository.createCommentByUrl.mockResolvedValue(undefined);
+      mockIssueRepository.createCommentByUrl.mockResolvedValue({
+        author: 'bot',
+        body: 'CLI error: TypeError: something went wrong',
+        createdAt: new Date(0),
+      });
 
       await useCase.run({ error, owner, repo, commandLine });
 

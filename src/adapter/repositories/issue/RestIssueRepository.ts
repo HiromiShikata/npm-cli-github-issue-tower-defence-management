@@ -22,15 +22,29 @@ export class RestIssueRepository
   implements
     Pick<IssueRepository, 'updateAssigneeList' | 'removeLabel' | 'searchIssues'>
 {
-  createComment = async (issueUrl: string, comment: string) => {
+  createComment = async (
+    issueUrl: string,
+    comment: string,
+  ): Promise<{ author: string; body: string; createdAt: Date }> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
-    await ky.post(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
-      {
-        json: { body: comment },
-        headers: { Authorization: `token ${this.ghToken}` },
-      },
-    );
+    const response = await ky
+      .post(
+        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+        {
+          json: { body: comment },
+          headers: { Authorization: `token ${this.ghToken}` },
+        },
+      )
+      .json<{
+        user: { login: string } | null;
+        body: string;
+        created_at: string;
+      }>();
+    return {
+      author: response.user?.login ?? '',
+      body: response.body,
+      createdAt: new Date(response.created_at),
+    };
   };
   createNewIssue = async (
     owner: string,

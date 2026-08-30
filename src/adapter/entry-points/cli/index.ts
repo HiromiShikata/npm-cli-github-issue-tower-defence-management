@@ -1433,9 +1433,8 @@ const buildCliErrorReporter = (): {
     searchIssue: apiV3IssueRepository.searchIssue.bind(apiV3IssueRepository),
     createNewIssue:
       restIssueRepository.createNewIssue.bind(restIssueRepository),
-    createCommentByUrl: async (issueOrPrUrl: string, commentBody: string) => {
-      await restIssueRepository.createComment(issueOrPrUrl, commentBody);
-    },
+    createCommentByUrl: (issueOrPrUrl: string, commentBody: string) =>
+      restIssueRepository.createComment(issueOrPrUrl, commentBody),
   });
   return { useCase, owner, repo };
 };

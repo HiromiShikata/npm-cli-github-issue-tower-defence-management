@@ -1295,19 +1295,12 @@ describe('consoleOperationApi', () => {
   });
 
   describe('handleComment', () => {
-    it('posts a comment and returns the created comment', async () => {
-      issueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-        {
-          author: 'github-actions',
-          body: 'All required checks have passed.',
-          createdAt: new Date('2026-06-17T07:48:11.000Z'),
-        },
-        {
-          author: 'HiromiShikata',
-          body: 'Please rebase onto the latest main branch.',
-          createdAt: new Date('2026-06-17T09:03:27.000Z'),
-        },
-      ]);
+    it('posts a comment and returns the created comment from the API response', async () => {
+      issueRepository.createCommentByUrl.mockResolvedValue({
+        author: 'HiromiShikata',
+        body: 'Please rebase onto the latest main branch.',
+        createdAt: new Date('2026-06-17T09:03:27.000Z'),
+      });
       const response = await handleComment(context, {
         pjcode: 'acme',
         url: 'https://github.com/o/r/issues/1',
@@ -1318,6 +1311,9 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/issues/1',
         'Please rebase onto the latest main branch.',
       );
+      expect(
+        issueRepository.getIssueOrPullRequestComments,
+      ).not.toHaveBeenCalled();
       expect(response.body).toEqual({
         ok: true,
         comment: {
@@ -1328,20 +1324,27 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('falls back to the posted body when no comment is returned', async () => {
-      issueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    it('returns comment data directly without a second fetch', async () => {
+      issueRepository.createCommentByUrl.mockResolvedValue({
+        author: 'github-actions',
+        body: 'A first comment on this issue.',
+        createdAt: new Date('2026-06-17T08:00:00.000Z'),
+      });
       const response = await handleComment(context, {
         pjcode: 'acme',
         url: 'https://github.com/o/r/issues/1',
         body: 'A first comment on this issue.',
       });
       expect(response.statusCode).toBe(200);
+      expect(
+        issueRepository.getIssueOrPullRequestComments,
+      ).not.toHaveBeenCalled();
       expect(response.body).toEqual({
         ok: true,
         comment: {
-          author: '',
+          author: 'github-actions',
           body: 'A first comment on this issue.',
-          createdAt: '',
+          createdAt: '2026-06-17T08:00:00.000Z',
         },
       });
     });
