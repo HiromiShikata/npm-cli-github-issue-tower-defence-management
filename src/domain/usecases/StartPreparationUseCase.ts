@@ -10,6 +10,7 @@ import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnership
 import { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
 import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
 import { DEFAULT_SELECTION_WEIGHT } from './OauthTokenSelectUseCase';
+import { isAgentReportBody } from './isAgentReportBody';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
   PREPARATION_STATUS_NAME,
@@ -32,7 +33,8 @@ export type SpawnCandidateExclusionReason =
   | 'futureNextActionDate'
   | 'nextActionHourNotReached'
   | 'authorNotAllowed'
-  | 'notAssignedToManager';
+  | 'notAssignedToManager'
+  | 'agentAuthoredIssue';
 
 export type SpawnCandidateBranchSource = {
   openPullRequest: RelatedPullRequest | null;
@@ -202,6 +204,7 @@ export class StartPreparationUseCase {
     allowedIssueAuthors: string[] | null,
     manager: string,
     now: Date,
+    skipAgentAuthoredIssues: boolean,
   ): SpawnCandidateExclusionReason | null => {
     if (issue.dependedIssueUrls.length > 0) {
       return 'dependedIssueUrls';
@@ -222,6 +225,9 @@ export class StartPreparationUseCase {
     }
     if (!issue.assignees.includes(manager)) {
       return 'notAssignedToManager';
+    }
+    if (skipAgentAuthoredIssues && isAgentReportBody(issue.body)) {
+      return 'agentAuthoredIssue';
     }
     return null;
   };
@@ -425,6 +431,7 @@ export class StartPreparationUseCase {
     normalConcurrentLimit?: number;
     maxConcurrentWorkers?: number | null;
     graphqlRateLimitFloor?: number | null;
+    skipAgentAuthoredIssues?: boolean;
   }): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
     const normalConcurrentLimit =
       params.normalConcurrentLimit ?? NORMAL_CONCURRENT_LIMIT;
@@ -537,7 +544,9 @@ export class StartPreparationUseCase {
       nextActionHourNotReached: 0,
       authorNotAllowed: 0,
       notAssignedToManager: 0,
+      agentAuthoredIssue: 0,
     };
+    const skipAgentAuthoredIssues = params.skipAgentAuthoredIssues ?? false;
 
     const now = new Date();
 
@@ -573,6 +582,7 @@ export class StartPreparationUseCase {
               params.allowedIssueAuthors,
               params.manager,
               now,
+              skipAgentAuthoredIssues,
             ) === null,
         )
         .map((issue) => issue.url),
@@ -607,6 +617,7 @@ export class StartPreparationUseCase {
         params.allowedIssueAuthors,
         params.manager,
         now,
+        skipAgentAuthoredIssues,
       );
       if (exclusionReason !== null) {
         exclusionCounts[exclusionReason]++;
@@ -869,7 +880,7 @@ export class StartPreparationUseCase {
       updatedCurrentPreparationIssueCount++;
     }
     console.log(
-      `Spawn candidate exclusion summary for ${params.projectUrl}: dependedIssueUrls=${exclusionCounts.dependedIssueUrls}, futureNextActionDate=${exclusionCounts.futureNextActionDate}, nextActionHourNotReached=${exclusionCounts.nextActionHourNotReached}, authorNotAllowed=${exclusionCounts.authorNotAllowed}, notAssignedToManager=${exclusionCounts.notAssignedToManager}`,
+      `Spawn candidate exclusion summary for ${params.projectUrl}: dependedIssueUrls=${exclusionCounts.dependedIssueUrls}, futureNextActionDate=${exclusionCounts.futureNextActionDate}, nextActionHourNotReached=${exclusionCounts.nextActionHourNotReached}, authorNotAllowed=${exclusionCounts.authorNotAllowed}, notAssignedToManager=${exclusionCounts.notAssignedToManager}, agentAuthoredIssue=${exclusionCounts.agentAuthoredIssue}`,
     );
     return { rotationOrder };
   };
