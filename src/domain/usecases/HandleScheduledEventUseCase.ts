@@ -192,6 +192,11 @@ export class HandleScheduledEventUseCase {
     storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentNames?: string[] | null;
+    workflowIssueReporterSettings?: {
+      owner: string;
+      repo: string;
+      projectUrl?: string | null;
+    } | null;
     afterIssuesFetched?:
       ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
   }): Promise<{
@@ -480,6 +485,8 @@ ${JSON.stringify(e)}
           labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
           allowedIssueAuthors,
           agents: input.agents ?? null,
+          workflowIssueReporterSettings:
+            input.workflowIssueReporterSettings ?? null,
         });
       }
       if (input.startPreparation.autoRevertReopenedDoneEnabled) {

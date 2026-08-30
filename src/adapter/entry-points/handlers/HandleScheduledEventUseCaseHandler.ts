@@ -35,6 +35,7 @@ import {
 } from '../cli/projectConfig';
 import {
   loadStartPreparationFleetSettings,
+  loadWorkflowIssueReporterSettings,
   resolveFleetConfigFilePath,
 } from '../cli/fleetConfig';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
@@ -277,9 +278,11 @@ export class HandleScheduledEventUseCaseHandler {
       ? parseProjectReadmeConfig(readme, input.projectUrl)
       : {};
 
-    const startPreparationFleetSettings = loadStartPreparationFleetSettings(
-      resolveFleetConfigFilePath(null),
-    );
+    const fleetConfigFilePath = resolveFleetConfigFilePath(null);
+    const startPreparationFleetSettings =
+      loadStartPreparationFleetSettings(fleetConfigFilePath);
+    const workflowIssueReporterSettings =
+      loadWorkflowIssueReporterSettings(fleetConfigFilePath);
 
     const normalizeAllowedIssueAuthors = (
       value: string | string[] | null | undefined,
@@ -642,6 +645,7 @@ export class HandleScheduledEventUseCaseHandler {
 
     const result = await handleScheduledEventUseCase.run({
       ...mergedInput,
+      workflowIssueReporterSettings,
       afterIssuesFetched,
     });
     if (result) {

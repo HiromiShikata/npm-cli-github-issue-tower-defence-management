@@ -426,6 +426,44 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    it('should pass workflowIssueReporterSettings to revertOrphanedPreparationUseCase when provided', async () => {
+      const input = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        workflowIssueReporterSettings: {
+          owner: 'fleet-owner',
+          repo: 'fleet-repo',
+        },
+        startPreparation: {
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+          preparationProcessCheckCommand: 'pgrep -f "{URL}"',
+        },
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(mock<Project>());
+      await useCase.run(input);
+
+      expect(mockRevertOrphanedPreparationUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workflowIssueReporterSettings: {
+            owner: 'fleet-owner',
+            repo: 'fleet-repo',
+          },
+        }),
+      );
+    });
+
     it('should invoke conflictedIssueRevertUseCase on every scheduled run', async () => {
       const input = {
         projectName: 'test-project',

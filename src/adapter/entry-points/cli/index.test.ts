@@ -1531,6 +1531,7 @@ mysteryKey: 'value'
         manager: 'test-manager',
         developerAgentNames: null,
         deferPreparation: null,
+        workflowIssueReporterSettings: null,
       });
     });
 
@@ -1575,6 +1576,7 @@ mysteryKey: 'value'
         manager: 'test-manager',
         developerAgentNames: null,
         deferPreparation: null,
+        workflowIssueReporterSettings: null,
       });
     });
 

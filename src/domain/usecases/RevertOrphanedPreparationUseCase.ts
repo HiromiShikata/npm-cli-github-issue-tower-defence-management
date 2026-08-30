@@ -49,6 +49,12 @@ export class RevertOrphanedPreparationUseCase {
       | 'getOpenPullRequest'
       | 'get'
       | 'setIssueAgentField'
+      | 'searchIssue'
+      | 'createNewIssue'
+      | 'createCommentByUrl'
+      | 'addIssueToProject'
+      | 'getIssueByUrl'
+      | 'updateStory'
     >,
     readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -70,6 +76,11 @@ export class RevertOrphanedPreparationUseCase {
     allowedIssueAuthors?: string[] | null;
     agents?: string[] | null;
     developerAgentName?: string | null;
+    workflowIssueReporterSettings?: {
+      owner: string;
+      repo: string;
+      projectUrl?: string | null;
+    } | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -167,7 +178,8 @@ export class RevertOrphanedPreparationUseCase {
             DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
         });
         if (
-          repetition.type === 'escalateToFailedPreparation' &&
+          (repetition.type === 'escalateSilentRedispatch' ||
+            repetition.type === 'escalateDispatchLoop') &&
           failedPreparationStatusOption
         ) {
           await this.issueRepository.updateStatus(
@@ -179,6 +191,16 @@ export class RevertOrphanedPreparationUseCase {
             issue,
             repetition.comment,
           );
+          if (
+            repetition.type === 'escalateSilentRedispatch' &&
+            params.workflowIssueReporterSettings
+          ) {
+            await this.reportSilentRedispatchWorkflowIssue(
+              nextStepAgent,
+              issue.url,
+              params.workflowIssueReporterSettings,
+            );
+          }
           continue;
         }
         const agentOptionId = await ensureAgentOptionAndGetId(
@@ -495,5 +517,85 @@ export class RevertOrphanedPreparationUseCase {
     if (recentFilesExitCode !== 0) return false;
 
     return !recentFilesOutput.trim();
+  };
+
+  private reportSilentRedispatchWorkflowIssue = async (
+    agentName: string,
+    failingTaskUrl: string,
+    settings: { owner: string; repo: string; projectUrl?: string | null },
+  ): Promise<void> => {
+    const title = `TDPM agent not reporting: ${agentName}`;
+    try {
+      const existingIssues = await this.issueRepository.searchIssue({
+        owner: settings.owner,
+        repositoryName: settings.repo,
+        type: 'issue',
+        state: 'open',
+        title,
+      });
+      const existing = existingIssues.find((i) => i.title === title);
+      if (existing) {
+        await this.issueRepository.createCommentByUrl(
+          existing.url,
+          `The TDPM preparation loop received no report from \`${agentName}\` again.\n\nFailing task: ${failingTaskUrl}`,
+        );
+      } else {
+        const body = [
+          `The TDPM preparation loop dispatched \`${agentName}\` and received no report, which indicates a TDPM process-level problem rather than a task-specific one.`,
+          '',
+          `- Agent: \`${agentName}\``,
+          `- Failing task: ${failingTaskUrl}`,
+        ].join('\n');
+        const issueNumber = await this.issueRepository.createNewIssue(
+          settings.owner,
+          settings.repo,
+          title,
+          body,
+          [],
+          [],
+        );
+        const newIssueUrl = `https://github.com/${settings.owner}/${settings.repo}/issues/${issueNumber}`;
+        console.log(
+          `Created workflow issue #${issueNumber} for silent redispatch of ${agentName}: ${newIssueUrl}`,
+        );
+        if (settings.projectUrl) {
+          try {
+            const reporterProject = await this.projectRepository.getByUrl(
+              settings.projectUrl,
+            );
+            await this.issueRepository.addIssueToProject(
+              reporterProject,
+              newIssueUrl,
+            );
+            if (reporterProject.story) {
+              const workflowBlockerStory = reporterProject.story.stories.find(
+                (s) => s.name.toLowerCase().includes('workflow blocker'),
+              );
+              if (workflowBlockerStory) {
+                const newIssue =
+                  await this.issueRepository.getIssueByUrl(newIssueUrl);
+                if (newIssue) {
+                  await this.issueRepository.updateStory(
+                    { ...reporterProject, story: reporterProject.story },
+                    newIssue,
+                    workflowBlockerStory.id,
+                  );
+                }
+              }
+            }
+          } catch (projectError) {
+            console.warn(
+              `Failed to add workflow issue ${newIssueUrl} to project ${settings.projectUrl}:`,
+              projectError,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(
+        `Failed to report silent redispatch workflow issue for ${agentName}:`,
+        error,
+      );
+    }
   };
 }
