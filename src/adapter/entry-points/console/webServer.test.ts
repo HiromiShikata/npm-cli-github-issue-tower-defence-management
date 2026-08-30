@@ -799,7 +799,9 @@ describe('webServer new routes integration', () => {
         'https://github.com/o/r/issues/1',
         'Thanks, this resolves the parity gap.',
       );
-      expect(issueRepository.getIssueOrPullRequestComments).not.toHaveBeenCalled();
+      expect(
+        issueRepository.getIssueOrPullRequestComments,
+      ).not.toHaveBeenCalled();
       expect(JSON.parse(response.body)).toEqual({
         ok: true,
         comment: {
