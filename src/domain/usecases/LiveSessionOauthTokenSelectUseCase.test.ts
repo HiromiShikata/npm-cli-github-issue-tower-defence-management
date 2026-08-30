@@ -223,7 +223,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const aboutToReset = result.metrics.find(
       (m) => m.name === 'aboutToResetNarrowFiveHour',
     );
-    expect(aboutToReset?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
+    expect(aboutToReset?.concurrentSessionLimit).toBe(
+      MAX_CONCURRENT_SESSION_COUNT,
+    );
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
@@ -248,7 +250,9 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     );
 
     const downWeighted = result.metrics.find((m) => m.name === 'downWeighted');
-    expect(downWeighted?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
+    expect(downWeighted?.concurrentSessionLimit).toBe(
+      MAX_CONCURRENT_SESSION_COUNT,
+    );
     expect(result.selected?.name).toBe('downWeighted');
   });
 
@@ -717,7 +721,9 @@ describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration
     const nearDeadline = result.metrics.find(
       (m) => m.name === 'nearDeadlineDownWeighted',
     );
-    expect(nearDeadline?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
+    expect(nearDeadline?.concurrentSessionLimit).toBe(
+      MAX_CONCURRENT_SESSION_COUNT,
+    );
     expect(nearDeadline?.hasConcurrencyHeadroom).toBe(true);
     expect(result.selected?.name).toBe('nearDeadlineDownWeighted');
   });

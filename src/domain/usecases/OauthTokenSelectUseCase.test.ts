@@ -573,7 +573,7 @@ describe('sevenDayUrgencyFactor', () => {
     const further = sevenDayUrgencyFactor(0.5, now + 52 * 3600, now);
 
     expect(closer).toBeGreaterThan(further);
-    expect(closer).toBeCloseTo(0.5 * SEVEN_DAY_WINDOW_HOURS / 24, 5);
+    expect(closer).toBeCloseTo((0.5 * SEVEN_DAY_WINDOW_HOURS) / 24, 5);
   });
 });
 
@@ -585,7 +585,10 @@ describe('OauthTokenSelectUseCase spend-deadline bypass', () => {
       [
         candidate(
           'nearReset7d',
-          snapshot({ sevenDayUtilization: 0.995, sevenDayReset: NOW + 20 * HOUR }),
+          snapshot({
+            sevenDayUtilization: 0.995,
+            sevenDayReset: NOW + 20 * HOUR,
+          }),
         ),
       ],
       NOW,
@@ -601,7 +604,10 @@ describe('OauthTokenSelectUseCase spend-deadline bypass', () => {
       [
         candidate(
           'farReset7d',
-          snapshot({ sevenDayUtilization: 0.995, sevenDayReset: NOW + 30 * HOUR }),
+          snapshot({
+            sevenDayUtilization: 0.995,
+            sevenDayReset: NOW + 30 * HOUR,
+          }),
         ),
       ],
       NOW,
