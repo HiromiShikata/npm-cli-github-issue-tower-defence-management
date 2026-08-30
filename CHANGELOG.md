@@ -1,3 +1,10 @@
+# [2.27.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.26.0...v2.27.0) (2026-08-30)
+
+
+### Features
+
+* allow dependency URLs from fleet problem reporting repo to persist ([#1903](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1903)) ([27cf300](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/27cf3005391fd10a359cc212779ba0694f2c3440)), closes [HiromiShikata/umino-corporait-operation#31127](https://github.com/HiromiShikata/umino-corporait-operation/issues/31127)
+
 # [2.26.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.25.2...v2.26.0) (2026-08-30)
 
 
