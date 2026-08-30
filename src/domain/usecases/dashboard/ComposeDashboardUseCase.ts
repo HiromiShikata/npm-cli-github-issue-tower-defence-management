@@ -39,15 +39,15 @@ type ProjectColumn = {
 };
 
 const PROJECT_COLUMNS: ProjectColumn[] = [
-  { header: 'tdo', key: 'todo' },
-  { header: 'aqc', key: 'qc' },
-  { header: 'fal', key: 'fail' },
-  { header: 'prp', key: 'pr' },
-  { header: 'aws', key: 'ws' },
-  { header: 'dep', key: 'dep' },
+  { header: 'td', key: 'todo' },
+  { header: 'qc', key: 'qc' },
+  { header: 'fl', key: 'fail' },
+  { header: 'pp', key: 'pr' },
+  { header: 'ws', key: 'ws' },
+  { header: 'dp', key: 'dep' },
 ];
 
-const PROJECT_COLUMN_WIDTH = 3;
+const PROJECT_COLUMN_WIDTH = 2;
 
 const STORY_COLOR_COLUMNS: ProjectColumn[] = [
   { header: '🔴', key: 'humanPendingRed' },
@@ -61,9 +61,9 @@ export const STATUS_DOT_DISPLAY_WIDTH = 2;
 
 const SEVERITY_BLANK = ' '.repeat(STATUS_DOT_DISPLAY_WIDTH);
 
-const TOKEN_NAME_WIDTH = 4;
+const TOKEN_NAME_WIDTH = 2;
 
-export const TOKEN_UTILIZATION_WIDTH = 4;
+export const TOKEN_UTILIZATION_WIDTH = 2;
 
 const TOKEN_RESET_WIDTH = 7;
 
@@ -179,9 +179,6 @@ export const formatMachineStatusLines = (
   return [`M${memText} C${cpuText} D${diskText} ${cycle}`, loadLine];
 };
 
-const capThreeDigits = (value: number): string =>
-  value > 999 ? '999' : String(value);
-
 const capTwoDigits = (value: number): string =>
   value > 99 ? '99' : String(value);
 
@@ -218,7 +215,7 @@ export const formatProjectRowLine = (
   const mark = project.row === null ? SEVERITY_BLANK : severityDot(project.row);
   const cells = PROJECT_COLUMNS.map((column) => {
     const cell =
-      project.row === null ? '--' : capThreeDigits(project.row[column.key]);
+      project.row === null ? '--' : capTwoDigits(project.row[column.key]);
     return ' ' + padStart(cell, PROJECT_COLUMN_WIDTH);
   }).join('');
   const storyColorCells = STORY_COLOR_COLUMNS.map((column) => {
@@ -230,7 +227,10 @@ export const formatProjectRowLine = (
 };
 
 const formatUtilization = (percent: number | null): string =>
-  padStart(percent === null ? '?' : `${percent}%`, TOKEN_UTILIZATION_WIDTH);
+  padStart(
+    percent === null ? '?' : String(Math.min(percent, 99)),
+    TOKEN_UTILIZATION_WIDTH,
+  );
 
 const formatReset = (resetSeconds: number | null): string =>
   resetSeconds === null ? '?' : formatResetCountdown(resetSeconds);
@@ -268,6 +268,29 @@ export const SEVEN_DAY_UTILIZATION_COLUMN_START =
   TOKEN_RESET_WIDTH +
   TOKEN_SEGMENT_SEPARATOR.length;
 
+export const TOKEN_SESSION_COLUMN_START =
+  SEVEN_DAY_UTILIZATION_COLUMN_START +
+  TOKEN_UTILIZATION_WIDTH +
+  TOKEN_SEGMENT_SEPARATOR.length +
+  TOKEN_RESET_WIDTH +
+  TOKEN_SEGMENT_SEPARATOR.length;
+
+export const formatTokenSessionTotalLine = (
+  tokens: TokenStatus[],
+): string | null => {
+  if (tokens.length === 0) {
+    return null;
+  }
+  const totalPrep = tokens.reduce((sum, t) => sum + t.prep, 0);
+  const totalHum = tokens.reduce((sum, t) => sum + t.hum, 0);
+  return (
+    padEnd('', TOKEN_SESSION_COLUMN_START, ' ') +
+    String(totalPrep) +
+    ' ' +
+    String(totalHum)
+  );
+};
+
 export const formatSevenDayWindowAggregateLine = (
   aggregate: SevenDayWindowAggregate | null,
 ): string | null => {
@@ -288,7 +311,7 @@ export const formatSevenDayWindowAggregateLine = (
 
 export const formatTokenRowLine = (token: TokenStatus): string => {
   const dot = TOKEN_COLOR_DOT[token.color];
-  const name = padEnd(token.name, TOKEN_NAME_WIDTH, '_');
+  const name = padEnd(token.name.slice(-TOKEN_NAME_WIDTH), TOKEN_NAME_WIDTH, '_');
   const fiveHourUtilization = formatUtilization(
     token.fiveHourUtilizationPercent,
   );
@@ -320,16 +343,17 @@ export class ComposeDashboardUseCase {
       formatProjectHeaderLine(),
       ...input.projects.map((project) => formatProjectRowLine(project)),
     ];
-    const tokenLines = sortTokens(input.tokens).map((token) =>
-      formatTokenRowLine(token),
-    );
+    const sortedTokens = sortTokens(input.tokens);
+    const tokenLines = sortedTokens.map((token) => formatTokenRowLine(token));
     const aggregateLine = formatSevenDayWindowAggregateLine(
       input.sevenDayWindowAggregate ?? null,
     );
+    const sessionTotalLine = formatTokenSessionTotalLine(sortedTokens);
     const lines = [
       ...statsLines,
       ...projectLines,
       aggregateLine === null ? '' : aggregateLine,
+      ...(sessionTotalLine !== null ? [sessionTotalLine] : []),
       ...tokenLines,
     ];
     return lines.map((line) => wrapLine(line)).join('\n') + '\n';
