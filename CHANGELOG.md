@@ -1,3 +1,10 @@
+## [2.24.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.24.0...v2.24.1) (2026-08-30)
+
+
+### Bug Fixes
+
+* **console:** preserve textarea cursor position during image upload ([#1898](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1898)) ([c9d8d1a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c9d8d1a91afe7b7fa4ff0d82b71550a0bca3374e))
+
 # [2.24.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.23.0...v2.24.0) (2026-08-30)
 
 
