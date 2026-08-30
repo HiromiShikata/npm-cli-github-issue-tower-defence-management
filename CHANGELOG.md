@@ -1,3 +1,10 @@
+## [2.19.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.1...v2.19.2) (2026-08-30)
+
+
+### Bug Fixes
+
+* **build:** stop tracking generated build outputs to eliminate merge conflicts ([#1886](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1886)) ([d52913d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d52913d1c4d5006f8666f7bb3ab11a1d7c323b05))
+
 ## [2.19.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.0...v2.19.1) (2026-08-30)
 
 
