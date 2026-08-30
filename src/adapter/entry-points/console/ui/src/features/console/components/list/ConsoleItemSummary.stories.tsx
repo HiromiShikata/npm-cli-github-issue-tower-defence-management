@@ -1,11 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { consoleListItemsFixture } from '../../testing/fixtures';
+import {
+  consoleListItemsFixture,
+  consoleStatusOptionsFixture,
+} from '../../testing/fixtures';
 import { ConsoleItemSummary } from './ConsoleItemSummary';
 
 const meta: Meta<typeof ConsoleItemSummary> = {
   title: 'Console/ConsoleItemSummary',
   component: ConsoleItemSummary,
-  args: { onSelect: () => {}, now: Date.parse('2026-06-19T12:00:00.000Z') },
+  args: {
+    onSelect: () => {},
+    now: Date.parse('2026-06-19T12:00:00.000Z'),
+    statusOptions: consoleStatusOptionsFixture,
+  },
 };
 
 export default meta;

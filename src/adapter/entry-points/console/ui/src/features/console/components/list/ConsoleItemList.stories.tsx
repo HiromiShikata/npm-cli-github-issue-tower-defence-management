@@ -3,6 +3,7 @@ import { buildConsoleListRows } from '../../logic/grouping';
 import type { ConsoleOverlay } from '../../logic/types';
 import {
   consoleListItemsFixture,
+  consoleStatusOptionsFixture,
   consoleStoryColorsFixture,
 } from '../../testing/fixtures';
 import { ConsoleItemList } from './ConsoleItemList';
@@ -10,7 +11,10 @@ import { ConsoleItemList } from './ConsoleItemList';
 const meta: Meta<typeof ConsoleItemList> = {
   title: 'Console/ConsoleItemList',
   component: ConsoleItemList,
-  args: { now: Date.parse('2026-06-19T12:00:00.000Z') },
+  args: {
+    now: Date.parse('2026-06-19T12:00:00.000Z'),
+    statusOptions: consoleStatusOptionsFixture,
+  },
 };
 
 export default meta;

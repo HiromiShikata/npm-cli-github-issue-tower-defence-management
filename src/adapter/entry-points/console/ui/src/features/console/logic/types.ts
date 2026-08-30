@@ -43,7 +43,15 @@ export type ConsoleStatusTab = {
   items: ConsoleListItem[];
 };
 
-export type ConsoleTabData = ConsoleStatusTab;
+export type ConsoleQueuedTab = {
+  pjcode: string;
+  generatedAt: string;
+  statusOptions: ConsoleFieldOption[];
+  agentOptions: ConsoleFieldOption[];
+  storyOrder: string[];
+  storyColors: Record<string, { color: ConsoleColor }>;
+  items: ConsoleListItem[];
+};
 
 export type ConsoleStoryColorSource = Record<
   string,
@@ -138,6 +146,7 @@ export type ConsoleTabName =
   | 'failed-preparation'
   | 'todo-by-human'
   | 'todo-by-agent'
+  | 'queued'
   | 'stories';
 
 export type ConsoleStoryEntry = {
@@ -159,5 +168,6 @@ export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'failed-preparation', label: 'Failed Preparation' },
   { name: 'todo-by-human', label: 'Todo by human' },
   { name: 'todo-by-agent', label: 'Todo by agent' },
+  { name: 'queued', label: 'Queued' },
   { name: 'stories', label: 'Stories' },
 ];

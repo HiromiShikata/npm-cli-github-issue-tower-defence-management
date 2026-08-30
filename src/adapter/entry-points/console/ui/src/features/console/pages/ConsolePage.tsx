@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
+import { ConsoleQueuedList } from '../components/list/ConsoleQueuedList';
 import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
 import {
   ConsoleErrorToast,
@@ -185,6 +186,7 @@ export const ConsolePage = () => {
 
   const storyColors = activeSnapshot?.storyColors ?? {};
   const statusOptions = activeSnapshot?.statusOptions ?? [];
+  const agentOptions = activeSnapshot?.agentOptions ?? [];
   const generatedAt = activeSnapshot?.generatedAt ?? null;
   const fromCache = activeSnapshot?.fromCache ?? false;
 
@@ -552,15 +554,29 @@ export const ConsolePage = () => {
           colorErrors={storyColorErrors}
         />
       ) : selectedItem === null ? (
-        <ConsoleItemList
-          rows={rows}
-          storyColors={storyColors}
-          activeItemId={null}
-          now={now}
-          isLoading={isLoading}
-          error={error}
-          onSelectItem={(item) => navigation.openItem(item.projectItemId)}
-        />
+        activeTab === 'queued' ? (
+          <ConsoleQueuedList
+            rows={rows}
+            storyColors={storyColors}
+            statusOptions={statusOptions}
+            agentOptions={agentOptions}
+            activeItemId={null}
+            isLoading={isLoading}
+            error={error}
+            onSelectItem={(item) => navigation.openItem(item.projectItemId)}
+          />
+        ) : (
+          <ConsoleItemList
+            rows={rows}
+            storyColors={storyColors}
+            statusOptions={statusOptions}
+            activeItemId={null}
+            now={now}
+            isLoading={isLoading}
+            error={error}
+            onSelectItem={(item) => navigation.openItem(item.projectItemId)}
+          />
+        )
       ) : (
         <div className="console-detail-screen" ref={detailScreenRef}>
           <ConsoleItemDetailContainer

@@ -800,4 +800,88 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.prs.items[0].agent).toBe('chore');
     });
   });
+
+  describe('queued tab', () => {
+    it('includes Awaiting Workspace issues', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Workspace',
+          assignees: ['other-person'],
+        }),
+      ]);
+      expect(result.queued.items).toHaveLength(1);
+    });
+
+    it('includes Preparation issues', () => {
+      const result = run([
+        makeIssue({ status: 'Preparation', assignees: ['other-person'] }),
+      ]);
+      expect(result.queued.items).toHaveLength(1);
+    });
+
+    it('excludes issues with statuses other than Awaiting Workspace and Preparation', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human' }),
+        makeIssue({ status: 'In Tmux by agent' }),
+        makeIssue({ status: 'Awaiting Quality Check' }),
+        makeIssue({ status: 'Done' }),
+        makeIssue({ status: 'Failed Preparation' }),
+      ]);
+      expect(result.queued.items).toHaveLength(0);
+    });
+
+    it('excludes closed issues', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Workspace', isClosed: true }),
+        makeIssue({ status: 'Preparation', isClosed: true }),
+      ]);
+      expect(result.queued.items).toHaveLength(0);
+    });
+
+    it('excludes issues with dependedIssueUrls', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+        makeIssue({
+          status: 'Preparation',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/100'],
+        }),
+      ]);
+      expect(result.queued.items).toHaveLength(0);
+    });
+
+    it('includes issues regardless of assignee', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Workspace', assignees: [] }),
+        makeIssue({
+          status: 'Preparation',
+          assignees: ['completely-other-person'],
+        }),
+        makeIssue({ status: 'Awaiting Workspace', assignees: [ASSIGNEE] }),
+      ]);
+      expect(result.queued.items).toHaveLength(3);
+    });
+
+    it('propagates agentOptions from project.agent field', () => {
+      const agentOptions: FieldOption[] = [
+        storyOption('ag1', 'developer', 'GRAY'),
+        storyOption('ag2', 'chore', 'GRAY'),
+      ];
+      const projectWithAgent: Project = {
+        ...baseProject(projectWithStory.story),
+        agent: { name: 'Agent', fieldId: 'agent-field', options: agentOptions },
+      };
+      const result = run([], projectWithAgent);
+      expect(result.queued.agentOptions).toEqual(
+        agentOptions.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty agentOptions when project.agent is null', () => {
+      const result = run([]);
+      expect(result.queued.agentOptions).toEqual([]);
+    });
+  });
 });

@@ -272,6 +272,7 @@ describe('useConsoleTabData', () => {
           prs: {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             stories: [],
@@ -303,6 +304,7 @@ describe('useConsoleTabData', () => {
           'workflow-blocker': {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -314,6 +316,7 @@ describe('useConsoleTabData', () => {
           'failed-preparation': {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -325,6 +328,7 @@ describe('useConsoleTabData', () => {
           'todo-by-human': {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -336,6 +340,19 @@ describe('useConsoleTabData', () => {
           'todo-by-agent': {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          queued: {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -347,6 +364,7 @@ describe('useConsoleTabData', () => {
           stories: {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -390,6 +408,7 @@ describe('useConsoleTabData', () => {
           prs: {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -401,6 +420,7 @@ describe('useConsoleTabData', () => {
           'workflow-blocker': {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -412,6 +432,7 @@ describe('useConsoleTabData', () => {
           'failed-preparation': {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -423,6 +444,7 @@ describe('useConsoleTabData', () => {
           'todo-by-human': {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -434,6 +456,19 @@ describe('useConsoleTabData', () => {
           'todo-by-agent': {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
+            storyOptions: [],
+            storyColors: {},
+            items: [],
+            stories: [],
+            defaultNameWithOwner: null,
+            fromCache: false,
+            storyOrder: [],
+          },
+          queued: {
+            generatedAt: '2026-08-01T10:00:00Z',
+            statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -445,6 +480,7 @@ describe('useConsoleTabData', () => {
           stories: {
             generatedAt: '2026-08-01T10:00:00Z',
             statusOptions: [],
+            agentOptions: [],
             storyOptions: [],
             storyColors: {},
             items: [],
@@ -471,5 +507,40 @@ describe('useConsoleTabData', () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     jest.useRealTimers();
+  });
+
+  it('parses agentOptions from the snapshot payload', async () => {
+    const agentOptions = [
+      { id: 'ag1', name: 'developer', color: 'GRAY' },
+      { id: 'ag2', name: 'chore', color: 'GRAY' },
+    ];
+    const fetchMock = jest.fn(async (url: string) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcode: 'acme',
+        generatedAt: '2026-06-19T00:00:00.000Z',
+        statusOptions: [],
+        storyColors: {},
+        items: [],
+        agentOptions: url.includes('/queued/') ? agentOptions : [],
+      }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.snapshots.queued?.agentOptions).toEqual(agentOptions);
+  });
+
+  it('defaults agentOptions to empty array when missing from payload', async () => {
+    installNetworkFetch();
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.snapshots.prs?.agentOptions).toEqual([]);
   });
 });

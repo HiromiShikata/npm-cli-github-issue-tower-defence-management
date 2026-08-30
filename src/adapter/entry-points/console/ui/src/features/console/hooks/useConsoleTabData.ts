@@ -13,6 +13,7 @@ export type ConsoleTabSnapshot = {
   items: ConsoleListItem[];
   generatedAt: string;
   statusOptions: ConsoleFieldOption[];
+  agentOptions: ConsoleFieldOption[];
   storyOptions: ConsoleFieldOption[];
   storyColors: ConsoleStoryColorSource;
   stories: ConsoleStoryEntry[];
@@ -73,6 +74,7 @@ const parseSnapshotData = (
       ? payload.generatedAt
       : '',
   statusOptions: isRecord(payload) ? parseOptions(payload.statusOptions) : [],
+  agentOptions: isRecord(payload) ? parseOptions(payload.agentOptions) : [],
   storyOptions: isRecord(payload) ? parseOptions(payload.storyOptions) : [],
   storyColors:
     isRecord(payload) && isRecord(payload.storyColors)

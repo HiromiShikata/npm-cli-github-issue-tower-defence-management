@@ -533,6 +533,47 @@ test('changes the color of a story row via the color palette in the stories tab'
   await expect(palette).toHaveCount(0);
 });
 
+test('shows queued items grouped by story with colored status badges and navigates to detail on row click', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Queued').click();
+  await expect(activeTabLabel(page)).toHaveText('Queued');
+  await expect(tabBadge(page, 'Queued')).toHaveText('2');
+
+  const awaitingRow = itemRowByText(
+    page,
+    'Add telemetry to the TDPM cost dashboard',
+  );
+  const prepRow = itemRowByText(
+    page,
+    'Migrate the rate-limit store to a shared Redis backend',
+  );
+  await expect(awaitingRow).toBeVisible();
+  await expect(prepRow).toBeVisible();
+
+  const awaitingStatusBadge = awaitingRow
+    .locator('.console-queued-item-badge')
+    .first();
+  await expect(awaitingStatusBadge).toHaveText('Awaiting Workspace');
+  const awaitingStyle = await awaitingStatusBadge.getAttribute('style');
+  expect(awaitingStyle).toContain('rgba(56, 139, 253');
+
+  const prepStatusBadge = prepRow.locator('.console-queued-item-badge').first();
+  await expect(prepStatusBadge).toHaveText('Preparation');
+  const prepStyle = await prepStatusBadge.getAttribute('style');
+  expect(prepStyle).toContain('rgba(187, 128, 9');
+
+  const prepAgentBadge = prepRow.locator('.console-queued-item-badge').nth(1);
+  await expect(prepAgentBadge).toHaveText('developer');
+
+  await awaitingRow.click();
+  await expect(page).toHaveURL(/PVTI_lADOABCD1234zgQUE00930/, {
+    timeout: 3000,
+  });
+});
+
 test('posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked', async ({
   page,
 }) => {

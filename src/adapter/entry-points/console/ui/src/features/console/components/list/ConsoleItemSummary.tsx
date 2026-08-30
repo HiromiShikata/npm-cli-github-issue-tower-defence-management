@@ -1,14 +1,16 @@
+import { badgeStyle } from '../../logic/colors';
 import {
   formatFullTimestamp,
   formatRelativeTime,
 } from '../../logic/relativeTime';
-import type { ConsoleListItem } from '../../logic/types';
+import type { ConsoleFieldOption, ConsoleListItem } from '../../logic/types';
 import { ConsoleItemIcon } from '../detail/ConsoleItemIcon';
 
 export type ConsoleListItemRowProps = {
   item: ConsoleListItem;
   isActive: boolean;
   now: number;
+  statusOptions?: ConsoleFieldOption[];
   onSelect: (item: ConsoleListItem) => void;
 };
 
@@ -16,6 +18,7 @@ export const ConsoleItemSummary = ({
   item,
   isActive,
   now,
+  statusOptions = [],
   onSelect,
 }: ConsoleListItemRowProps) => (
   <button
@@ -68,7 +71,15 @@ export const ConsoleItemSummary = ({
           {item.status !== null && item.status !== '' && (
             <span className="console-item-field">
               <span className="console-item-field-label">Status</span>
-              {item.status}
+              <span
+                className="console-item-status-badge"
+                style={badgeStyle(
+                  statusOptions.find((o) => o.name === item.status)?.color ??
+                    null,
+                )}
+              >
+                {item.status}
+              </span>
             </span>
           )}
           {item.agent !== null && item.agent !== '' && (

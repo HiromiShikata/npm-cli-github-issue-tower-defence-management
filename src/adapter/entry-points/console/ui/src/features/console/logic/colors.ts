@@ -71,3 +71,15 @@ export const colorFromEnum = (
   }
   return CONSOLE_COLOR_PALETTE.GRAY;
 };
+
+export const badgeStyle = (colorEnum: string | null) => {
+  const palette = colorFromEnum(colorEnum);
+  return {
+    backgroundColor: palette.bg,
+    borderColor: palette.border,
+    color: palette.fg,
+    border: '1px solid' as const,
+    borderRadius: '6px',
+    padding: '0 6px',
+  };
+};

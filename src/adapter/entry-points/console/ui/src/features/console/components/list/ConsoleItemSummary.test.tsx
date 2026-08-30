@@ -1,6 +1,9 @@
 import { fireEvent, render } from '@testing-library/react';
 import { formatFullTimestamp } from '../../logic/relativeTime';
-import { consoleListItemsFixture } from '../../testing/fixtures';
+import {
+  consoleListItemsFixture,
+  consoleStatusOptionsFixture,
+} from '../../testing/fixtures';
 import { ConsoleItemSummary } from './ConsoleItemSummary';
 
 const now = Date.parse('2026-06-19T12:00:00.000Z');
@@ -173,5 +176,38 @@ describe('ConsoleItemSummary', () => {
       />,
     );
     expect(queryByText('Agent')).not.toBeInTheDocument();
+  });
+
+  it('applies the Project V2 status color from statusOptions to the status badge', () => {
+    const awaitingWorkspaceItem = {
+      ...prItem,
+      status: 'Awaiting Workspace',
+    };
+    const { getByText } = render(
+      <ConsoleItemSummary
+        item={awaitingWorkspaceItem}
+        isActive={false}
+        now={now}
+        statusOptions={consoleStatusOptionsFixture}
+        onSelect={() => {}}
+      />,
+    );
+    const badge = getByText('Awaiting Workspace');
+    expect(badge.style.backgroundColor).toBe('rgba(56, 139, 253, 0.1)');
+    expect(badge.style.color).toBe('rgb(56, 139, 253)');
+  });
+
+  it('applies gray color to the status badge when statusOptions is empty', () => {
+    const { getByText } = render(
+      <ConsoleItemSummary
+        item={prItem}
+        isActive={false}
+        now={now}
+        statusOptions={[]}
+        onSelect={() => {}}
+      />,
+    );
+    const badge = getByText(prItem.status as string);
+    expect(badge.style.backgroundColor).toBe('rgba(110, 118, 129, 0.1)');
   });
 });

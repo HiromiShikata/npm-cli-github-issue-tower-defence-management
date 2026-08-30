@@ -16,6 +16,7 @@ export type AirplaneTabSnapshot = {
   items: ConsoleListItem[];
   generatedAt: string;
   statusOptions: ConsoleFieldOption[];
+  agentOptions: ConsoleFieldOption[];
   storyOptions: ConsoleFieldOption[];
   storyColors: ConsoleStoryColorSource;
   stories: ConsoleStoryEntry[];
@@ -170,6 +171,7 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
       items: [],
       generatedAt: '',
       statusOptions: [],
+      agentOptions: [],
       storyOptions: [],
       storyColors: {},
       stories: [],
@@ -188,6 +190,9 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
   )
     ? (payload.statusOptions.filter(isRecord) as ConsoleFieldOption[])
     : [];
+  const agentOptions: ConsoleFieldOption[] = Array.isArray(payload.agentOptions)
+    ? (payload.agentOptions.filter(isRecord) as ConsoleFieldOption[])
+    : [];
   const storyOptions: ConsoleFieldOption[] = Array.isArray(payload.storyOptions)
     ? (payload.storyOptions.filter(isRecord) as ConsoleFieldOption[])
     : [];
@@ -202,6 +207,7 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
     generatedAt:
       typeof payload.generatedAt === 'string' ? payload.generatedAt : '',
     statusOptions,
+    agentOptions,
     storyOptions,
     storyColors: isRecord(payload.storyColors)
       ? (payload.storyColors as ConsoleStoryColorSource)

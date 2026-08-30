@@ -8,6 +8,7 @@ const counts: Record<ConsoleTabName, number> = {
   'failed-preparation': 0,
   'todo-by-human': 2,
   'todo-by-agent': 3,
+  queued: 0,
   stories: 0,
 };
 
