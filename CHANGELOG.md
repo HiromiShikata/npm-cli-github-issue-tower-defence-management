@@ -1,3 +1,10 @@
+## [2.25.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.25.1...v2.25.2) (2026-08-30)
+
+
+### Bug Fixes
+
+* **console:** move PR/task icon inline with title and separate status/agent row ([#1902](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1902)) ([78d5168](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/78d5168ba4cdfeb2171175c4e59c75724fda2bc1)), closes [#31126](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31126)
+
 ## [2.25.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.25.0...v2.25.1) (2026-08-30)
 
 
