@@ -311,7 +311,11 @@ export const formatSevenDayWindowAggregateLine = (
 
 export const formatTokenRowLine = (token: TokenStatus): string => {
   const dot = TOKEN_COLOR_DOT[token.color];
-  const name = padEnd(token.name.slice(-TOKEN_NAME_WIDTH), TOKEN_NAME_WIDTH, '_');
+  const name = padEnd(
+    token.name.slice(-TOKEN_NAME_WIDTH),
+    TOKEN_NAME_WIDTH,
+    '_',
+  );
   const fiveHourUtilization = formatUtilization(
     token.fiveHourUtilizationPercent,
   );
