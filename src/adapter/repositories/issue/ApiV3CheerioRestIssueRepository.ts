@@ -1902,9 +1902,10 @@ export class ApiV3CheerioRestIssueRepository
 
       const issueData = responseData.data?.repository?.issue;
       if (!issueData) {
-        throw new Error(
-          `Issue not found when fetching timeline from GitHub GraphQL API: ${issueUrl}`,
+        console.info(
+          `ApiV3CheerioRestIssueRepository: issue not found when fetching timeline, returning empty related PRs. issueUrl: ${issueUrl}`,
         );
+        return [];
       }
 
       for (const item of issueData.timelineItems.nodes) {
