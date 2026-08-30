@@ -9,7 +9,6 @@ import type {
 } from '../../logic/types';
 import { ConsoleCloseActions } from './ConsoleCloseActions';
 import { ConsoleNextActionDateActions } from './ConsoleNextActionDateActions';
-import { ConsoleOkAndAwaitingWorkspaceActions } from './ConsoleOkAndAwaitingWorkspaceActions';
 import { ConsolePullRequestReviewActions } from './ConsolePullRequestReviewActions';
 import { ConsoleStatusActions } from './ConsoleStatusActions';
 
@@ -31,10 +30,6 @@ export const ConsoleOperationMenu = ({
 }: ConsoleOperationBarProps) => {
   return (
     <div className="console-operation-bar">
-      <ConsoleOkAndAwaitingWorkspaceActions
-        statusOptions={statusOptions}
-        onOkAndAwaitingWorkspace={handlers.onOkAndAwaitingWorkspace}
-      />
       {hasPullRequest && (
         <ConsolePullRequestReviewActions
           onReview={handlers.onReview}
