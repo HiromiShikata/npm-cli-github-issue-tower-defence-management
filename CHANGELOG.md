@@ -1,3 +1,10 @@
+## [2.19.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.0...v2.19.1) (2026-08-30)
+
+
+### Bug Fixes
+
+* **token-select:** lower 7d min free ratio to prevent wasting expiring budget ([#1885](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1885)) ([2f8783c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f8783cd799dc52b694dd17a9643a1cd38014693)), closes [HiromiShikata/umino-corporait-operation#31116](https://github.com/HiromiShikata/umino-corporait-operation/issues/31116)
+
 # [2.19.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.18.0...v2.19.0) (2026-08-30)
 
 

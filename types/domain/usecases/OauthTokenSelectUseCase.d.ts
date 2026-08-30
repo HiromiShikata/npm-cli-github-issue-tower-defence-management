@@ -34,7 +34,7 @@ export type OauthTokenSelectionThresholds = {
     sevenDayMinFreeRatio: number;
 };
 export declare const FIVE_HOUR_MIN_FREE_RATIO = 0.25;
-export declare const SEVEN_DAY_MIN_FREE_RATIO = 0.03;
+export declare const SEVEN_DAY_MIN_FREE_RATIO = 0.01;
 export declare const DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThresholds;
 export declare const CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThresholds;
 export declare const SEVEN_DAY_WINDOW_HOURS = 168;

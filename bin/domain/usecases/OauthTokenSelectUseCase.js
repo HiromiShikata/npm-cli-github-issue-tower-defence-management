@@ -10,7 +10,7 @@ exports.selectionWeightOf = selectionWeightOf;
 const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 exports.FIVE_HOUR_MIN_FREE_RATIO = 0.25;
-exports.SEVEN_DAY_MIN_FREE_RATIO = 0.03;
+exports.SEVEN_DAY_MIN_FREE_RATIO = 0.01;
 exports.DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS = {
     fiveHourMinFreeRatio: exports.FIVE_HOUR_MIN_FREE_RATIO,
     sevenDayMinFreeRatio: exports.SEVEN_DAY_MIN_FREE_RATIO,
