@@ -141,7 +141,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForDispatchLoop: 6,
       });
 
-      expect(result.type).toBe('escalateToFailedPreparation');
+      expect(result.type).toBe('escalateSilentRedispatch');
     });
   });
 
@@ -162,9 +162,9 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForDispatchLoop: 3,
       });
 
-      expect(result.type).toBe('escalateToFailedPreparation');
+      expect(result.type).toBe('escalateDispatchLoop');
       expect(
-        result.type === 'escalateToFailedPreparation' ? result.comment : '',
+        result.type === 'escalateDispatchLoop' ? result.comment : '',
       ).toContain('reviewer');
     });
 
@@ -178,7 +178,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForDispatchLoop: 3,
       });
 
-      expect(result.type).toBe('escalateToFailedPreparation');
+      expect(result.type).toBe('escalateDispatchLoop');
     });
 
     it('reports the dispatch count against the dispatch loop threshold before escalating', () => {
@@ -274,7 +274,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForDispatchLoop: 3,
       });
 
-      expect(result.type).toBe('escalateToFailedPreparation');
+      expect(result.type).toBe('escalateDispatchLoop');
     });
 
     it('does not restart counting on an auto status check comment', () => {
@@ -297,7 +297,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForDispatchLoop: 3,
       });
 
-      expect(result.type).toBe('escalateToFailedPreparation');
+      expect(result.type).toBe('escalateDispatchLoop');
     });
 
     it('matches the declared agent across reports ignoring case, spaces and hyphens', () => {
@@ -314,7 +314,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForDispatchLoop: 2,
       });
 
-      expect(result.type).toBe('escalateToFailedPreparation');
+      expect(result.type).toBe('escalateDispatchLoop');
     });
 
     it('ignores reports that declare no next step agent', () => {

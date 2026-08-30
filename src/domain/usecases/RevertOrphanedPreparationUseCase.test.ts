@@ -130,6 +130,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
       | 'getOpenPullRequest'
       | 'get'
       | 'setIssueAgentField'
+      | 'searchIssue'
+      | 'createNewIssue'
+      | 'createCommentByUrl'
+      | 'addIssueToProject'
+      | 'getIssueByUrl'
+      | 'updateStory'
     >
   >;
   let mockIssueCommentRepository: Mocked<
@@ -163,6 +169,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
           createMockIssue({ url: issueUrl, status: 'Preparation' }),
         ),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+      searchIssue: jest.fn().mockResolvedValue([]),
+      createNewIssue: jest.fn().mockResolvedValue(42),
+      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      addIssueToProject: jest.fn().mockResolvedValue(undefined),
+      getIssueByUrl: jest.fn().mockResolvedValue(null),
+      updateStory: jest.fn().mockResolvedValue(undefined),
     };
     mockIssueCommentRepository = {
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
@@ -2388,5 +2400,223 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
       'Auto Status Check: REJECTED',
     );
+  });
+
+  describe('workflow issue reporting for silent redispatch', () => {
+    const silentRedispatchSetup = (agent: string) => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        agent,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content: `From: :robot: triager\n\n\`\`\`json\n{"nextStep":null,"nextStepAgent":"${agent}"}\n\`\`\``,
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+        },
+        {
+          author: 'bot',
+          content: `Next step agent dispatch repeated: ${agent}`,
+          createdAt: new Date('2024-01-02T01:00:00Z'),
+        },
+        {
+          author: 'bot',
+          content: `Next step agent dispatch repeated: ${agent}`,
+          createdAt: new Date('2024-01-02T02:00:00Z'),
+        },
+      ]);
+      return stuckIssue;
+    };
+
+    it('should create a new workflow issue when workflowIssueReporterSettings is provided and no existing issue found', async () => {
+      silentRedispatchSetup('developer');
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(99);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['bot'],
+        workflowIssueReporterSettings: {
+          owner: 'workflow-owner',
+          repo: 'workflow-repo',
+        },
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+      expect(mockIssueRepository.searchIssue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          owner: 'workflow-owner',
+          repositoryName: 'workflow-repo',
+          title: 'TDPM agent not reporting: developer',
+          state: 'open',
+        }),
+      );
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'workflow-owner',
+        'workflow-repo',
+        'TDPM agent not reporting: developer',
+        expect.stringContaining('developer'),
+        [],
+        [],
+      );
+    });
+
+    it('should comment on existing workflow issue when one is found', async () => {
+      silentRedispatchSetup('developer');
+      mockIssueRepository.searchIssue.mockResolvedValue([
+        {
+          url: 'https://github.com/workflow-owner/workflow-repo/issues/7',
+          title: 'TDPM agent not reporting: developer',
+          number: '7',
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['bot'],
+        workflowIssueReporterSettings: {
+          owner: 'workflow-owner',
+          repo: 'workflow-repo',
+        },
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+        'https://github.com/workflow-owner/workflow-repo/issues/7',
+        expect.stringContaining('developer'),
+      );
+    });
+
+    it('should NOT create a workflow issue when workflowIssueReporterSettings is null', async () => {
+      silentRedispatchSetup('developer');
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['bot'],
+        workflowIssueReporterSettings: null,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalledWith(
+        'workflow-owner',
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it('should add new workflow issue to project and set workflow blocker story when projectUrl is provided', async () => {
+      silentRedispatchSetup('developer');
+      const reporterProject: Project = {
+        id: 'reporter-project-1',
+        url: 'https://github.com/orgs/workflow-owner/projects/5',
+        databaseId: 5,
+        name: 'Reporter Project',
+        status: {
+          name: 'Status',
+          fieldId: 'status-field-id',
+          statuses: [
+            {
+              id: '1',
+              name: 'Awaiting Workspace',
+              color: 'GRAY',
+              description: '',
+            },
+          ],
+        },
+        nextActionDate: null,
+        nextActionHour: null,
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 10,
+          stories: [
+            {
+              id: 'workflow-blocker-story-id',
+              name: 'regular / workflow blocker',
+              color: 'RED',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wm-1', name: 'workflow management' },
+        },
+        remainingEstimationMinutes: null,
+        dependedIssueUrlSeparatedByComma: null,
+        completionDate50PercentConfidence: null,
+        agent: null,
+      };
+      const createdIssue = createMockIssue({
+        url: 'https://github.com/workflow-owner/workflow-repo/issues/99',
+        status: 'Todo by human',
+      });
+
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(99);
+      mockProjectRepository.getByUrl.mockResolvedValue(reporterProject);
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['bot'],
+        workflowIssueReporterSettings: {
+          owner: 'workflow-owner',
+          repo: 'workflow-repo',
+          projectUrl: 'https://github.com/orgs/workflow-owner/projects/5',
+        },
+      });
+
+      expect(mockIssueRepository.addIssueToProject).toHaveBeenCalledWith(
+        reporterProject,
+        'https://github.com/workflow-owner/workflow-repo/issues/99',
+      );
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        { ...reporterProject, story: reporterProject.story },
+        createdIssue,
+        'workflow-blocker-story-id',
+      );
+    });
+
+    it('should NOT call addIssueToProject when projectUrl is not set', async () => {
+      silentRedispatchSetup('developer');
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(99);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['bot'],
+        workflowIssueReporterSettings: {
+          owner: 'workflow-owner',
+          repo: 'workflow-repo',
+        },
+      });
+
+      expect(mockIssueRepository.addIssueToProject).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
   });
 });

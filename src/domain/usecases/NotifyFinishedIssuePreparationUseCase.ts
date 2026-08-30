@@ -36,6 +36,10 @@ import {
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import {
+  reportSilentRedispatchWorkflowIssue,
+  WorkflowIssueReporterSettings,
+} from './reportSilentRedispatchWorkflowIssue';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -84,6 +88,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'setIssueAgentField'
       | 'searchIssue'
       | 'createNewIssue'
+      | 'createCommentByUrl'
       | 'updateNextActionDate'
       | 'updateStory'
       | 'addIssueToProject'
@@ -121,6 +126,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     manager?: string | null;
     developerAgentNames?: string[] | null;
     deferPreparation?: boolean | null;
+    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -372,7 +378,10 @@ export class NotifyFinishedIssuePreparationUseCase {
           params.thresholdForDispatchLoop ??
           DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
       });
-      if (repetition.type === 'escalateToFailedPreparation') {
+      if (
+        repetition.type === 'escalateSilentRedispatch' ||
+        repetition.type === 'escalateDispatchLoop'
+      ) {
         issue.status = FAILED_PREPARATION_STATUS_NAME;
         await this.issueRepository.update(issue, project);
         await this.issueRepository.updateStatus(
@@ -390,6 +399,18 @@ export class NotifyFinishedIssuePreparationUseCase {
           params.workflowBlockerResolvedWebhookUrl,
           project,
         );
+        if (
+          repetition.type === 'escalateSilentRedispatch' &&
+          params.workflowIssueReporterSettings
+        ) {
+          await reportSilentRedispatchWorkflowIssue(
+            nextStepAgent,
+            params.issueUrl,
+            params.workflowIssueReporterSettings,
+            this.issueRepository,
+            this.projectRepository,
+          );
+        }
         return;
       }
       const agentOptionId = await this.ensureAgentOptionAndGetId(

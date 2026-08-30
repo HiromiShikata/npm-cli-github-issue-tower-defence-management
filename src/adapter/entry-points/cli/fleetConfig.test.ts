@@ -10,6 +10,7 @@ import {
   loadPreparationWorkerSettings,
   loadStartPreparationFleetSettings,
   loadWorkflowImprovementIssueUrl,
+  loadWorkflowIssueReporterSettings,
   resolveFleetConfigFilePath,
 } from './fleetConfig';
 
@@ -549,5 +550,115 @@ describe('loadWorkflowImprovementIssueUrl', () => {
     expect(() => loadWorkflowImprovementIssueUrl(fleetConfigFilePath)).toThrow(
       'must be a string URL',
     );
+  });
+});
+
+describe('loadWorkflowIssueReporterSettings', () => {
+  let tempDir: string;
+
+  const writeFleetConfig = (content: string): string => {
+    const fleetConfigFilePath = path.join(tempDir, 'fleet.config.yaml');
+    fs.writeFileSync(fleetConfigFilePath, content);
+    return fleetConfigFilePath;
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-config-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('returns null when no fleet config path is given', () => {
+    expect(loadWorkflowIssueReporterSettings(null)).toBeNull();
+  });
+
+  it('returns null when the workflowIssueReporter section is absent', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'preparationWorker:\n  normalConcurrentLimit: 5\n',
+    );
+
+    expect(loadWorkflowIssueReporterSettings(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns null for an empty fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig('');
+
+    expect(loadWorkflowIssueReporterSettings(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns owner and repo from the fleet config with projectUrl null when absent', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n',
+    );
+
+    expect(loadWorkflowIssueReporterSettings(fleetConfigFilePath)).toEqual({
+      owner: 'myorg',
+      repo: 'myrepo',
+      projectUrl: null,
+    });
+  });
+
+  it('returns projectUrl when set in the fleet config', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n  projectUrl: https://github.com/orgs/myorg/projects/1\n',
+    );
+
+    expect(loadWorkflowIssueReporterSettings(fleetConfigFilePath)).toEqual({
+      owner: 'myorg',
+      repo: 'myrepo',
+      projectUrl: 'https://github.com/orgs/myorg/projects/1',
+    });
+  });
+
+  it('throws when projectUrl is not a string', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n  projectUrl: 42\n',
+    );
+
+    expect(() =>
+      loadWorkflowIssueReporterSettings(fleetConfigFilePath),
+    ).toThrow('projectUrl');
+  });
+
+  it('throws when owner is missing', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  repo: myrepo\n',
+    );
+
+    expect(() =>
+      loadWorkflowIssueReporterSettings(fleetConfigFilePath),
+    ).toThrow('owner');
+  });
+
+  it('throws when repo is missing', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n',
+    );
+
+    expect(() =>
+      loadWorkflowIssueReporterSettings(fleetConfigFilePath),
+    ).toThrow('repo');
+  });
+
+  it('throws when owner is an empty string', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      "workflowIssueReporter:\n  owner: ''\n  repo: myrepo\n",
+    );
+
+    expect(() =>
+      loadWorkflowIssueReporterSettings(fleetConfigFilePath),
+    ).toThrow('owner');
+  });
+
+  it('throws when repo is not a string', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: 42\n',
+    );
+
+    expect(() =>
+      loadWorkflowIssueReporterSettings(fleetConfigFilePath),
+    ).toThrow('repo');
   });
 });

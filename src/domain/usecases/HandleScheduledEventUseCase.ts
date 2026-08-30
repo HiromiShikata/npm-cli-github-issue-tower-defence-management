@@ -41,6 +41,7 @@ import {
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
+import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -192,6 +193,7 @@ export class HandleScheduledEventUseCase {
     storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentNames?: string[] | null;
+    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
     afterIssuesFetched?:
       ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
   }): Promise<{
@@ -480,6 +482,8 @@ ${JSON.stringify(e)}
           labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
           allowedIssueAuthors,
           agents: input.agents ?? null,
+          workflowIssueReporterSettings:
+            input.workflowIssueReporterSettings ?? null,
         });
       }
       if (input.startPreparation.autoRevertReopenedDoneEnabled) {

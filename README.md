@@ -62,6 +62,7 @@ Options for notifyFinishedIssuePreparation:
   --missingAgentName <name>                        Agent definition name that was not found; triggers task issue creation (assigned to the manager from config) and blocks the item until that issue is closed
   --sessionErrorLine <line>                        Exact error line from the session log to include in the task issue body
   --deferPreparation                               Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) and return it to Awaiting Workspace without creating any issue, recording the value of --sessionErrorLine as the stop reason in the deferral comment; use for transient upstream failures that should retry the next day
+  --fleetConfigFilePath <path>                     Path to the fleet-wide YAML config file holding the workflowIssueReporter mapping; falls back to the TDPM_FLEET_CONFIG environment variable. When set and the file contains a workflowIssueReporter section, a silent-redispatch escalation automatically creates (or comments on) an issue in the configured repository instead of only logging locally.
 
 Options for checkIssueReviewReadiness:
   --configFilePath <path>                          Path to config file for tower defence management (required)
@@ -177,6 +178,21 @@ preparationWorker:
   normalConcurrentLimit: 8
   maxConcurrentWorkers: 40
   graphqlRateLimitFloor: 500
+```
+
+The `notifyFinishedIssuePreparation` and `revertOrphanedPreparation` commands support a `workflowIssueReporter` mapping in the fleet-wide config file named by `--fleetConfigFilePath` or the `TDPM_FLEET_CONFIG` environment variable. When a silent-redispatch escalation fires (an agent is dispatched and returns no report three consecutive times, indicating a TDPM process-level problem rather than a task-specific one), TDPM automatically creates a tracking issue in the configured repository or, when an open issue with the same title already exists, adds a comment to it instead of opening a duplicate. Supported keys:
+
+- `owner` (string, required): GitHub owner (organisation or user) of the repository where the workflow issue is created.
+- `repo` (string, required): repository name under that owner.
+- `projectUrl` (string, optional): URL of a GitHub ProjectV2 to which the newly created issue is added. When the project contains a story option whose name includes "workflow blocker" (case-insensitive), the issue's Story field is set to that option automatically.
+
+Example:
+
+```yaml
+workflowIssueReporter:
+  owner: my-org
+  repo: workflow-issues
+  projectUrl: https://github.com/orgs/my-org/projects/5
 ```
 
 The `countInTmuxByHumanSessionsPerToken` sub-command reports, per Claude Code OAuth token, how many live interactive sessions running under that token belong to an issue that is currently in the GitHub Project Status `In Tmux by human`. It is read-only: it never starts the proxy, never mutates any cache file, and never writes any token anywhere. It enumerates live interactive sessions by scanning running processes on the local Linux host: for each process under `/proc` it reads the NUL-separated `/proc/<pid>/cmdline` and selects only processes launched for an interactive session, identified by a `--name <issue-url>` argument whose value is an HTTP or HTTPS URL; `Take ownership` background spawns (which have no `--name` argument) are excluded. For each selected process it reads `/proc/<pid>/environ` and takes its `CLAUDE_CODE_OAUTH_TOKEN` and `CLAUDE_CODE_SESSION_ID`; a process missing either is skipped, and a process whose files cannot be read is skipped. It then loads the project's issues with their Status (reusing the same on-disk issue cache the daemon uses), keeps only the sessions whose `--name` issue URL maps to an open issue in Status `In Tmux by human`, and counts the distinct `CLAUDE_CODE_SESSION_ID` values per token so child processes that inherit one session id count once. It writes one tab-separated line per token to stdout in the form `<tokenName>\t<count>` (the token name comes from the token list; the raw token value is never printed), and writes the per-run decision trace to stderr. The token-list path comes from `--tokenListJsonPath`, the `claudeCodeOauthTokenListJsonPath` config value, or the `CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH` environment variable. Because occupancy is read from `/proc/<pid>/cmdline` and `/proc/<pid>/environ`, this sub-command is Linux-specific.

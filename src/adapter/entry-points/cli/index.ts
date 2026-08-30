@@ -71,6 +71,7 @@ import {
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
   loadWorkflowImprovementIssueUrl,
+  loadWorkflowIssueReporterSettings,
   resolveFleetConfigFilePath,
 } from './fleetConfig';
 import {
@@ -121,6 +122,7 @@ type NotifyFinishedOptions = {
   thresholdForDispatchLoop?: string;
   workflowBlockerResolvedWebhookUrl?: string;
   configFilePath: string;
+  fleetConfigFilePath?: string;
   missingAgentName?: string;
   sessionErrorLine?: string;
   deferPreparation?: boolean;
@@ -497,6 +499,8 @@ program
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
         labelsNotRequiringPullRequest:
           config.labelsNotRequiringPullRequest ?? null,
+        workflowIssueReporterSettings:
+          loadWorkflowIssueReporterSettings(fleetConfigFilePath),
       });
     }
 
@@ -599,6 +603,10 @@ program
   .option(
     '--deferPreparation',
     'Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) without creating any issue; use for transient upstream failures',
+  )
+  .option(
+    '--fleetConfigFilePath <path>',
+    'Path to fleet config YAML file (also read from TDPM_FLEET_CONFIG env var)',
   )
   .action(async (options: NotifyFinishedOptions) => {
     const token = process.env.GH_TOKEN;
@@ -724,6 +732,9 @@ program
           .filter(Boolean)
       : null;
 
+    const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
+      options.fleetConfigFilePath ?? null,
+    );
     await useCase.run({
       projectUrl,
       issueUrl: options.issueUrl,
@@ -741,6 +752,9 @@ program
       manager: config.manager ?? null,
       developerAgentNames: config.developerAgentNames ?? null,
       deferPreparation: options.deferPreparation ?? null,
+      workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
+        notifyFleetConfigFilePath,
+      ),
     });
   });
 

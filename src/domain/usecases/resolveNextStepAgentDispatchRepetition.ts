@@ -12,7 +12,8 @@ export const DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP = 6;
 export type NextStepAgentDispatchRepetition =
   | { type: 'notRepeated' }
   | { type: 'dispatchAgain'; comment: string }
-  | { type: 'escalateToFailedPreparation'; comment: string };
+  | { type: 'escalateSilentRedispatch'; comment: string }
+  | { type: 'escalateDispatchLoop'; comment: string };
 
 const countSilentRedispatches = <
   CommentLike extends { author: string; content: string },
@@ -94,7 +95,7 @@ export const resolveNextStepAgentDispatchRepetition = <
     silentRedispatches >= params.thresholdForAutoReject
   ) {
     return {
-      type: 'escalateToFailedPreparation',
+      type: 'escalateSilentRedispatch',
       comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
 Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} times`,
@@ -103,7 +104,7 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
   const dispatchesInCycle = countDispatchesInCurrentCycle(params);
   if (dispatchesInCycle >= params.thresholdForDispatchLoop) {
     return {
-      type: 'escalateToFailedPreparation',
+      type: 'escalateDispatchLoop',
       comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
 This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so the issue is escalated for a decision instead of being dispatched again.`,

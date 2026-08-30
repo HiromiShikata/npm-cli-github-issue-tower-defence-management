@@ -25,6 +25,10 @@ import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
+import {
+  reportSilentRedispatchWorkflowIssue,
+  WorkflowIssueReporterSettings,
+} from './reportSilentRedispatchWorkflowIssue';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -49,6 +53,12 @@ export class RevertOrphanedPreparationUseCase {
       | 'getOpenPullRequest'
       | 'get'
       | 'setIssueAgentField'
+      | 'searchIssue'
+      | 'createNewIssue'
+      | 'createCommentByUrl'
+      | 'addIssueToProject'
+      | 'getIssueByUrl'
+      | 'updateStory'
     >,
     readonly issueCommentRepository: Pick<
       IssueCommentRepository,
@@ -70,6 +80,7 @@ export class RevertOrphanedPreparationUseCase {
     allowedIssueAuthors?: string[] | null;
     agents?: string[] | null;
     developerAgentName?: string | null;
+    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
@@ -167,7 +178,8 @@ export class RevertOrphanedPreparationUseCase {
             DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
         });
         if (
-          repetition.type === 'escalateToFailedPreparation' &&
+          (repetition.type === 'escalateSilentRedispatch' ||
+            repetition.type === 'escalateDispatchLoop') &&
           failedPreparationStatusOption
         ) {
           await this.issueRepository.updateStatus(
@@ -179,6 +191,18 @@ export class RevertOrphanedPreparationUseCase {
             issue,
             repetition.comment,
           );
+          if (
+            repetition.type === 'escalateSilentRedispatch' &&
+            params.workflowIssueReporterSettings
+          ) {
+            await reportSilentRedispatchWorkflowIssue(
+              nextStepAgent,
+              issue.url,
+              params.workflowIssueReporterSettings,
+              this.issueRepository,
+              this.projectRepository,
+            );
+          }
           continue;
         }
         const agentOptionId = await ensureAgentOptionAndGetId(

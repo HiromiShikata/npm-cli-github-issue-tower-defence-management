@@ -5,6 +5,8 @@ import {
   type LiveSessionOauthTokenSelectionSettings,
 } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import { NORMAL_CONCURRENT_LIMIT } from '../../../domain/usecases/StartPreparationUseCase';
+import { WorkflowIssueReporterSettings } from '../../../domain/usecases/reportSilentRedispatchWorkflowIssue';
+export type { WorkflowIssueReporterSettings };
 
 export const FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = 'TDPM_FLEET_CONFIG';
 
@@ -13,6 +15,7 @@ export const LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY =
 export const PREPARATION_WORKER_SECTION_KEY = 'preparationWorker';
 export const START_PREPARATION_SECTION_KEY = 'startPreparation';
 export const WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY = 'workflowImprovementIssueUrl';
+export const WORKFLOW_ISSUE_REPORTER_SECTION_KEY = 'workflowIssueReporter';
 
 export const DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 
@@ -240,6 +243,48 @@ export const loadStartPreparationFleetSettings = (
       (value) => Number.isInteger(value) && value >= 1,
       'integer of at least 1',
     ),
+  };
+};
+
+export const loadWorkflowIssueReporterSettings = (
+  fleetConfigFilePath: string | null,
+): WorkflowIssueReporterSettings | null => {
+  if (fleetConfigFilePath === null) {
+    return null;
+  }
+  const section = readFleetConfigSection(
+    fleetConfigFilePath,
+    WORKFLOW_ISSUE_REPORTER_SECTION_KEY,
+  );
+  if (section === null) {
+    return null;
+  }
+  const owner = section['owner'];
+  const repo = section['repo'];
+  if (typeof owner !== 'string' || owner === '') {
+    throw new Error(
+      `${WORKFLOW_ISSUE_REPORTER_SECTION_KEY}.owner in ${fleetConfigFilePath} must be a non-empty string.`,
+    );
+  }
+  if (typeof repo !== 'string' || repo === '') {
+    throw new Error(
+      `${WORKFLOW_ISSUE_REPORTER_SECTION_KEY}.repo in ${fleetConfigFilePath} must be a non-empty string.`,
+    );
+  }
+  const projectUrl = section['projectUrl'];
+  if (
+    projectUrl !== undefined &&
+    projectUrl !== null &&
+    typeof projectUrl !== 'string'
+  ) {
+    throw new Error(
+      `${WORKFLOW_ISSUE_REPORTER_SECTION_KEY}.projectUrl in ${fleetConfigFilePath} must be a string URL when set.`,
+    );
+  }
+  return {
+    owner,
+    repo,
+    projectUrl: typeof projectUrl === 'string' ? projectUrl : null,
   };
 };
 
