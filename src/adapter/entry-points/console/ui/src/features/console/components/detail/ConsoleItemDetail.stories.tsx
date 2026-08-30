@@ -20,6 +20,7 @@ const noopOperationHandlers: ConsoleOperationHandlers = {
   onSetInTmuxByHuman: () => {},
   onClose: () => {},
   onOkAndAwaitingWorkspace: () => {},
+  onDeleteAllComments: () => {},
 };
 
 const richMarkdownBody = [

@@ -8,6 +8,7 @@ import type {
   ConsoleTabName,
 } from '../../logic/types';
 import { ConsoleCloseActions } from './ConsoleCloseActions';
+import { ConsoleDangerousActions } from './ConsoleDangerousActions';
 import { ConsoleNextActionDateActions } from './ConsoleNextActionDateActions';
 import { ConsolePullRequestReviewActions } from './ConsolePullRequestReviewActions';
 import { ConsoleStatusActions } from './ConsoleStatusActions';
@@ -30,6 +31,9 @@ export const ConsoleOperationMenu = ({
 }: ConsoleOperationBarProps) => {
   return (
     <div className="console-operation-bar">
+      <ConsoleDangerousActions
+        onDeleteAllComments={handlers.onDeleteAllComments}
+      />
       {hasPullRequest && (
         <ConsolePullRequestReviewActions
           onReview={handlers.onReview}

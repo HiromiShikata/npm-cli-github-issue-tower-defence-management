@@ -7,6 +7,7 @@ import {
   encodeAttachmentContent,
   postConsoleAttachment,
   postConsoleComment,
+  postConsoleDeleteAllComments,
   postConsoleOperation,
   postConsoleReviewComment,
 } from '../lib/consoleApi';
@@ -74,6 +75,7 @@ export type ConsoleOperationsApi = {
     side: ConsoleReviewCommentSide,
     body: string,
   ) => Promise<void>;
+  deleteAllComments: (item: ConsoleListItem) => Promise<void>;
 };
 
 export const reviewRequest = (
@@ -391,6 +393,14 @@ export const useConsoleOperations = (
     [pjcode],
   );
 
+  const deleteAllComments = useCallback(
+    async (item: ConsoleListItem) => {
+      await postConsoleDeleteAllComments({ issueUrl: item.url });
+      invalidateItemContent(item);
+    },
+    [invalidateItemContent],
+  );
+
   return {
     reviewPullRequest,
     setNextActionDate,
@@ -402,5 +412,6 @@ export const useConsoleOperations = (
     addComment,
     uploadAttachment,
     addInlineReviewComment,
+    deleteAllComments,
   };
 };

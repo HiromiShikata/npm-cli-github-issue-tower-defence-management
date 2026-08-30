@@ -433,6 +433,22 @@ function isIssueCommentsResponse(
   return Array.isArray(value) && value.every(isIssueCommentsResponseItem);
 }
 
+type IssueCommentIdResponseItem = {
+  id: number;
+};
+
+function isIssueCommentIdResponseItem(
+  value: unknown,
+): value is IssueCommentIdResponseItem {
+  return isRecord(value) && typeof value.id === 'number';
+}
+
+function isIssueCommentIdResponse(
+  value: unknown,
+): value is IssueCommentIdResponseItem[] {
+  return Array.isArray(value) && value.every(isIssueCommentIdResponseItem);
+}
+
 type PullRequestDetailResponse = {
   title: string;
   state: string;
@@ -3229,5 +3245,59 @@ export class ApiV3CheerioRestIssueRepository
       deletions: body.deletions,
       changedFiles: body.changed_files,
     };
+  };
+
+  deleteAllCommentsByUrl = async (issueOrPrUrl: string): Promise<void> => {
+    const { owner, repo, issueNumber } = this.parseIssueUrl(issueOrPrUrl);
+    const perPage = 100;
+    while (true) {
+      const response = await this.fetchWithRateLimitRetry(() =>
+        fetch(
+          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=1`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${this.ghToken}`,
+              Accept: 'application/vnd.github+json',
+            },
+          },
+        ),
+      );
+      if (!response.ok) {
+        await this.throwGitHubError(
+          `Failed to fetch comments for ${issueOrPrUrl}`,
+          response,
+        );
+      }
+      const body: unknown = await response.json();
+      if (!isIssueCommentIdResponse(body)) {
+        throw new Error(
+          `Unexpected response shape when fetching comments for ${issueOrPrUrl}`,
+        );
+      }
+      for (const comment of body) {
+        const deleteResponse = await this.fetchWithRateLimitRetry(() =>
+          fetch(
+            `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/comments/${comment.id}`,
+            {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${this.ghToken}`,
+                Accept: 'application/vnd.github+json',
+              },
+            },
+          ),
+        );
+        if (!deleteResponse.ok) {
+          await this.throwGitHubError(
+            `Failed to delete comment ${comment.id} on ${issueOrPrUrl}`,
+            deleteResponse,
+          );
+        }
+      }
+      if (body.length < perPage) {
+        break;
+      }
+    }
   };
 }

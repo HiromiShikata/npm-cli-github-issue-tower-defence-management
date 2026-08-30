@@ -130,6 +130,12 @@ function isIssueCommentsResponseItem(value) {
 function isIssueCommentsResponse(value) {
     return Array.isArray(value) && value.every(isIssueCommentsResponseItem);
 }
+function isIssueCommentIdResponseItem(value) {
+    return isRecord(value) && typeof value.id === 'number';
+}
+function isIssueCommentIdResponse(value) {
+    return Array.isArray(value) && value.every(isIssueCommentIdResponseItem);
+}
 function isPullRequestDetailResponse(value) {
     if (!isRecord(value))
         return false;
@@ -1951,6 +1957,41 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                 deletions: body.deletions,
                 changedFiles: body.changed_files,
             };
+        };
+        this.deleteAllCommentsByUrl = async (issueOrPrUrl) => {
+            const { owner, repo, issueNumber } = this.parseIssueUrl(issueOrPrUrl);
+            const perPage = 100;
+            while (true) {
+                const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=1`, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${this.ghToken}`,
+                        Accept: 'application/vnd.github+json',
+                    },
+                }));
+                if (!response.ok) {
+                    await this.throwGitHubError(`Failed to fetch comments for ${issueOrPrUrl}`, response);
+                }
+                const body = await response.json();
+                if (!isIssueCommentIdResponse(body)) {
+                    throw new Error(`Unexpected response shape when fetching comments for ${issueOrPrUrl}`);
+                }
+                for (const comment of body) {
+                    const deleteResponse = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/comments/${comment.id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            Authorization: `Bearer ${this.ghToken}`,
+                            Accept: 'application/vnd.github+json',
+                        },
+                    }));
+                    if (!deleteResponse.ok) {
+                        await this.throwGitHubError(`Failed to delete comment ${comment.id} on ${issueOrPrUrl}`, deleteResponse);
+                    }
+                }
+                if (body.length < perPage) {
+                    break;
+                }
+            }
         };
         this.projectIssuesCacheRepository = new ProjectIssuesCacheRepository_1.ProjectIssuesCacheRepository(localStorageCacheRepository);
     }

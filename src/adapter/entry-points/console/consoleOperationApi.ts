@@ -920,3 +920,17 @@ export const handleStoryAdd = async (
   context.invalidateProject?.(pjcode);
   return ok();
 };
+
+export const handleDeleteAllComments = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const issueUrl = body.issueUrl;
+  if (!isNonEmptyString(issueUrl)) {
+    return badRequest('issueUrl is required');
+  }
+  await context
+    .resolveIssueRepository(issueUrl)
+    .deleteAllCommentsByUrl(issueUrl);
+  return ok();
+};

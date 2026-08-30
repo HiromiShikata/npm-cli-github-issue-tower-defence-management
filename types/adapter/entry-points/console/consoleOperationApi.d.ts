@@ -38,4 +38,5 @@ export declare const handleStoryColor: (context: ConsoleOperationContext, body: 
 export declare const handleIntmux: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleReorderStory: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 export declare const handleStoryAdd: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
+export declare const handleDeleteAllComments: (context: ConsoleOperationContext, body: Record<string, unknown>) => Promise<ConsoleOperationResponse>;
 //# sourceMappingURL=consoleOperationApi.d.ts.map

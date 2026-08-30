@@ -144,5 +144,6 @@ export interface IssueRepository {
         changedFiles: number;
     } | null>;
     updateBranch: (prUrl: string) => Promise<boolean>;
+    deleteAllCommentsByUrl: (issueOrPrUrl: string) => Promise<void>;
 }
 //# sourceMappingURL=IssueRepository.d.ts.map

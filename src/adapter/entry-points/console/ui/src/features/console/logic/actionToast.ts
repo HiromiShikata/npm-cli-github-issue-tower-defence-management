@@ -21,7 +21,8 @@ export type ConsoleActionKind =
   | { type: 'set_status'; optionName: string }
   | { type: 'set_in_tmux_by_human'; optionName: string }
   | { type: 'close'; action: ConsoleCloseAction }
-  | { type: 'ok_and_awaiting_workspace' };
+  | { type: 'ok_and_awaiting_workspace' }
+  | { type: 'delete_all_comments' };
 
 export const ACTION_TOAST_DELAY_MS = 5000;
 
@@ -67,6 +68,8 @@ export const actionToastMessage = (
       return 'ok → Awaiting Workspace';
     case 'close':
       return kind.action === 'close' ? 'Closed' : 'Closed as not planned';
+    case 'delete_all_comments':
+      return 'Deleted all comments';
   }
 };
 
@@ -94,6 +97,8 @@ export const actionToastColor = (
       return 'blue';
     case 'close':
       return 'red';
+    case 'delete_all_comments':
+      return 'red';
   }
 };
 
@@ -103,6 +108,9 @@ export const actionAdvances = (
 ): boolean => {
   if (kind.type === 'next_action_date') {
     return isManualTriageTab(tab);
+  }
+  if (kind.type === 'delete_all_comments') {
+    return false;
   }
   return true;
 };

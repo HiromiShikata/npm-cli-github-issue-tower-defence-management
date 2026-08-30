@@ -482,6 +482,25 @@ export const postConsoleReorderStory = async (
   }
 };
 
+export const DELETE_ALL_COMMENTS_OPERATION_PATH = '/api/deleteallcomments';
+
+export type ConsoleDeleteAllCommentsRequest = {
+  issueUrl: string;
+};
+
+export const postConsoleDeleteAllComments = async (
+  request: ConsoleDeleteAllCommentsRequest,
+): Promise<void> => {
+  const response = await fetch(DELETE_ALL_COMMENTS_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
 export type ProjectListResponse = {
   pjcodes: string[];
   workflowImprovementIssueUrl: string | null;

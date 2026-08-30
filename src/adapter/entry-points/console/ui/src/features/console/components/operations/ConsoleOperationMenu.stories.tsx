@@ -14,6 +14,7 @@ const handlers: ConsoleOperationHandlers = {
   onSetInTmuxByHuman: () => {},
   onClose: () => {},
   onOkAndAwaitingWorkspace: () => {},
+  onDeleteAllComments: () => {},
 };
 
 const meta: Meta<typeof ConsoleOperationMenu> = {

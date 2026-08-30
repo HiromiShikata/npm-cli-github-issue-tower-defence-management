@@ -661,6 +661,37 @@ test('project switcher appears at the left end of the tab bar and opens a dropdo
   await expect(page.locator('.console-tab-pjname-dropdown')).toBeVisible();
 });
 
+test('deletes all comments when the dangerous actions panel is opened and the delete button is clicked', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
+  await expect(dangerToggle).toBeVisible();
+
+  await dangerToggle.click();
+
+  const deleteButton = page.locator('.console-op-button', {
+    hasText: 'Delete All Comments',
+  });
+  await expect(deleteButton).toBeVisible();
+
+  await deleteButton.click();
+
+  await expect(deleteButton).toHaveCount(0);
+
+  await expect
+    .poll(() => harness.deleteAllCommentsCalls.length, { timeout: 10000 })
+    .toBe(1);
+
+  expect(harness.deleteAllCommentsCalls[0].issueUrl).toContain('/issues/720');
+});
+
 test('shows the workflow improvement link when workflowImprovementIssueUrl is configured', async ({
   browser,
 }) => {

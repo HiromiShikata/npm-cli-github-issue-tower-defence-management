@@ -14,6 +14,7 @@ const handlers: ConsoleOperationHandlers = {
   onSetInTmuxByHuman: jest.fn(),
   onClose: jest.fn(),
   onOkAndAwaitingWorkspace: jest.fn(),
+  onDeleteAllComments: jest.fn(),
 };
 
 const prItem = consoleListItemsFixture[0];
@@ -140,5 +141,19 @@ describe('ConsoleOperationMenu', () => {
       />,
     );
     expect(getByText('Reject')).not.toBeDisabled();
+  });
+
+  it('renders the dangerous actions toggle on all tabs', () => {
+    const { getByText } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByText('⚠')).toBeInTheDocument();
   });
 });
