@@ -1,3 +1,10 @@
+# [2.29.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.28.0...v2.29.0) (2026-08-30)
+
+
+### Features
+
+* **startPreparation:** add skipAgentAuthoredIssues option to exclude bot-authored issues ([#1906](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1906)) ([d207efd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d207efdb7ad9d2523884f4b53132195a8ef88580)), closes [HiromiShikata/secretary#4875](https://github.com/HiromiShikata/secretary/issues/4875)
+
 # [2.28.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.27.1...v2.28.0) (2026-08-30)
 
 
