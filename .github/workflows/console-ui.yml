@@ -41,6 +41,9 @@ jobs:
       - name: Build console UI (Vite)
         run: npm run build:console-ui
 
+      - name: Copy console UI dist to served bundle path
+        run: node scripts/copyConsoleUiDist.mjs
+
       - name: Verify served console UI bundle matches source
         run: node scripts/verifyConsoleUiDist.mjs
 

@@ -1,1 +1,0 @@
-{"version":3,"file":"ClaudeHandoverSessionRepository.d.ts","sourceRoot":"","sources":["../../../../src/domain/usecases/adapter-interfaces/ClaudeHandoverSessionRepository.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,qBAAqB,EAAE,MAAM,sCAAsC,CAAC;AAE7E,MAAM,WAAW,+BAA+B;IAC9C,oBAAoB,EAAE,MAAM,qBAAqB,EAAE,CAAC;CACrD"}

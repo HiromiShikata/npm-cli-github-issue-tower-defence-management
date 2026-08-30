@@ -1,2 +1,0 @@
-export declare const ownerReplyMarkerDirectoryResolve: (configuredDirectory: string | null, environment: NodeJS.ProcessEnv, userId: number | null) => string | null;
-//# sourceMappingURL=ownerReplyMarkerDirectoryResolve.d.ts.map

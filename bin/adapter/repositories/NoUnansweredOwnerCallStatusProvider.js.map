@@ -1,1 +1,0 @@
-{"version":3,"file":"NoUnansweredOwnerCallStatusProvider.js","sourceRoot":"","sources":["../../../src/adapter/repositories/NoUnansweredOwnerCallStatusProvider.ts"],"names":[],"mappings":";;;AAEA,MAAa,mCAAmC;IAAhD;QACE,qDAAgD,GAAG,CACjD,4BAAiD,EACnB,EAAE;YAChC,OAAO,OAAO,CAAC,OAAO,CAAC,IAAI,GAAG,EAAkB,CAAC,CAAC;QACpD,CAAC,CAAC;IACJ,CAAC;CAAA;AAND,kFAMC"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"findLastAgentDeclaringReport.d.ts","sourceRoot":"","sources":["../../../src/domain/usecases/findLastAgentDeclaringReport.ts"],"names":[],"mappings":"AAGA,eAAO,MAAM,4BAA4B,GACvC,OAAO,SAAS;IAAE,MAAM,EAAE,MAAM,CAAC;IAAC,OAAO,EAAE,MAAM,CAAA;CAAE,EAEnD,UAAU,OAAO,EAAE,EACnB,iBAAiB,CAAC,MAAM,EAAE,MAAM,KAAK,OAAO,KAC3C,OAAO,GAAG,IAQA,CAAC"}

@@ -1,1 +1,0 @@
-{"version":3,"file":"OutputDegeneration.d.ts","sourceRoot":"","sources":["../../../src/domain/entities/OutputDegeneration.ts"],"names":[],"mappings":"AAAA,MAAM,MAAM,qBAAqB,GAAG;IAClC,KAAK,EAAE,MAAM,CAAC;IACd,GAAG,EAAE,MAAM,CAAC;IACZ,cAAc,EAAE,MAAM,CAAC;CACxB,CAAC;AAEF,MAAM,MAAM,qBAAqB,GAAG;IAClC,KAAK,EAAE,MAAM,CAAC;IACd,SAAS,EAAE,MAAM,CAAC;CACnB,CAAC"}
