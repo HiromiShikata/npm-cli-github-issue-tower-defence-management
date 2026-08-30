@@ -619,7 +619,10 @@ const createStubIssueRepository = (
   closePullRequest: async (): Promise<void> => undefined,
   closeIssueByUrl: async (): Promise<void> => undefined,
   deletePullRequestBranch: () => notImplemented('deletePullRequestBranch'),
-  createCommentByUrl: async (url: string, body: string): Promise<IssueComment> => {
+  createCommentByUrl: async (
+    url: string,
+    body: string,
+  ): Promise<IssueComment> => {
     commentCalls.push({ url, body });
     return { author: '', body, createdAt: new Date(0) };
   },
