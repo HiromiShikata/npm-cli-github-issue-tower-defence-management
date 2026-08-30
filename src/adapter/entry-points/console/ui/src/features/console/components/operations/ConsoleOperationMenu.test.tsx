@@ -156,4 +156,22 @@ describe('ConsoleOperationMenu', () => {
     );
     expect(getByText('⚠')).toBeInTheDocument();
   });
+
+  it('renders the dangerous actions toggle in the same row as close actions', () => {
+    const { getByText } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    const dangerButton = getByText('⚠');
+    const closeButton = getByText('Close');
+    const dangerRow = dangerButton.closest('.console-op-group-bottom-row');
+    expect(dangerRow).not.toBeNull();
+    expect(dangerRow).toBe(closeButton.closest('.console-op-group-bottom-row'));
+  });
 });
