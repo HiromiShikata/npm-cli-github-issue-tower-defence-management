@@ -69,7 +69,8 @@ class CreateEstimationIssueUseCase {
             }
         };
         this.createEstimationIssueBody = (storyObject, urlObStoryView, project) => {
-            return `
+            return `From: :robot: CreateEstimationIssueUseCase
+
 This issue is experimental workflow :pray:
 - Target story: ${storyObject.storyIssue.url}
 

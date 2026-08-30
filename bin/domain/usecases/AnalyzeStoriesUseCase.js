@@ -73,7 +73,7 @@ class AnalyzeStoriesUseCase {
             await this.issueRepository.createNewIssue(input.org, input.repo, `Story progress`, this.createSummaryIssueBody(input.project, input.issues, phases, input.storyObjectMap, input.urlOfStoryView, input.members), [input.manager], ['story:workflow-management']);
         };
         this.createSummaryIssueBody = (project, issues, summaryStoryIssue, storyObjectMap, urlOfStoryView, members) => {
-            return `${this.createSummaryIssueBodyPhase(summaryStoryIssue, urlOfStoryView, storyObjectMap)}
+            return `From: :robot: AnalyzeStoriesUseCase\n\n${this.createSummaryIssueBodyPhase(summaryStoryIssue, urlOfStoryView, storyObjectMap)}
 ${this.createSummaryIssueBodyAssignedIssueCount(project, issues, storyObjectMap, urlOfStoryView, members)}
 `;
         };

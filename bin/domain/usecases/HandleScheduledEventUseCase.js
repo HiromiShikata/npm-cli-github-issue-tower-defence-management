@@ -129,7 +129,7 @@ class HandleScheduledEventUseCase {
                 }
                 const storyStartTime = Date.now();
                 console.log(`[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}"`);
-                const issueNumber = await this.issueRepository.createNewIssue(input.org, input.workingReport.repo, storyObject.story.name, storyObject.story.description, [input.manager], ['story']);
+                const issueNumber = await this.issueRepository.createNewIssue(input.org, input.workingReport.repo, storyObject.story.name, `From: :robot: HandleScheduledEventUseCase\n\n${storyObject.story.description}`, [input.manager], ['story']);
                 const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
                 let issue = null;
                 for (let i = 0; i < 3; i++) {
@@ -210,7 +210,7 @@ ${JSON.stringify(e)}
                         await this.issueRepository.createCommentByUrl(existingIncidentIssues[0].url, errorBody);
                     }
                     else {
-                        await this.issueRepository.createNewIssue(input.org, input.workingReport.repo, WORKFLOW_INCIDENT_ISSUE_TITLE, errorBody, [input.manager], ['error']);
+                        await this.issueRepository.createNewIssue(input.org, input.workingReport.repo, WORKFLOW_INCIDENT_ISSUE_TITLE, `From: :robot: HandleScheduledEventUseCase\n\n${errorBody}`, [input.manager], ['error']);
                     }
                 }
                 throw e;
@@ -433,7 +433,7 @@ ${JSON.stringify(e)}
                     console.warn(`[HandleScheduledEvent] Transient spreadsheet API error on ${operation} (${spreadsheetUrl}): ${e.name}: ${e.message}`);
                     throw e;
                 }
-                await this.issueRepository.createNewIssue(org, repo, `Error in HandleScheduledEvent / spreadsheet ${operation} failure`, `Spreadsheet URL: ${spreadsheetUrl}
+                await this.issueRepository.createNewIssue(org, repo, `Error in HandleScheduledEvent / spreadsheet ${operation} failure`, `From: :robot: HandleScheduledEventUseCase\n\nSpreadsheet URL: ${spreadsheetUrl}
 Operation: ${operation}
 
 ${e.message}

@@ -19,7 +19,9 @@ class ActionAnnouncementUseCase {
             for (const issue of actionAnnouncementIssues) {
                 for (const member of input.members) {
                     try {
-                        await this.issueRepository.createNewIssue(issue.org, issue.repo, `Announcement #${issue.number}: ${issue.title} / ${member}`, `Hi @${member},
+                        await this.issueRepository.createNewIssue(issue.org, issue.repo, `Announcement #${issue.number}: ${issue.title} / ${member}`, `From: :robot: ActionAnnouncementUseCase
+
+Hi @${member},
 
 Please take a look at the announcement in the issue ${issue.url} and take necessary actions :pray:
 `, [member], [
@@ -28,7 +30,7 @@ Please take a look at the announcement in the issue ${issue.url} and take necess
                         ]);
                     }
                     catch (e) {
-                        await this.issueRepository.createNewIssue(issue.org, issue.repo, `Error occured while creating working report for ${member}`, `${JSON.stringify(e)}`, [input.manager], ['bug']);
+                        await this.issueRepository.createNewIssue(issue.org, issue.repo, `Error occured while creating working report for ${member}`, `From: :robot: ActionAnnouncementUseCase\n\n${JSON.stringify(e)}`, [input.manager], ['bug']);
                     }
                     await new Promise((resolve) => setTimeout(resolve, 5000));
                 }

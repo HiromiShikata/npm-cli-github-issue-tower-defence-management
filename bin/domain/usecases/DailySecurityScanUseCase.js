@@ -183,7 +183,7 @@ class DailySecurityScanUseCase {
                         await this.issueRepository.createCommentByUrl(existingIssue.url, findingsBody);
                     }
                     else {
-                        await this.issueRepository.createNewIssue(repositoryOrg, repositoryName, 'Daily security scan findings', findingsBody, [manager], []);
+                        await this.issueRepository.createNewIssue(repositoryOrg, repositoryName, 'Daily security scan findings', `From: :robot: DailySecurityScanUseCase\n\n${findingsBody}`, [manager], []);
                     }
                 }
                 catch (error) {
@@ -268,12 +268,12 @@ class DailySecurityScanUseCase {
                 await saveAdvancedWatermark();
                 return;
             }
-            await this.issueRepository.createNewIssue(org, config.kevReportRepo, `CISA KEV new additions since ${reportBoundaryDateAdded}`, affectingKevEntries
+            await this.issueRepository.createNewIssue(org, config.kevReportRepo, `CISA KEV new additions since ${reportBoundaryDateAdded}`, `From: :robot: DailySecurityScanUseCase\n\n${affectingKevEntries
                 .map((entry) => [
                 `- ${entry.vulnerability.dateAdded} ${entry.vulnerability.cveID} ${entry.vulnerability.vulnerabilityName}`,
                 ...entry.affectedPackages.map((affectedPackage) => `  - ${affectedPackage.repositoryName} ${affectedPackage.ecosystem} ${affectedPackage.packageName} ${affectedPackage.packageVersion}`),
             ].join('\n'))
-                .join('\n'), [manager], []);
+                .join('\n')}`, [manager], []);
             await saveAdvancedWatermark();
         };
     }

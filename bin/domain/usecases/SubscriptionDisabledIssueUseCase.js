@@ -32,7 +32,7 @@ class SubscriptionDisabledIssueUseCase {
                 console.log(`SubscriptionDisabledIssue: commented on existing issue for token ${tokenName}: ${existingIssue.url}`);
             }
             else {
-                const issueNumber = await this.issueRepository.createNewIssue(org, repo, issueTitle, `The Claude subscription access for the token displayed as \`${tokenName}\` has been disabled.\n\nPlease restore the account's Claude Code subscription access to resume operations.`, [], []);
+                const issueNumber = await this.issueRepository.createNewIssue(org, repo, issueTitle, `From: :robot: SubscriptionDisabledIssueUseCase\n\nThe Claude subscription access for the token displayed as \`${tokenName}\` has been disabled.\n\nPlease restore the account's Claude Code subscription access to resume operations.`, [], []);
                 console.log(`SubscriptionDisabledIssue: created issue #${issueNumber} for token ${tokenName}`);
             }
         };

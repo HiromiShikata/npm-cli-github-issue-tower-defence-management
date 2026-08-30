@@ -37,7 +37,7 @@ class CliErrorReportUseCase {
                     await this.issueRepository.createCommentByUrl(existing.url, buildBody('CLI error recurrence'));
                 }
                 else {
-                    await this.issueRepository.createNewIssue(owner, repo, title, buildBody('CLI error report'), [], []);
+                    await this.issueRepository.createNewIssue(owner, repo, title, buildBody('From: :robot: CliErrorReportUseCase'), [], []);
                 }
             }
             catch (reportError) {

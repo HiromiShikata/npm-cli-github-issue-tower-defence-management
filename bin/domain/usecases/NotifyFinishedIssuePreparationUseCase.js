@@ -228,6 +228,8 @@ class NotifyFinishedIssuePreparationUseCase {
             }
             else {
                 const body = [
+                    `From: :robot: NotifyFinishedIssuePreparationUseCase`,
+                    '',
                     `The preparation worker for ${issue.url} failed because the agent definition \`${missingAgentName}\` was not found.`,
                     '',
                     `- Missing agent name: \`${missingAgentName}\``,
@@ -268,6 +270,8 @@ class NotifyFinishedIssuePreparationUseCase {
             }
             else {
                 const body = [
+                    `From: :robot: NotifyFinishedIssuePreparationUseCase`,
+                    '',
                     `The last agent report on ${issue.url} designated \`nextStepAgent\` as \`${nextStepAgent}\`, which is absent from the configured agents list.`,
                     '',
                     `- Missing agent name: \`${nextStepAgent}\``,

@@ -1,3 +1,10 @@
+# [2.14.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.13.0...v2.14.0) (2026-08-30)
+
+
+### Features
+
+* **use-cases:** add From: :robot: prefix to all agent-created issue bodies ([#1878](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1878)) ([910b8f9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/910b8f9832b9187fe3c03da96ecba205b5af525a)), closes [HiromiShikata/umino-corporait-operation#31094](https://github.com/HiromiShikata/umino-corporait-operation/issues/31094)
+
 # [2.13.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.12.1...v2.13.0) (2026-08-30)
 
 
