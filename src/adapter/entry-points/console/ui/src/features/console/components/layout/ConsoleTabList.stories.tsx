@@ -183,7 +183,16 @@ export const WithProjectSwitcherOpen: Story = {
 export const WithWorkflowImprovementLink: Story = {
   args: {
     activeTab: 'prs',
-    counts,
+    counts: {
+      'workflow-blocker': 0,
+      prs: 35,
+      'failed-preparation': 0,
+      'todo-by-human': 0,
+      'todo-by-agent': 0,
+      queued: 0,
+      stories: 0,
+    },
+    pjcodes: [],
     workflowImprovementIssueUrl:
       'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata',
   },
