@@ -1,8 +1,8 @@
-import YAML from 'yaml';
 import * as fs from 'fs';
+import YAML from 'yaml';
 import {
   DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
-  LiveSessionOauthTokenSelectionSettings,
+  type LiveSessionOauthTokenSelectionSettings,
 } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import { NORMAL_CONCURRENT_LIMIT } from '../../../domain/usecases/StartPreparationUseCase';
 
@@ -12,6 +12,7 @@ export const LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY =
   'liveSessionOauthTokenSelection';
 export const PREPARATION_WORKER_SECTION_KEY = 'preparationWorker';
 export const START_PREPARATION_SECTION_KEY = 'startPreparation';
+export const WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY = 'workflowImprovementIssueUrl';
 
 export const DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 
@@ -56,9 +57,8 @@ export const resolveFleetConfigFilePath = (
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const readFleetConfigSection = (
+const parseFleetConfigTopLevel = (
   fleetConfigFilePath: string,
-  sectionKey: string,
 ): Record<string, unknown> | null => {
   const parsed: unknown = YAML.parse(
     fs.readFileSync(fleetConfigFilePath, 'utf8'),
@@ -71,7 +71,18 @@ const readFleetConfigSection = (
       `${fleetConfigFilePath} does not hold a mapping at its top level.`,
     );
   }
-  const section = parsed[sectionKey];
+  return parsed;
+};
+
+const readFleetConfigSection = (
+  fleetConfigFilePath: string,
+  sectionKey: string,
+): Record<string, unknown> | null => {
+  const top = parseFleetConfigTopLevel(fleetConfigFilePath);
+  if (top === null) {
+    return null;
+  }
+  const section = top[sectionKey];
   if (section === undefined || section === null) {
     return null;
   }
@@ -230,4 +241,26 @@ export const loadStartPreparationFleetSettings = (
       'integer of at least 1',
     ),
   };
+};
+
+export const loadWorkflowImprovementIssueUrl = (
+  fleetConfigFilePath: string | null,
+): string | null => {
+  if (fleetConfigFilePath === null) {
+    return null;
+  }
+  const top = parseFleetConfigTopLevel(fleetConfigFilePath);
+  if (top === null) {
+    return null;
+  }
+  const value = top[WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    throw new Error(
+      `${WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY} in ${fleetConfigFilePath} must be a string URL.`,
+    );
+  }
+  return value;
 };

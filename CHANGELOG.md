@@ -1,3 +1,10 @@
+# [2.17.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.16.0...v2.17.0) (2026-08-30)
+
+
+### Features
+
+* **console:** add workflowImprovementIssueUrl to fleet config and console tab bar ([#1877](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1877)) ([9d39711](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9d39711f466d0249b85544cf52b7c42018761295)), closes [HiromiShikata/umino-corporait-operation#31098](https://github.com/HiromiShikata/umino-corporait-operation/issues/31098)
+
 # [2.16.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.15.0...v2.16.0) (2026-08-30)
 
 

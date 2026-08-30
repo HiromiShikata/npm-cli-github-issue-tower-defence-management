@@ -717,7 +717,9 @@ export type ConsoleE2eHarness = {
   stop: () => Promise<void>;
 };
 
-export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
+export const startConsoleE2eHarness = async (options?: {
+  workflowImprovementIssueUrl?: string | null;
+}): Promise<ConsoleE2eHarness> => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'console-e2e-'));
   const consoleDataOutputDir = path.join(tmpRoot, 'data');
   writeFixtureData(consoleDataOutputDir);
@@ -783,6 +785,7 @@ export const startConsoleE2eHarness = async (): Promise<ConsoleE2eHarness> => {
     dashboardDir: null,
     dashboardDataDir: null,
     dashboardProjectNames: [],
+    workflowImprovementIssueUrl: options?.workflowImprovementIssueUrl ?? null,
     port: 0,
   });
 

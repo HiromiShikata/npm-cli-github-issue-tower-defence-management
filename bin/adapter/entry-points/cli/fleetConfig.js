@@ -36,15 +36,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadStartPreparationFleetSettings = exports.loadPreparationWorkerSettings = exports.loadLiveSessionOauthTokenSelectionSettings = exports.resolveFleetConfigFilePath = exports.DEFAULT_START_PREPARATION_FLEET_SETTINGS = exports.DEFAULT_PREPARATION_WORKER_SETTINGS = exports.DEFAULT_GRAPHQL_RATE_LIMIT_FLOOR = exports.DEFAULT_MAX_CONCURRENT_WORKERS = exports.DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = exports.START_PREPARATION_SECTION_KEY = exports.PREPARATION_WORKER_SECTION_KEY = exports.LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY = exports.FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = void 0;
-const yaml_1 = __importDefault(require("yaml"));
+exports.loadWorkflowImprovementIssueUrl = exports.loadStartPreparationFleetSettings = exports.loadPreparationWorkerSettings = exports.loadLiveSessionOauthTokenSelectionSettings = exports.resolveFleetConfigFilePath = exports.DEFAULT_START_PREPARATION_FLEET_SETTINGS = exports.DEFAULT_PREPARATION_WORKER_SETTINGS = exports.DEFAULT_GRAPHQL_RATE_LIMIT_FLOOR = exports.DEFAULT_MAX_CONCURRENT_WORKERS = exports.DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = exports.WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY = exports.START_PREPARATION_SECTION_KEY = exports.PREPARATION_WORKER_SECTION_KEY = exports.LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY = exports.FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = void 0;
 const fs = __importStar(require("fs"));
+const yaml_1 = __importDefault(require("yaml"));
 const LiveSessionOauthTokenSelectUseCase_1 = require("../../../domain/usecases/LiveSessionOauthTokenSelectUseCase");
 const StartPreparationUseCase_1 = require("../../../domain/usecases/StartPreparationUseCase");
 exports.FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = 'TDPM_FLEET_CONFIG';
 exports.LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY = 'liveSessionOauthTokenSelection';
 exports.PREPARATION_WORKER_SECTION_KEY = 'preparationWorker';
 exports.START_PREPARATION_SECTION_KEY = 'startPreparation';
+exports.WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY = 'workflowImprovementIssueUrl';
 exports.DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 exports.DEFAULT_MAX_CONCURRENT_WORKERS = 40;
 exports.DEFAULT_GRAPHQL_RATE_LIMIT_FLOOR = 500;
@@ -68,7 +69,7 @@ const resolveFleetConfigFilePath = (cliValue) => {
 };
 exports.resolveFleetConfigFilePath = resolveFleetConfigFilePath;
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
-const readFleetConfigSection = (fleetConfigFilePath, sectionKey) => {
+const parseFleetConfigTopLevel = (fleetConfigFilePath) => {
     const parsed = yaml_1.default.parse(fs.readFileSync(fleetConfigFilePath, 'utf8'));
     if (parsed === null || parsed === undefined) {
         return null;
@@ -76,7 +77,14 @@ const readFleetConfigSection = (fleetConfigFilePath, sectionKey) => {
     if (!isRecord(parsed)) {
         throw new Error(`${fleetConfigFilePath} does not hold a mapping at its top level.`);
     }
-    const section = parsed[sectionKey];
+    return parsed;
+};
+const readFleetConfigSection = (fleetConfigFilePath, sectionKey) => {
+    const top = parseFleetConfigTopLevel(fleetConfigFilePath);
+    if (top === null) {
+        return null;
+    }
+    const section = top[sectionKey];
     if (section === undefined || section === null) {
         return null;
     }
@@ -142,4 +150,22 @@ const loadStartPreparationFleetSettings = (fleetConfigFilePath) => {
     };
 };
 exports.loadStartPreparationFleetSettings = loadStartPreparationFleetSettings;
+const loadWorkflowImprovementIssueUrl = (fleetConfigFilePath) => {
+    if (fleetConfigFilePath === null) {
+        return null;
+    }
+    const top = parseFleetConfigTopLevel(fleetConfigFilePath);
+    if (top === null) {
+        return null;
+    }
+    const value = top[exports.WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY];
+    if (value === undefined || value === null) {
+        return null;
+    }
+    if (typeof value !== 'string') {
+        throw new Error(`${exports.WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY} in ${fleetConfigFilePath} must be a string URL.`);
+    }
+    return value;
+};
+exports.loadWorkflowImprovementIssueUrl = loadWorkflowImprovementIssueUrl;
 //# sourceMappingURL=fleetConfig.js.map

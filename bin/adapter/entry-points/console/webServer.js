@@ -352,7 +352,10 @@ const handleReadApi = async (options, requestPath, searchParams) => {
     if (requestPath === '/api/projects') {
         return {
             statusCode: 200,
-            body: { pjcodes: options.dashboardProjectNames },
+            body: {
+                pjcodes: options.dashboardProjectNames,
+                workflowImprovementIssueUrl: options.workflowImprovementIssueUrl ?? null,
+            },
         };
     }
     const defaultIssueRepository = options.issueRepository ?? null;
