@@ -233,9 +233,11 @@ describe('buildConsoleDataResponse', () => {
       tab: 'prs',
     });
     expect(response.statusCode).toBe(200);
-    const parsed = JSON.parse(response.body) as Record<string, unknown>;
-    expect(parsed.timerEndsAt).toBe('2026-08-30T10:30:00.000Z');
-    expect(parsed.timerTotalSeconds).toBe(1800);
+    const parsed: unknown = JSON.parse(response.body);
+    expect(parsed).toMatchObject({
+      timerEndsAt: '2026-08-30T10:30:00.000Z',
+      timerTotalSeconds: 1800,
+    });
   });
 
   it('omits timerEndsAt and timerTotalSeconds when no timer.json exists', () => {
@@ -246,8 +248,7 @@ describe('buildConsoleDataResponse', () => {
       tab: 'prs',
     });
     expect(response.statusCode).toBe(200);
-    const parsed = JSON.parse(response.body) as Record<string, unknown>;
-    expect(parsed.timerEndsAt).toBeUndefined();
-    expect(parsed.timerTotalSeconds).toBeUndefined();
+    const parsed: unknown = JSON.parse(response.body);
+    expect(parsed).toEqual({ pjcode: 'acme', items: [] });
   });
 });

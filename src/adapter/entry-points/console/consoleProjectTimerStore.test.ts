@@ -45,7 +45,10 @@ describe('consoleProjectTimerStore', () => {
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(
         path.join(dir, 'timer.json'),
-        JSON.stringify({ startedAt: '2026-08-30T00:00:00.000Z', durationSeconds: 0 }),
+        JSON.stringify({
+          startedAt: '2026-08-30T00:00:00.000Z',
+          durationSeconds: 0,
+        }),
       );
       expect(readProjectTimer(baseDir, 'acme')).toBeNull();
     });
@@ -73,8 +76,14 @@ describe('consoleProjectTimerStore', () => {
     });
 
     it('overwrites an existing timer file', () => {
-      const first = { startedAt: '2026-08-30T10:00:00.000Z', durationSeconds: 1800 };
-      const second = { startedAt: '2026-08-30T11:00:00.000Z', durationSeconds: 3600 };
+      const first = {
+        startedAt: '2026-08-30T10:00:00.000Z',
+        durationSeconds: 1800,
+      };
+      const second = {
+        startedAt: '2026-08-30T11:00:00.000Z',
+        durationSeconds: 3600,
+      };
       writeProjectTimer(baseDir, 'acme', first);
       writeProjectTimer(baseDir, 'acme', second);
       expect(readProjectTimer(baseDir, 'acme')).toEqual(second);
@@ -83,7 +92,10 @@ describe('consoleProjectTimerStore', () => {
 
   describe('deleteProjectTimer', () => {
     it('removes an existing timer file', () => {
-      const timer = { startedAt: '2026-08-30T10:00:00.000Z', durationSeconds: 1800 };
+      const timer = {
+        startedAt: '2026-08-30T10:00:00.000Z',
+        durationSeconds: 1800,
+      };
       writeProjectTimer(baseDir, 'acme', timer);
       deleteProjectTimer(baseDir, 'acme');
       expect(readProjectTimer(baseDir, 'acme')).toBeNull();

@@ -23,6 +23,7 @@ import type { ImageFetcher } from './consoleImageProxy';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { readDoneProjectItemIds } from './consoleDoneStore';
+import { readProjectTimer } from './consoleProjectTimerStore';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
@@ -2990,12 +2991,10 @@ describe('webServer GET /api/projects', () => {
       expect(JSON.parse(response.body)).toEqual({ ok: true });
       const timerPath = path.join(tmpDir, 'acme', 'timer.json');
       expect(fs.existsSync(timerPath)).toBe(true);
-      const written = JSON.parse(fs.readFileSync(timerPath, 'utf-8')) as Record<
-        string,
-        unknown
-      >;
-      expect(typeof written.startedAt).toBe('string');
-      expect(written.durationSeconds).toBe(1800);
+      const written = readProjectTimer(tmpDir, 'acme');
+      expect(written).not.toBeNull();
+      expect(written?.durationSeconds).toBe(1800);
+      expect(typeof written?.startedAt).toBe('string');
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
