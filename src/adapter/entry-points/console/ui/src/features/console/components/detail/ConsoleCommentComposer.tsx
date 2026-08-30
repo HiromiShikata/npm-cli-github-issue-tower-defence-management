@@ -111,6 +111,15 @@ export const ConsoleCommentComposer = ({
     }
   });
 
+  const saveCursorPosition = (): void => {
+    if (textareaRef.current !== null) {
+      cursorToRestoreRef.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+      };
+    }
+  };
+
   const submit = async (withMove: boolean): Promise<void> => {
     const body = draft.trim();
     if (body.length === 0 || status.kind === 'posting') {
@@ -138,33 +147,18 @@ export const ConsoleCommentComposer = ({
       return;
     }
     for (const file of files) {
-      if (textareaRef.current !== null) {
-        cursorToRestoreRef.current = {
-          start: textareaRef.current.selectionStart,
-          end: textareaRef.current.selectionEnd,
-        };
-      }
+      saveCursorPosition();
       setDraft((previous) => insertUploadPlaceholder(previous, file.name));
       setUploadStatus({ kind: 'uploading', fileName: file.name });
       try {
         const markdown = await onUploadFile(file);
-        if (textareaRef.current !== null) {
-          cursorToRestoreRef.current = {
-            start: textareaRef.current.selectionStart,
-            end: textareaRef.current.selectionEnd,
-          };
-        }
+        saveCursorPosition();
         setDraft((previous) =>
           replacePlaceholderWithMarkdown(previous, file.name, markdown),
         );
         setUploadStatus({ kind: 'idle' });
       } catch (error) {
-        if (textareaRef.current !== null) {
-          cursorToRestoreRef.current = {
-            start: textareaRef.current.selectionStart,
-            end: textareaRef.current.selectionEnd,
-          };
-        }
+        saveCursorPosition();
         setDraft((previous) => removePlaceholder(previous, file.name));
         setUploadStatus({
           kind: 'error',
