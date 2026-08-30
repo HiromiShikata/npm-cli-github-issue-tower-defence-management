@@ -288,10 +288,9 @@ export class HandleScheduledEventUseCaseHandler {
       loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
     const allowedDependencyRepoNameWithOwner = (() => {
       if (!workflowImprovementIssueUrl) return null;
-      const match =
-        /^https:\/\/github\.com\/([^/]+\/[^/]+)\//.exec(
-          workflowImprovementIssueUrl,
-        );
+      const match = /^https:\/\/github\.com\/([^/]+\/[^/]+)\//.exec(
+        workflowImprovementIssueUrl,
+      );
       return match ? match[1] : null;
     })();
 
