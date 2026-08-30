@@ -1,3 +1,10 @@
+# [2.19.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.18.0...v2.19.0) (2026-08-30)
+
+
+### Features
+
+* **console:** add dangerous actions panel with delete-all-comments operation ([#1851](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1851)) ([7b0712f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7b0712fad866ee3b71b996c2222f9a2798b0cea6)), closes [HiromiShikata/umino-corporait-operation#31013](https://github.com/HiromiShikata/umino-corporait-operation/issues/31013)
+
 # [2.18.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.17.0...v2.18.0) (2026-08-30)
 
 
