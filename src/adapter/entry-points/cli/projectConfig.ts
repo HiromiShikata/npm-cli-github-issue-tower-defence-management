@@ -498,3 +498,75 @@ export const fetchProjectReadme = async (
     return null;
   }
 };
+
+const CONFIG_DETAILS_REGEX =
+  /(<details>\s*<summary>config<\/summary>)([\s\S]*?)(<\/details>)/i;
+
+export const setProjectReadmeMaxPreparingIssuesCount = (
+  readme: string,
+  count: number,
+): string => {
+  const match = CONFIG_DETAILS_REGEX.exec(readme);
+  if (!match) {
+    const block = `\n<details>\n<summary>config</summary>\nmaximumPreparingIssuesCount: ${count}\n</details>\n`;
+    return readme + block;
+  }
+  const openTag = match[1];
+  const yamlContent = match[2].trim();
+  const closeTag = match[3];
+  let parsed: Record<string, unknown> = {};
+  if (yamlContent.length > 0) {
+    try {
+      const result: unknown = YAML.parse(yamlContent);
+      if (isRecord(result)) {
+        parsed = result;
+      }
+    } catch {
+      parsed = {};
+    }
+  }
+  parsed['maximumPreparingIssuesCount'] = count;
+  const newYaml = YAML.stringify(parsed).trimEnd();
+  return readme.replace(
+    CONFIG_DETAILS_REGEX,
+    `${openTag}\n${newYaml}\n${closeTag}`,
+  );
+};
+
+export const updateProjectV2Readme = async (
+  projectId: string,
+  readme: string,
+  token: string,
+): Promise<void> => {
+  const mutation = `
+    mutation UpdateProjectV2Readme($projectId: ID!, $readme: String!) {
+      updateProjectV2(input: { projectId: $projectId, readme: $readme }) {
+        projectV2 {
+          id
+        }
+      }
+    }
+  `;
+  const response = await fetchGithubGraphql({
+    ghToken: token,
+    query: mutation,
+    variables: { projectId, readme },
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Failed to update project README: HTTP ${response.status}`,
+    );
+  }
+  const data: unknown = await response.json();
+  if (isRecord(data) && Array.isArray(data['errors'])) {
+    const errors = data['errors'] as unknown[];
+    if (errors.length > 0) {
+      const firstError = errors[0];
+      const message =
+        isRecord(firstError) && typeof firstError['message'] === 'string'
+          ? firstError['message']
+          : 'unknown GraphQL error';
+      throw new Error(`Failed to update project README: ${message}`);
+    }
+  }
+};

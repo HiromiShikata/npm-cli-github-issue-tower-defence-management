@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
+import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleProjectSettingsModalScreen';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
@@ -28,11 +29,13 @@ import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
+  fetchProjectReadmeConfig,
   postConsoleAddStory,
   postConsoleCreateIssue,
   postConsoleDeleteStory,
   postConsoleReorderStory,
   postConsoleStoryColor,
+  postProjectMaxPreparingUpdate,
 } from '../lib/consoleApi';
 import { navigateAssign, navigateReplace } from '../lib/navigation';
 import {
@@ -110,6 +113,73 @@ export const ConsolePage = () => {
   } = useConsoleProjectList();
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [settingsInputValue, setSettingsInputValue] = useState<string>('');
+
+  const handleSettingsOpen = useCallback(async () => {
+    if (pjcode === null) {
+      return;
+    }
+    setSettingsOpen(true);
+    setSettingsLoading(true);
+    setSettingsError(null);
+    try {
+      const config = await fetchProjectReadmeConfig(pjcode);
+      setSettingsInputValue(
+        config.maximumPreparingIssuesCount !== null
+          ? String(config.maximumPreparingIssuesCount)
+          : '',
+      );
+    } catch (err) {
+      setSettingsError(
+        err instanceof Error ? err.message : 'Failed to load settings',
+      );
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, [pjcode]);
+
+  const handleSettingsSave = useCallback(
+    async (count: number) => {
+      if (pjcode === null) {
+        return;
+      }
+      setSettingsSaving(true);
+      setSettingsError(null);
+      try {
+        await postProjectMaxPreparingUpdate({
+          pjcode,
+          maximumPreparingIssuesCount: count,
+        });
+        setSettingsOpen(false);
+      } catch (err) {
+        setSettingsError(
+          err instanceof Error ? err.message : 'Failed to save settings',
+        );
+      } finally {
+        setSettingsSaving(false);
+      }
+    },
+    [pjcode],
+  );
+
+  const handleSettingsClose = useCallback(() => {
+    setSettingsOpen(false);
+    setSettingsError(null);
+  }, []);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const handleEscape = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') handleSettingsClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [settingsOpen, handleSettingsClose]);
 
   const counts = useMemo(() => {
     const result = emptyCounts();
@@ -661,6 +731,17 @@ export const ConsolePage = () => {
         onConfirm={handleConfirmOffline}
         onDiscard={actionQueue.discardOfflineAction}
       />
+      {settingsOpen && (
+        <ConsoleProjectSettingsModalScreen
+          value={settingsInputValue}
+          onChange={setSettingsInputValue}
+          isLoading={settingsLoading}
+          isSaving={settingsSaving}
+          error={settingsError}
+          onSave={handleSettingsSave}
+          onClose={handleSettingsClose}
+        />
+      )}
       <ConsoleTabList
         activeTab={activeTab}
         counts={counts}
@@ -672,18 +753,30 @@ export const ConsolePage = () => {
         onSelectTab={navigation.selectTab}
         onSelectProject={(code) => navigateAssign(`/projects/${code}`)}
         settingsButton={
-          <ConsoleTimerSettingsModalDialog
-            isOpen={isSettingsOpen}
-            timerMode={draftTimerMode}
-            projectMinutes={draftProjectMinutes}
-            pjcodes={pjcodes}
-            isLoadingPjcodes={isLoadingPjcodes}
-            onOpen={openSettings}
-            onToggleTimerMode={toggleDraftTimerMode}
-            onChangeMinutes={changeDraftMinutes}
-            onSave={saveSettings}
-            onClose={closeSettings}
-          />
+          <>
+            {pjcode !== null && (
+              <button
+                type="button"
+                className="console-tab-settings-button"
+                aria-label="Open project settings"
+                onClick={handleSettingsOpen}
+              >
+                ⚙
+              </button>
+            )}
+            <ConsoleTimerSettingsModalDialog
+              isOpen={isSettingsOpen}
+              timerMode={draftTimerMode}
+              projectMinutes={draftProjectMinutes}
+              pjcodes={pjcodes}
+              isLoadingPjcodes={isLoadingPjcodes}
+              onOpen={openSettings}
+              onToggleTimerMode={toggleDraftTimerMode}
+              onChangeMinutes={changeDraftMinutes}
+              onSave={saveSettings}
+              onClose={closeSettings}
+            />
+          </>
         }
         airplaneModeEnabled={featuresConfig.airplaneMode}
         airplaneModeStatus={airplaneMode.status}

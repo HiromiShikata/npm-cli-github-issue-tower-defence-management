@@ -1,4 +1,5 @@
 import { mock } from 'jest-mock-extended';
+import { Project } from '../../../domain/entities/Project';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import {
@@ -11,9 +12,12 @@ import {
   handleItemBody,
   handlePrCommits,
   handlePrFiles,
+  handleProjectReadmeConfig,
   handlePullRequestStatus,
   handleRelatedPrs,
 } from './consoleReadApi';
+import * as projectConfig from '../cli/projectConfig';
+import type { ConsoleProjectResolver } from './consoleOperationApi';
 
 describe('consoleReadApi', () => {
   const RATE_LIMIT_ERROR_MESSAGE =
@@ -709,6 +713,86 @@ describe('consoleReadApi', () => {
           'https://github.com/o/r/pull/1',
         ),
       ).rejects.toThrow('Network timeout');
+    });
+  });
+
+  describe('handleProjectReadmeConfig', () => {
+    const projectUrl = 'https://github.com/orgs/acme/projects/1';
+
+    const makeResolver = (): ConsoleProjectResolver => {
+      const project = mock<Project>();
+      project.id = 'PVT_1';
+      project.url = projectUrl;
+      return async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project } : null;
+    };
+
+    let fetchProjectReadmeSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      fetchProjectReadmeSpy = jest
+        .spyOn(projectConfig, 'fetchProjectReadme')
+        .mockResolvedValue(
+          '# P\n<details>\n<summary>config</summary>\nmaximumPreparingIssuesCount: 7\n</details>\n',
+        );
+    });
+
+    afterEach(() => {
+      fetchProjectReadmeSpy.mockRestore();
+    });
+
+    it('returns 502 when resolveProject is null', async () => {
+      const response = await handleProjectReadmeConfig(null, 'token', 'acme');
+      expect(response.statusCode).toBe(502);
+    });
+
+    it('returns 502 when githubToken is null', async () => {
+      const response = await handleProjectReadmeConfig(
+        makeResolver(),
+        null,
+        'acme',
+      );
+      expect(response.statusCode).toBe(502);
+    });
+
+    it('returns 400 when pjcode is null', async () => {
+      const response = await handleProjectReadmeConfig(
+        makeResolver(),
+        'token',
+        null,
+      );
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 404 when project is not found', async () => {
+      const response = await handleProjectReadmeConfig(
+        makeResolver(),
+        'token',
+        'unknown',
+      );
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('returns maximumPreparingIssuesCount null when readme is null', async () => {
+      fetchProjectReadmeSpy.mockResolvedValue(null);
+      const response = await handleProjectReadmeConfig(
+        makeResolver(),
+        'token',
+        'acme',
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ maximumPreparingIssuesCount: null });
+    });
+
+    it('returns maximumPreparingIssuesCount from parsed readme config', async () => {
+      const response = await handleProjectReadmeConfig(
+        makeResolver(),
+        'gh-token',
+        'acme',
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ maximumPreparingIssuesCount: 7 });
+      expect(fetchProjectReadmeSpy).toHaveBeenCalledWith(projectUrl, 'gh-token');
     });
   });
 });

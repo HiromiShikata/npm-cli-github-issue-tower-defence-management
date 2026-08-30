@@ -21,6 +21,7 @@ import {
   handleDeleteAllComments,
   handleDeleteStory,
   handleIntmux,
+  handleProjectMaxPreparingUpdate,
   handleReorderStory,
   handleReview,
   handleReviewComment,
@@ -29,6 +30,7 @@ import {
   handleTimer,
   handleTriage,
 } from './consoleOperationApi';
+import * as projectConfig from '../cli/projectConfig';
 import { readProjectTimer } from './consoleProjectTimerStore';
 
 describe('consoleOperationApi', () => {
@@ -2778,6 +2780,89 @@ describe('consoleOperationApi', () => {
       });
       expect(response).toEqual({ statusCode: 200, body: { ok: true } });
       expect(readProjectTimer(baseDir, 'acme')).toBeNull();
+    });
+  });
+
+  describe('handleProjectMaxPreparingUpdate', () => {
+    let fetchProjectReadmeSpy: jest.SpyInstance;
+    let updateProjectV2ReadmeSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      fetchProjectReadmeSpy = jest
+        .spyOn(projectConfig, 'fetchProjectReadme')
+        .mockResolvedValue('# Project\n');
+      updateProjectV2ReadmeSpy = jest
+        .spyOn(projectConfig, 'updateProjectV2Readme')
+        .mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      fetchProjectReadmeSpy.mockRestore();
+      updateProjectV2ReadmeSpy.mockRestore();
+    });
+
+    it('returns 502 when githubToken is null', async () => {
+      const response = await handleProjectMaxPreparingUpdate(context, null, {
+        pjcode: 'acme',
+        maximumPreparingIssuesCount: 3,
+      });
+      expect(response.statusCode).toBe(502);
+    });
+
+    it('returns 400 when maximumPreparingIssuesCount is not a positive integer', async () => {
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        'token',
+        { pjcode: 'acme', maximumPreparingIssuesCount: 0 },
+      );
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when pjcode is not configured', async () => {
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        'token',
+        { pjcode: 'unknown', maximumPreparingIssuesCount: 3 },
+      );
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 502 when readme fetch returns null', async () => {
+      fetchProjectReadmeSpy.mockResolvedValue(null);
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        'token',
+        { pjcode: 'acme', maximumPreparingIssuesCount: 3 },
+      );
+      expect(response.statusCode).toBe(502);
+    });
+
+    it('returns 502 when updateProjectV2Readme throws', async () => {
+      updateProjectV2ReadmeSpy.mockRejectedValue(new Error('update failed'));
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        'token',
+        { pjcode: 'acme', maximumPreparingIssuesCount: 3 },
+      );
+      expect(response.statusCode).toBe(502);
+    });
+
+    it('returns 200 and updates the README on success', async () => {
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        'gh-token',
+        { pjcode: 'acme', maximumPreparingIssuesCount: 5 },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(fetchProjectReadmeSpy).toHaveBeenCalledWith(
+        project.url,
+        'gh-token',
+      );
+      expect(updateProjectV2ReadmeSpy).toHaveBeenCalledWith(
+        project.id,
+        expect.stringContaining('maximumPreparingIssuesCount'),
+        'gh-token',
+      );
     });
   });
 });

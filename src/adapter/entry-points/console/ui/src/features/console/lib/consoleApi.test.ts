@@ -2,10 +2,12 @@ import {
   ADD_STORY_OPERATION_PATH,
   createConsoleApiClient,
   DELETE_STORY_OPERATION_PATH,
+  fetchProjectReadmeConfig,
   postConsoleAddStory,
   postConsoleDeleteStory,
   postConsoleOperation,
   postConsoleReviewComment,
+  postProjectMaxPreparingUpdate,
 } from './consoleApi';
 
 const mockFetchOnce = (body: unknown, ok = true): jest.Mock => {
@@ -468,5 +470,66 @@ describe('postConsoleDeleteStory', () => {
     await expect(
       postConsoleDeleteStory({ pjcode: 'acme', storyOptionId: '' }),
     ).rejects.toThrow('storyOptionId is required');
+  });
+});
+
+describe('fetchProjectReadmeConfig', () => {
+  it('fetches from the project readme config endpoint and returns the count', async () => {
+    const fetchMock = mockFetchOnce({ maximumPreparingIssuesCount: 5 });
+    const result = await fetchProjectReadmeConfig('my-proj');
+    expect(result).toEqual({ maximumPreparingIssuesCount: 5 });
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain('/api/projectreadmeconfig');
+    expect(url).toContain('pjcode=my-proj');
+  });
+
+  it('returns null when the response has no numeric count', async () => {
+    mockFetchOnce({ maximumPreparingIssuesCount: null });
+    const result = await fetchProjectReadmeConfig('my-proj');
+    expect(result).toEqual({ maximumPreparingIssuesCount: null });
+  });
+
+  it('throws when the response is not ok', async () => {
+    mockFetchFailureOnce(
+      502,
+      JSON.stringify({ error: 'github token is not configured' }),
+    );
+    await expect(fetchProjectReadmeConfig('my-proj')).rejects.toThrow(
+      'github token is not configured',
+    );
+  });
+});
+
+describe('postProjectMaxPreparingUpdate', () => {
+  it('POSTs to the project settings endpoint with the count', async () => {
+    const fetchMock = mockFetchOnce({});
+    await postProjectMaxPreparingUpdate({
+      pjcode: 'acme',
+      maximumPreparingIssuesCount: 7,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projectsettings',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(init.body as string)).toEqual({
+      pjcode: 'acme',
+      maximumPreparingIssuesCount: 7,
+    });
+  });
+
+  it('throws when the response is not ok', async () => {
+    mockFetchFailureOnce(
+      400,
+      JSON.stringify({
+        error: 'maximumPreparingIssuesCount must be a positive integer',
+      }),
+    );
+    await expect(
+      postProjectMaxPreparingUpdate({
+        pjcode: 'acme',
+        maximumPreparingIssuesCount: 0,
+      }),
+    ).rejects.toThrow('maximumPreparingIssuesCount must be a positive integer');
   });
 });
