@@ -1,3 +1,10 @@
+# [2.23.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.22.0...v2.23.0) (2026-08-30)
+
+
+### Features
+
+* add project timer progress bar to TDPM console ([#1881](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1881)) ([76fed4f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/76fed4fa061ead52f83a6694d2c17f8b6d781f35)), closes [#1879](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1879) [HiromiShikata/umino-corporait-operation#31102](https://github.com/HiromiShikata/umino-corporait-operation/issues/31102)
+
 # [2.22.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.21.0...v2.22.0) (2026-08-30)
 
 
