@@ -29,6 +29,7 @@ import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
   postConsoleAddStory,
   postConsoleCreateIssue,
+  postConsoleDeleteStory,
   postConsoleReorderStory,
   postConsoleStoryColor,
 } from '../lib/consoleApi';
@@ -612,6 +613,20 @@ export const ConsolePage = () => {
     [pjcode, defaultNameWithOwner, storyEntries],
   );
 
+  const handleStoryDelete = useCallback(
+    async (storyOptionId: string): Promise<void> => {
+      if (pjcode === null) {
+        throw new Error('No project specified in the URL path.');
+      }
+      await postConsoleDeleteStory({ pjcode, storyOptionId });
+      setLocalStoryEntriesOverride({
+        generatedAt: storiesSnapshot?.generatedAt,
+        stories: storyEntries.filter((e) => e.storyOptionId !== storyOptionId),
+      });
+    },
+    [pjcode, storyEntries, storiesSnapshot?.generatedAt],
+  );
+
   return (
     <main className="console-app">
       {actionQueue.pending !== null && (
@@ -681,6 +696,7 @@ export const ConsolePage = () => {
           onSelectColor={handleSelectColor}
           onToggleGray={handleToggleGray}
           onReorderStory={handleReorderStory}
+          onDeleteStory={handleStoryDelete}
           optimisticColors={storyOptimisticColors}
           colorChangeInFlight={storyColorChangeInFlight}
           colorErrors={storyColorErrors}

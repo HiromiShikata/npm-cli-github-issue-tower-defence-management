@@ -68,6 +68,7 @@ const meta: Meta<typeof ConsoleStoryList> = {
     onSelectColor: () => undefined,
     onToggleGray: () => undefined,
     onReorderStory: () => Promise.resolve(),
+    onDeleteStory: () => Promise.resolve(),
     optimisticColors: {},
     colorChangeInFlight: null,
     colorErrors: {},

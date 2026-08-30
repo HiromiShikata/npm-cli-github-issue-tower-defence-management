@@ -705,6 +705,10 @@ export type ConsoleE2eAddStoryCall = {
   storyName: string;
 };
 
+export type ConsoleE2eDeleteStoryCall = {
+  storyOptionId: string;
+};
+
 export type ConsoleE2eHarness = {
   baseUrl: string;
   appUrl: string;
@@ -716,6 +720,7 @@ export type ConsoleE2eHarness = {
   commentCalls: ConsoleE2eCommentCall[];
   reorderStoryCalls: ConsoleE2eReorderStoryCall[];
   addStoryCalls: ConsoleE2eAddStoryCall[];
+  deleteStoryCalls: ConsoleE2eDeleteStoryCall[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
   stop: () => Promise<void>;
@@ -744,6 +749,7 @@ export const startConsoleE2eHarness = async (options?: {
   const commentCalls: ConsoleE2eCommentCall[] = [];
   const reorderStoryCalls: ConsoleE2eReorderStoryCall[] = [];
   const addStoryCalls: ConsoleE2eAddStoryCall[] = [];
+  const deleteStoryCalls: ConsoleE2eDeleteStoryCall[] = [];
   const storyColorCalls: ConsoleE2eStoryColorCall[] = [];
   const deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[] = [];
 
@@ -761,11 +767,19 @@ export const startConsoleE2eHarness = async (options?: {
     ),
     resolveProjectRepository: (_projectUrl) => ({
       updateStoryList: async (_updatedProject, stories) => {
-        const currentCount = project.story?.stories.length ?? 0;
+        const currentStories = project.story?.stories ?? [];
+        const currentCount = currentStories.length;
         if (stories.length > currentCount) {
           const newStory = stories.find((s) => s.id === null);
           if (newStory !== undefined) {
             addStoryCalls.push({ storyName: newStory.name });
+          }
+        } else if (stories.length < currentCount) {
+          const deleted = currentStories.find(
+            (s) => !stories.some((ns) => ns.id === s.id),
+          );
+          if (deleted !== undefined && deleted.id !== null) {
+            deleteStoryCalls.push({ storyOptionId: deleted.id });
           }
         } else {
           reorderStoryCalls.push({
@@ -814,6 +828,7 @@ export const startConsoleE2eHarness = async (options?: {
     commentCalls,
     reorderStoryCalls,
     addStoryCalls,
+    deleteStoryCalls,
     storyColorCalls,
     deleteAllCommentsCalls,
     stop: async (): Promise<void> => {

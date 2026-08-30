@@ -39,6 +39,7 @@ const defaultProps = {
   onSelectColor: () => undefined,
   onToggleGray: () => undefined,
   onReorderStory: () => Promise.resolve(),
+  onDeleteStory: () => Promise.resolve(),
   optimisticColors: {} as Record<string, ConsoleColor>,
   colorChangeInFlight: null as string | null,
   colorErrors: {} as Record<string, string>,
@@ -549,6 +550,122 @@ describe('ConsoleStoryList', () => {
       });
       const alert = await findByRole('alert');
       expect(alert).toHaveTextContent('Reorder failed');
+    });
+  });
+
+  describe('delete story', () => {
+    it('renders a Delete story button for each visible story', () => {
+      const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
+      const deleteButtons = getAllByRole('button', { name: 'Delete story' });
+      expect(deleteButtons).toHaveLength(storyEntries.length);
+    });
+
+    it('shows a confirmation dialog when Delete story is clicked', () => {
+      const { getAllByRole, getByRole } = render(
+        <ConsoleStoryList {...defaultProps} />,
+      );
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
+      fireEvent.click(firstDeleteButton);
+      expect(getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('shows the story name in the confirmation dialog', () => {
+      const { getAllByRole, getByRole } = render(
+        <ConsoleStoryList {...defaultProps} />,
+      );
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
+      fireEvent.click(firstDeleteButton);
+      const dialog = getByRole('dialog');
+      expect(dialog).toHaveTextContent('TDPM Console port');
+    });
+
+    it('closes the confirmation dialog when Cancel is clicked', () => {
+      const { getAllByRole, queryByRole } = render(
+        <ConsoleStoryList {...defaultProps} />,
+      );
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
+      fireEvent.click(firstDeleteButton);
+      const cancelButton = getAllByRole('button', { name: 'Cancel' })[0];
+      fireEvent.click(cancelButton);
+      expect(queryByRole('dialog')).toBeNull();
+    });
+
+    it('calls onDeleteStory with the correct storyOptionId when Delete is confirmed', async () => {
+      const onDeleteStory = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole } = render(
+        <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
+      );
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
+      fireEvent.click(firstDeleteButton);
+      const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
+      await act(async () => {
+        fireEvent.click(confirmButton);
+      });
+      expect(onDeleteStory).toHaveBeenCalledWith('1491051e');
+    });
+
+    it('closes the dialog after a successful delete', async () => {
+      const onDeleteStory = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole, queryByRole } = render(
+        <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
+      );
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
+      fireEvent.click(firstDeleteButton);
+      const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
+      await act(async () => {
+        fireEvent.click(confirmButton);
+      });
+      await waitFor(() => expect(queryByRole('dialog')).toBeNull());
+    });
+
+    it('shows an error in the dialog when onDeleteStory throws', async () => {
+      const onDeleteStory = jest
+        .fn()
+        .mockRejectedValue(new Error('Delete failed'));
+      const { getAllByRole, findByRole } = render(
+        <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
+      );
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
+      fireEvent.click(firstDeleteButton);
+      const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
+      await act(async () => {
+        fireEvent.click(confirmButton);
+      });
+      const alert = await findByRole('alert');
+      expect(alert).toHaveTextContent('Delete failed');
+    });
+
+    it('shows Deleting… text on the confirm button while deletion is in progress', async () => {
+      let resolveDelete: () => void;
+      const deletePromise = new Promise<void>((resolve) => {
+        resolveDelete = resolve;
+      });
+      const onDeleteStory = jest.fn().mockReturnValue(deletePromise);
+      const { getAllByRole, getByText } = render(
+        <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
+      );
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
+      fireEvent.click(firstDeleteButton);
+      const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
+      fireEvent.click(confirmButton);
+      await waitFor(() => expect(getByText('Deleting…')).toBeInTheDocument());
+      await act(async () => {
+        resolveDelete!();
+      });
     });
   });
 });

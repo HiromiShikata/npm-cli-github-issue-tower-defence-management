@@ -1,7 +1,9 @@
 import {
   ADD_STORY_OPERATION_PATH,
   createConsoleApiClient,
+  DELETE_STORY_OPERATION_PATH,
   postConsoleAddStory,
+  postConsoleDeleteStory,
   postConsoleOperation,
   postConsoleReviewComment,
 } from './consoleApi';
@@ -442,5 +444,29 @@ describe('postConsoleAddStory', () => {
     await expect(
       postConsoleAddStory({ pjcode: 'acme', storyName: '' }),
     ).rejects.toThrow('storyName is required');
+  });
+});
+
+describe('postConsoleDeleteStory', () => {
+  it('posts the storyOptionId to the deletestory endpoint', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleDeleteStory({ pjcode: 'acme', storyOptionId: 'opt_abc' });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(DELETE_STORY_OPERATION_PATH);
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      pjcode: 'acme',
+      storyOptionId: 'opt_abc',
+    });
+  });
+
+  it('throws the error reason surfaced by the server', async () => {
+    mockFetchFailureOnce(
+      400,
+      JSON.stringify({ error: 'storyOptionId is required' }),
+    );
+    await expect(
+      postConsoleDeleteStory({ pjcode: 'acme', storyOptionId: '' }),
+    ).rejects.toThrow('storyOptionId is required');
   });
 });
