@@ -89,11 +89,22 @@ describe('OauthTokenSelectUseCase', () => {
     expect(boundary?.fiveHourFreeRatio).toBe(0.25);
   });
 
-  it('excludes a token whose 7d window is less than 3% free', () => {
+  it('does not exclude a token with 2% of its seven day budget remaining', () => {
+    const result = useCase.run(
+      [candidate('nearFull', snapshot({ sevenDayUtilization: 0.98 }))],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('nearFull');
+    const nearFull = result.metrics.find((m) => m.name === 'nearFull');
+    expect(nearFull?.eligible).toBe(true);
+  });
+
+  it('excludes a token whose 7d window is less than 1% free', () => {
     const result = useCase.run(
       [
-        candidate('busy7d', snapshot({ sevenDayUtilization: 0.98 })),
-        candidate('ok', snapshot({ sevenDayUtilization: 0.97 })),
+        candidate('busy7d', snapshot({ sevenDayUtilization: 0.995 })),
+        candidate('ok', snapshot({ sevenDayUtilization: 0.99 })),
       ],
       NOW,
     );
@@ -104,23 +115,23 @@ describe('OauthTokenSelectUseCase', () => {
     expect(busy?.exclusionReason).toContain('7d window');
   });
 
-  it('treats exactly 97% used 7d utilization as eligible (boundary)', () => {
+  it('treats exactly 99% used 7d utilization as eligible (boundary)', () => {
     const result = useCase.run(
-      [candidate('boundary', snapshot({ sevenDayUtilization: 0.97 }))],
+      [candidate('boundary', snapshot({ sevenDayUtilization: 0.99 }))],
       NOW,
     );
 
     expect(result.selected?.name).toBe('boundary');
     const boundary = result.metrics.find((m) => m.name === 'boundary');
-    expect(boundary?.sevenDayFreeRatio).toBeCloseTo(0.03, 9);
+    expect(boundary?.sevenDayFreeRatio).toBeCloseTo(0.01, 9);
   });
 
-  it('proceeds when 5h is exactly 25% free and 7d is exactly 3% free (combined boundary)', () => {
+  it('proceeds when 5h is exactly 25% free and 7d is exactly 1% free (combined boundary)', () => {
     const result = useCase.run(
       [
         candidate(
           'boundary',
-          snapshot({ fiveHourUtilization: 0.75, sevenDayUtilization: 0.97 }),
+          snapshot({ fiveHourUtilization: 0.75, sevenDayUtilization: 0.99 }),
         ),
       ],
       NOW,
@@ -130,7 +141,7 @@ describe('OauthTokenSelectUseCase', () => {
     const boundary = result.metrics.find((m) => m.name === 'boundary');
     expect(boundary?.eligible).toBe(true);
     expect(boundary?.fiveHourFreeRatio).toBe(0.25);
-    expect(boundary?.sevenDayFreeRatio).toBeCloseTo(0.03, 9);
+    expect(boundary?.sevenDayFreeRatio).toBeCloseTo(0.01, 9);
   });
 
   it('treats a token with no snapshot as fully free', () => {
@@ -192,7 +203,7 @@ describe('OauthTokenSelectUseCase', () => {
     const result = useCase.run(
       [
         candidate('busy', snapshot({ fiveHourUtilization: 0.9 })),
-        candidate('alsoBusy', snapshot({ sevenDayUtilization: 0.98 })),
+        candidate('alsoBusy', snapshot({ sevenDayUtilization: 0.995 })),
       ],
       NOW,
     );
