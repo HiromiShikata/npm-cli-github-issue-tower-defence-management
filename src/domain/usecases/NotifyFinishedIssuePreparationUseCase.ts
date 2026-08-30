@@ -187,7 +187,9 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
     }
 
-    const reportingTarget = parseOrgRepo(params.tdpmReportingRepository ?? null);
+    const reportingTarget = parseOrgRepo(
+      params.tdpmReportingRepository ?? null,
+    );
 
     if (params.deferPreparation) {
       await this.handleTransientFailureDeferral(
