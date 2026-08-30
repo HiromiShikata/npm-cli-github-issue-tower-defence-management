@@ -1,3 +1,10 @@
+## [2.14.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.14.0...v2.14.1) (2026-08-30)
+
+
+### Bug Fixes
+
+* **issue-repository:** return empty array when issue does not exist in GraphQL timeline fetch ([#1882](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1882)) ([360b383](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/360b383ada39129653b71b9a23a42842bf75caa2)), closes [HiromiShikata/secretary#4828](https://github.com/HiromiShikata/secretary/issues/4828)
+
 # [2.14.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.13.0...v2.14.0) (2026-08-30)
 
 
