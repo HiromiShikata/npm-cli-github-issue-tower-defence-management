@@ -537,9 +537,7 @@ describe('loadWorkflowImprovementIssueUrl', () => {
 
   it('throws when the fleet config file does not exist', () => {
     expect(() =>
-      loadWorkflowImprovementIssueUrl(
-        path.join(tempDir, 'missing.yaml'),
-      ),
+      loadWorkflowImprovementIssueUrl(path.join(tempDir, 'missing.yaml')),
     ).toThrow();
   });
 
@@ -548,8 +546,8 @@ describe('loadWorkflowImprovementIssueUrl', () => {
       'workflowImprovementIssueUrl: 42\n',
     );
 
-    expect(() =>
-      loadWorkflowImprovementIssueUrl(fleetConfigFilePath),
-    ).toThrow('must be a string URL');
+    expect(() => loadWorkflowImprovementIssueUrl(fleetConfigFilePath)).toThrow(
+      'must be a string URL',
+    );
   });
 });
