@@ -4526,6 +4526,16 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         [],
         [],
       );
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        expect.stringContaining('unknown-agent'),
+        expect.stringContaining(
+          'From: :robot: NotifyFinishedIssuePreparationUseCase',
+        ),
+        [],
+        [],
+      );
       expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
         issueUrl,
         mockProject,
