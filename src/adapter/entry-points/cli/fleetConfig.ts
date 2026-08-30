@@ -16,6 +16,7 @@ export const PREPARATION_WORKER_SECTION_KEY = 'preparationWorker';
 export const START_PREPARATION_SECTION_KEY = 'startPreparation';
 export const WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY = 'workflowImprovementIssueUrl';
 export const WORKFLOW_ISSUE_REPORTER_SECTION_KEY = 'workflowIssueReporter';
+export const SILENT_NOTIFICATION_ENABLED_KEY = 'silentNotificationEnabled';
 
 export const DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 
@@ -286,6 +287,28 @@ export const loadWorkflowIssueReporterSettings = (
     repo,
     projectUrl: typeof projectUrl === 'string' ? projectUrl : null,
   };
+};
+
+export const loadSilentNotificationEnabled = (
+  fleetConfigFilePath: string | null,
+): boolean | null => {
+  if (fleetConfigFilePath === null) {
+    return null;
+  }
+  const top = parseFleetConfigTopLevel(fleetConfigFilePath);
+  if (top === null) {
+    return null;
+  }
+  const value = top[SILENT_NOTIFICATION_ENABLED_KEY];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== 'boolean') {
+    throw new Error(
+      `${SILENT_NOTIFICATION_ENABLED_KEY} in ${fleetConfigFilePath} must be a boolean.`,
+    );
+  }
+  return value;
 };
 
 export const loadWorkflowImprovementIssueUrl = (

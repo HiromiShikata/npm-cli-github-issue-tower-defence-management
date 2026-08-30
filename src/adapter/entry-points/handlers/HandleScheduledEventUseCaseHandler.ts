@@ -34,6 +34,7 @@ import {
   parseProjectReadmeConfig,
 } from '../cli/projectConfig';
 import {
+  loadSilentNotificationEnabled,
   loadStartPreparationFleetSettings,
   loadWorkflowIssueReporterSettings,
   loadWorkflowImprovementIssueUrl,
@@ -854,6 +855,7 @@ export class HandleScheduledEventUseCaseHandler {
       try {
         const silentNotificationEnabled =
           mergedInput.silentNotificationEnabled ??
+          loadSilentNotificationEnabled(fleetConfigFilePath) ??
           process.env.TDPM_SILENT_NOTIFICATION_ENABLED === 'true';
         const subAgentOutputRootDirectory =
           mergedInput.subAgentOutputRootDirectory ??

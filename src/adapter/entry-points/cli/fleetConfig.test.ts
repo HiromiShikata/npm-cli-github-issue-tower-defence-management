@@ -8,6 +8,7 @@ import {
   FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE,
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
+  loadSilentNotificationEnabled,
   loadStartPreparationFleetSettings,
   loadWorkflowImprovementIssueUrl,
   loadWorkflowIssueReporterSettings,
@@ -660,5 +661,73 @@ describe('loadWorkflowIssueReporterSettings', () => {
     expect(() =>
       loadWorkflowIssueReporterSettings(fleetConfigFilePath),
     ).toThrow('repo');
+  });
+});
+
+describe('loadSilentNotificationEnabled', () => {
+  let tempDir: string;
+
+  const writeFleetConfig = (content: string): string => {
+    const fleetConfigFilePath = path.join(tempDir, 'fleet.config.yaml');
+    fs.writeFileSync(fleetConfigFilePath, content);
+    return fleetConfigFilePath;
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-config-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('returns null when no fleet config path is given', () => {
+    expect(loadSilentNotificationEnabled(null)).toBeNull();
+  });
+
+  it('returns false when silentNotificationEnabled is false in the fleet config', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'silentNotificationEnabled: false\n',
+    );
+
+    expect(loadSilentNotificationEnabled(fleetConfigFilePath)).toBe(false);
+  });
+
+  it('returns true when silentNotificationEnabled is true in the fleet config', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'silentNotificationEnabled: true\n',
+    );
+
+    expect(loadSilentNotificationEnabled(fleetConfigFilePath)).toBe(true);
+  });
+
+  it('returns null when the key is absent from the fleet config', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'preparationWorker:\n  normalConcurrentLimit: 5\n',
+    );
+
+    expect(loadSilentNotificationEnabled(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns null for an empty fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig('');
+
+    expect(loadSilentNotificationEnabled(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('throws when the fleet config file does not exist', () => {
+    expect(() =>
+      loadSilentNotificationEnabled(path.join(tempDir, 'missing.yaml')),
+    ).toThrow();
+  });
+
+  it('throws when the value is not a boolean', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'silentNotificationEnabled: 42\n',
+    );
+
+    expect(() => loadSilentNotificationEnabled(fleetConfigFilePath)).toThrow(
+      'must be a boolean',
+    );
   });
 });
