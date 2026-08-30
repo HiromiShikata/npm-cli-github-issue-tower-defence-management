@@ -178,205 +178,208 @@ export const ConsoleItemDetail = ({
 
   return (
     <article className="console-detail">
-      <h2 className="console-detail-title">
-        <ConsoleItemIcon
-          isPr={item.isPr}
-          state={resolvedState}
-          merged={merged}
-          isDraft={false}
-          stateReason=""
-        />
-        <span className="console-detail-title-text">{item.title}</span>
-        <span className="console-detail-number">
-          {item.isPr ? `PR #${item.number}` : `#${item.number}`}
-        </span>
-      </h2>
-
-      <div className="console-detail-topline">
-        {displayStatus !== null && statusPalette !== null && (
-          <span
-            className="console-detail-status-chip"
-            style={{
-              color: statusPalette.fg,
-              borderColor: statusPalette.border,
-              backgroundColor: statusPalette.bg,
-            }}
-          >
-            {displayStatus.name}
-          </span>
-        )}
-        {item.agent !== null && item.agent !== '' && (
-          <span className="console-detail-agent-chip">{item.agent}</span>
-        )}
-        {storyName !== null && (
-          <span className="console-storytag">
-            <span
-              className="console-story-dot"
-              style={{ backgroundColor: storyPalette.dot }}
-            />
-            {storyName}
-          </span>
-        )}
-        {item.isPr && pullRequestStatus?.found && (
-          <ConsolePullRequestStatusBadges
-            isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
-            isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
-            isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
-            missingRequiredCheckNames={
-              pullRequestStatus.missingRequiredCheckNames
-            }
+      <div className="console-detail-header">
+        <h2 className="console-detail-title">
+          <ConsoleItemIcon
+            isPr={item.isPr}
+            state={resolvedState}
+            merged={merged}
+            isDraft={false}
+            stateReason=""
           />
-        )}
-        {!item.isPr &&
-          relatedPullRequests.map((related) => (
+          <span className="console-detail-title-text">{item.title}</span>
+          <span className="console-detail-number">
+            {item.isPr ? `PR #${item.number}` : `#${item.number}`}
+          </span>
+        </h2>
+
+        <div className="console-detail-topline">
+          {displayStatus !== null && statusPalette !== null && (
             <span
-              key={related.pullRequest.url}
-              className="console-related-pr-group"
+              className="console-detail-status-chip"
+              style={{
+                color: statusPalette.fg,
+                borderColor: statusPalette.border,
+                backgroundColor: statusPalette.bg,
+              }}
             >
-              {relatedPullRequests.length > 1 && (
-                <span className="console-related-pr-label">
-                  {relatedPullRequestLabel(related.pullRequest.url)}
-                </span>
-              )}
-              <ConsolePullRequestStatusBadges
-                isPassedAllCiJob={related.pullRequest.isPassedAllCiJob}
-                isCiStateSuccess={related.pullRequest.isCiStateSuccess}
-                isBranchOutOfDate={related.pullRequest.isBranchOutOfDate}
-                missingRequiredCheckNames={
-                  related.pullRequest.missingRequiredCheckNames
-                }
-              />
-              <ConsolePullRequestMergeableChip
-                mergeableStatus={related.pullRequest.mergeableStatus}
-              />
+              {displayStatus.name}
             </span>
+          )}
+          {item.agent !== null && item.agent !== '' && (
+            <span className="console-detail-agent-chip">{item.agent}</span>
+          )}
+          {storyName !== null && (
+            <span className="console-storytag">
+              <span
+                className="console-story-dot"
+                style={{ backgroundColor: storyPalette.dot }}
+              />
+              {storyName}
+            </span>
+          )}
+          {item.isPr && pullRequestStatus?.found && (
+            <ConsolePullRequestStatusBadges
+              isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
+              isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
+              isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
+              missingRequiredCheckNames={
+                pullRequestStatus.missingRequiredCheckNames
+              }
+            />
+          )}
+          {!item.isPr &&
+            relatedPullRequests.map((related) => (
+              <span
+                key={related.pullRequest.url}
+                className="console-related-pr-group"
+              >
+                {relatedPullRequests.length > 1 && (
+                  <span className="console-related-pr-label">
+                    {relatedPullRequestLabel(related.pullRequest.url)}
+                  </span>
+                )}
+                <ConsolePullRequestStatusBadges
+                  isPassedAllCiJob={related.pullRequest.isPassedAllCiJob}
+                  isCiStateSuccess={related.pullRequest.isCiStateSuccess}
+                  isBranchOutOfDate={related.pullRequest.isBranchOutOfDate}
+                  missingRequiredCheckNames={
+                    related.pullRequest.missingRequiredCheckNames
+                  }
+                />
+                <ConsolePullRequestMergeableChip
+                  mergeableStatus={related.pullRequest.mergeableStatus}
+                />
+              </span>
+            ))}
+          {mergeableChips.map((chip) => (
+            <ConsolePullRequestMergeableChip
+              key={chip.url}
+              mergeableStatus={chip.mergeableStatus}
+            />
           ))}
-        {mergeableChips.map((chip) => (
-          <ConsolePullRequestMergeableChip
-            key={chip.url}
-            mergeableStatus={chip.mergeableStatus}
-          />
-        ))}
-        {closedStateLabel !== null && (
-          <span className="console-detail-closed-label">
-            {closedStateLabel}
-          </span>
-        )}
-      </div>
+          {closedStateLabel !== null && (
+            <span className="console-detail-closed-label">
+              {closedStateLabel}
+            </span>
+          )}
+        </div>
 
-      <ConsoleFetchFailureAlert failures={fetchFailures} />
+        <ConsoleFetchFailureAlert failures={fetchFailures} />
 
-      <div className="console-detail-subbar">
-        <a
-          href={item.url}
-          className="console-detail-link"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {item.isPr ? `PR #${item.number}` : `Issue #${item.number}`}
-        </a>
-        <span className="console-detail-repo">{item.repo}</span>
-        <span
-          className="console-detail-createdat"
-          title={formatFullTimestamp(item.createdAt)}
-        >
-          opened {formatRelativeTime(item.createdAt, now)}
-        </span>
-        <span className="console-detail-pill">
-          {item.isPr ? 'PR' : 'Issue'}
-        </span>
-        <ConsoleCopyUrlButton url={item.url} />
-        {item.labels.map((label) => (
-          <span key={label} className="console-label-chip">
-            {label}
-          </span>
-        ))}
-      </div>
-
-      <ConsolePanel
-        title="Description"
-        headerAction={
+        <div className="console-detail-subbar">
           <a
             href={item.url}
-            className="console-panel-open-link"
+            className="console-detail-link"
             target="_blank"
             rel="noopener noreferrer"
           >
-            open
+            #{item.number}
           </a>
-        }
-      >
-        {bodyError !== null ? (
-          <p className="console-detail-body-notloaded">Not loaded.</p>
-        ) : bodyIsLoading ? (
-          <p className="console-detail-body-loading">Loading description...</p>
-        ) : (
-          <ConsoleMarkdownContent
-            body={body}
+          <span className="console-detail-repo">{item.repo}</span>
+          <span
+            className="console-detail-createdat"
+            title={formatFullTimestamp(item.createdAt)}
+          >
+            opened {formatRelativeTime(item.createdAt, now)}
+          </span>
+          <ConsoleCopyUrlButton url={item.url} />
+          {item.labels.map((label) => (
+            <span key={label} className="console-label-chip">
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="console-detail-body">
+        <ConsolePanel
+          title="Description"
+          headerAction={
+            <a
+              href={item.url}
+              className="console-panel-open-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              open
+            </a>
+          }
+        >
+          {bodyError !== null ? (
+            <p className="console-detail-body-notloaded">Not loaded.</p>
+          ) : bodyIsLoading ? (
+            <p className="console-detail-body-loading">
+              Loading description...
+            </p>
+          ) : (
+            <ConsoleMarkdownContent
+              body={body}
+              buildImageProxyUrl={buildImageProxyUrl}
+              renderReferenceLink={renderReferenceLink}
+              repoContext={repoContext}
+            />
+          )}
+        </ConsolePanel>
+
+        {item.isPr && (
+          <ConsolePanel title="Changed files" count={filesCount}>
+            <ConsoleChangedFileList
+              files={files}
+              isLoading={filesAreLoading}
+              error={filesError}
+              onAddInlineComment={onAddInlineComment}
+            />
+          </ConsolePanel>
+        )}
+
+        <ConsolePanel
+          title="Comments"
+          count={commentsCount}
+          defaultCollapsed={item.isPr}
+        >
+          <ConsoleCommentList
+            comments={comments}
+            isLoading={commentsAreLoading}
+            error={commentsError}
+            now={now}
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
           />
+        </ConsolePanel>
+
+        {item.isPr && (
+          <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>
+            <ConsoleCommitList
+              commits={commits}
+              isLoading={commitsAreLoading}
+              error={commitsError}
+              now={now}
+            />
+          </ConsolePanel>
         )}
-      </ConsolePanel>
 
-      {item.isPr && (
-        <ConsolePanel title="Changed files" count={filesCount}>
-          <ConsoleChangedFileList
-            files={files}
-            isLoading={filesAreLoading}
-            error={filesError}
-            onAddInlineComment={onAddInlineComment}
-          />
-        </ConsolePanel>
-      )}
-
-      <ConsolePanel
-        title="Comments"
-        count={commentsCount}
-        defaultCollapsed={item.isPr}
-      >
-        <ConsoleCommentList
-          comments={comments}
-          isLoading={commentsAreLoading}
-          error={commentsError}
-          now={now}
-          buildImageProxyUrl={buildImageProxyUrl}
-          renderReferenceLink={renderReferenceLink}
-          repoContext={repoContext}
-        />
-      </ConsolePanel>
-
-      {item.isPr && (
-        <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>
-          <ConsoleCommitList
-            commits={commits}
-            isLoading={commitsAreLoading}
-            error={commitsError}
-            now={now}
-          />
-        </ConsolePanel>
-      )}
-
-      {!item.isPr &&
-        relatedPullRequests.map((related) => (
-          <ConsolePullRequestDetail
-            key={related.pullRequest.url}
-            pullRequest={related.pullRequest}
-            body={related.pullRequest.summary?.body ?? ''}
-            bodyIsLoading={false}
-            files={related.files}
-            filesAreLoading={related.filesAreLoading}
-            filesError={related.filesError}
-            commits={related.commits}
-            commitsAreLoading={related.commitsAreLoading}
-            commitsError={related.commitsError}
-            now={now}
-            buildImageProxyUrl={buildImageProxyUrl}
-            renderReferenceLink={renderReferenceLink}
-            onAddInlineComment={onAddInlineComment}
-          />
-        ))}
+        {!item.isPr &&
+          relatedPullRequests.map((related) => (
+            <ConsolePullRequestDetail
+              key={related.pullRequest.url}
+              pullRequest={related.pullRequest}
+              body={related.pullRequest.summary?.body ?? ''}
+              bodyIsLoading={false}
+              files={related.files}
+              filesAreLoading={related.filesAreLoading}
+              filesError={related.filesError}
+              commits={related.commits}
+              commitsAreLoading={related.commitsAreLoading}
+              commitsError={related.commitsError}
+              now={now}
+              buildImageProxyUrl={buildImageProxyUrl}
+              renderReferenceLink={renderReferenceLink}
+              onAddInlineComment={onAddInlineComment}
+            />
+          ))}
+      </div>
 
       <div className="console-detail-dock">
         <div className="console-detail-dock-composer">{commentComposer}</div>
