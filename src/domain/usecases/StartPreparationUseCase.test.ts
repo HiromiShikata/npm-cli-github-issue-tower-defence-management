@@ -7059,9 +7059,7 @@ describe('StartPreparationUseCase', () => {
     const spawnedUrls = mockLocalCommandRunner.runCommand.mock.calls.map(
       (call) => call[1][0],
     );
-    expect(spawnedUrls).not.toContain(
-      'https://github.com/user/repo/issues/41',
-    );
+    expect(spawnedUrls).not.toContain('https://github.com/user/repo/issues/41');
     expect(spawnedUrls).toContain('https://github.com/user/repo/issues/42');
     consoleLogSpy.mockRestore();
   });

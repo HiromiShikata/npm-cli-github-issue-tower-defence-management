@@ -438,8 +438,7 @@ export const mergeConfigs = (
     cliOverrides.errorReportingRepository ??
     configFile.errorReportingRepository,
   skipAgentAuthoredIssues:
-    cliOverrides.skipAgentAuthoredIssues ??
-    configFile.skipAgentAuthoredIssues,
+    cliOverrides.skipAgentAuthoredIssues ?? configFile.skipAgentAuthoredIssues,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
