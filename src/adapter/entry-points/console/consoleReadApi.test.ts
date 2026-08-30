@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { Project } from '../../../domain/entities/Project';
+import type { Project } from '../../../domain/entities/Project';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import {
