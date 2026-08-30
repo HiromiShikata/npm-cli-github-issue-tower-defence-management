@@ -4864,7 +4864,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         repositoryName: 'tdpm-repo',
         type: 'issue',
         state: 'open',
-        title: expect.stringContaining('unknown-agent'),
+        title: 'Unregistered agent in workflow configuration: unknown-agent',
       });
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
         'tdpm-owner',

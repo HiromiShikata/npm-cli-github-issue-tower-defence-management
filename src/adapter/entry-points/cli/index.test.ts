@@ -1532,6 +1532,7 @@ mysteryKey: 'value'
         developerAgentNames: null,
         deferPreparation: null,
         workflowIssueReporterSettings: null,
+        tdpmReportingRepository: null,
       });
     });
 
@@ -1577,6 +1578,7 @@ mysteryKey: 'value'
         developerAgentNames: null,
         deferPreparation: null,
         workflowIssueReporterSettings: null,
+        tdpmReportingRepository: null,
       });
     });
 
