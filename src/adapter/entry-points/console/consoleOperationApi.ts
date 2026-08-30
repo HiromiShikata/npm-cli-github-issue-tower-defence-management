@@ -934,3 +934,35 @@ export const handleDeleteAllComments = async (
     .deleteAllCommentsByUrl(issueUrl);
   return ok();
 };
+
+export const handleDeleteStory = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  if (context.resolveProjectRepository === null) {
+    return badGateway('project repository is not configured');
+  }
+  const storyOptionId = body.storyOptionId;
+  if (!isNonEmptyString(storyOptionId)) {
+    return badRequest('storyOptionId is required');
+  }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { pjcode, project } = binding;
+  if (project.story === null) {
+    return badRequest('project does not have a story field');
+  }
+  const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
+  if (storyOption === undefined) {
+    return badRequest(`story option "${storyOptionId}" not found in project`);
+  }
+  const filteredStories = project.story.stories.filter(
+    (s) => s.id !== storyOptionId,
+  );
+  const projectRepository = context.resolveProjectRepository(project.url);
+  await projectRepository.updateStoryList(project, filteredStories);
+  context.invalidateProject?.(pjcode);
+  return ok();
+};

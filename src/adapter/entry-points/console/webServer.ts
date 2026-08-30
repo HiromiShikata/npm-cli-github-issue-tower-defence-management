@@ -32,6 +32,7 @@ import {
   handleComment,
   handleCreateIssue,
   handleDeleteAllComments,
+  handleDeleteStory,
   handleIntmux,
   handleReorderStory,
   handleReview,
@@ -560,6 +561,8 @@ const dispatchOperation = (
       return handleStoryColor(context, body);
     case '/api/deleteallcomments':
       return handleDeleteAllComments(context, body);
+    case '/api/deletestory':
+      return handleDeleteStory(context, body);
     default:
       return null;
   }

@@ -19,6 +19,7 @@ import {
   handleComment,
   handleCreateIssue,
   handleDeleteAllComments,
+  handleDeleteStory,
   handleIntmux,
   handleReorderStory,
   handleReview,
@@ -2518,6 +2519,133 @@ describe('consoleOperationApi', () => {
           issueUrl: 'https://github.com/o/r/issues/1',
         }),
       ).rejects.toThrow('API failure');
+    });
+  });
+
+  describe('handleDeleteStory', () => {
+    const projectWithStoriesToDelete = (): Project => ({
+      ...project,
+      url: 'https://github.com/orgs/acme-labs/projects/1',
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          { id: 'opt_keep', name: 'Keep this story', color: 'BLUE', description: '' },
+          { id: 'opt_remove', name: 'Remove this story', color: 'GREEN', description: '' },
+          { id: 'opt_also_keep', name: 'Also keep', color: 'RED', description: '' },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    const updateStoryList = jest.fn();
+    const projectRepositoryResolver = jest.fn(() => ({ updateStoryList }));
+
+    const deleteStoryContext = (p: Project): ConsoleOperationContext => ({
+      ...contextForProject(p),
+      resolveProjectRepository: projectRepositoryResolver,
+    });
+
+    beforeEach(() => {
+      updateStoryList.mockResolvedValue([]);
+      projectRepositoryResolver.mockReturnValue({ updateStoryList });
+    });
+
+    it('calls updateStoryList with the filtered list and returns 200', async () => {
+      const p = projectWithStoriesToDelete();
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true });
+      expect(updateStoryList).toHaveBeenCalledWith(p, [
+        { id: 'opt_keep', name: 'Keep this story', color: 'BLUE', description: '' },
+        { id: 'opt_also_keep', name: 'Also keep', color: 'RED', description: '' },
+      ]);
+    });
+
+    it('resolves the project repository using the project url', async () => {
+      const p = projectWithStoriesToDelete();
+      await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+      expect(projectRepositoryResolver).toHaveBeenCalledWith(p.url);
+    });
+
+    it('calls invalidateProject after a successful delete', async () => {
+      const p = projectWithStoriesToDelete();
+      const invalidateProject = jest.fn();
+      const ctx: ConsoleOperationContext = {
+        ...deleteStoryContext(p),
+        invalidateProject,
+      };
+      await handleDeleteStory(ctx, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+      expect(invalidateProject).toHaveBeenCalledWith('acme');
+    });
+
+    it('returns 502 when resolveProjectRepository is null', async () => {
+      const response = await handleDeleteStory(
+        contextForProject(projectWithStoriesToDelete()),
+        { pjcode: 'acme', storyOptionId: 'opt_remove' },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'project repository is not configured' },
+      });
+    });
+
+    it('returns 400 when storyOptionId is missing', async () => {
+      const response = await handleDeleteStory(
+        deleteStoryContext(projectWithStoriesToDelete()),
+        { pjcode: 'acme' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'storyOptionId is required' },
+      });
+    });
+
+    it('returns 400 when pjcode is not configured', async () => {
+      const response = await handleDeleteStory(
+        deleteStoryContext(projectWithStoriesToDelete()),
+        { pjcode: 'unknown', storyOptionId: 'opt_remove' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'no project configured for pjcode "unknown"' },
+      });
+    });
+
+    it('returns 400 when the project has no story field', async () => {
+      const projectWithoutStory: Project = {
+        ...projectWithStoriesToDelete(),
+        story: null,
+      };
+      const response = await handleDeleteStory(
+        deleteStoryContext(projectWithoutStory),
+        { pjcode: 'acme', storyOptionId: 'opt_remove' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'project does not have a story field' },
+      });
+    });
+
+    it('returns 400 when the story option is not found', async () => {
+      const response = await handleDeleteStory(
+        deleteStoryContext(projectWithStoriesToDelete()),
+        { pjcode: 'acme', storyOptionId: 'opt_nonexistent' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'story option "opt_nonexistent" not found in project' },
+      });
     });
   });
 });

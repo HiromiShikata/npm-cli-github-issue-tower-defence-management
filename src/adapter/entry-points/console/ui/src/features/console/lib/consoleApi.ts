@@ -501,6 +501,26 @@ export const postConsoleDeleteAllComments = async (
   }
 };
 
+export const DELETE_STORY_OPERATION_PATH = '/api/deletestory';
+
+export type ConsoleDeleteStoryRequest = {
+  pjcode: string;
+  storyOptionId: string;
+};
+
+export const postConsoleDeleteStory = async (
+  request: ConsoleDeleteStoryRequest,
+): Promise<void> => {
+  const response = await fetch(DELETE_STORY_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
 export type ProjectListResponse = {
   pjcodes: string[];
   workflowImprovementIssueUrl: string | null;

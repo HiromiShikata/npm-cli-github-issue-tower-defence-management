@@ -133,6 +133,57 @@ const ColorPalette = ({ onSelectColor, disabled }: ColorPaletteProps) => (
   </div>
 );
 
+type StoryDeleteConfirmDialogProps = {
+  storyName: string;
+  isDeleting: boolean;
+  deleteError: string | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
+
+const StoryDeleteConfirmDialog = ({
+  storyName,
+  isDeleting,
+  deleteError,
+  onConfirm,
+  onCancel,
+}: StoryDeleteConfirmDialogProps) => (
+  <div
+    className="console-story-delete-confirm"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Confirm story deletion"
+  >
+    <p className="console-story-delete-confirm-message">
+      Delete story option &quot;{storyName}&quot; from the GitHub custom field?
+      Tasks assigned to this story will not be deleted.
+    </p>
+    {deleteError !== null && (
+      <p role="alert" className="console-list-error">
+        {deleteError}
+      </p>
+    )}
+    <div className="console-story-delete-confirm-actions">
+      <button
+        type="button"
+        className="console-op-button console-op-button-danger"
+        onClick={onConfirm}
+        disabled={isDeleting}
+      >
+        {isDeleting ? 'Deleting…' : 'Delete'}
+      </button>
+      <button
+        type="button"
+        className="console-op-button"
+        onClick={onCancel}
+        disabled={isDeleting}
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+);
+
 export type ConsoleStoryListProps = {
   stories: ConsoleStoryEntry[];
   isLoading: boolean;
@@ -146,9 +197,15 @@ export type ConsoleStoryListProps = {
     storyOptionId: string,
     direction: 'up' | 'down',
   ) => Promise<void>;
+  onDeleteStory: (storyOptionId: string) => Promise<void>;
   optimisticColors: Record<string, ConsoleColor>;
   colorChangeInFlight: string | null;
   colorErrors: Record<string, string>;
+};
+
+type StoryDeleteState = {
+  isDeleting: boolean;
+  error: string | null;
 };
 
 export const ConsoleStoryList = ({
@@ -161,6 +218,7 @@ export const ConsoleStoryList = ({
   onSelectColor,
   onToggleGray,
   onReorderStory,
+  onDeleteStory,
   optimisticColors,
   colorChangeInFlight,
   colorErrors,
@@ -172,6 +230,12 @@ export const ConsoleStoryList = ({
   );
   const [rowReorderStates, setRowReorderStates] = useState<
     Record<string, RowReorderState>
+  >({});
+  const [deleteConfirmOptionId, setDeleteConfirmOptionId] = useState<
+    string | null
+  >(null);
+  const [deleteStates, setDeleteStates] = useState<
+    Record<string, StoryDeleteState>
   >({});
 
   const getRowReorderState = (id: string): RowReorderState =>
@@ -242,6 +306,38 @@ export const ConsoleStoryList = ({
     onSelectColor(storyOptionId, newColor);
   };
 
+  const handleDeleteClick = (storyOptionId: string): void => {
+    setDeleteConfirmOptionId(storyOptionId);
+  };
+
+  const handleDeleteConfirm = async (storyOptionId: string): Promise<void> => {
+    setDeleteStates((prev) => ({
+      ...prev,
+      [storyOptionId]: { isDeleting: true, error: null },
+    }));
+    try {
+      await onDeleteStory(storyOptionId);
+      setDeleteConfirmOptionId(null);
+      setDeleteStates((prev) => ({
+        ...prev,
+        [storyOptionId]: { isDeleting: false, error: null },
+      }));
+    } catch (err) {
+      setDeleteStates((prev) => ({
+        ...prev,
+        [storyOptionId]: {
+          isDeleting: false,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      }));
+    }
+  };
+
+  const handleDeleteCancel = (): void => {
+    setDeleteConfirmOptionId(null);
+    setDeleteStates({});
+  };
+
   const visibleStories = showGray
     ? stories
     : stories.filter((s) => s.color !== 'GRAY');
@@ -265,6 +361,12 @@ export const ConsoleStoryList = ({
               getRowReorderState(entry.storyOptionId);
             const isFirst = index === 0;
             const isLast = index === visibleStories.length - 1;
+            const isDeleteConfirmOpen =
+              deleteConfirmOptionId === entry.storyOptionId;
+            const deleteState = deleteStates[entry.storyOptionId] ?? {
+              isDeleting: false,
+              error: null,
+            };
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
                 <div className="console-story-list-row-main">
@@ -335,6 +437,14 @@ export const ConsoleStoryList = ({
                   >
                     ↓
                   </button>
+                  <button
+                    type="button"
+                    className="console-op-button console-op-button-danger"
+                    aria-label="Delete story"
+                    onClick={() => handleDeleteClick(entry.storyOptionId)}
+                  >
+                    Delete
+                  </button>
                 </div>
                 {reorderError !== null && (
                   <p role="alert" className="console-list-error">
@@ -359,6 +469,17 @@ export const ConsoleStoryList = ({
                     storyOptionId={entry.storyOptionId}
                     onSubmit={handleSubmit}
                     onCancel={() => setExpandedOptionId(null)}
+                  />
+                )}
+                {isDeleteConfirmOpen && (
+                  <StoryDeleteConfirmDialog
+                    storyName={entry.storyName}
+                    isDeleting={deleteState.isDeleting}
+                    deleteError={deleteState.error}
+                    onConfirm={() =>
+                      void handleDeleteConfirm(entry.storyOptionId)
+                    }
+                    onCancel={handleDeleteCancel}
                   />
                 )}
               </li>
