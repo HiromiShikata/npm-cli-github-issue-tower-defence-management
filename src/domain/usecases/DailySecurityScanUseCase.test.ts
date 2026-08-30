@@ -127,6 +127,9 @@ describe('DailySecurityScanUseCase', () => {
       expect(mockIssueRepository.createNewIssue.mock.calls[0][4]).toEqual([
         'manager-name',
       ]);
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
+        'From: :robot: DailySecurityScanUseCase',
+      );
     });
 
     const buildDefaultBranchScanRunner = () => {

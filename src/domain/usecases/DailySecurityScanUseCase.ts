@@ -324,7 +324,7 @@ export class DailySecurityScanUseCase {
             repositoryOrg,
             repositoryName,
             'Daily security scan findings',
-            findingsBody,
+            `From: :robot: DailySecurityScanUseCase\n\n${findingsBody}`,
             [manager],
             [],
           );
@@ -456,7 +456,7 @@ export class DailySecurityScanUseCase {
       org,
       config.kevReportRepo,
       `CISA KEV new additions since ${reportBoundaryDateAdded}`,
-      affectingKevEntries
+      `From: :robot: DailySecurityScanUseCase\n\n${affectingKevEntries
         .map((entry) =>
           [
             `- ${entry.vulnerability.dateAdded} ${entry.vulnerability.cveID} ${entry.vulnerability.vulnerabilityName}`,
@@ -466,7 +466,7 @@ export class DailySecurityScanUseCase {
             ),
           ].join('\n'),
         )
-        .join('\n'),
+        .join('\n')}`,
       [manager],
       [],
     );

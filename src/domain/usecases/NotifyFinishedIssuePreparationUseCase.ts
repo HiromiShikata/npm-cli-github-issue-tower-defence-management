@@ -529,6 +529,8 @@ export class NotifyFinishedIssuePreparationUseCase {
       taskIssueUrl = exactMatch.url;
     } else {
       const body = [
+        `From: :robot: NotifyFinishedIssuePreparationUseCase`,
+        '',
         `The preparation worker for ${issue.url} failed because the agent definition \`${missingAgentName}\` was not found.`,
         '',
         `- Missing agent name: \`${missingAgentName}\``,

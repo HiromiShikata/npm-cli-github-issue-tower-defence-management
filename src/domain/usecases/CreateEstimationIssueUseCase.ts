@@ -133,7 +133,8 @@ export class CreateEstimationIssueUseCase {
     urlObStoryView: string,
     project: Project,
   ): string => {
-    return `
+    return `From: :robot: CreateEstimationIssueUseCase
+
 This issue is experimental workflow :pray:
 - Target story: ${storyObject.storyIssue.url}
 

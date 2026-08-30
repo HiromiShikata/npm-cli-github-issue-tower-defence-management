@@ -57,6 +57,8 @@ describe('AnalyzeStoriesUseCase', () => {
       await useCase.run({ ...commonInput, targetDates: [matchingDate] });
 
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(1);
+      const body = mockIssueRepository.createNewIssue.mock.calls[0][3];
+      expect(body).toContain('From: :robot: AnalyzeStoriesUseCase');
     });
 
     it('returns early when project has no story field', async () => {

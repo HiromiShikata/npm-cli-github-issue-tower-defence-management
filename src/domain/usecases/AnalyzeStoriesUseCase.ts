@@ -139,7 +139,7 @@ export class AnalyzeStoriesUseCase {
     urlOfStoryView: string,
     members: Member['name'][],
   ) => {
-    return `${this.createSummaryIssueBodyPhase(summaryStoryIssue, urlOfStoryView, storyObjectMap)}
+    return `From: :robot: AnalyzeStoriesUseCase\n\n${this.createSummaryIssueBodyPhase(summaryStoryIssue, urlOfStoryView, storyObjectMap)}
 ${this.createSummaryIssueBodyAssignedIssueCount(project, issues, storyObjectMap, urlOfStoryView, members)}
 `;
   };
