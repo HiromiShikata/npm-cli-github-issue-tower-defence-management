@@ -26,7 +26,9 @@ describe('ConsoleProjectSettingsModalScreen', () => {
 
   it('calls onChange with the new string value when the user types', () => {
     const onChange = jest.fn();
-    render(<ConsoleProjectSettingsModalScreen {...baseProps} onChange={onChange} />);
+    render(
+      <ConsoleProjectSettingsModalScreen {...baseProps} onChange={onChange} />,
+    );
     const input = screen.getByLabelText('Maximum preparing issues count');
     fireEvent.change(input, { target: { value: '10' } });
     expect(onChange).toHaveBeenCalledWith('10');
