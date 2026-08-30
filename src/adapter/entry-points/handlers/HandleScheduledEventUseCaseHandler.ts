@@ -619,9 +619,10 @@ export class HandleScheduledEventUseCaseHandler {
 
       try {
         const storyColorMap = new Map<string, string>(
-          (project.story?.stories ?? []).map(
-            (story): [string, string] => [story.name, story.color],
-          ),
+          (project.story?.stories ?? []).map((story): [string, string] => [
+            story.name,
+            story.color,
+          ]),
         );
         writeDashboardRow({
           dashboardDataDir,
