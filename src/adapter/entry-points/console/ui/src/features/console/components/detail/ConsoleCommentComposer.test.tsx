@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleComment } from '../../logic/types';
 import {
   appendAttachmentMarkdown,
@@ -329,12 +329,91 @@ describe('ConsoleCommentComposer', () => {
     });
   });
 
-  it('renders only the Comment button when onSubmitAndMoveToAwaitingWorkspace is not provided', () => {
+  it('renders only the Comment button when neither onOkAndAwaitingWorkspace nor onSubmitAndMoveToAwaitingWorkspace is provided', () => {
     const { queryByText, getByText } = render(
       <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
     );
     expect(getByText('Comment')).toBeInTheDocument();
+    expect(queryByText('ok & Awaiting Workspace')).toBeNull();
     expect(queryByText('Comment & Awaiting Workspace')).toBeNull();
+  });
+
+  it('renders ok & Awaiting Workspace between Comment and Comment & Awaiting Workspace when both callbacks are provided', () => {
+    const { getAllByRole } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onOkAndAwaitingWorkspace={() => {}}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    const buttons = getAllByRole('button').filter((b) =>
+      [
+        'Comment',
+        'ok & Awaiting Workspace',
+        'Comment & Awaiting Workspace',
+      ].includes(b.textContent ?? ''),
+    );
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      'Comment',
+      'ok & Awaiting Workspace',
+      'Comment & Awaiting Workspace',
+    ]);
+  });
+
+  it('calls onOkAndAwaitingWorkspace when the ok & Awaiting Workspace button is clicked', () => {
+    const onOkAndAwaitingWorkspace = jest.fn();
+    const { getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onOkAndAwaitingWorkspace={onOkAndAwaitingWorkspace}
+      />,
+    );
+    fireEvent.click(getByText('ok & Awaiting Workspace'));
+    expect(onOkAndAwaitingWorkspace).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the ok & Awaiting Workspace button while a comment is being posted', async () => {
+    let resolvePost!: () => void;
+    const slowSubmit = async (_body: string): Promise<ConsoleComment> =>
+      new Promise((resolve) => {
+        resolvePost = () =>
+          resolve({
+            author: 'HiromiShikata',
+            body: _body,
+            createdAt: '2026-06-19T11:58:00.000Z',
+          });
+      });
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={slowSubmit}
+        onOkAndAwaitingWorkspace={() => {}}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'in-flight comment' },
+    });
+    fireEvent.click(getByText('Comment'));
+    await waitFor(() => {
+      expect(getByText('ok & Awaiting Workspace')).toBeDisabled();
+    });
+    await act(async () => {
+      resolvePost();
+    });
+  });
+
+  it('does not render ok & Awaiting Workspace when onOkAndAwaitingWorkspace is not provided', () => {
+    const { queryByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    expect(queryByText('ok & Awaiting Workspace')).toBeNull();
   });
 
   it('renders both Comment and Comment & Awaiting Workspace buttons when onSubmitAndMoveToAwaitingWorkspace is provided', () => {
