@@ -1,3 +1,10 @@
+# [2.21.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.20.0...v2.21.0) (2026-08-30)
+
+
+### Features
+
+* **console:** add story deletion with inline confirmation dialog ([#1887](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1887)) ([fc364f6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fc364f603b4cc404cfbaed7bc3ea59bbd63c03b9)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#31113](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31113)
+
 # [2.20.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.4...v2.20.0) (2026-08-30)
 
 
