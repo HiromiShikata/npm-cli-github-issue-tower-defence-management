@@ -2424,10 +2424,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ([, opts]) => opts?.method === 'GET',
       );
       expect(getCalls).toHaveLength(2);
-      const firstGetUrl = getCalls[0]?.[0] as string;
-      const secondGetUrl = getCalls[1]?.[0] as string;
-      expect(firstGetUrl).toContain('page=1');
-      expect(secondGetUrl).toContain('page=1');
+      expect(getCalls[0]?.[0]).toContain('page=1');
+      expect(getCalls[1]?.[0]).toContain('page=1');
       const deleteCallCount = fetchSpy.mock.calls.filter(
         ([, opts]) => opts?.method === 'DELETE',
       ).length;
