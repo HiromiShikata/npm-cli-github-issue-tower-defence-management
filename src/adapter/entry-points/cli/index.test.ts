@@ -1582,6 +1582,41 @@ mysteryKey: 'value'
       });
     });
 
+    it('should pass errorReportingRepository as tdpmReportingRepository when configured', async () => {
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      writeConfig({
+        ...defaultConfig,
+        errorReportingRepository: 'tdpm-owner/tdpm-repo',
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tdpmReportingRepository: 'tdpm-owner/tdpm-repo',
+        }),
+      );
+    });
+
     it('should pass custom thresholdForAutoReject from config file', async () => {
       const configWithThreshold = {
         ...defaultConfig,
