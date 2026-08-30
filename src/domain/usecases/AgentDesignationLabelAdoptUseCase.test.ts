@@ -190,6 +190,53 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
     expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
   });
 
+  it('should set the Agent field but keep the label when the label is in agentDesignationLabelsToKeep', async () => {
+    const project = createProject([{ id: 'option-story-id', name: 'story' }]);
+    const issue = createIssue({
+      labels: ['story'],
+      agent: null,
+      status: 'Preparation',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+
+    await useCase.run({
+      project,
+      issues: [issue],
+      agents: ['story'],
+      agentDesignationLabelsToKeep: ['story'],
+    });
+
+    expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+      issue.url,
+      project,
+      'option-story-id',
+    );
+    expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    expect(issue.agent).toBe('story');
+    expect(issue.labels).toContain('story');
+  });
+
+  it('should remove the label when it is not in agentDesignationLabelsToKeep', async () => {
+    const project = createProject([{ id: 'option-chore-id', name: 'chore' }]);
+    const issue = createIssue({
+      labels: ['chore'],
+      agent: null,
+      status: 'Preparation',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+
+    await useCase.run({
+      project,
+      issues: [issue],
+      agents: ['chore'],
+      agentDesignationLabelsToKeep: ['story'],
+    });
+
+    expect(mockIssueRepository.removeLabel).toHaveBeenCalledWith(issue, 'chore');
+    expect(issue.agent).toBe('chore');
+    expect(issue.labels).not.toContain('chore');
+  });
+
   it('should process all items in the list and adopt each matching label', async () => {
     const project = createProject([
       { id: 'option-chore-id', name: 'chore' },
