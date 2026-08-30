@@ -2420,10 +2420,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'https://github.com/HiromiShikata/test-repository/issues/42',
       );
 
-      const getCallCount = fetchSpy.mock.calls.filter(
+      const getCalls = fetchSpy.mock.calls.filter(
         ([, opts]) => opts?.method === 'GET',
-      ).length;
-      expect(getCallCount).toBe(2);
+      );
+      expect(getCalls).toHaveLength(2);
+      const firstGetUrl = getCalls[0]?.[0] as string;
+      const secondGetUrl = getCalls[1]?.[0] as string;
+      expect(firstGetUrl).toContain('page=1');
+      expect(secondGetUrl).toContain('page=1');
       const deleteCallCount = fetchSpy.mock.calls.filter(
         ([, opts]) => opts?.method === 'DELETE',
       ).length;

@@ -1961,10 +1961,8 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
         this.deleteAllCommentsByUrl = async (issueOrPrUrl) => {
             const { owner, repo, issueNumber } = this.parseIssueUrl(issueOrPrUrl);
             const perPage = 100;
-            let page = 1;
-            let hasMore = true;
-            while (hasMore) {
-                const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`, {
+            while (true) {
+                const response = await this.fetchWithRateLimitRetry(() => fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=1`, {
                     method: 'GET',
                     headers: {
                         Authorization: `Bearer ${this.ghToken}`,
@@ -1991,10 +1989,7 @@ class ApiV3CheerioRestIssueRepository extends BaseGitHubRepository_1.BaseGitHubR
                     }
                 }
                 if (body.length < perPage) {
-                    hasMore = false;
-                }
-                else {
-                    page += 1;
+                    break;
                 }
             }
         };
