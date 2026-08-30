@@ -5,6 +5,8 @@ import {
   type LiveSessionOauthTokenSelectionSettings,
 } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import { NORMAL_CONCURRENT_LIMIT } from '../../../domain/usecases/StartPreparationUseCase';
+import { WorkflowIssueReporterSettings } from '../../../domain/usecases/reportSilentRedispatchWorkflowIssue';
+export type { WorkflowIssueReporterSettings };
 
 export const FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = 'TDPM_FLEET_CONFIG';
 
@@ -242,12 +244,6 @@ export const loadStartPreparationFleetSettings = (
       'integer of at least 1',
     ),
   };
-};
-
-export type WorkflowIssueReporterSettings = {
-  owner: string;
-  repo: string;
-  projectUrl?: string | null;
 };
 
 export const loadWorkflowIssueReporterSettings = (

@@ -41,6 +41,7 @@ import {
 import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
+import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -192,11 +193,7 @@ export class HandleScheduledEventUseCase {
     storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentNames?: string[] | null;
-    workflowIssueReporterSettings?: {
-      owner: string;
-      repo: string;
-      projectUrl?: string | null;
-    } | null;
+    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
     afterIssuesFetched?:
       ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
   }): Promise<{
