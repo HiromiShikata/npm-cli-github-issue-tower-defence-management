@@ -24,6 +24,7 @@ export const liveSessionConcurrentLimitOf = (
   fiveHourFreeRatio: number,
   selectionWeight: number,
   settings: LiveSessionOauthTokenSelectionSettings,
+  _sevenDayUrgencyBoost = 1,
 ): number => {
   const fiveHourThrottleFactor = Math.min(
     fiveHourFreeRatio / settings.fullSpeedFiveHourFreeRatio,

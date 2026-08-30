@@ -25,9 +25,9 @@ const snapshot = (
   overrides: Partial<OauthTokenWindowSnapshot>,
 ): OauthTokenWindowSnapshot => ({
   fiveHourUtilization: 0,
-  fiveHourReset: NOW + HOUR,
+  fiveHourReset: NOW + 5 * HOUR,
   sevenDayUtilization: 0,
-  sevenDayReset: NOW + DAY,
+  sevenDayReset: NOW + 7 * DAY,
   ...overrides,
 });
 
@@ -118,7 +118,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(full?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
   });
 
-  it('lowers the concurrent session limit as the five hour window fills', () => {
+  it('boosts the concurrent session limit toward maxConcurrentSessionCount when the seven day reset is imminent', () => {
     const result = useCase.run(
       [
         candidate(
@@ -141,7 +141,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const narrow = result.metrics.find(
       (m) => m.name === 'soonResetNarrowFiveHour',
     );
-    expect(narrow?.concurrentSessionLimit).toBe(6);
+    expect(narrow?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
@@ -173,7 +173,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('excludes a token whose seven day window is below the minimum even when it resets within the hour', () => {
+  it('allows a token whose seven day window is below the minimum when it resets within 24 hours to drain remaining capacity', () => {
     const result = useCase.run(
       [
         candidate(
@@ -196,8 +196,8 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const aboutToReset = result.metrics.find(
       (m) => m.name === 'aboutToResetNearlyUsedSevenDay',
     );
-    expect(aboutToReset?.eligible).toBe(false);
-    expect(result.selected?.name).toBe('distantResetIdle');
+    expect(aboutToReset?.eligible).toBe(true);
+    expect(result.selected?.name).toBe('aboutToResetNearlyUsedSevenDay');
   });
 
   it('still throttles a seven day window that resets within the hour once its five hour window falls below half free', () => {
@@ -223,7 +223,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const aboutToReset = result.metrics.find(
       (m) => m.name === 'aboutToResetNarrowFiveHour',
     );
-    expect(aboutToReset?.concurrentSessionLimit).toBe(6);
+    expect(aboutToReset?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
@@ -248,8 +248,8 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     );
 
     const downWeighted = result.metrics.find((m) => m.name === 'downWeighted');
-    expect(downWeighted?.concurrentSessionLimit).toBe(5);
-    expect(result.selected?.name).toBe('distantResetIdle');
+    expect(downWeighted?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
+    expect(result.selected?.name).toBe('downWeighted');
   });
 
   it('honours a fleet supplied maximum concurrent session count', () => {
@@ -675,5 +675,50 @@ describe('liveSessionConcurrentLimitOf', () => {
         settingsWith({ fullSpeedFiveHourFreeRatio: 0.8 }),
       ),
     ).toBe(5);
+  });
+
+  it('boosts the concurrent session limit when given a seven day urgency boost above one, capped at maxConcurrentSessionCount', () => {
+    const baseline = liveSessionConcurrentLimitOf(0.25, 1, SETTINGS);
+    const boosted = liveSessionConcurrentLimitOf(0.25, 1, SETTINGS, 3);
+    expect(boosted).toBeGreaterThan(baseline);
+    expect(boosted).toBe(MAX_CONCURRENT_SESSION_COUNT);
+  });
+
+  it('does not exceed maxConcurrentSessionCount when the urgency boost is very large', () => {
+    expect(liveSessionConcurrentLimitOf(1, 1, SETTINGS, 168)).toBe(
+      MAX_CONCURRENT_SESSION_COUNT,
+    );
+  });
+});
+
+describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration', () => {
+  const useCase = new LiveSessionOauthTokenSelectUseCase();
+
+  it('raises the concurrent session limit for a near-deadline token with a fractional selection weight', () => {
+    const result = useCase.run(
+      [
+        withSelectionWeight(
+          candidate(
+            'nearDeadlineDownWeighted',
+            snapshot({ sevenDayReset: NOW + 20 * HOUR }),
+          ),
+          0.5,
+        ),
+        candidate(
+          'distantResetIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+        ),
+      ],
+      sessionsFor('nearDeadlineDownWeighted', 8),
+      NOW,
+      SETTINGS,
+    );
+
+    const nearDeadline = result.metrics.find(
+      (m) => m.name === 'nearDeadlineDownWeighted',
+    );
+    expect(nearDeadline?.concurrentSessionLimit).toBe(MAX_CONCURRENT_SESSION_COUNT);
+    expect(nearDeadline?.hasConcurrencyHeadroom).toBe(true);
+    expect(result.selected?.name).toBe('nearDeadlineDownWeighted');
   });
 });
