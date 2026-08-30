@@ -4197,6 +4197,16 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         ['alice'],
         [],
       );
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        taskIssueTitle,
+        expect.stringContaining(
+          'From: :robot: NotifyFinishedIssuePreparationUseCase',
+        ),
+        ['alice'],
+        [],
+      );
       expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
         issueUrl,
         mockProject,
@@ -4513,6 +4523,16 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'repo',
         expect.stringContaining('unknown-agent'),
         expect.stringContaining(issueUrl),
+        [],
+        [],
+      );
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        expect.stringContaining('unknown-agent'),
+        expect.stringContaining(
+          'From: :robot: NotifyFinishedIssuePreparationUseCase',
+        ),
         [],
         [],
       );

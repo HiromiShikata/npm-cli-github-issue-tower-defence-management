@@ -41,7 +41,9 @@ export class ActionAnnouncementUseCase {
             issue.org,
             issue.repo,
             `Announcement #${issue.number}: ${issue.title} / ${member}`,
-            `Hi @${member},
+            `From: :robot: ActionAnnouncementUseCase
+
+Hi @${member},
 
 Please take a look at the announcement in the issue ${issue.url} and take necessary actions :pray:
 `,
@@ -58,7 +60,7 @@ Please take a look at the announcement in the issue ${issue.url} and take necess
             issue.org,
             issue.repo,
             `Error occured while creating working report for ${member}`,
-            `${JSON.stringify(e)}`,
+            `From: :robot: ActionAnnouncementUseCase\n\n${JSON.stringify(e)}`,
             [input.manager],
             ['bug'],
           );

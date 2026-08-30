@@ -57,7 +57,7 @@ export class CliErrorReportUseCase {
           owner,
           repo,
           title,
-          buildBody('CLI error report'),
+          buildBody('From: :robot: CliErrorReportUseCase'),
           [],
           [],
         );
