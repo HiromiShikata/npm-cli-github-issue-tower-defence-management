@@ -564,7 +564,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstDeleteButton] = getAllByRole('button', { name: 'Delete story' });
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
       fireEvent.click(firstDeleteButton);
       expect(getByRole('dialog')).toBeInTheDocument();
     });
@@ -573,7 +575,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstDeleteButton] = getAllByRole('button', { name: 'Delete story' });
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
       fireEvent.click(firstDeleteButton);
       const dialog = getByRole('dialog');
       expect(dialog).toHaveTextContent('TDPM Console port');
@@ -583,7 +587,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstDeleteButton] = getAllByRole('button', { name: 'Delete story' });
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
       fireEvent.click(firstDeleteButton);
       const cancelButton = getAllByRole('button', { name: 'Cancel' })[0];
       fireEvent.click(cancelButton);
@@ -595,7 +601,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
-      const [firstDeleteButton] = getAllByRole('button', { name: 'Delete story' });
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
       fireEvent.click(firstDeleteButton);
       const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
       await act(async () => {
@@ -609,7 +617,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByRole } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
-      const [firstDeleteButton] = getAllByRole('button', { name: 'Delete story' });
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
       fireEvent.click(firstDeleteButton);
       const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
       await act(async () => {
@@ -625,7 +635,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, findByRole } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
-      const [firstDeleteButton] = getAllByRole('button', { name: 'Delete story' });
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
       fireEvent.click(firstDeleteButton);
       const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
       await act(async () => {
@@ -644,7 +656,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByText } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
-      const [firstDeleteButton] = getAllByRole('button', { name: 'Delete story' });
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
       fireEvent.click(firstDeleteButton);
       const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
       fireEvent.click(confirmButton);

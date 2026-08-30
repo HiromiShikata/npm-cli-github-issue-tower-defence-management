@@ -1,7 +1,7 @@
 import {
   ADD_STORY_OPERATION_PATH,
-  DELETE_STORY_OPERATION_PATH,
   createConsoleApiClient,
+  DELETE_STORY_OPERATION_PATH,
   postConsoleAddStory,
   postConsoleDeleteStory,
   postConsoleOperation,
