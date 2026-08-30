@@ -142,6 +142,11 @@ jest.mock('./consoleListsWriter', () => {
   );
   return { ...actual, writeConsoleLists: jest.fn() };
 });
+jest.mock('../cli/fleetConfig', () => ({
+  resolveFleetConfigFilePath: jest.fn(),
+  loadStartPreparationFleetSettings: jest.fn(),
+  loadWorkflowImprovementIssueUrl: jest.fn(),
+}));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
 import { writeSituationFile } from './situationFileWriter';
@@ -154,6 +159,19 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
+import {
+  loadWorkflowImprovementIssueUrl,
+  loadStartPreparationFleetSettings,
+  resolveFleetConfigFilePath,
+} from '../cli/fleetConfig';
+
+const mockLoadWorkflowImprovementIssueUrl = jest.mocked(
+  loadWorkflowImprovementIssueUrl,
+);
+const mockLoadStartPreparationFleetSettings = jest.mocked(
+  loadStartPreparationFleetSettings,
+);
+const mockResolveFleetConfigFilePath = jest.mocked(resolveFleetConfigFilePath);
 
 const MockedGraphqlProjectRepository = jest.mocked(GraphqlProjectRepository);
 const MockedApiV3IssueRepository = jest.mocked(ApiV3IssueRepository);
@@ -218,6 +236,11 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
     mockGetLastIssuesFetchedAt.mockReturnValue('2026-08-09T02:00:00.000Z');
     mockFetchReturningReadme(null);
+    mockResolveFleetConfigFilePath.mockReturnValue(null);
+    mockLoadStartPreparationFleetSettings.mockReturnValue({
+      maximumPreparingIssuesCount: 80,
+    });
+    mockLoadWorkflowImprovementIssueUrl.mockReturnValue(null);
   });
 
   it('should throw when required credential fields are missing from config', async () => {
@@ -853,6 +876,32 @@ defaultAgentName: readme-agent
         inTmuxDataOutputDir: '/data/in-tmux-by-human',
         pjcode: validConfig.projectName,
         issues: [closedIssue],
+      });
+    });
+  });
+
+  describe('allowedDependencyRepoNameWithOwner wiring', () => {
+    it('should pass null when workflowImprovementIssueUrl is absent from fleet config', async () => {
+      mockLoadWorkflowImprovementIssueUrl.mockReturnValue(null);
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        allowedDependencyRepoNameWithOwner: null,
+      });
+    });
+
+    it('should extract owner/repo from workflowImprovementIssueUrl and pass it as allowedDependencyRepoNameWithOwner', async () => {
+      mockLoadWorkflowImprovementIssueUrl.mockReturnValue(
+        'https://github.com/allowed-owner/allowed-repo/issues/123',
+      );
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(capturedRunInputs[0][0]).toMatchObject({
+        allowedDependencyRepoNameWithOwner: 'allowed-owner/allowed-repo',
       });
     });
   });

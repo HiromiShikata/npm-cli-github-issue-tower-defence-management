@@ -43,17 +43,13 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
         continue;
       }
-      const isFromAllowedExternalRepo = (url: string): boolean => {
-        if (!input.allowedExternalRepoNameWithOwner) return false;
-        return url.startsWith(
-          `https://github.com/${input.allowedExternalRepoNameWithOwner}/`,
-        );
-      };
       const allowedExternalDependedIssueUrls = absentDependedIssueIsResolvable
         ? issue.dependedIssueUrls.filter(
             (url) =>
-              isFromAllowedExternalRepo(url) &&
-              !input.issues.some((depIssue) => depIssue.url === url),
+              this.isFromAllowedExternalRepo(
+                url,
+                input.allowedExternalRepoNameWithOwner,
+              ) && !input.issues.some((depIssue) => depIssue.url === url),
           )
         : [];
       const notFoundDependedIssueUrls = absentDependedIssueIsResolvable
@@ -61,7 +57,11 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
             (dependedIssueUrl) =>
               !input.issues.some(
                 (depIssue) => depIssue.url === dependedIssueUrl,
-              ) && !isFromAllowedExternalRepo(dependedIssueUrl),
+              ) &&
+              !this.isFromAllowedExternalRepo(
+                dependedIssueUrl,
+                input.allowedExternalRepoNameWithOwner,
+              ),
           )
         : [];
       const iceboxDependedIssueUrls = issue.dependedIssueUrls.filter(
@@ -146,6 +146,16 @@ ${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
       }
     }
+  };
+
+  private isFromAllowedExternalRepo = (
+    url: string,
+    allowedExternalRepoNameWithOwner: string | null | undefined,
+  ): boolean => {
+    if (!allowedExternalRepoNameWithOwner) return false;
+    return url.startsWith(
+      `https://github.com/${allowedExternalRepoNameWithOwner}/`,
+    );
   };
 
   private findCircularDependedIssueUrls = (
