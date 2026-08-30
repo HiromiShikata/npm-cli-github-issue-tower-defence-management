@@ -3,12 +3,15 @@ import { fetchProjectList } from '../lib/consoleApi';
 
 export type ConsoleProjectListState = {
   pjcodes: string[];
+  workflowImprovementIssueUrl: string | null;
   isLoading: boolean;
   error: Error | null;
 };
 
 export const useConsoleProjectList = (): ConsoleProjectListState => {
   const [pjcodes, setPjcodes] = useState<string[]>([]);
+  const [workflowImprovementIssueUrl, setWorkflowImprovementIssueUrl] =
+    useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -18,9 +21,10 @@ export const useConsoleProjectList = (): ConsoleProjectListState => {
     setError(null);
 
     fetchProjectList()
-      .then((list) => {
+      .then((result) => {
         if (!cancelled) {
-          setPjcodes(list);
+          setPjcodes(result.pjcodes);
+          setWorkflowImprovementIssueUrl(result.workflowImprovementIssueUrl);
           setIsLoading(false);
         }
       })
@@ -36,5 +40,5 @@ export const useConsoleProjectList = (): ConsoleProjectListState => {
     };
   }, []);
 
-  return { pjcodes, isLoading, error };
+  return { pjcodes, workflowImprovementIssueUrl, isLoading, error };
 };

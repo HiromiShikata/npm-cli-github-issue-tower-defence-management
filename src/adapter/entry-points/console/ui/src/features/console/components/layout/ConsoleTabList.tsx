@@ -25,6 +25,7 @@ export type ConsoleTabBarProps = {
   airplaneModeFailures: string[];
   onAirplaneModeStartSync: () => void;
   onAirplaneModeTurnOff: () => void;
+  workflowImprovementIssueUrl?: string | null;
 };
 
 export const ConsoleTabList = ({
@@ -45,11 +46,12 @@ export const ConsoleTabList = ({
   airplaneModeFailures,
   onAirplaneModeStartSync,
   onAirplaneModeTurnOff,
+  workflowImprovementIssueUrl = null,
 }: ConsoleTabBarProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{
     top: number;
-    right: number;
+    left: number;
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -77,7 +79,7 @@ export const ConsoleTabList = ({
       const rect = buttonRef.current.getBoundingClientRect();
       setDropdownPos({
         top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
+        left: rect.left,
       });
     }
     setIsDropdownOpen((prev) => !prev);
@@ -85,6 +87,55 @@ export const ConsoleTabList = ({
 
   return (
     <nav aria-label="Console tabs" className="console-tabbar">
+      {pjcode !== null && (
+        <div className="console-tab-pjname">
+          <button
+            ref={buttonRef}
+            type="button"
+            className="console-tab-pjname-button"
+            aria-expanded={isDropdownOpen}
+            aria-haspopup="menu"
+            onClick={handleButtonClick}
+          >
+            {pjcode}
+            <span className="console-tab-pjname-arrow" aria-hidden="true">
+              ▾
+            </span>
+          </button>
+          {isDropdownOpen &&
+            dropdownPos !== null &&
+            createPortal(
+              <div
+                ref={dropdownRef}
+                role="menu"
+                className="console-tab-pjname-dropdown"
+                aria-label="Select project"
+                style={{
+                  position: 'fixed',
+                  top: dropdownPos.top,
+                  left: dropdownPos.left,
+                }}
+              >
+                {pjcodes.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    role="menuitem"
+                    className="console-tab-pjname-option"
+                    data-active={code === pjcode ? 'true' : undefined}
+                    onClick={() => {
+                      onSelectProject(code);
+                      setIsDropdownOpen(false);
+                    }}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>,
+              document.body,
+            )}
+        </div>
+      )}
       {CONSOLE_TABS.filter((tab) => {
         const count = counts[tab.name] ?? 0;
         return count > 0 || tab.name === activeTab;
@@ -123,55 +174,6 @@ export const ConsoleTabList = ({
           </a>
         );
       })}
-      {pjcode !== null && (
-        <div className="console-tab-pjname">
-          <button
-            ref={buttonRef}
-            type="button"
-            className="console-tab-pjname-button"
-            aria-expanded={isDropdownOpen}
-            aria-haspopup="menu"
-            onClick={handleButtonClick}
-          >
-            {pjcode}
-            <span className="console-tab-pjname-arrow" aria-hidden="true">
-              ▾
-            </span>
-          </button>
-          {isDropdownOpen &&
-            dropdownPos !== null &&
-            createPortal(
-              <div
-                ref={dropdownRef}
-                role="menu"
-                className="console-tab-pjname-dropdown"
-                aria-label="Select project"
-                style={{
-                  position: 'fixed',
-                  top: dropdownPos.top,
-                  right: dropdownPos.right,
-                }}
-              >
-                {pjcodes.map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    role="menuitem"
-                    className="console-tab-pjname-option"
-                    data-active={code === pjcode ? 'true' : undefined}
-                    onClick={() => {
-                      onSelectProject(code);
-                      setIsDropdownOpen(false);
-                    }}
-                  >
-                    {code}
-                  </button>
-                ))}
-              </div>,
-              document.body,
-            )}
-        </div>
-      )}
       {generatedAt !== null && airplaneModeStatus !== 'on' && (
         <span
           className="console-tab-geninfo"
@@ -182,6 +184,17 @@ export const ConsoleTabList = ({
       )}
       {settingsButton !== undefined && (
         <span className="console-tab-settings">{settingsButton}</span>
+      )}
+      {workflowImprovementIssueUrl !== null && (
+        <a
+          href={workflowImprovementIssueUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="console-tab-workflow-improvement-link"
+          aria-label="Open workflow improvement issue"
+        >
+          ⚡
+        </a>
       )}
       {airplaneModeEnabled && (
         <ConsoleAirplaneModeButton

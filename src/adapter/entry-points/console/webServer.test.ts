@@ -2757,7 +2757,7 @@ describe('webServer GET /api/projects', () => {
     });
   };
 
-  it('returns the dashboardProjectNames with a valid token', async () => {
+  it('returns the dashboardProjectNames with a valid token and null workflowImprovementIssueUrl when not configured', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const server = await startWebServer({
       accessToken: testToken,
@@ -2778,6 +2778,39 @@ describe('webServer GET /api/projects', () => {
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body)).toEqual({
         pjcodes: ['alpha', 'beta', 'gamma'],
+        workflowImprovementIssueUrl: null,
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns the workflowImprovementIssueUrl when configured', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: ['alpha'],
+      workflowImprovementIssueUrl:
+        'https://github.com/owner/repo/issues/new?assignees=someone',
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({
+        pjcodes: ['alpha'],
+        workflowImprovementIssueUrl:
+          'https://github.com/owner/repo/issues/new?assignees=someone',
       });
     } finally {
       await closeServer(server);

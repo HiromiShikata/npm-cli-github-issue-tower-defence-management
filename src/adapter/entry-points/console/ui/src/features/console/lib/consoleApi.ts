@@ -482,7 +482,12 @@ export const postConsoleReorderStory = async (
   }
 };
 
-export const fetchProjectList = async (): Promise<string[]> => {
+export type ProjectListResponse = {
+  pjcodes: string[];
+  workflowImprovementIssueUrl: string | null;
+};
+
+export const fetchProjectList = async (): Promise<ProjectListResponse> => {
   const response = await fetch('/api/projects');
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}`);
@@ -493,13 +498,17 @@ export const fetchProjectList = async (): Promise<string[]> => {
     typeof payload !== 'object' ||
     Array.isArray(payload)
   ) {
-    return [];
+    return { pjcodes: [], workflowImprovementIssueUrl: null };
   }
   const record = payload as Record<string, unknown>;
-  if (!Array.isArray(record.pjcodes)) {
-    return [];
-  }
-  return record.pjcodes.filter(
-    (entry): entry is string => typeof entry === 'string',
-  );
+  const pjcodes = Array.isArray(record.pjcodes)
+    ? record.pjcodes.filter(
+        (entry): entry is string => typeof entry === 'string',
+      )
+    : [];
+  const workflowImprovementIssueUrl =
+    typeof record.workflowImprovementIssueUrl === 'string'
+      ? record.workflowImprovementIssueUrl
+      : null;
+  return { pjcodes, workflowImprovementIssueUrl };
 };

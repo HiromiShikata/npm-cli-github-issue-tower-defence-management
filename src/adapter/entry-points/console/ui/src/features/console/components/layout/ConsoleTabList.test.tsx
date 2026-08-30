@@ -78,6 +78,22 @@ describe('ConsoleTabList', () => {
     expect(container.querySelector('.console-tab-count-heading')).toBeNull();
   });
 
+  it('renders the project switcher button before the first tab in the DOM', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    const nav = container.querySelector('nav.console-tabbar');
+    const children = Array.from(nav?.children ?? []);
+    const pjnameIndex = children.findIndex((el) =>
+      el.classList.contains('console-tab-pjname'),
+    );
+    const firstTabIndex = children.findIndex((el) =>
+      el.classList.contains('console-tab'),
+    );
+    expect(pjnameIndex).toBeGreaterThanOrEqual(0);
+    expect(firstTabIndex).toBeGreaterThan(pjnameIndex);
+  });
+
   it('renders the Workflow Blocker tab immediately left of Awaiting Quality Check', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
@@ -249,5 +265,68 @@ describe('ConsoleTabList', () => {
       />,
     );
     expect(baseElement.querySelector('.console-airplane-mode')).toBeNull();
+  });
+
+  it('positions the dropdown left-anchored to the button when opened', () => {
+    const { getByRole, baseElement } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    const btn = getByRole('button', { name: /acme/i });
+    jest.spyOn(btn, 'getBoundingClientRect').mockReturnValue({
+      left: 42,
+      right: 120,
+      bottom: 50,
+      top: 20,
+      width: 78,
+      height: 30,
+      x: 42,
+      y: 20,
+      toJSON: () => ({}),
+    } as DOMRect);
+    fireEvent.click(btn);
+    const dropdown = baseElement.querySelector(
+      '.console-tab-pjname-dropdown',
+    ) as HTMLElement;
+    expect(dropdown.style.left).toBe('42px');
+    expect(dropdown.style.right).toBe('');
+  });
+
+  it('renders a workflow improvement link that opens in a new tab when workflowImprovementIssueUrl is set', () => {
+    const url = 'https://github.com/owner/repo/issues/new?assignees=someone';
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        workflowImprovementIssueUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /workflow improvement/i });
+    expect(link).toHaveAttribute('href', url);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('does not render the workflow improvement link when workflowImprovementIssueUrl is null', () => {
+    const { container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        workflowImprovementIssueUrl={null}
+      />,
+    );
+    expect(
+      container.querySelector('.console-tab-workflow-improvement-link'),
+    ).toBeNull();
+  });
+
+  it('does not render the workflow improvement link when workflowImprovementIssueUrl is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(
+      container.querySelector('.console-tab-workflow-improvement-link'),
+    ).toBeNull();
   });
 });

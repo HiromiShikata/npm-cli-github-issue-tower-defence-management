@@ -1,8 +1,9 @@
-import { LiveSessionOauthTokenSelectionSettings } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
+import { type LiveSessionOauthTokenSelectionSettings } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 export declare const FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE = "TDPM_FLEET_CONFIG";
 export declare const LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY = "liveSessionOauthTokenSelection";
 export declare const PREPARATION_WORKER_SECTION_KEY = "preparationWorker";
 export declare const START_PREPARATION_SECTION_KEY = "startPreparation";
+export declare const WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY = "workflowImprovementIssueUrl";
 export declare const DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 export declare const DEFAULT_MAX_CONCURRENT_WORKERS = 40;
 export declare const DEFAULT_GRAPHQL_RATE_LIMIT_FLOOR = 500;
@@ -20,4 +21,5 @@ export declare const resolveFleetConfigFilePath: (cliValue: string | null) => st
 export declare const loadLiveSessionOauthTokenSelectionSettings: (fleetConfigFilePath: string | null) => LiveSessionOauthTokenSelectionSettings;
 export declare const loadPreparationWorkerSettings: (fleetConfigFilePath: string | null) => PreparationWorkerSettings;
 export declare const loadStartPreparationFleetSettings: (fleetConfigFilePath: string | null) => StartPreparationFleetSettings;
+export declare const loadWorkflowImprovementIssueUrl: (fleetConfigFilePath: string | null) => string | null;
 //# sourceMappingURL=fleetConfig.d.ts.map
