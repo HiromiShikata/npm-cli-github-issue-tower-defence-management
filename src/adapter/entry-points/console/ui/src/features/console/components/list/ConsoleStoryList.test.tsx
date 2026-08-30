@@ -533,7 +533,7 @@ describe('ConsoleStoryList', () => {
         expect(downButtons[0]).toBeDisabled();
       });
       await act(async () => {
-        resolveReorder!();
+        resolveReorder?.();
       });
     });
 
@@ -664,7 +664,7 @@ describe('ConsoleStoryList', () => {
       fireEvent.click(confirmButton);
       await waitFor(() => expect(getByText('Deleting…')).toBeInTheDocument());
       await act(async () => {
-        resolveDelete!();
+        resolveDelete?.();
       });
     });
   });
