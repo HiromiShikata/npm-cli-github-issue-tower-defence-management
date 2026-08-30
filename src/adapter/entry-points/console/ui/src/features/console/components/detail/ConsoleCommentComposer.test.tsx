@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleComment } from '../../logic/types';
 import {
   appendAttachmentMarkdown,
@@ -372,6 +372,37 @@ describe('ConsoleCommentComposer', () => {
     );
     fireEvent.click(getByText('ok & Awaiting Workspace'));
     expect(onOkAndAwaitingWorkspace).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables the ok & Awaiting Workspace button while a comment is being posted', async () => {
+    let resolvePost!: () => void;
+    const slowSubmit = async (_body: string): Promise<ConsoleComment> =>
+      new Promise((resolve) => {
+        resolvePost = () =>
+          resolve({
+            author: 'HiromiShikata',
+            body: _body,
+            createdAt: '2026-06-19T11:58:00.000Z',
+          });
+      });
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={slowSubmit}
+        onOkAndAwaitingWorkspace={() => {}}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'in-flight comment' },
+    });
+    fireEvent.click(getByText('Comment'));
+    await waitFor(() => {
+      expect(getByText('ok & Awaiting Workspace')).toBeDisabled();
+    });
+    await act(async () => {
+      resolvePost();
+    });
   });
 
   it('does not render ok & Awaiting Workspace when onOkAndAwaitingWorkspace is not provided', () => {

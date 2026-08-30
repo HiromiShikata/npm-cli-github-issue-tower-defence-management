@@ -608,6 +608,40 @@ test('posts a comment and moves the item to Awaiting Workspace when the Comment 
   });
 });
 
+test('posts an ok comment and moves the item to Awaiting Workspace when the ok & Awaiting Workspace button is clicked', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  await expect(page.locator('.console-composer-input')).toBeInViewport();
+
+  await page
+    .getByRole('button', { name: 'ok & Awaiting Workspace', exact: true })
+    .click();
+
+  await expect
+    .poll(
+      () =>
+        harness.commentCalls.some(
+          (c) =>
+            c.url ===
+              'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
+            c.body === 'ok',
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+
+  await expect(tabByLabel(page, 'Workflow Blocker')).toHaveCount(0, {
+    timeout: 8000,
+  });
+});
+
 test('project switcher appears at the left end of the tab bar and opens a dropdown on click', async ({
   page,
 }) => {

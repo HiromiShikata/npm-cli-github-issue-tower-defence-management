@@ -250,6 +250,7 @@ export const ConsoleCommentComposer = ({
               <button
                 type="button"
                 className="console-composer-submit"
+                disabled={status.kind === 'posting'}
                 onClick={onOkAndAwaitingWorkspace}
               >
                 ok &amp; Awaiting Workspace
