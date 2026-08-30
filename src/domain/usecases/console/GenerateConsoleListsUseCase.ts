@@ -2,6 +2,7 @@ import { Issue } from '../../entities/Issue';
 import { FieldOption, Project } from '../../entities/Project';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
+  FAILED_PREPARATION_STATUS_NAME,
   IN_TMUX_BY_AGENT_STATUS_NAME,
   LEGACY_TODO_STATUS_NAME,
   PREPARATION_STATUS_NAME,
@@ -198,8 +199,15 @@ export class GenerateConsoleListsUseCase {
           issue.status.toLowerCase() === 'awaiting quality check',
         ['awaiting quality check', 'done'],
       ),
-      'failed-preparation': buildStatusTab(
-        (issue) => issue.status === 'Failed Preparation',
+      'failed-preparation': buildStatusTabFromSource(
+        visibleIssues.filter(
+          (issue) =>
+            !issue.isClosed &&
+            issue.assignees.includes(assigneeLogin) &&
+            issue.nextActionDate === null &&
+            issue.nextActionHour === null,
+        ),
+        (issue) => issue.status === FAILED_PREPARATION_STATUS_NAME,
         [
           'failed preparation',
           'done',

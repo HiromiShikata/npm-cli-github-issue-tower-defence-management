@@ -182,6 +182,16 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result['failed-preparation'].items[0].number).toBe(1);
     });
 
+    it('includes failed preparation items that have depended issue urls', () => {
+      const result = run([
+        makeIssue({
+          status: 'Failed Preparation',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+      ]);
+      expect(result['failed-preparation'].items).toHaveLength(1);
+    });
+
     it('selects todo-by-human items for the current and legacy status with exact case', () => {
       const result = run([
         makeIssue({ status: 'Todo by human' }),
