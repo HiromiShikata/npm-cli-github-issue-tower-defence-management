@@ -323,6 +323,30 @@ describe('airplaneSnapshot', () => {
       expect(storiesTab?.stories[0].storyName).toBe('regular');
       expect(storiesTab?.defaultNameWithOwner).toBe('owner/repo');
     });
+
+    it('always returns timerEndsAt and timerTotalSeconds as null in every parsed tab snapshot', () => {
+      const raw = {
+        capturedAt: '2026-01-01T00:00:00Z',
+        tabs: {
+          acme: {
+            prs: {
+              generatedAt: '2026-01-01T00:00:00Z',
+              statusOptions: [],
+              agentOptions: [],
+              storyOptions: [],
+              storyColors: {},
+              items: [],
+            },
+          },
+        },
+        items: {},
+        failures: [],
+      };
+
+      const result = parseAirplaneSnapshot(raw);
+      expect(result?.tabs.acme?.prs.timerEndsAt).toBeNull();
+      expect(result?.tabs.acme?.prs.timerTotalSeconds).toBeNull();
+    });
   });
 
   describe('readAirplaneModeFlag / writeAirplaneModeFlag', () => {
