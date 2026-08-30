@@ -35,7 +35,18 @@ export type ConsoleStatusTab = {
     }>;
     items: ConsoleListItem[];
 };
-export type ConsoleTabName = 'workflow-blocker' | 'prs' | 'failed-preparation' | 'todo-by-human' | 'todo-by-agent' | 'stories';
+export type ConsoleQueuedTab = {
+    pjcode: string;
+    generatedAt: string;
+    statusOptions: ConsoleFieldOption[];
+    agentOptions: ConsoleFieldOption[];
+    storyOrder: string[];
+    storyColors: Record<string, {
+        color: ConsoleColor;
+    }>;
+    items: ConsoleListItem[];
+};
+export type ConsoleTabName = 'workflow-blocker' | 'prs' | 'failed-preparation' | 'todo-by-human' | 'todo-by-agent' | 'queued' | 'stories';
 export type ConsoleStoryEntry = {
     storyName: string;
     storyOptionId: string;
@@ -59,6 +70,7 @@ export type ConsoleLists = {
     'failed-preparation': ConsoleStatusTab;
     'todo-by-human': ConsoleStatusTab;
     'todo-by-agent': ConsoleStatusTab;
+    queued: ConsoleQueuedTab;
     stories: ConsoleStoriesTab;
 };
 export type GenerateConsoleListsInput = {

@@ -7,6 +7,7 @@ exports.CONSOLE_LIST_TAB_NAMES = [
     'failed-preparation',
     'todo-by-human',
     'todo-by-agent',
+    'queued',
     'stories',
 ];
 const UNKNOWN_STORY_SORT_INDEX = 999999;

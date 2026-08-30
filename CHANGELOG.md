@@ -1,3 +1,10 @@
+# [2.12.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.11.0...v2.12.0) (2026-08-30)
+
+
+### Features
+
+* add Queued tab to TDPM console with colored status badges ([#1853](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1853)) ([3a0a37e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3a0a37e60f34d8b1b50c41dc3ecf6d53e431035d)), closes [HiromiShikata/umino-corporait-operation#31009](https://github.com/HiromiShikata/umino-corporait-operation/issues/31009)
+
 # [2.11.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.10.2...v2.11.0) (2026-08-29)
 
 

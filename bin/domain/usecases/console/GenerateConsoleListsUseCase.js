@@ -58,6 +58,20 @@ class GenerateConsoleListsUseCase {
                 'todo-by-human': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_STATUS_NAME ||
                     issue.status === WorkflowStatus_1.LEGACY_TODO_STATUS_NAME, [WorkflowStatus_1.TODO_STATUS_NAME.toLowerCase(), 'done']),
                 'todo-by-agent': buildStatusTab((issue) => issue.status === WorkflowStatus_1.TODO_BY_AGENT_STATUS_NAME, [WorkflowStatus_1.TODO_BY_AGENT_STATUS_NAME.toLowerCase(), 'done']),
+                queued: {
+                    pjcode,
+                    generatedAt,
+                    statusOptions: this.buildFieldOptions(statusOptions, []),
+                    agentOptions: this.buildFieldOptions(project.agent?.options ?? [], []),
+                    storyOrder,
+                    storyColors: this.buildStoryColorsObject(storyOptions),
+                    items: this.sortByStoryOrder(visibleIssues
+                        .filter((issue) => !issue.isClosed &&
+                        (issue.status === WorkflowStatus_1.AWAITING_WORKSPACE_STATUS_NAME ||
+                            issue.status === WorkflowStatus_1.PREPARATION_STATUS_NAME) &&
+                        issue.dependedIssueUrls.length === 0)
+                        .map((issue) => this.projectItem(issue, relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [])), storyOrder),
+                },
                 stories: {
                     pjcode,
                     generatedAt,
