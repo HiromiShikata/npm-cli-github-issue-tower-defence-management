@@ -1,3 +1,10 @@
+## [2.27.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.27.0...v2.27.1) (2026-08-30)
+
+
+### Bug Fixes
+
+* **console:** move danger zone button to bottom-left row with close actions ([#1905](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1905)) ([fb25717](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fb25717906807022881c6e86874e3c4ab9a8d041)), closes [HiromiShikata/umino-corporait-operation#31129](https://github.com/HiromiShikata/umino-corporait-operation/issues/31129)
+
 # [2.27.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.26.0...v2.27.0) (2026-08-30)
 
 
