@@ -54,6 +54,27 @@ describe('ActionAnnouncementUseCase', () => {
       expect(body).toContain('From: :robot: ActionAnnouncementUseCase');
     });
 
+    it('includes From: :robot: prefix in the error recovery issue body', async () => {
+      mockIssueRepository.createNewIssue
+        .mockRejectedValueOnce(new Error('network error'))
+        .mockResolvedValueOnce(12);
+
+      const runPromise = useCase.run({
+        targetDates: [new Date('2024-01-02T10:00:00Z')],
+        project: mockProject,
+        issues: [announcementIssue],
+        cacheUsed: false,
+        members: ['dev-alice'],
+        manager: 'manager-bob',
+      });
+      await jest.runAllTimersAsync();
+      await runPromise;
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(2);
+      const errorBody = mockIssueRepository.createNewIssue.mock.calls[1][3];
+      expect(errorBody).toContain('From: :robot: ActionAnnouncementUseCase');
+    });
+
     it('returns early when cacheUsed is true', async () => {
       await useCase.run({
         targetDates: [new Date('2024-01-02T10:00:00Z')],

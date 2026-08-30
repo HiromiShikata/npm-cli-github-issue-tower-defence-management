@@ -670,6 +670,9 @@ describe('DailySecurityScanUseCase', () => {
       );
       expect(kevIssueCalls[0][3]).toContain('CVE-2024-0001');
       expect(kevIssueCalls[0][3]).not.toContain('CVE-2023-9999');
+      expect(kevIssueCalls[0][3]).toContain(
+        'From: :robot: DailySecurityScanUseCase',
+      );
     });
 
     it('does not create a KEV report issue when there are no new additions', async () => {
