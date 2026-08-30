@@ -127,8 +127,11 @@ describe('DailySecurityScanUseCase', () => {
       expect(mockIssueRepository.createNewIssue.mock.calls[0][4]).toEqual([
         'manager-name',
       ]);
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).not.toContain(
+        'From: :robot:',
+      );
       expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
-        'From: :robot: DailySecurityScanUseCase',
+        '## OSV-Scanner findings',
       );
     });
 
@@ -670,9 +673,7 @@ describe('DailySecurityScanUseCase', () => {
       );
       expect(kevIssueCalls[0][3]).toContain('CVE-2024-0001');
       expect(kevIssueCalls[0][3]).not.toContain('CVE-2023-9999');
-      expect(kevIssueCalls[0][3]).toContain(
-        'From: :robot: DailySecurityScanUseCase',
-      );
+      expect(kevIssueCalls[0][3]).not.toContain('From: :robot:');
     });
 
     it('does not create a KEV report issue when there are no new additions', async () => {

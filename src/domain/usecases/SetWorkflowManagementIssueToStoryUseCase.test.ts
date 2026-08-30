@@ -438,6 +438,7 @@ describe('SetWorkflowManagementIssueToStoryUseCase', () => {
       expect(createCall[2]).toEqual(
         'TDPM: story label "story:routine-management" has no matching "regular / routine-management" Story option',
       );
+      expect(createCall[3]).not.toContain('From: :robot:');
       expect(createCall[3]).toContain(
         'https://github.com/initech-medical/initech-platform/issues/1445',
       );

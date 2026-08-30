@@ -790,7 +790,7 @@ describe('HandleScheduledEventUseCase', () => {
         expect(capturedLogs[0]).toContain('feature / StoryOne');
       });
 
-      it('should include From: :robot: prefix in story issue body', async () => {
+      it('should not include From: :robot: prefix in story issue body', async () => {
         const runPromise = useCase.run(storyInput);
         await jest.runAllTimersAsync();
         await runPromise;
@@ -800,9 +800,8 @@ describe('HandleScheduledEventUseCase', () => {
             (call) => Array.isArray(call[5]) && call[5].includes('story'),
           );
         expect(storyIssueCalls).toHaveLength(1);
-        expect(storyIssueCalls[0][3]).toContain(
-          'From: :robot: HandleScheduledEventUseCase',
-        );
+        expect(storyIssueCalls[0][3]).not.toContain('From: :robot:');
+        expect(storyIssueCalls[0][3]).toContain('story desc');
       });
 
       it('should emit Polling for issue log before each 30s sleep', async () => {
@@ -1167,7 +1166,7 @@ describe('HandleScheduledEventUseCase', () => {
           'test-org',
           'test-repo',
           'Error in HandleScheduledEvent / workflow incident',
-          expect.stringContaining('From: :robot: HandleScheduledEventUseCase'),
+          expect.not.stringContaining('From: :robot:'),
           ['test-manager'],
           ['error'],
         );
@@ -1378,7 +1377,7 @@ describe('HandleScheduledEventUseCase', () => {
         expect(body).toContain('Operation: read');
         expect(body).toContain('boom on getSheet');
         expect(body).toContain(readError.stack ?? '');
-        expect(body).toContain('From: :robot: HandleScheduledEventUseCase');
+        expect(body).not.toContain('From: :robot:');
       });
 
       it('should create an error issue and rethrow when spreadsheet write fails in findTargetDateAndUpdateLastExecutionDateTime', async () => {
@@ -1405,7 +1404,7 @@ describe('HandleScheduledEventUseCase', () => {
         expect(body).toContain('Operation: write');
         expect(body).toContain('boom on updateCell');
         expect(body).toContain(writeError.stack ?? '');
-        expect(body).toContain('From: :robot: HandleScheduledEventUseCase');
+        expect(body).not.toContain('From: :robot:');
       });
     });
 

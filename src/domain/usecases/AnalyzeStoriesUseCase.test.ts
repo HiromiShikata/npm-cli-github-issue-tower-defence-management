@@ -58,7 +58,8 @@ describe('AnalyzeStoriesUseCase', () => {
 
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalledTimes(1);
       const body = mockIssueRepository.createNewIssue.mock.calls[0][3];
-      expect(body).toContain('From: :robot: AnalyzeStoriesUseCase');
+      expect(body).not.toContain('From: :robot:');
+      expect(body).toContain('<table>');
     });
 
     it('returns early when project has no story field', async () => {

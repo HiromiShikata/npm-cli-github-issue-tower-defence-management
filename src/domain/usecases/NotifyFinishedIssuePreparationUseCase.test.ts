@@ -4199,13 +4199,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         ['alice'],
         [],
       );
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalledWith(
         'user',
         'repo',
         taskIssueTitle,
-        expect.stringContaining(
-          'From: :robot: NotifyFinishedIssuePreparationUseCase',
-        ),
+        expect.stringContaining('From: :robot:'),
         ['alice'],
         [],
       );
@@ -4528,13 +4526,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         [],
         [],
       );
-      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalledWith(
         'user',
         'repo',
         expect.stringContaining('unknown-agent'),
-        expect.stringContaining(
-          'From: :robot: NotifyFinishedIssuePreparationUseCase',
-        ),
+        expect.stringContaining('From: :robot:'),
         [],
         [],
       );
