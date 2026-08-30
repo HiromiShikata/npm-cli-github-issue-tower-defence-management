@@ -348,7 +348,11 @@ describe('ConsoleCommentComposer', () => {
       />,
     );
     const buttons = getAllByRole('button').filter((b) =>
-      ['Comment', 'ok & Awaiting Workspace', 'Comment & Awaiting Workspace'].includes(b.textContent ?? ''),
+      [
+        'Comment',
+        'ok & Awaiting Workspace',
+        'Comment & Awaiting Workspace',
+      ].includes(b.textContent ?? ''),
     );
     expect(buttons.map((b) => b.textContent)).toEqual([
       'Comment',
