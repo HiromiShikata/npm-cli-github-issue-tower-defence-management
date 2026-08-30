@@ -6,7 +6,7 @@ describe('useConsoleProjectList', () => {
     jest.restoreAllMocks();
   });
 
-  it('starts in loading state with empty pjcodes and no error', () => {
+  it('starts in loading state with empty pjcodes, null workflowImprovementIssueUrl and no error', () => {
     global.fetch = jest.fn(
       () => new Promise(() => undefined),
     ) as unknown as typeof fetch;
@@ -14,6 +14,7 @@ describe('useConsoleProjectList', () => {
     const { result } = renderHook(() => useConsoleProjectList());
     expect(result.current.isLoading).toBe(true);
     expect(result.current.pjcodes).toEqual([]);
+    expect(result.current.workflowImprovementIssueUrl).toBeNull();
     expect(result.current.error).toBeNull();
   });
 
@@ -29,6 +30,29 @@ describe('useConsoleProjectList', () => {
       expect(result.current.isLoading).toBe(false);
     });
     expect(result.current.pjcodes).toEqual(['acme', 'beta']);
+    expect(result.current.workflowImprovementIssueUrl).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it('populates workflowImprovementIssueUrl when the server returns it', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcodes: ['acme'],
+        workflowImprovementIssueUrl:
+          'https://github.com/owner/repo/issues/new',
+      }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList());
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.pjcodes).toEqual(['acme']);
+    expect(result.current.workflowImprovementIssueUrl).toBe(
+      'https://github.com/owner/repo/issues/new',
+    );
     expect(result.current.error).toBeNull();
   });
 

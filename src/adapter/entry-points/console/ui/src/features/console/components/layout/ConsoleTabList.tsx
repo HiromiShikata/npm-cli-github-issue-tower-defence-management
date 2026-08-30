@@ -25,6 +25,7 @@ export type ConsoleTabBarProps = {
   airplaneModeFailures: string[];
   onAirplaneModeStartSync: () => void;
   onAirplaneModeTurnOff: () => void;
+  workflowImprovementIssueUrl?: string | null;
 };
 
 export const ConsoleTabList = ({
@@ -45,6 +46,7 @@ export const ConsoleTabList = ({
   airplaneModeFailures,
   onAirplaneModeStartSync,
   onAirplaneModeTurnOff,
+  workflowImprovementIssueUrl = null,
 }: ConsoleTabBarProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{
@@ -182,6 +184,17 @@ export const ConsoleTabList = ({
       )}
       {settingsButton !== undefined && (
         <span className="console-tab-settings">{settingsButton}</span>
+      )}
+      {workflowImprovementIssueUrl !== null && (
+        <a
+          href={workflowImprovementIssueUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="console-tab-workflow-improvement-link"
+          aria-label="Open workflow improvement issue"
+        >
+          ⚡
+        </a>
       )}
       {airplaneModeEnabled && (
         <ConsoleAirplaneModeButton

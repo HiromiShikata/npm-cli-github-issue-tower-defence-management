@@ -9,6 +9,7 @@ import {
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
   loadStartPreparationFleetSettings,
+  loadWorkflowImprovementIssueUrl,
   resolveFleetConfigFilePath,
 } from './fleetConfig';
 
@@ -486,5 +487,69 @@ describe('loadStartPreparationFleetSettings', () => {
     expect(() =>
       loadStartPreparationFleetSettings(fleetConfigFilePath),
     ).toThrow('must be a mapping');
+  });
+});
+
+describe('loadWorkflowImprovementIssueUrl', () => {
+  let tempDir: string;
+
+  const writeFleetConfig = (content: string): string => {
+    const fleetConfigFilePath = path.join(tempDir, 'fleet.config.yaml');
+    fs.writeFileSync(fleetConfigFilePath, content);
+    return fleetConfigFilePath;
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-config-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('returns null when no fleet config path is given', () => {
+    expect(loadWorkflowImprovementIssueUrl(null)).toBeNull();
+  });
+
+  it('returns the URL from the fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowImprovementIssueUrl: https://github.com/owner/repo/issues/new\n',
+    );
+
+    expect(loadWorkflowImprovementIssueUrl(fleetConfigFilePath)).toBe(
+      'https://github.com/owner/repo/issues/new',
+    );
+  });
+
+  it('returns null when the key is absent from the fleet config', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'preparationWorker:\n  normalConcurrentLimit: 5\n',
+    );
+
+    expect(loadWorkflowImprovementIssueUrl(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns null for an empty fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig('');
+
+    expect(loadWorkflowImprovementIssueUrl(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('throws when the fleet config file does not exist', () => {
+    expect(() =>
+      loadWorkflowImprovementIssueUrl(
+        path.join(tempDir, 'missing.yaml'),
+      ),
+    ).toThrow();
+  });
+
+  it('throws when the URL value is not a string', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowImprovementIssueUrl: 42\n',
+    );
+
+    expect(() =>
+      loadWorkflowImprovementIssueUrl(fleetConfigFilePath),
+    ).toThrow('must be a string URL');
   });
 });

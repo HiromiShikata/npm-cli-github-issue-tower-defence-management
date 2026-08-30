@@ -12,6 +12,7 @@ export const LIVE_SESSION_OAUTH_TOKEN_SELECTION_SECTION_KEY =
   'liveSessionOauthTokenSelection';
 export const PREPARATION_WORKER_SECTION_KEY = 'preparationWorker';
 export const START_PREPARATION_SECTION_KEY = 'startPreparation';
+export const WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY = 'workflowImprovementIssueUrl';
 
 export const DEFAULT_FLEET_MAXIMUM_PREPARING_ISSUES_COUNT = 80;
 
@@ -230,4 +231,33 @@ export const loadStartPreparationFleetSettings = (
       'integer of at least 1',
     ),
   };
+};
+
+export const loadWorkflowImprovementIssueUrl = (
+  fleetConfigFilePath: string | null,
+): string | null => {
+  if (fleetConfigFilePath === null) {
+    return null;
+  }
+  const parsed: unknown = YAML.parse(
+    fs.readFileSync(fleetConfigFilePath, 'utf8'),
+  );
+  if (parsed === null || parsed === undefined) {
+    return null;
+  }
+  if (!isRecord(parsed)) {
+    throw new Error(
+      `${fleetConfigFilePath} does not hold a mapping at its top level.`,
+    );
+  }
+  const value = parsed[WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    throw new Error(
+      `${WORKFLOW_IMPROVEMENT_ISSUE_URL_KEY} in ${fleetConfigFilePath} must be a string URL.`,
+    );
+  }
+  return value;
 };
