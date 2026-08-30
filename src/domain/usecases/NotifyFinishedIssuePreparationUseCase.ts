@@ -62,6 +62,22 @@ export class IllegalIssueStatusError extends Error {
 type RejectedReasonType =
   'NO_REPORT_FROM_AGENT_BOT' | 'REPORT_HAS_NEXT_STEP' | PrRejectedReasonType;
 
+const parseOrgRepo = (
+  repository: string | null,
+): { owner: string; repo: string } | null => {
+  if (!repository) {
+    return null;
+  }
+  const slashIndex = repository.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === repository.length - 1) {
+    return null;
+  }
+  return {
+    owner: repository.slice(0, slashIndex),
+    repo: repository.slice(slashIndex + 1),
+  };
+};
+
 export class NotifyFinishedIssuePreparationUseCase {
   private readonly issueRejectionEvaluator: IssueRejectionEvaluator;
   private readonly changeTargetPullRequestApprover: ChangeTargetPullRequestApprover;
@@ -127,6 +143,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     developerAgentNames?: string[] | null;
     deferPreparation?: boolean | null;
     workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
+    tdpmReportingRepository?: string | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -170,6 +187,8 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
     }
 
+    const reportingTarget = parseOrgRepo(params.tdpmReportingRepository ?? null);
+
     if (params.deferPreparation) {
       await this.handleTransientFailureDeferral(
         issue,
@@ -188,6 +207,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.missingAgentName,
         params.sessionErrorLine ?? null,
         params.manager ?? null,
+        reportingTarget,
       );
       return;
     }
@@ -267,6 +287,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         project,
         awaitingWorkspaceStatusOption,
         nextStepAgent,
+        reportingTarget,
       );
       return;
     }
@@ -533,12 +554,15 @@ export class NotifyFinishedIssuePreparationUseCase {
     missingAgentName: string,
     sessionErrorLine: string | null,
     manager: string | null,
+    reportingTarget: { owner: string; repo: string } | null,
   ): Promise<void> => {
     const taskIssueTitle = `Register missing agent definition: ${missingAgentName}`;
+    const targetOwner = reportingTarget?.owner ?? issue.org;
+    const targetRepo = reportingTarget?.repo ?? issue.repo;
 
     const searchResults = await this.issueRepository.searchIssue({
-      owner: issue.org,
-      repositoryName: issue.repo,
+      owner: targetOwner,
+      repositoryName: targetRepo,
       type: 'issue',
       state: 'open',
       title: taskIssueTitle,
@@ -562,14 +586,14 @@ export class NotifyFinishedIssuePreparationUseCase {
         );
       }
       const issueNumber = await this.issueRepository.createNewIssue(
-        issue.org,
-        issue.repo,
+        targetOwner,
+        targetRepo,
         taskIssueTitle,
         body,
         [manager],
         [],
       );
-      taskIssueUrl = `https://github.com/${issue.org}/${issue.repo}/issues/${issueNumber}`;
+      taskIssueUrl = `https://github.com/${targetOwner}/${targetRepo}/issues/${issueNumber}`;
     }
 
     if (project.dependedIssueUrlSeparatedByComma) {
@@ -603,12 +627,15 @@ export class NotifyFinishedIssuePreparationUseCase {
     project: Project,
     awaitingWorkspaceStatusOption: { id: string },
     nextStepAgent: string,
+    reportingTarget: { owner: string; repo: string } | null,
   ): Promise<void> => {
     const blockerIssueTitle = `Unregistered agent in workflow configuration: ${nextStepAgent}`;
+    const targetOwner = reportingTarget?.owner ?? issue.org;
+    const targetRepo = reportingTarget?.repo ?? issue.repo;
 
     const searchResults = await this.issueRepository.searchIssue({
-      owner: issue.org,
-      repositoryName: issue.repo,
+      owner: targetOwner,
+      repositoryName: targetRepo,
       type: 'issue',
       state: 'open',
       title: blockerIssueTitle,
@@ -626,14 +653,14 @@ export class NotifyFinishedIssuePreparationUseCase {
         `- Declaring task: ${issue.url}`,
       ].join('\n');
       const issueNumber = await this.issueRepository.createNewIssue(
-        issue.org,
-        issue.repo,
+        targetOwner,
+        targetRepo,
         blockerIssueTitle,
         body,
         [],
         [],
       );
-      blockerIssueUrl = `https://github.com/${issue.org}/${issue.repo}/issues/${issueNumber}`;
+      blockerIssueUrl = `https://github.com/${targetOwner}/${targetRepo}/issues/${issueNumber}`;
     }
 
     if (project.story) {

@@ -755,6 +755,7 @@ program
       workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
         notifyFleetConfigFilePath,
       ),
+      tdpmReportingRepository: config.errorReportingRepository ?? null,
     });
   });
 
