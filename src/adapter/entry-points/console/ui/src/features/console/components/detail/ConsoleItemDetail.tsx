@@ -178,119 +178,118 @@ export const ConsoleItemDetail = ({
 
   return (
     <article className="console-detail">
-      <h2 className="console-detail-title">
-        <ConsoleItemIcon
-          isPr={item.isPr}
-          state={resolvedState}
-          merged={merged}
-          isDraft={false}
-          stateReason=""
-        />
-        <span className="console-detail-title-text">{item.title}</span>
-        <span className="console-detail-number">
-          {item.isPr ? `PR #${item.number}` : `#${item.number}`}
-        </span>
-      </h2>
-
-      <div className="console-detail-topline">
-        {displayStatus !== null && statusPalette !== null && (
-          <span
-            className="console-detail-status-chip"
-            style={{
-              color: statusPalette.fg,
-              borderColor: statusPalette.border,
-              backgroundColor: statusPalette.bg,
-            }}
-          >
-            {displayStatus.name}
-          </span>
-        )}
-        {item.agent !== null && item.agent !== '' && (
-          <span className="console-detail-agent-chip">{item.agent}</span>
-        )}
-        {storyName !== null && (
-          <span className="console-storytag">
-            <span
-              className="console-story-dot"
-              style={{ backgroundColor: storyPalette.dot }}
-            />
-            {storyName}
-          </span>
-        )}
-        {item.isPr && pullRequestStatus?.found && (
-          <ConsolePullRequestStatusBadges
-            isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
-            isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
-            isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
-            missingRequiredCheckNames={
-              pullRequestStatus.missingRequiredCheckNames
-            }
+      <div className="console-detail-header">
+        <h2 className="console-detail-title">
+          <ConsoleItemIcon
+            isPr={item.isPr}
+            state={resolvedState}
+            merged={merged}
+            isDraft={false}
+            stateReason=""
           />
-        )}
-        {!item.isPr &&
-          relatedPullRequests.map((related) => (
+          <span className="console-detail-title-text">{item.title}</span>
+          <span className="console-detail-number">
+            {item.isPr ? `PR #${item.number}` : `#${item.number}`}
+          </span>
+        </h2>
+
+        <div className="console-detail-topline">
+          {displayStatus !== null && statusPalette !== null && (
             <span
-              key={related.pullRequest.url}
-              className="console-related-pr-group"
+              className="console-detail-status-chip"
+              style={{
+                color: statusPalette.fg,
+                borderColor: statusPalette.border,
+                backgroundColor: statusPalette.bg,
+              }}
             >
-              {relatedPullRequests.length > 1 && (
-                <span className="console-related-pr-label">
-                  {relatedPullRequestLabel(related.pullRequest.url)}
-                </span>
-              )}
-              <ConsolePullRequestStatusBadges
-                isPassedAllCiJob={related.pullRequest.isPassedAllCiJob}
-                isCiStateSuccess={related.pullRequest.isCiStateSuccess}
-                isBranchOutOfDate={related.pullRequest.isBranchOutOfDate}
-                missingRequiredCheckNames={
-                  related.pullRequest.missingRequiredCheckNames
-                }
+              {displayStatus.name}
+            </span>
+          )}
+          {item.agent !== null && item.agent !== '' && (
+            <span className="console-detail-agent-chip">{item.agent}</span>
+          )}
+          {storyName !== null && (
+            <span className="console-storytag">
+              <span
+                className="console-story-dot"
+                style={{ backgroundColor: storyPalette.dot }}
               />
-              <ConsolePullRequestMergeableChip
-                mergeableStatus={related.pullRequest.mergeableStatus}
-              />
+              {storyName}
+            </span>
+          )}
+          {item.isPr && pullRequestStatus?.found && (
+            <ConsolePullRequestStatusBadges
+              isPassedAllCiJob={pullRequestStatus.isPassedAllCiJob}
+              isCiStateSuccess={pullRequestStatus.isCiStateSuccess}
+              isBranchOutOfDate={pullRequestStatus.isBranchOutOfDate}
+              missingRequiredCheckNames={
+                pullRequestStatus.missingRequiredCheckNames
+              }
+            />
+          )}
+          {!item.isPr &&
+            relatedPullRequests.map((related) => (
+              <span
+                key={related.pullRequest.url}
+                className="console-related-pr-group"
+              >
+                {relatedPullRequests.length > 1 && (
+                  <span className="console-related-pr-label">
+                    {relatedPullRequestLabel(related.pullRequest.url)}
+                  </span>
+                )}
+                <ConsolePullRequestStatusBadges
+                  isPassedAllCiJob={related.pullRequest.isPassedAllCiJob}
+                  isCiStateSuccess={related.pullRequest.isCiStateSuccess}
+                  isBranchOutOfDate={related.pullRequest.isBranchOutOfDate}
+                  missingRequiredCheckNames={
+                    related.pullRequest.missingRequiredCheckNames
+                  }
+                />
+                <ConsolePullRequestMergeableChip
+                  mergeableStatus={related.pullRequest.mergeableStatus}
+                />
+              </span>
+            ))}
+          {mergeableChips.map((chip) => (
+            <ConsolePullRequestMergeableChip
+              key={chip.url}
+              mergeableStatus={chip.mergeableStatus}
+            />
+          ))}
+          {closedStateLabel !== null && (
+            <span className="console-detail-closed-label">
+              {closedStateLabel}
+            </span>
+          )}
+        </div>
+
+        <ConsoleFetchFailureAlert failures={fetchFailures} />
+
+        <div className="console-detail-subbar">
+          <a
+            href={item.url}
+            className="console-detail-link"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            #{item.number}
+          </a>
+          <span className="console-detail-repo">{item.repo}</span>
+          <span
+            className="console-detail-createdat"
+            title={formatFullTimestamp(item.createdAt)}
+          >
+            opened {formatRelativeTime(item.createdAt, now)}
+          </span>
+          <ConsoleCopyUrlButton url={item.url} />
+          {item.labels.map((label) => (
+            <span key={label} className="console-label-chip">
+              {label}
             </span>
           ))}
-        {mergeableChips.map((chip) => (
-          <ConsolePullRequestMergeableChip
-            key={chip.url}
-            mergeableStatus={chip.mergeableStatus}
-          />
-        ))}
-        {closedStateLabel !== null && (
-          <span className="console-detail-closed-label">
-            {closedStateLabel}
-          </span>
-        )}
-      </div>
-
-      <ConsoleFetchFailureAlert failures={fetchFailures} />
-
-      <div className="console-detail-subbar">
-        <a
-          href={item.url}
-          className="console-detail-link"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {item.isPr ? `PR #${item.number}` : `Issue #${item.number}`}
-        </a>
-        <span className="console-detail-repo">{item.repo}</span>
-        <span
-          className="console-detail-createdat"
-          title={formatFullTimestamp(item.createdAt)}
-        >
-          opened {formatRelativeTime(item.createdAt, now)}
-        </span>
-        <span className="console-detail-pill">
-          {item.isPr ? 'PR' : 'Issue'}
-        </span>
-        <ConsoleCopyUrlButton url={item.url} />
-        {item.labels.map((label) => (
-          <span key={label} className="console-label-chip">
-            {label}
-          </span>
-        ))}
+        </div>
       </div>
 
       <ConsolePanel

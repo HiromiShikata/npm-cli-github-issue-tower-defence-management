@@ -216,20 +216,11 @@ describe('ConsoleItemDetail', () => {
     const subbar = container.querySelector('.console-detail-subbar');
     const repo = subbar?.querySelector('.console-detail-repo') ?? null;
     const openedAt = subbar?.querySelector('.console-detail-createdat') ?? null;
-    const pill = subbar?.querySelector('.console-detail-pill') ?? null;
-    if (
-      subbar === null ||
-      repo === null ||
-      openedAt === null ||
-      pill === null
-    ) {
-      throw new Error('subbar, repo, openedAt and pill must all render');
+    if (subbar === null || repo === null || openedAt === null) {
+      throw new Error('subbar, repo and openedAt must all render');
     }
     expect(
       repo.compareDocumentPosition(openedAt) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      openedAt.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -723,5 +714,60 @@ describe('ConsoleItemDetail', () => {
     );
     const agentChip = container.querySelector('.console-detail-agent-chip');
     expect(agentChip).toBeNull();
+  });
+
+  it('groups the title, topline, fetch failures, subbar, labels and createdat inside console-detail-header, with panels outside', () => {
+    const { container } = render(
+      <ConsoleItemDetail item={issueItem} {...baseProps} />,
+    );
+    const header = container.querySelector('.console-detail-header');
+    expect(header).not.toBeNull();
+    expect(header).toContainElement(
+      container.querySelector('.console-detail-title'),
+    );
+    expect(header).toContainElement(
+      container.querySelector('.console-detail-topline'),
+    );
+    expect(header).toContainElement(
+      container.querySelector('.console-detail-subbar'),
+    );
+    expect(header).toContainElement(
+      container.querySelector('.console-detail-createdat'),
+    );
+    const firstPanel = container.querySelector(
+      '.console-panel',
+    ) as HTMLElement | null;
+    expect(header).not.toContainElement(firstPanel);
+  });
+
+  it('shows only the item number in the subbar link for an issue, with no Issue prefix', () => {
+    const { container } = render(
+      <ConsoleItemDetail item={issueItem} {...baseProps} />,
+    );
+    const link = container.querySelector(
+      '.console-detail-subbar .console-detail-link',
+    );
+    expect(link).not.toBeNull();
+    expect(link).toHaveTextContent(`#${issueItem.number}`);
+    expect(link?.textContent).not.toContain('Issue');
+  });
+
+  it('shows only the item number in the subbar link for a pull request, with no PR prefix', () => {
+    const { container } = render(
+      <ConsoleItemDetail item={prItem} {...baseProps} />,
+    );
+    const link = container.querySelector(
+      '.console-detail-subbar .console-detail-link',
+    );
+    expect(link).not.toBeNull();
+    expect(link).toHaveTextContent(`#${prItem.number}`);
+    expect(link?.textContent).not.toContain('PR');
+  });
+
+  it('renders no type indicator pill in the subbar', () => {
+    const { container } = render(
+      <ConsoleItemDetail item={issueItem} {...baseProps} />,
+    );
+    expect(container.querySelector('.console-detail-pill')).toBeNull();
   });
 });
