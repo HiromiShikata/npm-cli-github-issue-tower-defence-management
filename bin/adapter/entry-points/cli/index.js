@@ -545,6 +545,8 @@ const runServeWeb = async (options) => {
     const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
     const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
     const dashboardDataDir = options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
+    const fleetConfigFilePath = (0, fleetConfig_1.resolveFleetConfigFilePath)(options.fleetConfigFilePath ?? null);
+    const workflowImprovementIssueUrl = (0, fleetConfig_1.loadWorkflowImprovementIssueUrl)(fleetConfigFilePath);
     await (0, webServer_1.startWebServer)({
         accessToken,
         uiDistDir,
@@ -553,6 +555,7 @@ const runServeWeb = async (options) => {
         dashboardDir,
         dashboardDataDir,
         dashboardProjectNames,
+        workflowImprovementIssueUrl,
         resolveGithubToken,
         issueRepository,
         resolveIssueRepository,
@@ -577,7 +580,8 @@ const addServeWebOptions = (command) => command
     .option('--dashboardDir <path>', `Directory containing the static dashboard HTML fragment tdpm.txt served at /tdpm.txt when compose mode is not active (default: ${DEFAULT_DASHBOARD_DIR})`)
     .option('--dashboardDataDir <path>', 'Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)')
     .option('--dashboardProjectNames <names>', 'Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names')
-    .option('--enableAirplaneMode', 'Enable the airplane mode feature');
+    .option('--enableAirplaneMode', 'Enable the airplane mode feature')
+    .option('--fleetConfigFilePath <path>', 'Path to the fleet-wide YAML config file; falls back to the TDPM_FLEET_CONFIG environment variable. Reads workflowImprovementIssueUrl for the workflow improvement link shown in the console.');
 addServeWebOptions(exports.program.command('serveWeb'))
     .description('Start the local TDPM web server (console tabs, dashboard, and in-tmux session list)')
     .action(async (options) => {

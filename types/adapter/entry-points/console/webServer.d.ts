@@ -26,6 +26,7 @@ export type WebServerOptions = {
     dashboardDir: string | null;
     dashboardDataDir: string | null;
     dashboardProjectNames: string[];
+    workflowImprovementIssueUrl?: string | null;
     resolveGithubToken?: ConsoleGithubTokenResolver | null;
     imageFetcher?: ImageFetcher | null;
     issueRepository?: IssueRepository | null;
