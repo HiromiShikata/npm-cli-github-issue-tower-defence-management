@@ -62,7 +62,18 @@ const parseDashboardRow = (value: unknown): DashboardRow | null => {
   ) {
     return null;
   }
-  return { todo, qc, fail, pr, ws, dep, blocker };
+  return {
+    todo,
+    qc,
+    fail,
+    pr,
+    ws,
+    dep,
+    blocker,
+    humanPendingRed: asFiniteNumber(value.humanPendingRed) ?? 0,
+    humanPendingYellow: asFiniteNumber(value.humanPendingYellow) ?? 0,
+    humanPendingBlue: asFiniteNumber(value.humanPendingBlue) ?? 0,
+  };
 };
 
 const readProjectRow = (

@@ -5,7 +5,7 @@ import {
   TokenStatusColor,
 } from './GenerateTokenStatusUseCase';
 
-export const PROJECT_ROW_WIDTH_BUDGET = 32;
+export const PROJECT_ROW_WIDTH_BUDGET = 40;
 
 export type ComposeDashboardProject = {
   code: string;
@@ -48,6 +48,14 @@ const PROJECT_COLUMNS: ProjectColumn[] = [
 ];
 
 const PROJECT_COLUMN_WIDTH = 3;
+
+const STORY_COLOR_COLUMNS: ProjectColumn[] = [
+  { header: '🔴', key: 'humanPendingRed' },
+  { header: '🟡', key: 'humanPendingYellow' },
+  { header: '🔵', key: 'humanPendingBlue' },
+];
+
+const STORY_COLOR_COLUMN_VALUE_WIDTH = 2;
 
 export const STATUS_DOT_DISPLAY_WIDTH = 2;
 
@@ -174,12 +182,18 @@ export const formatMachineStatusLines = (
 const capThreeDigits = (value: number): string =>
   value > 999 ? '999' : String(value);
 
+const capTwoDigits = (value: number): string =>
+  value > 99 ? '99' : String(value);
+
 export const formatProjectHeaderLine = (): string => {
   const head = padEnd('pj', 4, ' ');
   const columns = PROJECT_COLUMNS.map(
     (column) => ' ' + padStart(column.header, PROJECT_COLUMN_WIDTH),
   ).join('');
-  return head + columns;
+  const storyColumns = STORY_COLOR_COLUMNS.map(
+    (column) => ' ' + column.header,
+  ).join('');
+  return head + columns + storyColumns;
 };
 
 const severityDot = (row: DashboardRow): string => {
@@ -207,7 +221,12 @@ export const formatProjectRowLine = (
       project.row === null ? '--' : capThreeDigits(project.row[column.key]);
     return ' ' + padStart(cell, PROJECT_COLUMN_WIDTH);
   }).join('');
-  return mark + padEnd(project.code, 2, ' ') + cells;
+  const storyColorCells = STORY_COLOR_COLUMNS.map((column) => {
+    const cell =
+      project.row === null ? '--' : capTwoDigits(project.row[column.key]);
+    return ' ' + padStart(cell, STORY_COLOR_COLUMN_VALUE_WIDTH);
+  }).join('');
+  return mark + padEnd(project.code, 2, ' ') + cells + storyColorCells;
 };
 
 const formatUtilization = (percent: number | null): string =>

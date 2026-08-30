@@ -78,6 +78,9 @@ describe('writeDashboardRow', () => {
       ws: 1,
       dep: 0,
       blocker: 0,
+      humanPendingRed: 0,
+      humanPendingYellow: 0,
+      humanPendingBlue: 0,
     };
     expect(written).toEqual(expected);
   });
