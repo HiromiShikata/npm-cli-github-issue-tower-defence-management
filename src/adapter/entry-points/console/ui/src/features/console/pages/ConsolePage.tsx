@@ -619,8 +619,12 @@ export const ConsolePage = () => {
         throw new Error('No project specified in the URL path.');
       }
       await postConsoleDeleteStory({ pjcode, storyOptionId });
+      setLocalStoryEntriesOverride({
+        generatedAt: storiesSnapshot?.generatedAt,
+        stories: storyEntries.filter((e) => e.storyOptionId !== storyOptionId),
+      });
     },
-    [pjcode],
+    [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
 
   return (

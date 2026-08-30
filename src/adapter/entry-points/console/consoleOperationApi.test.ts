@@ -2549,6 +2549,12 @@ describe('consoleOperationApi', () => {
             color: 'RED',
             description: '',
           },
+          {
+            id: 'wms',
+            name: 'workflow',
+            color: 'BLUE',
+            description: '',
+          },
         ],
         workflowManagementStory: { id: 'wms', name: 'workflow' },
       },
@@ -2586,6 +2592,12 @@ describe('consoleOperationApi', () => {
           id: 'opt_also_keep',
           name: 'Also keep',
           color: 'RED',
+          description: '',
+        },
+        {
+          id: 'wms',
+          name: 'workflow',
+          color: 'BLUE',
           description: '',
         },
       ]);
@@ -2670,6 +2682,19 @@ describe('consoleOperationApi', () => {
       expect(response).toEqual({
         statusCode: 400,
         body: { error: 'story option "opt_nonexistent" not found in project' },
+      });
+    });
+
+    it('returns 400 when attempting to delete the workflow management story', async () => {
+      const p = projectWithStoriesToDelete();
+      const wmsId = p.story!.workflowManagementStory.id;
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: wmsId,
+      });
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'cannot delete the workflow management story' },
       });
     });
   });

@@ -723,3 +723,37 @@ test('does not show the workflow improvement link when workflowImprovementIssueU
     page.locator('.console-tab-workflow-improvement-link'),
   ).toHaveCount(0);
 });
+
+test('deletes a story option from the GitHub custom field when confirmed via the dialog', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow).toBeVisible();
+
+  const deleteButton = tdpmRow.getByRole('button', { name: 'Delete story' });
+  await expect(deleteButton).toBeVisible();
+
+  await deleteButton.click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('TDPM Console port');
+
+  await dialog.getByRole('button', { name: 'Delete' }).click();
+
+  await expect
+    .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.deleteStoryCalls[0].storyOptionId).toBe('1491051e');
+
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.locator('.console-story-list-row', { hasText: 'TDPM Console port' }),
+  ).toHaveCount(0);
+});

@@ -958,6 +958,9 @@ export const handleDeleteStory = async (
   if (storyOption === undefined) {
     return badRequest(`story option "${storyOptionId}" not found in project`);
   }
+  if (project.story.workflowManagementStory.id === storyOptionId) {
+    return badRequest('cannot delete the workflow management story');
+  }
   const filteredStories = project.story.stories.filter(
     (s) => s.id !== storyOptionId,
   );
