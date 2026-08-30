@@ -1,3 +1,11 @@
+# [2.22.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.21.0...v2.22.0) (2026-08-30)
+
+
+### Features
+
+* **dashboard:** slim dashboard width ([#1895](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1895)) ([79d0b46](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/79d0b46a0b73280987099d73ee9420fde454a138)), closes [HiromiShikata/umino-corporait-operation#31148](https://github.com/HiromiShikata/umino-corporait-operation/issues/31148)
+* **oauth-token-select:** consume tokens within 24h of 7d reset and 1h of 5h reset ([#1894](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1894)) ([4a32e34](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4a32e3495b328bab4e5ba9f3ced3e62b72825d61))
+
 # [2.21.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.20.0...v2.21.0) (2026-08-30)
 
 
