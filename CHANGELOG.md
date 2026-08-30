@@ -1,3 +1,10 @@
+# [2.13.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.12.1...v2.13.0) (2026-08-30)
+
+
+### Features
+
+* **console:** retain offline actions across reloads and confirm on reconnect ([#1626](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1626)) ([2180158](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2180158dac75fe4716ba855a6f3184a5fb612f55)), closes [#1620](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1620)
+
 ## [2.12.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.12.0...v2.12.1) (2026-08-30)
 
 
