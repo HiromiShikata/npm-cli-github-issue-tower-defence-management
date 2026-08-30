@@ -37,7 +37,7 @@ export const writeDashboardRow = (params: DashboardRowWriterParams): void => {
   const row: DashboardRow = new GenerateDashboardRowUseCase().run({
     issues,
     assigneeLogin,
-    storyColorMap: params.storyColorMap ?? new Map(),
+    storyColorMap: params.storyColorMap ?? new Map<string, string>(),
   });
 
   const file: DashboardRowFile = {
