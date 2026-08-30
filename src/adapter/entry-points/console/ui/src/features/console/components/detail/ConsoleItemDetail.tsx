@@ -292,90 +292,94 @@ export const ConsoleItemDetail = ({
         </div>
       </div>
 
-      <ConsolePanel
-        title="Description"
-        headerAction={
-          <a
-            href={item.url}
-            className="console-panel-open-link"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            open
-          </a>
-        }
-      >
-        {bodyError !== null ? (
-          <p className="console-detail-body-notloaded">Not loaded.</p>
-        ) : bodyIsLoading ? (
-          <p className="console-detail-body-loading">Loading description...</p>
-        ) : (
-          <ConsoleMarkdownContent
-            body={body}
+      <div className="console-detail-body">
+        <ConsolePanel
+          title="Description"
+          headerAction={
+            <a
+              href={item.url}
+              className="console-panel-open-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              open
+            </a>
+          }
+        >
+          {bodyError !== null ? (
+            <p className="console-detail-body-notloaded">Not loaded.</p>
+          ) : bodyIsLoading ? (
+            <p className="console-detail-body-loading">
+              Loading description...
+            </p>
+          ) : (
+            <ConsoleMarkdownContent
+              body={body}
+              buildImageProxyUrl={buildImageProxyUrl}
+              renderReferenceLink={renderReferenceLink}
+              repoContext={repoContext}
+            />
+          )}
+        </ConsolePanel>
+
+        {item.isPr && (
+          <ConsolePanel title="Changed files" count={filesCount}>
+            <ConsoleChangedFileList
+              files={files}
+              isLoading={filesAreLoading}
+              error={filesError}
+              onAddInlineComment={onAddInlineComment}
+            />
+          </ConsolePanel>
+        )}
+
+        <ConsolePanel
+          title="Comments"
+          count={commentsCount}
+          defaultCollapsed={item.isPr}
+        >
+          <ConsoleCommentList
+            comments={comments}
+            isLoading={commentsAreLoading}
+            error={commentsError}
+            now={now}
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
           />
+        </ConsolePanel>
+
+        {item.isPr && (
+          <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>
+            <ConsoleCommitList
+              commits={commits}
+              isLoading={commitsAreLoading}
+              error={commitsError}
+              now={now}
+            />
+          </ConsolePanel>
         )}
-      </ConsolePanel>
 
-      {item.isPr && (
-        <ConsolePanel title="Changed files" count={filesCount}>
-          <ConsoleChangedFileList
-            files={files}
-            isLoading={filesAreLoading}
-            error={filesError}
-            onAddInlineComment={onAddInlineComment}
-          />
-        </ConsolePanel>
-      )}
-
-      <ConsolePanel
-        title="Comments"
-        count={commentsCount}
-        defaultCollapsed={item.isPr}
-      >
-        <ConsoleCommentList
-          comments={comments}
-          isLoading={commentsAreLoading}
-          error={commentsError}
-          now={now}
-          buildImageProxyUrl={buildImageProxyUrl}
-          renderReferenceLink={renderReferenceLink}
-          repoContext={repoContext}
-        />
-      </ConsolePanel>
-
-      {item.isPr && (
-        <ConsolePanel title="Commits" count={commitsCount} defaultCollapsed>
-          <ConsoleCommitList
-            commits={commits}
-            isLoading={commitsAreLoading}
-            error={commitsError}
-            now={now}
-          />
-        </ConsolePanel>
-      )}
-
-      {!item.isPr &&
-        relatedPullRequests.map((related) => (
-          <ConsolePullRequestDetail
-            key={related.pullRequest.url}
-            pullRequest={related.pullRequest}
-            body={related.pullRequest.summary?.body ?? ''}
-            bodyIsLoading={false}
-            files={related.files}
-            filesAreLoading={related.filesAreLoading}
-            filesError={related.filesError}
-            commits={related.commits}
-            commitsAreLoading={related.commitsAreLoading}
-            commitsError={related.commitsError}
-            now={now}
-            buildImageProxyUrl={buildImageProxyUrl}
-            renderReferenceLink={renderReferenceLink}
-            onAddInlineComment={onAddInlineComment}
-          />
-        ))}
+        {!item.isPr &&
+          relatedPullRequests.map((related) => (
+            <ConsolePullRequestDetail
+              key={related.pullRequest.url}
+              pullRequest={related.pullRequest}
+              body={related.pullRequest.summary?.body ?? ''}
+              bodyIsLoading={false}
+              files={related.files}
+              filesAreLoading={related.filesAreLoading}
+              filesError={related.filesError}
+              commits={related.commits}
+              commitsAreLoading={related.commitsAreLoading}
+              commitsError={related.commitsError}
+              now={now}
+              buildImageProxyUrl={buildImageProxyUrl}
+              renderReferenceLink={renderReferenceLink}
+              onAddInlineComment={onAddInlineComment}
+            />
+          ))}
+      </div>
 
       <div className="console-detail-dock">
         <div className="console-detail-dock-composer">{commentComposer}</div>

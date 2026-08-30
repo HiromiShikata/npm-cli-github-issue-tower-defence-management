@@ -727,44 +727,50 @@ export const ConsolePage = () => {
         now={now}
       />
       {activeTab === 'stories' ? (
-        <ConsoleStoryList
-          stories={storyEntries}
-          isLoading={isLoading}
-          error={error}
-          showGray={showGray}
-          onCreateIssue={handleCreateIssue}
-          onAddStory={handleStoryAdd}
-          onSelectColor={handleSelectColor}
-          onToggleGray={handleToggleGray}
-          onReorderStory={handleReorderStory}
-          onDeleteStory={handleStoryDelete}
-          optimisticColors={storyOptimisticColors}
-          colorChangeInFlight={storyColorChangeInFlight}
-          colorErrors={storyColorErrors}
-        />
+        <div className="console-list-screen">
+          <ConsoleStoryList
+            stories={storyEntries}
+            isLoading={isLoading}
+            error={error}
+            showGray={showGray}
+            onCreateIssue={handleCreateIssue}
+            onAddStory={handleStoryAdd}
+            onSelectColor={handleSelectColor}
+            onToggleGray={handleToggleGray}
+            onReorderStory={handleReorderStory}
+            onDeleteStory={handleStoryDelete}
+            optimisticColors={storyOptimisticColors}
+            colorChangeInFlight={storyColorChangeInFlight}
+            colorErrors={storyColorErrors}
+          />
+        </div>
       ) : selectedItem === null ? (
         activeTab === 'queued' ? (
-          <ConsoleQueuedList
-            rows={rows}
-            storyColors={storyColors}
-            statusOptions={statusOptions}
-            agentOptions={agentOptions}
-            activeItemId={null}
-            isLoading={isLoading}
-            error={error}
-            onSelectItem={(item) => navigation.openItem(item.projectItemId)}
-          />
+          <div className="console-list-screen">
+            <ConsoleQueuedList
+              rows={rows}
+              storyColors={storyColors}
+              statusOptions={statusOptions}
+              agentOptions={agentOptions}
+              activeItemId={null}
+              isLoading={isLoading}
+              error={error}
+              onSelectItem={(item) => navigation.openItem(item.projectItemId)}
+            />
+          </div>
         ) : (
-          <ConsoleItemList
-            rows={rows}
-            storyColors={storyColors}
-            statusOptions={statusOptions}
-            activeItemId={null}
-            now={now}
-            isLoading={isLoading}
-            error={error}
-            onSelectItem={(item) => navigation.openItem(item.projectItemId)}
-          />
+          <div className="console-list-screen">
+            <ConsoleItemList
+              rows={rows}
+              storyColors={storyColors}
+              statusOptions={statusOptions}
+              activeItemId={null}
+              now={now}
+              isLoading={isLoading}
+              error={error}
+              onSelectItem={(item) => navigation.openItem(item.projectItemId)}
+            />
+          </div>
         )
       ) : (
         <div className="console-detail-screen" ref={detailScreenRef}>
