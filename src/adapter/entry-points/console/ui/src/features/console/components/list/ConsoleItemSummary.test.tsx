@@ -271,4 +271,28 @@ describe('ConsoleItemSummary', () => {
     ).not.toBeNull();
     expect(container.querySelector('.console-item-fields')).toBeNull();
   });
+
+  it('renders status-only block when agent is null and no other fields are present', () => {
+    const statusOnlyItem = {
+      ...prItem,
+      story: '',
+      status: 'Preparation',
+      agent: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+    };
+    const { container } = render(
+      <ConsoleItemSummary
+        item={statusOnlyItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(
+      container.querySelector('.console-item-status-agent'),
+    ).not.toBeNull();
+    expect(container.querySelector('.console-item-fields')).toBeNull();
+  });
 });

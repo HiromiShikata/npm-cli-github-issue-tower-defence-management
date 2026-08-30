@@ -491,15 +491,7 @@ body {
   cursor: help;
 }
 
-.console-item-fields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  margin-top: 4px;
-  font-size: 0.7188rem;
-  color: #adbac7;
-}
-
+.console-item-fields,
 .console-item-status-agent {
   display: flex;
   flex-wrap: wrap;
