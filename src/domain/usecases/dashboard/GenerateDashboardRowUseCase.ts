@@ -15,18 +15,22 @@ export type DashboardRow = {
   ws: number;
   dep: number;
   blocker: number;
+  humanPendingRed: number;
+  humanPendingYellow: number;
+  humanPendingBlue: number;
 };
 
 export type GenerateDashboardRowInput = {
   issues: Issue[];
   assigneeLogin: string;
+  storyColorMap: Map<string, string>;
 };
 
 const WORKFLOW_BLOCKER_STORY_MARKER = 'workflow blocker';
 
 export class GenerateDashboardRowUseCase {
   run = (input: GenerateDashboardRowInput): DashboardRow => {
-    const { issues, assigneeLogin } = input;
+    const { issues, assigneeLogin, storyColorMap } = input;
 
     const mine = (issue: Issue): boolean =>
       issue.isClosed === false && issue.assignees.includes(assigneeLogin);
@@ -44,6 +48,16 @@ export class GenerateDashboardRowUseCase {
     const countMineWithStatus = (statusName: string): number =>
       issues.filter((issue) => mine(issue) && issue.status === statusName)
         .length;
+
+    const countHumanPendingByStoryColor = (color: string): number =>
+      issues.filter(
+        (issue) =>
+          issue.isClosed === false &&
+          (issue.status === AWAITING_QUALITY_CHECK_STATUS_NAME ||
+            issue.status === TODO_STATUS_NAME) &&
+          issue.story !== null &&
+          storyColorMap.get(issue.story) === color,
+      ).length;
 
     return {
       todo: countActionableWithStatus(TODO_STATUS_NAME),
@@ -64,6 +78,9 @@ export class GenerateDashboardRowUseCase {
             .toLowerCase()
             .includes(WORKFLOW_BLOCKER_STORY_MARKER),
       ).length,
+      humanPendingRed: countHumanPendingByStoryColor('RED'),
+      humanPendingYellow: countHumanPendingByStoryColor('YELLOW'),
+      humanPendingBlue: countHumanPendingByStoryColor('BLUE'),
     };
   };
 }

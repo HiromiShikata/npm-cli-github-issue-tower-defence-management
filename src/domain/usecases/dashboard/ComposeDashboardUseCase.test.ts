@@ -26,6 +26,9 @@ const projectRow = (overrides: Partial<DashboardRow>): DashboardRow => ({
   ws: 0,
   dep: 0,
   blocker: 0,
+  humanPendingRed: 0,
+  humanPendingYellow: 0,
+  humanPendingBlue: 0,
   ...overrides,
 });
 
@@ -196,11 +199,13 @@ describe('formatMachineStatusLines', () => {
 });
 
 describe('formatProjectHeaderLine', () => {
-  it('renders the fixed project grid header', () => {
-    expect(formatProjectHeaderLine()).toBe('pj   tdo aqc fal prp aws dep');
+  it('renders the project grid header with story color signal columns', () => {
+    expect(formatProjectHeaderLine()).toBe(
+      'pj   tdo aqc fal prp aws dep 🔴 🟡 🔵',
+    );
   });
 
-  it('fits within the 32 character width budget', () => {
+  it('fits within the code point width budget', () => {
     expect(codePointLength(formatProjectHeaderLine())).toBeLessThanOrEqual(
       PROJECT_ROW_WIDTH_BUDGET,
     );
@@ -208,25 +213,43 @@ describe('formatProjectHeaderLine', () => {
 });
 
 describe('formatProjectRowLine', () => {
-  it('renders a present row with its severity dot and counts', () => {
+  it('renders a present row with its severity dot, counts, and story color columns', () => {
     expect(
       formatProjectRowLine({
         code: 'ac',
         row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }),
       }),
-    ).toBe('🟢ac   1   2   0   0   4   1');
+    ).toBe('🟢ac   1   2   0   0   4   1  0  0  0');
+  });
+
+  it('renders non-zero story color counts in the color columns', () => {
+    expect(
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ humanPendingRed: 8, humanPendingYellow: 3 }),
+      }),
+    ).toBe('🟢ac   0   0   0   0   0   0  8  3  0');
+  });
+
+  it('caps a story color count above 99 at 99', () => {
+    expect(
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ humanPendingRed: 100 }),
+      }),
+    ).toContain(' 99');
   });
 
   it('renders placeholder cells with a blank dot for an absent project file', () => {
     expect(formatProjectRowLine({ code: 'in', row: null })).toBe(
-      '  in  --  --  --  --  --  --',
+      '  in  --  --  --  --  --  -- -- -- --',
     );
   });
 
   it('caps a count above 999 at 999', () => {
     expect(
       formatProjectRowLine({ code: 'ac', row: projectRow({ todo: 1500 }) }),
-    ).toBe('🟢ac 999   0   0   0   0   0');
+    ).toBe('🟢ac 999   0   0   0   0   0  0  0  0');
   });
 
   it('applies the four level severity dot rules in descending order', () => {
@@ -256,7 +279,7 @@ describe('formatProjectRowLine', () => {
     ).toContain('🟢');
   });
 
-  it('keeps present and absent rows within the 32 code point width budget', () => {
+  it('keeps present and absent rows within the code point width budget', () => {
     const present = formatProjectRowLine({
       code: 'gl',
       row: projectRow({
@@ -266,6 +289,9 @@ describe('formatProjectRowLine', () => {
         pr: 999,
         ws: 999,
         dep: 999,
+        humanPendingRed: 99,
+        humanPendingYellow: 99,
+        humanPendingBlue: 99,
       }),
     });
     const absent = formatProjectRowLine({ code: 'in', row: null });
@@ -387,11 +413,11 @@ describe('ComposeDashboardUseCase', () => {
   const expectedBody =
     '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
     '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-    '<tt>pj&nbsp;&nbsp;&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep</tt><br>\n' +
-    '<tt>🟢ac&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1</tt><br>\n' +
-    '<tt>🟠gl&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;16&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;in&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--</tt><br>\n' +
-    '<tt>🟣um&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>pj&nbsp;&nbsp;&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep&nbsp;🔴&nbsp;🟡&nbsp;🔵</tt><br>\n' +
+    '<tt>🟢ac&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟠gl&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;16&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;in&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;--&nbsp;--&nbsp;--</tt><br>\n' +
+    '<tt>🟣um&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>⚪bob_&nbsp;100%&nbsp;0d00h00&nbsp;&nbsp;95%&nbsp;0d02h00&nbsp;0&nbsp;0</tt><br>\n' +
     '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n' +
@@ -439,7 +465,7 @@ describe('ComposeDashboardUseCase', () => {
     ).toBe(true);
   });
 
-  it('keeps every unwrapped composed line within the 32 code point width budget', () => {
+  it('keeps every unwrapped composed line within the code point width budget', () => {
     const denseInput: ComposeDashboardInput = {
       machineStatus: {
         memPct: 100,
@@ -458,6 +484,9 @@ describe('ComposeDashboardUseCase', () => {
             pr: 999,
             ws: 999,
             dep: 999,
+            humanPendingRed: 99,
+            humanPendingYellow: 99,
+            humanPendingBlue: 99,
           }),
         },
       ],

@@ -618,11 +618,17 @@ export class HandleScheduledEventUseCaseHandler {
       }
 
       try {
+        const storyColorMap = new Map(
+          (project.story?.stories ?? []).map(
+            (story) => [story.name, story.color] as [string, string],
+          ),
+        );
         writeDashboardRow({
           dashboardDataDir,
           pjcode: input.projectName,
           assigneeLogin: input.manager,
           issues,
+          storyColorMap,
         });
       } catch (error) {
         console.error(
