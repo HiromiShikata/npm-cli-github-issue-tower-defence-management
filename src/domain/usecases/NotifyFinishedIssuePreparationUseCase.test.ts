@@ -4915,6 +4915,48 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
+    it('falls back to product repo and warns when tdpmReportingRepository is malformed', async () => {
+      const issueUrl = 'https://github.com/user/repo/issues/1';
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
+        }),
+      ]);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+        tdpmReportingRepository: 'owner/repo/extra',
+      });
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('owner/repo/extra'),
+      );
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        'user',
+        'repo',
+        expect.stringContaining('unknown-agent'),
+        expect.any(String),
+        [],
+        [],
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+
     it('should dispatch normally when nextStepAgent is in the configured agents list', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',

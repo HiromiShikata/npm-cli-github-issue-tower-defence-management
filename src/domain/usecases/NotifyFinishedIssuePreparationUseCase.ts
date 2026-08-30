@@ -72,6 +72,9 @@ const parseOrgRepo = (
   if (slashIndex <= 0 || slashIndex === repository.length - 1) {
     return null;
   }
+  if (repository.indexOf('/', slashIndex + 1) !== -1) {
+    return null;
+  }
   return {
     owner: repository.slice(0, slashIndex),
     repo: repository.slice(slashIndex + 1),
@@ -190,6 +193,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     const reportingTarget = parseOrgRepo(
       params.tdpmReportingRepository ?? null,
     );
+    if (params.tdpmReportingRepository && !reportingTarget) {
+      console.warn(
+        `tdpmReportingRepository "${params.tdpmReportingRepository}" is not a valid "owner/repo" string; falling back to product repository`,
+      );
+    }
 
     if (params.deferPreparation) {
       await this.handleTransientFailureDeferral(
