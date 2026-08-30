@@ -553,15 +553,13 @@ export const updateProjectV2Readme = async (
     variables: { projectId, readme },
   });
   if (!response.ok) {
-    throw new Error(
-      `Failed to update project README: HTTP ${response.status}`,
-    );
+    throw new Error(`Failed to update project README: HTTP ${response.status}`);
   }
   const data: unknown = await response.json();
-  if (isRecord(data) && Array.isArray(data['errors'])) {
-    const errors = data['errors'] as unknown[];
-    if (errors.length > 0) {
-      const firstError = errors[0];
+  if (isRecord(data)) {
+    const errorsValue = data['errors'];
+    if (Array.isArray(errorsValue) && errorsValue.length > 0) {
+      const firstError: unknown = errorsValue[0];
       const message =
         isRecord(firstError) && typeof firstError['message'] === 'string'
           ? firstError['message']

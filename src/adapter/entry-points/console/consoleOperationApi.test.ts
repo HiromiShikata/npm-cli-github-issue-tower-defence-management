@@ -2810,40 +2810,36 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when maximumPreparingIssuesCount is not a positive integer', async () => {
-      const response = await handleProjectMaxPreparingUpdate(
-        context,
-        'token',
-        { pjcode: 'acme', maximumPreparingIssuesCount: 0 },
-      );
+      const response = await handleProjectMaxPreparingUpdate(context, 'token', {
+        pjcode: 'acme',
+        maximumPreparingIssuesCount: 0,
+      });
       expect(response.statusCode).toBe(400);
     });
 
     it('returns 400 when pjcode is not configured', async () => {
-      const response = await handleProjectMaxPreparingUpdate(
-        context,
-        'token',
-        { pjcode: 'unknown', maximumPreparingIssuesCount: 3 },
-      );
+      const response = await handleProjectMaxPreparingUpdate(context, 'token', {
+        pjcode: 'unknown',
+        maximumPreparingIssuesCount: 3,
+      });
       expect(response.statusCode).toBe(400);
     });
 
     it('returns 502 when readme fetch returns null', async () => {
       fetchProjectReadmeSpy.mockResolvedValue(null);
-      const response = await handleProjectMaxPreparingUpdate(
-        context,
-        'token',
-        { pjcode: 'acme', maximumPreparingIssuesCount: 3 },
-      );
+      const response = await handleProjectMaxPreparingUpdate(context, 'token', {
+        pjcode: 'acme',
+        maximumPreparingIssuesCount: 3,
+      });
       expect(response.statusCode).toBe(502);
     });
 
     it('returns 502 when updateProjectV2Readme throws', async () => {
       updateProjectV2ReadmeSpy.mockRejectedValue(new Error('update failed'));
-      const response = await handleProjectMaxPreparingUpdate(
-        context,
-        'token',
-        { pjcode: 'acme', maximumPreparingIssuesCount: 3 },
-      );
+      const response = await handleProjectMaxPreparingUpdate(context, 'token', {
+        pjcode: 'acme',
+        maximumPreparingIssuesCount: 3,
+      });
       expect(response.statusCode).toBe(502);
     });
 

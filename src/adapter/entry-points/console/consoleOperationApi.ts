@@ -1032,7 +1032,9 @@ export const handleProjectMaxPreparingUpdate = async (
     await updateProjectV2Readme(project.id, updatedReadme, githubToken);
   } catch (error) {
     return badGateway(
-      error instanceof Error ? error.message : 'failed to update project README',
+      error instanceof Error
+        ? error.message
+        : 'failed to update project README',
     );
   }
   return ok();

@@ -371,17 +371,26 @@ export const handleProjectReadmeConfig = async (
   pjcode: string | null,
 ): Promise<{ statusCode: number; body: unknown }> => {
   if (resolveProject === null) {
-    return { statusCode: 502, body: { error: 'project resolver is not configured' } };
+    return {
+      statusCode: 502,
+      body: { error: 'project resolver is not configured' },
+    };
   }
   if (githubToken === null || githubToken.length === 0) {
-    return { statusCode: 502, body: { error: 'github token is not configured' } };
+    return {
+      statusCode: 502,
+      body: { error: 'github token is not configured' },
+    };
   }
   if (pjcode === null || pjcode.length === 0) {
     return { statusCode: 400, body: { error: 'pjcode is required' } };
   }
   const binding = await resolveProject(pjcode);
   if (binding === null) {
-    return { statusCode: 404, body: { error: `project "${pjcode}" is not configured` } };
+    return {
+      statusCode: 404,
+      body: { error: `project "${pjcode}" is not configured` },
+    };
   }
   const readme = await fetchProjectReadme(binding.project.url, githubToken);
   if (readme === null) {
@@ -393,6 +402,8 @@ export const handleProjectReadmeConfig = async (
   const config = parseProjectReadmeConfig(readme);
   return {
     statusCode: 200,
-    body: { maximumPreparingIssuesCount: config.maximumPreparingIssuesCount ?? null },
+    body: {
+      maximumPreparingIssuesCount: config.maximumPreparingIssuesCount ?? null,
+    },
   };
 };

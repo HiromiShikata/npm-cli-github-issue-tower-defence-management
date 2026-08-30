@@ -723,8 +723,7 @@ describe('consoleReadApi', () => {
       const project = mock<Project>();
       project.id = 'PVT_1';
       project.url = projectUrl;
-      return async (pjcode) =>
-        pjcode === 'acme' ? { pjcode, project } : null;
+      return async (pjcode) => (pjcode === 'acme' ? { pjcode, project } : null);
     };
 
     let fetchProjectReadmeSpy: jest.SpyInstance;
@@ -792,7 +791,10 @@ describe('consoleReadApi', () => {
       );
       expect(response.statusCode).toBe(200);
       expect(response.body).toEqual({ maximumPreparingIssuesCount: 7 });
-      expect(fetchProjectReadmeSpy).toHaveBeenCalledWith(projectUrl, 'gh-token');
+      expect(fetchProjectReadmeSpy).toHaveBeenCalledWith(
+        projectUrl,
+        'gh-token',
+      );
     });
   });
 });
