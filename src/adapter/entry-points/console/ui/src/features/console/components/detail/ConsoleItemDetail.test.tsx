@@ -217,7 +217,12 @@ describe('ConsoleItemDetail', () => {
     const repo = subbar?.querySelector('.console-detail-repo') ?? null;
     const openedAt = subbar?.querySelector('.console-detail-createdat') ?? null;
     const pill = subbar?.querySelector('.console-detail-pill') ?? null;
-    if (subbar === null || repo === null || openedAt === null || pill === null) {
+    if (
+      subbar === null ||
+      repo === null ||
+      openedAt === null ||
+      pill === null
+    ) {
       throw new Error('subbar, repo, openedAt and pill must all render');
     }
     expect(
@@ -237,10 +242,11 @@ describe('ConsoleItemDetail', () => {
     const subbar = container.querySelector('.console-detail-subbar');
     const copyUrlButton =
       subbar?.querySelector('.console-copy-url-button') ?? null;
-    const firstLabelChip =
-      subbar?.querySelector('.console-label-chip') ?? null;
+    const firstLabelChip = subbar?.querySelector('.console-label-chip') ?? null;
     if (subbar === null || copyUrlButton === null || firstLabelChip === null) {
-      throw new Error('subbar, copyUrlButton and firstLabelChip must all render');
+      throw new Error(
+        'subbar, copyUrlButton and firstLabelChip must all render',
+      );
     }
     expect(
       copyUrlButton.compareDocumentPosition(firstLabelChip) &
