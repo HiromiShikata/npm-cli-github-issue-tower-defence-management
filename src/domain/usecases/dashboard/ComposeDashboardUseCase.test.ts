@@ -202,9 +202,7 @@ describe('formatMachineStatusLines', () => {
 
 describe('formatProjectHeaderLine', () => {
   it('renders the project grid header with story color signal columns', () => {
-    expect(formatProjectHeaderLine()).toBe(
-      'pj   td qc fl pp ws dp 🔴 🟡 🔵',
-    );
+    expect(formatProjectHeaderLine()).toBe('pj   td qc fl pp ws dp 🔴 🟡 🔵');
   });
 
   it('fits within the code point width budget', () => {
@@ -577,9 +575,7 @@ describe('formatSevenDayWindowAggregateLine', () => {
       includedTokenCount: 1,
       totalTokenCount: 1,
     });
-    expect(wide).toBe(
-      ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '99',
-    );
+    expect(wide).toBe(' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '99');
     expect(narrow).toBe(
       ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START + 1) + '5',
     );
