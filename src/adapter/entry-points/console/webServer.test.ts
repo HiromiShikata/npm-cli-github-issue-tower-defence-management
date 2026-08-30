@@ -764,13 +764,11 @@ describe('webServer new routes integration', () => {
   it('posts a comment through the comment operation api', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();
-    issueRepository.getIssueOrPullRequestComments.mockResolvedValue([
-      {
-        author: 'HiromiShikata',
-        body: 'Thanks, this resolves the parity gap.',
-        createdAt: new Date('2026-06-18T03:21:00.000Z'),
-      },
-    ]);
+    issueRepository.createCommentByUrl.mockResolvedValue({
+      author: 'HiromiShikata',
+      body: 'Thanks, this resolves the parity gap.',
+      createdAt: new Date('2026-06-18T03:21:00.000Z'),
+    });
     const server = await startWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
@@ -801,6 +799,7 @@ describe('webServer new routes integration', () => {
         'https://github.com/o/r/issues/1',
         'Thanks, this resolves the parity gap.',
       );
+      expect(issueRepository.getIssueOrPullRequestComments).not.toHaveBeenCalled();
       expect(JSON.parse(response.body)).toEqual({
         ok: true,
         comment: {
