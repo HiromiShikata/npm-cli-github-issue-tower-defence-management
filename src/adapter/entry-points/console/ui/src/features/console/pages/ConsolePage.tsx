@@ -161,7 +161,15 @@ export const ConsolePage = () => {
     caches,
   );
   const actionQueue = useConsoleActionQueue();
-  const now = Date.now();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => {
+      clearInterval(id);
+    };
+  }, []);
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   useEffect(() => {

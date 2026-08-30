@@ -1,6 +1,6 @@
 export type ProjectTimerState = {
   remainingSeconds: number;
-  progressRatio: number;
+  remainingRatio: number;
   totalSeconds: number;
 };
 
@@ -15,10 +15,6 @@ export const computeProjectTimerState = (
   const endsAtMs = new Date(timerEndsAt).getTime();
   const remainingMs = endsAtMs - nowMs;
   const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
-  const elapsedSeconds = timerTotalSeconds - remainingSeconds;
-  const progressRatio = Math.max(
-    0,
-    Math.min(1, (timerTotalSeconds - elapsedSeconds) / timerTotalSeconds),
-  );
-  return { remainingSeconds, progressRatio, totalSeconds: timerTotalSeconds };
+  const remainingRatio = Math.max(0, Math.min(1, remainingSeconds / timerTotalSeconds));
+  return { remainingSeconds, remainingRatio, totalSeconds: timerTotalSeconds };
 };

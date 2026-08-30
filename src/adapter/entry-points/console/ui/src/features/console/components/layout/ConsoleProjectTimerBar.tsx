@@ -39,7 +39,7 @@ export const ConsoleProjectTimerBar = ({
       >
         <div
           className="console-project-timer-bar-fill"
-          style={{ width: `${state.progressRatio * 100}%` }}
+          style={{ width: `${state.remainingRatio * 100}%` }}
         />
       </div>
       <span className="console-project-timer-bar-label">
