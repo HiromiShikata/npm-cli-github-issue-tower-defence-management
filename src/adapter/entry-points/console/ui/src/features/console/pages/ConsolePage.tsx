@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
@@ -684,6 +685,11 @@ export const ConsolePage = () => {
         onAirplaneModeStartSync={airplaneMode.startSync}
         onAirplaneModeTurnOff={airplaneMode.turnOff}
         workflowImprovementIssueUrl={workflowImprovementIssueUrl}
+      />
+      <ConsoleProjectTimerBar
+        timerEndsAt={activeSnapshot?.timerEndsAt ?? null}
+        timerTotalSeconds={activeSnapshot?.timerTotalSeconds ?? null}
+        now={now}
       />
       {activeTab === 'stories' ? (
         <ConsoleStoryList

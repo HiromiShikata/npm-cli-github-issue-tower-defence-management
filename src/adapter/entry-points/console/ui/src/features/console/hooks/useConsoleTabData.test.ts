@@ -226,6 +226,44 @@ describe('useConsoleTabData', () => {
     ).toBe(true);
   });
 
+  it('parses timerEndsAt and timerTotalSeconds from the snapshot payload when present', async () => {
+    const fetchMock = jest.fn(async (url: string) => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcode: 'acme',
+        generatedAt: '2026-06-19T00:00:00.000Z',
+        statusOptions: [],
+        storyColors: {},
+        items: [],
+        timerEndsAt: url.includes('/prs/')
+          ? '2026-08-30T10:30:00.000Z'
+          : undefined,
+        timerTotalSeconds: url.includes('/prs/') ? 1800 : undefined,
+      }),
+    }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.snapshots.prs?.timerEndsAt).toBe(
+      '2026-08-30T10:30:00.000Z',
+    );
+    expect(result.current.snapshots.prs?.timerTotalSeconds).toBe(1800);
+  });
+
+  it('defaults timerEndsAt and timerTotalSeconds to null when absent from payload', async () => {
+    installNetworkFetch();
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.snapshots.prs?.timerEndsAt).toBeNull();
+    expect(result.current.snapshots.prs?.timerTotalSeconds).toBeNull();
+  });
+
   it('parses storyOrder from the snapshot payload', async () => {
     const fetchMock = jest.fn(async (url: string) => ({
       ok: true,

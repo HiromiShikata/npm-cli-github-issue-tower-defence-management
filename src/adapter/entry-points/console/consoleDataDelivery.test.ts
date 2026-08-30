@@ -6,6 +6,7 @@ import {
   parseConsoleDataRoute,
 } from './consoleDataDelivery';
 import { recordDoneProjectItemId } from './consoleDoneStore';
+import { writeProjectTimer } from './consoleProjectTimerStore';
 
 describe('parseConsoleDataRoute', () => {
   it('parses a list route', () => {
@@ -218,5 +219,35 @@ describe('buildConsoleDataResponse', () => {
       relativePath: 'missing.json',
     });
     expect(response.statusCode).toBe(404);
+  });
+
+  it('includes timerEndsAt and timerTotalSeconds in list response when timer.json exists', () => {
+    writeJson('acme/prs/list.json', { pjcode: 'acme', items: [] });
+    writeProjectTimer(baseDir, 'acme', {
+      startedAt: '2026-08-30T10:00:00.000Z',
+      durationSeconds: 1800,
+    });
+    const response = buildConsoleDataResponse(baseDir, {
+      kind: 'list',
+      pjcode: 'acme',
+      tab: 'prs',
+    });
+    expect(response.statusCode).toBe(200);
+    const parsed = JSON.parse(response.body) as Record<string, unknown>;
+    expect(parsed.timerEndsAt).toBe('2026-08-30T10:30:00.000Z');
+    expect(parsed.timerTotalSeconds).toBe(1800);
+  });
+
+  it('omits timerEndsAt and timerTotalSeconds when no timer.json exists', () => {
+    writeJson('acme/prs/list.json', { pjcode: 'acme', items: [] });
+    const response = buildConsoleDataResponse(baseDir, {
+      kind: 'list',
+      pjcode: 'acme',
+      tab: 'prs',
+    });
+    expect(response.statusCode).toBe(200);
+    const parsed = JSON.parse(response.body) as Record<string, unknown>;
+    expect(parsed.timerEndsAt).toBeUndefined();
+    expect(parsed.timerTotalSeconds).toBeUndefined();
   });
 });

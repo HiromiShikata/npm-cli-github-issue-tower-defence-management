@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { CONSOLE_LIST_TAB_NAMES } from './consoleTabNames';
+import { readProjectTimer } from './consoleProjectTimerStore';
 
 export { CONSOLE_LIST_TAB_NAMES };
 
@@ -91,6 +92,21 @@ export const buildConsoleDataResponse = (
     const listResult = readJsonFile(filePath);
     if (!listResult.found) {
       return notFoundJson();
+    }
+    const timerData = readProjectTimer(consoleDataOutputDir, route.pjcode);
+    if (timerData !== null) {
+      const endsAtMs =
+        new Date(timerData.startedAt).getTime() +
+        timerData.durationSeconds * 1000;
+      const listData =
+        listResult.data !== null && typeof listResult.data === 'object'
+          ? listResult.data
+          : {};
+      const enriched = Object.assign({}, listData, {
+        timerEndsAt: new Date(endsAtMs).toISOString(),
+        timerTotalSeconds: timerData.durationSeconds,
+      });
+      return okJson(enriched);
     }
     return okJson(listResult.data);
   }
