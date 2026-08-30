@@ -1,3 +1,10 @@
+# [2.25.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.24.1...v2.25.0) (2026-08-30)
+
+
+### Features
+
+* auto-create workflow issue for silent redispatch escalation ([#1899](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1899)) ([4ca9798](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4ca9798bdb8bd471ab0d53e5682877342d741683)), closes [HiromiShikata/umino-corporait-operation#31121](https://github.com/HiromiShikata/umino-corporait-operation/issues/31121)
+
 ## [2.24.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.24.0...v2.24.1) (2026-08-30)
 
 
