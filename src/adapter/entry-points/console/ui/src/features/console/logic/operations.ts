@@ -1,61 +1,62 @@
-import type { ConsoleReviewCommentSide } from '../lib/consoleApi';
-import type { ConsoleFieldOption, ConsoleTabName } from './types';
+import type { ConsoleReviewCommentSide } from "../lib/consoleApi";
+import type { ConsoleFieldOption, ConsoleTabName } from "./types";
 
-export const TOTALLY_WRONG_COMMENT_BODY = 'totally wrong';
-export const UNNECESSARY_COMMENT_BODY = 'This pull request is unnecessary.';
+export const TOTALLY_WRONG_COMMENT_BODY = "totally wrong";
+export const UNNECESSARY_COMMENT_BODY = "This pull request is unnecessary.";
 
 export const buildUnnecessaryIssueCommentBody = (prUrl: string): string =>
-  `The pull request for this issue was unnecessary and has been closed: ${prUrl}\n\nDo not create it again.`;
+	`The pull request for this issue was unnecessary and has been closed: ${prUrl}\n\nDo not create it again.`;
 
 export type ConsolePendingReviewComment = {
-  path: string;
-  line: number;
-  side: ConsoleReviewCommentSide;
-  body: string;
+	path: string;
+	line: number;
+	side: ConsoleReviewCommentSide;
+	body: string;
 };
 
 export const buildRequestChangesBody = (
-  comments: ConsolePendingReviewComment[],
+	comments: ConsolePendingReviewComment[],
 ): string =>
-  comments
-    .map((comment) => `${comment.path}:${comment.line} ${comment.body}`)
-    .join('\n\n');
+	comments
+		.map((comment) => `${comment.path}:${comment.line} ${comment.body}`)
+		.join("\n\n");
 
 export type ConsoleReviewAction =
-  | 'approve_and_merge'
-  | 'request_changes'
-  | 'unnecessary'
-  | 'totally_wrong';
+	| "approve_and_merge"
+	| "request_changes"
+	| "unnecessary"
+	| "totally_wrong";
 
 export type ConsoleNextActionDateAction =
-  | 'snooze_1hour'
-  | 'snooze_3hours'
-  | 'snooze_1day'
-  | 'snooze_1week';
+	| "snooze_1hour"
+	| "snooze_3hours"
+	| "snooze_1day"
+	| "snooze_1week";
 
-export type ConsoleCloseAction = 'close' | 'close_not_planned';
+export type ConsoleCloseAction = "close" | "close_not_planned";
 
 export type ConsoleOperationHandlers = {
-  onReview: (action: ConsoleReviewAction) => void;
-  onSetNextActionDate: (action: ConsoleNextActionDateAction) => void;
-  onSetStory: (option: ConsoleFieldOption) => void;
-  onSetStatus: (option: ConsoleFieldOption) => void;
-  onSetInTmuxByHuman: (option: ConsoleFieldOption) => void;
-  onClose: (action: ConsoleCloseAction) => void;
-  onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => void;
-  onDeleteAllComments: () => void;
+	onReview: (action: ConsoleReviewAction) => void;
+	onSetNextActionDate: (action: ConsoleNextActionDateAction) => void;
+	onSetStory: (option: ConsoleFieldOption) => void;
+	onSetStatus: (option: ConsoleFieldOption) => void;
+	onSetInTmuxByHuman: (option: ConsoleFieldOption) => void;
+	onClose: (action: ConsoleCloseAction) => void;
+	onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => void;
+	onDeleteAllComments: () => void;
+	onSetDependedIssueUrl: ((url: string) => Promise<void>) | null;
 };
 
-export const IN_TMUX_BY_HUMAN_NAME = 'In Tmux by human';
-export const AWAITING_WORKSPACE_NAME = 'Awaiting Workspace';
+export const IN_TMUX_BY_HUMAN_NAME = "In Tmux by human";
+export const AWAITING_WORKSPACE_NAME = "Awaiting Workspace";
 
 export const STATUS_BUTTON_NAMES: string[] = [
-  'In Tmux by agent',
-  'In Tmux by human',
-  'Todo by human',
-  'Todo by agent',
-  AWAITING_WORKSPACE_NAME,
+	"In Tmux by agent",
+	"In Tmux by human",
+	"Todo by human",
+	"Todo by agent",
+	AWAITING_WORKSPACE_NAME,
 ];
 
 export const isManualTriageTab = (tab: ConsoleTabName): boolean =>
-  tab === 'todo-by-human' || tab === 'todo-by-agent';
+	tab === "todo-by-human" || tab === "todo-by-agent";

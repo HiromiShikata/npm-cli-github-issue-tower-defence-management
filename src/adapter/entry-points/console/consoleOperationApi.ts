@@ -923,6 +923,34 @@ export const handleStoryAdd = async (
   return ok();
 };
 
+export const handleSetDependedIssueUrl = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const issueUrl = body.issueUrl;
+  const dependedIssueUrl = body.dependedIssueUrl;
+  if (!isNonEmptyString(issueUrl)) {
+    return badRequest('issueUrl is required');
+  }
+  if (!isNonEmptyString(dependedIssueUrl)) {
+    return badRequest('dependedIssueUrl is required');
+  }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { project } = binding;
+  if (project.dependedIssueUrlSeparatedByComma === null) {
+    return badRequest(
+      'project does not have a depended issue URL field configured',
+    );
+  }
+  await context
+    .resolveIssueRepository(issueUrl)
+    .setDependedIssueUrl(issueUrl, project, dependedIssueUrl);
+  return ok();
+};
+
 export const handleDeleteAllComments = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
