@@ -26,8 +26,10 @@ import {
   handleReviewComment,
   handleStoryAdd,
   handleStoryColor,
+  handleTimer,
   handleTriage,
 } from './consoleOperationApi';
+import { readProjectTimer } from './consoleProjectTimerStore';
 
 describe('consoleOperationApi', () => {
   let baseDir: string;
@@ -2701,6 +2703,81 @@ describe('consoleOperationApi', () => {
         statusCode: 400,
         body: { error: 'cannot delete the workflow management story' },
       });
+    });
+  });
+
+  describe('handleTimer', () => {
+    it('returns 400 when pjcode is missing', () => {
+      expect(handleTimer(context, {})).toEqual({
+        statusCode: 400,
+        body: { error: 'pjcode is required' },
+      });
+    });
+
+    it('returns 400 when pjcode is not configured', () => {
+      expect(handleTimer(context, { pjcode: 'unknown' })).toEqual({
+        statusCode: 400,
+        body: { error: 'pjcode is not configured' },
+      });
+    });
+
+    it('returns 502 when consoleDataOutputDir is null', () => {
+      const ctx: ConsoleOperationContext = {
+        ...context,
+        consoleDataOutputDir: null,
+      };
+      expect(handleTimer(ctx, { pjcode: 'acme', durationSeconds: 60 })).toEqual(
+        {
+          statusCode: 502,
+          body: { error: 'consoleDataOutputDir is not configured' },
+        },
+      );
+    });
+
+    it('returns 400 when durationSeconds is not a positive integer', () => {
+      expect(
+        handleTimer(context, { pjcode: 'acme', durationSeconds: -1 }),
+      ).toEqual({
+        statusCode: 400,
+        body: { error: 'durationSeconds must be a positive integer' },
+      });
+      expect(
+        handleTimer(context, { pjcode: 'acme', durationSeconds: 0 }),
+      ).toEqual({
+        statusCode: 400,
+        body: { error: 'durationSeconds must be a positive integer' },
+      });
+      expect(
+        handleTimer(context, { pjcode: 'acme', durationSeconds: 1.5 }),
+      ).toEqual({
+        statusCode: 400,
+        body: { error: 'durationSeconds must be a positive integer' },
+      });
+      expect(handleTimer(context, { pjcode: 'acme' })).toEqual({
+        statusCode: 400,
+        body: { error: 'durationSeconds must be a positive integer' },
+      });
+    });
+
+    it('writes timer file and returns 200 when starting a timer', () => {
+      const response = handleTimer(context, {
+        pjcode: 'acme',
+        durationSeconds: 1800,
+      });
+      expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+      const stored = readProjectTimer(baseDir, 'acme');
+      expect(stored).not.toBeNull();
+      expect(stored?.durationSeconds).toBe(1800);
+    });
+
+    it('deletes timer file and returns 200 when stopping a timer', () => {
+      handleTimer(context, { pjcode: 'acme', durationSeconds: 1800 });
+      const response = handleTimer(context, {
+        pjcode: 'acme',
+        action: 'stop',
+      });
+      expect(response).toEqual({ statusCode: 200, body: { ok: true } });
+      expect(readProjectTimer(baseDir, 'acme')).toBeNull();
     });
   });
 });

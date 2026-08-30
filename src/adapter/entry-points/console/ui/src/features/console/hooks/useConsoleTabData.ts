@@ -235,11 +235,7 @@ export const useConsoleTabData = (
         for (const tab of CONSOLE_TABS) {
           const stored = pjTabs[tab.name];
           if (stored !== undefined) {
-            next[tab.name] = {
-              ...stored,
-              timerEndsAt: stored.timerEndsAt,
-              timerTotalSeconds: stored.timerTotalSeconds,
-            };
+            next[tab.name] = { ...stored };
           }
         }
         setSnapshots(next);
