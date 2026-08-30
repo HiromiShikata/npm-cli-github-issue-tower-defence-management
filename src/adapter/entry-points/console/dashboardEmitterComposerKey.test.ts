@@ -165,9 +165,7 @@ describe('dashboard emitter filename matches composer lookup key', () => {
         wrap('M55% C62% D93% cy13'),
         wrap('LA 16 23 40'),
         wrap('pj   td qc fl pp ws dp 🔴 🟡 🔵'),
-        wrap(
-          `🟢${toDashboardDisplayLabel('acme')}  0  0  2  0  0  0  0  0  0`,
-        ),
+        wrap(`🟢${toDashboardDisplayLabel('acme')}  0  0  2  0  0  0  0  0  0`),
         wrap(
           `🟢${toDashboardDisplayLabel('globex')}  0  1  0  0  0  0  0  0  0`,
         ),
