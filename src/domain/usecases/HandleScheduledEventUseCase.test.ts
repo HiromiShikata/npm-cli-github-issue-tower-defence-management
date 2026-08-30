@@ -763,6 +763,7 @@ describe('HandleScheduledEventUseCase', () => {
           );
         expect(storyIssueCalls).toHaveLength(1);
         expect(storyIssueCalls[0][3]).not.toContain('From: :robot:');
+        expect(storyIssueCalls[0][3]).toContain('story desc');
       });
 
       it('should emit Polling for issue log before each 30s sleep', async () => {

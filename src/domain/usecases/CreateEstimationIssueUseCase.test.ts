@@ -222,6 +222,7 @@ describe('CreateEstimationIssueUseCase', () => {
       );
       const body = mockIssueRepository.createNewIssue.mock.calls[0]?.[3];
       expect(body).not.toContain('From: :robot:');
+      expect(body).toContain('This issue is experimental workflow :pray:');
     });
   });
 });

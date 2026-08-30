@@ -130,6 +130,9 @@ describe('DailySecurityScanUseCase', () => {
       expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).not.toContain(
         'From: :robot:',
       );
+      expect(mockIssueRepository.createNewIssue.mock.calls[0][3]).toContain(
+        '## OSV-Scanner findings',
+      );
     });
 
     const buildDefaultBranchScanRunner = () => {
