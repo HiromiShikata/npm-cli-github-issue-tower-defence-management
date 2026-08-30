@@ -209,6 +209,53 @@ describe('ConsoleItemDetail', () => {
     expect(getByRole('button', { name: 'Copy URL' })).toBeInTheDocument();
   });
 
+  it('places opened relative time in the sub bar immediately after the repo name', () => {
+    const { container } = render(
+      <ConsoleItemDetail item={prItem} {...baseProps} />,
+    );
+    const subbar = container.querySelector('.console-detail-subbar');
+    const repo = subbar?.querySelector('.console-detail-repo') ?? null;
+    const openedAt = subbar?.querySelector('.console-detail-createdat') ?? null;
+    const pill = subbar?.querySelector('.console-detail-pill') ?? null;
+    if (subbar === null || repo === null || openedAt === null || pill === null) {
+      throw new Error('subbar, repo, openedAt and pill must all render');
+    }
+    expect(
+      repo.compareDocumentPosition(openedAt) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      openedAt.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('places labels in the sub bar to the right of the copy URL button', () => {
+    const itemWithLabels = consoleListItemsFixture[0];
+    expect(itemWithLabels.labels.length).toBeGreaterThan(0);
+    const { container } = render(
+      <ConsoleItemDetail item={itemWithLabels} {...baseProps} />,
+    );
+    const subbar = container.querySelector('.console-detail-subbar');
+    const copyUrlButton =
+      subbar?.querySelector('.console-copy-url-button') ?? null;
+    const firstLabelChip =
+      subbar?.querySelector('.console-label-chip') ?? null;
+    if (subbar === null || copyUrlButton === null || firstLabelChip === null) {
+      throw new Error('subbar, copyUrlButton and firstLabelChip must all render');
+    }
+    expect(
+      copyUrlButton.compareDocumentPosition(firstLabelChip) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('renders no label chips in the sub bar when the item has no labels', () => {
+    const { container } = render(
+      <ConsoleItemDetail item={issueItem} {...baseProps} />,
+    );
+    const subbar = container.querySelector('.console-detail-subbar');
+    expect(subbar?.querySelectorAll('.console-label-chip')).toHaveLength(0);
+  });
+
   it('puts the type mark, title text and number in the title line and moves the status chip, story tag and CI state to the row below the title for a pull request item', () => {
     const { getByText, container } = render(
       <ConsoleItemDetail
