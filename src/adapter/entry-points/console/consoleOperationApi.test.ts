@@ -1311,7 +1311,9 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/issues/1',
         'Please rebase onto the latest main branch.',
       );
-      expect(issueRepository.getIssueOrPullRequestComments).not.toHaveBeenCalled();
+      expect(
+        issueRepository.getIssueOrPullRequestComments,
+      ).not.toHaveBeenCalled();
       expect(response.body).toEqual({
         ok: true,
         comment: {
@@ -1334,7 +1336,9 @@ describe('consoleOperationApi', () => {
         body: 'A first comment on this issue.',
       });
       expect(response.statusCode).toBe(200);
-      expect(issueRepository.getIssueOrPullRequestComments).not.toHaveBeenCalled();
+      expect(
+        issueRepository.getIssueOrPullRequestComments,
+      ).not.toHaveBeenCalled();
       expect(response.body).toEqual({
         ok: true,
         comment: {

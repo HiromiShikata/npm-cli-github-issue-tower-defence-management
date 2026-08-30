@@ -35,7 +35,11 @@ export class RestIssueRepository
           headers: { Authorization: `token ${this.ghToken}` },
         },
       )
-      .json<{ user: { login: string } | null; body: string; created_at: string }>();
+      .json<{
+        user: { login: string } | null;
+        body: string;
+        created_at: string;
+      }>();
     return {
       author: response.user?.login ?? '',
       body: response.body,
