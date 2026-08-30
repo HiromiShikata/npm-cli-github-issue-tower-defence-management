@@ -193,7 +193,7 @@ export interface IssueRepository {
   createCommentByUrl: (
     issueOrPrUrl: string,
     commentBody: string,
-  ) => Promise<void>;
+  ) => Promise<IssueComment>;
   getAllOpened: (project: Project) => Promise<Issue[]>;
   getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
   addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;

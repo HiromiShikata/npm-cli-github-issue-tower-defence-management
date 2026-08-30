@@ -2854,8 +2854,8 @@ export class ApiV3CheerioRestIssueRepository
   createCommentByUrl = async (
     issueOrPrUrl: string,
     commentBody: string,
-  ): Promise<void> => {
-    await this.restIssueRepository.createComment(issueOrPrUrl, commentBody);
+  ): Promise<IssueComment> => {
+    return this.restIssueRepository.createComment(issueOrPrUrl, commentBody);
   };
 
   private fetchIssueBodyResponse = (url: string): Promise<Response> => {

@@ -93,10 +93,16 @@ describe('RestIssueRepository', () => {
   });
 
   describe('createComment', () => {
-    it('should create a comment', async () => {
-      mockPost.mockResolvedValue(undefined);
+    it('should create a comment and return the created comment data', async () => {
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          user: { login: 'HiromiShikata' },
+          body: 'test comment',
+          created_at: '2026-08-30T09:00:00Z',
+        }),
+      );
 
-      await restIssueRepository.createComment(
+      const result = await restIssueRepository.createComment(
         'https://github.com/HiromiShikata/test-repository/issues/40',
         'test comment',
       );
@@ -109,6 +115,28 @@ describe('RestIssueRepository', () => {
           headers: { Authorization: 'token dummy-token' },
         },
       );
+      expect(result).toEqual({
+        author: 'HiromiShikata',
+        body: 'test comment',
+        createdAt: new Date('2026-08-30T09:00:00Z'),
+      });
+    });
+
+    it('should return empty author when user is null', async () => {
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          user: null,
+          body: 'test comment',
+          created_at: '2026-08-30T09:00:00Z',
+        }),
+      );
+
+      const result = await restIssueRepository.createComment(
+        'https://github.com/HiromiShikata/test-repository/issues/40',
+        'test comment',
+      );
+
+      expect(result.author).toBe('');
     });
   });
   describe('createNewIssue', () => {

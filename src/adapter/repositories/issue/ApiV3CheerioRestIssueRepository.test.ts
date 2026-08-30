@@ -1773,6 +1773,30 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('createCommentByUrl', () => {
+    it('returns the created comment data from the repository', async () => {
+      const { repository, restIssueRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const commentData = {
+        author: 'HiromiShikata',
+        body: 'test comment',
+        createdAt: new Date('2026-08-30T09:00:00Z'),
+      };
+      restIssueRepository.createComment.mockResolvedValue(commentData);
+
+      const result = await repository.createCommentByUrl(
+        'https://github.com/HiromiShikata/test-repository/issues/40',
+        'test comment',
+      );
+
+      expect(restIssueRepository.createComment).toHaveBeenCalledWith(
+        'https://github.com/HiromiShikata/test-repository/issues/40',
+        'test comment',
+      );
+      expect(result).toEqual(commentData);
+    });
+  });
+
   describe('requestChangesWithInlineComment', () => {
     afterEach(() => {
       jest.restoreAllMocks();
