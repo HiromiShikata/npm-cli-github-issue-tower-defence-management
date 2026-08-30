@@ -626,12 +626,6 @@ body {
   font-weight: 400;
 }
 
-.console-detail-labels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
 .console-detail-createdat {
   color: #8b949e;
   font-size: 0.75rem;

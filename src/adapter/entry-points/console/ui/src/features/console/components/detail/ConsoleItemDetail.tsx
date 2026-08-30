@@ -276,27 +276,21 @@ export const ConsoleItemDetail = ({
           {item.isPr ? `PR #${item.number}` : `Issue #${item.number}`}
         </a>
         <span className="console-detail-repo">{item.repo}</span>
+        <span
+          className="console-detail-createdat"
+          title={formatFullTimestamp(item.createdAt)}
+        >
+          opened {formatRelativeTime(item.createdAt, now)}
+        </span>
         <span className="console-detail-pill">
           {item.isPr ? 'PR' : 'Issue'}
         </span>
         <ConsoleCopyUrlButton url={item.url} />
-      </div>
-
-      {item.labels.length > 0 && (
-        <div className="console-detail-labels">
-          {item.labels.map((label) => (
-            <span key={label} className="console-label-chip">
-              {label}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div
-        className="console-detail-createdat"
-        title={formatFullTimestamp(item.createdAt)}
-      >
-        opened {formatRelativeTime(item.createdAt, now)}
+        {item.labels.map((label) => (
+          <span key={label} className="console-label-chip">
+            {label}
+          </span>
+        ))}
       </div>
 
       <ConsolePanel
