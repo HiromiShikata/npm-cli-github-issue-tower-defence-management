@@ -1,3 +1,10 @@
+## [2.19.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.3...v2.19.4) (2026-08-30)
+
+
+### Bug Fixes
+
+* **console:** show failed-preparation items regardless of depended issue urls ([#1890](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1890)) ([2270536](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2270536e08d4e612596c8a8b505cd9454d6f69b5)), closes [HiromiShikata/umino-corporait-operation#31132](https://github.com/HiromiShikata/umino-corporait-operation/issues/31132)
+
 ## [2.19.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.2...v2.19.3) (2026-08-30)
 
 
