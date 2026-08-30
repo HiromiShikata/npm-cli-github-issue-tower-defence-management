@@ -1546,6 +1546,7 @@ body {
   font-size: 0.8125rem;
   text-align: left;
   cursor: pointer;
+  scroll-margin-top: 160px;
 }
 
 .console-file-row:hover {
