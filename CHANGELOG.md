@@ -1,3 +1,10 @@
+# [2.26.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.25.2...v2.26.0) (2026-08-30)
+
+
+### Features
+
+* route missing-agent and unregistered-agent issues to tdpmReportingRepository ([#1901](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1901)) ([a4c9ae8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a4c9ae8b283a8e37d896e00ffab217de3162cba8))
+
 ## [2.25.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.25.1...v2.25.2) (2026-08-30)
 
 
