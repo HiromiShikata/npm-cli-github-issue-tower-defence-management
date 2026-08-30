@@ -757,3 +757,28 @@ test('deletes a story option from the GitHub custom field when confirmed via the
     page.locator('.console-story-list-row', { hasText: 'TDPM Console port' }),
   ).toHaveCount(0);
 });
+
+test('project timer bar shows remaining time when active and Move to next project when expired', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+  await expect(page.locator('.console-project-timer-bar')).toHaveCount(0);
+
+  harness.setProjectTimer(1800);
+  try {
+    await page.reload();
+    await expect(page.locator('.console-project-timer-bar')).toBeVisible();
+    await expect(page.getByRole('progressbar')).toBeVisible();
+    const label = page.locator('.console-project-timer-bar-label');
+    const text = await label.textContent();
+    expect(text).toMatch(/^\d{2}:\d{2}$/);
+
+    harness.expireProjectTimer();
+    await page.reload();
+    await expect(page.locator('.console-project-timer-bar-label')).toHaveText(
+      'Move to next project',
+    );
+  } finally {
+    harness.clearProjectTimer();
+  }
+});

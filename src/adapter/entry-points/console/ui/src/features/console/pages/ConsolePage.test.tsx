@@ -791,6 +791,48 @@ describe('ConsolePage scroll reset', () => {
     });
     expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
   });
+
+  it('updates the timer bar remaining time every second when an active timer is present', async () => {
+    jest.useFakeTimers();
+    const endsAt = new Date(Date.now() + 900 * 1000).toISOString();
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ...listPayload(listMatch[1]),
+            timerEndsAt: endsAt,
+            timerTotalSeconds: 1800,
+          }),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const { getByRole } = render(<ConsolePage />);
+      await waitFor(() => expect(getByRole('progressbar')).toBeInTheDocument());
+      const bar = getByRole('progressbar');
+      const initialValueNow = bar.getAttribute('aria-valuenow');
+      act(() => {
+        jest.advanceTimersByTime(1001);
+      });
+      await waitFor(() => {
+        expect(bar.getAttribute('aria-valuenow')).not.toBe(initialValueNow);
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage comment composer isolation', () => {

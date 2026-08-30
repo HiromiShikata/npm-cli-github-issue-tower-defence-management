@@ -23,6 +23,8 @@ export type AirplaneTabSnapshot = {
   defaultNameWithOwner: string | null;
   fromCache: boolean;
   storyOrder: string[];
+  timerEndsAt: string | null;
+  timerTotalSeconds: number | null;
 };
 
 export type AirplaneItemSnapshot = {
@@ -178,6 +180,8 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
       defaultNameWithOwner: null,
       fromCache: false,
       storyOrder: [],
+      timerEndsAt: null,
+      timerTotalSeconds: null,
     };
   }
   const items: ConsoleListItem[] = Array.isArray(payload.items)
@@ -219,6 +223,8 @@ const parseTabSnapshot = (payload: unknown): AirplaneTabSnapshot => {
         : null,
     fromCache: false,
     storyOrder,
+    timerEndsAt: null,
+    timerTotalSeconds: null,
   };
 };
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
@@ -160,7 +161,15 @@ export const ConsolePage = () => {
     caches,
   );
   const actionQueue = useConsoleActionQueue();
-  const now = Date.now();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => {
+      clearInterval(id);
+    };
+  }, []);
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   useEffect(() => {
@@ -684,6 +693,11 @@ export const ConsolePage = () => {
         onAirplaneModeStartSync={airplaneMode.startSync}
         onAirplaneModeTurnOff={airplaneMode.turnOff}
         workflowImprovementIssueUrl={workflowImprovementIssueUrl}
+      />
+      <ConsoleProjectTimerBar
+        timerEndsAt={activeSnapshot?.timerEndsAt ?? null}
+        timerTotalSeconds={activeSnapshot?.timerTotalSeconds ?? null}
+        now={now}
       />
       {activeTab === 'stories' ? (
         <ConsoleStoryList

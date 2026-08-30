@@ -20,6 +20,8 @@ export type ConsoleTabSnapshot = {
   defaultNameWithOwner: string | null;
   fromCache: boolean;
   storyOrder: string[];
+  timerEndsAt: string | null;
+  timerTotalSeconds: number | null;
 };
 
 export type ConsoleTabDataState = {
@@ -86,6 +88,16 @@ const parseSnapshotData = (
       ? payload.defaultNameWithOwner
       : null,
   storyOrder: isRecord(payload) ? parseStringArray(payload.storyOrder) : [],
+  timerEndsAt:
+    isRecord(payload) && typeof payload.timerEndsAt === 'string'
+      ? payload.timerEndsAt
+      : null,
+  timerTotalSeconds:
+    isRecord(payload) &&
+    typeof payload.timerTotalSeconds === 'number' &&
+    payload.timerTotalSeconds > 0
+      ? payload.timerTotalSeconds
+      : null,
 });
 
 const emptySnapshots = (): Record<
@@ -223,7 +235,11 @@ export const useConsoleTabData = (
         for (const tab of CONSOLE_TABS) {
           const stored = pjTabs[tab.name];
           if (stored !== undefined) {
-            next[tab.name] = stored;
+            next[tab.name] = {
+              ...stored,
+              timerEndsAt: stored.timerEndsAt,
+              timerTotalSeconds: stored.timerTotalSeconds,
+            };
           }
         }
         setSnapshots(next);

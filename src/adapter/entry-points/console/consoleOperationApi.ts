@@ -18,6 +18,10 @@ import {
   recordDoneProjectItemIdForTabs,
 } from './consoleDoneStore';
 import { findConsoleItemUrl } from './consoleItemUrlLookup';
+import {
+  deleteProjectTimer,
+  writeProjectTimer,
+} from './consoleProjectTimerStore';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const CONFLICT_RETURNED_MESSAGE =
@@ -960,5 +964,39 @@ export const handleDeleteStory = async (
   const projectRepository = context.resolveProjectRepository(project.url);
   await projectRepository.updateStoryList(project, filteredStories);
   context.invalidateProject?.(pjcode);
+  return ok();
+};
+
+export const handleTimer = (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): ConsoleOperationResponse => {
+  const pjcode = body.pjcode;
+  if (!isNonEmptyString(pjcode)) {
+    return badRequest('pjcode is required');
+  }
+  if (!context.isPjcodeConfigured(pjcode)) {
+    return badRequest('pjcode is not configured');
+  }
+  const consoleDataOutputDir = context.consoleDataOutputDir;
+  if (consoleDataOutputDir === null) {
+    return badGateway('consoleDataOutputDir is not configured');
+  }
+  if (body.action === 'stop') {
+    deleteProjectTimer(consoleDataOutputDir, pjcode);
+    return ok();
+  }
+  const durationSeconds = body.durationSeconds;
+  if (
+    typeof durationSeconds !== 'number' ||
+    !Number.isInteger(durationSeconds) ||
+    durationSeconds <= 0
+  ) {
+    return badRequest('durationSeconds must be a positive integer');
+  }
+  writeProjectTimer(consoleDataOutputDir, pjcode, {
+    startedAt: new Date().toISOString(),
+    durationSeconds,
+  });
   return ok();
 };

@@ -18,6 +18,10 @@ import type {
 } from '../../../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ConsoleProjectBinding } from '../../consoleOperationApi';
 import {
+  deleteProjectTimer,
+  writeProjectTimer,
+} from '../../consoleProjectTimerStore';
+import {
   IssueTitleStateCache,
   PullRequestStatusCache,
 } from '../../consoleReadApi';
@@ -723,6 +727,9 @@ export type ConsoleE2eHarness = {
   deleteStoryCalls: ConsoleE2eDeleteStoryCall[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
+  setProjectTimer: (durationSeconds: number) => void;
+  expireProjectTimer: () => void;
+  clearProjectTimer: () => void;
   stop: () => Promise<void>;
 };
 
@@ -831,6 +838,21 @@ export const startConsoleE2eHarness = async (options?: {
     deleteStoryCalls,
     storyColorCalls,
     deleteAllCommentsCalls,
+    setProjectTimer: (durationSeconds: number): void => {
+      writeProjectTimer(consoleDataOutputDir, CONSOLE_E2E_PJCODE, {
+        startedAt: new Date().toISOString(),
+        durationSeconds,
+      });
+    },
+    expireProjectTimer: (): void => {
+      writeProjectTimer(consoleDataOutputDir, CONSOLE_E2E_PJCODE, {
+        startedAt: new Date(Date.now() - 5000).toISOString(),
+        durationSeconds: 1,
+      });
+    },
+    clearProjectTimer: (): void => {
+      deleteProjectTimer(consoleDataOutputDir, CONSOLE_E2E_PJCODE);
+    },
     stop: async (): Promise<void> => {
       await closeServer(server);
       fs.rmSync(tmpRoot, { recursive: true, force: true });

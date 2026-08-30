@@ -169,6 +169,42 @@ body {
   padding: 0 4px;
 }
 
+.console-project-timer-bar {
+  position: relative;
+  width: 100%;
+  background: #2d0000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  box-sizing: border-box;
+  min-height: 28px;
+}
+
+.console-project-timer-bar-track {
+  flex: 1;
+  height: 6px;
+  background: #4d0000;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.console-project-timer-bar-fill {
+  height: 100%;
+  background: #e53e3e;
+  border-radius: 3px;
+  transition: width 0.5s linear;
+}
+
+.console-project-timer-bar-label {
+  color: #e53e3e;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: right;
+}
+
 .console-timer-settings-button {
   background: transparent;
   border: none;

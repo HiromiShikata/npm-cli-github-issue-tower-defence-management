@@ -23,6 +23,7 @@ import type { ImageFetcher } from './consoleImageProxy';
 import { IssueTitleStateCache, PullRequestStatusCache } from './consoleReadApi';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { readDoneProjectItemIds } from './consoleDoneStore';
+import { readProjectTimer } from './consoleProjectTimerStore';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
@@ -2734,15 +2735,29 @@ describe('webServer GET /api/projects', () => {
     server: http.Server,
     method: string,
     requestPath: string,
+    body?: unknown,
   ): Promise<{ statusCode: number; body: string }> => {
     const address = server.address();
     if (address === null || typeof address === 'string') {
       throw new Error('server is not listening on a TCP port');
     }
     const port = address.port;
+    const payload = body === undefined ? null : JSON.stringify(body);
     return new Promise((resolve, reject) => {
       const httpRequest = http.request(
-        { host: '127.0.0.1', port, path: requestPath, method },
+        {
+          host: '127.0.0.1',
+          port,
+          path: requestPath,
+          method,
+          headers:
+            payload === null
+              ? {}
+              : {
+                  'Content-Type': 'application/json',
+                  'Content-Length': Buffer.byteLength(payload),
+                },
+        },
         (response) => {
           const chunks: Uint8Array[] = [];
           response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
@@ -2755,6 +2770,9 @@ describe('webServer GET /api/projects', () => {
         },
       );
       httpRequest.on('error', reject);
+      if (payload !== null) {
+        httpRequest.write(payload);
+      }
       httpRequest.end();
     });
   };
@@ -2939,6 +2957,86 @@ describe('webServer GET /api/projects', () => {
         `/api/airplanesync?k=${testToken}`,
       );
       expect(response.statusCode).toBe(404);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('routes POST /api/timer to start a project timer and writes timer.json', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: tmpDir,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: mock<Project>() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/timer?k=${testToken}`,
+        { pjcode: 'acme', durationSeconds: 1800 },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ ok: true });
+      const timerPath = path.join(tmpDir, 'acme', 'timer.json');
+      expect(fs.existsSync(timerPath)).toBe(true);
+      const written = readProjectTimer(tmpDir, 'acme');
+      expect(written).not.toBeNull();
+      expect(written?.durationSeconds).toBe(1800);
+      expect(typeof written?.startedAt).toBe('string');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('routes POST /api/timer with action=stop to delete the timer file', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    const timerDir = path.join(tmpDir, 'acme');
+    fs.mkdirSync(timerDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(timerDir, 'timer.json'),
+      JSON.stringify({
+        startedAt: '2026-08-30T10:00:00.000Z',
+        durationSeconds: 1800,
+      }),
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: tmpDir,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: mock<Project>() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/timer?k=${testToken}`,
+        { pjcode: 'acme', action: 'stop' },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({ ok: true });
+      expect(fs.existsSync(path.join(timerDir, 'timer.json'))).toBe(false);
     } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });

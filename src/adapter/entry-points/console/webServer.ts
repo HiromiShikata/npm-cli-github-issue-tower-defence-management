@@ -38,6 +38,7 @@ import {
   handleReview,
   handleReviewComment,
   handleStoryColor,
+  handleTimer,
   handleTriage,
 } from './consoleOperationApi';
 import { ImageFetcher, fetchProxiedImage } from './consoleImageProxy';
@@ -563,6 +564,8 @@ const dispatchOperation = (
       return handleDeleteAllComments(context, body);
     case '/api/deletestory':
       return handleDeleteStory(context, body);
+    case '/api/timer':
+      return Promise.resolve(handleTimer(context, body));
     default:
       return null;
   }
