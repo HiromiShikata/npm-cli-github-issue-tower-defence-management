@@ -34,6 +34,18 @@ describe('ConsoleOkAndAwaitingWorkspaceActions', () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it('applies the approve green style class regardless of the status option color', () => {
+    const { getByRole } = render(
+      <ConsoleOkAndAwaitingWorkspaceActions
+        statusOptions={consoleStatusOptionsFixture}
+        onOkAndAwaitingWorkspace={() => {}}
+      />,
+    );
+    expect(
+      getByRole('button', { name: 'ok & Awaiting Workspace' }),
+    ).toHaveClass('console-op-button-approve');
+  });
+
   it('calls the callback with the awaiting workspace option on click', () => {
     const onOkAndAwaitingWorkspace = jest.fn();
     const { getByRole } = render(

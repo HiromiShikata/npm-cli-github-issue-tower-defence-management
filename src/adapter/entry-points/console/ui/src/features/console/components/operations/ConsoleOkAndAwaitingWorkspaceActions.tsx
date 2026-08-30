@@ -1,4 +1,3 @@
-import { colorFromEnum } from '../../logic/colors';
 import type { ConsoleFieldOption } from '../../logic/types';
 
 export type ConsoleOkAndAwaitingWorkspaceActionsProps = {
@@ -20,18 +19,11 @@ export const ConsoleOkAndAwaitingWorkspaceActions = ({
     return null;
   }
 
-  const palette = colorFromEnum(option.color);
-
   return (
     <div className="console-op-group">
       <button
         type="button"
-        className="console-op-button"
-        style={{
-          color: palette.fg,
-          borderColor: palette.border,
-          backgroundColor: palette.bg,
-        }}
+        className="console-op-button console-op-button-approve"
         onClick={() => onOkAndAwaitingWorkspace(option)}
       >
         ok &amp; Awaiting Workspace
