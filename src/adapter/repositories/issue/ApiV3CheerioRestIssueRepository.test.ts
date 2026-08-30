@@ -4549,6 +4549,33 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       expect(result[0].isPassedAllCiJob).toBe(true);
     });
+
+    it('returns an empty array when the GraphQL response reports the issue does not exist', async () => {
+      const consoleInfoSpy = jest
+        .spyOn(console, 'info')
+        .mockImplementation(() => undefined);
+      mockFetchRoutes({
+        timeline: () => ({
+          data: {
+            repository: {
+              issue: null,
+            },
+          },
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/99999',
+      );
+
+      expect(result).toEqual([]);
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'https://github.com/HiromiShikata/test-repository/issues/99999',
+        ),
+      );
+    });
   });
 
   describe('getOpenPullRequestCiStatus', () => {
