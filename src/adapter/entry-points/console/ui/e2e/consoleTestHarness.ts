@@ -3,10 +3,6 @@ import type * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Issue } from '../../../../../domain/entities/Issue';
-import {
-  deleteProjectTimer,
-  writeProjectTimer,
-} from '../../consoleProjectTimerStore';
 import type {
   FieldOption,
   Project,
@@ -21,6 +17,10 @@ import type {
   RelatedPullRequest,
 } from '../../../../../domain/usecases/adapter-interfaces/IssueRepository';
 import type { ConsoleProjectBinding } from '../../consoleOperationApi';
+import {
+  deleteProjectTimer,
+  writeProjectTimer,
+} from '../../consoleProjectTimerStore';
 import {
   IssueTitleStateCache,
   PullRequestStatusCache,
