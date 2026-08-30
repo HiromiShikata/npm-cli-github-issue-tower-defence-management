@@ -15,6 +15,7 @@ export class ClearDependedIssueURLUseCase {
     project: Project;
     issues: Issue[];
     cacheUsed: boolean;
+    allowedExternalRepoNameWithOwner?: string | null;
   }): Promise<void> => {
     const dependedIssueUrlSeparatedByComma =
       input.project.dependedIssueUrlSeparatedByComma;
@@ -42,11 +43,24 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
         continue;
       }
+      const allowedExternalDependedIssueUrls = absentDependedIssueIsResolvable
+        ? issue.dependedIssueUrls.filter(
+            (url) =>
+              this.isFromAllowedExternalRepo(
+                url,
+                input.allowedExternalRepoNameWithOwner,
+              ) && !input.issues.some((depIssue) => depIssue.url === url),
+          )
+        : [];
       const notFoundDependedIssueUrls = absentDependedIssueIsResolvable
         ? issue.dependedIssueUrls.filter(
             (dependedIssueUrl) =>
               !input.issues.some(
                 (depIssue) => depIssue.url === dependedIssueUrl,
+              ) &&
+              !this.isFromAllowedExternalRepo(
+                dependedIssueUrl,
+                input.allowedExternalRepoNameWithOwner,
               ),
           )
         : [];
@@ -83,7 +97,7 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         continue;
       }
       const remainingDependedIssueUrls = absentDependedIssueIsResolvable
-        ? openDependedIssueUrls
+        ? [...openDependedIssueUrls, ...allowedExternalDependedIssueUrls]
         : issue.dependedIssueUrls.filter(
             (dependedIssueUrl) =>
               !closedDependedIssueUrls.includes(dependedIssueUrl) &&
@@ -132,6 +146,16 @@ ${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
       }
     }
+  };
+
+  private isFromAllowedExternalRepo = (
+    url: string,
+    allowedExternalRepoNameWithOwner: string | null | undefined,
+  ): boolean => {
+    if (!allowedExternalRepoNameWithOwner) return false;
+    return url.startsWith(
+      `https://github.com/${allowedExternalRepoNameWithOwner}/`,
+    );
   };
 
   private findCircularDependedIssueUrls = (
