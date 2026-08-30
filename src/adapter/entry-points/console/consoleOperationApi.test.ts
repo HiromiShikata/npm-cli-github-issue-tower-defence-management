@@ -2586,7 +2586,10 @@ describe('consoleOperationApi', () => {
 
     it('returns 400 when project does not have dependedIssueUrlSeparatedByComma configured', async () => {
       const response = await handleSetDependedIssueUrl(
-        contextForProject({ ...project, dependedIssueUrlSeparatedByComma: null }),
+        contextForProject({
+          ...project,
+          dependedIssueUrlSeparatedByComma: null,
+        }),
         {
           pjcode: 'acme',
           issueUrl: 'https://github.com/o/r/issues/1',
