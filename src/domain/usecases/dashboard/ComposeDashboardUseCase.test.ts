@@ -4,6 +4,7 @@ import {
   PROJECT_ROW_WIDTH_BUDGET,
   SEVEN_DAY_UTILIZATION_COLUMN_START,
   STATUS_DOT_DISPLAY_WIDTH,
+  TOKEN_SESSION_COLUMN_START,
   TOKEN_UTILIZATION_WIDTH,
   formatMachineStatusLines,
   formatProjectHeaderLine,
@@ -11,6 +12,7 @@ import {
   formatResetCountdown,
   formatSevenDayWindowAggregateLine,
   formatTokenRowLine,
+  formatTokenSessionTotalLine,
   roundHalfToEven,
 } from './ComposeDashboardUseCase';
 import { DashboardRow } from './GenerateDashboardRowUseCase';
@@ -200,9 +202,7 @@ describe('formatMachineStatusLines', () => {
 
 describe('formatProjectHeaderLine', () => {
   it('renders the project grid header with story color signal columns', () => {
-    expect(formatProjectHeaderLine()).toBe(
-      'pj   tdo aqc fal prp aws dep 🔴 🟡 🔵',
-    );
+    expect(formatProjectHeaderLine()).toBe('pj   td qc fl pp ws dp 🔴 🟡 🔵');
   });
 
   it('fits within the code point width budget', () => {
@@ -219,7 +219,7 @@ describe('formatProjectRowLine', () => {
         code: 'ac',
         row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }),
       }),
-    ).toBe('🟢ac   1   2   0   0   4   1  0  0  0');
+    ).toBe('🟢ac  1  2  0  0  4  1  0  0  0');
   });
 
   it('renders non-zero story color counts in the color columns', () => {
@@ -228,7 +228,7 @@ describe('formatProjectRowLine', () => {
         code: 'ac',
         row: projectRow({ humanPendingRed: 8, humanPendingYellow: 3 }),
       }),
-    ).toBe('🟢ac   0   0   0   0   0   0  8  3  0');
+    ).toBe('🟢ac  0  0  0  0  0  0  8  3  0');
   });
 
   it('caps a story color count above 99 at 99', () => {
@@ -242,14 +242,14 @@ describe('formatProjectRowLine', () => {
 
   it('renders placeholder cells with a blank dot for an absent project file', () => {
     expect(formatProjectRowLine({ code: 'in', row: null })).toBe(
-      '  in  --  --  --  --  --  -- -- -- --',
+      '  in -- -- -- -- -- -- -- -- --',
     );
   });
 
-  it('caps a count above 999 at 999', () => {
+  it('caps a count above 99 at 99', () => {
     expect(
       formatProjectRowLine({ code: 'ac', row: projectRow({ todo: 1500 }) }),
-    ).toBe('🟢ac 999   0   0   0   0   0  0  0  0');
+    ).toBe('🟢ac 99  0  0  0  0  0  0  0  0');
   });
 
   it('applies the four level severity dot rules in descending order', () => {
@@ -305,7 +305,7 @@ describe('formatProjectRowLine', () => {
 });
 
 describe('formatTokenRowLine', () => {
-  it('renders a token row with utilization, reset countdown, prep and hum', () => {
+  it('renders a token row with the last two name chars, utilization without percent, reset countdown, prep and hum', () => {
     expect(
       formatTokenRowLine(
         tokenStatus({
@@ -319,10 +319,10 @@ describe('formatTokenRowLine', () => {
           hum: 1,
         }),
       ),
-    ).toBe('🟢alice  10% 0d01h00  12% 5d00h00 2 1');
+    ).toBe('🟢ce 10 0d01h00 12 5d00h00 2 1');
   });
 
-  it('pads short names to four characters with underscores', () => {
+  it('uses last two characters of the name and caps utilization at 99', () => {
     expect(
       formatTokenRowLine(
         tokenStatus({
@@ -334,7 +334,7 @@ describe('formatTokenRowLine', () => {
           color: 'K',
         }),
       ),
-    ).toBe('⚪bob_ 100% 0d00h00  95% 0d02h00 0 0');
+    ).toBe('⚪ob 99 0d00h00 95 0d02h00 0 0');
   });
 
   it('renders question marks when window data is unavailable', () => {
@@ -351,7 +351,7 @@ describe('formatTokenRowLine', () => {
           hum: 0,
         }),
       ),
-    ).toBe('🟡carolxx    ? ?    ? ? 1 0');
+    ).toBe('🟡xx  ? ?  ? ? 1 0');
   });
 });
 
@@ -413,15 +413,18 @@ describe('ComposeDashboardUseCase', () => {
   const expectedBody =
     '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
     '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-    '<tt>pj&nbsp;&nbsp;&nbsp;tdo&nbsp;aqc&nbsp;fal&nbsp;prp&nbsp;aws&nbsp;dep&nbsp;🔴&nbsp;🟡&nbsp;🔵</tt><br>\n' +
-    '<tt>🟢ac&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;2&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;4&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>🟠gl&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;16&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;in&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;&nbsp;--&nbsp;--&nbsp;--&nbsp;--</tt><br>\n' +
-    '<tt>🟣um&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>pj&nbsp;&nbsp;&nbsp;td&nbsp;qc&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵</tt><br>\n' +
+    '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--</tt><br>\n' +
+    '<tt>🟣um&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
-    '<tt>⚪bob_&nbsp;100%&nbsp;0d00h00&nbsp;&nbsp;95%&nbsp;0d02h00&nbsp;0&nbsp;0</tt><br>\n' +
-    '<tt>🟢alice&nbsp;&nbsp;10%&nbsp;0d01h00&nbsp;&nbsp;12%&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n' +
-    '<tt>🟡carolxx&nbsp;&nbsp;&nbsp;&nbsp;?&nbsp;?&nbsp;&nbsp;&nbsp;&nbsp;?&nbsp;?&nbsp;1&nbsp;0</tt><br>\n';
+    '<tt>' +
+    '&nbsp;'.repeat(TOKEN_SESSION_COLUMN_START) +
+    '3&nbsp;1</tt><br>\n' +
+    '<tt>⚪ob&nbsp;99&nbsp;0d00h00&nbsp;95&nbsp;0d02h00&nbsp;0&nbsp;0</tt><br>\n' +
+    '<tt>🟢ce&nbsp;10&nbsp;0d01h00&nbsp;12&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n' +
+    '<tt>🟡xx&nbsp;&nbsp;?&nbsp;?&nbsp;&nbsp;?&nbsp;?&nbsp;1&nbsp;0</tt><br>\n';
 
   it('composes byte-identical dashboard text for representative inputs', () => {
     expect(new ComposeDashboardUseCase().run(representativeInput)).toBe(
@@ -431,9 +434,9 @@ describe('ComposeDashboardUseCase', () => {
 
   it('sorts token rows by seven day reset ascending with null resets last', () => {
     const output = new ComposeDashboardUseCase().run(representativeInput);
-    const bobIndex = output.indexOf('⚪bob_');
-    const aliceIndex = output.indexOf('🟢alice');
-    const carolIndex = output.indexOf('🟡carolxx');
+    const bobIndex = output.indexOf('⚪ob');
+    const aliceIndex = output.indexOf('🟢ce');
+    const carolIndex = output.indexOf('🟡xx');
     expect(bobIndex).toBeLessThan(aliceIndex);
     expect(aliceIndex).toBeLessThan(carolIndex);
   });
@@ -448,8 +451,8 @@ describe('ComposeDashboardUseCase', () => {
         tokenStatus({ name: 'third', sevenDayResetSeconds: 100 }),
       ],
     });
-    expect(output.indexOf('first')).toBeLessThan(output.indexOf('second'));
-    expect(output.indexOf('second')).toBeLessThan(output.indexOf('third'));
+    expect(output.indexOf('st')).toBeLessThan(output.indexOf('nd'));
+    expect(output.indexOf('nd')).toBeLessThan(output.indexOf('rd'));
   });
 
   it('renders host placeholders when the machine status file is absent', () => {
@@ -513,27 +516,29 @@ describe('ComposeDashboardUseCase', () => {
 const inDisplayColumns = (tokenRowLine: string): string =>
   ' '.repeat(STATUS_DOT_DISPLAY_WIDTH) + [...tokenRowLine].slice(1).join('');
 
-const sevenDayUtilizationColumn = (line: string): number =>
-  [...line].lastIndexOf('%') + 1 - TOKEN_UTILIZATION_WIDTH;
+const sevenDayUtilizationColumnStart = (line: string): number => {
+  const chars = [...line];
+  return chars.findIndex((c) => c !== ' ');
+};
 
 describe('formatSevenDayWindowAggregateLine', () => {
-  it('renders only the used percentage, with no label and no count when every token is included', () => {
+  it('renders only the used value without percent, with no label and no count when every token is included', () => {
     expect(
       formatSevenDayWindowAggregateLine({
         usedPercent: 63,
         includedTokenCount: 10,
         totalTokenCount: 10,
       }),
-    ).toBe(' '.repeat(21) + '63%');
+    ).toBe(' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '63');
   });
 
-  it('places the used percentage in the same display column as the seven day utilization of every token row', () => {
+  it('places the used value in the same display column as the seven day utilization of every token row', () => {
     const aggregateLine = formatSevenDayWindowAggregateLine({
       usedPercent: 63.36,
       includedTokenCount: 11,
       totalTokenCount: 11,
     });
-    expect(sevenDayUtilizationColumn(aggregateLine ?? '')).toBe(
+    expect(sevenDayUtilizationColumnStart(aggregateLine ?? '')).toBe(
       SEVEN_DAY_UTILIZATION_COLUMN_START,
     );
     const colors: TokenStatusColor[] = ['G', 'Y', 'K'];
@@ -544,19 +549,24 @@ describe('formatSevenDayWindowAggregateLine', () => {
           color,
           fiveHourUtilizationPercent: 0,
           fiveHourResetSeconds: 60,
-          sevenDayUtilizationPercent: 100,
+          sevenDayUtilizationPercent: 0,
           sevenDayResetSeconds: 96060,
         }),
       );
-      expect(sevenDayUtilizationColumn(inDisplayColumns(tokenRow))).toBe(
-        SEVEN_DAY_UTILIZATION_COLUMN_START,
-      );
+      const displayRow = inDisplayColumns(tokenRow);
+      const sevenDayCell = [...displayRow]
+        .slice(
+          SEVEN_DAY_UTILIZATION_COLUMN_START,
+          SEVEN_DAY_UTILIZATION_COLUMN_START + TOKEN_UTILIZATION_WIDTH,
+        )
+        .join('');
+      expect(sevenDayCell).toMatch(/^ *\d+$/);
     }
   });
 
-  it('keeps the alignment when the used percentage needs fewer digits', () => {
+  it('keeps the alignment when the used value needs fewer digits', () => {
     const wide = formatSevenDayWindowAggregateLine({
-      usedPercent: 100,
+      usedPercent: 99,
       includedTokenCount: 1,
       totalTokenCount: 1,
     });
@@ -565,8 +575,10 @@ describe('formatSevenDayWindowAggregateLine', () => {
       includedTokenCount: 1,
       totalTokenCount: 1,
     });
-    expect(wide).toBe(' '.repeat(20) + '100%');
-    expect(narrow).toBe(' '.repeat(22) + '5%');
+    expect(wide).toBe(' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '99');
+    expect(narrow).toBe(
+      ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START + 1) + '5',
+    );
     expect(codePointLength(wide ?? '')).toBe(codePointLength(narrow ?? ''));
   });
 
@@ -577,24 +589,24 @@ describe('formatSevenDayWindowAggregateLine', () => {
         includedTokenCount: 9,
         totalTokenCount: 10,
       }),
-    ).toBe(' '.repeat(21) + '63% (9)');
+    ).toBe(' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '63 (9)');
   });
 
-  it('rounds the used percentage with half-to-even before rendering', () => {
+  it('rounds the used value with half-to-even before rendering', () => {
     expect(
       formatSevenDayWindowAggregateLine({
         usedPercent: 62.5,
         includedTokenCount: 2,
         totalTokenCount: 2,
       }),
-    ).toBe(' '.repeat(21) + '62%');
+    ).toBe(' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '62');
     expect(
       formatSevenDayWindowAggregateLine({
         usedPercent: 63.5,
         includedTokenCount: 2,
         totalTokenCount: 2,
       }),
-    ).toBe(' '.repeat(21) + '64%');
+    ).toBe(' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '64');
   });
 
   it('renders nothing when the aggregate is absent', () => {
@@ -603,11 +615,13 @@ describe('formatSevenDayWindowAggregateLine', () => {
 
   it('fits the width budget at the widest rendering', () => {
     const line = formatSevenDayWindowAggregateLine({
-      usedPercent: 100,
+      usedPercent: 99,
       includedTokenCount: 999,
       totalTokenCount: 1000,
     });
-    expect(line).toBe(' '.repeat(20) + '100% (999)');
+    expect(line).toBe(
+      ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '99 (999)',
+    );
     expect(codePointLength(line ?? '')).toBeLessThanOrEqual(
       PROJECT_ROW_WIDTH_BUDGET,
     );
@@ -638,7 +652,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
           .replace(/&nbsp;/g, ' '),
       );
 
-  it('places the aggregate line immediately above the token rows', () => {
+  it('places the aggregate line immediately above the session total, with the first token row after both', () => {
     const lines = unwrappedLines(
       new ComposeDashboardUseCase().run(
         aggregateInput({
@@ -648,7 +662,9 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
         }),
       ),
     );
-    const aggregateIndex = lines.indexOf(' '.repeat(21) + '63%');
+    const aggregateIndex = lines.indexOf(
+      ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '63',
+    );
     expect(aggregateIndex).toBeGreaterThan(-1);
     expect(lines[aggregateIndex - 1]).toBe(
       formatProjectRowLine({
@@ -656,10 +672,11 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
         row: projectRow({ todo: 1 }),
       }),
     );
-    expect(lines[aggregateIndex + 1]).toContain('alice');
+    expect(lines[aggregateIndex + 1]).toMatch(/^ +\d+ \d+$/);
+    expect(lines[aggregateIndex + 2]).toContain('ce');
   });
 
-  const AGGREGATE_LINE_SHAPE = /^ +\d+%( \(\d+\))?$/;
+  const AGGREGATE_LINE_SHAPE = /^ +\d+( \(\d+\))?$/;
 
   it('keeps the blank separator line when the aggregate is absent', () => {
     const lines = unwrappedLines(
@@ -679,5 +696,28 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     );
     expect(lines.some((line) => AGGREGATE_LINE_SHAPE.test(line))).toBe(false);
     expect(lines).toContain('');
+  });
+});
+
+describe('formatTokenSessionTotalLine', () => {
+  it('returns null when there are no tokens', () => {
+    expect(formatTokenSessionTotalLine([])).toBeNull();
+  });
+
+  it('sums prep and hum across all tokens at the session column start position', () => {
+    const result = formatTokenSessionTotalLine([
+      tokenStatus({ name: 'alice', prep: 2, hum: 1 }),
+      tokenStatus({ name: 'bob', prep: 0, hum: 0 }),
+      tokenStatus({ name: 'carolxx', prep: 1, hum: 0 }),
+    ]);
+    expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '3 1');
+  });
+
+  it('renders zero totals when all tokens have no assigned sessions', () => {
+    const result = formatTokenSessionTotalLine([
+      tokenStatus({ name: 'alice', prep: 0, hum: 0 }),
+      tokenStatus({ name: 'bob', prep: 0, hum: 0 }),
+    ]);
+    expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 0');
   });
 });

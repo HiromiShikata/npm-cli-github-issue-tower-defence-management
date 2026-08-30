@@ -164,21 +164,19 @@ describe('dashboard emitter filename matches composer lookup key', () => {
       [
         wrap('M55% C62% D93% cy13'),
         wrap('LA 16 23 40'),
-        wrap('pj   tdo aqc fal prp aws dep 🔴 🟡 🔵'),
+        wrap('pj   td qc fl pp ws dp 🔴 🟡 🔵'),
+        wrap(`🟢${toDashboardDisplayLabel('acme')}  0  0  2  0  0  0  0  0  0`),
         wrap(
-          `🟢${toDashboardDisplayLabel('acme')}   0   0   2   0   0   0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('globex')}  0  1  0  0  0  0  0  0  0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('globex')}   0   1   0   0   0   0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('initech')}  0  0  0  0  1  0  0  0  0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('initech')}   0   0   0   0   1   0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('umbrella')}  1  0  0  0  0  0  0  0  0`,
         ),
         wrap(
-          `🟢${toDashboardDisplayLabel('umbrella')}   1   0   0   0   0   0  0  0  0`,
-        ),
-        wrap(
-          `🟢${toDashboardDisplayLabel('soylent')}   0   0   0   1   0   0  0  0  0`,
+          `🟢${toDashboardDisplayLabel('soylent')}  0  0  0  1  0  0  0  0  0`,
         ),
         wrap(''),
       ].join('\n') + '\n';
