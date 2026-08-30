@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ConsoleComment } from '../../logic/types';
 
 export type ConsoleCommentComposerProps = {
@@ -96,6 +96,29 @@ export const ConsoleCommentComposer = ({
     kind: 'idle',
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const cursorToRestoreRef = useRef<{ start: number; end: number } | null>(
+    null,
+  );
+
+  useLayoutEffect(() => {
+    if (cursorToRestoreRef.current !== null && textareaRef.current !== null) {
+      textareaRef.current.setSelectionRange(
+        cursorToRestoreRef.current.start,
+        cursorToRestoreRef.current.end,
+      );
+      cursorToRestoreRef.current = null;
+    }
+  });
+
+  const saveCursorPosition = (): void => {
+    if (textareaRef.current !== null) {
+      cursorToRestoreRef.current = {
+        start: textareaRef.current.selectionStart,
+        end: textareaRef.current.selectionEnd,
+      };
+    }
+  };
 
   const submit = async (withMove: boolean): Promise<void> => {
     const body = draft.trim();
@@ -124,15 +147,18 @@ export const ConsoleCommentComposer = ({
       return;
     }
     for (const file of files) {
+      saveCursorPosition();
       setDraft((previous) => insertUploadPlaceholder(previous, file.name));
       setUploadStatus({ kind: 'uploading', fileName: file.name });
       try {
         const markdown = await onUploadFile(file);
+        saveCursorPosition();
         setDraft((previous) =>
           replacePlaceholderWithMarkdown(previous, file.name, markdown),
         );
         setUploadStatus({ kind: 'idle' });
       } catch (error) {
+        saveCursorPosition();
         setDraft((previous) => removePlaceholder(previous, file.name));
         setUploadStatus({
           kind: 'error',
@@ -157,6 +183,7 @@ export const ConsoleCommentComposer = ({
       {open && (
         <div className="console-composer-form">
           <textarea
+            ref={textareaRef}
             className="console-composer-input"
             rows={3}
             placeholder="Leave a comment…"

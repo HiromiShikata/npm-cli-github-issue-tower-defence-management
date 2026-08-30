@@ -506,6 +506,80 @@ describe('ConsoleCommentComposer', () => {
     const alert = await findByRole('alert');
     expect(alert.textContent).toContain('No GitHub web session is available');
   });
+
+  it('preserves the cursor position in the textarea when a file upload replaces the placeholder', async () => {
+    let resolveUpload!: (markdown: string) => void;
+    const onUploadFile = jest.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    const { getByPlaceholderText, getByLabelText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onUploadFile={onUploadFile}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'Hello world' } });
+    textarea.setSelectionRange(5, 5);
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toContain('![uploading shot.png]()');
+    });
+    expect(textarea.selectionStart).toBe(5);
+    expect(textarea.selectionEnd).toBe(5);
+    resolveUpload('![shot](https://github.com/user-attachments/assets/abc)');
+    await waitFor(() => {
+      expect(textarea.value).not.toContain('![uploading shot.png]()');
+    });
+    expect(textarea.selectionStart).toBe(5);
+    expect(textarea.selectionEnd).toBe(5);
+  });
+
+  it('preserves the cursor position in the textarea when a file upload fails and the placeholder is removed', async () => {
+    let rejectUpload!: (error: Error) => void;
+    const onUploadFile = jest.fn(
+      () =>
+        new Promise<string>((_, reject) => {
+          rejectUpload = reject;
+        }),
+    );
+    const { getByPlaceholderText, getByLabelText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onUploadFile={onUploadFile}
+      />,
+    );
+    const textarea = getByPlaceholderText(
+      'Leave a comment…',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'Hello world' } });
+    textarea.setSelectionRange(5, 5);
+    const file = new File(['binary'], 'shot.png', { type: 'image/png' });
+    fireEvent.change(getByLabelText('Attach files'), {
+      target: { files: [file] },
+    });
+    await waitFor(() => {
+      expect(textarea.value).toContain('![uploading shot.png]()');
+    });
+    expect(textarea.selectionStart).toBe(5);
+    expect(textarea.selectionEnd).toBe(5);
+    rejectUpload(new Error('network error'));
+    await waitFor(() => {
+      expect(textarea.value).not.toContain('![uploading shot.png]()');
+    });
+    expect(textarea.selectionStart).toBe(5);
+    expect(textarea.selectionEnd).toBe(5);
+  });
 });
 
 describe('insertUploadPlaceholder', () => {
