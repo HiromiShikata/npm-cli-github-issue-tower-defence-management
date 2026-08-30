@@ -146,6 +146,7 @@ jest.mock('../cli/fleetConfig', () => ({
   resolveFleetConfigFilePath: jest.fn(),
   loadStartPreparationFleetSettings: jest.fn(),
   loadWorkflowImprovementIssueUrl: jest.fn(),
+  loadWorkflowIssueReporterSettings: jest.fn(),
 }));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
@@ -162,6 +163,7 @@ import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeT
 import {
   loadWorkflowImprovementIssueUrl,
   loadStartPreparationFleetSettings,
+  loadWorkflowIssueReporterSettings,
   resolveFleetConfigFilePath,
 } from '../cli/fleetConfig';
 
@@ -170,6 +172,9 @@ const mockLoadWorkflowImprovementIssueUrl = jest.mocked(
 );
 const mockLoadStartPreparationFleetSettings = jest.mocked(
   loadStartPreparationFleetSettings,
+);
+const mockLoadWorkflowIssueReporterSettings = jest.mocked(
+  loadWorkflowIssueReporterSettings,
 );
 const mockResolveFleetConfigFilePath = jest.mocked(resolveFleetConfigFilePath);
 
@@ -241,6 +246,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
       maximumPreparingIssuesCount: 80,
     });
     mockLoadWorkflowImprovementIssueUrl.mockReturnValue(null);
+    mockLoadWorkflowIssueReporterSettings.mockReturnValue(null);
   });
 
   it('should throw when required credential fields are missing from config', async () => {
