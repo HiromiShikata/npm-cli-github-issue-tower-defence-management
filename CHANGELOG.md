@@ -1,3 +1,10 @@
+## [2.19.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.2...v2.19.3) (2026-08-30)
+
+
+### Performance Improvements
+
+* **console:** return created comment from POST response to eliminate extra fetch ([#1888](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1888)) ([d92fb4e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d92fb4e7b90237c3154bbad701254e46d9ba3c97)), closes [HiromiShikata/umino-corporait-operation#31115](https://github.com/HiromiShikata/umino-corporait-operation/issues/31115)
+
 ## [2.19.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.1...v2.19.2) (2026-08-30)
 
 
