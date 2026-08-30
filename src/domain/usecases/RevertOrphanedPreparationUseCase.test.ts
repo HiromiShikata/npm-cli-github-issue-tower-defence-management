@@ -2537,7 +2537,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
           name: 'Status',
           fieldId: 'status-field-id',
           statuses: [
-            { id: '1', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
+            {
+              id: '1',
+              name: 'Awaiting Workspace',
+              color: 'GRAY',
+              description: '',
+            },
           ],
         },
         nextActionDate: null,
