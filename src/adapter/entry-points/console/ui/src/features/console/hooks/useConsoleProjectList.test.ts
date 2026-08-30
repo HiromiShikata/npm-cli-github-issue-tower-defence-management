@@ -40,8 +40,7 @@ describe('useConsoleProjectList', () => {
       status: 200,
       json: async () => ({
         pjcodes: ['acme'],
-        workflowImprovementIssueUrl:
-          'https://github.com/owner/repo/issues/new',
+        workflowImprovementIssueUrl: 'https://github.com/owner/repo/issues/new',
       }),
     })) as unknown as typeof fetch;
 
