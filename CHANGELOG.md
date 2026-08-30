@@ -1,3 +1,10 @@
+# [2.20.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.4...v2.20.0) (2026-08-30)
+
+
+### Features
+
+* **dashboard:** add story color signal circles to project row ([#1891](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1891)) ([0c210a1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0c210a164c70f9741f00e92a1a8973d716e0ca05)), closes [HiromiShikata/umino-corporait-operation#31109](https://github.com/HiromiShikata/umino-corporait-operation/issues/31109)
+
 ## [2.19.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.19.3...v2.19.4) (2026-08-30)
 
 
