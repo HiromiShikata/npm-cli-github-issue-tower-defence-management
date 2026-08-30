@@ -551,3 +551,41 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
       : null;
   return { pjcodes, workflowImprovementIssueUrl };
 };
+
+export const PROJECT_README_CONFIG_PATH = '/api/projectreadmeconfig';
+
+export const fetchProjectReadmeConfig = async (
+  pjcode: string,
+): Promise<{ maximumPreparingIssuesCount: number | null }> => {
+  const url = `${PROJECT_README_CONFIG_PATH}?pjcode=${encodeURIComponent(pjcode)}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+  const payload: unknown = await response.json();
+  const count =
+    isRecord(payload) && typeof payload.maximumPreparingIssuesCount === 'number'
+      ? payload.maximumPreparingIssuesCount
+      : null;
+  return { maximumPreparingIssuesCount: count };
+};
+
+export const PROJECT_SETTINGS_OPERATION_PATH = '/api/projectsettings';
+
+export type ConsoleProjectSettingsRequest = {
+  pjcode: string;
+  maximumPreparingIssuesCount: number;
+};
+
+export const postProjectMaxPreparingUpdate = async (
+  request: ConsoleProjectSettingsRequest,
+): Promise<void> => {
+  const response = await fetch(PROJECT_SETTINGS_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};

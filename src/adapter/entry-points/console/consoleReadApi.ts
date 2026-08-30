@@ -4,6 +4,11 @@ import {
   PullRequestCommit,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
+import {
+  fetchProjectReadme,
+  parseProjectReadmeConfig,
+} from '../cli/projectConfig';
+import type { ConsoleProjectResolver } from './consoleOperationApi';
 
 export const ISSUE_TITLE_CACHE_TTL_MS = 300 * 1000;
 
@@ -358,4 +363,47 @@ export const handlePullRequestStatus = async (
     }
     throw error;
   }
+};
+
+export const handleProjectReadmeConfig = async (
+  resolveProject: ConsoleProjectResolver | null,
+  githubToken: string | null,
+  pjcode: string | null,
+): Promise<{ statusCode: number; body: unknown }> => {
+  if (resolveProject === null) {
+    return {
+      statusCode: 502,
+      body: { error: 'project resolver is not configured' },
+    };
+  }
+  if (githubToken === null || githubToken.length === 0) {
+    return {
+      statusCode: 502,
+      body: { error: 'github token is not configured' },
+    };
+  }
+  if (pjcode === null || pjcode.length === 0) {
+    return { statusCode: 400, body: { error: 'pjcode is required' } };
+  }
+  const binding = await resolveProject(pjcode);
+  if (binding === null) {
+    return {
+      statusCode: 404,
+      body: { error: `project "${pjcode}" is not configured` },
+    };
+  }
+  const readme = await fetchProjectReadme(binding.project.url, githubToken);
+  if (readme === null) {
+    return {
+      statusCode: 200,
+      body: { maximumPreparingIssuesCount: null },
+    };
+  }
+  const config = parseProjectReadmeConfig(readme);
+  return {
+    statusCode: 200,
+    body: {
+      maximumPreparingIssuesCount: config.maximumPreparingIssuesCount ?? null,
+    },
+  };
 };

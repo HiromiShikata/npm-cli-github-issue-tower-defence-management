@@ -339,6 +339,132 @@ body {
   background: #2ea043;
 }
 
+.console-tab-settings-button {
+  align-self: center;
+  margin-left: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.console-tab-settings-button:hover {
+  color: #e6edf3;
+  border-color: #58a6ff;
+}
+
+.console-settings-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #0d1117;
+  display: flex;
+  flex-direction: column;
+}
+
+.console-settings-modal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+}
+
+.console-settings-modal-title {
+  color: #e6edf3;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.console-settings-modal-close {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  font-size: 1.125rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.console-settings-modal-close:hover {
+  color: #e6edf3;
+}
+
+.console-settings-modal-body {
+  flex: 1;
+  padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.console-settings-modal-loading {
+  color: #8b949e;
+  font-size: 0.875rem;
+}
+
+.console-settings-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.console-settings-modal-label {
+  color: #e6edf3;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.console-settings-modal-input {
+  padding: 6px 10px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 0.875rem;
+  max-width: 200px;
+}
+
+.console-settings-modal-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.console-settings-modal-error {
+  color: #f85149;
+  font-size: 0.875rem;
+}
+
+.console-settings-modal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.console-settings-modal-save {
+  padding: 6px 16px;
+  background: #238636;
+  border: 1px solid #2ea043;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.console-settings-modal-save:hover:not(:disabled) {
+  background: #2ea043;
+}
+
+.console-settings-modal-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .console-list {
   list-style: none;
   margin: 0;

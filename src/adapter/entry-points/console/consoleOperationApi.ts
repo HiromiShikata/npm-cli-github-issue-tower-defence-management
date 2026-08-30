@@ -22,6 +22,11 @@ import {
   deleteProjectTimer,
   writeProjectTimer,
 } from './consoleProjectTimerStore';
+import {
+  fetchProjectReadme,
+  setProjectReadmeMaxPreparingIssuesCount,
+  updateProjectV2Readme,
+} from '../cli/projectConfig';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const CONFLICT_RETURNED_MESSAGE =
@@ -998,5 +1003,39 @@ export const handleTimer = (
     startedAt: new Date().toISOString(),
     durationSeconds,
   });
+  return ok();
+};
+
+export const handleProjectMaxPreparingUpdate = async (
+  context: ConsoleOperationContext,
+  githubToken: string | null,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  if (githubToken === null || githubToken.length === 0) {
+    return badGateway('github token is not configured');
+  }
+  const count = body.maximumPreparingIssuesCount;
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) {
+    return badRequest('maximumPreparingIssuesCount must be a positive integer');
+  }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { project } = binding;
+  const readme = await fetchProjectReadme(project.url, githubToken);
+  if (readme === null) {
+    return badGateway('failed to fetch project README');
+  }
+  const updatedReadme = setProjectReadmeMaxPreparingIssuesCount(readme, count);
+  try {
+    await updateProjectV2Readme(project.id, updatedReadme, githubToken);
+  } catch (error) {
+    return badGateway(
+      error instanceof Error
+        ? error.message
+        : 'failed to update project README',
+    );
+  }
   return ok();
 };

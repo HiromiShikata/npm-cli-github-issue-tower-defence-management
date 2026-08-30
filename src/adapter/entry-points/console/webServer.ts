@@ -18,6 +18,7 @@ import {
   handlePrCommits,
   handlePrFiles,
   handlePullRequestStatus,
+  handleProjectReadmeConfig,
   handleRelatedPrs,
 } from './consoleReadApi';
 import { handleAirplaneSync } from './consoleAirplaneSnapshotApi';
@@ -34,6 +35,7 @@ import {
   handleDeleteAllComments,
   handleDeleteStory,
   handleIntmux,
+  handleProjectMaxPreparingUpdate,
   handleReorderStory,
   handleReview,
   handleReviewComment,
@@ -536,6 +538,7 @@ const operationErrorMessage = (error: unknown): string => {
 
 const dispatchOperation = (
   context: ConsoleOperationContext,
+  githubToken: string | null,
   requestPath: string,
   body: Record<string, unknown>,
 ): Promise<{ statusCode: number; body: unknown }> | null => {
@@ -566,6 +569,8 @@ const dispatchOperation = (
       return handleDeleteStory(context, body);
     case '/api/timer':
       return Promise.resolve(handleTimer(context, body));
+    case '/api/projectsettings':
+      return handleProjectMaxPreparingUpdate(context, githubToken, body);
     default:
       return null;
   }
@@ -598,7 +603,9 @@ const handleOperationApi = async (
     invalidateProject: options.invalidateProject ?? null,
     updateProjectCacheEntry: options.updateProjectCacheEntry ?? null,
   };
-  const dispatched = dispatchOperation(context, requestPath, body);
+  const githubToken =
+    options.resolveGithubToken != null ? options.resolveGithubToken('') : null;
+  const dispatched = dispatchOperation(context, githubToken, requestPath, body);
   if (dispatched === null) {
     return null;
   }
@@ -711,6 +718,23 @@ const handleTokenedRequest = async (
           options.resolveGithubToken != null
             ? options.resolveGithubToken('')
             : null,
+        );
+        return;
+      }
+      if (requestPath === '/api/projectreadmeconfig') {
+        const githubTokenForReadme =
+          options.resolveGithubToken != null
+            ? options.resolveGithubToken('')
+            : null;
+        const projectReadmeResult = await handleProjectReadmeConfig(
+          options.resolveProject ?? null,
+          githubTokenForReadme,
+          searchParams.get('pjcode'),
+        );
+        sendJson(
+          response,
+          projectReadmeResult.statusCode,
+          projectReadmeResult.body,
         );
         return;
       }

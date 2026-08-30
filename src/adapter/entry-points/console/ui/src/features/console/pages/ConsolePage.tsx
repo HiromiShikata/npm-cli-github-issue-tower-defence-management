@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleProjectSettingsModalScreen';
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
@@ -23,6 +24,7 @@ import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
 import { useConsoleProjectList } from '../hooks/useConsoleProjectList';
+import { useConsoleProjectSettings } from '../hooks/useConsoleProjectSettings';
 import { useConsoleProjectTimer } from '../hooks/useConsoleProjectTimer';
 import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
@@ -110,6 +112,8 @@ export const ConsolePage = () => {
   } = useConsoleProjectList();
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
+
+  const projectSettings = useConsoleProjectSettings(pjcode);
 
   const counts = useMemo(() => {
     const result = emptyCounts();
@@ -661,6 +665,17 @@ export const ConsolePage = () => {
         onConfirm={handleConfirmOffline}
         onDiscard={actionQueue.discardOfflineAction}
       />
+      {projectSettings.isOpen && (
+        <ConsoleProjectSettingsModalScreen
+          value={projectSettings.inputValue}
+          onChange={projectSettings.changeInput}
+          isLoading={projectSettings.isLoading}
+          isSaving={projectSettings.isSaving}
+          error={projectSettings.error}
+          onSave={projectSettings.save}
+          onClose={projectSettings.close}
+        />
+      )}
       <ConsoleTabList
         activeTab={activeTab}
         counts={counts}
@@ -672,18 +687,30 @@ export const ConsolePage = () => {
         onSelectTab={navigation.selectTab}
         onSelectProject={(code) => navigateAssign(`/projects/${code}`)}
         settingsButton={
-          <ConsoleTimerSettingsModalDialog
-            isOpen={isSettingsOpen}
-            timerMode={draftTimerMode}
-            projectMinutes={draftProjectMinutes}
-            pjcodes={pjcodes}
-            isLoadingPjcodes={isLoadingPjcodes}
-            onOpen={openSettings}
-            onToggleTimerMode={toggleDraftTimerMode}
-            onChangeMinutes={changeDraftMinutes}
-            onSave={saveSettings}
-            onClose={closeSettings}
-          />
+          <>
+            {pjcode !== null && (
+              <button
+                type="button"
+                className="console-tab-settings-button"
+                aria-label="Open project settings"
+                onClick={projectSettings.open}
+              >
+                ⚙
+              </button>
+            )}
+            <ConsoleTimerSettingsModalDialog
+              isOpen={isSettingsOpen}
+              timerMode={draftTimerMode}
+              projectMinutes={draftProjectMinutes}
+              pjcodes={pjcodes}
+              isLoadingPjcodes={isLoadingPjcodes}
+              onOpen={openSettings}
+              onToggleTimerMode={toggleDraftTimerMode}
+              onChangeMinutes={changeDraftMinutes}
+              onSave={saveSettings}
+              onClose={closeSettings}
+            />
+          </>
         }
         airplaneModeEnabled={featuresConfig.airplaneMode}
         airplaneModeStatus={airplaneMode.status}

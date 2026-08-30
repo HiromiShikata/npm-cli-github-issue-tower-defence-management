@@ -5,6 +5,7 @@ import {
   loadConfigFile,
   mergeConfigs,
   parseProjectReadmeConfig,
+  setProjectReadmeMaxPreparingIssuesCount,
 } from './projectConfig';
 
 describe('loadConfigFile disks', () => {
@@ -338,5 +339,44 @@ describe('parseProjectReadmeConfig developerAgentNames', () => {
     expect(
       parseProjectReadmeConfig(readme).developerAgentNames,
     ).toBeUndefined();
+  });
+});
+
+const makeReadmeWith = (yaml: string): string =>
+  `# Project\n<details>\n<summary>config</summary>\n${yaml}\n</details>\n`;
+
+describe('setProjectReadmeMaxPreparingIssuesCount', () => {
+  it('sets maximumPreparingIssuesCount in an existing config block', () => {
+    const readme = makeReadmeWith('maximumPreparingIssuesCount: 3\n');
+    const result = setProjectReadmeMaxPreparingIssuesCount(readme, 7);
+    expect(parseProjectReadmeConfig(result).maximumPreparingIssuesCount).toBe(
+      7,
+    );
+  });
+
+  it('adds maximumPreparingIssuesCount when the key is absent', () => {
+    const readme = makeReadmeWith('defaultAgentName: impl\n');
+    const result = setProjectReadmeMaxPreparingIssuesCount(readme, 5);
+    expect(parseProjectReadmeConfig(result).maximumPreparingIssuesCount).toBe(
+      5,
+    );
+  });
+
+  it('preserves existing config keys when updating', () => {
+    const readme = makeReadmeWith(
+      'defaultAgentName: impl\nmaximumPreparingIssuesCount: 3\n',
+    );
+    const result = setProjectReadmeMaxPreparingIssuesCount(readme, 10);
+    const config = parseProjectReadmeConfig(result);
+    expect(config.maximumPreparingIssuesCount).toBe(10);
+    expect(config.defaultAgentName).toBe('impl');
+  });
+
+  it('appends a new config block when none exists', () => {
+    const readme = '# Project\nSome description.\n';
+    const result = setProjectReadmeMaxPreparingIssuesCount(readme, 4);
+    expect(parseProjectReadmeConfig(result).maximumPreparingIssuesCount).toBe(
+      4,
+    );
   });
 });
