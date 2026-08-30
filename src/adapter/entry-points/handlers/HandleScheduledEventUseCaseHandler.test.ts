@@ -147,6 +147,19 @@ jest.mock('../cli/fleetConfig', () => ({
   loadStartPreparationFleetSettings: jest.fn(),
   loadWorkflowImprovementIssueUrl: jest.fn(),
   loadWorkflowIssueReporterSettings: jest.fn(),
+  loadSilentNotificationEnabled: jest.fn(),
+}));
+jest.mock('./notifySilentTmuxSessions', () => ({
+  notifySilentTmuxSessions: jest.fn().mockResolvedValue(undefined),
+  DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS: {
+    mainSilentThresholdSeconds: 600,
+    unansweredOwnerCallGraceSeconds: 3600,
+    subAgentSilentThresholdSeconds: 300,
+    subAgentRunningThresholdSeconds: 1800,
+    staggerSeconds: 10,
+    candidateDebounceRecencyWindowSeconds: 120,
+    hubTaskStatusCacheTtlSeconds: 300,
+  },
 }));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
@@ -161,12 +174,17 @@ import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlPr
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import {
+  loadSilentNotificationEnabled,
   loadWorkflowImprovementIssueUrl,
   loadStartPreparationFleetSettings,
   loadWorkflowIssueReporterSettings,
   resolveFleetConfigFilePath,
 } from '../cli/fleetConfig';
+import { notifySilentTmuxSessions } from './notifySilentTmuxSessions';
 
+const mockLoadSilentNotificationEnabled = jest.mocked(
+  loadSilentNotificationEnabled,
+);
 const mockLoadWorkflowImprovementIssueUrl = jest.mocked(
   loadWorkflowImprovementIssueUrl,
 );
@@ -177,6 +195,7 @@ const mockLoadWorkflowIssueReporterSettings = jest.mocked(
   loadWorkflowIssueReporterSettings,
 );
 const mockResolveFleetConfigFilePath = jest.mocked(resolveFleetConfigFilePath);
+const mockNotifySilentTmuxSessions = jest.mocked(notifySilentTmuxSessions);
 
 const MockedGraphqlProjectRepository = jest.mocked(GraphqlProjectRepository);
 const MockedApiV3IssueRepository = jest.mocked(ApiV3IssueRepository);
@@ -242,6 +261,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     mockGetLastIssuesFetchedAt.mockReturnValue('2026-08-09T02:00:00.000Z');
     mockFetchReturningReadme(null);
     mockResolveFleetConfigFilePath.mockReturnValue(null);
+    mockLoadSilentNotificationEnabled.mockReturnValue(null);
     mockLoadStartPreparationFleetSettings.mockReturnValue({
       maximumPreparingIssuesCount: 80,
     });
@@ -883,6 +903,58 @@ defaultAgentName: readme-agent
         pjcode: validConfig.projectName,
         issues: [closedIssue],
       });
+    });
+  });
+
+  describe('silentNotificationEnabled priority chain', () => {
+    it('uses project config value when present, ignoring fleet config', async () => {
+      const configWithSilentEnabled = {
+        ...validConfig,
+        silentNotificationEnabled: true,
+      };
+      jest
+        .mocked(fs.readFileSync)
+        .mockReturnValue(YAML.stringify(configWithSilentEnabled));
+      mockLoadSilentNotificationEnabled.mockReturnValue(false);
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(mockNotifySilentTmuxSessions).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: true }),
+      );
+    });
+
+    it('uses fleet config value when project config does not specify it', async () => {
+      mockLoadSilentNotificationEnabled.mockReturnValue(false);
+
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle('config.yml', false);
+
+      expect(mockNotifySilentTmuxSessions).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: false }),
+      );
+    });
+
+    it('falls back to env var when both project config and fleet config are absent', async () => {
+      const originalEnv = process.env.TDPM_SILENT_NOTIFICATION_ENABLED;
+      process.env.TDPM_SILENT_NOTIFICATION_ENABLED = 'true';
+      mockLoadSilentNotificationEnabled.mockReturnValue(null);
+
+      try {
+        const handler = new HandleScheduledEventUseCaseHandler();
+        await handler.handle('config.yml', false);
+
+        expect(mockNotifySilentTmuxSessions).toHaveBeenCalledWith(
+          expect.objectContaining({ enabled: true }),
+        );
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.TDPM_SILENT_NOTIFICATION_ENABLED;
+        } else {
+          process.env.TDPM_SILENT_NOTIFICATION_ENABLED = originalEnv;
+        }
+      }
     });
   });
 

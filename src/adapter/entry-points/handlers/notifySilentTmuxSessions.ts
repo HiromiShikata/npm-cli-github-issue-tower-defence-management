@@ -121,7 +121,7 @@ export const notifySilentTmuxSessions = async (
   } = params;
   if (!enabled) {
     console.log(
-      'Silent live session notification skipped: not enabled (set silentNotificationEnabled or TDPM_SILENT_NOTIFICATION_ENABLED=true to enable).',
+      'Silent live session notification skipped: not enabled (set silentNotificationEnabled in fleet config, in project config, or set TDPM_SILENT_NOTIFICATION_ENABLED=true).',
     );
     return;
   }
