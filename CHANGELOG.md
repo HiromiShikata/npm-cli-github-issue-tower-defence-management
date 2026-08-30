@@ -1,3 +1,10 @@
+## [2.25.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.25.0...v2.25.1) (2026-08-30)
+
+
+### Bug Fixes
+
+* remove From: :robot: prefix from non-agent use-case issue bodies ([#1900](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1900)) ([f980282](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f9802821000214f244c9a9016d79ce66d93986a3)), closes [HiromiShikata/umino-corporait-operation#31123](https://github.com/HiromiShikata/umino-corporait-operation/issues/31123)
+
 # [2.25.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.24.1...v2.25.0) (2026-08-30)
 
 
