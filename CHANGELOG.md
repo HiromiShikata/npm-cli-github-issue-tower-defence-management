@@ -1,3 +1,10 @@
+# [2.16.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.15.0...v2.16.0) (2026-08-30)
+
+
+### Features
+
+* **console-ui:** move project-switcher select box to left end of tab bar ([#1880](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1880)) ([b299c8e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b299c8eefc862c9d3426d21e059fae6314ae2a87)), closes [HiromiShikata/umino-corporait-operation#31101](https://github.com/HiromiShikata/umino-corporait-operation/issues/31101)
+
 # [2.15.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.14.1...v2.15.0) (2026-08-30)
 
 
