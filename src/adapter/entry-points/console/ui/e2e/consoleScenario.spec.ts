@@ -1,8 +1,5 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
 import {
-  CONSOLE_E2E_PJCODE,
   type ConsoleE2eHarness,
   startConsoleE2eHarness,
 } from './consoleTestHarness';
@@ -778,9 +775,9 @@ test('project timer bar shows remaining time when active and Move to next projec
 
     harness.expireProjectTimer();
     await page.reload();
-    await expect(
-      page.locator('.console-project-timer-bar-label'),
-    ).toHaveText('Move to next project');
+    await expect(page.locator('.console-project-timer-bar-label')).toHaveText(
+      'Move to next project',
+    );
   } finally {
     harness.clearProjectTimer();
   }
