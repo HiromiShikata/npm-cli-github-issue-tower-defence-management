@@ -687,7 +687,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding-bottom: 8px;
 }
 
 .console-detail-topline {
@@ -1547,7 +1546,6 @@ body {
   font-size: 0.8125rem;
   text-align: left;
   cursor: pointer;
-  scroll-margin-top: 180px;
 }
 
 .console-file-row:hover {
