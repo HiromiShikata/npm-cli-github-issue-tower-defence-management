@@ -179,3 +179,20 @@ export const WithProjectSwitcherOpen: Story = {
   },
   render: (args) => <DropdownOpen {...args} />,
 };
+
+export const WithWorkflowImprovementLink: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    workflowImprovementIssueUrl:
+      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata',
+  },
+};
+
+export const WithoutWorkflowImprovementLink: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    workflowImprovementIssueUrl: null,
+  },
+};

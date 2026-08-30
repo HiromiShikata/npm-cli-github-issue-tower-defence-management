@@ -626,3 +626,35 @@ test('project switcher appears at the left end of the tab bar and opens a dropdo
 
   await expect(page.locator('.console-tab-pjname-dropdown')).toBeVisible();
 });
+
+test('shows the workflow improvement link when workflowImprovementIssueUrl is configured', async ({
+  browser,
+}) => {
+  const workflowUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
+  const localHarness = await startConsoleE2eHarness({
+    workflowImprovementIssueUrl: workflowUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    const link = page.locator('.console-tab-workflow-improvement-link');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', workflowUrl);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noreferrer');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
+});
+
+test('does not show the workflow improvement link when workflowImprovementIssueUrl is not configured', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+  await expect(
+    page.locator('.console-tab-workflow-improvement-link'),
+  ).toHaveCount(0);
+});
