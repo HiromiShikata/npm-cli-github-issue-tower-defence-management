@@ -1,3 +1,10 @@
+# [2.24.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.23.0...v2.24.0) (2026-08-30)
+
+
+### Features
+
+* **console:** add gear icon to edit maximumPreparingIssuesCount via full-screen modal ([#1893](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1893)) ([9152348](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9152348d17a9cb4c244b24c7ede117b99575cb80))
+
 # [2.23.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.22.0...v2.23.0) (2026-08-30)
 
 
