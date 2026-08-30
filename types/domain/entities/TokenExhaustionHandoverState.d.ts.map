@@ -1,1 +1,0 @@
-{"version":3,"file":"TokenExhaustionHandoverState.d.ts","sourceRoot":"","sources":["../../../src/domain/entities/TokenExhaustionHandoverState.ts"],"names":[],"mappings":"AAAA,MAAM,MAAM,iCAAiC,GAAG;IAC9C,eAAe,EAAE,MAAM,CAAC;IACxB,GAAG,EAAE,MAAM,CAAC;CACb,CAAC;AAEF,MAAM,MAAM,4BAA4B,GAAG;IACzC,OAAO,EAAE,MAAM,CAAC,MAAM,EAAE,iCAAiC,CAAC,CAAC;CAC5D,CAAC"}

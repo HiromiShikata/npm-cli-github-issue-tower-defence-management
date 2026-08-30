@@ -1,1 +1,0 @@
-{"version":3,"file":"TokenExhaustionHandoverStateRepository.d.ts","sourceRoot":"","sources":["../../../../src/domain/usecases/adapter-interfaces/TokenExhaustionHandoverStateRepository.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,4BAA4B,EAAE,MAAM,6CAA6C,CAAC;AAE3F,MAAM,WAAW,sCAAsC;IACrD,IAAI,EAAE,MAAM,4BAA4B,CAAC;IACzC,IAAI,EAAE,CAAC,KAAK,EAAE,4BAA4B,KAAK,IAAI,CAAC;CACrD"}

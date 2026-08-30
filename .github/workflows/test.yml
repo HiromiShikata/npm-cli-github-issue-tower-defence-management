@@ -36,6 +36,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Build console UI and copy to served bundle path
+        run: npm run build:console-ui && node scripts/copyConsoleUiDist.mjs
+
       - name: Run tests
         run: npm run test
         env:

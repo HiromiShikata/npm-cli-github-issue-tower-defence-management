@@ -26,6 +26,10 @@
     "github-issue-tower-defence-management": "bin/adapter/entry-points/cli/index.js"
   },
   "types": "types/index.d.ts",
+  "files": [
+    "bin",
+    "types"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management.git"

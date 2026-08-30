@@ -85,7 +85,7 @@ if (mismatches.length > 0) {
       'Served console UI bundle is stale and does not match the source build.',
       `Source: ${sourceDir}`,
       `Served: ${targetDir}`,
-      'Run "npm run build:console-ui && node scripts/copyConsoleUiDist.mjs" and commit the result.',
+      'Run "npm run build:console-ui && node scripts/copyConsoleUiDist.mjs".',
       ...mismatches.map((entry) => `  - ${entry}`),
     ].join('\n'),
   );
