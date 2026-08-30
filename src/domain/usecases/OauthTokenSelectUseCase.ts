@@ -48,7 +48,7 @@ const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 
 export const FIVE_HOUR_MIN_FREE_RATIO = 0.25;
-export const SEVEN_DAY_MIN_FREE_RATIO = 0.03;
+export const SEVEN_DAY_MIN_FREE_RATIO = 0.01;
 
 export const DEFAULT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThresholds =
   {
