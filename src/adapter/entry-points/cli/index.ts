@@ -70,6 +70,7 @@ import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import {
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
+  loadWorkflowImprovementIssueUrl,
   resolveFleetConfigFilePath,
 } from './fleetConfig';
 import {
@@ -140,6 +141,7 @@ type ServeWebOptions = {
   dashboardDataDir?: string;
   dashboardProjectNames?: string;
   enableAirplaneMode?: boolean;
+  fleetConfigFilePath?: string;
 };
 
 type OwnerCallFileAppendOptions = {
@@ -1017,6 +1019,11 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
   const dashboardDataDir =
     options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
+  const fleetConfigFilePath = resolveFleetConfigFilePath(
+    options.fleetConfigFilePath ?? null,
+  );
+  const workflowImprovementIssueUrl =
+    loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
 
   await startWebServer({
     accessToken,
@@ -1026,6 +1033,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     dashboardDir,
     dashboardDataDir,
     dashboardProjectNames,
+    workflowImprovementIssueUrl,
     resolveGithubToken,
     issueRepository,
     resolveIssueRepository,
@@ -1076,7 +1084,11 @@ const addServeWebOptions = (command: Command): Command =>
       '--dashboardProjectNames <names>',
       'Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names',
     )
-    .option('--enableAirplaneMode', 'Enable the airplane mode feature');
+    .option('--enableAirplaneMode', 'Enable the airplane mode feature')
+    .option(
+      '--fleetConfigFilePath <path>',
+      'Path to the fleet-wide YAML config file; falls back to the TDPM_FLEET_CONFIG environment variable. Reads workflowImprovementIssueUrl for the workflow improvement link shown in the console.',
+    );
 
 addServeWebOptions(program.command('serveWeb'))
   .description(

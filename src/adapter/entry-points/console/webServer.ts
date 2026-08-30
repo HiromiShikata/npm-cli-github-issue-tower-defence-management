@@ -231,6 +231,7 @@ export type WebServerOptions = {
   dashboardDir: string | null;
   dashboardDataDir: string | null;
   dashboardProjectNames: string[];
+  workflowImprovementIssueUrl?: string | null;
   resolveGithubToken?: ConsoleGithubTokenResolver | null;
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
@@ -475,7 +476,11 @@ const handleReadApi = async (
   if (requestPath === '/api/projects') {
     return {
       statusCode: 200,
-      body: { pjcodes: options.dashboardProjectNames },
+      body: {
+        pjcodes: options.dashboardProjectNames,
+        workflowImprovementIssueUrl:
+          options.workflowImprovementIssueUrl ?? null,
+      },
     };
   }
   const defaultIssueRepository = options.issueRepository ?? null;

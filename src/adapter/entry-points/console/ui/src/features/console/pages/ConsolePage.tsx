@@ -101,7 +101,11 @@ export const ConsolePage = () => {
     toggleDraftTimerMode,
     changeDraftMinutes,
   } = useConsoleTimerSettings();
-  const { pjcodes, isLoading: isLoadingPjcodes } = useConsoleProjectList();
+  const {
+    pjcodes,
+    workflowImprovementIssueUrl,
+    isLoading: isLoadingPjcodes,
+  } = useConsoleProjectList();
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
 
@@ -664,6 +668,7 @@ export const ConsolePage = () => {
         airplaneModeFailures={airplaneMode.failures}
         onAirplaneModeStartSync={airplaneMode.startSync}
         onAirplaneModeTurnOff={airplaneMode.turnOff}
+        workflowImprovementIssueUrl={workflowImprovementIssueUrl}
       />
       {activeTab === 'stories' ? (
         <ConsoleStoryList

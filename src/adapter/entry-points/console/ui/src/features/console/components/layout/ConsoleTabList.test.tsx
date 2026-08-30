@@ -290,4 +290,43 @@ describe('ConsoleTabList', () => {
     expect(dropdown.style.left).toBe('42px');
     expect(dropdown.style.right).toBe('');
   });
+
+  it('renders a workflow improvement link that opens in a new tab when workflowImprovementIssueUrl is set', () => {
+    const url = 'https://github.com/owner/repo/issues/new?assignees=someone';
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        workflowImprovementIssueUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /workflow improvement/i });
+    expect(link).toHaveAttribute('href', url);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('does not render the workflow improvement link when workflowImprovementIssueUrl is null', () => {
+    const { container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        workflowImprovementIssueUrl={null}
+      />,
+    );
+    expect(
+      container.querySelector('.console-tab-workflow-improvement-link'),
+    ).toBeNull();
+  });
+
+  it('does not render the workflow improvement link when workflowImprovementIssueUrl is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(
+      container.querySelector('.console-tab-workflow-improvement-link'),
+    ).toBeNull();
+  });
 });
