@@ -477,7 +477,6 @@ body {
 
 .console-item-row .console-item-icon {
   flex: 0 0 auto;
-  margin-top: 3px;
 }
 
 .console-group-header {
@@ -589,7 +588,9 @@ body {
 }
 
 .console-item-title {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 600;
   font-size: 0.9063rem;
 }
@@ -616,7 +617,8 @@ body {
   cursor: help;
 }
 
-.console-item-fields {
+.console-item-fields,
+.console-item-status-agent {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;

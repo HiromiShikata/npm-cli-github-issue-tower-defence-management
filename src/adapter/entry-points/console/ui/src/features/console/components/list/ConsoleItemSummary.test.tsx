@@ -210,4 +210,89 @@ describe('ConsoleItemSummary', () => {
     const badge = getByText(prItem.status as string);
     expect(badge.style.backgroundColor).toBe('rgba(110, 118, 129, 0.1)');
   });
+
+  it('renders the PR/task icon inside the title element', () => {
+    const { container } = render(
+      <ConsoleItemSummary
+        item={prItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(
+      container.querySelector('.console-item-title .console-item-icon'),
+    ).not.toBeNull();
+  });
+
+  it('renders status and agent in their own block separate from other fields', () => {
+    const agentItem = { ...prItem, agent: 'developer' };
+    const { container } = render(
+      <ConsoleItemSummary
+        item={agentItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    const statusAgentBlock = container.querySelector(
+      '.console-item-status-agent',
+    );
+    expect(statusAgentBlock).not.toBeNull();
+    expect(statusAgentBlock?.textContent).toContain('Status');
+    expect(statusAgentBlock?.textContent).toContain(agentItem.status as string);
+    expect(statusAgentBlock?.textContent).toContain('Agent');
+    expect(statusAgentBlock?.textContent).toContain('developer');
+    const fieldsBlock = container.querySelector('.console-item-fields');
+    expect(fieldsBlock?.textContent).not.toContain('Status');
+    expect(fieldsBlock?.textContent).not.toContain('Agent');
+  });
+
+  it('renders status and agent in their own block even when no other fields are present', () => {
+    const agentOnlyItem = {
+      ...prItem,
+      story: '',
+      status: 'Preparation',
+      agent: 'developer',
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+    };
+    const { container } = render(
+      <ConsoleItemSummary
+        item={agentOnlyItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(
+      container.querySelector('.console-item-status-agent'),
+    ).not.toBeNull();
+    expect(container.querySelector('.console-item-fields')).toBeNull();
+  });
+
+  it('renders status-only block when agent is null and no other fields are present', () => {
+    const statusOnlyItem = {
+      ...prItem,
+      story: '',
+      status: 'Preparation',
+      agent: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      dependedIssueUrls: [],
+    };
+    const { container } = render(
+      <ConsoleItemSummary
+        item={statusOnlyItem}
+        isActive={false}
+        now={now}
+        onSelect={() => {}}
+      />,
+    );
+    expect(
+      container.querySelector('.console-item-status-agent'),
+    ).not.toBeNull();
+    expect(container.querySelector('.console-item-fields')).toBeNull();
+  });
 });
