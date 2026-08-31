@@ -138,7 +138,7 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
     expect(issue.labels).toEqual(['bug', 'feature']);
   });
 
-  it('should not modify an item whose Agent field is already set', async () => {
+  it('should not modify an item whose Agent field already matches the designation label', async () => {
     const project = createProject([{ id: 'option-chore-id', name: 'chore' }]);
     const issue = createIssue({
       labels: ['chore'],
@@ -153,6 +153,36 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
 
     expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+  });
+
+  it('should override the Agent field and remove the label when the designation label differs from the current Agent field', async () => {
+    const project = createProject([
+      { id: 'option-chore-id', name: 'chore' },
+      { id: 'option-developer-id', name: 'developer' },
+    ]);
+    const issue = createIssue({
+      labels: ['chore'],
+      agent: 'developer',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+
+    await useCase.run({
+      project,
+      issues: [issue],
+      agents: ['chore', 'developer'],
+    });
+
+    expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+      issue.url,
+      project,
+      'option-chore-id',
+    );
+    expect(mockIssueRepository.removeLabel).toHaveBeenCalledWith(
+      issue,
+      'chore',
+    );
+    expect(issue.agent).toBe('chore');
+    expect(issue.labels).not.toContain('chore');
   });
 
   it('should skip closed items', async () => {
