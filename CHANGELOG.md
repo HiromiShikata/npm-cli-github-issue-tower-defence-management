@@ -1,3 +1,10 @@
+# [2.30.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.29.0...v2.30.0) (2026-08-31)
+
+
+### Features
+
+* **console:** add rarely-used depended issue URL setter behind toggle ([#1907](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1907)) ([34f7e25](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/34f7e251d4432c07d1d56ba86c2e6fb32e2fdff0)), closes [HiromiShikata/umino-corporait-operation#31131](https://github.com/HiromiShikata/umino-corporait-operation/issues/31131)
+
 # [2.29.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.28.0...v2.29.0) (2026-08-30)
 
 
