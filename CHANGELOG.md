@@ -1,3 +1,10 @@
+## [2.36.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.0...v2.36.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* **console-ui:** clear comment draft before status change navigation in Comment & Awaiting Workspace ([#1914](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1914)) ([7b3fbf6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7b3fbf6e5be50301fc32be7c7961f1600c7687cc)), closes [#31158](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31158)
+
 # [2.36.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.35.0...v2.36.0) (2026-08-31)
 
 
