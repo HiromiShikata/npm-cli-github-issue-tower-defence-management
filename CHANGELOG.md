@@ -1,3 +1,10 @@
+# [2.32.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.31.0...v2.32.0) (2026-08-31)
+
+
+### Features
+
+* **console:** show issue number alongside rendered title in reference links ([#1910](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1910)) ([38c444c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/38c444c8223ab0db3ac0d5a5e9ec4411d360d02f)), closes [HiromiShikata/umino-corporait-operation#31143](https://github.com/HiromiShikata/umino-corporait-operation/issues/31143)
+
 # [2.31.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.30.0...v2.31.0) (2026-08-31)
 
 
