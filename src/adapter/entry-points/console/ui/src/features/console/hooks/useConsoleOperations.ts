@@ -10,6 +10,7 @@ import {
   postConsoleDeleteAllComments,
   postConsoleOperation,
   postConsoleReviewComment,
+  postConsoleSetDependedIssueUrl,
 } from '../lib/consoleApi';
 import {
   buildRequestChangesBody,
@@ -76,6 +77,10 @@ export type ConsoleOperationsApi = {
     body: string,
   ) => Promise<void>;
   deleteAllComments: (item: ConsoleListItem) => Promise<void>;
+  setDependedIssueUrl: (
+    item: ConsoleListItem,
+    dependedIssueUrl: string,
+  ) => Promise<void>;
 };
 
 export const reviewRequest = (
@@ -401,6 +406,20 @@ export const useConsoleOperations = (
     [invalidateItemContent],
   );
 
+  const setDependedIssueUrl = useCallback(
+    async (item: ConsoleListItem, dependedIssueUrl: string) => {
+      if (pjcode === null) {
+        throw missingPjcodeError();
+      }
+      await postConsoleSetDependedIssueUrl({
+        pjcode,
+        issueUrl: item.url,
+        dependedIssueUrl,
+      });
+    },
+    [pjcode],
+  );
+
   return {
     reviewPullRequest,
     setNextActionDate,
@@ -413,5 +432,6 @@ export const useConsoleOperations = (
     uploadAttachment,
     addInlineReviewComment,
     deleteAllComments,
+    setDependedIssueUrl,
   };
 };

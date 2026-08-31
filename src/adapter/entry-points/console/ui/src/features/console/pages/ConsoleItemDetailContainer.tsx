@@ -269,6 +269,12 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.deleteAllComments(item),
       });
     },
+    onSetDependedIssueUrl:
+      pjcode != null
+        ? async (dependedIssueUrl: string) => {
+            await operations.setDependedIssueUrl(item, dependedIssueUrl);
+          }
+        : null,
   };
 
   const awaitingWorkspaceOption =

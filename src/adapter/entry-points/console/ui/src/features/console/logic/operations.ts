@@ -44,6 +44,7 @@ export type ConsoleOperationHandlers = {
   onClose: (action: ConsoleCloseAction) => void;
   onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => void;
   onDeleteAllComments: () => void;
+  onSetDependedIssueUrl: ((url: string) => Promise<void>) | null;
 };
 
 export const IN_TMUX_BY_HUMAN_NAME = 'In Tmux by human';

@@ -39,6 +39,7 @@ import {
   handleReorderStory,
   handleReview,
   handleReviewComment,
+  handleSetDependedIssueUrl,
   handleStoryColor,
   handleTimer,
   handleTriage,
@@ -565,6 +566,8 @@ const dispatchOperation = (
       return handleStoryColor(context, body);
     case '/api/deleteallcomments':
       return handleDeleteAllComments(context, body);
+    case '/api/setdependedissueurl':
+      return handleSetDependedIssueUrl(context, body);
     case '/api/deletestory':
       return handleDeleteStory(context, body);
     case '/api/timer':

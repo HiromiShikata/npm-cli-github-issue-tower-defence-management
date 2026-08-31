@@ -25,6 +25,7 @@ import {
   handleReorderStory,
   handleReview,
   handleReviewComment,
+  handleSetDependedIssueUrl,
   handleStoryAdd,
   handleStoryColor,
   handleTimer,
@@ -2525,6 +2526,92 @@ describe('consoleOperationApi', () => {
         handleDeleteAllComments(context, {
           issueUrl: 'https://github.com/o/r/issues/1',
         }),
+      ).rejects.toThrow('API failure');
+    });
+  });
+
+  describe('handleSetDependedIssueUrl', () => {
+    const projectWithDependedField = (): Project => ({
+      ...project,
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL',
+        fieldId: 'dependedField',
+      },
+    });
+
+    it('sets the depended issue URL and returns 200', async () => {
+      issueRepository.setDependedIssueUrl.mockResolvedValue(undefined);
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/2',
+        },
+      );
+      expect(issueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        projectWithDependedField(),
+        'https://github.com/o/r/issues/2',
+      );
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('returns 400 when issueUrl is missing', async () => {
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        { pjcode: 'acme', dependedIssueUrl: 'https://github.com/o/r/issues/2' },
+      );
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when dependedIssueUrl is missing', async () => {
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        { pjcode: 'acme', issueUrl: 'https://github.com/o/r/issues/1' },
+      );
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when pjcode is missing', async () => {
+      const response = await handleSetDependedIssueUrl(
+        contextForProject(projectWithDependedField()),
+        {
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/2',
+        },
+      );
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when project does not have dependedIssueUrlSeparatedByComma configured', async () => {
+      const response = await handleSetDependedIssueUrl(
+        contextForProject({
+          ...project,
+          dependedIssueUrlSeparatedByComma: null,
+        }),
+        {
+          pjcode: 'acme',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          dependedIssueUrl: 'https://github.com/o/r/issues/2',
+        },
+      );
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('propagates an error from setDependedIssueUrl (resulting in 502 from webServer)', async () => {
+      issueRepository.setDependedIssueUrl.mockRejectedValue(
+        new Error('API failure'),
+      );
+      await expect(
+        handleSetDependedIssueUrl(
+          contextForProject(projectWithDependedField()),
+          {
+            pjcode: 'acme',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            dependedIssueUrl: 'https://github.com/o/r/issues/2',
+          },
+        ),
       ).rejects.toThrow('API failure');
     });
   });

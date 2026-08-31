@@ -570,6 +570,27 @@ export const fetchProjectReadmeConfig = async (
   return { maximumPreparingIssuesCount: count };
 };
 
+export const SET_DEPENDED_ISSUE_URL_OPERATION_PATH = '/api/setdependedissueurl';
+
+export type ConsoleSetDependedIssueUrlRequest = {
+  pjcode: string;
+  issueUrl: string;
+  dependedIssueUrl: string;
+};
+
+export const postConsoleSetDependedIssueUrl = async (
+  request: ConsoleSetDependedIssueUrlRequest,
+): Promise<void> => {
+  const response = await fetch(SET_DEPENDED_ISSUE_URL_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
 export const PROJECT_SETTINGS_OPERATION_PATH = '/api/projectsettings';
 
 export type ConsoleProjectSettingsRequest = {

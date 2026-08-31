@@ -11,6 +11,7 @@ import { ConsoleCloseActions } from './ConsoleCloseActions';
 import { ConsoleDangerousActions } from './ConsoleDangerousActions';
 import { ConsoleNextActionDateActions } from './ConsoleNextActionDateActions';
 import { ConsolePullRequestReviewActions } from './ConsolePullRequestReviewActions';
+import { ConsoleRareActions } from './ConsoleRareActions';
 import { ConsoleStatusActions } from './ConsoleStatusActions';
 
 export type ConsoleOperationBarProps = {
@@ -31,6 +32,9 @@ export const ConsoleOperationMenu = ({
 }: ConsoleOperationBarProps) => {
   return (
     <div className="console-operation-bar">
+      <ConsoleRareActions
+        onSetDependedIssueUrl={handlers.onSetDependedIssueUrl}
+      />
       {hasPullRequest && (
         <ConsolePullRequestReviewActions
           onReview={handlers.onReview}

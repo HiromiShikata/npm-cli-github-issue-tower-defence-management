@@ -83,6 +83,7 @@ const buildOperations = (): ConsoleOperationsApi => ({
   uploadAttachment: jest.fn(async () => ''),
   addInlineReviewComment: jest.fn(async () => {}),
   deleteAllComments: jest.fn(async () => {}),
+  setDependedIssueUrl: jest.fn(async () => {}),
 });
 
 const findCommentsPanelToggle = (container: HTMLElement): HTMLElement => {

@@ -15,6 +15,7 @@ const handlers: ConsoleOperationHandlers = {
   onClose: jest.fn(),
   onOkAndAwaitingWorkspace: jest.fn(),
   onDeleteAllComments: jest.fn(),
+  onSetDependedIssueUrl: jest.fn(),
 };
 
 const prItem = consoleListItemsFixture[0];
@@ -173,5 +174,19 @@ describe('ConsoleOperationMenu', () => {
     const dangerRow = dangerButton.closest('.console-op-group-bottom-row');
     expect(dangerRow).not.toBeNull();
     expect(dangerRow).toBe(closeButton.closest('.console-op-group-bottom-row'));
+  });
+
+  it('renders the rare actions toggle on all tabs', () => {
+    const { getByTitle } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    expect(getByTitle('Rare actions')).toBeInTheDocument();
   });
 });

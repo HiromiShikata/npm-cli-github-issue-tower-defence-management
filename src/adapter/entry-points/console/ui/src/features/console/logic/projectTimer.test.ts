@@ -21,9 +21,9 @@ describe('computeProjectTimerState', () => {
     const nowMs = endsAtMs - 1800 * 1000;
     const state = computeProjectTimerState(endsAt, 1800, nowMs);
     expect(state).not.toBeNull();
-    expect(state!.remainingSeconds).toBe(1800);
-    expect(state!.remainingRatio).toBe(1);
-    expect(state!.totalSeconds).toBe(1800);
+    expect(state?.remainingSeconds).toBe(1800);
+    expect(state?.remainingRatio).toBe(1);
+    expect(state?.totalSeconds).toBe(1800);
   });
 
   it('returns half remaining seconds and remainingRatio=0.5 at midpoint', () => {
@@ -32,9 +32,9 @@ describe('computeProjectTimerState', () => {
     const nowMs = endsAtMs - 900 * 1000;
     const state = computeProjectTimerState(endsAt, 1800, nowMs);
     expect(state).not.toBeNull();
-    expect(state!.remainingSeconds).toBe(900);
-    expect(state!.remainingRatio).toBeCloseTo(0.5, 5);
-    expect(state!.totalSeconds).toBe(1800);
+    expect(state?.remainingSeconds).toBe(900);
+    expect(state?.remainingRatio).toBeCloseTo(0.5, 5);
+    expect(state?.totalSeconds).toBe(1800);
   });
 
   it('returns remainingSeconds=0 and remainingRatio=0 when timer has expired', () => {
@@ -43,9 +43,9 @@ describe('computeProjectTimerState', () => {
     const nowMs = endsAtMs + 5000;
     const state = computeProjectTimerState(endsAt, 1800, nowMs);
     expect(state).not.toBeNull();
-    expect(state!.remainingSeconds).toBe(0);
-    expect(state!.remainingRatio).toBe(0);
-    expect(state!.totalSeconds).toBe(1800);
+    expect(state?.remainingSeconds).toBe(0);
+    expect(state?.remainingRatio).toBe(0);
+    expect(state?.totalSeconds).toBe(1800);
   });
 
   it('returns remainingRatio clamped to 0 when far past expiry', () => {
@@ -54,6 +54,6 @@ describe('computeProjectTimerState', () => {
     const nowMs = endsAtMs + 3600 * 1000;
     const state = computeProjectTimerState(endsAt, 1800, nowMs);
     expect(state).not.toBeNull();
-    expect(state!.remainingRatio).toBe(0);
+    expect(state?.remainingRatio).toBe(0);
   });
 });

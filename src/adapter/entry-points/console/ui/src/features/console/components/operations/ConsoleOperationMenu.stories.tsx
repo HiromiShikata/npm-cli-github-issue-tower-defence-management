@@ -15,6 +15,7 @@ const handlers: ConsoleOperationHandlers = {
   onClose: () => {},
   onOkAndAwaitingWorkspace: () => {},
   onDeleteAllComments: () => {},
+  onSetDependedIssueUrl: async () => {},
 };
 
 const meta: Meta<typeof ConsoleOperationMenu> = {
