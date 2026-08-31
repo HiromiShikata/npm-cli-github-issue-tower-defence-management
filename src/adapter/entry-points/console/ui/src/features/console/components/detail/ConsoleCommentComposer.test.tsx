@@ -580,6 +580,83 @@ describe('ConsoleCommentComposer', () => {
     expect(textarea.selectionStart).toBe(5);
     expect(textarea.selectionEnd).toBe(5);
   });
+
+  it('disables the Comment button when the draft is empty', () => {
+    const { getByText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
+    );
+    expect(getByText('Comment')).toBeDisabled();
+  });
+
+  it('enables the Comment button when the draft has content', () => {
+    const { getByText, getByPlaceholderText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'some text' },
+    });
+    expect(getByText('Comment')).not.toBeDisabled();
+  });
+
+  it('disables the Comment button when the draft contains only whitespace', () => {
+    const { getByText, getByPlaceholderText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: '   ' },
+    });
+    expect(getByText('Comment')).toBeDisabled();
+  });
+
+  it('disables the Comment & Awaiting Workspace button when the draft is empty', () => {
+    const { getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    expect(getByText('Comment & Awaiting Workspace')).toBeDisabled();
+  });
+
+  it('enables the Comment & Awaiting Workspace button when the draft has content', () => {
+    const { getByText, getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'some text' },
+    });
+    expect(getByText('Comment & Awaiting Workspace')).not.toBeDisabled();
+  });
+
+  it('disables the Comment & Awaiting Workspace button when the draft contains only whitespace', () => {
+    const { getByText, getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: '   ' },
+    });
+    expect(getByText('Comment & Awaiting Workspace')).toBeDisabled();
+  });
+
+  it('does not disable the ok & Awaiting Workspace button when the draft is empty', () => {
+    const { getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onOkAndAwaitingWorkspace={() => {}}
+      />,
+    );
+    expect(getByText('ok & Awaiting Workspace')).not.toBeDisabled();
+  });
 });
 
 describe('insertUploadPlaceholder', () => {

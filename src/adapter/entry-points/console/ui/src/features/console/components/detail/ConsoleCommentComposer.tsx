@@ -266,7 +266,7 @@ export const ConsoleCommentComposer = ({
             <button
               type="button"
               className="console-composer-submit"
-              disabled={status.kind === 'posting'}
+              disabled={status.kind === 'posting' || draft.trim().length === 0}
               onClick={() => {
                 void submit(false);
               }}
@@ -287,7 +287,9 @@ export const ConsoleCommentComposer = ({
               <button
                 type="button"
                 className="console-composer-submit"
-                disabled={status.kind === 'posting'}
+                disabled={
+                  status.kind === 'posting' || draft.trim().length === 0
+                }
                 onClick={() => {
                   void submit(true);
                 }}
