@@ -1772,5 +1772,105 @@ describe('GraphqlProjectItemRepository', () => {
       expect(result).not.toBeNull();
       expect(result?.stateReason).toBe('REOPENED');
     });
+
+    it('should return issue content with empty customFields when issue exists but projectItems is empty and no projectId is given', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: {
+                number: 585,
+                title: 'Issue Without Visible Project',
+                state: 'OPEN',
+                url: 'https://github.com/meta-site/hr-audit-mock/issues/585',
+                body: 'body text',
+                createdAt: '2024-01-01T00:00:00Z',
+                author: { login: 'octocat' },
+                labels: { nodes: [{ name: 'bug' }] },
+                assignees: { nodes: [{ login: 'octocat' }] },
+                repository: {
+                  nameWithOwner: 'meta-site/hr-audit-mock',
+                  isArchived: false,
+                },
+                projectItems: {
+                  nodes: [],
+                },
+              },
+              pullRequest: null,
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/meta-site/hr-audit-mock/issues/585',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.url).toBe(
+        'https://github.com/meta-site/hr-audit-mock/issues/585',
+      );
+      expect(result?.title).toBe('Issue Without Visible Project');
+      expect(result?.id).toBe('');
+      expect(result?.customFields).toEqual([]);
+    });
+
+    it('should return null when projectId is given and issue has no matching project item even with other items present', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: {
+                number: 585,
+                title: 'Issue In Other Project',
+                state: 'OPEN',
+                url: 'https://github.com/meta-site/hr-audit-mock/issues/585',
+                body: 'body text',
+                createdAt: '2024-01-01T00:00:00Z',
+                author: { login: 'octocat' },
+                labels: { nodes: [] },
+                assignees: { nodes: [] },
+                repository: {
+                  nameWithOwner: 'meta-site/hr-audit-mock',
+                  isArchived: false,
+                },
+                projectItems: {
+                  nodes: [
+                    {
+                      id: 'item-other',
+                      project: { id: 'project-other' },
+                      fieldValues: { nodes: [] },
+                    },
+                  ],
+                },
+              },
+              pullRequest: null,
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/meta-site/hr-audit-mock/issues/585',
+        'project-target',
+      );
+
+      expect(result).toBeNull();
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
   });
 });
