@@ -37,6 +37,7 @@ export type EvaluateOptions = {
   // When null, undefined, or empty, defaults to ['developer'].
   developerAgentNames?: string[] | null;
   detectConflictEvenIfEvaluationSkipped?: boolean;
+  pullRequestNotRequired?: boolean;
 };
 
 export class IssueRejectionEvaluator {
@@ -65,6 +66,7 @@ export class IssueRejectionEvaluator {
     let approvedPrUrl: string | null = null;
 
     if (
+      !options.pullRequestNotRequired &&
       this.requiresPullRequestEvaluation(
         issue,
         labelsNotRequiringPullRequest,
