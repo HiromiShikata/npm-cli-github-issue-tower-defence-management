@@ -6,7 +6,10 @@ import {
 } from './IssueRejectionEvaluator';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { normalizeReportBody } from './normalizeReportBody';
-import { isAgentReportBody, isAgentReportBodyFromAgent } from './isAgentReportBody';
+import {
+  isAgentReportBody,
+  isAgentReportBodyFromAgent,
+} from './isAgentReportBody';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { findLastAgentReport } from './findLastAgentReport';
 import { TRIAGER_AGENT_NAME } from './triagerAgentName';
