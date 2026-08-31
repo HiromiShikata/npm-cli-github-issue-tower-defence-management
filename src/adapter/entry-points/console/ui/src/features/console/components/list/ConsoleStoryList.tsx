@@ -15,6 +15,9 @@ type InlineInputFormProps = {
   emptyValueError: string;
   onSubmit: (value: string) => Promise<void>;
   onCancel: () => void;
+  initialValue?: string;
+  submitLabel?: string;
+  selectAllOnFocus?: boolean;
 };
 
 const InlineInputForm = ({
@@ -22,14 +25,21 @@ const InlineInputForm = ({
   emptyValueError,
   onSubmit,
   onCancel,
+  initialValue = '',
+  submitLabel = 'Create',
+  selectAllOnFocus = false,
 }: InlineInputFormProps) => {
-  const [valueInput, setValueInput] = useState('');
+  const [valueInput, setValueInput] = useState(initialValue);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectAllOnFocusRef = useRef(selectAllOnFocus);
 
   useEffect(() => {
     inputRef.current?.focus();
+    if (selectAllOnFocusRef.current) {
+      inputRef.current?.select();
+    }
   }, []);
 
   const handleSubmit = async (): Promise<void> => {
@@ -67,7 +77,7 @@ const InlineInputForm = ({
         disabled={submitting}
       />
       <button type="submit" className="console-op-button" disabled={submitting}>
-        {submitting ? 'Creating…' : 'Create'}
+        {submitting ? `${submitLabel.replace(/e$/, '')}ing…` : submitLabel}
       </button>
       <button
         type="button"
@@ -115,70 +125,17 @@ const StoryRenameForm = ({
   currentName,
   onSubmit,
   onCancel,
-}: StoryRenameFormProps) => {
-  const [nameInput, setNameInput] = useState(currentName);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
-
-  const handleSubmit = async (): Promise<void> => {
-    const trimmed = nameInput.trim();
-    if (trimmed.length === 0) {
-      setSubmitError('Story name is required');
-      return;
-    }
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      await onSubmit(trimmed);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <form
-      className="console-inline-input-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void handleSubmit();
-      }}
-    >
-      <input
-        ref={inputRef}
-        type="text"
-        className="console-inline-input-form-input"
-        placeholder="Story name"
-        value={nameInput}
-        onChange={(e) => setNameInput(e.target.value)}
-        disabled={submitting}
-      />
-      <button type="submit" className="console-op-button" disabled={submitting}>
-        {submitting ? 'Renaming…' : 'Rename'}
-      </button>
-      <button
-        type="button"
-        className="console-op-button"
-        onClick={onCancel}
-        disabled={submitting}
-      >
-        Cancel
-      </button>
-      {submitError !== null && (
-        <p role="alert" className="console-list-error">
-          {submitError}
-        </p>
-      )}
-    </form>
-  );
-};
+}: StoryRenameFormProps) => (
+  <InlineInputForm
+    placeholder="Story name"
+    emptyValueError="Story name is required"
+    initialValue={currentName}
+    submitLabel="Rename"
+    selectAllOnFocus={true}
+    onSubmit={onSubmit}
+    onCancel={onCancel}
+  />
+);
 
 type ColorPaletteProps = {
   onSelectColor: (color: ConsoleColor) => void;
