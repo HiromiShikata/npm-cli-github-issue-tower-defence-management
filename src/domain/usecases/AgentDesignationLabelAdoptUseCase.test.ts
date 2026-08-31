@@ -185,6 +185,34 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
     expect(issue.labels).not.toContain('chore');
   });
 
+  it('should override the Agent field and keep the label when the designation label differs from the current Agent field and is in agentDesignationLabelsToKeep', async () => {
+    const project = createProject([
+      { id: 'option-story-id', name: 'story' },
+      { id: 'option-developer-id', name: 'developer' },
+    ]);
+    const issue = createIssue({
+      labels: ['story'],
+      agent: 'developer',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+
+    await useCase.run({
+      project,
+      issues: [issue],
+      agents: ['story', 'developer'],
+      agentDesignationLabelsToKeep: ['story'],
+    });
+
+    expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+      issue.url,
+      project,
+      'option-story-id',
+    );
+    expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    expect(issue.agent).toBe('story');
+    expect(issue.labels).toContain('story');
+  });
+
   it('should skip closed items', async () => {
     const project = createProject([{ id: 'option-chore-id', name: 'chore' }]);
     const issue = createIssue({
