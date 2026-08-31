@@ -212,13 +212,13 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       });
     });
 
-    it('should return reviewReady=true when the last report designates the triager and no related PR exists', async () => {
+    it('should return reviewReady=true when the last report is from the triager and no related PR exists', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: Agent report\n```json\n{"nextStepAgent": "triager"}\n```',
+            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -232,7 +232,27 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       expect(result.reviewReady).toBe(true);
     });
 
-    it('should keep rejecting a missing PR when the last report designates an agent other than the triager', async () => {
+    it('should return reviewReady=true when the triager routes to developer and the issue agent is developer and no related PR exists', async () => {
+      const issue = createMockIssue({ agent: 'developer' });
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
+      });
+
+      expect(result.rejections).toEqual([]);
+      expect(result.reviewReady).toBe(true);
+    });
+
+    it('should keep rejecting a missing PR when the last report is not from the triager', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
@@ -254,13 +274,13 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       });
     });
 
-    it('should keep every rejection other than PULL_REQUEST_NOT_FOUND when the last report designates the triager', async () => {
+    it('should keep every rejection other than PULL_REQUEST_NOT_FOUND when the last report is from the triager', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: Agent report\n```json\n{"nextStepAgent": "triager"}\n```',
+            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -269,12 +289,17 @@ describe('CheckIssueReviewReadinessUseCase', () => {
 
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
       });
 
       expect(result.reviewReady).toBe(false);
       expect(result.rejections).toContainEqual({
         type: 'PULL_REQUEST_IS_DRAFT',
         detail: 'PULL_REQUEST_IS_DRAFT: https://github.com/user/repo/pull/1',
+      });
+      expect(result.rejections).not.toContainEqual({
+        type: 'PULL_REQUEST_NOT_FOUND',
+        detail: 'PULL_REQUEST_NOT_FOUND',
       });
     });
 
