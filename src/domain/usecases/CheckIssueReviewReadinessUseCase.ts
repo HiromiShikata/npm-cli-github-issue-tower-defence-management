@@ -6,10 +6,10 @@ import {
 } from './IssueRejectionEvaluator';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { normalizeReportBody } from './normalizeReportBody';
-import { isAgentReportBody } from './isAgentReportBody';
+import { isAgentReportBody, isAgentReportBodyFromAgent } from './isAgentReportBody';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
-import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
-import { isTriagerAgentName } from './triagerAgentName';
+import { findLastAgentReport } from './findLastAgentReport';
+import { TRIAGER_AGENT_NAME } from './triagerAgentName';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -95,11 +95,11 @@ export class CheckIssueReviewReadinessUseCase {
         { developerAgentNames: params.developerAgentNames },
       );
 
-    const nextStepAgent = extractNextStepAgentFromComments(
-      comments,
-      isTrustedAuthor,
-    );
-    const requiredPrRejections = isTriagerAgentName(nextStepAgent)
+    const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
+    const lastReportIsFromTriager =
+      lastAgentReport !== null &&
+      isAgentReportBodyFromAgent(lastAgentReport.content, TRIAGER_AGENT_NAME);
+    const requiredPrRejections = lastReportIsFromTriager
       ? prRejections.filter(
           (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
         )
