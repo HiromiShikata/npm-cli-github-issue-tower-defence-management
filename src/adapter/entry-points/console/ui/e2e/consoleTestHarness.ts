@@ -7,6 +7,7 @@ import type {
   FieldOption,
   Project,
 } from '../../../../../domain/entities/Project';
+import type { StoryObjectMap } from '../../../../../domain/entities/StoryObjectMap';
 import type {
   IssueComment,
   IssueRepository,
@@ -16,7 +17,6 @@ import type {
   PullRequestFile,
   RelatedPullRequest,
 } from '../../../../../domain/usecases/adapter-interfaces/IssueRepository';
-import type { StoryObjectMap } from '../../../../../domain/entities/StoryObjectMap';
 import type { ConsoleProjectBinding } from '../../consoleOperationApi';
 import {
   deleteProjectTimer,
