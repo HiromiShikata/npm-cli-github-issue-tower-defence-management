@@ -2878,7 +2878,10 @@ describe('consoleOperationApi', () => {
       };
       issueRepository.getStoryObjectMap.mockResolvedValue(
         new Map([
-          [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
+          [
+            storyToRemove.name,
+            { story: storyToRemove, storyIssue, issues: [] },
+          ],
         ]),
       );
       issueRepository.closeIssueByUrl.mockRejectedValue(
