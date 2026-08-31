@@ -1,3 +1,10 @@
+# [2.36.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.35.0...v2.36.0) (2026-08-31)
+
+
+### Features
+
+* add story rename capability to TDPM console story tab ([#1922](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1922)) ([4805792](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4805792ce33f2d27a9db845c68d2681aa9367775)), closes [HiromiShikata/umino-corporait-operation#31152](https://github.com/HiromiShikata/umino-corporait-operation/issues/31152)
+
 # [2.35.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.34.0...v2.35.0) (2026-08-31)
 
 
