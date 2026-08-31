@@ -108,6 +108,7 @@ const REPO_NAME_WITH_OWNER =
 export const CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/867`;
 export const CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/911`;
 export const CONSOLE_E2E_INLINE_COMMENT_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/912`;
+export const CONSOLE_E2E_REFERENCE_LINK_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/845`;
 
 const INLINE_COMMENT_PR_FILE: PullRequestFile = {
   filename: 'src/adapter/entry-points/console/ui/src/index.css',
@@ -639,6 +640,8 @@ const createStubIssueRepository = (
       '## Console E2E fixture',
       '',
       'This body is served by the isolated E2E stub.',
+      '',
+      `See also ${CONSOLE_E2E_REFERENCE_LINK_URL} for the reference.`,
       '',
       ...Array.from(
         { length: 80 },
