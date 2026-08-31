@@ -1,3 +1,16 @@
+# [2.35.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.34.0...v2.35.0) (2026-08-31)
+
+
+### Bug Fixes
+
+* **CheckIssueReviewReadiness:** skip PULL_REQUEST_NOT_FOUND when last report is from triager ([#1918](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1918)) ([b2fac84](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b2fac84a02cc66ec72cddf11e6af01ca0c6401a2)), closes [HiromiShikata/umino-corporait-operation#31167](https://github.com/HiromiShikata/umino-corporait-operation/issues/31167)
+* **console:** close story issue when deleting a story option ([#1915](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1915)) ([9eb3c68](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9eb3c6892de9e7d2757497829d51917f3854294a)), closes [HiromiShikata/umino-corporait-operation#31161](https://github.com/HiromiShikata/umino-corporait-operation/issues/31161)
+
+
+### Features
+
+* **console-ui:** disable Comment buttons when draft is empty ([#1911](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1911)) ([7c4a573](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7c4a573fa4c9b7aff472a0be0da62512018d3699)), closes [HiromiShikata/umino-corporait-operation#31147](https://github.com/HiromiShikata/umino-corporait-operation/issues/31147)
+
 # [2.34.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.33.1...v2.34.0) (2026-08-31)
 
 
