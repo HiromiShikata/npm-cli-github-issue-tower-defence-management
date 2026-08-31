@@ -1,3 +1,10 @@
+# [2.31.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.30.0...v2.31.0) (2026-08-31)
+
+
+### Features
+
+* **schedule:** add agentDesignationLabelsToKeep to skip label removal ([#1909](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1909)) ([36e7ad0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/36e7ad0b30329abf79d3e0309880e42ed9cb97fe)), closes [HiromiShikata/umino-corporait-operation#31138](https://github.com/HiromiShikata/umino-corporait-operation/issues/31138)
+
 # [2.30.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.29.0...v2.30.0) (2026-08-31)
 
 
