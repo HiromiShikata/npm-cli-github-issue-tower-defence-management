@@ -521,6 +521,27 @@ export const postConsoleDeleteStory = async (
   }
 };
 
+export const RENAME_STORY_OPERATION_PATH = '/api/renamestory';
+
+export type ConsoleRenameStoryRequest = {
+  pjcode: string;
+  storyOptionId: string;
+  newName: string;
+};
+
+export const postConsoleRenameStory = async (
+  request: ConsoleRenameStoryRequest,
+): Promise<void> => {
+  const response = await fetch(RENAME_STORY_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
 export type ProjectListResponse = {
   pjcodes: string[];
   workflowImprovementIssueUrl: string | null;

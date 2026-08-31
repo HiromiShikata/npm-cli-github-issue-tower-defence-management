@@ -1016,6 +1016,53 @@ export const handleDeleteStory = async (
   return ok();
 };
 
+export const handleStoryRename = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  if (context.resolveProjectRepository === null) {
+    return badGateway('project repository is not configured');
+  }
+  const storyOptionId = body.storyOptionId;
+  const newName = body.newName;
+  if (!isNonEmptyString(storyOptionId)) {
+    return badRequest('storyOptionId is required');
+  }
+  if (!isNonEmptyString(newName)) {
+    return badRequest('newName is required');
+  }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { pjcode, project } = binding;
+  if (project.story === null) {
+    return badRequest('project does not have a story field');
+  }
+  const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
+  if (storyOption === undefined) {
+    return badRequest(`story option "${storyOptionId}" not found in project`);
+  }
+  const projectOwner = extractProjectOwner(project.url);
+  if (projectOwner === null) {
+    return badGateway('cannot determine project owner from project URL');
+  }
+  const proxyUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/0`;
+  const issueRepository = context.resolveIssueRepository(proxyUrl);
+  const storyObjectMap = await issueRepository.getStoryObjectMap(project);
+  const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
+  const renamedStories = project.story.stories.map((s) =>
+    s.id === storyOptionId ? { ...s, name: newName } : s,
+  );
+  const projectRepository = context.resolveProjectRepository(project.url);
+  await projectRepository.updateStoryList(project, renamedStories);
+  context.invalidateProject?.(pjcode);
+  if (storyIssue !== null) {
+    await issueRepository.updateIssue({ ...storyIssue, title: newName });
+  }
+  return ok();
+};
+
 export const handleTimer = (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,

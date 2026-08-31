@@ -33,6 +33,7 @@ import {
   postConsoleAddStory,
   postConsoleCreateIssue,
   postConsoleDeleteStory,
+  postConsoleRenameStory,
   postConsoleReorderStory,
   postConsoleStoryColor,
 } from '../lib/consoleApi';
@@ -640,6 +641,23 @@ export const ConsolePage = () => {
     [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
 
+  const handleStoryRename = useCallback(
+    async (storyOptionId: string, newName: string): Promise<void> => {
+      if (pjcode === null) {
+        throw new Error('No project specified in the URL path.');
+      }
+      await postConsoleRenameStory({ pjcode, storyOptionId, newName });
+      const updatedEntries = storyEntries.map((e) =>
+        e.storyOptionId === storyOptionId ? { ...e, storyName: newName } : e,
+      );
+      setLocalStoryEntriesOverride({
+        generatedAt: storiesSnapshot?.generatedAt,
+        stories: updatedEntries,
+      });
+    },
+    [pjcode, storyEntries, storiesSnapshot?.generatedAt],
+  );
+
   return (
     <main className="console-app">
       {actionQueue.pending !== null && (
@@ -739,6 +757,7 @@ export const ConsolePage = () => {
             onToggleGray={handleToggleGray}
             onReorderStory={handleReorderStory}
             onDeleteStory={handleStoryDelete}
+            onRenameStory={handleStoryRename}
             optimisticColors={storyOptimisticColors}
             colorChangeInFlight={storyColorChangeInFlight}
             colorErrors={storyColorErrors}
