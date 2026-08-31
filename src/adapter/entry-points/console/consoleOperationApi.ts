@@ -17,6 +17,7 @@ import {
   recordDoneProjectItemIdAcrossTabs,
   recordDoneProjectItemIdForTabs,
 } from './consoleDoneStore';
+import { extractProjectOwner } from './consoleGithubTokenResolver';
 import { findConsoleItemUrl } from './consoleItemUrlLookup';
 import {
   deleteProjectTimer,
@@ -991,12 +992,23 @@ export const handleDeleteStory = async (
   if (project.story.workflowManagementStory.id === storyOptionId) {
     return badRequest('cannot delete the workflow management story');
   }
+  const projectOwner = extractProjectOwner(project.url);
+  if (projectOwner === null) {
+    return badGateway('cannot determine project owner from project URL');
+  }
+  const proxyIssueUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/1`;
+  const issueRepository = context.resolveIssueRepository(proxyIssueUrl);
+  const storyObjectMap = await issueRepository.getStoryObjectMap(project);
+  const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
   const filteredStories = project.story.stories.filter(
     (s) => s.id !== storyOptionId,
   );
   const projectRepository = context.resolveProjectRepository(project.url);
   await projectRepository.updateStoryList(project, filteredStories);
   context.invalidateProject?.(pjcode);
+  if (storyIssue !== null) {
+    await issueRepository.closeIssueByUrl(storyIssue.url, 'completed');
+  }
   return ok();
 };
 

@@ -4,6 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import type { Issue } from '../../../domain/entities/Issue';
 import type { Project } from '../../../domain/entities/Project';
+import type { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import {
   CONSOLE_DONE_STATUS_SELECTED_TAB_NAMES,
@@ -2665,6 +2666,8 @@ describe('consoleOperationApi', () => {
     beforeEach(() => {
       updateStoryList.mockResolvedValue([]);
       projectRepositoryResolver.mockReturnValue({ updateStoryList });
+      issueRepository.getStoryObjectMap.mockResolvedValue(new Map());
+      issueRepository.closeIssueByUrl.mockResolvedValue(undefined);
     });
 
     it('calls updateStoryList with the filtered list and returns 200', async () => {
@@ -2791,6 +2794,73 @@ describe('consoleOperationApi', () => {
       expect(response).toEqual({
         statusCode: 400,
         body: { error: 'cannot delete the workflow management story' },
+      });
+    });
+
+    it('closes the story issue when one exists in the project', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const storyIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/42',
+        title: 'Remove this story',
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/acme-labs/ops/issues/42',
+        'completed',
+      );
+    });
+
+    it('does not call closeIssueByUrl when the story has no associated issue', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.name,
+          { story: storyToRemove, storyIssue: null, issues: [] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+    });
+
+    it('returns 502 when the project URL has no extractable owner', async () => {
+      const p: Project = {
+        ...projectWithStoriesToDelete(),
+        url: 'https://example.com/invalid/project/url',
+      };
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'cannot determine project owner from project URL' },
       });
     });
   });
