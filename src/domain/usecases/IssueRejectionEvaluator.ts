@@ -37,6 +37,11 @@ export type EvaluateOptions = {
   // When null, undefined, or empty, defaults to ['developer'].
   developerAgentNames?: string[] | null;
   detectConflictEvenIfEvaluationSkipped?: boolean;
+  // When true, the entire PR evaluation block is skipped regardless of agent
+  // or label. Used when the completion comment explicitly declares
+  // pullRequestRequired: false (cross-repo deploy tasks where the code change
+  // lives in another repository and no PR in this repository is expected).
+  pullRequestNotRequired?: boolean;
 };
 
 export class IssueRejectionEvaluator {
@@ -65,6 +70,7 @@ export class IssueRejectionEvaluator {
     let approvedPrUrl: string | null = null;
 
     if (
+      !options.pullRequestNotRequired &&
       this.requiresPullRequestEvaluation(
         issue,
         labelsNotRequiringPullRequest,

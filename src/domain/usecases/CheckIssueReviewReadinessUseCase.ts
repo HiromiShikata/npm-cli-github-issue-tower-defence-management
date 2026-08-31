@@ -13,6 +13,7 @@ import {
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { findLastAgentReport } from './findLastAgentReport';
 import { TRIAGER_AGENT_NAME } from './triagerAgentName';
+import { extractFencedJsonBlocks } from './extractFencedJsonBlocks';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -91,17 +92,24 @@ export class CheckIssueReviewReadinessUseCase {
       });
     }
 
-    const { rejections: prRejections } =
-      await this.issueRejectionEvaluator.evaluate(
-        issue,
-        resolveLabelsNotRequiringPullRequest(params),
-        { developerAgentNames: params.developerAgentNames },
-      );
-
     const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
     const lastReportIsFromTriager =
       lastAgentReport !== null &&
       isAgentReportBodyFromAgent(lastAgentReport.content, TRIAGER_AGENT_NAME);
+    const lastReportDeclaresPullRequestNotRequired =
+      lastAgentReport !== null &&
+      this.extractPullRequestRequired(lastAgentReport.content) === false;
+
+    const { rejections: prRejections } =
+      await this.issueRejectionEvaluator.evaluate(
+        issue,
+        resolveLabelsNotRequiringPullRequest(params),
+        {
+          developerAgentNames: params.developerAgentNames,
+          pullRequestNotRequired: lastReportDeclaresPullRequestNotRequired,
+        },
+      );
+
     const requiredPrRejections = lastReportIsFromTriager
       ? prRejections.filter(
           (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
@@ -114,6 +122,23 @@ export class CheckIssueReviewReadinessUseCase {
       reviewReady: allRejections.length === 0,
       rejections: allRejections,
     };
+  };
+
+  private extractPullRequestRequired = (body: string): boolean | null => {
+    const blocks = extractFencedJsonBlocks(body, 'pullRequestRequired');
+    const firstBlock = blocks[0];
+    if (
+      typeof firstBlock !== 'object' ||
+      firstBlock === null ||
+      !('pullRequestRequired' in firstBlock)
+    ) {
+      return null;
+    }
+    const value = Reflect.get(firstBlock, 'pullRequestRequired');
+    if (typeof value !== 'boolean') {
+      return null;
+    }
+    return value;
   };
 
   private reportBodyHasNextStep = (body: string): boolean => {

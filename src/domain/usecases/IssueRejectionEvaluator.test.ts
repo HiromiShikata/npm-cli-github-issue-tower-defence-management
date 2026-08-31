@@ -1133,5 +1133,80 @@ describe('IssueRejectionEvaluator', () => {
         expect(result.approvedPrUrl).toBe(prUrl);
       });
     });
+
+    describe('pullRequestNotRequired option', () => {
+      it('should not call findRelatedOpenPRs and return no rejections when pullRequestNotRequired is true for a developer issue', async () => {
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { pullRequestNotRequired: true },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should not call findRelatedOpenPRs and return no rejections when pullRequestNotRequired is true for an issue with null agent', async () => {
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: null,
+          },
+          [],
+          { pullRequestNotRequired: true },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should still perform normal PR evaluation when pullRequestNotRequired is false', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { pullRequestNotRequired: false },
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+      });
+
+      it('should still perform normal PR evaluation when pullRequestNotRequired is undefined', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          {},
+        );
+
+        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+      });
+    });
   });
 });
