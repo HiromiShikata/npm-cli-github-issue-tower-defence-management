@@ -21,7 +21,7 @@ export const adoptIssueAgentDesignationLabel = async (
   if (agentLabel === undefined) {
     return;
   }
-  if (issue.agent !== null && issue.agent === agentLabel) {
+  if (issue.agent === agentLabel) {
     return;
   }
   issue.agent = agentLabel;
