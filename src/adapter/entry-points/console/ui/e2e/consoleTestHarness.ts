@@ -16,6 +16,7 @@ import type {
   PullRequestFile,
   RelatedPullRequest,
 } from '../../../../../domain/usecases/adapter-interfaces/IssueRepository';
+import type { StoryObjectMap } from '../../../../../domain/entities/StoryObjectMap';
 import type { ConsoleProjectBinding } from '../../consoleOperationApi';
 import {
   deleteProjectTimer,
@@ -632,7 +633,7 @@ const createStubIssueRepository = (
     return { author: '', body, createdAt: new Date(0) };
   },
   getAllOpened: () => notImplemented('getAllOpened'),
-  getStoryObjectMap: () => notImplemented('getStoryObjectMap'),
+  getStoryObjectMap: async (): Promise<StoryObjectMap> => new Map(),
   addIssueToProject: async (): Promise<void> => undefined,
   setDependedIssueUrl: () => notImplemented('setDependedIssueUrl'),
   getIssueOrPullRequestBody: async (): Promise<string> =>
