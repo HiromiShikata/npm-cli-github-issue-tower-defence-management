@@ -29,6 +29,7 @@ import {
   handleSetDependedIssueUrl,
   handleStoryAdd,
   handleStoryColor,
+  handleStoryRename,
   handleTimer,
   handleTriage,
 } from './consoleOperationApi';
@@ -2894,6 +2895,231 @@ describe('consoleOperationApi', () => {
       });
 
       expect(response.statusCode).toBe(200);
+    });
+  });
+
+  describe('handleStoryRename', () => {
+    const projectWithStoriesToRename = (): Project => ({
+      ...project,
+      url: 'https://github.com/orgs/acme-labs/projects/1',
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'opt_alpha',
+            name: 'Alpha story',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'opt_beta',
+            name: 'Beta story',
+            color: 'GREEN',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    const updateStoryList = jest.fn();
+    const projectRepositoryResolver = jest.fn(() => ({ updateStoryList }));
+
+    const renameStoryContext = (p: Project): ConsoleOperationContext => ({
+      ...contextForProject(p),
+      resolveProjectRepository: projectRepositoryResolver,
+    });
+
+    beforeEach(() => {
+      updateStoryList.mockResolvedValue([]);
+      projectRepositoryResolver.mockReturnValue({ updateStoryList });
+      issueRepository.getStoryObjectMap.mockResolvedValue(new Map());
+      issueRepository.updateIssue.mockResolvedValue(undefined);
+    });
+
+    it('calls updateStoryList with the renamed list and returns 200', async () => {
+      const p = projectWithStoriesToRename();
+      const response = await handleStoryRename(renameStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        newName: 'Alpha renamed',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true });
+      expect(updateStoryList).toHaveBeenCalledWith(p, [
+        {
+          id: 'opt_alpha',
+          name: 'Alpha renamed',
+          color: 'BLUE',
+          description: '',
+        },
+        {
+          id: 'opt_beta',
+          name: 'Beta story',
+          color: 'GREEN',
+          description: '',
+        },
+      ]);
+    });
+
+    it('calls invalidateProject after a successful rename', async () => {
+      const p = projectWithStoriesToRename();
+      const invalidateProject = jest.fn();
+      const ctx: ConsoleOperationContext = {
+        ...renameStoryContext(p),
+        invalidateProject,
+      };
+      await handleStoryRename(ctx, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        newName: 'Alpha renamed',
+      });
+      expect(invalidateProject).toHaveBeenCalledWith('acme');
+    });
+
+    it('returns 502 when resolveProjectRepository is null', async () => {
+      const response = await handleStoryRename(
+        contextForProject(projectWithStoriesToRename()),
+        { pjcode: 'acme', storyOptionId: 'opt_alpha', newName: 'New name' },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'project repository is not configured' },
+      });
+    });
+
+    it('returns 400 when storyOptionId is missing', async () => {
+      const response = await handleStoryRename(
+        renameStoryContext(projectWithStoriesToRename()),
+        { pjcode: 'acme', newName: 'New name' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'storyOptionId is required' },
+      });
+    });
+
+    it('returns 400 when newName is missing', async () => {
+      const response = await handleStoryRename(
+        renameStoryContext(projectWithStoriesToRename()),
+        { pjcode: 'acme', storyOptionId: 'opt_alpha' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'newName is required' },
+      });
+    });
+
+    it('returns 400 when pjcode is not configured', async () => {
+      const response = await handleStoryRename(
+        renameStoryContext(projectWithStoriesToRename()),
+        { pjcode: 'unknown', storyOptionId: 'opt_alpha', newName: 'New name' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'no project configured for pjcode "unknown"' },
+      });
+    });
+
+    it('returns 400 when the project has no story field', async () => {
+      const projectWithoutStory: Project = {
+        ...projectWithStoriesToRename(),
+        story: null,
+      };
+      const response = await handleStoryRename(
+        renameStoryContext(projectWithoutStory),
+        { pjcode: 'acme', storyOptionId: 'opt_alpha', newName: 'New name' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'project does not have a story field' },
+      });
+    });
+
+    it('returns 400 when the story option is not found', async () => {
+      const response = await handleStoryRename(
+        renameStoryContext(projectWithStoriesToRename()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_nonexistent',
+          newName: 'New name',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'story option "opt_nonexistent" not found in project' },
+      });
+    });
+
+    it('returns 502 when the project URL has no extractable owner', async () => {
+      const p: Project = {
+        ...projectWithStoriesToRename(),
+        url: 'https://example.com/invalid/project/url',
+      };
+      const response = await handleStoryRename(renameStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        newName: 'New name',
+      });
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'cannot determine project owner from project URL' },
+      });
+    });
+
+    it('calls updateIssue with the new title when the story has an associated issue', async () => {
+      const p = projectWithStoriesToRename();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRename = story.stories.find((s) => s.id === 'opt_alpha');
+      if (storyToRename === undefined)
+        throw new Error('test fixture must have opt_alpha story');
+      const storyIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/10',
+        title: 'Alpha story',
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [storyToRename.name, { story: storyToRename, storyIssue, issues: [] }],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const response = await handleStoryRename(renameStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        newName: 'Alpha renamed',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Alpha renamed' }),
+      );
+    });
+
+    it('does not call updateIssue when the story has no associated issue', async () => {
+      const p = projectWithStoriesToRename();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRename = story.stories.find((s) => s.id === 'opt_alpha');
+      if (storyToRename === undefined)
+        throw new Error('test fixture must have opt_alpha story');
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRename.name,
+          { story: storyToRename, storyIssue: null, issues: [] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      await handleStoryRename(renameStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        newName: 'Alpha renamed',
+      });
+
+      expect(issueRepository.updateIssue).not.toHaveBeenCalled();
     });
   });
 

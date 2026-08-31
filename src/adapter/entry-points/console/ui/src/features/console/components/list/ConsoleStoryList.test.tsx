@@ -40,6 +40,7 @@ const defaultProps = {
   onToggleGray: () => undefined,
   onReorderStory: () => Promise.resolve(),
   onDeleteStory: () => Promise.resolve(),
+  onRenameStory: () => Promise.resolve(),
   optimisticColors: {} as Record<string, ConsoleColor>,
   colorChangeInFlight: null as string | null,
   colorErrors: {} as Record<string, string>,
@@ -550,6 +551,140 @@ describe('ConsoleStoryList', () => {
       });
       const alert = await findByRole('alert');
       expect(alert).toHaveTextContent('Reorder failed');
+    });
+  });
+
+  describe('rename story', () => {
+    it('renders a Rename story button for each visible story', () => {
+      const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
+      const renameButtons = getAllByRole('button', { name: 'Rename story' });
+      expect(renameButtons).toHaveLength(storyEntries.length);
+    });
+
+    it('shows the rename form when Rename story is clicked', () => {
+      const { getAllByRole, getByPlaceholderText } = render(
+        <ConsoleStoryList {...defaultProps} />,
+      );
+      const [firstRenameButton] = getAllByRole('button', {
+        name: 'Rename story',
+      });
+      fireEvent.click(firstRenameButton);
+      expect(getByPlaceholderText('Story name')).toBeInTheDocument();
+    });
+
+    it('hides the rename form when Rename story is clicked again on the same row', () => {
+      const { getAllByRole, queryByPlaceholderText } = render(
+        <ConsoleStoryList {...defaultProps} />,
+      );
+      const [firstRenameButton] = getAllByRole('button', {
+        name: 'Rename story',
+      });
+      fireEvent.click(firstRenameButton);
+      fireEvent.click(firstRenameButton);
+      expect(queryByPlaceholderText('Story name')).toBeNull();
+    });
+
+    it('pre-fills the input with the current story name', () => {
+      const { getAllByRole, getByPlaceholderText } = render(
+        <ConsoleStoryList {...defaultProps} />,
+      );
+      const [firstRenameButton] = getAllByRole('button', {
+        name: 'Rename story',
+      });
+      fireEvent.click(firstRenameButton);
+      const input = getByPlaceholderText('Story name') as HTMLInputElement;
+      expect(input.value).toBe(storyEntries[0].storyName);
+    });
+
+    it('calls onRenameStory with the correct storyOptionId and new name on submit', async () => {
+      const onRenameStory = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole, getByPlaceholderText, getByRole } = render(
+        <ConsoleStoryList {...defaultProps} onRenameStory={onRenameStory} />,
+      );
+      const [firstRenameButton] = getAllByRole('button', {
+        name: 'Rename story',
+      });
+      fireEvent.click(firstRenameButton);
+      fireEvent.change(getByPlaceholderText('Story name'), {
+        target: { value: 'Renamed story' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Rename' }));
+      await waitFor(() =>
+        expect(onRenameStory).toHaveBeenCalledWith('1491051e', 'Renamed story'),
+      );
+    });
+
+    it('shows a validation error when Rename is clicked with an empty name', () => {
+      const { getAllByRole, getByRole, getByText } = render(
+        <ConsoleStoryList {...defaultProps} />,
+      );
+      const [firstRenameButton] = getAllByRole('button', {
+        name: 'Rename story',
+      });
+      fireEvent.click(firstRenameButton);
+      fireEvent.change(getByRole('textbox'), { target: { value: '' } });
+      fireEvent.click(getByRole('button', { name: 'Rename' }));
+      expect(getByText('Story name is required')).toBeInTheDocument();
+    });
+
+    it('shows Renaming… text on the button while rename is in progress', async () => {
+      let resolveRename: () => void;
+      const renamePromise = new Promise<void>((resolve) => {
+        resolveRename = resolve;
+      });
+      const onRenameStory = jest.fn().mockReturnValue(renamePromise);
+      const { getAllByRole, getByPlaceholderText, getByText } = render(
+        <ConsoleStoryList {...defaultProps} onRenameStory={onRenameStory} />,
+      );
+      const [firstRenameButton] = getAllByRole('button', {
+        name: 'Rename story',
+      });
+      fireEvent.click(firstRenameButton);
+      fireEvent.change(getByPlaceholderText('Story name'), {
+        target: { value: 'New name' },
+      });
+      fireEvent.click(getAllByRole('button', { name: 'Rename' })[0]);
+      await waitFor(() => expect(getByText('Renaming…')).toBeInTheDocument());
+      await act(async () => {
+        resolveRename?.();
+      });
+    });
+
+    it('closes the rename form after a successful rename', async () => {
+      const onRenameStory = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole, getByPlaceholderText, getByRole, queryByRole } =
+        render(
+          <ConsoleStoryList {...defaultProps} onRenameStory={onRenameStory} />,
+        );
+      const [firstRenameButton] = getAllByRole('button', {
+        name: 'Rename story',
+      });
+      fireEvent.click(firstRenameButton);
+      fireEvent.change(getByPlaceholderText('Story name'), {
+        target: { value: 'Renamed story' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Rename' }));
+      await waitFor(() => expect(queryByRole('textbox')).toBeNull());
+    });
+
+    it('shows an API error when onRenameStory rejects', async () => {
+      const onRenameStory = jest
+        .fn()
+        .mockRejectedValue(new Error('Rename failed'));
+      const { getAllByRole, getByPlaceholderText, getByRole, findByRole } =
+        render(
+          <ConsoleStoryList {...defaultProps} onRenameStory={onRenameStory} />,
+        );
+      const [firstRenameButton] = getAllByRole('button', {
+        name: 'Rename story',
+      });
+      fireEvent.click(firstRenameButton);
+      fireEvent.change(getByPlaceholderText('Story name'), {
+        target: { value: 'Bad name' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Rename' }));
+      const alert = await findByRole('alert');
+      expect(alert).toHaveTextContent('Rename failed');
     });
   });
 

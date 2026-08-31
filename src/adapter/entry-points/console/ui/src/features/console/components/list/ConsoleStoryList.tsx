@@ -15,6 +15,9 @@ type InlineInputFormProps = {
   emptyValueError: string;
   onSubmit: (value: string) => Promise<void>;
   onCancel: () => void;
+  initialValue?: string;
+  submitLabel?: string;
+  selectAllOnFocus?: boolean;
 };
 
 const InlineInputForm = ({
@@ -22,14 +25,21 @@ const InlineInputForm = ({
   emptyValueError,
   onSubmit,
   onCancel,
+  initialValue = '',
+  submitLabel = 'Create',
+  selectAllOnFocus = false,
 }: InlineInputFormProps) => {
-  const [valueInput, setValueInput] = useState('');
+  const [valueInput, setValueInput] = useState(initialValue);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectAllOnFocusRef = useRef(selectAllOnFocus);
 
   useEffect(() => {
     inputRef.current?.focus();
+    if (selectAllOnFocusRef.current) {
+      inputRef.current?.select();
+    }
   }, []);
 
   const handleSubmit = async (): Promise<void> => {
@@ -67,7 +77,7 @@ const InlineInputForm = ({
         disabled={submitting}
       />
       <button type="submit" className="console-op-button" disabled={submitting}>
-        {submitting ? 'Creating…' : 'Create'}
+        {submitting ? `${submitLabel.replace(/e$/, '')}ing…` : submitLabel}
       </button>
       <button
         type="button"
@@ -101,6 +111,28 @@ const StoryCreateForm = ({
     placeholder="Issue title"
     emptyValueError="Title is required"
     onSubmit={(title) => onSubmit(storyOptionId, title)}
+    onCancel={onCancel}
+  />
+);
+
+type StoryRenameFormProps = {
+  currentName: string;
+  onSubmit: (newName: string) => Promise<void>;
+  onCancel: () => void;
+};
+
+const StoryRenameForm = ({
+  currentName,
+  onSubmit,
+  onCancel,
+}: StoryRenameFormProps) => (
+  <InlineInputForm
+    placeholder="Story name"
+    emptyValueError="Story name is required"
+    initialValue={currentName}
+    submitLabel="Rename"
+    selectAllOnFocus={true}
+    onSubmit={onSubmit}
     onCancel={onCancel}
   />
 );
@@ -198,6 +230,7 @@ export type ConsoleStoryListProps = {
     direction: 'up' | 'down',
   ) => Promise<void>;
   onDeleteStory: (storyOptionId: string) => Promise<void>;
+  onRenameStory: (storyOptionId: string, newName: string) => Promise<void>;
   optimisticColors: Record<string, ConsoleColor>;
   colorChangeInFlight: string | null;
   colorErrors: Record<string, string>;
@@ -219,6 +252,7 @@ export const ConsoleStoryList = ({
   onToggleGray,
   onReorderStory,
   onDeleteStory,
+  onRenameStory,
   optimisticColors,
   colorChangeInFlight,
   colorErrors,
@@ -237,6 +271,7 @@ export const ConsoleStoryList = ({
   const [deleteStates, setDeleteStates] = useState<
     Record<string, StoryDeleteState>
   >({});
+  const [renameOptionId, setRenameOptionId] = useState<string | null>(null);
 
   const getRowReorderState = (id: string): RowReorderState =>
     rowReorderStates[id] ?? { inProgress: false, error: null };
@@ -338,6 +373,18 @@ export const ConsoleStoryList = ({
     setDeleteStates({});
   };
 
+  const handleRenameClick = (storyOptionId: string): void => {
+    setRenameOptionId(renameOptionId === storyOptionId ? null : storyOptionId);
+  };
+
+  const handleRenameSubmit = async (
+    storyOptionId: string,
+    newName: string,
+  ): Promise<void> => {
+    await onRenameStory(storyOptionId, newName);
+    setRenameOptionId(null);
+  };
+
   const visibleStories = showGray
     ? stories
     : stories.filter((s) => s.color !== 'GRAY');
@@ -367,6 +414,7 @@ export const ConsoleStoryList = ({
               isDeleting: false,
               error: null,
             };
+            const isRenameOpen = renameOptionId === entry.storyOptionId;
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
                 <div className="console-story-list-row-main">
@@ -445,6 +493,14 @@ export const ConsoleStoryList = ({
                   >
                     Delete
                   </button>
+                  <button
+                    type="button"
+                    className="console-op-button"
+                    aria-label="Rename story"
+                    onClick={() => handleRenameClick(entry.storyOptionId)}
+                  >
+                    Rename
+                  </button>
                 </div>
                 {reorderError !== null && (
                   <p role="alert" className="console-list-error">
@@ -480,6 +536,15 @@ export const ConsoleStoryList = ({
                       void handleDeleteConfirm(entry.storyOptionId)
                     }
                     onCancel={handleDeleteCancel}
+                  />
+                )}
+                {isRenameOpen && (
+                  <StoryRenameForm
+                    currentName={entry.storyName}
+                    onSubmit={(newName) =>
+                      handleRenameSubmit(entry.storyOptionId, newName)
+                    }
+                    onCancel={() => setRenameOptionId(null)}
                   />
                 )}
               </li>

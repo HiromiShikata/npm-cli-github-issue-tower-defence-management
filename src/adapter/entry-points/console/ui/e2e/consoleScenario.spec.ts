@@ -725,6 +725,45 @@ test('does not show the workflow improvement link when workflowImprovementIssueU
   ).toHaveCount(0);
 });
 
+test('renames a story option in the GitHub custom field via the rename form', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow).toBeVisible();
+
+  await tdpmRow.getByRole('button', { name: 'Rename story' }).click();
+
+  const input = page.locator('.console-inline-input-form-input');
+  await expect(input).toBeVisible();
+  await expect(input).toHaveValue('TDPM Console port');
+
+  await input.fill('TDPM Console port v2');
+  await page
+    .locator('.console-inline-input-form .console-op-button', {
+      hasText: 'Rename',
+    })
+    .click();
+
+  await expect
+    .poll(() => harness.renameStoryCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.renameStoryCalls[0].storyOptionId).toBe('1491051e');
+  expect(harness.renameStoryCalls[0].newName).toBe('TDPM Console port v2');
+
+  await expect(tdpmRow.locator('.console-inline-input-form')).toHaveCount(0);
+  await expect(
+    page.locator('.console-story-list-row', {
+      hasText: 'TDPM Console port v2',
+    }),
+  ).toBeVisible();
+});
+
 test('deletes a story option from the GitHub custom field when confirmed via the dialog', async ({
   page,
 }) => {

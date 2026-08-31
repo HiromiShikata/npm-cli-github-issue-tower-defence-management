@@ -538,7 +538,7 @@ const createStubIssueRepository = (
     return 9001;
   },
   searchIssue: () => notImplemented('searchIssue'),
-  updateIssue: () => notImplemented('updateIssue'),
+  updateIssue: async (): Promise<void> => undefined,
   updateIssueBody: () => notImplemented('updateIssueBody'),
   updateNextActionDate: async (): Promise<void> => undefined,
   updateNextActionHour: () => notImplemented('updateNextActionHour'),
@@ -757,6 +757,11 @@ export type ConsoleE2eDeleteStoryCall = {
   storyOptionId: string;
 };
 
+export type ConsoleE2eRenameStoryCall = {
+  storyOptionId: string;
+  newName: string;
+};
+
 export type ConsoleE2eHarness = {
   baseUrl: string;
   appUrl: string;
@@ -769,6 +774,7 @@ export type ConsoleE2eHarness = {
   reorderStoryCalls: ConsoleE2eReorderStoryCall[];
   addStoryCalls: ConsoleE2eAddStoryCall[];
   deleteStoryCalls: ConsoleE2eDeleteStoryCall[];
+  renameStoryCalls: ConsoleE2eRenameStoryCall[];
   closeIssueCalls: string[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
@@ -802,6 +808,7 @@ export const startConsoleE2eHarness = async (options?: {
   const reorderStoryCalls: ConsoleE2eReorderStoryCall[] = [];
   const addStoryCalls: ConsoleE2eAddStoryCall[] = [];
   const deleteStoryCalls: ConsoleE2eDeleteStoryCall[] = [];
+  const renameStoryCalls: ConsoleE2eRenameStoryCall[] = [];
   const closeIssueCalls: string[] = [];
   const storyColorCalls: ConsoleE2eStoryColorCall[] = [];
   const deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[] = [];
@@ -836,11 +843,26 @@ export const startConsoleE2eHarness = async (options?: {
             deleteStoryCalls.push({ storyOptionId: deleted.id });
           }
         } else {
-          reorderStoryCalls.push({
-            storyOptionIds: stories
-              .map((s) => s.id)
-              .filter((id): id is string => id !== null),
-          });
+          const isRename =
+            stories.every((s, i) => s.id === currentStories[i]?.id) &&
+            stories.some((s, i) => s.name !== currentStories[i]?.name);
+          if (isRename) {
+            const changed = stories.find(
+              (s, i) => s.name !== currentStories[i]?.name,
+            );
+            if (changed !== undefined && changed.id !== null) {
+              renameStoryCalls.push({
+                storyOptionId: changed.id,
+                newName: changed.name,
+              });
+            }
+          } else {
+            reorderStoryCalls.push({
+              storyOptionIds: stories
+                .map((s) => s.id)
+                .filter((id): id is string => id !== null),
+            });
+          }
         }
         const result = stories as FieldOption[];
         if (project.story !== null) {
@@ -883,6 +905,7 @@ export const startConsoleE2eHarness = async (options?: {
     reorderStoryCalls,
     addStoryCalls,
     deleteStoryCalls,
+    renameStoryCalls,
     closeIssueCalls,
     storyColorCalls,
     deleteAllCommentsCalls,

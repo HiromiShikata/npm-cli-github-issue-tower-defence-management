@@ -6,8 +6,10 @@ import {
   postConsoleAddStory,
   postConsoleDeleteStory,
   postConsoleOperation,
+  postConsoleRenameStory,
   postConsoleReviewComment,
   postProjectMaxPreparingUpdate,
+  RENAME_STORY_OPERATION_PATH,
 } from './consoleApi';
 
 const mockFetchOnce = (body: unknown, ok = true): jest.Mock => {
@@ -470,6 +472,36 @@ describe('postConsoleDeleteStory', () => {
     await expect(
       postConsoleDeleteStory({ pjcode: 'acme', storyOptionId: '' }),
     ).rejects.toThrow('storyOptionId is required');
+  });
+});
+
+describe('postConsoleRenameStory', () => {
+  it('posts storyOptionId and newName to the renamestory endpoint', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleRenameStory({
+      pjcode: 'acme',
+      storyOptionId: 'opt_abc',
+      newName: 'New Story Name',
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(RENAME_STORY_OPERATION_PATH);
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      pjcode: 'acme',
+      storyOptionId: 'opt_abc',
+      newName: 'New Story Name',
+    });
+  });
+
+  it('throws the error reason surfaced by the server', async () => {
+    mockFetchFailureOnce(400, JSON.stringify({ error: 'newName is required' }));
+    await expect(
+      postConsoleRenameStory({
+        pjcode: 'acme',
+        storyOptionId: 'opt_abc',
+        newName: '',
+      }),
+    ).rejects.toThrow('newName is required');
   });
 });
 
