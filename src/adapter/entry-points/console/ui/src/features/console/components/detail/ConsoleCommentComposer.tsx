@@ -170,6 +170,8 @@ export const ConsoleCommentComposer = ({
     }
   };
 
+  const isDraftEmpty = draft.trim().length === 0;
+
   return (
     <div className="console-composer">
       <button
@@ -266,7 +268,7 @@ export const ConsoleCommentComposer = ({
             <button
               type="button"
               className="console-composer-submit"
-              disabled={status.kind === 'posting'}
+              disabled={status.kind === 'posting' || isDraftEmpty}
               onClick={() => {
                 void submit(false);
               }}
@@ -287,7 +289,7 @@ export const ConsoleCommentComposer = ({
               <button
                 type="button"
                 className="console-composer-submit"
-                disabled={status.kind === 'posting'}
+                disabled={status.kind === 'posting' || isDraftEmpty}
                 onClick={() => {
                   void submit(true);
                 }}
