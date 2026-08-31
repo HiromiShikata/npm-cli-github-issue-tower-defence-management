@@ -1,3 +1,10 @@
+# [2.34.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.33.1...v2.34.0) (2026-08-31)
+
+
+### Features
+
+* **fleet-config:** add silentNotificationEnabled fleet-config setting ([#1908](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1908)) ([413cbb9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/413cbb9ed2c7147da62a80cddab8b1cd7177510b)), closes [HiromiShikata/umino-corporait-operation#31135](https://github.com/HiromiShikata/umino-corporait-operation/issues/31135)
+
 ## [2.33.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.33.0...v2.33.1) (2026-08-31)
 
 
