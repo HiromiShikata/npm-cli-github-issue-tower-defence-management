@@ -15,13 +15,13 @@ export const adoptIssueAgentDesignationLabel = async (
   issueRepository: Pick<IssueRepository, 'setIssueAgentField' | 'removeLabel'>,
   agentDesignationLabelsToKeep?: string[] | null,
 ): Promise<void> => {
-  if (issue.agent !== null) {
-    return;
-  }
   const agentLabel = issue.labels.find((label) =>
     configuredAgentNames.includes(label),
   );
   if (agentLabel === undefined) {
+    return;
+  }
+  if (issue.agent !== null && issue.agent === agentLabel) {
     return;
   }
   issue.agent = agentLabel;
