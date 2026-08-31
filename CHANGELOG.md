@@ -1,3 +1,10 @@
+## [2.33.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.33.0...v2.33.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* **AgentDesignationLabelAdoptUseCase:** override Agent field when designation label differs ([#1917](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1917)) ([6fc4910](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6fc49109be8e550ba6bfd5d68e3a55d39459ffd4)), closes [#1916](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1916)
+
 # [2.33.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.32.0...v2.33.0) (2026-08-31)
 
 
