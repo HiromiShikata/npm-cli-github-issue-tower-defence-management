@@ -996,8 +996,8 @@ export const handleDeleteStory = async (
   if (projectOwner === null) {
     return badGateway('cannot determine project owner from project URL');
   }
-  const proxyIssueUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/1`;
-  const issueRepository = context.resolveIssueRepository(proxyIssueUrl);
+  const proxyUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/0`;
+  const issueRepository = context.resolveIssueRepository(proxyUrl);
   const storyObjectMap = await issueRepository.getStoryObjectMap(project);
   const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
   const filteredStories = project.story.stories.filter(
@@ -1007,7 +1007,11 @@ export const handleDeleteStory = async (
   await projectRepository.updateStoryList(project, filteredStories);
   context.invalidateProject?.(pjcode);
   if (storyIssue !== null) {
-    await issueRepository.closeIssueByUrl(storyIssue.url, 'completed');
+    try {
+      await issueRepository.closeIssueByUrl(storyIssue.url, 'completed');
+    } catch (e) {
+      console.error('Failed to close story issue after story deletion:', e);
+    }
   }
   return ok();
 };

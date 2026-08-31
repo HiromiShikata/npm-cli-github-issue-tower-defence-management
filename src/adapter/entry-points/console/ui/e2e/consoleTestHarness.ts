@@ -522,6 +522,7 @@ const createStubIssueRepository = (
   storyColorCalls: ConsoleE2eStoryColorCall[],
   commentCalls: ConsoleE2eCommentCall[],
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[],
+  closeIssueCalls: string[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
@@ -623,7 +624,9 @@ const createStubIssueRepository = (
     });
   },
   closePullRequest: async (): Promise<void> => undefined,
-  closeIssueByUrl: async (): Promise<void> => undefined,
+  closeIssueByUrl: async (url: string): Promise<void> => {
+    closeIssueCalls.push(url);
+  },
   deletePullRequestBranch: () => notImplemented('deletePullRequestBranch'),
   createCommentByUrl: async (
     url: string,
@@ -633,7 +636,44 @@ const createStubIssueRepository = (
     return { author: '', body, createdAt: new Date(0) };
   },
   getAllOpened: () => notImplemented('getAllOpened'),
-  getStoryObjectMap: async (): Promise<StoryObjectMap> => new Map(),
+  getStoryObjectMap: async (project): Promise<StoryObjectMap> => {
+    const map: StoryObjectMap = new Map();
+    for (const story of project.story?.stories ?? []) {
+      map.set(story.name, {
+        story,
+        storyIssue: {
+          nameWithOwner: 'example/example',
+          number: 0,
+          title: story.name,
+          state: 'OPEN',
+          status: null,
+          story: null,
+          nextActionDate: null,
+          nextActionHour: null,
+          estimationMinutes: null,
+          dependedIssueUrls: [],
+          completionDate50PercentConfidence: null,
+          url: `https://github.com/example/example/issues/${story.id}`,
+          assignees: [],
+          labels: [],
+          org: 'example',
+          repo: 'example',
+          body: '',
+          itemId: '',
+          isPr: false,
+          isInProgress: false,
+          isClosed: false,
+          createdAt: new Date(0),
+          author: '',
+          closingIssueReferenceUrls: [],
+          agent: null,
+          stateReason: null,
+        },
+        issues: [],
+      });
+    }
+    return map;
+  },
   addIssueToProject: async (): Promise<void> => undefined,
   setDependedIssueUrl: () => notImplemented('setDependedIssueUrl'),
   getIssueOrPullRequestBody: async (): Promise<string> =>
@@ -729,6 +769,7 @@ export type ConsoleE2eHarness = {
   reorderStoryCalls: ConsoleE2eReorderStoryCall[];
   addStoryCalls: ConsoleE2eAddStoryCall[];
   deleteStoryCalls: ConsoleE2eDeleteStoryCall[];
+  closeIssueCalls: string[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
   setProjectTimer: (durationSeconds: number) => void;
@@ -761,6 +802,7 @@ export const startConsoleE2eHarness = async (options?: {
   const reorderStoryCalls: ConsoleE2eReorderStoryCall[] = [];
   const addStoryCalls: ConsoleE2eAddStoryCall[] = [];
   const deleteStoryCalls: ConsoleE2eDeleteStoryCall[] = [];
+  const closeIssueCalls: string[] = [];
   const storyColorCalls: ConsoleE2eStoryColorCall[] = [];
   const deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[] = [];
 
@@ -775,6 +817,7 @@ export const startConsoleE2eHarness = async (options?: {
       storyColorCalls,
       commentCalls,
       deleteAllCommentsCalls,
+      closeIssueCalls,
     ),
     resolveProjectRepository: (_projectUrl) => ({
       updateStoryList: async (_updatedProject, stories) => {
@@ -840,6 +883,7 @@ export const startConsoleE2eHarness = async (options?: {
     reorderStoryCalls,
     addStoryCalls,
     deleteStoryCalls,
+    closeIssueCalls,
     storyColorCalls,
     deleteAllCommentsCalls,
     setProjectTimer: (durationSeconds: number): void => {

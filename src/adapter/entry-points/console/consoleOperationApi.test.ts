@@ -2863,6 +2863,35 @@ describe('consoleOperationApi', () => {
         body: { error: 'cannot determine project owner from project URL' },
       });
     });
+
+    it('returns 200 even when closeIssueByUrl throws after story deletion', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const storyIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/42',
+        title: 'Remove this story',
+      };
+      issueRepository.getStoryObjectMap.mockResolvedValue(
+        new Map([
+          [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
+        ]),
+      );
+      issueRepository.closeIssueByUrl.mockRejectedValue(
+        new Error('network error'),
+      );
+
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
   });
 
   describe('handleTimer', () => {
