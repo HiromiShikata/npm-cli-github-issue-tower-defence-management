@@ -251,7 +251,6 @@ export type WebServerOptions = {
     ((pjcode: string, updatedProject: Project) => void) | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
   pullRequestStatusCache?: PullRequestStatusCache | null;
-  enableAirplaneMode?: boolean;
 };
 
 const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
@@ -690,15 +689,11 @@ const handleTokenedRequest = async (
       }
       if (requestPath === '/api/features') {
         sendJson(response, 200, {
-          airplaneMode: options.enableAirplaneMode === true,
+          airplaneMode: true,
         });
         return;
       }
       if (requestPath === '/api/airplanesync') {
-        if (options.enableAirplaneMode !== true) {
-          sendNotFound(response);
-          return;
-        }
         const issueRepository = options.issueRepository ?? null;
         const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
         const issueTitleStateCache = options.issueTitleStateCache ?? null;

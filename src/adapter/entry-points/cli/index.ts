@@ -142,7 +142,6 @@ type ServeWebOptions = {
   dashboardDir?: string;
   dashboardDataDir?: string;
   dashboardProjectNames?: string;
-  enableAirplaneMode?: boolean;
   fleetConfigFilePath?: string;
 };
 
@@ -1065,7 +1064,6 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     issueTitleStateCache: new IssueTitleStateCache(),
     pullRequestStatusCache: new PullRequestStatusCache(),
     port,
-    enableAirplaneMode: options.enableAirplaneMode === true,
   });
   console.log(`TDPM web server listening on port ${port}`);
 };
@@ -1100,7 +1098,6 @@ const addServeWebOptions = (command: Command): Command =>
       '--dashboardProjectNames <names>',
       'Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names',
     )
-    .option('--enableAirplaneMode', 'Enable the airplane mode feature')
     .option(
       '--fleetConfigFilePath <path>',
       'Path to the fleet-wide YAML config file; falls back to the TDPM_FLEET_CONFIG environment variable. Reads workflowImprovementIssueUrl for the workflow improvement link shown in the console.',
