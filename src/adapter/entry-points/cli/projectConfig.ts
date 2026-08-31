@@ -25,6 +25,7 @@ export type ConfigFile = {
   awLogStaleThresholdMinutes?: number;
   labelsAsLlmAgentName?: string[];
   labelsNotRequiringPullRequest?: string[];
+  agentDesignationLabelsToKeep?: string[];
   changeTargetPathAliases?: Record<string, string>;
   agents?: string[];
   consoleDataOutputDir?: string;
@@ -161,6 +162,7 @@ const knownProjectReadmeConfigKeys = [
   'awLogStaleThresholdMinutes',
   'labelsAsLlmAgentName',
   'labelsNotRequiringPullRequest',
+  'agentDesignationLabelsToKeep',
   'changeTargetPathAliases',
   'consoleDataOutputDir',
   'errorReportingRepository',
@@ -218,6 +220,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       labelsNotRequiringPullRequest: getStringArrayValue(
         parsed,
         'labelsNotRequiringPullRequest',
+      ),
+      agentDesignationLabelsToKeep: getStringArrayValue(
+        parsed,
+        'agentDesignationLabelsToKeep',
       ),
       changeTargetPathAliases: getStringRecordValue(
         parsed,
@@ -321,6 +327,10 @@ export const parseProjectReadmeConfig = (
         parsed,
         'labelsNotRequiringPullRequest',
       ),
+      agentDesignationLabelsToKeep: getStringArrayValue(
+        parsed,
+        'agentDesignationLabelsToKeep',
+      ),
       changeTargetPathAliases: getStringRecordValue(
         parsed,
         'changeTargetPathAliases',
@@ -417,6 +427,10 @@ export const mergeConfigs = (
     readmeOverrides.labelsNotRequiringPullRequest ??
     cliOverrides.labelsNotRequiringPullRequest ??
     configFile.labelsNotRequiringPullRequest,
+  agentDesignationLabelsToKeep:
+    readmeOverrides.agentDesignationLabelsToKeep ??
+    cliOverrides.agentDesignationLabelsToKeep ??
+    configFile.agentDesignationLabelsToKeep,
   changeTargetPathAliases:
     readmeOverrides.changeTargetPathAliases ??
     cliOverrides.changeTargetPathAliases ??

@@ -243,6 +243,35 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    it('should pass agentDesignationLabelsToKeep to agentDesignationLabelAdoptUseCase', async () => {
+      const mockProject = mock<Project>();
+      const mockIssues = [mock<Issue>()];
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: mockIssues,
+        project: mockProject,
+        cacheUsed: false,
+      });
+      await useCase.run({
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        agentDesignationLabelsToKeep: ['story'],
+      });
+      expect(mockAgentDesignationLabelAdoptUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentDesignationLabelsToKeep: ['story'],
+        }),
+      );
+    });
+
     it('should call IssueNoStatusUpdateUseCase with project and issues when startPreparation is configured', async () => {
       const input = {
         projectName: 'test-project',

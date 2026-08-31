@@ -168,6 +168,7 @@ export class HandleScheduledEventUseCase {
     allowedIssueAuthors?: string[] | null;
     autoAssignManagerAuthors?: string[] | null;
     agents?: string[] | null;
+    agentDesignationLabelsToKeep?: string[] | null;
     startPreparation?: {
       defaultAgentName: string;
       defaultLlmModelName?: string | null;
@@ -440,6 +441,7 @@ ${JSON.stringify(e)}
       project,
       issues,
       agents: input.agents ?? null,
+      agentDesignationLabelsToKeep: input.agentDesignationLabelsToKeep ?? null,
     });
     await this.conflictedIssueRevertUseCase.run({
       projectUrl: input.projectUrl,

@@ -13,6 +13,7 @@ export const adoptIssueAgentDesignationLabel = async (
     'getByUrl' | 'createField' | 'updateAgentList'
   >,
   issueRepository: Pick<IssueRepository, 'setIssueAgentField' | 'removeLabel'>,
+  agentDesignationLabelsToKeep?: string[] | null,
 ): Promise<void> => {
   if (issue.agent !== null) {
     return;
@@ -36,6 +37,9 @@ export const adoptIssueAgentDesignationLabel = async (
     return;
   }
   await issueRepository.setIssueAgentField(issue.url, project, agentOptionId);
+  if (agentDesignationLabelsToKeep?.includes(agentLabel)) {
+    return;
+  }
   await issueRepository.removeLabel(issue, agentLabel);
   issue.labels = issue.labels.filter((label) => label !== agentLabel);
 };
@@ -56,6 +60,7 @@ export class AgentDesignationLabelAdoptUseCase {
     project: Project;
     issues: Issue[];
     agents: string[] | null;
+    agentDesignationLabelsToKeep?: string[] | null;
   }): Promise<void> => {
     if (!params.agents || params.agents.length === 0) {
       return;
@@ -70,6 +75,7 @@ export class AgentDesignationLabelAdoptUseCase {
         params.agents,
         this.projectRepository,
         this.issueRepository,
+        params.agentDesignationLabelsToKeep,
       );
     }
   };
