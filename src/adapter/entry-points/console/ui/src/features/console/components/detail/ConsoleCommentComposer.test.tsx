@@ -657,6 +657,32 @@ describe('ConsoleCommentComposer', () => {
     );
     expect(getByText('ok & Awaiting Workspace')).not.toBeDisabled();
   });
+
+  it('re-disables the Comment button after the draft is cleared back to empty', () => {
+    const { getByText, getByPlaceholderText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
+    );
+    const textarea = getByPlaceholderText('Leave a comment…');
+    fireEvent.change(textarea, { target: { value: 'some text' } });
+    expect(getByText('Comment')).not.toBeDisabled();
+    fireEvent.change(textarea, { target: { value: '' } });
+    expect(getByText('Comment')).toBeDisabled();
+  });
+
+  it('re-disables the Comment & Awaiting Workspace button after the draft is cleared back to empty', () => {
+    const { getByText, getByPlaceholderText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onSubmitAndMoveToAwaitingWorkspace={stubSubmit}
+      />,
+    );
+    const textarea = getByPlaceholderText('Leave a comment…');
+    fireEvent.change(textarea, { target: { value: 'some text' } });
+    expect(getByText('Comment & Awaiting Workspace')).not.toBeDisabled();
+    fireEvent.change(textarea, { target: { value: '' } });
+    expect(getByText('Comment & Awaiting Workspace')).toBeDisabled();
+  });
 });
 
 describe('insertUploadPlaceholder', () => {
