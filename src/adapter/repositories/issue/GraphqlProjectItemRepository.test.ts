@@ -1788,14 +1788,14 @@ describe('GraphqlProjectItemRepository', () => {
                 number: 585,
                 title: 'Issue Without Visible Project',
                 state: 'OPEN',
-                url: 'https://github.com/meta-site/hr-audit-mock/issues/585',
+                url: 'https://github.com/example-org/example-repo/issues/585',
                 body: 'body text',
                 createdAt: '2024-01-01T00:00:00Z',
                 author: { login: 'octocat' },
                 labels: { nodes: [{ name: 'bug' }] },
                 assignees: { nodes: [{ login: 'octocat' }] },
                 repository: {
-                  nameWithOwner: 'meta-site/hr-audit-mock',
+                  nameWithOwner: 'example-org/example-repo',
                   isArchived: false,
                 },
                 projectItems: {
@@ -1809,12 +1809,12 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       const result = await repository.fetchProjectItemByUrl(
-        'https://github.com/meta-site/hr-audit-mock/issues/585',
+        'https://github.com/example-org/example-repo/issues/585',
       );
 
       expect(result).not.toBeNull();
       expect(result?.url).toBe(
-        'https://github.com/meta-site/hr-audit-mock/issues/585',
+        'https://github.com/example-org/example-repo/issues/585',
       );
       expect(result?.title).toBe('Issue Without Visible Project');
       expect(result?.id).toBe('');
@@ -1837,14 +1837,14 @@ describe('GraphqlProjectItemRepository', () => {
                 number: 585,
                 title: 'Issue In Other Project',
                 state: 'OPEN',
-                url: 'https://github.com/meta-site/hr-audit-mock/issues/585',
+                url: 'https://github.com/example-org/example-repo/issues/585',
                 body: 'body text',
                 createdAt: '2024-01-01T00:00:00Z',
                 author: { login: 'octocat' },
                 labels: { nodes: [] },
                 assignees: { nodes: [] },
                 repository: {
-                  nameWithOwner: 'meta-site/hr-audit-mock',
+                  nameWithOwner: 'example-org/example-repo',
                   isArchived: false,
                 },
                 projectItems: {
@@ -1864,7 +1864,7 @@ describe('GraphqlProjectItemRepository', () => {
       );
 
       const result = await repository.fetchProjectItemByUrl(
-        'https://github.com/meta-site/hr-audit-mock/issues/585',
+        'https://github.com/example-org/example-repo/issues/585',
         'project-target',
       );
 
