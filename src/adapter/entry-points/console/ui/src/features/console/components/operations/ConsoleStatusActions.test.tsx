@@ -3,7 +3,7 @@ import { consoleStatusOptionsFixture } from '../../testing/fixtures';
 import { ConsoleStatusActions } from './ConsoleStatusActions';
 
 describe('ConsoleStatusActions', () => {
-  it('renders only the four routed status buttons that exist in the data', () => {
+  it('renders only the three routed status buttons that exist in the data', () => {
     const { getByText, queryByText } = render(
       <ConsoleStatusActions
         statusOptions={consoleStatusOptionsFixture}
@@ -11,10 +11,11 @@ describe('ConsoleStatusActions', () => {
         onSetInTmuxByHuman={() => {}}
       />,
     );
-    expect(getByText('In Tmux by agent')).toBeInTheDocument();
     expect(getByText('In Tmux by human')).toBeInTheDocument();
     expect(getByText('Todo by human')).toBeInTheDocument();
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
+    expect(queryByText('In Tmux by agent')).toBeNull();
+    expect(queryByText('Todo by agent')).toBeNull();
     expect(queryByText('Preparation')).toBeNull();
   });
 
@@ -29,11 +30,11 @@ describe('ConsoleStatusActions', () => {
       />,
     );
     fireEvent.click(getByText('In Tmux by human'));
-    fireEvent.click(getByText('In Tmux by agent'));
+    fireEvent.click(getByText('Todo by human'));
     expect(onSetInTmuxByHuman).toHaveBeenCalledTimes(1);
     expect(onSetInTmuxByHuman.mock.calls[0][0].name).toBe('In Tmux by human');
     expect(onSetStatus).toHaveBeenCalledTimes(1);
-    expect(onSetStatus.mock.calls[0][0].name).toBe('In Tmux by agent');
+    expect(onSetStatus.mock.calls[0][0].name).toBe('Todo by human');
   });
 
   it('renders nothing when no routed option exists', () => {

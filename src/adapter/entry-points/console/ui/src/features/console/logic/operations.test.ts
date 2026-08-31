@@ -27,10 +27,8 @@ describe('operation constants', () => {
 
   it('lists the status buttons left to right', () => {
     expect(STATUS_BUTTON_NAMES).toEqual([
-      'In Tmux by agent',
       'In Tmux by human',
       'Todo by human',
-      'Todo by agent',
       'Awaiting Workspace',
     ]);
   });
