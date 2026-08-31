@@ -1,3 +1,10 @@
+## [2.36.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.1...v2.36.2) (2026-08-31)
+
+
+### Bug Fixes
+
+* **console:** remove In Tmux by agent and Todo by agent status action buttons ([#1924](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1924)) ([dd51208](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dd51208b9e50bd1ffe9f9ec3c8a13cf86ff94d72)), closes [HiromiShikata/umino-corporait-operation#31169](https://github.com/HiromiShikata/umino-corporait-operation/issues/31169)
+
 ## [2.36.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.0...v2.36.1) (2026-08-31)
 
 
