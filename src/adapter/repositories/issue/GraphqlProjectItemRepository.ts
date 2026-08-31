@@ -1297,20 +1297,11 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     if (!content) {
       return null;
     }
-    const projectItems = content.projectItems.nodes;
-    const item = projectId
-      ? projectItems.find((node) => node.project?.id === projectId)
-      : projectItems[0];
-    if (!item) {
-      console.warn(
-        projectId
-          ? `No project item found for issue ${issueUrl} on project ${projectId}`
-          : `No project item found for issue ${issueUrl}`,
-      );
-      return null;
-    }
-    return {
-      id: item.id,
+    const buildProjectItem = (
+      itemId: string,
+      customFields: ProjectItem['customFields'],
+    ): ProjectItem => ({
+      id: itemId,
       nameWithOwner: content.repository.nameWithOwner,
       number: content.number,
       title: content.title,
@@ -1329,20 +1320,35 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           .filter((url) => url.length > 0) || [],
       isRepoArchived: content.repository.isArchived ?? false,
       stateReason: toStateReason(content.stateReason),
-      customFields: item.fieldValues.nodes
+      customFields,
+    });
+    const projectItems = content.projectItems.nodes;
+    const item = projectId
+      ? projectItems.find((node) => node.project?.id === projectId)
+      : projectItems[0];
+    if (!item) {
+      if (projectId) {
+        console.warn(
+          `No project item found for issue ${issueUrl} on project ${projectId}`,
+        );
+        return null;
+      }
+      return buildProjectItem('', []);
+    }
+    return buildProjectItem(
+      item.id,
+      item.fieldValues.nodes
         .filter((field) => !!field.field)
-        .map((field) => {
-          return {
-            name: field.field.name,
-            value:
-              field.name ??
-              field.text ??
-              field.number?.toString() ??
-              field.date ??
-              null,
-          };
-        }),
-    };
+        .map((field) => ({
+          name: field.field.name,
+          value:
+            field.name ??
+            field.text ??
+            field.number?.toString() ??
+            field.date ??
+            null,
+        })),
+    );
   };
   convertStrToState = (state: string): 'OPEN' | 'CLOSED' | 'MERGED' => {
     return state === 'MERGED'
