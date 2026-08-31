@@ -1,3 +1,10 @@
+## [2.36.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.3...v2.36.4) (2026-08-31)
+
+
+### Bug Fixes
+
+* **check-issue-review-readiness:** skip PR evaluation when completion comment declares pullRequestRequired: false ([#1925](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1925)) ([bca7e7d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bca7e7d90bc74b061966be29dd8748559fc56282))
+
 ## [2.36.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.2...v2.36.3) (2026-08-31)
 
 
