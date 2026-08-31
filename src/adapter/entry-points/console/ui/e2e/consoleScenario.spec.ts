@@ -753,6 +753,13 @@ test('deletes a story option from the GitHub custom field when confirmed via the
     .toBe(1);
   expect(harness.deleteStoryCalls[0].storyOptionId).toBe('1491051e');
 
+  await expect
+    .poll(() => harness.closeIssueCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.closeIssueCalls[0]).toBe(
+    'https://github.com/example/example/issues/1491051e',
+  );
+
   await expect(dialog).toHaveCount(0);
   await expect(
     page.locator('.console-story-list-row', { hasText: 'TDPM Console port' }),
