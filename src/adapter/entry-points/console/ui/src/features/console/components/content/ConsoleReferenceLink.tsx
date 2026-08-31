@@ -1,48 +1,48 @@
 import {
-	parseGitHubReferenceUrl,
-	referenceStateToIconInput,
-} from "../../logic/references";
-import type { ConsoleIssueState } from "../../logic/types";
-import { ConsoleItemIcon } from "../detail/ConsoleItemIcon";
+  parseGitHubReferenceUrl,
+  referenceStateToIconInput,
+} from '../../logic/references';
+import type { ConsoleIssueState } from '../../logic/types';
+import { ConsoleItemIcon } from '../detail/ConsoleItemIcon';
 
 export type ConsoleReferenceLinkProps = {
-	href: string;
-	fallbackText: string;
-	state: ConsoleIssueState | null;
+  href: string;
+  fallbackText: string;
+  state: ConsoleIssueState | null;
 };
 
 export const ConsoleReferenceLink = ({
-	href,
-	fallbackText,
-	state,
+  href,
+  fallbackText,
+  state,
 }: ConsoleReferenceLinkProps) => {
-	if (state === null || state.title.trim() === "") {
-		return (
-			<a
-				className="console-markdown-reference console-markdown-reference-plain"
-				href={href}
-				target="_blank"
-				rel="noopener noreferrer"
-			>
-				{fallbackText}
-			</a>
-		);
-	}
-	const reference = parseGitHubReferenceUrl(href);
-	return (
-		<a
-			className="console-markdown-reference"
-			href={href}
-			target="_blank"
-			rel="noopener noreferrer"
-		>
-			<ConsoleItemIcon {...referenceStateToIconInput(state)} />
-			<span className="console-markdown-reference-title">{state.title}</span>
-			{reference !== null && (
-				<span className="console-markdown-reference-number">
-					#{reference.number}
-				</span>
-			)}
-		</a>
-	);
+  if (state === null || state.title.trim() === '') {
+    return (
+      <a
+        className="console-markdown-reference console-markdown-reference-plain"
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {fallbackText}
+      </a>
+    );
+  }
+  const reference = parseGitHubReferenceUrl(href);
+  return (
+    <a
+      className="console-markdown-reference"
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <ConsoleItemIcon {...referenceStateToIconInput(state)} />
+      <span className="console-markdown-reference-title">{state.title}</span>
+      {reference !== null && (
+        <span className="console-markdown-reference-number">
+          #{reference.number}
+        </span>
+      )}
+    </a>
+  );
 };
