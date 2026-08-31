@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import {
+  CONSOLE_E2E_REFERENCE_LINK_URL,
   type ConsoleE2eHarness,
   startConsoleE2eHarness,
 } from './consoleTestHarness';
@@ -756,6 +757,23 @@ test('deletes a story option from the GitHub custom field when confirmed via the
   await expect(
     page.locator('.console-story-list-row', { hasText: 'TDPM Console port' }),
   ).toHaveCount(0);
+});
+
+test('shows issue number after resolved title in reference links inside item body', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  const referenceNumber = page.locator('.console-markdown-reference-number');
+  await expect(referenceNumber).toBeVisible();
+  const urlSegments = CONSOLE_E2E_REFERENCE_LINK_URL.split('/');
+  const expectedNumber = `#${urlSegments[urlSegments.length - 1]}`;
+  await expect(referenceNumber).toHaveText(expectedNumber);
 });
 
 test('project timer bar shows remaining time when active and Move to next project when expired', async ({

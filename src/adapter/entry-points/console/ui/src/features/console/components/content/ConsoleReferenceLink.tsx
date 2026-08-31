@@ -1,4 +1,7 @@
-import { referenceStateToIconInput } from '../../logic/references';
+import {
+  parseGitHubReferenceUrl,
+  referenceStateToIconInput,
+} from '../../logic/references';
 import type { ConsoleIssueState } from '../../logic/types';
 import { ConsoleItemIcon } from '../detail/ConsoleItemIcon';
 
@@ -25,6 +28,7 @@ export const ConsoleReferenceLink = ({
       </a>
     );
   }
+  const reference = parseGitHubReferenceUrl(href);
   return (
     <a
       className="console-markdown-reference"
@@ -34,6 +38,11 @@ export const ConsoleReferenceLink = ({
     >
       <ConsoleItemIcon {...referenceStateToIconInput(state)} />
       <span className="console-markdown-reference-title">{state.title}</span>
+      {reference !== null && (
+        <span className="console-markdown-reference-number">
+          #{reference.number}
+        </span>
+      )}
     </a>
   );
 };

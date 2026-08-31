@@ -4,7 +4,7 @@ import { ConsoleReferenceLink } from './ConsoleReferenceLink';
 describe('ConsoleReferenceLink', () => {
   const href = 'https://github.com/octo/repo/pull/7';
 
-  it('renders the state icon and fetched title when state is resolved', () => {
+  it('renders the state icon, fetched title, and issue number when state is resolved', () => {
     const { container, getByText } = render(
       <ConsoleReferenceLink
         href={href}
@@ -21,6 +21,13 @@ describe('ConsoleReferenceLink', () => {
     expect(container.querySelector('.console-item-icon')).not.toBeNull();
     const anchor = container.querySelector('a');
     expect(anchor?.getAttribute('href')).toBe(href);
+    expect(
+      container.querySelector('.console-markdown-reference-number'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('.console-markdown-reference-number')
+        ?.textContent,
+    ).toBe('#7');
   });
 
   it('falls back to the plain link when state is null', () => {
