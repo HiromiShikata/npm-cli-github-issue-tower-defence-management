@@ -475,6 +475,55 @@ describe('ConsoleItemDetailContainer', () => {
     );
   });
 
+  it('calls onCommentDraftChange with empty string before queuing the status change when Comment & Awaiting Workspace is clicked', async () => {
+    const operations = buildOperations();
+    const onCommentDraftChange = jest.fn();
+    const onQueueAction = jest.fn();
+    let draftClearedBeforeStatusQueued = false;
+    let hasSetStatus = false;
+
+    onCommentDraftChange.mockImplementation((draft: string) => {
+      if (draft === '' && !hasSetStatus) {
+        draftClearedBeforeStatusQueued = true;
+      }
+    });
+
+    onQueueAction.mockImplementation((input: { kind: { type: string } }) => {
+      if (input.kind.type === 'set_status') {
+        hasSetStatus = true;
+      }
+    });
+
+    const { getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        initialCommentDraft="test comment body"
+        onQueueAction={onQueueAction}
+        onCommentDraftChange={onCommentDraftChange}
+      />,
+    );
+
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: { type: 'set_status', optionName: AWAITING_WORKSPACE_NAME },
+        }),
+      );
+    });
+
+    expect(draftClearedBeforeStatusQueued).toBe(true);
+  });
+
   it('collects an inline comment on an issue related pull request diff, enables Reject, and submits it as the request-changes review for that pull request url', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
