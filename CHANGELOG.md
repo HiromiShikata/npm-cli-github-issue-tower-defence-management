@@ -1,3 +1,10 @@
+## [2.36.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.2...v2.36.3) (2026-08-31)
+
+
+### Bug Fixes
+
+* **GraphqlProjectItemRepository:** return issue content when projectItems empty without projectId ([#1923](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1923)) ([46e233d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/46e233db9d45d940ca2ca663c2b0334d8e4068fb)), closes [HiromiShikata/secretary#4941](https://github.com/HiromiShikata/secretary/issues/4941)
+
 ## [2.36.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.1...v2.36.2) (2026-08-31)
 
 
