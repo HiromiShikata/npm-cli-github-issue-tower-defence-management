@@ -1029,6 +1029,12 @@ body {
   text-decoration: underline;
 }
 
+.console-markdown-reference-number {
+  color: #8b949e;
+  font-size: 0.75em;
+  flex-shrink: 0;
+}
+
 .console-markdown hr {
   border: none;
   border-top: 1px solid #30363d;
