@@ -76,11 +76,32 @@ describe('extractExecutiveSummaryFromComments', () => {
     expect(result).toContain('タスクのゴール:');
   });
 
-  it('returns null when the last comment has no executive summary heading', () => {
+  it('returns the summary from an earlier comment when the last comment has none', () => {
     const comments: ConsoleComment[] = [
       makeComment(AGENT_COMMENT),
       makeComment('A follow-up comment without a summary.'),
     ];
+    const result = extractExecutiveSummaryFromComments(comments);
+    expect(result).toContain('タスクのゴール:');
+  });
+
+  it('returns null when no comment in the array contains an executive summary', () => {
+    const comments: ConsoleComment[] = [
+      makeComment('First comment, no summary.'),
+      makeComment('Second comment, no summary.'),
+    ];
     expect(extractExecutiveSummaryFromComments(comments)).toBeNull();
+  });
+
+  it('returns the most recent summary when multiple comments have one', () => {
+    const olderComment = `## エグゼクティブサマリ / Executive Summary\nタスクのゴール: old goal\nFrom: :robot: agent (model)`;
+    const newerComment = `## エグゼクティブサマリ / Executive Summary\nタスクのゴール: new goal\nFrom: :robot: agent (model)`;
+    const comments: ConsoleComment[] = [
+      makeComment(olderComment),
+      makeComment(newerComment),
+      makeComment('A routing bot comment without a summary.'),
+    ];
+    const result = extractExecutiveSummaryFromComments(comments);
+    expect(result).toBe('タスクのゴール: new goal');
   });
 });
