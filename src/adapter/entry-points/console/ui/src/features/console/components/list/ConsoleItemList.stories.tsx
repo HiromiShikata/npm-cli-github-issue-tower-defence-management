@@ -8,6 +8,15 @@ import {
 } from '../../testing/fixtures';
 import { ConsoleItemList } from './ConsoleItemList';
 
+const prsItems = consoleListItemsFixture.filter((item) => item.isPr);
+const prsRows = buildConsoleListRows(prsItems, {}, []);
+const prsExecutiveSummaries = Object.fromEntries(
+  prsItems.map((item) => [
+    item.projectItemId,
+    'タスクのゴール: awaiting quality check 一覧に OK ボタンと executive summary を表示する\n実施内容: ConsoleItemList に props を追加し ConsolePage から渡すように実装\n残りの作業と判断: なし',
+  ]),
+);
+
 const meta: Meta<typeof ConsoleItemList> = {
   title: 'Console/ConsoleItemList',
   component: ConsoleItemList,
@@ -97,5 +106,19 @@ export const StaleOverlayAfter: Story = {
     isLoading: false,
     error: null,
     onSelectItem: () => {},
+  },
+};
+
+export const PrsTabWithActions: Story = {
+  args: {
+    rows: prsRows,
+    storyColors: consoleStoryColorsFixture,
+    statusOptions: consoleStatusOptionsFixture,
+    activeItemId: null,
+    isLoading: false,
+    error: null,
+    onSelectItem: () => {},
+    executiveSummaries: prsExecutiveSummaries,
+    onOkAndAwaitingWorkspace: () => {},
   },
 };

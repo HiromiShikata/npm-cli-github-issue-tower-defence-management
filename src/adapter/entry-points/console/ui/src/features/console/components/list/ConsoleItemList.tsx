@@ -7,6 +7,7 @@ import type {
   ConsoleListItem,
   ConsoleStoryColorSource,
 } from '../../logic/types';
+import { ConsoleOkAndAwaitingWorkspaceActions } from '../operations/ConsoleOkAndAwaitingWorkspaceActions';
 import { ConsoleItemSummary } from './ConsoleItemSummary';
 import { ConsoleStorySummary } from './ConsoleStorySummary';
 
@@ -19,6 +20,11 @@ export type ConsoleListViewProps = {
   isLoading: boolean;
   error: string | null;
   onSelectItem: (item: ConsoleListItem) => void;
+  executiveSummaries?: Record<string, string | null>;
+  onOkAndAwaitingWorkspace?: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => void;
 };
 
 export const ConsoleItemList = ({
@@ -30,6 +36,8 @@ export const ConsoleItemList = ({
   isLoading,
   error,
   onSelectItem,
+  executiveSummaries,
+  onOkAndAwaitingWorkspace,
 }: ConsoleListViewProps) => {
   if (error !== null) {
     return (
@@ -65,8 +73,19 @@ export const ConsoleItemList = ({
               isActive={row.item.itemId === activeItemId}
               now={now}
               statusOptions={statusOptions}
+              executiveSummary={
+                executiveSummaries?.[row.item.projectItemId] ?? null
+              }
               onSelect={onSelectItem}
             />
+            {onOkAndAwaitingWorkspace !== undefined && (
+              <ConsoleOkAndAwaitingWorkspaceActions
+                statusOptions={statusOptions}
+                onOkAndAwaitingWorkspace={(option) =>
+                  onOkAndAwaitingWorkspace(row.item, option)
+                }
+              />
+            )}
           </li>
         ),
       )}

@@ -295,4 +295,36 @@ describe('ConsoleItemSummary', () => {
     ).not.toBeNull();
     expect(container.querySelector('.console-item-fields')).toBeNull();
   });
+
+  it('renders the executive summary when provided', () => {
+    const summary =
+      'タスクのゴール: OK ボタンを一覧に追加する\n残りの作業と判断: なし';
+    const { container } = render(
+      <ConsoleItemSummary
+        item={prItem}
+        isActive={false}
+        now={now}
+        executiveSummary={summary}
+        onSelect={() => {}}
+      />,
+    );
+    const el = container.querySelector('.console-item-executive-summary');
+    expect(el).not.toBeNull();
+    expect(el?.textContent).toBe(summary);
+  });
+
+  it('omits the executive summary element when executiveSummary is null', () => {
+    const { container } = render(
+      <ConsoleItemSummary
+        item={prItem}
+        isActive={false}
+        now={now}
+        executiveSummary={null}
+        onSelect={() => {}}
+      />,
+    );
+    expect(
+      container.querySelector('.console-item-executive-summary'),
+    ).toBeNull();
+  });
 });
