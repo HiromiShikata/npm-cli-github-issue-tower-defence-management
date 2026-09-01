@@ -878,3 +878,55 @@ test('project timer bar shows remaining time when active and Move to next projec
     harness.clearProjectTimer();
   }
 });
+
+test('prs agent filter narrows the list and navigation respects the filter', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+
+  const select = page.getByRole('combobox', { name: 'Filter by agent' });
+  await expect(select).toBeVisible();
+
+  // all agents selected by default: the developer-assigned item is visible
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible();
+
+  // filtering to pr-reviewer hides the developer item
+  await select.selectOption('pr-reviewer');
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).not.toBeVisible({ timeout: 2000 });
+
+  // filtering back to developer restores it
+  await select.selectOption('developer');
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible();
+
+  // process the filtered item; navigation auto-advances to the next tab
+  // because all items in the filtered set are done, matching the filter contract
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+  const approveButton = page
+    .locator('.console-op-button', { hasText: 'Approve' })
+    .first();
+  await expect(approveButton).toBeVisible();
+  await approveButton.click();
+
+  await expect(activeTabLabel(page)).toHaveText('Failed Preparation', {
+    timeout: 8000,
+  });
+});
