@@ -1616,3 +1616,106 @@ describe('ConsolePage airplane mode write guard', () => {
     expect(document.querySelector('.console-undo-toast')).toBeNull();
   });
 });
+
+describe('ConsolePage story-labeled item Delete Story button', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        const base = listPayload(tab);
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'todo-by-human'
+              ? {
+                  ...base,
+                  items: [
+                    {
+                      number: 999,
+                      title: 'TDPM Console port story issue',
+                      url: 'https://github.com/o/r/issues/999',
+                      repo: 'o/r',
+                      nameWithOwner: 'o/r',
+                      projectItemId: 'PVTI_ST1',
+                      itemId: 'PVTI_ST1',
+                      isPr: false,
+                      relatedOpenPullRequestUrls: [],
+                      story: 'TDPM Console port',
+                      status: 'Todo by human',
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: ['story'],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                    },
+                  ],
+                }
+              : base,
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('shows Delete Story in the danger zone when a story-labeled item matching a story entry is selected', async () => {
+    const { getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('TDPM Console port story issue')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('TDPM Console port story issue'));
+    await waitFor(() => {
+      expect(getByText('⚠')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('⚠'));
+    await waitFor(() => {
+      expect(getByText('Delete Story')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show Delete Story in the danger zone when the selected item has no story label', async () => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { getByText, queryByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByText('Notify finished issue preparation'),
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Notify finished issue preparation'));
+    await waitFor(() => {
+      expect(getByText('⚠')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('⚠'));
+    expect(queryByText('Delete Story')).toBeNull();
+  });
+});
