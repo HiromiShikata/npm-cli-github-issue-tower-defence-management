@@ -1,3 +1,10 @@
+# [2.39.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.38.1...v2.39.0) (2026-09-01)
+
+
+### Features
+
+* **console:** move depended issue setter to left side of bottom row ([#1939](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1939)) ([de42fcb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/de42fcb06d70ad309e7fdb1764c7150687ee10c0)), closes [HiromiShikata/umino-corporait-operation#31200](https://github.com/HiromiShikata/umino-corporait-operation/issues/31200)
+
 ## [2.38.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.38.0...v2.38.1) (2026-09-01)
 
 
