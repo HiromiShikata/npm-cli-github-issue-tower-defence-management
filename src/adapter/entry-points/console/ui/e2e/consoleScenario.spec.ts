@@ -896,8 +896,8 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
     ),
   ).toBeVisible();
 
-  // filtering to pr-reviewer hides the developer item
-  await select.selectOption('pr-reviewer');
+  // filtering to chore hides the developer-assigned item
+  await select.selectOption('chore');
   await expect(
     itemRowByText(
       page,
