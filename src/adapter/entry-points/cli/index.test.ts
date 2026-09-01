@@ -2902,14 +2902,13 @@ mysteryKey: 'value'
       ]);
 
       expect(mockRun).toHaveBeenCalledTimes(1);
-      const callArg = mockRun.mock.calls[0]?.[0];
-      expect(callArg).toMatchObject({
-        reportOwner: 'HiromiShikata',
-        reportRepo: 'umino-corporait-operation',
-        projects: [expect.objectContaining({ name: 'xcare' })],
-      });
-      expect(callArg.since).toBeInstanceOf(Date);
-      expect(callArg.until).toBeInstanceOf(Date);
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reportOwner: 'HiromiShikata',
+          reportRepo: 'umino-corporait-operation',
+          projects: [expect.objectContaining({ name: 'xcare' })],
+        }),
+      );
     });
 
     it('uses --since and --until options when provided', async () => {
@@ -2938,9 +2937,12 @@ mysteryKey: 'value'
         '2026-01-08T00:00:00Z',
       ]);
 
-      const callArg = mockRun.mock.calls[0]?.[0];
-      expect(callArg.since).toEqual(new Date('2026-01-01T00:00:00Z'));
-      expect(callArg.until).toEqual(new Date('2026-01-08T00:00:00Z'));
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          since: new Date('2026-01-01T00:00:00Z'),
+          until: new Date('2026-01-08T00:00:00Z'),
+        }),
+      );
     });
   });
 
