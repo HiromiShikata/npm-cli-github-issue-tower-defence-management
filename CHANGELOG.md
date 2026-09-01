@@ -1,3 +1,10 @@
+# [2.38.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.4...v2.38.0) (2026-09-01)
+
+
+### Features
+
+* **console:** add agent filter select box to prs tab ([#1929](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1929)) ([33b8c55](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/33b8c554dbdce4a0f3a07c22402220e2bfc4c81b)), closes [HiromiShikata/umino-corporait-operation#31217](https://github.com/HiromiShikata/umino-corporait-operation/issues/31217)
+
 ## [2.37.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.3...v2.37.4) (2026-09-01)
 
 
