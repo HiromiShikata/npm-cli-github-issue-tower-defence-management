@@ -55,8 +55,8 @@ describe('ConsoleItemSummary', () => {
     );
   });
 
-  it('renders the story, status and depended issue url for a pull request', () => {
-    const { getByText } = render(
+  it('renders the status badge and depended issue url for a pull request, without story', () => {
+    const { getByText, queryByText } = render(
       <ConsoleItemSummary
         item={prItem}
         isActive={false}
@@ -64,9 +64,8 @@ describe('ConsoleItemSummary', () => {
         onSelect={() => {}}
       />,
     );
-    expect(getByText('Story')).toBeInTheDocument();
-    expect(getByText(prItem.story)).toBeInTheDocument();
-    expect(getByText('Status')).toBeInTheDocument();
+    expect(queryByText('Story')).not.toBeInTheDocument();
+    expect(queryByText(prItem.story)).not.toBeInTheDocument();
     expect(getByText(prItem.status as string)).toBeInTheDocument();
     expect(getByText('Depended Issue URL')).toBeInTheDocument();
     expect(getByText(prItem.dependedIssueUrls.join(', '))).toBeInTheDocument();
@@ -90,9 +89,9 @@ describe('ConsoleItemSummary', () => {
     expect(queryByText('Depended Issue URL')).not.toBeInTheDocument();
   });
 
-  it('omits the status field when the item has no status', () => {
+  it('omits the status badge when the item has no status', () => {
     const itemWithoutStatus = { ...prItem, status: null };
-    const { queryByText } = render(
+    const { container } = render(
       <ConsoleItemSummary
         item={itemWithoutStatus}
         isActive={false}
@@ -100,7 +99,7 @@ describe('ConsoleItemSummary', () => {
         onSelect={() => {}}
       />,
     );
-    expect(queryByText('Status')).not.toBeInTheDocument();
+    expect(container.querySelector('.console-item-status-badge')).toBeNull();
   });
 
   it('reports the item on click', () => {
@@ -129,7 +128,7 @@ describe('ConsoleItemSummary', () => {
     expect(getByRole('button')).toHaveAttribute('data-active', 'true');
   });
 
-  it('renders the agent field next to status when agent is set', () => {
+  it('renders the agent field in the agent block when agent is set', () => {
     const agentItem = { ...prItem, agent: 'developer' };
     const { getByText } = render(
       <ConsoleItemSummary
@@ -225,7 +224,7 @@ describe('ConsoleItemSummary', () => {
     ).not.toBeNull();
   });
 
-  it('renders status and agent in their own block separate from other fields', () => {
+  it('renders status badge in sub row and agent in its own block separate from other fields', () => {
     const agentItem = { ...prItem, agent: 'developer' };
     const { container } = render(
       <ConsoleItemSummary
@@ -235,12 +234,13 @@ describe('ConsoleItemSummary', () => {
         onSelect={() => {}}
       />,
     );
+    const subBlock = container.querySelector('.console-item-sub');
+    expect(subBlock?.textContent).toContain(agentItem.status as string);
     const statusAgentBlock = container.querySelector(
       '.console-item-status-agent',
     );
     expect(statusAgentBlock).not.toBeNull();
-    expect(statusAgentBlock?.textContent).toContain('Status');
-    expect(statusAgentBlock?.textContent).toContain(agentItem.status as string);
+    expect(statusAgentBlock?.textContent).not.toContain('Status');
     expect(statusAgentBlock?.textContent).toContain('Agent');
     expect(statusAgentBlock?.textContent).toContain('developer');
     const fieldsBlock = container.querySelector('.console-item-fields');
@@ -248,7 +248,7 @@ describe('ConsoleItemSummary', () => {
     expect(fieldsBlock?.textContent).not.toContain('Agent');
   });
 
-  it('renders status and agent in their own block even when no other fields are present', () => {
+  it('renders status badge in sub row and agent block when no other fields are present', () => {
     const agentOnlyItem = {
       ...prItem,
       story: '',
@@ -266,13 +266,15 @@ describe('ConsoleItemSummary', () => {
         onSelect={() => {}}
       />,
     );
+    const subBlock = container.querySelector('.console-item-sub');
+    expect(subBlock?.textContent).toContain('Preparation');
     expect(
       container.querySelector('.console-item-status-agent'),
     ).not.toBeNull();
     expect(container.querySelector('.console-item-fields')).toBeNull();
   });
 
-  it('renders status-only block when agent is null and no other fields are present', () => {
+  it('renders status badge in sub row and omits agent block when agent is null', () => {
     const statusOnlyItem = {
       ...prItem,
       story: '',
@@ -290,9 +292,9 @@ describe('ConsoleItemSummary', () => {
         onSelect={() => {}}
       />,
     );
-    expect(
-      container.querySelector('.console-item-status-agent'),
-    ).not.toBeNull();
+    const subBlock = container.querySelector('.console-item-sub');
+    expect(subBlock?.textContent).toContain('Preparation');
+    expect(container.querySelector('.console-item-status-agent')).toBeNull();
     expect(container.querySelector('.console-item-fields')).toBeNull();
   });
 });
