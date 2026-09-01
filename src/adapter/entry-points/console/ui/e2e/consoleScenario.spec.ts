@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import {
+  CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
   CONSOLE_E2E_REFERENCE_LINK_URL,
   type ConsoleE2eHarness,
   startConsoleE2eHarness,
