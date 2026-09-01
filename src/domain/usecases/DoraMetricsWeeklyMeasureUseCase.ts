@@ -75,13 +75,6 @@ export class DoraMetricsWeeklyMeasureUseCase {
       allRuns.push(...runs);
     }
 
-    const deployFrequency = allRuns.length;
-    const changeFailureRate =
-      deployFrequency > 0
-        ? allRuns.filter((r) => r.conclusion === 'failure').length /
-          deployFrequency
-        : null;
-
     const mergedPRs = await this.githubActionsRepository.getMergedPullRequests(
       config.owner,
       config.repo,
@@ -89,6 +82,14 @@ export class DoraMetricsWeeklyMeasureUseCase {
       since,
       until,
     );
+
+    const deployFrequency =
+      config.deployWorkflowFiles.length > 0 ? allRuns.length : mergedPRs.length;
+    const changeFailureRate =
+      config.deployWorkflowFiles.length > 0 && deployFrequency > 0
+        ? allRuns.filter((r) => r.conclusion === 'failure').length /
+          deployFrequency
+        : null;
 
     const changeLeadTimeHours = this.calculateChangeLeadTime(
       mergedPRs,

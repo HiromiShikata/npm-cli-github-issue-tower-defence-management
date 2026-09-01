@@ -235,6 +235,32 @@ describe('DoraMetricsWeeklyMeasureUseCase', () => {
         },
       },
       {
+        name: 'uses merged PR count as deploy frequency for projects without deploy workflow files',
+        setup: () => {
+          mockRepo.getMergedPullRequests.mockResolvedValue([
+            {
+              createdAt: new Date('2026-01-02T00:00:00Z'),
+              mergedAt: new Date('2026-01-02T06:00:00Z'),
+            },
+            {
+              createdAt: new Date('2026-01-04T00:00:00Z'),
+              mergedAt: new Date('2026-01-04T12:00:00Z'),
+            },
+          ]);
+        },
+        params: {
+          projects: [{ ...xcare, deployWorkflowFiles: [] }],
+          reportOwner: 'HiromiShikata',
+          reportRepo: 'umino-corporait-operation',
+          since,
+          until,
+        },
+        assert: () => {
+          const body = mockCreateNewIssue.mock.calls[0]?.[3] ?? '';
+          expect(body).toMatch(/xcare \| 2 \| N\/A/);
+        },
+      },
+      {
         name: 'calculates change lead time using earliest post-merge run when runs returned in descending order',
         setup: () => {
           mockRepo.getWorkflowRuns.mockResolvedValue([
