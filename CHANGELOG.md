@@ -1,3 +1,10 @@
+## [2.37.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.0...v2.37.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* **airplane-sync:** use per-URL issue repository resolution for multi-org sync ([#1932](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1932)) ([6865869](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/686586934b857a06764e5e5e689232cccdfdf40a))
+
 # [2.37.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.4...v2.37.0) (2026-09-01)
 
 
