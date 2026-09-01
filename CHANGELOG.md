@@ -1,3 +1,10 @@
+## [2.40.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.40.1...v2.40.2) (2026-09-01)
+
+
+### Bug Fixes
+
+* **console:** fetch related PRs for prs-tab items regardless of board hint ([#1943](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1943)) ([93dba33](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/93dba33d1ddbb1e2a69c0aa12117e6d5b5050b30)), closes [HiromiShikata/umino-corporait-operation#31246](https://github.com/HiromiShikata/umino-corporait-operation/issues/31246)
+
 ## [2.40.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.40.0...v2.40.1) (2026-09-01)
 
 
