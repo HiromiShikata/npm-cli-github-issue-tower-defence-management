@@ -32,9 +32,6 @@ export const ConsoleOperationMenu = ({
 }: ConsoleOperationBarProps) => {
   return (
     <div className="console-operation-bar">
-      <ConsoleRareActions
-        onSetDependedIssueUrl={handlers.onSetDependedIssueUrl}
-      />
       {hasPullRequest && (
         <ConsolePullRequestReviewActions
           onReview={handlers.onReview}
@@ -51,9 +48,14 @@ export const ConsoleOperationMenu = ({
         onSetInTmuxByHuman={handlers.onSetInTmuxByHuman}
       />
       <div className="console-op-group-bottom-row">
-        <ConsoleDangerousActions
-          onDeleteAllComments={handlers.onDeleteAllComments}
-        />
+        <div className="console-op-group-left-pair">
+          <ConsoleRareActions
+            onSetDependedIssueUrl={handlers.onSetDependedIssueUrl}
+          />
+          <ConsoleDangerousActions
+            onDeleteAllComments={handlers.onDeleteAllComments}
+          />
+        </div>
         <ConsoleCloseActions onClose={handlers.onClose} />
       </div>
     </div>
