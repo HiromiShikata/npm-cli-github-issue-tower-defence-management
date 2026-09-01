@@ -1275,6 +1275,16 @@ body {
   gap: 10px;
 }
 
+.console-op-group-rare-actions {
+  justify-content: flex-start;
+}
+
+.console-op-group-left-pair {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .console-op-group-bottom-row {
   display: flex;
   justify-content: space-between;

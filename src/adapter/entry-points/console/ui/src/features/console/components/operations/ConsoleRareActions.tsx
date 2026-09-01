@@ -37,7 +37,7 @@ export const ConsoleRareActions = ({
   };
 
   return (
-    <div className="console-op-group">
+    <div className="console-op-group console-op-group-rare-actions">
       <button
         type="button"
         className="console-op-button"

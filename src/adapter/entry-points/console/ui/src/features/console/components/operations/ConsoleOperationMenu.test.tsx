@@ -189,4 +189,40 @@ describe('ConsoleOperationMenu', () => {
     );
     expect(getByTitle('Rare actions')).toBeInTheDocument();
   });
+
+  it('renders the rare actions toggle in the same row as dangerous and close actions', () => {
+    const { getByTitle, getByText } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    const rareButton = getByTitle('Rare actions');
+    const closeButton = getByText('Close');
+    const rareRow = rareButton.closest('.console-op-group-bottom-row');
+    expect(rareRow).not.toBeNull();
+    expect(rareRow).toBe(closeButton.closest('.console-op-group-bottom-row'));
+  });
+
+  it('renders the rare actions toggle in the left pair alongside the dangerous actions toggle', () => {
+    const { getByTitle, getByText } = render(
+      <ConsoleOperationMenu
+        tab="prs"
+        item={prItem}
+        hasPullRequest
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    const rareButton = getByTitle('Rare actions');
+    const dangerButton = getByText('⚠');
+    const leftPair = rareButton.closest('.console-op-group-left-pair');
+    expect(leftPair).not.toBeNull();
+    expect(leftPair).toBe(dangerButton.closest('.console-op-group-left-pair'));
+  });
 });
