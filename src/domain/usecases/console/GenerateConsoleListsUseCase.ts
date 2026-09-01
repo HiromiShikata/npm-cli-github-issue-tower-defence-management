@@ -193,7 +193,13 @@ export class GenerateConsoleListsUseCase {
         this.workflowBlockerSelector(workflowBlockerStoryName),
         ['done'],
       ),
-      prs: buildStatusTab(
+      prs: buildStatusTabFromSource(
+        visibleIssues.filter(
+          (issue) =>
+            !issue.isClosed &&
+            issue.assignees.includes(assigneeLogin) &&
+            issue.dependedIssueUrls.length === 0,
+        ),
         (issue) =>
           issue.status !== null &&
           issue.status.toLowerCase() === 'awaiting quality check',
