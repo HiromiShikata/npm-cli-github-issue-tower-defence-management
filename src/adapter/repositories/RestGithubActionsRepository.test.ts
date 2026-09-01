@@ -218,9 +218,10 @@ describe('RestGithubActionsRepository', () => {
 
       expect(mockGet).toHaveBeenCalledWith(
         'https://api.github.com/repos/owner/repo/pulls',
-        expect.objectContaining({
-          searchParams: expect.objectContaining({ base: 'production' }),
-        }),
+        {
+          searchParams: { state: 'closed', per_page: '100', base: 'production' },
+          headers: { Authorization: 'token default-token' },
+        },
       );
     });
   });
