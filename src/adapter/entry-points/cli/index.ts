@@ -1472,9 +1472,16 @@ const parseDoraMetricsConfig = (
     );
   }
   const rawProjects = Array.isArray(raw['projects']) ? raw['projects'] : [];
-  const projects = rawProjects
-    .map(parseProjectDoraConfig)
-    .filter((p): p is ProjectDoraAdapterConfig => p !== null);
+  const parsedProjects = rawProjects.map(parseProjectDoraConfig);
+  const skippedCount = parsedProjects.filter((p) => p === null).length;
+  if (skippedCount > 0) {
+    console.warn(
+      `Warning: ${skippedCount} project(s) in DORA metrics config were invalid and skipped (missing name, owner, or repo).`,
+    );
+  }
+  const projects = parsedProjects.filter(
+    (p): p is ProjectDoraAdapterConfig => p !== null,
+  );
   return { reportOwner, reportRepo, projects };
 };
 

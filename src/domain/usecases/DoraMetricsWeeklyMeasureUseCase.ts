@@ -91,10 +91,10 @@ export class DoraMetricsWeeklyMeasureUseCase {
           deployFrequency
         : null;
 
-    const changeLeadTimeHours = this.calculateChangeLeadTime(
-      mergedPRs,
-      allRuns,
-    );
+    const changeLeadTimeHours =
+      config.deployWorkflowFiles.length > 0 && allRuns.length === 0
+        ? null
+        : this.calculateChangeLeadTime(mergedPRs, allRuns);
 
     const hotfixItems =
       await this.githubActionsRepository.getClosedItemsByLabels(
@@ -189,7 +189,7 @@ export class DoraMetricsWeeklyMeasureUseCase {
       '',
       `計測期間: ${sinceStr} 〜 ${untilStr}`,
       '',
-      '| プロジェクト | デプロイ頻度（回/週） | 変更失敗率 | 変更リードタイム（時間） | MTTR（時間） |',
+      '| プロジェクト | デプロイ頻度（回） | 変更失敗率 | 変更リードタイム（時間） | MTTR（時間） |',
       '|---|---|---|---|---|',
       ...rows,
       '',

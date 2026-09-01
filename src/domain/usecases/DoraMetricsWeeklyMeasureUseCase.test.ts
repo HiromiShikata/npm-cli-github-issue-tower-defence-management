@@ -207,6 +207,29 @@ describe('DoraMetricsWeeklyMeasureUseCase', () => {
         },
       },
       {
+        name: 'reports N/A for change lead time when workflow configured but no runs in measurement window',
+        setup: () => {
+          mockRepo.getWorkflowRuns.mockResolvedValue([]);
+          mockRepo.getMergedPullRequests.mockResolvedValue([
+            {
+              createdAt: new Date('2026-01-02T00:00:00Z'),
+              mergedAt: new Date('2026-01-02T06:00:00Z'),
+            },
+          ]);
+        },
+        params: {
+          projects: [xcare],
+          reportOwner: 'HiromiShikata',
+          reportRepo: 'umino-corporait-operation',
+          since,
+          until,
+        },
+        assert: () => {
+          const body = mockCreateNewIssue.mock.calls[0]?.[3] ?? '';
+          expect(body).toMatch(/xcare \| 0 \| N\/A \| N\/A/);
+        },
+      },
+      {
         name: 'uses PR cycle time as lead time for projects without deploy workflow runs',
         setup: () => {
           mockRepo.getWorkflowRuns.mockResolvedValue([]);
