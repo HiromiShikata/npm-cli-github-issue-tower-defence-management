@@ -20,8 +20,11 @@ export const extractExecutiveSummary = (body: string): string | null => {
 export const extractExecutiveSummaryFromComments = (
   comments: ConsoleComment[],
 ): string | null => {
-  if (comments.length === 0) {
-    return null;
+  for (let i = comments.length - 1; i >= 0; i--) {
+    const summary = extractExecutiveSummary(comments[i].body);
+    if (summary !== null) {
+      return summary;
+    }
   }
-  return extractExecutiveSummary(comments[comments.length - 1].body);
+  return null;
 };
