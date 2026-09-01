@@ -2995,6 +2995,54 @@ mysteryKey: 'value'
 
       delete process.env['GH_CMG_TOKEN'];
     });
+
+    it('exits with error when ghTokenEnvVar is set but env var is absent', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      const configMissingEnvVar = YAML.stringify({
+        reportOwner: 'HiromiShikata',
+        reportRepo: 'umino-corporait-operation',
+        projects: [
+          {
+            name: 'CMG',
+            owner: 'meta-site',
+            repo: 'hr-audit-mock',
+            deployWorkflowFiles: ['deploy.yml'],
+            deployBranch: 'main',
+            prBaseBranch: 'main',
+            mttrLabels: ['hotfix'],
+            ghTokenEnvVar: 'GH_CMG_TOKEN',
+          },
+        ],
+      });
+      jest.mocked(fs.readFileSync).mockReturnValueOnce(configMissingEnvVar);
+
+      process.env['GH_TOKEN'] = 'default-token';
+      delete process.env['GH_CMG_TOKEN'];
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'doraMetrics',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('GH_CMG_TOKEN'),
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
+    });
   });
 
   describe('reportFatalErrorAndExit', () => {

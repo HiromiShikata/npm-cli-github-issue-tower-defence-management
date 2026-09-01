@@ -1509,9 +1509,13 @@ program
     for (const project of rawConfig.projects) {
       if (project.ghTokenEnvVar) {
         const overrideToken = process.env[project.ghTokenEnvVar];
-        if (overrideToken) {
-          tokenOverrides[project.owner] = overrideToken;
+        if (!overrideToken) {
+          console.error(
+            `Error: environment variable ${project.ghTokenEnvVar} is required for project ${project.name} but is not set.`,
+          );
+          process.exit(1);
         }
+        tokenOverrides[project.owner] = overrideToken;
       }
     }
 
