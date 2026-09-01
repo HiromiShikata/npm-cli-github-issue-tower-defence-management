@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import type { ConsoleOperationHandlers } from '../../logic/operations';
 import {
   consoleListItemsFixture,
@@ -15,6 +15,7 @@ const handlers: ConsoleOperationHandlers = {
   onClose: jest.fn(),
   onOkAndAwaitingWorkspace: jest.fn(),
   onDeleteAllComments: jest.fn(),
+  onDeleteStory: null,
   onSetDependedIssueUrl: jest.fn(),
 };
 
@@ -224,5 +225,35 @@ describe('ConsoleOperationMenu', () => {
     const leftPair = rareButton.closest('.console-op-group-left-pair');
     expect(leftPair).not.toBeNull();
     expect(leftPair).toBe(dangerButton.closest('.console-op-group-left-pair'));
+  });
+
+  it('shows Delete Story button when onDeleteStory handler is provided', () => {
+    const { getByText } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-human"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        handlers={{ ...handlers, onDeleteStory: async () => {} }}
+      />,
+    );
+    fireEvent.click(getByText('⚠'));
+    expect(getByText('Delete Story')).toBeInTheDocument();
+  });
+
+  it('does not show Delete Story button when onDeleteStory handler is null', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-human"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        handlers={handlers}
+      />,
+    );
+    fireEvent.click(getByText('⚠'));
+    expect(queryByText('Delete Story')).toBeNull();
   });
 });

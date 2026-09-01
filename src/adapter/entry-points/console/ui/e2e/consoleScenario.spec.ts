@@ -951,3 +951,43 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
     timeout: 8000,
   });
 });
+
+test('shows Delete Story in the danger zone of a story-labeled item detail page, confirms deletion, and closes the panel', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Todo by agent').click();
+  await itemRowByText(
+    page,
+    'Publish product documentation site story issue',
+  ).click();
+
+  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
+  await expect(dangerToggle).toBeVisible();
+  await dangerToggle.click();
+
+  const deleteStoryButton = page.locator('.console-op-button', {
+    hasText: 'Delete Story',
+  });
+  await expect(deleteStoryButton).toBeVisible();
+  await deleteStoryButton.click();
+
+  const dialog = page.getByRole('dialog', { name: 'Confirm story deletion' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Publish product documentation site');
+
+  const previousDeleteCount = harness.deleteStoryCalls.length;
+  await dialog.getByRole('button', { name: 'Delete' }).click();
+
+  await expect
+    .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
+    .toBe(previousDeleteCount + 1);
+  expect(
+    harness.deleteStoryCalls[harness.deleteStoryCalls.length - 1].storyOptionId,
+  ).toBe('f7cd5cbc');
+
+  await expect(page.locator('.console-detail')).toHaveCount(0, {
+    timeout: 8000,
+  });
+});

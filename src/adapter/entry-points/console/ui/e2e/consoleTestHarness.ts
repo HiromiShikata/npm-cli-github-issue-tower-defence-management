@@ -288,6 +288,16 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
       ),
       agent: 'developer',
     },
+    {
+      ...issueItem(
+        870,
+        'Publish product documentation site story issue',
+        'TDAG00870',
+        'Publish product documentation site',
+        '2026-06-18T00:30:00.000Z',
+      ),
+      labels: ['story'],
+    },
   ],
   queued: [
     {

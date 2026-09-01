@@ -523,6 +523,12 @@ export const ConsolePage = () => {
       : rawStoryEntries;
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
 
+  const selectedItemStoryEntry = useMemo<ConsoleStoryEntry | null>(() => {
+    if (selectedItem === null) return null;
+    if (!selectedItem.labels.includes('story')) return null;
+    return storyEntries.find((e) => e.storyName === selectedItem.story) ?? null;
+  }, [selectedItem, storyEntries]);
+
   const handleCreateIssue = useCallback(
     async (storyOptionId: string, title: string): Promise<void> => {
       if (pjcode === null) {
@@ -864,6 +870,17 @@ export const ConsolePage = () => {
             }
             onCommentDraftChange={handleCommentDraftChange}
             onQueueAction={handleQueueAction}
+            onDeleteStory={
+              selectedItemStoryEntry !== null
+                ? async () => {
+                    await handleStoryDelete(
+                      selectedItemStoryEntry.storyOptionId,
+                    );
+                    closeItem();
+                  }
+                : null
+            }
+            storyNameForDeletion={selectedItemStoryEntry?.storyName ?? null}
           />
         </div>
       )}

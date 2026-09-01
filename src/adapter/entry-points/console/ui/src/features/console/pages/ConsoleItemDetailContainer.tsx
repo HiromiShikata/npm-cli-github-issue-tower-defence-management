@@ -114,6 +114,8 @@ export type ConsoleItemDetailContainerProps = {
   initialCommentDraft?: string;
   onCommentDraftChange?: (draft: string) => void;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
+  onDeleteStory?: (() => Promise<void>) | null;
+  storyNameForDeletion?: string | null;
 };
 
 export const ConsoleItemDetailContainer = ({
@@ -130,6 +132,8 @@ export const ConsoleItemDetailContainer = ({
   initialCommentDraft,
   onCommentDraftChange,
   onQueueAction,
+  onDeleteStory,
+  storyNameForDeletion,
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item, tab);
   const resolveImageProxyUrl = useCallback(
@@ -269,6 +273,7 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.deleteAllComments(item),
       });
     },
+    onDeleteStory: onDeleteStory ?? null,
     onSetDependedIssueUrl:
       pjcode != null
         ? async (dependedIssueUrl: string) => {
@@ -351,6 +356,7 @@ export const ConsoleItemDetailContainer = ({
           rejectEnabled={pendingReviewComments.length > 0}
           statusOptions={statusOptions}
           handlers={handlers}
+          storyNameForDeletion={storyNameForDeletion}
         />
       }
     />
