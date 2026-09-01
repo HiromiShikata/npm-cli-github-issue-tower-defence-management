@@ -121,7 +121,7 @@
     "gemoji": "8.1.0",
     "googleapis": "^176.0.0",
     "ky": "^2.0.2",
-    "marked": "18.0.10",
+    "marked": "18.0.11",
     "marked-emoji": "2.0.3",
     "playwright": "1.62.1",
     "yaml": "^2.9.0"
