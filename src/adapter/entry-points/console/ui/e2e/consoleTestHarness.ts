@@ -245,13 +245,26 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
     ),
   ],
   prs: [
-    pullRequestItem(
-      867,
-      'Serve the committed console UI bundle from serveConsole',
-      'PRS00867',
-      'TDPM Console port',
-      '2026-06-17T23:41:08.000Z',
-    ),
+    {
+      ...pullRequestItem(
+        867,
+        'Serve the committed console UI bundle from serveConsole',
+        'PRS00867',
+        'TDPM Console port',
+        '2026-06-17T23:41:08.000Z',
+      ),
+      agent: 'developer',
+    },
+    {
+      ...pullRequestItem(
+        868,
+        'Add agent filter select to the Awaiting Quality Check tab',
+        'PRS00868',
+        'TDPM Console port',
+        '2026-06-18T00:05:00.000Z',
+      ),
+      agent: 'pr-reviewer',
+    },
   ],
   'failed-preparation': [
     {
@@ -363,7 +376,7 @@ const writeFixtureData = (consoleDataOutputDir: string): void => {
   for (const [tab, items] of Object.entries(CONSOLE_E2E_TAB_ITEMS)) {
     const tabDir = path.join(consoleDataOutputDir, CONSOLE_E2E_PJCODE, tab);
     fs.mkdirSync(tabDir, { recursive: true });
-    const agentOptions = tab === 'queued' ? AGENT_OPTIONS : [];
+    const agentOptions = tab === 'queued' || tab === 'prs' ? AGENT_OPTIONS : [];
     const storyOrder = tab === 'queued' ? QUEUED_STORY_ORDER : [];
     fs.writeFileSync(
       path.join(tabDir, 'list.json'),
