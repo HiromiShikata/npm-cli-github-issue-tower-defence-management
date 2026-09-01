@@ -5,22 +5,29 @@ import * as path from "path";
 import type { IssueRepository } from "../../../domain/usecases/adapter-interfaces/IssueRepository";
 import {
 	type AirplaneSnapshotPayload,
-	type AirplaneSyncEvent,
 	type AirplaneSyncResponseWriter,
 	handleAirplaneSync,
 } from "./consoleAirplaneSnapshotApi";
 import { IssueTitleStateCache, PullRequestStatusCache } from "./consoleReadApi";
 
-const captureEvents = (writer: {
-	writtenData: string[];
-}): AirplaneSyncEvent[] =>
-	writer.writtenData
-		.join("")
-		.split("\n\n")
-		.filter((chunk) => chunk.startsWith("data: "))
-		.map(
-			(chunk) => JSON.parse(chunk.slice("data: ".length)) as AirplaneSyncEvent,
-		);
+type DoneEvent = { type: "done"; snapshot: AirplaneSnapshotPayload };
+
+const isDoneEvent = (e: unknown): e is DoneEvent => {
+	if (typeof e !== "object" || e === null) return false;
+	if (!("type" in e) || !("snapshot" in e)) return false;
+	return e.type === "done";
+};
+
+const captureEvents = (writer: { writtenData: string[] }): unknown[] => {
+	const result: unknown[] = [];
+	for (const chunk of writer.writtenData.join("").split("\n\n")) {
+		if (chunk.startsWith("data: ")) {
+			const parsed: unknown = JSON.parse(chunk.slice("data: ".length));
+			result.push(parsed);
+		}
+	}
+	return result;
+};
 
 const buildResponseWriter = (): AirplaneSyncResponseWriter & {
 	writtenData: string[];
@@ -124,17 +131,14 @@ describe("handleAirplaneSync", () => {
 		expect(issueRepository.getPullRequestSummary).toHaveBeenCalledWith(prUrl2);
 
 		const events = captureEvents(response);
-		const doneEvent = events.find((e) => e.type === "done") as {
-			type: "done";
-			snapshot: AirplaneSnapshotPayload;
-		};
+		const doneEvent = events.find(isDoneEvent);
 		expect(doneEvent).toBeDefined();
-		const itemData = doneEvent.snapshot.items[issueUrl];
+		const itemData = doneEvent?.snapshot.items[issueUrl];
 		expect(itemData).toBeDefined();
-		expect(itemData.relatedPrs).toHaveLength(2);
-		expect(itemData.relatedPrs?.[0].url).toBe(prUrl1);
-		expect(itemData.relatedPrs?.[1].url).toBe(prUrl2);
-		expect(itemData.relatedPrs?.[0].isResolvedAllReviewComments).toBe(false);
+		expect(itemData?.relatedPrs).toHaveLength(2);
+		expect(itemData?.relatedPrs?.[0].url).toBe(prUrl1);
+		expect(itemData?.relatedPrs?.[1].url).toBe(prUrl2);
+		expect(itemData?.relatedPrs?.[0].isResolvedAllReviewComments).toBe(false);
 	});
 
 	it("excludes related PRs where getOpenPullRequestCiStatus returns null", async () => {
@@ -190,13 +194,10 @@ describe("handleAirplaneSync", () => {
 		);
 
 		const events = captureEvents(response);
-		const doneEvent = events.find((e) => e.type === "done") as {
-			type: "done";
-			snapshot: AirplaneSnapshotPayload;
-		};
-		const itemData = doneEvent.snapshot.items[issueUrl];
-		expect(itemData.relatedPrs).toHaveLength(1);
-		expect(itemData.relatedPrs?.[0].url).toBe(prUrlOpen);
+		const doneEvent = events.find(isDoneEvent);
+		const itemData = doneEvent?.snapshot.items[issueUrl];
+		expect(itemData?.relatedPrs).toHaveLength(1);
+		expect(itemData?.relatedPrs?.[0].url).toBe(prUrlOpen);
 		expect(issueRepository.getPullRequestSummary).not.toHaveBeenCalledWith(
 			prUrlClosed,
 		);
@@ -235,12 +236,9 @@ describe("handleAirplaneSync", () => {
 		);
 
 		const events = captureEvents(response);
-		const doneEvent = events.find((e) => e.type === "done") as {
-			type: "done";
-			snapshot: AirplaneSnapshotPayload;
-		};
-		const itemData = doneEvent.snapshot.items[issueUrl];
-		expect(itemData.relatedPrs).toEqual([]);
+		const doneEvent = events.find(isDoneEvent);
+		const itemData = doneEvent?.snapshot.items[issueUrl];
+		expect(itemData?.relatedPrs).toEqual([]);
 		expect(issueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
 		expect(issueRepository.getOpenPullRequestCiStatus).not.toHaveBeenCalled();
 	});
@@ -271,14 +269,17 @@ describe("handleAirplaneSync", () => {
 		);
 
 		const events = captureEvents(response);
-		const progressEvents = events.filter((e) => e.type === "progress");
-		const doneEvent = events.find((e) => e.type === "done");
+		const progressEvents = events.filter(
+			(e) =>
+				typeof e === "object" &&
+				e !== null &&
+				"type" in e &&
+				e.type === "progress",
+		);
+		const doneEvent = events.find(isDoneEvent);
 
 		expect(progressEvents.length).toBeGreaterThanOrEqual(1);
 		expect(doneEvent).toBeDefined();
-		expect(
-			(doneEvent as { type: "done"; snapshot: AirplaneSnapshotPayload })
-				.snapshot.capturedAt,
-		).toBeTruthy();
+		expect(doneEvent?.snapshot.capturedAt).toBeTruthy();
 	});
 });

@@ -575,8 +575,7 @@ const createStubIssueRepository = (
       ? {
           url: awaitingQualityCheckPullRequest.url,
           branchName: awaitingQualityCheckPullRequest.branchName,
-          createdAt:
-            awaitingQualityCheckPullRequest.createdAt.toISOString(),
+          createdAt: awaitingQualityCheckPullRequest.createdAt.toISOString(),
           isDraft: awaitingQualityCheckPullRequest.isDraft,
           isConflicted: awaitingQualityCheckPullRequest.isConflicted,
           mergeable: awaitingQualityCheckPullRequest.mergeable,
