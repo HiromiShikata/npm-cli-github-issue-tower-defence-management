@@ -131,7 +131,7 @@ export const ConsoleItemDetailContainer = ({
   onCommentDraftChange,
   onQueueAction,
 }: ConsoleItemDetailContainerProps) => {
-  const detail = useConsoleItemDetailData(caches, item);
+  const detail = useConsoleItemDetailData(caches, item, tab);
   const resolveImageProxyUrl = useCallback(
     (src: string): string => buildImageProxyUrl(src, item.url),
     [item.url],

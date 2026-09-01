@@ -220,6 +220,33 @@ describe('useConsoleItemDetailData', () => {
     expect(result.current.relatedPullRequestsError).toBeNull();
   });
 
+  it('reads related pull requests for a prs-tab item even when the board lists none', async () => {
+    const fetchRelatedPrs = jest.fn(
+      async (): Promise<ConsoleRelatedPullRequest[]> => [],
+    );
+    const caches: ConsoleCaches = {
+      ...buildCaches([]),
+      relatedPrs: new ResourceCache<ConsoleRelatedPullRequest[]>(
+        fetchRelatedPrs,
+      ),
+    };
+    const { result } = renderHook(() =>
+      useConsoleItemDetailData(
+        caches,
+        issueItemWithoutRelatedPullRequests,
+        'prs',
+      ),
+    );
+
+    await waitFor(() => {
+      expect(result.current.body).toBe('body');
+    });
+
+    expect(fetchRelatedPrs).toHaveBeenCalled();
+    expect(result.current.relatedPullRequests).toEqual([]);
+    expect(result.current.relatedPullRequestsError).toBeNull();
+  });
+
   it('returns defaults when no item is selected', () => {
     const caches = buildCaches([]);
     const { result } = renderHook(() => useConsoleItemDetailData(caches, null));
