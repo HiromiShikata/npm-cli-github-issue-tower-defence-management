@@ -1,3 +1,10 @@
+## [2.37.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.1...v2.37.2) (2026-09-01)
+
+
+### Bug Fixes
+
+* **ci:** handle GraphQL rate limit error non-fatally in enable-auto-merge step ([#1937](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1937)) ([a6a1309](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a6a13091c855b41beea1ec5820c28966066575f8))
+
 ## [2.37.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.0...v2.37.1) (2026-09-01)
 
 
