@@ -247,9 +247,9 @@ npx github-issue-tower-defence-management doraMetrics --configFilePath ./dora-me
 ```
 
 Options for doraMetrics:
-  -c, --configFilePath <path>  Path to DORA metrics YAML config file (required)
-  --since <date>               Start of measurement period (ISO 8601 UTC, default: 7 days before --until)
-  --until <date>               End of measurement period (ISO 8601 UTC, default: now)
+-c, --configFilePath <path> Path to DORA metrics YAML config file (required)
+--since <date> Start of measurement period (ISO 8601 UTC, default: 7 days before --until)
+--until <date> End of measurement period (ISO 8601 UTC, default: now)
 
 ## Config
 
