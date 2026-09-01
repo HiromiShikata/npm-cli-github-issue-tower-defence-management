@@ -1,3 +1,10 @@
+# [2.41.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.40.2...v2.41.0) (2026-09-01)
+
+
+### Features
+
+* **console:** remove story from list card and move status inline with opened date ([#1931](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1931)) ([54f4d9a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/54f4d9aac583af668232d3313fed909779f06c4e)), closes [HiromiShikata/umino-corporait-operation#31203](https://github.com/HiromiShikata/umino-corporait-operation/issues/31203)
+
 ## [2.40.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.40.1...v2.40.2) (2026-09-01)
 
 
