@@ -1,3 +1,10 @@
+# [2.37.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.4...v2.37.0) (2026-09-01)
+
+
+### Features
+
+* **console-ui:** show ok & Awaiting Workspace button and executive summary in prs tab list ([#1927](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1927)) ([1f3b773](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1f3b773c3cc1e578d1dd0c438f410648dbe32626)), closes [HiromiShikata/umino-corporait-operation#31204](https://github.com/HiromiShikata/umino-corporait-operation/issues/31204)
+
 ## [2.36.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.36.3...v2.36.4) (2026-08-31)
 
 
