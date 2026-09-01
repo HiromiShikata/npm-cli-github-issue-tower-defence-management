@@ -331,7 +331,12 @@ export const ConsolePage = () => {
         storyOrder,
         activeSnapshot?.generatedAt ?? null,
       ),
-    [agentFilteredPendingItems, overlayState.overlay, storyOrder, activeSnapshot],
+    [
+      agentFilteredPendingItems,
+      overlayState.overlay,
+      storyOrder,
+      activeSnapshot,
+    ],
   );
 
   const storyColors = activeSnapshot?.storyColors ?? {};
