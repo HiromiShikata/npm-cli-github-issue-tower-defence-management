@@ -4,7 +4,7 @@ import {
   WorkflowRun,
 } from '../../entities/DoraMetrics';
 
-export interface GithubActionsRepository {
+export interface GitHubActionsRepository {
   getWorkflowRuns: (
     owner: string,
     repo: string,

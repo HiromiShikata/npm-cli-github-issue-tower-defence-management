@@ -14,7 +14,7 @@ jest.mock('ky', () => ({
   __esModule: true,
 }));
 
-import { RestGithubActionsRepository } from './RestGithubActionsRepository';
+import { RestGitHubActionsRepository } from './RestGitHubActionsRepository';
 
 const mockJsonResponse = <T>(data: T) => ({
   json: jest.fn().mockResolvedValue(data),
@@ -23,8 +23,8 @@ const mockJsonResponse = <T>(data: T) => ({
 const since = new Date('2026-01-01T00:00:00Z');
 const until = new Date('2026-01-08T00:00:00Z');
 
-describe('RestGithubActionsRepository', () => {
-  const repository = new RestGithubActionsRepository('default-token', {
+describe('RestGitHubActionsRepository', () => {
+  const repository = new RestGitHubActionsRepository('default-token', {
     'other-owner': 'override-token',
   });
 
@@ -242,10 +242,10 @@ describe('RestGithubActionsRepository', () => {
 
   describe('pagination', () => {
     it('fetches multiple pages when first page returns exactly 100 items', async () => {
-      const page1Runs = Array.from({ length: 100 }, (_, i) => ({
+      const page1Runs = Array.from({ length: 100 }, () => ({
         conclusion: 'success',
         created_at: '2026-01-03T12:00:00Z',
-        updated_at: `2026-01-03T13:0${String(i).padStart(1, '0')}:00Z`,
+        updated_at: '2026-01-03T13:00:00Z',
       }));
       const page2Runs = [
         {
@@ -270,6 +270,7 @@ describe('RestGithubActionsRepository', () => {
 
       expect(mockGet).toHaveBeenCalledTimes(2);
       expect(result.filter((r) => r.conclusion === 'failure')).toHaveLength(1);
+      expect(result[0]?.updatedAt).toEqual(new Date('2026-01-03T13:00:00Z'));
     });
   });
 

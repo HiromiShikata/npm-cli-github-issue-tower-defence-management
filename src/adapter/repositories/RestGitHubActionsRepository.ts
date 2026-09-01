@@ -4,7 +4,7 @@ import {
   MergedPullRequest,
   WorkflowRun,
 } from '../../domain/entities/DoraMetrics';
-import { GithubActionsRepository } from '../../domain/usecases/adapter-interfaces/GithubActionsRepository';
+import { GitHubActionsRepository } from '../../domain/usecases/adapter-interfaces/GitHubActionsRepository';
 
 type WorkflowRunResponse = {
   conclusion: string | null;
@@ -36,7 +36,7 @@ type ClosedIssueResponse = {
   closed_at: string;
 };
 
-export class RestGithubActionsRepository implements GithubActionsRepository {
+export class RestGitHubActionsRepository implements GitHubActionsRepository {
   constructor(
     private readonly defaultGhToken: string,
     private readonly tokenOverrides: Record<string, string> = {},

@@ -5,7 +5,7 @@ import {
   ProjectDoraMetrics,
   WorkflowRun,
 } from '../entities/DoraMetrics';
-import { GithubActionsRepository } from './adapter-interfaces/GithubActionsRepository';
+import { GitHubActionsRepository } from './adapter-interfaces/GitHubActionsRepository';
 
 type CreateNewIssue = (
   owner: string,
@@ -18,7 +18,7 @@ type CreateNewIssue = (
 
 export class DoraMetricsWeeklyMeasureUseCase {
   constructor(
-    private readonly githubActionsRepository: GithubActionsRepository,
+    private readonly githubActionsRepository: GitHubActionsRepository,
     private readonly createNewIssue: CreateNewIssue,
   ) {}
 

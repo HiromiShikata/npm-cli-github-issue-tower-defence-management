@@ -64,8 +64,8 @@ jest.mock('../../repositories/issue/RestIssueRepository', () => ({
   })),
 }));
 jest.mock('../../../domain/usecases/DoraMetricsWeeklyMeasureUseCase');
-jest.mock('../../repositories/RestGithubActionsRepository', () => ({
-  RestGithubActionsRepository: jest.fn().mockImplementation(() => ({})),
+jest.mock('../../repositories/RestGitHubActionsRepository', () => ({
+  RestGitHubActionsRepository: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('../../repositories/issue/GraphqlProjectItemRepository', () => ({
   GraphqlProjectItemRepository: jest.fn().mockImplementation(() => ({})),
@@ -2946,10 +2946,10 @@ mysteryKey: 'value'
       );
     });
 
-    it('passes token override from ghTokenEnvVar to RestGithubActionsRepository', async () => {
-      const { RestGithubActionsRepository } = jest.requireMock<{
-        RestGithubActionsRepository: jest.Mock;
-      }>('../../repositories/RestGithubActionsRepository');
+    it('passes token override from ghTokenEnvVar to RestGitHubActionsRepository', async () => {
+      const { RestGitHubActionsRepository } = jest.requireMock<{
+        RestGitHubActionsRepository: jest.Mock;
+      }>('../../repositories/RestGitHubActionsRepository');
       jest.clearAllMocks();
       const mockRun = jest.fn().mockResolvedValue(undefined);
       jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(function (
@@ -2988,7 +2988,7 @@ mysteryKey: 'value'
         configFilePath,
       ]);
 
-      expect(RestGithubActionsRepository).toHaveBeenCalledWith(
+      expect(RestGitHubActionsRepository).toHaveBeenCalledWith(
         'default-token',
         { 'meta-site': 'cmg-override-token' },
       );

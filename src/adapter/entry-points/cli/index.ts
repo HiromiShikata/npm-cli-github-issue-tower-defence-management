@@ -37,8 +37,12 @@ import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRep
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
 import { DoraMetricsWeeklyMeasureUseCase } from '../../../domain/usecases/DoraMetricsWeeklyMeasureUseCase';
-import { RestGithubActionsRepository } from '../../repositories/RestGithubActionsRepository';
+import { RestGitHubActionsRepository } from '../../repositories/RestGitHubActionsRepository';
 import { ProjectDoraConfig } from '../../../domain/entities/DoraMetrics';
+
+type ProjectDoraAdapterConfig = ProjectDoraConfig & {
+  ghTokenEnvVar: string | null;
+};
 import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
@@ -1420,7 +1424,9 @@ const parseStringArray = (value: unknown): string[] => {
   return value.filter((item): item is string => typeof item === 'string');
 };
 
-const parseProjectDoraConfig = (raw: unknown): ProjectDoraConfig | null => {
+const parseProjectDoraConfig = (
+  raw: unknown,
+): ProjectDoraAdapterConfig | null => {
   if (!isRecord(raw)) return null;
   const name = typeof raw['name'] === 'string' ? raw['name'] : '';
   const owner = typeof raw['owner'] === 'string' ? raw['owner'] : '';
@@ -1451,7 +1457,7 @@ const parseDoraMetricsConfig = (
 ): {
   reportOwner: string;
   reportRepo: string;
-  projects: ProjectDoraConfig[];
+  projects: ProjectDoraAdapterConfig[];
 } => {
   if (!isRecord(raw)) {
     throw new Error('Invalid DORA metrics config: root must be a YAML object');
@@ -1468,7 +1474,7 @@ const parseDoraMetricsConfig = (
   const rawProjects = Array.isArray(raw['projects']) ? raw['projects'] : [];
   const projects = rawProjects
     .map(parseProjectDoraConfig)
-    .filter((p): p is ProjectDoraConfig => p !== null);
+    .filter((p): p is ProjectDoraAdapterConfig => p !== null);
   return { reportOwner, reportRepo, projects };
 };
 
@@ -1519,7 +1525,7 @@ program
       }
     }
 
-    const githubActionsRepository = new RestGithubActionsRepository(
+    const githubActionsRepository = new RestGitHubActionsRepository(
       token,
       tokenOverrides,
     );

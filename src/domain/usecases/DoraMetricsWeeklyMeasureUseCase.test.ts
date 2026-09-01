@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import { DoraMetricsWeeklyMeasureUseCase } from './DoraMetricsWeeklyMeasureUseCase';
-import { GithubActionsRepository } from './adapter-interfaces/GithubActionsRepository';
+import { GitHubActionsRepository } from './adapter-interfaces/GitHubActionsRepository';
 import { ProjectDoraConfig } from '../entities/DoraMetrics';
 
 const xcare: ProjectDoraConfig = {
@@ -11,7 +11,6 @@ const xcare: ProjectDoraConfig = {
   deployBranch: 'production',
   prBaseBranch: 'production',
   mttrLabels: ['hotfix', 'incident'],
-  ghTokenEnvVar: null,
 };
 
 const since = new Date('2026-01-01T00:00:00Z');
@@ -19,7 +18,7 @@ const until = new Date('2026-01-08T00:00:00Z');
 
 describe('DoraMetricsWeeklyMeasureUseCase', () => {
   describe('run', () => {
-    const mockRepo = mock<GithubActionsRepository>();
+    const mockRepo = mock<GitHubActionsRepository>();
     const mockCreateNewIssue = jest.fn<
       Promise<number>,
       Parameters<
