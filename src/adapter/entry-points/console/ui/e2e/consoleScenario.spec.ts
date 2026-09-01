@@ -879,6 +879,32 @@ test('project timer bar shows remaining time when active and Move to next projec
   }
 });
 
+test('rare actions toggle is in the bottom row left pair alongside the dangerous actions toggle and expands the depended issue URL input', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  const rareToggle = page.getByTitle('Rare actions');
+  await expect(rareToggle).toBeVisible();
+
+  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
+  await expect(dangerToggle).toBeVisible();
+
+  const leftPair = page.locator('.console-op-group-left-pair');
+  await expect(leftPair.locator(rareToggle)).toBeVisible();
+  await expect(leftPair.locator(dangerToggle)).toBeVisible();
+
+  await rareToggle.click();
+
+  const urlInput = page.getByPlaceholder('Depended issue URL');
+  await expect(urlInput).toBeVisible();
+});
+
 test('prs agent filter narrows the list and navigation respects the filter', async ({
   page,
 }) => {
