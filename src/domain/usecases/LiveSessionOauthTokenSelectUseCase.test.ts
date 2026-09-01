@@ -173,7 +173,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('allows a token whose seven day window is below the minimum when it resets within 24 hours to drain remaining capacity', () => {
+  it('allows a token whose seven day window is below the minimum when it resets within 2 days to drain remaining capacity', () => {
     const result = useCase.run(
       [
         candidate(
@@ -279,7 +279,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const narrowFiveHour = result.metrics.find(
       (m) => m.name === 'narrowFiveHour',
     );
-    expect(narrowFiveHour?.concurrentSessionLimit).toBe(5);
+    expect(narrowFiveHour?.concurrentSessionLimit).toBe(7);
   });
 
   it('never starves a sole eligible token whose selection weight rounds its limit below one', () => {
