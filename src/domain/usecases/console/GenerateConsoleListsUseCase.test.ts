@@ -172,6 +172,26 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.prs.items).toHaveLength(2);
     });
 
+    it('shows prs items with nextActionDate set', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Quality Check',
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+        }),
+      ]);
+      expect(result.prs.items).toHaveLength(1);
+    });
+
+    it('shows prs items with nextActionHour set', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Quality Check',
+          nextActionHour: 9,
+        }),
+      ]);
+      expect(result.prs.items).toHaveLength(1);
+    });
+
     it('selects failed preparation items only with exact case', () => {
       const result = run([
         makeIssue({ status: 'Failed Preparation' }),
