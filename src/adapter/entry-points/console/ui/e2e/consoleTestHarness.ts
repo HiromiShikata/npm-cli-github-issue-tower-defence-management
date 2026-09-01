@@ -255,16 +255,6 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
       ),
       agent: 'developer',
     },
-    {
-      ...pullRequestItem(
-        868,
-        'Add agent filter select to the Awaiting Quality Check tab',
-        'PRS00868',
-        'TDPM Console port',
-        '2026-06-18T00:05:00.000Z',
-      ),
-      agent: 'pr-reviewer',
-    },
   ],
   'failed-preparation': [
     {
