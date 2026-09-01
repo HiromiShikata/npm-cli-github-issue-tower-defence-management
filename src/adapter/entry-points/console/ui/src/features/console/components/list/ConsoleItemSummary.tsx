@@ -56,18 +56,21 @@ export const ConsoleItemSummary = ({
             </span>
           </span>
         )}
+        {item.status !== null && item.status !== '' && (
+          <span
+            className="console-item-status-badge"
+            style={badgeStyle(
+              statusOptions.find((o) => o.name === item.status)?.color ?? null,
+            )}
+          >
+            {item.status}
+          </span>
+        )}
       </span>
-      {(item.story !== '' ||
-        item.nextActionDate !== null ||
+      {(item.nextActionDate !== null ||
         item.nextActionHour !== null ||
         item.dependedIssueUrls.length > 0) && (
         <span className="console-item-fields">
-          {item.story !== '' && (
-            <span className="console-item-field">
-              <span className="console-item-field-label">Story</span>
-              {item.story}
-            </span>
-          )}
           {item.nextActionDate !== null && (
             <span className="console-item-field">
               <span className="console-item-field-label">Next Action Date</span>
@@ -90,29 +93,12 @@ export const ConsoleItemSummary = ({
           )}
         </span>
       )}
-      {((item.status !== null && item.status !== '') ||
-        (item.agent !== null && item.agent !== '')) && (
+      {item.agent !== null && item.agent !== '' && (
         <span className="console-item-status-agent">
-          {item.status !== null && item.status !== '' && (
-            <span className="console-item-field">
-              <span className="console-item-field-label">Status</span>
-              <span
-                className="console-item-status-badge"
-                style={badgeStyle(
-                  statusOptions.find((o) => o.name === item.status)?.color ??
-                    null,
-                )}
-              >
-                {item.status}
-              </span>
-            </span>
-          )}
-          {item.agent !== null && item.agent !== '' && (
-            <span className="console-item-field">
-              <span className="console-item-field-label">Agent</span>
-              {item.agent}
-            </span>
-          )}
+          <span className="console-item-field">
+            <span className="console-item-field-label">Agent</span>
+            {item.agent}
+          </span>
         </span>
       )}
     </span>
