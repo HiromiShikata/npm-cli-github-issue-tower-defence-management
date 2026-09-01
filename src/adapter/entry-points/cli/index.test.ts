@@ -23,6 +23,7 @@ import {
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import { DoraMetricsWeeklyMeasureUseCase } from '../../../domain/usecases/DoraMetricsWeeklyMeasureUseCase';
 import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
 
@@ -56,8 +57,15 @@ jest.mock('../../repositories/GraphqlProjectRepository', () => ({
 jest.mock('../../repositories/issue/ApiV3IssueRepository', () => ({
   ApiV3IssueRepository: jest.fn().mockImplementation(() => ({})),
 }));
+const mockCreateNewIssue = jest.fn().mockResolvedValue(1);
 jest.mock('../../repositories/issue/RestIssueRepository', () => ({
-  RestIssueRepository: jest.fn().mockImplementation(() => ({})),
+  RestIssueRepository: jest.fn().mockImplementation(() => ({
+    createNewIssue: mockCreateNewIssue,
+  })),
+}));
+jest.mock('../../../domain/usecases/DoraMetricsWeeklyMeasureUseCase');
+jest.mock('../../repositories/RestGithubActionsRepository', () => ({
+  RestGithubActionsRepository: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('../../repositories/issue/GraphqlProjectItemRepository', () => ({
   GraphqlProjectItemRepository: jest.fn().mockImplementation(() => ({})),
@@ -2851,6 +2859,88 @@ mysteryKey: 'value'
       expect(handleFatalError).not.toHaveBeenCalled();
 
       stdoutSpy.mockRestore();
+    });
+  });
+
+  describe('doraMetrics', () => {
+    const doraConfigYaml = YAML.stringify({
+      reportOwner: 'HiromiShikata',
+      reportRepo: 'umino-corporait-operation',
+      projects: [
+        {
+          name: 'xcare',
+          owner: 'xcare-medical',
+          repo: 'xcare-platform',
+          deployWorkflowFiles: ['deploy.yml'],
+          deployBranch: 'production',
+          prBaseBranch: 'production',
+          mttrLabels: ['hotfix', 'incident'],
+        },
+      ],
+    });
+
+    it('calls use case run with project config and date range from env', async () => {
+      jest.clearAllMocks();
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(
+        function (this: DoraMetricsWeeklyMeasureUseCase) {
+          this.run = mockRun;
+          return this;
+        },
+      );
+
+      jest.mocked(fs.readFileSync).mockReturnValueOnce(doraConfigYaml);
+
+      process.env['GH_TOKEN'] = 'test-token';
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'doraMetrics',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledTimes(1);
+      const callArg = mockRun.mock.calls[0]?.[0];
+      expect(callArg).toMatchObject({
+        reportOwner: 'HiromiShikata',
+        reportRepo: 'umino-corporait-operation',
+        projects: [expect.objectContaining({ name: 'xcare' })],
+      });
+      expect(callArg.since).toBeInstanceOf(Date);
+      expect(callArg.until).toBeInstanceOf(Date);
+    });
+
+    it('uses --since and --until options when provided', async () => {
+      jest.clearAllMocks();
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(
+        function (this: DoraMetricsWeeklyMeasureUseCase) {
+          this.run = mockRun;
+          return this;
+        },
+      );
+
+      jest.mocked(fs.readFileSync).mockReturnValueOnce(doraConfigYaml);
+
+      process.env['GH_TOKEN'] = 'test-token';
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'doraMetrics',
+        '--configFilePath',
+        configFilePath,
+        '--since',
+        '2026-01-01T00:00:00Z',
+        '--until',
+        '2026-01-08T00:00:00Z',
+      ]);
+
+      const callArg = mockRun.mock.calls[0]?.[0];
+      expect(callArg.since).toEqual(new Date('2026-01-01T00:00:00Z'));
+      expect(callArg.until).toEqual(new Date('2026-01-08T00:00:00Z'));
     });
   });
 

@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import fs from 'fs';
+import YAML from 'yaml';
 
 export {
   ConfigFile,
   fetchProjectReadme,
+  isRecord,
   loadConfigFile,
   mergeConfigs,
   parseProjectReadmeConfig,
@@ -35,6 +37,9 @@ import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunne
 import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
 import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
 import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
+import { DoraMetricsWeeklyMeasureUseCase } from '../../../domain/usecases/DoraMetricsWeeklyMeasureUseCase';
+import { RestGithubActionsRepository } from '../../repositories/RestGithubActionsRepository';
+import { ProjectDoraConfig } from '../../../domain/entities/DoraMetrics';
 import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
@@ -77,6 +82,7 @@ import {
 import {
   type ConfigFile,
   fetchProjectReadme,
+  isRecord,
   loadConfigFile,
   mergeConfigs,
   parseProjectReadmeConfig,
@@ -1408,6 +1414,116 @@ program
       options.issueUrl,
       scopeLibPath,
     );
+  });
+
+const parseStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string');
+};
+
+const parseProjectDoraConfig = (raw: unknown): ProjectDoraConfig | null => {
+  if (!isRecord(raw)) return null;
+  const name = typeof raw['name'] === 'string' ? raw['name'] : '';
+  const owner = typeof raw['owner'] === 'string' ? raw['owner'] : '';
+  const repo = typeof raw['repo'] === 'string' ? raw['repo'] : '';
+  const deployWorkflowFiles = parseStringArray(raw['deployWorkflowFiles']);
+  const deployBranch =
+    typeof raw['deployBranch'] === 'string' ? raw['deployBranch'] : null;
+  const prBaseBranch =
+    typeof raw['prBaseBranch'] === 'string' ? raw['prBaseBranch'] : null;
+  const mttrLabels = parseStringArray(raw['mttrLabels']);
+  if (!name || !owner || !repo) return null;
+  return { name, owner, repo, deployWorkflowFiles, deployBranch, prBaseBranch, mttrLabels };
+};
+
+const parseDoraMetricsConfig = (
+  raw: unknown,
+): { reportOwner: string; reportRepo: string; projects: ProjectDoraConfig[] } => {
+  if (!isRecord(raw)) {
+    throw new Error('Invalid DORA metrics config: root must be a YAML object');
+  }
+  const reportOwner = typeof raw['reportOwner'] === 'string' ? raw['reportOwner'] : '';
+  const reportRepo = typeof raw['reportRepo'] === 'string' ? raw['reportRepo'] : '';
+  if (!reportOwner || !reportRepo) {
+    throw new Error('Invalid DORA metrics config: reportOwner and reportRepo are required');
+  }
+  const rawProjects = Array.isArray(raw['projects']) ? raw['projects'] : [];
+  const projects = rawProjects
+    .map(parseProjectDoraConfig)
+    .filter((p): p is ProjectDoraConfig => p !== null);
+  return { reportOwner, reportRepo, projects };
+};
+
+type DoraMetricsOptions = {
+  configFilePath: string;
+  since?: string;
+  until?: string;
+};
+
+program
+  .command('doraMetrics')
+  .description(
+    'Measure DORA metrics for configured projects and create a weekly report issue',
+  )
+  .requiredOption(
+    '-c, --configFilePath <path>',
+    'Path to DORA metrics YAML config file',
+  )
+  .option('--since <date>', 'Start of measurement period (ISO 8601 UTC)')
+  .option('--until <date>', 'End of measurement period (ISO 8601 UTC)')
+  .action(async (options: DoraMetricsOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+    }
+
+    const rawConfig = parseDoraMetricsConfig(
+      YAML.parse(fs.readFileSync(options.configFilePath, 'utf-8')),
+    );
+
+    const until = options.until ? new Date(options.until) : new Date();
+    const since = options.since
+      ? new Date(options.since)
+      : new Date(until.getTime() - 7 * 24 * 3600 * 1000);
+
+    const tokenOverrides: Record<string, string> = {};
+    const cmgToken = process.env.GH_CMG_TOKEN;
+    if (cmgToken) {
+      for (const project of rawConfig.projects) {
+        if (project.owner === 'meta-site') {
+          tokenOverrides[project.owner] = cmgToken;
+        }
+      }
+    }
+
+    const githubActionsRepository = new RestGithubActionsRepository(
+      token,
+      tokenOverrides,
+    );
+    const localStorageRepository = new LocalStorageRepository();
+    const githubRepositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      token,
+    );
+    const restIssueRepository = new RestIssueRepository(
+      ...githubRepositoryParams,
+    );
+
+    const useCase = new DoraMetricsWeeklyMeasureUseCase(
+      githubActionsRepository,
+      restIssueRepository.createNewIssue.bind(restIssueRepository),
+    );
+
+    await useCase.run({
+      projects: rawConfig.projects,
+      reportOwner: rawConfig.reportOwner,
+      reportRepo: rawConfig.reportRepo,
+      since,
+      until,
+    });
+
+    console.log('DORA metrics report issue created');
   });
 
 export const reportFatalErrorAndExit = (error: unknown): void => {
