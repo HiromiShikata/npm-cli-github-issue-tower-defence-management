@@ -29,6 +29,7 @@ Commands:
   attachOrCreate [options]              Attach to an existing registered tmux session for the issue URL, or create a new one
   ownerCallFileAppend [options]         Append one owner call to the per-session owner call file (writes nothing to stdout)
   ownerCallFileDelete [options]         Delete the per-session owner call file (writes nothing to stdout; an already absent file is not an error)
+  doraMetrics [options]                 Measure DORA metrics for configured projects and create a weekly report issue
   help [command]                        display help for command
 
 Options for schedule:
@@ -240,6 +241,15 @@ TOKEN=$(npx github-issue-tower-defence-management selectLiveSessionOauthToken --
 ```
 npx github-issue-tower-defence-management countInTmuxByHumanSessionsPerToken --configFilePath ./preparator-config.yml --tokenListJsonPath ./claudeCodeOauthTokenList.json
 ```
+
+```
+npx github-issue-tower-defence-management doraMetrics --configFilePath ./dora-metrics.yml
+```
+
+Options for doraMetrics:
+  -c, --configFilePath <path>  Path to DORA metrics YAML config file (required)
+  --since <date>               Start of measurement period (ISO 8601 UTC, default: 7 days before --until)
+  --until <date>               End of measurement period (ISO 8601 UTC, default: now)
 
 ## Config
 

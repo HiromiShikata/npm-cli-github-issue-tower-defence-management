@@ -202,6 +202,7 @@ describe('DoraMetricsWeeklyMeasureUseCase', () => {
             'deploy.yml',
             'production',
             since,
+            until,
           );
         },
       },

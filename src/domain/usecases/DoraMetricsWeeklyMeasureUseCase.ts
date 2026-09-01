@@ -32,7 +32,11 @@ export class DoraMetricsWeeklyMeasureUseCase {
     const metrics: ProjectDoraMetrics[] = [];
 
     for (const project of params.projects) {
-      const projectMetrics = await this.measureProject(project, params.since);
+      const projectMetrics = await this.measureProject(
+        project,
+        params.since,
+        params.until,
+      );
       metrics.push(projectMetrics);
     }
 
@@ -56,6 +60,7 @@ export class DoraMetricsWeeklyMeasureUseCase {
   private measureProject = async (
     config: ProjectDoraConfig,
     since: Date,
+    until: Date,
   ): Promise<ProjectDoraMetrics> => {
     const allRuns: WorkflowRun[] = [];
     for (const workflowFile of config.deployWorkflowFiles) {
@@ -65,6 +70,7 @@ export class DoraMetricsWeeklyMeasureUseCase {
         workflowFile,
         config.deployBranch,
         since,
+        until,
       );
       allRuns.push(...runs);
     }
@@ -81,6 +87,7 @@ export class DoraMetricsWeeklyMeasureUseCase {
       config.repo,
       config.prBaseBranch,
       since,
+      until,
     );
 
     const changeLeadTimeHours = this.calculateChangeLeadTime(
@@ -94,6 +101,7 @@ export class DoraMetricsWeeklyMeasureUseCase {
         config.repo,
         config.mttrLabels,
         since,
+        until,
       );
 
     const mttrHours = this.calculateMttr(hotfixItems);
