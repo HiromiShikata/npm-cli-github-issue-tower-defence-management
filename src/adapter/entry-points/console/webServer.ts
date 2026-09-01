@@ -697,12 +697,17 @@ const handleTokenedRequest = async (
         return;
       }
       if (requestPath === '/api/airplanesync') {
-        const issueRepository = options.issueRepository ?? null;
+        const defaultIssueRepository = options.issueRepository ?? null;
         const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
         const issueTitleStateCache = options.issueTitleStateCache ?? null;
         const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
+        const resolveIssueRepository =
+          options.resolveIssueRepository ??
+          (defaultIssueRepository !== null
+            ? (): IssueRepository => defaultIssueRepository
+            : null);
         if (
-          issueRepository === null ||
+          resolveIssueRepository === null ||
           consoleDataOutputDir === null ||
           issueTitleStateCache === null ||
           pullRequestStatusCache === null
@@ -713,7 +718,7 @@ const handleTokenedRequest = async (
         await handleAirplaneSync(
           response,
           consoleDataOutputDir,
-          issueRepository,
+          resolveIssueRepository,
           issueTitleStateCache,
           pullRequestStatusCache,
           options.resolveGithubToken != null

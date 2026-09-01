@@ -78,7 +78,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
     );
@@ -166,7 +166,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
     );
@@ -257,7 +257,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
     );
@@ -306,7 +306,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
     );
@@ -342,7 +342,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
     );
@@ -394,7 +394,7 @@ describe('handleAirplaneSync', () => {
     const syncDone = handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
     );
@@ -473,7 +473,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
       'gh-token',
@@ -544,7 +544,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
       'gh-token',
@@ -611,7 +611,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
       null,
