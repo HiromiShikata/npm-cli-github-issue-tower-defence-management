@@ -574,6 +574,10 @@ const createStubIssueRepository = (
     url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
       ? {
           url: awaitingQualityCheckPullRequest.url,
+          branchName: awaitingQualityCheckPullRequest.branchName,
+          createdAt:
+            awaitingQualityCheckPullRequest.createdAt.toISOString(),
+          isDraft: awaitingQualityCheckPullRequest.isDraft,
           isConflicted: awaitingQualityCheckPullRequest.isConflicted,
           mergeable: awaitingQualityCheckPullRequest.mergeable,
           isPassedAllCiJob: awaitingQualityCheckPullRequest.isPassedAllCiJob,

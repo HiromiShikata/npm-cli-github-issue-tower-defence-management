@@ -4770,6 +4770,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       state: 'open',
       draft: false,
       mergeable,
+      created_at: '2024-01-01T00:00:00Z',
       head: { ref: 'feature/x', sha: 'sha-1' },
       base: { ref: 'main' },
     });
@@ -4830,6 +4831,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(status).toEqual({
         url: prUrl,
+        branchName: 'feature/x',
+        createdAt: '2024-01-01T00:00:00Z',
+        isDraft: false,
         isConflicted: false,
         mergeable: 'MERGEABLE',
         isPassedAllCiJob: true,
@@ -4893,6 +4897,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           state: 'closed',
           draft: false,
           mergeable: null,
+          created_at: '2024-01-01T00:00:00Z',
           head: { ref: 'feature/x', sha: 'sha-1' },
           base: { ref: 'main' },
         },
@@ -4935,6 +4940,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
                   state: 'open',
                   draft: false,
                   mergeable: true,
+                  created_at: '2024-01-01T00:00:00Z',
                   head: { ref: 'feature/x', sha: 'sha-1' },
                   base: { ref: 'main' },
                 }),
@@ -5029,6 +5035,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
                   state: 'open',
                   draft: false,
                   mergeable: true,
+                  created_at: '2024-01-01T00:00:00Z',
                   head: { ref: 'feature/x', sha: 'sha-1' },
                   base: { ref: 'main' },
                 }),

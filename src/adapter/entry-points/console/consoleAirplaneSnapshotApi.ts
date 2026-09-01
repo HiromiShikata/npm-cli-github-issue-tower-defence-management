@@ -11,7 +11,6 @@ import {
   handlePrCommits,
   handlePrFiles,
   handlePullRequestStatus,
-  handleRelatedPrs,
   deriveMergeableStatus,
 } from './consoleReadApi';
 
@@ -263,41 +262,6 @@ const normalizeState = (body: unknown): AirplaneStateItem => {
   };
 };
 
-const normalizeRelatedPrs = (body: unknown): AirplaneRelatedPrItem[] => {
-  if (!isRecord(body) || !Array.isArray(body.relatedPullRequests)) {
-    return [];
-  }
-  return body.relatedPullRequests.filter(isRecord).map((pr) => {
-    const summary = isRecord(pr.summary)
-      ? {
-          title: getString(pr.summary.title),
-          body: getString(pr.summary.body),
-          additions: getNumber(pr.summary.additions),
-          deletions: getNumber(pr.summary.deletions),
-          changedFiles: getNumber(pr.summary.changedFiles),
-        }
-      : null;
-    return {
-      url: getString(pr.url),
-      branchName: typeof pr.branchName === 'string' ? pr.branchName : null,
-      createdAt: getString(pr.createdAt),
-      isDraft: getBoolean(pr.isDraft),
-      isConflicted: getBoolean(pr.isConflicted),
-      mergeableStatus:
-        getString(pr.mergeableStatus) ||
-        deriveMergeableStatus(
-          typeof pr.mergeable === 'string' ? pr.mergeable : null,
-        ),
-      isPassedAllCiJob: getBoolean(pr.isPassedAllCiJob),
-      isCiStateSuccess: getBoolean(pr.isCiStateSuccess),
-      isResolvedAllReviewComments: getBoolean(pr.isResolvedAllReviewComments),
-      isBranchOutOfDate: getBoolean(pr.isBranchOutOfDate),
-      missingRequiredCheckNames: parseStringArray(pr.missingRequiredCheckNames),
-      summary,
-    };
-  });
-};
-
 const discoverPjcodes = (consoleDataOutputDir: string): string[] => {
   try {
     const entries = fs.readdirSync(consoleDataOutputDir, {
@@ -329,7 +293,11 @@ const readTabListJson = (
   }
 };
 
-type UniqueItem = { url: string; isPr: boolean };
+type UniqueItem = {
+  url: string;
+  isPr: boolean;
+  relatedOpenPullRequestUrls: string[];
+};
 
 const collectUniqueItems = (
   tabData: Record<string, AirplaneTabData>,
@@ -349,7 +317,13 @@ const collectUniqueItems = (
           continue;
         }
         seen.add(item.url);
-        items.push({ url: item.url, isPr: getBoolean(item.isPr) });
+        items.push({
+          url: item.url,
+          isPr: getBoolean(item.isPr),
+          relatedOpenPullRequestUrls: parseStringArray(
+            item.relatedOpenPullRequestUrls,
+          ),
+        });
       }
     }
   }
@@ -419,7 +393,7 @@ export const handleAirplaneSync = async (
   writeSseEvent(response, { type: 'progress', fetched: 0, total });
 
   const tasks = uniqueItems.map((item) => async (): Promise<void> => {
-    const { url, isPr } = item;
+    const { url, isPr, relatedOpenPullRequestUrls } = item;
     try {
       const issueRepository = resolveIssueRepository(url);
       const [bodyResult, commentsResult, stateResult] = await Promise.all([
@@ -446,8 +420,33 @@ export const handleAirplaneSync = async (
         commits = normalizePrCommits(commitsResult.body);
         prStatus = normalizePrStatus(prStatusResult.body);
       } else {
-        const relatedPrsResult = await handleRelatedPrs(issueRepository, url);
-        relatedPrs = normalizeRelatedPrs(relatedPrsResult.body);
+        relatedPrs = (
+          await Promise.all(
+            relatedOpenPullRequestUrls.map(
+              async (prUrl): Promise<AirplaneRelatedPrItem | null> => {
+                const ciStatus =
+                  await issueRepository.getOpenPullRequestCiStatus(prUrl);
+                if (ciStatus === null) return null;
+                const summary =
+                  await issueRepository.getPullRequestSummary(prUrl);
+                return {
+                  url: prUrl,
+                  branchName: ciStatus.branchName,
+                  createdAt: ciStatus.createdAt ?? new Date().toISOString(),
+                  isDraft: ciStatus.isDraft,
+                  isConflicted: ciStatus.isConflicted,
+                  mergeableStatus: deriveMergeableStatus(ciStatus.mergeable),
+                  isPassedAllCiJob: ciStatus.isPassedAllCiJob,
+                  isCiStateSuccess: ciStatus.isCiStateSuccess,
+                  isResolvedAllReviewComments: false,
+                  isBranchOutOfDate: ciStatus.isBranchOutOfDate,
+                  missingRequiredCheckNames: ciStatus.missingRequiredCheckNames,
+                  summary,
+                };
+              },
+            ),
+          )
+        ).filter((pr): pr is AirplaneRelatedPrItem => pr !== null);
       }
 
       items[url] = {
