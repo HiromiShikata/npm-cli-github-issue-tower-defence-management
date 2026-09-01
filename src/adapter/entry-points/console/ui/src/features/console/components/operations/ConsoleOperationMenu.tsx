@@ -21,6 +21,7 @@ export type ConsoleOperationBarProps = {
   rejectEnabled: boolean;
   statusOptions: ConsoleFieldOption[];
   handlers: ConsoleOperationHandlers;
+  storyNameForDeletion?: string | null;
 };
 
 export const ConsoleOperationMenu = ({
@@ -29,6 +30,7 @@ export const ConsoleOperationMenu = ({
   rejectEnabled,
   statusOptions,
   handlers,
+  storyNameForDeletion,
 }: ConsoleOperationBarProps) => {
   return (
     <div className="console-operation-bar">
@@ -54,6 +56,8 @@ export const ConsoleOperationMenu = ({
           />
           <ConsoleDangerousActions
             onDeleteAllComments={handlers.onDeleteAllComments}
+            onDeleteStory={handlers.onDeleteStory}
+            storyNameForDeletion={storyNameForDeletion}
           />
         </div>
         <ConsoleCloseActions onClose={handlers.onClose} />

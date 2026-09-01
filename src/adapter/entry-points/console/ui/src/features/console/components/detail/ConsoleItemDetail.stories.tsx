@@ -21,6 +21,7 @@ const noopOperationHandlers: ConsoleOperationHandlers = {
   onClose: () => {},
   onOkAndAwaitingWorkspace: () => {},
   onDeleteAllComments: () => {},
+  onDeleteStory: null,
   onSetDependedIssueUrl: async () => {},
 };
 

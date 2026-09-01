@@ -12,3 +12,10 @@ export default meta;
 type Story = StoryObj<typeof ConsoleDangerousActions>;
 
 export const Default: Story = {};
+
+export const WithDeleteStory: Story = {
+  args: {
+    onDeleteStory: async () => {},
+    storyNameForDeletion: 'improve tdpm console and dashboard',
+  },
+};
