@@ -643,7 +643,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      issueRepository,
+      () => issueRepository,
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
     );
@@ -654,5 +654,68 @@ describe('handleAirplaneSync', () => {
     expect(doneEvent?.snapshot.tabs['proj2']).toBeDefined();
     expect(doneEvent?.snapshot.tabs['proj1']?.['prs']).toBeDefined();
     expect(doneEvent?.snapshot.tabs['proj2']?.['todo-by-human']).toBeDefined();
+  });
+
+  it('routes each item to the repository resolved for its URL', async () => {
+    const defaultRepo = mock<IssueRepository>();
+    const metaSiteRepo = mock<IssueRepository>();
+
+    const defaultUrl = 'https://github.com/HiromiShikata/repo/issues/1';
+    const metaSiteUrl = 'https://github.com/meta-site/repo/issues/2';
+
+    writeListJson(tmpDir, 'umino', 'todo-by-agent', {
+      generatedAt: '2026-01-01T00:00:00Z',
+      items: [{ url: defaultUrl, isPr: false, number: 1, projectItemId: 'PVTI_1' }],
+    });
+    writeListJson(tmpDir, 'cmg', 'todo-by-human', {
+      generatedAt: '2026-01-01T00:00:00Z',
+      items: [{ url: metaSiteUrl, isPr: false, number: 2, projectItemId: 'PVTI_2' }],
+    });
+
+    defaultRepo.getIssueOrPullRequestBody.mockResolvedValue('default body');
+    defaultRepo.getIssueOrPullRequestComments.mockResolvedValue([]);
+    defaultRepo.getIssueOrPullRequestState.mockResolvedValue({
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'default issue',
+    });
+    defaultRepo.findRelatedOpenPRs.mockResolvedValue([]);
+
+    metaSiteRepo.getIssueOrPullRequestBody.mockResolvedValue('meta-site body');
+    metaSiteRepo.getIssueOrPullRequestComments.mockResolvedValue([]);
+    metaSiteRepo.getIssueOrPullRequestState.mockResolvedValue({
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'meta-site issue',
+    });
+    metaSiteRepo.findRelatedOpenPRs.mockResolvedValue([]);
+
+    const { response, chunks } = makeResponse();
+    await handleAirplaneSync(
+      response,
+      tmpDir,
+      (url: string) =>
+        url.includes('meta-site') ? metaSiteRepo : defaultRepo,
+      new IssueTitleStateCache(),
+      new PullRequestStatusCache(),
+    );
+
+    const events = collectSseEvents(chunks);
+    const doneEvent = events.find(isDoneEvent);
+    expect(doneEvent?.snapshot.failures).toEqual([]);
+    expect(metaSiteRepo.getIssueOrPullRequestBody).toHaveBeenCalledWith(
+      metaSiteUrl,
+    );
+    expect(defaultRepo.getIssueOrPullRequestBody).not.toHaveBeenCalledWith(
+      metaSiteUrl,
+    );
+    expect(defaultRepo.getIssueOrPullRequestBody).toHaveBeenCalledWith(
+      defaultUrl,
+    );
+    expect(metaSiteRepo.getIssueOrPullRequestBody).not.toHaveBeenCalledWith(
+      defaultUrl,
+    );
   });
 });
