@@ -37,7 +37,11 @@ export class DoraMetricsWeeklyMeasureUseCase {
     }
 
     const reportTitle = `DORAメトリクス週次レポート ${this.formatDate(params.until)}`;
-    const reportBody = this.buildReportBody(metrics, params.since, params.until);
+    const reportBody = this.buildReportBody(
+      metrics,
+      params.since,
+      params.until,
+    );
 
     await this.createNewIssue(
       params.reportOwner,
@@ -79,7 +83,10 @@ export class DoraMetricsWeeklyMeasureUseCase {
       since,
     );
 
-    const changeLeadTimeHours = this.calculateChangeLeadTime(mergedPRs, allRuns);
+    const changeLeadTimeHours = this.calculateChangeLeadTime(
+      mergedPRs,
+      allRuns,
+    );
 
     const hotfixItems =
       await this.githubActionsRepository.getClosedItemsByLabels(
@@ -161,8 +168,7 @@ export class DoraMetricsWeeklyMeasureUseCase {
         m.changeLeadTimeHours !== null
           ? m.changeLeadTimeHours.toFixed(1)
           : 'N/A';
-      const mttr =
-        m.mttrHours !== null ? m.mttrHours.toFixed(1) : 'N/A';
+      const mttr = m.mttrHours !== null ? m.mttrHours.toFixed(1) : 'N/A';
       return `| ${m.projectName} | ${m.deployFrequency} | ${failRate} | ${leadTime} | ${mttr} |`;
     });
 

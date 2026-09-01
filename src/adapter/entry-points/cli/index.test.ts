@@ -2882,12 +2882,12 @@ mysteryKey: 'value'
     it('calls use case run with project config and date range from env', async () => {
       jest.clearAllMocks();
       const mockRun = jest.fn().mockResolvedValue(undefined);
-      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(
-        function (this: DoraMetricsWeeklyMeasureUseCase) {
-          this.run = mockRun;
-          return this;
-        },
-      );
+      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(function (
+        this: DoraMetricsWeeklyMeasureUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
 
       jest.mocked(fs.readFileSync).mockReturnValueOnce(doraConfigYaml);
 
@@ -2914,12 +2914,12 @@ mysteryKey: 'value'
     it('uses --since and --until options when provided', async () => {
       jest.clearAllMocks();
       const mockRun = jest.fn().mockResolvedValue(undefined);
-      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(
-        function (this: DoraMetricsWeeklyMeasureUseCase) {
-          this.run = mockRun;
-          return this;
-        },
-      );
+      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(function (
+        this: DoraMetricsWeeklyMeasureUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
 
       jest.mocked(fs.readFileSync).mockReturnValueOnce(doraConfigYaml);
 

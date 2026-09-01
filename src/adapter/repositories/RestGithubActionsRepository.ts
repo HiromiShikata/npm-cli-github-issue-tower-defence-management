@@ -113,15 +113,15 @@ export class RestGithubActionsRepository implements GithubActionsRepository {
       return [];
     }
 
-    const isMergedInWindow = (pr: PullRequestResponse): pr is MergedPullRequestResponse =>
+    const isMergedInWindow = (
+      pr: PullRequestResponse,
+    ): pr is MergedPullRequestResponse =>
       pr.merged_at !== null && new Date(pr.merged_at) >= since;
 
-    return prs
-      .filter(isMergedInWindow)
-      .map((pr) => ({
-        mergedAt: new Date(pr.merged_at),
-        createdAt: new Date(pr.created_at),
-      }));
+    return prs.filter(isMergedInWindow).map((pr) => ({
+      mergedAt: new Date(pr.merged_at),
+      createdAt: new Date(pr.created_at),
+    }));
   };
 
   getClosedItemsByLabels = async (
@@ -151,14 +151,14 @@ export class RestGithubActionsRepository implements GithubActionsRepository {
       return [];
     }
 
-    const isClosedInWindow = (item: IssueResponse): item is ClosedIssueResponse =>
+    const isClosedInWindow = (
+      item: IssueResponse,
+    ): item is ClosedIssueResponse =>
       item.closed_at !== null && new Date(item.closed_at) >= since;
 
-    return items
-      .filter(isClosedInWindow)
-      .map((item) => ({
-        createdAt: new Date(item.created_at),
-        closedAt: new Date(item.closed_at),
-      }));
+    return items.filter(isClosedInWindow).map((item) => ({
+      createdAt: new Date(item.created_at),
+      closedAt: new Date(item.closed_at),
+    }));
   };
 }

@@ -1433,19 +1433,35 @@ const parseProjectDoraConfig = (raw: unknown): ProjectDoraConfig | null => {
     typeof raw['prBaseBranch'] === 'string' ? raw['prBaseBranch'] : null;
   const mttrLabels = parseStringArray(raw['mttrLabels']);
   if (!name || !owner || !repo) return null;
-  return { name, owner, repo, deployWorkflowFiles, deployBranch, prBaseBranch, mttrLabels };
+  return {
+    name,
+    owner,
+    repo,
+    deployWorkflowFiles,
+    deployBranch,
+    prBaseBranch,
+    mttrLabels,
+  };
 };
 
 const parseDoraMetricsConfig = (
   raw: unknown,
-): { reportOwner: string; reportRepo: string; projects: ProjectDoraConfig[] } => {
+): {
+  reportOwner: string;
+  reportRepo: string;
+  projects: ProjectDoraConfig[];
+} => {
   if (!isRecord(raw)) {
     throw new Error('Invalid DORA metrics config: root must be a YAML object');
   }
-  const reportOwner = typeof raw['reportOwner'] === 'string' ? raw['reportOwner'] : '';
-  const reportRepo = typeof raw['reportRepo'] === 'string' ? raw['reportRepo'] : '';
+  const reportOwner =
+    typeof raw['reportOwner'] === 'string' ? raw['reportOwner'] : '';
+  const reportRepo =
+    typeof raw['reportRepo'] === 'string' ? raw['reportRepo'] : '';
   if (!reportOwner || !reportRepo) {
-    throw new Error('Invalid DORA metrics config: reportOwner and reportRepo are required');
+    throw new Error(
+      'Invalid DORA metrics config: reportOwner and reportRepo are required',
+    );
   }
   const rawProjects = Array.isArray(raw['projects']) ? raw['projects'] : [];
   const projects = rawProjects

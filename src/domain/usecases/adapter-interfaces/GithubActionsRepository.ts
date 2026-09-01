@@ -1,4 +1,8 @@
-import { ClosedItem, MergedPullRequest, WorkflowRun } from '../../entities/DoraMetrics';
+import {
+  ClosedItem,
+  MergedPullRequest,
+  WorkflowRun,
+} from '../../entities/DoraMetrics';
 
 export interface GithubActionsRepository {
   getWorkflowRuns: (
