@@ -4,11 +4,6 @@ import { SILENT_SESSION_REMINDER_SENTINEL } from './silentSessionReminderSentine
 describe('DefaultSilentSessionMessageComposer', () => {
   const composer = new DefaultSilentSessionMessageComposer();
 
-  it('embeds the reminder sentinel in the main-stalled section', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
-  });
-
   it('embeds the reminder sentinel in the sub-agent section', () => {
     const subAgent = {
       label: 'sub-process-1',
@@ -63,125 +58,6 @@ describe('DefaultSilentSessionMessageComposer', () => {
     );
   });
 
-  it('renders the main-stalled message as a neutral automated status notice with the silent minutes substituted', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain('This is an automated status check.');
-    expect(section).toContain('No output has been observed for 10 minutes.');
-    expect(section).toContain(
-      'If you are waiting on an automated process that runs without the owner',
-    );
-    expect(section).toContain('Otherwise please continue with the next step');
-    expect(section).toContain('1.');
-    expect(section).toContain('2.');
-    expect(section).toContain('3.');
-    expect(section).toContain('4.');
-  });
-
-  it('limits the no-action wait to an automated process that runs without the owner', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'If you are waiting on an automated process that runs without the owner - a continuous-integration run, an external API, or another process - no action is needed beyond logging one line explaining the wait.',
-    );
-    expect(section).not.toContain(
-      'If you are waiting on an external process, no action is needed',
-    );
-  });
-
-  it('asks for an owner-call when the session is waiting on something only the owner can supply', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'If you are waiting on something only the owner can supply - a decision, an approval, a credential, or an answer - please raise an owner-call now',
-    );
-    expect(section).toContain(
-      'that wait is resolved only after the owner has been notified',
-    );
-  });
-
-  it('states each of the four checkpoints exactly once', () => {
-    const section = composer.composeMainStalledSection(600);
-    const occurrences = (needle: string): number =>
-      section.split(needle).length - 1;
-    expect(occurrences('Keep the session task list current')).toBe(1);
-    expect(occurrences('Run independent pieces of work in parallel')).toBe(1);
-    expect(
-      occurrences(
-        'Keep a monitor in place that notices when a sub-agent has produced no output for about 5 minutes.',
-      ),
-    ).toBe(1);
-    expect(
-      occurrences(
-        'Resume the assigned work now by taking its next concrete step with a tool call',
-      ),
-    ).toBe(1);
-  });
-
-  it('requests a remaining-minutes estimate in the next output', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'an estimate of the remaining minutes to finish all tasks',
-    );
-  });
-
-  it('floors the silent seconds to whole minutes', () => {
-    const section = composer.composeMainStalledSection(659);
-    expect(section).toContain('No output has been observed for 10 minutes.');
-  });
-
-  it('solicits no owner-call anywhere in the main-stalled section', () => {
-    const section = composer.composeMainStalledSection(600);
-    const solicitingPhrases = [
-      'share it through a new owner-call',
-      'The owner is notified only when an owner-call is raised.',
-      'in the format documented for this session',
-      're-raise',
-      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
-      'that call was not registered',
-      'the owner has not been notified',
-      "a completion still awaits the owner's acknowledgment",
-    ];
-    for (const phrase of solicitingPhrases) {
-      expect(section).not.toContain(phrase);
-    }
-  });
-
-  it('instructs the main-stalled session to resume the assigned work with a concrete next step', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'Resume the assigned work now by taking its next concrete step with a tool call',
-    );
-    expect(section).toContain(
-      'report the result of that step in your next output',
-    );
-  });
-
-  it('states in the main-stalled section that a period without output is not by itself a reason to contact the owner', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain(
-      'A period without output means the assigned work is not progressing, so it is not by itself a reason to contact the owner',
-    );
-    expect(section).toContain(
-      'please resume the work rather than sending a message about the absence of progress',
-    );
-  });
-
-  it('contains no marker-tag example, tag name, or angle bracket in the format guidance', () => {
-    const section = composer.composeMainStalledSection(600);
-    expect(section).not.toContain('marker tag');
-    expect(section).not.toContain('opening and closing pair');
-    expect(section).not.toContain('<');
-    expect(section).not.toContain('>');
-  });
-
-  it('omits the self-diagnosis guidance from the stale-owner-call section', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(section).not.toContain(
-      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
-    );
-  });
-
   it('omits the self-diagnosis guidance from the sub-agent sections', () => {
     const subAgent = {
       label: 'sub-process-1',
@@ -197,98 +73,6 @@ describe('DefaultSilentSessionMessageComposer', () => {
     expect(section).not.toContain(
       'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
     );
-  });
-
-  it('embeds the reminder sentinel in the stale-owner-call main-stalled section', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
-  });
-
-  it('renders the stale-owner-call section with the silent and owner-call-age minutes substituted', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      659,
-      3659,
-    );
-    expect(section).toContain(
-      'No output has been observed for 10 minutes, and the owner call raised 60 minutes ago has not yet been acknowledged by the owner.',
-    );
-  });
-
-  it('instructs unconditionally to re-raise the content as a fresh self-contained owner call', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(section).toContain(
-      'Please re-raise its content as a fresh, self-contained owner call.',
-    );
-  });
-
-  it('frames every unanswered owner call kind as awaiting acknowledgment', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(section).toContain('acknowledg');
-    expect(section).toContain(
-      'a completion report, a question, or a decision request',
-    );
-    expect(section).toContain("still awaiting the owner's acknowledgment");
-  });
-
-  it('contains no not-blocked escape phrasing and no conditional re-raise phrasing', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(section).not.toContain('no longer blocked');
-    expect(section).not.toContain('continue with the next step');
-    expect(section).not.toContain('If you are still waiting');
-    expect(section).not.toContain('If you are');
-  });
-
-  it('requests a remaining-minutes estimate in the stale-owner-call section', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(section).toContain(
-      'an estimate of the remaining minutes to finish all tasks',
-    );
-  });
-
-  it('states the owner-call format guidance exactly once in the stale-owner-call section', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    const formatOccurrences =
-      section.split('in the format documented for this session').length - 1;
-    expect(formatOccurrences).toBe(1);
-  });
-
-  it('contains no marker-tag example, tag name, or angle bracket in the stale-owner-call section', () => {
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(section).not.toContain('marker tag');
-    expect(section).not.toContain('opening and closing pair');
-    expect(section).not.toContain('<');
-    expect(section).not.toContain('>');
-  });
-
-  it('composes the stale-owner-call section distinctly from the plain main-stalled section', () => {
-    const plainSection = composer.composeMainStalledSection(600);
-    const staleSection = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(staleSection).not.toBe(plainSection);
-    expect(plainSection).not.toContain('has not yet been acknowledged');
   });
 
   it('emits a distinct idle message for a sub-agent that is only output-idle', () => {
@@ -463,8 +247,6 @@ describe('DefaultSilentSessionMessageComposer', () => {
       finishedResultUnconsumed: false,
     };
     const composedDefaultTexts = [
-      composer.composeMainStalledSection(600),
-      composer.composeMainStalledWithStaleOwnerCallSection(600, 3600),
       composer.composeSubAgentSection({
         idleSubAgents: [subAgent],
         longRunningSubAgents: [subAgent],
@@ -489,8 +271,6 @@ describe('DefaultSilentSessionMessageComposer', () => {
       finishedResultUnconsumed: false,
     };
     const composedDefaultTexts = [
-      composer.composeMainStalledSection(600),
-      composer.composeMainStalledWithStaleOwnerCallSection(600, 3600),
       composer.composeSubAgentSection({
         idleSubAgents: [subAgent],
         longRunningSubAgents: [subAgent],
@@ -503,13 +283,11 @@ describe('DefaultSilentSessionMessageComposer', () => {
       expect(text).not.toMatch(emojiPattern);
       expect(text).not.toContain('\u{FE0F}');
       expect(text).not.toContain('\u{200D}');
-      // The bracketed reminder sentinel remains allowed.
       expect(text).toContain(SILENT_SESSION_REMINDER_SENTINEL);
     }
   });
 
   it('does not contain any host-specific or internal identifiers', () => {
-    const mainSection = composer.composeMainStalledSection(600);
     const subAgent = {
       label: 'sub-process-1',
       silentSeconds: 360,
@@ -523,8 +301,7 @@ describe('DefaultSilentSessionMessageComposer', () => {
     });
     const unconsumedResultSection =
       composer.composeSubAgentUnconsumedResultSection([subAgent]);
-    const combined =
-      `${mainSection}\n${subSection}\n${unconsumedResultSection}`.toLowerCase();
+    const combined = `${subSection}\n${unconsumedResultSection}`.toLowerCase();
     expect(combined).not.toContain('claude');
     expect(combined).not.toContain('take ownership');
     expect(combined).not.toContain('/home/');

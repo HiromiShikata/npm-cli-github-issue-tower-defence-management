@@ -1,12 +1,9 @@
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { SessionSubAgentActivityRepository } from '../../../domain/usecases/adapter-interfaces/SessionSubAgentActivityRepository';
-import { OwnerCallStatusProvider } from '../../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
 import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
 import {
   NotifySilentLiveSessionsUseCase,
   HubTaskStatusResolver,
-  DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
-  DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
   DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   DEFAULT_NOTIFICATION_STAGGER_SECONDS,
@@ -17,7 +14,6 @@ import { DefaultSilentSessionMessageComposer } from '../../../domain/usecases/De
 import { LocalProcessLiveSessionProcessSnapshotProvider } from '../../repositories/LocalProcessLiveSessionProcessSnapshotProvider';
 import { ProcFsProcessEnvironReader } from '../../repositories/ProcFsProcessEnvironReader';
 import { FileSystemInteractiveLiveSessionTranscriptResolver } from '../../repositories/FileSystemInteractiveLiveSessionTranscriptResolver';
-import { FileSystemSessionOutputActivityRepository } from '../../repositories/FileSystemSessionOutputActivityRepository';
 import {
   DEFAULT_SUBMIT_PUSH_OUT_ATTEMPT_LIMIT,
   DEFAULT_SUBMIT_PUSH_OUT_WAIT_MILLISECONDS,
@@ -42,13 +38,10 @@ export type NotifySilentTmuxSessionsParams = {
   enabled: boolean;
   localCommandRunner: LocalCommandRunner;
   processEnvironReader?: ProcessEnvironReader;
-  ownerCallStatusProvider: OwnerCallStatusProvider;
   subAgentOutputRootDirectory: string | null;
   subAgentProcessMatchPattern: string | null;
   subAgentTranscriptRootDirectory: string | null;
   subAgentRuntimeRootDirectory: string | null;
-  mainSilentThresholdSeconds: number;
-  unansweredOwnerCallGraceSeconds: number;
   subAgentSilentThresholdSeconds: number;
   subAgentRunningThresholdSeconds: number;
   staggerSeconds: number;
@@ -99,13 +92,10 @@ export const notifySilentTmuxSessions = async (
     enabled,
     localCommandRunner,
     processEnvironReader,
-    ownerCallStatusProvider,
     subAgentOutputRootDirectory,
     subAgentProcessMatchPattern,
     subAgentTranscriptRootDirectory,
     subAgentRuntimeRootDirectory,
-    mainSilentThresholdSeconds,
-    unansweredOwnerCallGraceSeconds,
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
     staggerSeconds,
@@ -135,7 +125,6 @@ export const notifySilentTmuxSessions = async (
       processEnvironReader ?? new ProcFsProcessEnvironReader(),
     ),
     new FileSystemInteractiveLiveSessionTranscriptResolver(),
-    new FileSystemSessionOutputActivityRepository(),
     createSubAgentActivityRepository(
       subAgentTranscriptRootDirectory,
       subAgentRuntimeRootDirectory,
@@ -144,7 +133,6 @@ export const notifySilentTmuxSessions = async (
       localCommandRunner,
       now,
     ),
-    ownerCallStatusProvider,
     new TmuxSilentSessionNotificationRepository(
       localCommandRunner,
       new RealSleeper(),
@@ -168,8 +156,6 @@ export const notifySilentTmuxSessions = async (
     new TranscriptRefusalTailStatusProvider(),
   );
   await useCase.run({
-    mainSilentThresholdSeconds,
-    unansweredOwnerCallGraceSeconds,
     subAgentSilentThresholdSeconds,
     subAgentRunningThresholdSeconds,
     staggerSeconds,
@@ -181,8 +167,6 @@ export const notifySilentTmuxSessions = async (
 };
 
 export const DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS = {
-  mainSilentThresholdSeconds: DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS,
-  unansweredOwnerCallGraceSeconds: DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
   subAgentSilentThresholdSeconds: DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS,
   subAgentRunningThresholdSeconds: DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
   staggerSeconds: DEFAULT_NOTIFICATION_STAGGER_SECONDS,

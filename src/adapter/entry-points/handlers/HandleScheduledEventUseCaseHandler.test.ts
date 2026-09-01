@@ -152,8 +152,6 @@ jest.mock('../cli/fleetConfig', () => ({
 jest.mock('./notifySilentTmuxSessions', () => ({
   notifySilentTmuxSessions: jest.fn().mockResolvedValue(undefined),
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS: {
-    mainSilentThresholdSeconds: 600,
-    unansweredOwnerCallGraceSeconds: 3600,
     subAgentSilentThresholdSeconds: 300,
     subAgentRunningThresholdSeconds: 1800,
     staggerSeconds: 10,
