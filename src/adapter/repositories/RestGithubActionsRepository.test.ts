@@ -167,9 +167,18 @@ describe('RestGithubActionsRepository', () => {
     it('returns only PRs merged within the since–until window', async () => {
       mockGet.mockReturnValueOnce(
         mockJsonResponse([
-          { merged_at: '2026-01-05T00:00:00Z', created_at: '2026-01-04T00:00:00Z' },
-          { merged_at: '2025-12-30T00:00:00Z', created_at: '2025-12-28T00:00:00Z' },
-          { merged_at: '2026-01-10T00:00:00Z', created_at: '2026-01-09T00:00:00Z' },
+          {
+            merged_at: '2026-01-05T00:00:00Z',
+            created_at: '2026-01-04T00:00:00Z',
+          },
+          {
+            merged_at: '2025-12-30T00:00:00Z',
+            created_at: '2025-12-28T00:00:00Z',
+          },
+          {
+            merged_at: '2026-01-10T00:00:00Z',
+            created_at: '2026-01-09T00:00:00Z',
+          },
           { merged_at: null, created_at: '2026-01-03T00:00:00Z' },
         ]),
       );
@@ -219,7 +228,11 @@ describe('RestGithubActionsRepository', () => {
       expect(mockGet).toHaveBeenCalledWith(
         'https://api.github.com/repos/owner/repo/pulls',
         {
-          searchParams: { state: 'closed', per_page: '100', base: 'production' },
+          searchParams: {
+            state: 'closed',
+            per_page: '100',
+            base: 'production',
+          },
           headers: { Authorization: 'token default-token' },
         },
       );
@@ -230,9 +243,18 @@ describe('RestGithubActionsRepository', () => {
     it('returns only items closed within the since–until window', async () => {
       mockGet.mockReturnValueOnce(
         mockJsonResponse([
-          { created_at: '2026-01-02T00:00:00Z', closed_at: '2026-01-04T00:00:00Z' },
-          { created_at: '2025-12-25T00:00:00Z', closed_at: '2025-12-31T00:00:00Z' },
-          { created_at: '2026-01-08T00:00:00Z', closed_at: '2026-01-10T00:00:00Z' },
+          {
+            created_at: '2026-01-02T00:00:00Z',
+            closed_at: '2026-01-04T00:00:00Z',
+          },
+          {
+            created_at: '2025-12-25T00:00:00Z',
+            closed_at: '2025-12-31T00:00:00Z',
+          },
+          {
+            created_at: '2026-01-08T00:00:00Z',
+            closed_at: '2026-01-10T00:00:00Z',
+          },
           { created_at: '2026-01-06T00:00:00Z', closed_at: null },
         ]),
       );
