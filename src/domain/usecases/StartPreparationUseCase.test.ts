@@ -7328,6 +7328,114 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     });
   });
+
+  it('does not call findRelatedOpenPRs for candidates beyond the preparation capacity', async () => {
+    // Arrange: 10 Awaiting Workspace candidates but only 2 free slots
+    const candidates = Array.from({ length: 10 }, (_, i) =>
+      createMockIssue({
+        number: i + 1,
+        url: `https://github.com/user/repo/issues/${i + 1}`,
+        itemId: `item-${i + 1}`,
+        title: `Candidate ${i + 1}`,
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['manager-user'],
+      }),
+    );
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(candidates),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    // Act: maximumPreparingIssuesCount = 2, currentPreparation = 0 → freeSlots = 2
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 2,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    // Assert: findRelatedOpenPRs never called (in-memory approach caps to free slots).
+    // FAILS with current code (called 10 times), PASSES with new code (called 0 times).
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+  });
+
+  it('resolves related open PRs from closingIssueReferenceUrls without calling findRelatedOpenPRs', async () => {
+    // Arrange: 1 candidate issue and 1 board PR referencing it via closingIssueReferenceUrls
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const candidate = createMockIssue({
+      number: 1,
+      url: issueUrl,
+      title: 'Candidate',
+      labels: ['category:impl'],
+      status: 'Awaiting Workspace',
+      author: 'testuser',
+      assignees: ['manager-user'],
+    });
+    const prBoardItem = createMockIssue({
+      number: 200,
+      url: 'https://github.com/user/repo/pull/200',
+      isPr: true,
+      isClosed: false,
+      status: null,
+      closingIssueReferenceUrls: [issueUrl],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([candidate, prBoardItem]),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    // Act
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    // Assert: in-memory mapping used; no GraphQL network call for related PRs.
+    // FAILS with current code (findRelatedOpenPRs IS called), PASSES with new code (NOT called).
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+    // The candidate issue was still spawned (in-memory path works end-to-end).
+    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledWith('aw', [
+      issueUrl,
+      'agent1',
+      'claude-opus',
+      '--configFilePath',
+      '/path/to/config.yml',
+      '--branch',
+      'i1',
+    ]);
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
