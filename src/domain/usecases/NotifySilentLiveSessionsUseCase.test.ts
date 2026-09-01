@@ -1568,4 +1568,12 @@ describe('NotifySilentLiveSessionsUseCase', () => {
       configDir: '/config/workbench',
     });
   });
+
+  it('exposes the default sub-agent thresholds as named constants with expected values', () => {
+    expect(DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS).toBe(300);
+    expect(DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS).toBe(900);
+    expect(DEFAULT_NOTIFICATION_STAGGER_SECONDS).toBe(25);
+    expect(DEFAULT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS).toBe(900);
+    expect(DEFAULT_HUB_TASK_STATUS_CACHE_TTL_SECONDS).toBe(300);
+  });
 });
