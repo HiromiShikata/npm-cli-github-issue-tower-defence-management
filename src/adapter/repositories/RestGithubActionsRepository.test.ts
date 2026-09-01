@@ -117,7 +117,7 @@ describe('RestGithubActionsRepository', () => {
       expect(mockGet).toHaveBeenCalledWith(
         'https://api.github.com/repos/owner/repo/actions/workflows/deploy.yml/runs',
         expect.objectContaining({
-          searchParams: { per_page: '100', branch: 'production' },
+          searchParams: { per_page: '100', page: '1', branch: 'production' },
         }),
       );
     });
@@ -137,7 +137,7 @@ describe('RestGithubActionsRepository', () => {
       expect(mockGet).toHaveBeenCalledWith(
         'https://api.github.com/repos/owner/repo/actions/workflows/deploy.yml/runs',
         expect.objectContaining({
-          searchParams: { per_page: '100' },
+          searchParams: { per_page: '100', page: '1' },
         }),
       );
     });
@@ -231,11 +231,45 @@ describe('RestGithubActionsRepository', () => {
           searchParams: {
             state: 'closed',
             per_page: '100',
+            page: '1',
             base: 'production',
           },
           headers: { Authorization: 'token default-token' },
         },
       );
+    });
+  });
+
+  describe('pagination', () => {
+    it('fetches multiple pages when first page returns exactly 100 items', async () => {
+      const page1Runs = Array.from({ length: 100 }, (_, i) => ({
+        conclusion: 'success',
+        created_at: '2026-01-03T12:00:00Z',
+        updated_at: `2026-01-03T13:0${String(i).padStart(1, '0')}:00Z`,
+      }));
+      const page2Runs = [
+        {
+          conclusion: 'failure',
+          created_at: '2026-01-04T00:00:00Z',
+          updated_at: '2026-01-04T01:00:00Z',
+        },
+      ];
+
+      mockGet
+        .mockReturnValueOnce(mockJsonResponse({ workflow_runs: page1Runs }))
+        .mockReturnValueOnce(mockJsonResponse({ workflow_runs: page2Runs }));
+
+      const result = await repository.getWorkflowRuns(
+        'owner',
+        'repo',
+        'deploy.yml',
+        null,
+        since,
+        until,
+      );
+
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(result.filter((r) => r.conclusion === 'failure')).toHaveLength(1);
     });
   });
 

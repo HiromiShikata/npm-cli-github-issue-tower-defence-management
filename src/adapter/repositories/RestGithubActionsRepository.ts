@@ -54,20 +54,29 @@ export class RestGithubActionsRepository implements GithubActionsRepository {
     since: Date,
     until: Date,
   ): Promise<WorkflowRun[]> => {
-    const searchParams: Record<string, string> = { per_page: '100' };
-    if (branch) searchParams['branch'] = branch;
+    const allRuns: WorkflowRunResponse[] = [];
+    for (let page = 1; ; page++) {
+      const searchParams: Record<string, string> = {
+        per_page: '100',
+        page: String(page),
+      };
+      if (branch) searchParams['branch'] = branch;
 
-    const response = await ky
-      .get(
-        `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/runs`,
-        {
-          searchParams,
-          headers: { Authorization: `token ${this.getToken(owner)}` },
-        },
-      )
-      .json<WorkflowRunsResponse>();
+      const response = await ky
+        .get(
+          `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowFile}/runs`,
+          {
+            searchParams,
+            headers: { Authorization: `token ${this.getToken(owner)}` },
+          },
+        )
+        .json<WorkflowRunsResponse>();
 
-    return response.workflow_runs
+      allRuns.push(...response.workflow_runs);
+      if (response.workflow_runs.length < 100) break;
+    }
+
+    return allRuns
       .filter((run) => {
         const createdAt = new Date(run.created_at);
         return createdAt >= since && createdAt <= until;
@@ -89,18 +98,25 @@ export class RestGithubActionsRepository implements GithubActionsRepository {
     since: Date,
     until: Date,
   ): Promise<MergedPullRequest[]> => {
-    const searchParams: Record<string, string> = {
-      state: 'closed',
-      per_page: '100',
-    };
-    if (baseBranch) searchParams['base'] = baseBranch;
+    const allPrs: PullRequestResponse[] = [];
+    for (let page = 1; ; page++) {
+      const searchParams: Record<string, string> = {
+        state: 'closed',
+        per_page: '100',
+        page: String(page),
+      };
+      if (baseBranch) searchParams['base'] = baseBranch;
 
-    const prs = await ky
-      .get(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
-        searchParams,
-        headers: { Authorization: `token ${this.getToken(owner)}` },
-      })
-      .json<PullRequestResponse[]>();
+      const prs = await ky
+        .get(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
+          searchParams,
+          headers: { Authorization: `token ${this.getToken(owner)}` },
+        })
+        .json<PullRequestResponse[]>();
+
+      allPrs.push(...prs);
+      if (prs.length < 100) break;
+    }
 
     const isMergedInWindow = (
       pr: PullRequestResponse,
@@ -110,7 +126,7 @@ export class RestGithubActionsRepository implements GithubActionsRepository {
       return mergedAt >= since && mergedAt <= until;
     };
 
-    return prs.filter(isMergedInWindow).map((pr) => ({
+    return allPrs.filter(isMergedInWindow).map((pr) => ({
       mergedAt: new Date(pr.merged_at),
       createdAt: new Date(pr.created_at),
     }));
@@ -125,16 +141,23 @@ export class RestGithubActionsRepository implements GithubActionsRepository {
   ): Promise<ClosedItem[]> => {
     if (labels.length === 0) return [];
 
-    const items = await ky
-      .get(`https://api.github.com/repos/${owner}/${repo}/issues`, {
-        searchParams: {
-          state: 'closed',
-          labels: labels.join(','),
-          per_page: '100',
-        },
-        headers: { Authorization: `token ${this.getToken(owner)}` },
-      })
-      .json<IssueResponse[]>();
+    const allItems: IssueResponse[] = [];
+    for (let page = 1; ; page++) {
+      const items = await ky
+        .get(`https://api.github.com/repos/${owner}/${repo}/issues`, {
+          searchParams: {
+            state: 'closed',
+            labels: labels.join(','),
+            per_page: '100',
+            page: String(page),
+          },
+          headers: { Authorization: `token ${this.getToken(owner)}` },
+        })
+        .json<IssueResponse[]>();
+
+      allItems.push(...items);
+      if (items.length < 100) break;
+    }
 
     const isClosedInWindow = (
       item: IssueResponse,
@@ -144,7 +167,7 @@ export class RestGithubActionsRepository implements GithubActionsRepository {
       return closedAt >= since && closedAt <= until;
     };
 
-    return items.filter(isClosedInWindow).map((item) => ({
+    return allItems.filter(isClosedInWindow).map((item) => ({
       createdAt: new Date(item.created_at),
       closedAt: new Date(item.closed_at),
     }));

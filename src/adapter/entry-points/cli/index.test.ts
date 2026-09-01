@@ -2875,6 +2875,7 @@ mysteryKey: 'value'
           deployBranch: 'production',
           prBaseBranch: 'production',
           mttrLabels: ['hotfix', 'incident'],
+          ghTokenEnvVar: null,
         },
       ],
     });
@@ -2943,6 +2944,56 @@ mysteryKey: 'value'
           until: new Date('2026-01-08T00:00:00Z'),
         }),
       );
+    });
+
+    it('passes token override from ghTokenEnvVar to RestGithubActionsRepository', async () => {
+      const { RestGithubActionsRepository } = jest.requireMock<{
+        RestGithubActionsRepository: jest.Mock;
+      }>('../../repositories/RestGithubActionsRepository');
+      jest.clearAllMocks();
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(function (
+        this: DoraMetricsWeeklyMeasureUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const configWithTokenEnvVar = YAML.stringify({
+        reportOwner: 'HiromiShikata',
+        reportRepo: 'umino-corporait-operation',
+        projects: [
+          {
+            name: 'CMG',
+            owner: 'meta-site',
+            repo: 'hr-audit-mock',
+            deployWorkflowFiles: ['deploy.yml'],
+            deployBranch: 'main',
+            prBaseBranch: 'main',
+            mttrLabels: ['hotfix'],
+            ghTokenEnvVar: 'GH_CMG_TOKEN',
+          },
+        ],
+      });
+      jest.mocked(fs.readFileSync).mockReturnValueOnce(configWithTokenEnvVar);
+
+      process.env['GH_TOKEN'] = 'default-token';
+      process.env['GH_CMG_TOKEN'] = 'cmg-override-token';
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'doraMetrics',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(RestGithubActionsRepository).toHaveBeenCalledWith(
+        'default-token',
+        { 'meta-site': 'cmg-override-token' },
+      );
+
+      delete process.env['GH_CMG_TOKEN'];
     });
   });
 

@@ -122,8 +122,11 @@ export class DoraMetricsWeeklyMeasureUseCase {
     if (prs.length === 0) return null;
 
     if (runs.length > 0) {
+      const sortedRuns = [...runs].sort(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+      );
       const matched = prs.flatMap((pr) => {
-        const nextRun = runs.find((r) => r.createdAt >= pr.mergedAt);
+        const nextRun = sortedRuns.find((r) => r.createdAt >= pr.mergedAt);
         if (!nextRun) return [];
         return [
           (nextRun.updatedAt.getTime() - pr.mergedAt.getTime()) / 3600000,

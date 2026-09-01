@@ -22,6 +22,7 @@ export type ProjectDoraConfig = {
   deployBranch: string | null;
   prBaseBranch: string | null;
   mttrLabels: string[];
+  ghTokenEnvVar: string | null;
 };
 
 export type ProjectDoraMetrics = {

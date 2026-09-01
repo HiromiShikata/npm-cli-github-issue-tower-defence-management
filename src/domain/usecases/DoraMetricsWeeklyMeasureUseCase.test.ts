@@ -11,6 +11,7 @@ const xcare: ProjectDoraConfig = {
   deployBranch: 'production',
   prBaseBranch: 'production',
   mttrLabels: ['hotfix', 'incident'],
+  ghTokenEnvVar: null,
 };
 
 const since = new Date('2026-01-01T00:00:00Z');
@@ -231,6 +232,40 @@ describe('DoraMetricsWeeklyMeasureUseCase', () => {
         assert: () => {
           const body = mockCreateNewIssue.mock.calls[0]?.[3] ?? '';
           expect(body).toContain('9.0');
+        },
+      },
+      {
+        name: 'calculates change lead time using earliest post-merge run when runs returned in descending order',
+        setup: () => {
+          mockRepo.getWorkflowRuns.mockResolvedValue([
+            {
+              conclusion: 'success',
+              createdAt: new Date('2026-01-05T00:00:00Z'),
+              updatedAt: new Date('2026-01-05T01:00:00Z'),
+            },
+            {
+              conclusion: 'success',
+              createdAt: new Date('2026-01-02T02:00:00Z'),
+              updatedAt: new Date('2026-01-02T03:00:00Z'),
+            },
+          ]);
+          mockRepo.getMergedPullRequests.mockResolvedValue([
+            {
+              mergedAt: new Date('2026-01-02T00:00:00Z'),
+              createdAt: new Date('2026-01-01T00:00:00Z'),
+            },
+          ]);
+        },
+        params: {
+          projects: [xcare],
+          reportOwner: 'HiromiShikata',
+          reportRepo: 'umino-corporait-operation',
+          since,
+          until,
+        },
+        assert: () => {
+          const body = mockCreateNewIssue.mock.calls[0]?.[3] ?? '';
+          expect(body).toContain('3.0');
         },
       },
     ];

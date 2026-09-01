@@ -6,7 +6,6 @@ import YAML from 'yaml';
 export {
   ConfigFile,
   fetchProjectReadme,
-  isRecord,
   loadConfigFile,
   mergeConfigs,
   parseProjectReadmeConfig,
@@ -1432,6 +1431,8 @@ const parseProjectDoraConfig = (raw: unknown): ProjectDoraConfig | null => {
   const prBaseBranch =
     typeof raw['prBaseBranch'] === 'string' ? raw['prBaseBranch'] : null;
   const mttrLabels = parseStringArray(raw['mttrLabels']);
+  const ghTokenEnvVar =
+    typeof raw['ghTokenEnvVar'] === 'string' ? raw['ghTokenEnvVar'] : null;
   if (!name || !owner || !repo) return null;
   return {
     name,
@@ -1441,6 +1442,7 @@ const parseProjectDoraConfig = (raw: unknown): ProjectDoraConfig | null => {
     deployBranch,
     prBaseBranch,
     mttrLabels,
+    ghTokenEnvVar,
   };
 };
 
@@ -1504,11 +1506,11 @@ program
       : new Date(until.getTime() - 7 * 24 * 3600 * 1000);
 
     const tokenOverrides: Record<string, string> = {};
-    const cmgToken = process.env.GH_CMG_TOKEN;
-    if (cmgToken) {
-      for (const project of rawConfig.projects) {
-        if (project.owner === 'meta-site') {
-          tokenOverrides[project.owner] = cmgToken;
+    for (const project of rawConfig.projects) {
+      if (project.ghTokenEnvVar) {
+        const overrideToken = process.env[project.ghTokenEnvVar];
+        if (overrideToken) {
+          tokenOverrides[project.owner] = overrideToken;
         }
       }
     }
