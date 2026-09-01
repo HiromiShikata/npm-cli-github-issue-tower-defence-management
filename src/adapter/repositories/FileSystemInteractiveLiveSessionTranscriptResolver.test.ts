@@ -418,4 +418,3 @@ describe('FileSystemInteractiveLiveSessionTranscriptResolver', () => {
     expect(result.size).toBe(0);
   });
 });
-

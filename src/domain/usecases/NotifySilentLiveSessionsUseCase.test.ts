@@ -383,9 +383,9 @@ describe('NotifySilentLiveSessionsUseCase', () => {
 
     await useCase.run(runParams());
 
-    expect(
-      mockTranscriptResolver.resolveTranscriptPaths,
-    ).toHaveBeenCalledWith([sessionFor('sso_login')]);
+    expect(mockTranscriptResolver.resolveTranscriptPaths).toHaveBeenCalledWith([
+      sessionFor('sso_login'),
+    ]);
     expect(
       mockNotificationRepository.sendSelfCheckNotification,
     ).not.toHaveBeenCalled();
