@@ -386,7 +386,7 @@ const writeSseEvent = (
 export const handleAirplaneSync = async (
   response: AirplaneSyncResponseWriter,
   consoleDataOutputDir: string,
-  issueRepository: IssueRepository,
+  resolveIssueRepository: (url: string) => IssueRepository,
   issueTitleStateCache: IssueTitleStateCache,
   pullRequestStatusCache: PullRequestStatusCache,
   ghToken: string | null = null,
@@ -421,6 +421,7 @@ export const handleAirplaneSync = async (
   const tasks = uniqueItems.map((item) => async (): Promise<void> => {
     const { url, isPr } = item;
     try {
+      const issueRepository = resolveIssueRepository(url);
       const [bodyResult, commentsResult, stateResult] = await Promise.all([
         handleItemBody(issueRepository, url),
         handleComments(issueRepository, url),
@@ -461,7 +462,8 @@ export const handleAirplaneSync = async (
         prStatus,
         relatedPrs,
       };
-    } catch {
+    } catch (error) {
+      console.error('Airplane sync item failed:', url, error);
       failures.push(url);
     }
     fetched += 1;
