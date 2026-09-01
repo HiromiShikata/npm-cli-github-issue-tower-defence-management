@@ -1,3 +1,10 @@
+# [2.40.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.39.0...v2.40.0) (2026-09-01)
+
+
+### Features
+
+* **silent-session-notifier:** remove main-session silence reminder ([#1940](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1940)) ([567b31d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/567b31d5cf4b4344329adb4e074eea12f667eb4d)), closes [HiromiShikata/umino-corporait-operation#31226](https://github.com/HiromiShikata/umino-corporait-operation/issues/31226)
+
 # [2.39.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.38.1...v2.39.0) (2026-09-01)
 
 
