@@ -878,3 +878,50 @@ test('project timer bar shows remaining time when active and Move to next projec
     harness.clearProjectTimer();
   }
 });
+
+test('prs agent filter narrows the list and navigation respects the filter', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+
+  const select = page.getByRole('combobox', { name: 'Filter by agent' });
+  await expect(select).toBeVisible();
+
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible();
+
+  await select.selectOption('chore');
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).not.toBeVisible({ timeout: 2000 });
+
+  await select.selectOption('developer');
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible();
+
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+  const approveButton = page
+    .locator('.console-op-button', { hasText: 'Approve' })
+    .first();
+  await expect(approveButton).toBeVisible();
+  await approveButton.click();
+
+  await expect(activeTabLabel(page)).toHaveText('Failed Preparation', {
+    timeout: 8000,
+  });
+});

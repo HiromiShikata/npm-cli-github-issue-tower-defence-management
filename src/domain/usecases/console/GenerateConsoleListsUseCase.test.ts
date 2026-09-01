@@ -1,5 +1,5 @@
-import { Issue } from '../../entities/Issue';
-import { FieldOption, Project } from '../../entities/Project';
+import type { Issue } from '../../entities/Issue';
+import type { FieldOption, Project } from '../../entities/Project';
 import { GenerateConsoleListsUseCase } from './GenerateConsoleListsUseCase';
 
 const ASSIGNEE = 'owner-login';
@@ -912,6 +912,28 @@ describe('GenerateConsoleListsUseCase', () => {
     it('provides empty agentOptions when project.agent is null', () => {
       const result = run([]);
       expect(result.queued.agentOptions).toEqual([]);
+    });
+  });
+
+  describe('prs agentOptions', () => {
+    it('propagates agentOptions from project.agent field to prs tab', () => {
+      const agentOptions: FieldOption[] = [
+        storyOption('ag1', 'developer', 'GRAY'),
+        storyOption('ag2', 'pr-reviewer', 'GRAY'),
+      ];
+      const projectWithAgent: Project = {
+        ...baseProject(projectWithStory.story),
+        agent: { name: 'Agent', fieldId: 'agent-field', options: agentOptions },
+      };
+      const result = run([], projectWithAgent);
+      expect(result.prs.agentOptions).toEqual(
+        agentOptions.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty agentOptions for prs tab when project.agent is null', () => {
+      const result = run([]);
+      expect(result.prs.agentOptions).toEqual([]);
     });
   });
 });

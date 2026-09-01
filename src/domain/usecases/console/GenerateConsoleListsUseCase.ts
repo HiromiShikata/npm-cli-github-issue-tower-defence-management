@@ -1,5 +1,5 @@
-import { Issue } from '../../entities/Issue';
-import { FieldOption, Project } from '../../entities/Project';
+import type { Issue } from '../../entities/Issue';
+import type { FieldOption, Project } from '../../entities/Project';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -43,6 +43,7 @@ export type ConsoleStatusTab = {
   pjcode: string;
   generatedAt: string;
   statusOptions: ConsoleFieldOption[];
+  agentOptions: ConsoleFieldOption[];
   storyOrder: string[];
   storyColors: Record<string, { color: ConsoleColor }>;
   items: ConsoleListItem[];
@@ -139,10 +140,12 @@ export class GenerateConsoleListsUseCase {
       sourceIssues: Issue[],
       selector: (issue: Issue) => boolean,
       excludedStatusNames: string[],
+      agentOptions: ConsoleFieldOption[] = [],
     ): ConsoleStatusTab => ({
       pjcode,
       generatedAt,
       statusOptions: this.buildFieldOptions(statusOptions, excludedStatusNames),
+      agentOptions,
       storyOrder,
       storyColors: this.buildStoryColorsObject(storyOptions),
       items: this.sortByStoryOrder(
@@ -161,8 +164,14 @@ export class GenerateConsoleListsUseCase {
     const buildStatusTab = (
       selector: (issue: Issue) => boolean,
       excludedStatusNames: string[],
+      agentOptions: ConsoleFieldOption[] = [],
     ): ConsoleStatusTab =>
-      buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
+      buildStatusTabFromSource(
+        actionableIssues,
+        selector,
+        excludedStatusNames,
+        agentOptions,
+      );
 
     const openItemCountByStory = new Map<string, number>();
     for (const issue of issues) {
@@ -204,6 +213,7 @@ export class GenerateConsoleListsUseCase {
           issue.status !== null &&
           issue.status.toLowerCase() === 'awaiting quality check',
         ['awaiting quality check', 'done'],
+        this.buildFieldOptions(project.agent?.options ?? [], []),
       ),
       'failed-preparation': buildStatusTabFromSource(
         visibleIssues.filter(

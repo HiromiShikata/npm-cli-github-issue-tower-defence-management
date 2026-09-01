@@ -28,6 +28,13 @@ const listPayload = (tab: string) => ({
   pjcode: 'acme',
   generatedAt: '2026-06-19T00:00:00.000Z',
   statusOptions: [{ id: 's1', name: 'Awaiting Workspace', color: 'BLUE' }],
+  agentOptions:
+    tab === 'prs'
+      ? [
+          { id: 'ag1', name: 'developer', color: 'GRAY' },
+          { id: 'ag2', name: 'pr-reviewer', color: 'GRAY' },
+        ]
+      : [],
   storyOptions: [{ id: 'st1', name: 'TDPM Console port', color: 'BLUE' }],
   storyColors: { 'TDPM Console port': { color: 'BLUE' } },
   stories: [
@@ -54,6 +61,7 @@ const listPayload = (tab: string) => ({
             relatedOpenPullRequestUrls: [],
             story: 'TDPM Console port',
             status: 'Awaiting Quality Check',
+            agent: 'developer',
             nextActionDate: null,
             nextActionHour: null,
             dependedIssueUrls: [],
@@ -125,6 +133,105 @@ describe('ConsolePage', () => {
     expect(
       document.querySelector('.console-group-header')?.textContent,
     ).toContain('TDPM Console port');
+  });
+
+  it('shows the agent filter select on the prs tab when agentOptions are present', async () => {
+    const { getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByRole('combobox', { name: 'Filter by agent' }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('prs agent filter', () => {
+    const installFetchWithTwoPrsItems = (): void => {
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          const payload =
+            tab === 'prs'
+              ? {
+                  ...listPayload('prs'),
+                  items: [
+                    ...listPayload('prs').items,
+                    {
+                      number: 852,
+                      title: 'Review PR for agent filter feature',
+                      url: 'https://github.com/o/r/pull/852',
+                      repo: 'o/r',
+                      nameWithOwner: 'o/r',
+                      projectItemId: 'PVTI_3',
+                      itemId: 'PVTI_3',
+                      isPr: true,
+                      relatedOpenPullRequestUrls: [],
+                      story: 'TDPM Console port',
+                      status: 'Awaiting Quality Check',
+                      agent: 'pr-reviewer',
+                      nextActionDate: null,
+                      nextActionHour: null,
+                      dependedIssueUrls: [],
+                      labels: [],
+                      createdAt: '2026-06-18T00:00:00.000Z',
+                    },
+                  ],
+                }
+              : listPayload(tab);
+          return { ok: true, status: 200, json: async () => payload };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+    };
+
+    beforeEach(() => {
+      installFetchWithTwoPrsItems();
+    });
+
+    it('filters prs items to the selected agent when an agent is chosen', async () => {
+      const { getByRole, getByText, queryByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByText('Review PR for agent filter feature'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('combobox', { name: 'Filter by agent' }), {
+        target: { value: 'developer' },
+      });
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      expect(queryByText('Review PR for agent filter feature')).toBeNull();
+    });
+
+    it('shows all prs items again when the agent filter is cleared', async () => {
+      const { getByRole, getByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByText('Review PR for agent filter feature'),
+        ).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('combobox', { name: 'Filter by agent' }), {
+        target: { value: 'developer' },
+      });
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      fireEvent.change(getByRole('combobox', { name: 'Filter by agent' }), {
+        target: { value: '' },
+      });
+      expect(
+        getByText('Review PR for agent filter feature'),
+      ).toBeInTheDocument();
+    });
   });
 
   it('keeps a stale overlay status out of the detail header and shows the snapshot status instead', async () => {

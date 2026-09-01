@@ -4,6 +4,7 @@ import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimer
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
+import { ConsolePrsAgentFilter } from '../components/list/ConsolePrsAgentFilter';
 import { ConsoleQueuedList } from '../components/list/ConsoleQueuedList';
 import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
 import {
@@ -306,9 +307,18 @@ export const ConsolePage = () => {
     );
   }, [activeSnapshot, overlayState.overlay, activeTab]);
 
+  const [prsAgentFilter, setPrsAgentFilter] = useState<string | null>(null);
+
+  const agentFilteredPendingItems = useMemo(() => {
+    if (activeTab !== 'prs' || prsAgentFilter === null) {
+      return pendingItems;
+    }
+    return pendingItems.filter((item) => item.agent === prsAgentFilter);
+  }, [pendingItems, activeTab, prsAgentFilter]);
+
   const orderedPendingKeys = useMemo(
-    () => pendingItems.map((item) => overlayKeyForItem(item)),
-    [pendingItems],
+    () => agentFilteredPendingItems.map((item) => overlayKeyForItem(item)),
+    [agentFilteredPendingItems],
   );
 
   const storyOrder = activeSnapshot?.storyOrder ?? [];
@@ -316,12 +326,17 @@ export const ConsolePage = () => {
   const rows = useMemo(
     () =>
       buildConsoleListRows(
-        pendingItems,
+        agentFilteredPendingItems,
         overlayState.overlay,
         storyOrder,
         activeSnapshot?.generatedAt ?? null,
       ),
-    [pendingItems, overlayState.overlay, storyOrder, activeSnapshot],
+    [
+      agentFilteredPendingItems,
+      overlayState.overlay,
+      storyOrder,
+      activeSnapshot,
+    ],
   );
 
   const storyColors = activeSnapshot?.storyColors ?? {};
@@ -796,6 +811,26 @@ export const ConsolePage = () => {
               onSelectItem={(item) => navigation.openItem(item.projectItemId)}
             />
           </div>
+        ) : activeTab === 'prs' ? (
+          <div className="console-list-screen">
+            <ConsolePrsAgentFilter
+              agentOptions={agentOptions}
+              selectedAgent={prsAgentFilter}
+              onAgentChange={setPrsAgentFilter}
+            />
+            <ConsoleItemList
+              rows={rows}
+              storyColors={storyColors}
+              statusOptions={statusOptions}
+              activeItemId={null}
+              now={now}
+              isLoading={isLoading}
+              error={error}
+              onSelectItem={(item) => navigation.openItem(item.projectItemId)}
+              executiveSummaries={prsTabSummaries}
+              onOkAndAwaitingWorkspace={handleOkAndAwaitingWorkspaceFromList}
+            />
+          </div>
         ) : (
           <div className="console-list-screen">
             <ConsoleItemList
@@ -807,14 +842,6 @@ export const ConsolePage = () => {
               isLoading={isLoading}
               error={error}
               onSelectItem={(item) => navigation.openItem(item.projectItemId)}
-              executiveSummaries={
-                activeTab === 'prs' ? prsTabSummaries : undefined
-              }
-              onOkAndAwaitingWorkspace={
-                activeTab === 'prs'
-                  ? handleOkAndAwaitingWorkspaceFromList
-                  : undefined
-              }
             />
           </div>
         )
