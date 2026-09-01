@@ -665,11 +665,15 @@ describe('handleAirplaneSync', () => {
 
     writeListJson(tmpDir, 'umino', 'todo-by-agent', {
       generatedAt: '2026-01-01T00:00:00Z',
-      items: [{ url: defaultUrl, isPr: false, number: 1, projectItemId: 'PVTI_1' }],
+      items: [
+        { url: defaultUrl, isPr: false, number: 1, projectItemId: 'PVTI_1' },
+      ],
     });
     writeListJson(tmpDir, 'cmg', 'todo-by-human', {
       generatedAt: '2026-01-01T00:00:00Z',
-      items: [{ url: metaSiteUrl, isPr: false, number: 2, projectItemId: 'PVTI_2' }],
+      items: [
+        { url: metaSiteUrl, isPr: false, number: 2, projectItemId: 'PVTI_2' },
+      ],
     });
 
     defaultRepo.getIssueOrPullRequestBody.mockResolvedValue('default body');
@@ -696,8 +700,7 @@ describe('handleAirplaneSync', () => {
     await handleAirplaneSync(
       response,
       tmpDir,
-      (url: string) =>
-        url.includes('meta-site') ? metaSiteRepo : defaultRepo,
+      (url: string) => (url.includes('meta-site') ? metaSiteRepo : defaultRepo),
       new IssueTitleStateCache(),
       new PullRequestStatusCache(),
     );
