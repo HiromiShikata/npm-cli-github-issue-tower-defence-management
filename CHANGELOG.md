@@ -1,3 +1,10 @@
+## [2.38.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.38.0...v2.38.1) (2026-09-01)
+
+
+### Bug Fixes
+
+* **revert-not-ready-review-queue:** revert AQC issues with pending reactivation trigger to Awaiting Workspace ([#1930](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1930)) ([bce200c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bce200c4d259c3d49c438648bea27b9231bbd4be)), closes [HiromiShikata/umino-corporait-operation#31197](https://github.com/HiromiShikata/umino-corporait-operation/issues/31197)
+
 # [2.38.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.4...v2.38.0) (2026-09-01)
 
 
