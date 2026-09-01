@@ -724,8 +724,6 @@ export class HandleScheduledEventUseCaseHandler {
 
       const inTmuxNow = new Date();
 
-      const inTmuxGetuid = process.getuid?.bind(process);
-
       try {
         writeInTmuxByHumanData({
           inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
