@@ -8,6 +8,7 @@ import type {
   ConsoleListItem,
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
+  ConsoleTabName,
 } from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
 import { useConsoleResource } from './useConsoleResource';
@@ -56,6 +57,7 @@ export type ConsoleItemDetailData = {
 export const useConsoleItemDetailData = (
   caches: ConsoleCaches,
   item: ConsoleListItem | null,
+  tab?: ConsoleTabName | null,
 ): ConsoleItemDetailData => {
   const key = item !== null ? `${item.repo}#${item.number}` : null;
   const url = item !== null ? item.url : null;
@@ -88,7 +90,8 @@ export const useConsoleItemDetailData = (
     DEFAULT_PR_STATUS,
   );
   const boardListsRelatedPullRequests =
-    !isPr && (item?.relatedOpenPullRequestUrls.length ?? 0) > 0;
+    !isPr &&
+    ((item?.relatedOpenPullRequestUrls.length ?? 0) > 0 || tab === 'prs');
   const relatedPrs = useConsoleResource(
     caches.relatedPrs,
     boardListsRelatedPullRequests ? key : null,
