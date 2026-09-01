@@ -8,6 +8,7 @@ import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequirin
 import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
 import { isTriagerAgentName } from './triagerAgentName';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -66,8 +67,10 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     changeTargetPathAliases?: Record<string, string> | null;
     allowedIssueAuthors?: string[] | null;
     developerAgentNames?: string[] | null;
+    evaluatedAt?: Date;
   }): Promise<void> => {
     const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
+    const evaluatedAt = params.evaluatedAt ?? new Date();
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
     );
@@ -114,6 +117,19 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       if (
         !isAuthorAuthorizedForAutoStatusCheck(issue.author, allowedIssueAuthors)
       ) {
+        continue;
+      }
+
+      if (issueReactivationTriggerIsPending(issue, evaluatedAt)) {
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.issueCommentRepository.createComment(
+          issue,
+          'Auto Status Check: REJECTED\n- Reactivation trigger not yet reached',
+        );
         continue;
       }
 
