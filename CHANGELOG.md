@@ -1,3 +1,10 @@
+## [2.37.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.3...v2.37.4) (2026-09-01)
+
+
+### Bug Fixes
+
+* **prs-tab:** show awaiting quality check items regardless of reactivation trigger ([#1934](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1934)) ([eb87640](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/eb87640faa834b2498a94039566071f4efaa37ed)), closes [HiromiShikata/umino-corporait-operation#31225](https://github.com/HiromiShikata/umino-corporait-operation/issues/31225)
+
 ## [2.37.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.2...v2.37.3) (2026-09-01)
 
 
