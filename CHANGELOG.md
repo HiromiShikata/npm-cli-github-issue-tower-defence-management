@@ -1,3 +1,10 @@
+## [2.37.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.2...v2.37.3) (2026-09-01)
+
+
+### Bug Fixes
+
+* **console:** scan all comments backward to find executive summary ([#1935](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1935)) ([3f0aa05](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3f0aa0578c969cbec06c4284d83e396e00e292d8)), closes [HiromiShikata/umino-corporait-operation#31228](https://github.com/HiromiShikata/umino-corporait-operation/issues/31228)
+
 ## [2.37.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.37.1...v2.37.2) (2026-09-01)
 
 
