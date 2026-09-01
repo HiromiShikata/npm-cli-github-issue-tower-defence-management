@@ -649,6 +649,19 @@ body {
   letter-spacing: 0.03em;
 }
 
+.console-item-executive-summary {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #0d1117;
+  border-left: 2px solid #30363d;
+  border-radius: 0 4px 4px 0;
+  color: #8b949e;
+  font-size: 0.75rem;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
 .console-list-message {
   padding: 16px;
   color: #8b949e;

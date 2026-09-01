@@ -26,6 +26,7 @@ import { useConsolePjcode } from '../hooks/useConsolePjcode';
 import { useConsoleProjectList } from '../hooks/useConsoleProjectList';
 import { useConsoleProjectSettings } from '../hooks/useConsoleProjectSettings';
 import { useConsoleProjectTimer } from '../hooks/useConsoleProjectTimer';
+import { useConsolePrsTabSummaries } from '../hooks/useConsolePrsTabSummaries';
 import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
@@ -61,6 +62,7 @@ import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
 import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
 import type {
   ConsoleColor,
+  ConsoleFieldOption,
   ConsoleIssueState,
   ConsoleListItem,
   ConsoleOverlayStatus,
@@ -658,6 +660,23 @@ export const ConsolePage = () => {
     [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
 
+  const prsTabSummaries = useConsolePrsTabSummaries(
+    pendingItems,
+    caches.comments,
+    activeTab === 'prs',
+  );
+
+  const handleOkAndAwaitingWorkspaceFromList = useCallback(
+    (item: ConsoleListItem, option: ConsoleFieldOption): void => {
+      handleQueueAction({
+        kind: { type: 'ok_and_awaiting_workspace' },
+        item,
+        commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+      });
+    },
+    [handleQueueAction, operations],
+  );
+
   return (
     <main className="console-app">
       {actionQueue.pending !== null && (
@@ -788,6 +807,14 @@ export const ConsolePage = () => {
               isLoading={isLoading}
               error={error}
               onSelectItem={(item) => navigation.openItem(item.projectItemId)}
+              executiveSummaries={
+                activeTab === 'prs' ? prsTabSummaries : undefined
+              }
+              onOkAndAwaitingWorkspace={
+                activeTab === 'prs'
+                  ? handleOkAndAwaitingWorkspaceFromList
+                  : undefined
+              }
             />
           </div>
         )

@@ -7,6 +7,7 @@ import type {
   ConsoleListItem,
   ConsoleStoryColorSource,
 } from '../../logic/types';
+import { ConsoleOkAndAwaitingWorkspaceActions } from '../operations/ConsoleOkAndAwaitingWorkspaceActions';
 import { ConsoleItemSummary } from './ConsoleItemSummary';
 import { ConsoleStorySummary } from './ConsoleStorySummary';
 
@@ -19,6 +20,11 @@ export type ConsoleListViewProps = {
   isLoading: boolean;
   error: string | null;
   onSelectItem: (item: ConsoleListItem) => void;
+  executiveSummaries?: Record<string, string | null>;
+  onOkAndAwaitingWorkspace?: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => void;
 };
 
 export const ConsoleItemList = ({
@@ -30,6 +36,8 @@ export const ConsoleItemList = ({
   isLoading,
   error,
   onSelectItem,
+  executiveSummaries,
+  onOkAndAwaitingWorkspace,
 }: ConsoleListViewProps) => {
   if (error !== null) {
     return (
@@ -49,16 +57,21 @@ export const ConsoleItemList = ({
 
   return (
     <ul className="console-list">
-      {rows.map((row) =>
-        row.kind === 'group-header' ? (
-          <li key={`group:${row.story}`} className="console-list-group">
-            <ConsoleStorySummary
-              story={row.story}
-              count={row.count}
-              colorEnum={resolveStoryColorEnum(storyColors, row.story)}
-            />
-          </li>
-        ) : (
+      {rows.map((row) => {
+        if (row.kind === 'group-header') {
+          return (
+            <li key={`group:${row.story}`} className="console-list-group">
+              <ConsoleStorySummary
+                story={row.story}
+                count={row.count}
+                colorEnum={resolveStoryColorEnum(storyColors, row.story)}
+              />
+            </li>
+          );
+        }
+        const executiveSummary =
+          executiveSummaries?.[row.item.projectItemId] ?? null;
+        return (
           <li key={row.item.itemId} className="console-list-row">
             <ConsoleItemSummary
               item={row.item}
@@ -67,9 +80,22 @@ export const ConsoleItemList = ({
               statusOptions={statusOptions}
               onSelect={onSelectItem}
             />
+            {executiveSummary !== null && executiveSummary !== '' && (
+              <span className="console-item-executive-summary">
+                {executiveSummary}
+              </span>
+            )}
+            {onOkAndAwaitingWorkspace !== undefined && (
+              <ConsoleOkAndAwaitingWorkspaceActions
+                statusOptions={statusOptions}
+                onOkAndAwaitingWorkspace={(option) =>
+                  onOkAndAwaitingWorkspace(row.item, option)
+                }
+              />
+            )}
           </li>
-        ),
-      )}
+        );
+      })}
     </ul>
   );
 };

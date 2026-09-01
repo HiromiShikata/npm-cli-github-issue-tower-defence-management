@@ -1,5 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import {
+  CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
   CONSOLE_E2E_REFERENCE_LINK_URL,
   type ConsoleE2eHarness,
   startConsoleE2eHarness,
@@ -573,6 +574,37 @@ test('shows queued items grouped by story with colored status badges and navigat
   await expect(page).toHaveURL(/PVTI_lADOABCD1234zgQUE00930/, {
     timeout: 3000,
   });
+});
+
+test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaiting Workspace button without opening the detail view', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+
+  const listLevelButton = page
+    .locator('.console-list .console-op-button', {
+      hasText: 'ok & Awaiting Workspace',
+    })
+    .first();
+  await expect(listLevelButton).toBeVisible();
+
+  await expect(page.locator('.console-detail')).toHaveCount(0);
+
+  await listLevelButton.click();
+
+  await expect
+    .poll(
+      () =>
+        harness.commentCalls.some(
+          (c) =>
+            c.url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL &&
+            c.body === 'ok',
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
 });
 
 test('posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked', async ({
