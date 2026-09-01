@@ -729,6 +729,30 @@ describe('ConsolePage auto-advance', () => {
       jest.useRealTimers();
     }
   });
+
+  it('stays on the list and does not open the detail view when the list-level ok & Awaiting Workspace button is clicked', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getAllByRole, queryByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getAllByRole('button', { name: 'ok & Awaiting Workspace' }).length,
+        ).toBeGreaterThan(0);
+      });
+
+      expect(window.location.hash).toBe('');
+      expect(queryByText('Approve & Merge')).toBeNull();
+
+      fireEvent.click(
+        getAllByRole('button', { name: 'ok & Awaiting Workspace' })[0],
+      );
+
+      expect(window.location.hash).toBe('');
+      expect(queryByText('Approve & Merge')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage scroll reset', () => {
