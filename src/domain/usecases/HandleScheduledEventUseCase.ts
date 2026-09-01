@@ -454,6 +454,7 @@ ${JSON.stringify(e)}
       changeTargetPathAliases: input.changeTargetPathAliases,
       allowedIssueAuthors,
       developerAgentNames: input.developerAgentNames,
+      evaluatedAt: now,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({

@@ -1713,6 +1713,84 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         expect.stringContaining('Auto Status Check: REJECTED'),
       );
     });
+
+    it('should revert Awaiting Quality Check issue with pending nextActionDate to Awaiting Workspace', async () => {
+      const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        nextActionDate: new Date(Date.UTC(2026, 0, 16)),
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        evaluatedAt,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Reactivation trigger not yet reached'),
+      );
+    });
+
+    it('should revert Awaiting Quality Check issue with pending nextActionHour to Awaiting Workspace', async () => {
+      const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        nextActionHour: 11,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        evaluatedAt,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Reactivation trigger not yet reached'),
+      );
+    });
+
+    it('should not revert Awaiting Quality Check issue when reactivation trigger has been reached', async () => {
+      const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        nextActionDate: new Date(Date.UTC(2026, 0, 15)),
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+        evaluatedAt,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
   });
 
   describe('batched pull request state resolution', () => {
