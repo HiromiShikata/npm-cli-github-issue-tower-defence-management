@@ -57,27 +57,34 @@ export const ConsoleItemList = ({
 
   return (
     <ul className="console-list">
-      {rows.map((row) =>
-        row.kind === 'group-header' ? (
-          <li key={`group:${row.story}`} className="console-list-group">
-            <ConsoleStorySummary
-              story={row.story}
-              count={row.count}
-              colorEnum={resolveStoryColorEnum(storyColors, row.story)}
-            />
-          </li>
-        ) : (
+      {rows.map((row) => {
+        if (row.kind === 'group-header') {
+          return (
+            <li key={`group:${row.story}`} className="console-list-group">
+              <ConsoleStorySummary
+                story={row.story}
+                count={row.count}
+                colorEnum={resolveStoryColorEnum(storyColors, row.story)}
+              />
+            </li>
+          );
+        }
+        const executiveSummary =
+          executiveSummaries?.[row.item.projectItemId] ?? null;
+        return (
           <li key={row.item.itemId} className="console-list-row">
             <ConsoleItemSummary
               item={row.item}
               isActive={row.item.itemId === activeItemId}
               now={now}
               statusOptions={statusOptions}
-              executiveSummary={
-                executiveSummaries?.[row.item.projectItemId] ?? null
-              }
               onSelect={onSelectItem}
             />
+            {executiveSummary !== null && executiveSummary !== '' && (
+              <span className="console-item-executive-summary">
+                {executiveSummary}
+              </span>
+            )}
             {onOkAndAwaitingWorkspace !== undefined && (
               <ConsoleOkAndAwaitingWorkspaceActions
                 statusOptions={statusOptions}
@@ -87,8 +94,8 @@ export const ConsoleItemList = ({
               />
             )}
           </li>
-        ),
-      )}
+        );
+      })}
     </ul>
   );
 };

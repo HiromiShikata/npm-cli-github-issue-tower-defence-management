@@ -149,7 +149,7 @@ describe('ConsoleItemList', () => {
     );
   });
 
-  it('renders executive summary text inside each item card when executiveSummaries is provided', () => {
+  it('renders executive summary text in each list row when executiveSummaries is provided', () => {
     const singleItem = consoleListItemsFixture[0];
     const singleRow = buildConsoleListRows([singleItem], {}, []);
     const summary =

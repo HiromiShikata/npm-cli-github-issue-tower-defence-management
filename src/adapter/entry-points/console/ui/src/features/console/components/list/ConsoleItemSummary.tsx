@@ -11,7 +11,6 @@ export type ConsoleListItemRowProps = {
   isActive: boolean;
   now: number;
   statusOptions?: ConsoleFieldOption[];
-  executiveSummary?: string | null;
   onSelect: (item: ConsoleListItem) => void;
 };
 
@@ -20,7 +19,6 @@ export const ConsoleItemSummary = ({
   isActive,
   now,
   statusOptions = [],
-  executiveSummary = null,
   onSelect,
 }: ConsoleListItemRowProps) => (
   <button
@@ -115,11 +113,6 @@ export const ConsoleItemSummary = ({
               {item.agent}
             </span>
           )}
-        </span>
-      )}
-      {executiveSummary !== null && executiveSummary !== '' && (
-        <span className="console-item-executive-summary">
-          {executiveSummary}
         </span>
       )}
     </span>

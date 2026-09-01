@@ -38,12 +38,3 @@ export const ActiveRow: Story = {
 export const ItemWithAgent: Story = {
   args: { item: consoleListItemsFixture[5], isActive: false },
 };
-
-export const WithExecutiveSummary: Story = {
-  args: {
-    item: consoleListItemsFixture[0],
-    isActive: false,
-    executiveSummary:
-      'タスクのゴール: awaiting quality check 一覧に OK ボタンと executive summary を表示する\n実施内容: ConsoleItemList に props を追加し ConsolePage から渡すように実装\n残りの作業と判断: なし',
-  },
-};
