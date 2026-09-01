@@ -888,7 +888,6 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
   const select = page.getByRole('combobox', { name: 'Filter by agent' });
   await expect(select).toBeVisible();
 
-  // all agents selected by default: the developer-assigned item is visible
   await expect(
     itemRowByText(
       page,
@@ -896,7 +895,6 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
     ),
   ).toBeVisible();
 
-  // filtering to chore hides the developer-assigned item
   await select.selectOption('chore');
   await expect(
     itemRowByText(
@@ -905,7 +903,6 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
     ),
   ).not.toBeVisible({ timeout: 2000 });
 
-  // filtering back to developer restores it
   await select.selectOption('developer');
   await expect(
     itemRowByText(
@@ -914,8 +911,6 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
     ),
   ).toBeVisible();
 
-  // process the filtered item; navigation auto-advances to the next tab
-  // because all items in the filtered set are done, matching the filter contract
   await itemRowByText(
     page,
     'Serve the committed console UI bundle from serveConsole',
