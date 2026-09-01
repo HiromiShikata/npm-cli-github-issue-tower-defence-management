@@ -1,5 +1,4 @@
 import { SubAgentActivity } from '../../domain/entities/LiveSessionActivitySnapshot';
-import { composeOwnerCallFormatGuidance } from '../../domain/usecases/DefaultSilentSessionMessageComposer';
 import {
   SilentSessionMessageComposer,
   SubAgentStallSections,
@@ -12,8 +11,6 @@ const withReminderSentinel = (message: string): string =>
     : `${SILENT_SESSION_REMINDER_SENTINEL} ${message}`;
 
 export type SilentSessionMessageTemplates = {
-  mainStalledMessage: string | null;
-  mainStalledStaleOwnerCallMessage: string | null;
   subAgentIdleMessageHeader: string | null;
   subAgentIdleMessageFooter: string | null;
   subAgentLongRunningMessageHeader: string | null;
@@ -30,28 +27,6 @@ export class ConfigurableSilentSessionMessageComposer implements SilentSessionMe
     private readonly templates: SilentSessionMessageTemplates,
     private readonly fallback: SilentSessionMessageComposer,
   ) {}
-
-  composeMainStalledSection = (mainSilentSeconds: number): string => {
-    if (this.templates.mainStalledMessage === null) {
-      return this.fallback.composeMainStalledSection(mainSilentSeconds);
-    }
-    return withReminderSentinel(this.templates.mainStalledMessage);
-  };
-
-  composeMainStalledWithStaleOwnerCallSection = (
-    mainSilentSeconds: number,
-    unansweredOwnerCallAgeSeconds: number,
-  ): string => {
-    if (this.templates.mainStalledStaleOwnerCallMessage === null) {
-      return this.fallback.composeMainStalledWithStaleOwnerCallSection(
-        mainSilentSeconds,
-        unansweredOwnerCallAgeSeconds,
-      );
-    }
-    return withReminderSentinel(
-      `${this.templates.mainStalledStaleOwnerCallMessage} ${composeOwnerCallFormatGuidance()}`,
-    );
-  };
 
   composeSubAgentSection = (stallSections: SubAgentStallSections): string => {
     const hasIdleTemplate =

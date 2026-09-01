@@ -20,10 +20,6 @@ import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
-import { ownerReplyMarkerDirectoryResolve } from './ownerReplyMarkerDirectoryResolve';
-import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
-import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
-import { OwnerCallStatusProvider } from '../../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
 import {
   resetDegeneratedTmuxSessions,
   DEFAULT_RESET_DEGENERATED_TMUX_SESSIONS_PARAMS,
@@ -152,14 +148,10 @@ export class HandleScheduledEventUseCaseHandler {
       tokenExhaustionGracePeriodSeconds?: number;
       tokenExhaustionHandoverStateFilePath?: string;
       silentNotificationEnabled?: boolean;
-      ownerCallMarker?: string;
-      ownerReplyMarkerDirectory?: string;
       subAgentOutputRootDirectory?: string;
       subAgentProcessMatchPattern?: string;
       subAgentTranscriptRootDirectory?: string;
       subAgentRuntimeRootDirectory?: string;
-      mainSilentThresholdSeconds?: number;
-      unansweredOwnerCallGraceSeconds?: number;
       subAgentSilentThresholdSeconds?: number;
       subAgentRunningThresholdSeconds?: number;
       silentNotificationStaggerSeconds?: number;
@@ -168,8 +160,6 @@ export class HandleScheduledEventUseCaseHandler {
       activeHubTaskStatus?: string;
       hubTaskStatusCacheStateFilePath?: string;
       hubTaskStatusCacheTtlSeconds?: number;
-      silentMainStalledMessage?: string;
-      silentMainStalledStaleOwnerCallMessage?: string;
       silentSubAgentIdleMessageHeader?: string;
       silentSubAgentIdleMessageFooter?: string;
       silentSubAgentLongRunningMessageHeader?: string;
@@ -734,27 +724,6 @@ export class HandleScheduledEventUseCaseHandler {
 
       const inTmuxNow = new Date();
 
-      const inTmuxGetuid = process.getuid?.bind(process);
-      const ownerCallMarker =
-        mergedInput.ownerCallMarker ??
-        process.env.TDPM_SILENT_OWNER_CALL_MARKER ??
-        null;
-      const ownerReplyMarkerDirectory = ownerReplyMarkerDirectoryResolve(
-        mergedInput.ownerReplyMarkerDirectory ?? null,
-        process.env,
-        inTmuxGetuid === undefined ? null : inTmuxGetuid(),
-      );
-      const transcriptOwnerCallStatusProvider =
-        ownerCallMarker !== null && ownerCallMarker.length > 0
-          ? new TranscriptOwnerCallStatusProvider(
-              ownerCallMarker,
-              ownerReplyMarkerDirectory,
-            )
-          : null;
-      const ownerCallStatusProvider: OwnerCallStatusProvider =
-        transcriptOwnerCallStatusProvider ??
-        new NoUnansweredOwnerCallStatusProvider();
-
       try {
         writeInTmuxByHumanData({
           inTmuxDataOutputDir: mergedInput.inTmuxDataOutputDir ?? null,
@@ -879,21 +848,10 @@ export class HandleScheduledEventUseCaseHandler {
         await notifySilentTmuxSessions({
           enabled: silentNotificationEnabled,
           localCommandRunner: nodeLocalCommandRunner,
-          ownerCallStatusProvider,
           subAgentOutputRootDirectory,
           subAgentProcessMatchPattern,
           subAgentTranscriptRootDirectory,
           subAgentRuntimeRootDirectory,
-          mainSilentThresholdSeconds: readSilentSeconds(
-            mergedInput.mainSilentThresholdSeconds,
-            process.env.TDPM_MAIN_SILENT_THRESHOLD_SECONDS,
-            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.mainSilentThresholdSeconds,
-          ),
-          unansweredOwnerCallGraceSeconds: readSilentSeconds(
-            mergedInput.unansweredOwnerCallGraceSeconds,
-            process.env.TDPM_SILENT_UNANSWERED_OWNER_CALL_GRACE_SECONDS,
-            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.unansweredOwnerCallGraceSeconds,
-          ),
           subAgentSilentThresholdSeconds: readSilentSeconds(
             mergedInput.subAgentSilentThresholdSeconds,
             process.env.TDPM_SUBAGENT_SILENT_THRESHOLD_SECONDS,
@@ -933,14 +891,6 @@ export class HandleScheduledEventUseCaseHandler {
             DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.hubTaskStatusCacheTtlSeconds,
           ),
           messageTemplates: {
-            mainStalledMessage:
-              mergedInput.silentMainStalledMessage ??
-              process.env.TDPM_SILENT_MAIN_STALLED_MESSAGE ??
-              null,
-            mainStalledStaleOwnerCallMessage:
-              mergedInput.silentMainStalledStaleOwnerCallMessage ??
-              process.env.TDPM_SILENT_MAIN_STALLED_STALE_OWNER_CALL_MESSAGE ??
-              null,
             subAgentIdleMessageHeader:
               mergedInput.silentSubAgentIdleMessageHeader ??
               process.env.TDPM_SILENT_SUBAGENT_IDLE_MESSAGE_HEADER ??

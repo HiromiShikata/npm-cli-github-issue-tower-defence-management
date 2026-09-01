@@ -2,9 +2,7 @@ import { LiveSessionActivitySnapshot } from '../entities/LiveSessionActivitySnap
 import { InteractiveLiveSession } from '../entities/InteractiveLiveSession';
 import { LiveSessionProcessSnapshotProvider } from './adapter-interfaces/LiveSessionProcessSnapshotProvider';
 import { InteractiveLiveSessionTranscriptResolver } from './adapter-interfaces/InteractiveLiveSessionTranscriptResolver';
-import { OwnerCallStatusProvider } from './adapter-interfaces/OwnerCallStatusProvider';
 import { RefusalTailStatusProvider } from './adapter-interfaces/RefusalTailStatusProvider';
-import { SessionOutputActivityRepository } from './adapter-interfaces/SessionOutputActivityRepository';
 import { SessionSubAgentActivityRepository } from './adapter-interfaces/SessionSubAgentActivityRepository';
 import { SilentSessionMessageComposer } from './adapter-interfaces/SilentSessionMessageComposer';
 import { SilentSessionNotificationRepository } from './adapter-interfaces/SilentSessionNotificationRepository';
@@ -14,12 +12,6 @@ import { Sleeper } from './adapter-interfaces/Sleeper';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ResolveInteractiveLiveSessionsUseCase } from './ResolveInteractiveLiveSessionsUseCase';
 
-export const DEFAULT_MAIN_SILENT_THRESHOLD_SECONDS = 10 * 60;
-// Retained only for backward compatibility of the configuration surface
-// (TDPM_SILENT_UNANSWERED_OWNER_CALL_GRACE_SECONDS). The value is no longer
-// consulted: an unanswered owner call suppresses the main-stall reminder
-// unconditionally (treated as an infinite grace). See composeCandidate.
-export const DEFAULT_UNANSWERED_OWNER_CALL_GRACE_SECONDS = 60 * 60;
 export const DEFAULT_SUBAGENT_SILENT_THRESHOLD_SECONDS = 5 * 60;
 export const DEFAULT_SUBAGENT_RUNNING_THRESHOLD_SECONDS = 15 * 60;
 export const DEFAULT_NOTIFICATION_STAGGER_SECONDS = 25;
@@ -70,9 +62,7 @@ export class NotifySilentLiveSessionsUseCase {
   constructor(
     private readonly liveSessionProcessSnapshotProvider: LiveSessionProcessSnapshotProvider,
     private readonly interactiveLiveSessionTranscriptResolver: InteractiveLiveSessionTranscriptResolver,
-    private readonly sessionOutputActivityRepository: SessionOutputActivityRepository,
     private readonly subAgentActivityRepository: SessionSubAgentActivityRepository,
-    private readonly ownerCallStatusProvider: OwnerCallStatusProvider,
     private readonly notificationRepository: SilentSessionNotificationRepository,
     private readonly candidateStateRepository: SilentSessionCandidateStateRepository,
     private readonly messageComposer: SilentSessionMessageComposer,
@@ -83,8 +73,6 @@ export class NotifySilentLiveSessionsUseCase {
   ) {}
 
   run = async (params: {
-    mainSilentThresholdSeconds: number;
-    unansweredOwnerCallGraceSeconds: number;
     subAgentSilentThresholdSeconds: number;
     subAgentRunningThresholdSeconds: number;
     staggerSeconds: number;
@@ -129,12 +117,11 @@ export class NotifySilentLiveSessionsUseCase {
     }
 
     // A session whose most recent assistant turn is a model refusal is
-    // excluded from ALL reminder candidates (main-stall and sub-agent
-    // branches alike): each reminder delivery re-sends the full session
-    // context to the API and is guaranteed to produce another refusal, so
-    // reminding such a session only burns tokens. The gate is state-based
-    // (no time windows) and self-clears once a non-refusal assistant turn
-    // appears after the refusal.
+    // excluded from ALL reminder candidates: each reminder delivery re-sends
+    // the full session context to the API and is guaranteed to produce another
+    // refusal, so reminding such a session only burns tokens. The gate is
+    // state-based (no time windows) and self-clears once a non-refusal
+    // assistant turn appears after the refusal.
     const refusalTailedSessionNames =
       this.refusalTailStatusProvider === null
         ? new Set<string>()
@@ -154,7 +141,6 @@ export class NotifySilentLiveSessionsUseCase {
     const snapshots = await this.collectSnapshots(
       monitoredSessions,
       transcriptPathBySessionName,
-      params.now,
     );
 
     const candidates: NotifyCandidate[] = [];
@@ -341,23 +327,10 @@ export class NotifySilentLiveSessionsUseCase {
   private collectSnapshots = async (
     interactiveSessions: InteractiveLiveSession[],
     transcriptPathBySessionName: Map<string, string>,
-    now: Date,
   ): Promise<LiveSessionActivitySnapshot[]> => {
     const sessionNames = interactiveSessions.map(
       (session) => session.sessionName,
     );
-
-    const activities =
-      await this.sessionOutputActivityRepository.listSessionOutputActivities(
-        transcriptPathBySessionName,
-      );
-    const lastOutputBySessionName = new Map<string, number>();
-    for (const activity of activities) {
-      lastOutputBySessionName.set(
-        activity.sessionName,
-        activity.lastOutputEpochSeconds,
-      );
-    }
 
     const subAgentsBySessionName =
       await this.subAgentActivityRepository.listSubAgentActivitiesBySessionName(
@@ -365,37 +338,15 @@ export class NotifySilentLiveSessionsUseCase {
         transcriptPathBySessionName,
       );
 
-    const unansweredOwnerCallEpochSecondsBySessionName =
-      await this.ownerCallStatusProvider.listUnansweredOwnerCallEpochSecondsBySessionName(
-        transcriptPathBySessionName,
-      );
-
-    const nowEpochSeconds = Math.floor(now.getTime() / 1000);
-    return sessionNames.map((sessionName) => {
-      const lastOutputEpochSeconds = lastOutputBySessionName.get(sessionName);
-      const mainSilentSeconds =
-        lastOutputEpochSeconds === undefined
-          ? null
-          : nowEpochSeconds - lastOutputEpochSeconds;
-      const unansweredOwnerCallEpochSeconds =
-        unansweredOwnerCallEpochSecondsBySessionName.get(sessionName);
-      return {
-        sessionName,
-        mainSilentSeconds,
-        subAgents: subAgentsBySessionName.get(sessionName) ?? [],
-        unansweredOwnerCallAgeSeconds:
-          unansweredOwnerCallEpochSeconds === undefined
-            ? null
-            : nowEpochSeconds - unansweredOwnerCallEpochSeconds,
-      };
-    });
+    return sessionNames.map((sessionName) => ({
+      sessionName,
+      subAgents: subAgentsBySessionName.get(sessionName) ?? [],
+    }));
   };
 
   private composeCandidate = (
     snapshot: LiveSessionActivitySnapshot,
     thresholds: {
-      mainSilentThresholdSeconds: number;
-      unansweredOwnerCallGraceSeconds: number;
       subAgentSilentThresholdSeconds: number;
       subAgentRunningThresholdSeconds: number;
       now: Date;
@@ -403,37 +354,6 @@ export class NotifySilentLiveSessionsUseCase {
   ): NotifyCandidate | null => {
     const sections: string[] = [];
     const sectionLabels: string[] = [];
-
-    const mainSilentSeconds = snapshot.mainSilentSeconds;
-    const unansweredOwnerCallAgeSeconds =
-      snapshot.unansweredOwnerCallAgeSeconds;
-    // Owner-defined rule: whenever the latest owner call is newer than the
-    // latest owner reply (i.e. the call is unanswered), the session is
-    // waiting on the owner and MUST NOT receive a main-stall reminder —
-    // unconditionally, with no age or grace expiry. The persistent unread
-    // indicator in the owner's app covers the missed-call case, so a
-    // time-based re-fire is unnecessary. `unansweredOwnerCallGraceSeconds`
-    // is retained in the parameters only for backward compatibility of the
-    // call signature and is intentionally ignored (treated as infinite).
-    const suppressedByUnansweredOwnerCall =
-      unansweredOwnerCallAgeSeconds !== null;
-    // The main-stall reminder is driven purely by silence: a session that has
-    // produced no assistant output for longer than the threshold is reminded
-    // regardless of whether its transcript tail is an in-progress tool_use. A
-    // session that merely looks busy (mid-tool-call) can in fact be stuck, so
-    // its apparent busyness MUST NOT suppress the reminder; the reminder queues
-    // cleanly into the session even when it is mid-turn. The only main-stall
-    // suppression is an unanswered owner call, which is a real wait on the owner.
-    const mainTriggered =
-      mainSilentSeconds !== null &&
-      mainSilentSeconds >= thresholds.mainSilentThresholdSeconds &&
-      !suppressedByUnansweredOwnerCall;
-    if (mainTriggered) {
-      sections.push(
-        this.messageComposer.composeMainStalledSection(mainSilentSeconds),
-      );
-      sectionLabels.push('main-stalled');
-    }
 
     const idleSubAgents = snapshot.subAgents.filter(
       (subAgent) =>

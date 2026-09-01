@@ -6,11 +6,6 @@ export type SubAgentStallSections = {
 };
 
 export interface SilentSessionMessageComposer {
-  composeMainStalledSection: (mainSilentSeconds: number) => string;
-  composeMainStalledWithStaleOwnerCallSection: (
-    mainSilentSeconds: number,
-    unansweredOwnerCallAgeSeconds: number,
-  ) => string;
   composeSubAgentSection: (sections: SubAgentStallSections) => string;
   composeSubAgentUnconsumedResultSection: (
     unconsumedResultSubAgents: SubAgentActivity[],

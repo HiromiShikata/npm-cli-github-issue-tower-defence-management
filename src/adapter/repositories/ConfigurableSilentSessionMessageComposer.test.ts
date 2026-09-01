@@ -5,10 +5,6 @@ import { SILENT_SESSION_REMINDER_SENTINEL } from '../../domain/usecases/silentSe
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
 const createFallback = (): Mocked<SilentSessionMessageComposer> => ({
-  composeMainStalledSection: jest.fn().mockReturnValue('FALLBACK_MAIN'),
-  composeMainStalledWithStaleOwnerCallSection: jest
-    .fn()
-    .mockReturnValue('FALLBACK_STALE_OWNER_CALL'),
   composeSubAgentSection: jest.fn().mockReturnValue('FALLBACK_SUB'),
   composeSubAgentUnconsumedResultSection: jest
     .fn()
@@ -16,8 +12,6 @@ const createFallback = (): Mocked<SilentSessionMessageComposer> => ({
 });
 
 const noTemplates = {
-  mainStalledMessage: null,
-  mainStalledStaleOwnerCallMessage: null,
   subAgentIdleMessageHeader: null,
   subAgentIdleMessageFooter: null,
   subAgentLongRunningMessageHeader: null,
@@ -25,115 +19,6 @@ const noTemplates = {
 };
 
 describe('ConfigurableSilentSessionMessageComposer', () => {
-  it('uses the fallback main section when no main template is configured', () => {
-    const fallback = createFallback();
-    const composer = new ConfigurableSilentSessionMessageComposer(
-      noTemplates,
-      fallback,
-    );
-    expect(composer.composeMainStalledSection(600)).toBe('FALLBACK_MAIN');
-    expect(fallback.composeMainStalledSection).toHaveBeenCalledWith(600);
-  });
-
-  it('uses the configured main template when provided', () => {
-    const fallback = createFallback();
-    const composer = new ConfigurableSilentSessionMessageComposer(
-      {
-        ...noTemplates,
-        mainStalledMessage: 'CUSTOM_MAIN',
-      },
-      fallback,
-    );
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain('CUSTOM_MAIN');
-    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
-    expect(fallback.composeMainStalledSection).not.toHaveBeenCalled();
-  });
-
-  it('appends no owner-call guidance and no self-diagnosis guidance to the configured main template', () => {
-    const fallback = createFallback();
-    const composer = new ConfigurableSilentSessionMessageComposer(
-      {
-        ...noTemplates,
-        mainStalledMessage: 'CUSTOM_MAIN',
-      },
-      fallback,
-    );
-    const section = composer.composeMainStalledSection(600);
-    expect(section).toContain('CUSTOM_MAIN');
-    expect(section).not.toContain('share it through a new owner-call');
-    expect(section).not.toContain('in the format documented for this session');
-    expect(section).not.toContain('written to be self-contained');
-    expect(section).not.toContain(
-      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
-    );
-    expect(section).not.toContain('re-raise');
-    expect(section).not.toContain('<');
-    expect(section).not.toContain('>');
-    expect(section).not.toMatch(
-      /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u,
-    );
-    expect(section).not.toContain('\u{FE0F}');
-  });
-
-  it('omits the self-diagnosis guidance from the configured stale-owner-call template section', () => {
-    const fallback = createFallback();
-    const composer = new ConfigurableSilentSessionMessageComposer(
-      {
-        ...noTemplates,
-        mainStalledStaleOwnerCallMessage: 'CUSTOM_STALE',
-      },
-      fallback,
-    );
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(section).not.toContain(
-      'This reminder is delivered only to sessions that have no registered unanswered owner-call.',
-    );
-  });
-
-  it('uses the fallback stale-owner-call section when no stale-owner-call template is configured', () => {
-    const fallback = createFallback();
-    const composer = new ConfigurableSilentSessionMessageComposer(
-      noTemplates,
-      fallback,
-    );
-    expect(
-      composer.composeMainStalledWithStaleOwnerCallSection(600, 3600),
-    ).toBe('FALLBACK_STALE_OWNER_CALL');
-    expect(
-      fallback.composeMainStalledWithStaleOwnerCallSection,
-    ).toHaveBeenCalledWith(600, 3600);
-  });
-
-  it('uses the configured stale-owner-call template when provided', () => {
-    const fallback = createFallback();
-    const composer = new ConfigurableSilentSessionMessageComposer(
-      {
-        ...noTemplates,
-        mainStalledStaleOwnerCallMessage: 'CUSTOM_STALE_OWNER_CALL',
-      },
-      fallback,
-    );
-    const section = composer.composeMainStalledWithStaleOwnerCallSection(
-      600,
-      3600,
-    );
-    expect(section).toContain('CUSTOM_STALE_OWNER_CALL');
-    expect(section).toContain(SILENT_SESSION_REMINDER_SENTINEL);
-    expect(section).toContain(
-      'share it through a new owner-call in the format documented for this session',
-    );
-    expect(section).not.toContain('marker tag');
-    expect(section).not.toContain('<');
-    expect(section).not.toContain('>');
-    expect(
-      fallback.composeMainStalledWithStaleOwnerCallSection,
-    ).not.toHaveBeenCalled();
-  });
-
   it('uses the fallback sub-agent section when no sub-agent template is configured', () => {
     const fallback = createFallback();
     const composer = new ConfigurableSilentSessionMessageComposer(
@@ -302,23 +187,5 @@ describe('ConfigurableSilentSessionMessageComposer', () => {
     expect(
       fallback.composeSubAgentUnconsumedResultSection,
     ).toHaveBeenCalledWith([unconsumedResultSubAgent]);
-  });
-
-  it('does not double-prepend the sentinel when the template already carries it', () => {
-    const fallback = createFallback();
-    const composer = new ConfigurableSilentSessionMessageComposer(
-      {
-        ...noTemplates,
-        mainStalledMessage: `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN`,
-      },
-      fallback,
-    );
-    const section = composer.composeMainStalledSection(600);
-    const sentinelOccurrences =
-      section.split(SILENT_SESSION_REMINDER_SENTINEL).length - 1;
-    expect(sentinelOccurrences).toBe(1);
-    expect(
-      section.startsWith(`${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN`),
-    ).toBe(true);
   });
 });

@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { FileSystemInteractiveLiveSessionTranscriptResolver } from './FileSystemInteractiveLiveSessionTranscriptResolver';
-import { TranscriptOwnerCallStatusProvider } from './TranscriptOwnerCallStatusProvider';
 
 describe('FileSystemInteractiveLiveSessionTranscriptResolver', () => {
   let configRoot: string;
@@ -417,98 +416,5 @@ describe('FileSystemInteractiveLiveSessionTranscriptResolver', () => {
     const result = resolver.resolveTranscriptPaths([]);
 
     expect(result.size).toBe(0);
-  });
-});
-
-describe('parent transcript resolution feeding owner-call detection', () => {
-  let configRoot: string;
-  let sharedProjectsDirectory: string;
-
-  beforeEach(() => {
-    configRoot = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'interactive-transcript-ownercall-'),
-    );
-    sharedProjectsDirectory = path.join(configRoot, 'shared', 'projects');
-  });
-
-  afterEach(() => {
-    fs.rmSync(configRoot, { force: true, recursive: true });
-  });
-
-  const ownerCallMarker = '<<OWNER_CALL>>';
-
-  const writeJsonlTranscript = (
-    filePath: string,
-    lines: object[],
-    mtimeEpochSeconds: number,
-  ): void => {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(
-      filePath,
-      lines.map((line) => JSON.stringify(line)).join('\n'),
-      'utf8',
-    );
-    fs.utimesSync(filePath, mtimeEpochSeconds, mtimeEpochSeconds);
-  };
-
-  it('identifies a session running a subagent as waiting on the owner', () => {
-    const configDir = path.join(configRoot, 'waiting');
-    const projectDirectory = path.join(configDir, 'projects', '-home-user');
-    writeJsonlTranscript(
-      path.join(projectDirectory, 'parent-id.jsonl'),
-      [
-        {
-          type: 'assistant',
-          timestamp: '2026-01-01T00:00:00.000Z',
-          message: {
-            role: 'assistant',
-            content: [
-              { type: 'text', text: `${ownerCallMarker} please decide` },
-            ],
-          },
-        },
-      ],
-      1700000000,
-    );
-    writeJsonlTranscript(
-      path.join(
-        projectDirectory,
-        'parent-id',
-        'subagents',
-        'agent-worker.jsonl',
-      ),
-      [
-        {
-          type: 'assistant',
-          timestamp: '2026-01-01T00:05:00.000Z',
-          message: {
-            role: 'assistant',
-            content: [{ type: 'text', text: 'subagent progress' }],
-          },
-        },
-      ],
-      1700000500,
-    );
-    const resolver = new FileSystemInteractiveLiveSessionTranscriptResolver(
-      sharedProjectsDirectory,
-    );
-    const ownerCallStatusProvider = new TranscriptOwnerCallStatusProvider(
-      ownerCallMarker,
-    );
-
-    const transcriptPaths = resolver.resolveTranscriptPaths([
-      {
-        sessionName: 'waiting',
-        sessionId: 'parent-id',
-        candidateSessionIds: ['parent-id', 'subagent-id'],
-        configDir,
-      },
-    ]);
-
-    return ownerCallStatusProvider
-      .listUnansweredOwnerCallEpochSecondsBySessionName(transcriptPaths)
-      .then((waiting) => {
-        expect(waiting.has('waiting')).toBe(true);
-      });
   });
 });

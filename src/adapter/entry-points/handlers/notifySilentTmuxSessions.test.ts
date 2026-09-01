@@ -4,15 +4,10 @@ import * as path from 'path';
 import { LocalCommandRunner } from '../../../domain/usecases/adapter-interfaces/LocalCommandRunner';
 import { ProcessEnvironReader } from '../../../domain/usecases/adapter-interfaces/ProcessEnvironReader';
 import { SilentSessionMessageTemplates } from '../../repositories/ConfigurableSilentSessionMessageComposer';
-import { Issue } from '../../../domain/entities/Issue';
-import { SILENT_SESSION_REMINDER_SENTINEL } from '../../../domain/usecases/silentSessionReminderSentinel';
 import {
   notifySilentTmuxSessions,
   DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
 } from './notifySilentTmuxSessions';
-import { OwnerCallStatusProvider } from '../../../domain/usecases/adapter-interfaces/OwnerCallStatusProvider';
-import { NoUnansweredOwnerCallStatusProvider } from '../../repositories/NoUnansweredOwnerCallStatusProvider';
-import { TranscriptOwnerCallStatusProvider } from '../../repositories/TranscriptOwnerCallStatusProvider';
 
 const NOW = new Date('2026-06-26T00:00:00.000Z');
 const NOW_EPOCH_SECONDS = Math.floor(NOW.getTime() / 1000);
@@ -22,8 +17,6 @@ const PANE_PID = 200;
 const CLAUDE_PID = 201;
 
 const EMPTY_TEMPLATES: SilentSessionMessageTemplates = {
-  mainStalledMessage: null,
-  mainStalledStaleOwnerCallMessage: null,
   subAgentIdleMessageHeader: null,
   subAgentIdleMessageFooter: null,
   subAgentLongRunningMessageHeader: null,
@@ -139,7 +132,6 @@ describe('notifySilentTmuxSessions', () => {
     enabled: true,
     localCommandRunner: runner,
     processEnvironReader: makeEnvironReader(),
-    ownerCallStatusProvider: new NoUnansweredOwnerCallStatusProvider(),
     subAgentOutputRootDirectory: null,
     subAgentProcessMatchPattern: null,
     subAgentTranscriptRootDirectory: null,
@@ -154,71 +146,6 @@ describe('notifySilentTmuxSessions', () => {
     submitPushOutWaitMilliseconds: 0,
   });
 
-  it('sends a main stalled notification to a silent github-named live session that was already a candidate in the previous cycle', async () => {
-    silentAssistantTranscript();
-    seedPreviousCandidates([SESSION_NAME]);
-    const runner = liveSessionRunner();
-
-    await notifySilentTmuxSessions(baseParams(runner));
-
-    const sendCall = runner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(sendCall?.[1][2]).toBe(SESSION_NAME);
-    expect(sendCall?.[1][4]).toContain('No output has been observed for');
-    expect(sendCall?.[1][4].startsWith('\x1b[200~')).toBe(true);
-    expect(sendCall?.[1][4].endsWith('\x1b[201~')).toBe(true);
-  });
-
-  it('notifies a persistent stall again on the next cycle while the session stays silent', async () => {
-    silentAssistantTranscript();
-    seedPreviousCandidates([SESSION_NAME]);
-
-    const firstRunner = liveSessionRunner();
-    await notifySilentTmuxSessions(baseParams(firstRunner));
-    const firstSendCall = firstRunner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(firstSendCall?.[1][2]).toBe(SESSION_NAME);
-
-    const secondRunner = liveSessionRunner();
-    await notifySilentTmuxSessions({
-      ...baseParams(secondRunner),
-      now: new Date(NOW.getTime() + 90 * 1000),
-    });
-    const secondSendCall = secondRunner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(secondSendCall?.[1][2]).toBe(SESSION_NAME);
-    expect(secondSendCall?.[1][4]).toContain('No output has been observed for');
-  });
-
-  it('decides from the owner call status provider it was given', async () => {
-    silentAssistantTranscript();
-    seedPreviousCandidates([SESSION_NAME]);
-    const runner = liveSessionRunner();
-    const consultedSessionNames: string[] = [];
-    const injectedProvider: OwnerCallStatusProvider = {
-      listUnansweredOwnerCallEpochSecondsBySessionName: (
-        transcriptPathBySessionName: Map<string, string>,
-      ): Promise<Map<string, number>> => {
-        consultedSessionNames.push(...transcriptPathBySessionName.keys());
-        return Promise.resolve(new Map([[SESSION_NAME, NOW_EPOCH_SECONDS]]));
-      },
-    };
-
-    await notifySilentTmuxSessions({
-      ...baseParams(runner),
-      ownerCallStatusProvider: injectedProvider,
-    });
-
-    expect(consultedSessionNames).toContain(SESSION_NAME);
-    const sendCall = runner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(sendCall).toBeUndefined();
-  });
-
   it('does not notify a silent github-named live session on its first candidate cycle', async () => {
     silentAssistantTranscript();
     const runner = liveSessionRunner();
@@ -229,36 +156,6 @@ describe('notifySilentTmuxSessions', () => {
       (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
     );
     expect(sendCall).toBeUndefined();
-  });
-
-  it('sends a main stalled notification to a silent role-named leader live session that has a resolvable transcript', async () => {
-    silentAssistantTranscript();
-    seedPreviousCandidates(['secretary']);
-    const runner = createMockRunner();
-    runner.runCommand.mockImplementation(async (program, args) => {
-      if (program === 'tmux' && args[0] === 'list-sessions') {
-        return { stdout: 'secretary\n', stderr: '', exitCode: 0 };
-      }
-      if (program === 'tmux' && args[0] === 'list-panes') {
-        return { stdout: `${PANE_PID}\n`, stderr: '', exitCode: 0 };
-      }
-      if (program === 'ps') {
-        return {
-          stdout: `  ${PANE_PID}       1 shell\n  ${CLAUDE_PID}     ${PANE_PID} claude --name secretary\n`,
-          stderr: '',
-          exitCode: 0,
-        };
-      }
-      return { stdout: '', stderr: '', exitCode: 0 };
-    });
-
-    await notifySilentTmuxSessions(baseParams(runner));
-
-    const sendCall = runner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(sendCall?.[1][2]).toBe('secretary');
-    expect(sendCall?.[1][4]).toContain('No output has been observed for');
   });
 
   it('sends no notification to a non-agent live session that has no resolvable transcript, even when it was already a candidate', async () => {
@@ -299,250 +196,5 @@ describe('notifySilentTmuxSessions', () => {
     });
 
     expect(runner.runCommand.mock.calls).toHaveLength(0);
-  });
-
-  it('uses the configured main stalled message template when provided', async () => {
-    silentAssistantTranscript();
-    seedPreviousCandidates([SESSION_NAME]);
-    const runner = liveSessionRunner();
-
-    await notifySilentTmuxSessions({
-      ...baseParams(runner),
-      messageTemplates: {
-        ...EMPTY_TEMPLATES,
-        mainStalledMessage: 'CUSTOM_MAIN_TEMPLATE',
-      },
-    });
-
-    const sendCall = runner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(sendCall?.[1][4]).toContain(
-      `${SILENT_SESSION_REMINDER_SENTINEL} CUSTOM_MAIN_TEMPLATE`,
-    );
-    expect(sendCall?.[1][4]).not.toContain(
-      'in the format documented for this session',
-    );
-    expect(sendCall?.[1][4]).not.toContain('share it through a new owner-call');
-  });
-
-  it('suppresses the notification while the latest owner call is unanswered', async () => {
-    const recentPendingOwnerCall = new Date(
-      (NOW_EPOCH_SECONDS - 11 * 60) * 1000,
-    ).toISOString();
-    writeTranscript([
-      {
-        type: 'user',
-        timestamp: '2026-06-25T23:00:00.000Z',
-        message: { role: 'user', content: 'go ahead' },
-      },
-      {
-        type: 'assistant',
-        timestamp: recentPendingOwnerCall,
-        message: {
-          role: 'assistant',
-          stop_reason: 'end_turn',
-          content: [
-            { type: 'text', text: 'waiting <<OWNER_CALL>> please decide' },
-          ],
-        },
-      },
-    ]);
-    seedPreviousCandidates([SESSION_NAME]);
-    const runner = liveSessionRunner();
-
-    await notifySilentTmuxSessions({
-      ...baseParams(runner),
-      ownerCallStatusProvider: new TranscriptOwnerCallStatusProvider(
-        '<<OWNER_CALL>>',
-      ),
-    });
-
-    const sendCall = runner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(sendCall).toBeUndefined();
-  });
-
-  it('suppresses the notification even when the unanswered owner call is older than the former grace period', async () => {
-    const stalePendingOwnerCall = new Date(
-      (NOW_EPOCH_SECONDS - 2 * 60 * 60) * 1000,
-    ).toISOString();
-    writeTranscript([
-      {
-        type: 'user',
-        timestamp: '2026-06-25T20:00:00.000Z',
-        message: { role: 'user', content: 'go ahead' },
-      },
-      {
-        type: 'assistant',
-        timestamp: stalePendingOwnerCall,
-        message: {
-          role: 'assistant',
-          stop_reason: 'end_turn',
-          content: [
-            { type: 'text', text: 'waiting <<OWNER_CALL>> please decide' },
-          ],
-        },
-      },
-    ]);
-    seedPreviousCandidates([SESSION_NAME]);
-    const runner = liveSessionRunner();
-
-    await notifySilentTmuxSessions({
-      ...baseParams(runner),
-      ownerCallStatusProvider: new TranscriptOwnerCallStatusProvider(
-        '<<OWNER_CALL>>',
-      ),
-    });
-
-    const sendCall = runner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(sendCall).toBeUndefined();
-  });
-
-  it('defers the first cycle then notifies on the next cycle once the persisted candidate state confirms a second consecutive cycle', async () => {
-    silentAssistantTranscript();
-    const firstRunner = liveSessionRunner();
-
-    await notifySilentTmuxSessions(baseParams(firstRunner));
-
-    const firstSendCall = firstRunner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(firstSendCall).toBeUndefined();
-
-    const secondRunner = liveSessionRunner();
-    await notifySilentTmuxSessions({
-      ...baseParams(secondRunner),
-      now: new Date(NOW.getTime() + 60 * 1000),
-    });
-
-    const secondSendCall = secondRunner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(secondSendCall?.[1][2]).toBe(SESSION_NAME);
-  });
-
-  const HUB_TASK_SESSION_NAME =
-    'https://github.com/HiromiShikata/repo/issues/42';
-
-  const writeUrlSessionTranscript = (): void => {
-    const projectDirectory = path.join(configDir, 'projects', '-home-user');
-    fs.mkdirSync(projectDirectory, { recursive: true });
-    const silentTimestamp = new Date(
-      (NOW_EPOCH_SECONDS - 11 * 60) * 1000,
-    ).toISOString();
-    fs.writeFileSync(
-      path.join(projectDirectory, `${SESSION_ID}.jsonl`),
-      JSON.stringify({
-        type: 'assistant',
-        timestamp: silentTimestamp,
-        message: {
-          role: 'assistant',
-          content: [{ type: 'text', text: 'progress update' }],
-        },
-      }),
-      'utf8',
-    );
-  };
-
-  const urlSessionRunner = (): Mocked<LocalCommandRunner> => {
-    const runner = createMockRunner();
-    runner.runCommand.mockImplementation(async (program, args) => {
-      if (program === 'tmux' && args[0] === 'list-sessions') {
-        return {
-          stdout: `${HUB_TASK_SESSION_NAME}\n`,
-          stderr: '',
-          exitCode: 0,
-        };
-      }
-      if (program === 'tmux' && args[0] === 'list-panes') {
-        return { stdout: `${PANE_PID}\n`, stderr: '', exitCode: 0 };
-      }
-      if (program === 'ps') {
-        return {
-          stdout: `  ${PANE_PID}       1 shell\n  ${CLAUDE_PID}     ${PANE_PID} claude --name ${HUB_TASK_SESSION_NAME}\n`,
-          stderr: '',
-          exitCode: 0,
-        };
-      }
-      return { stdout: '', stderr: '', exitCode: 0 };
-    });
-    return runner;
-  };
-
-  const makeIssue = (overrides: {
-    state: Issue['state'];
-    status: string | null;
-  }): Issue => ({
-    nameWithOwner: 'HiromiShikata/repo',
-    number: 42,
-    title: 'Hub task',
-    state: overrides.state,
-    status: overrides.status,
-    story: null,
-    nextActionDate: null,
-    nextActionHour: null,
-    estimationMinutes: null,
-    dependedIssueUrls: [],
-    completionDate50PercentConfidence: null,
-    url: HUB_TASK_SESSION_NAME,
-    assignees: [],
-    labels: [],
-    org: 'HiromiShikata',
-    repo: 'repo',
-    body: '',
-    itemId: 'item-id',
-    isPr: false,
-    isInProgress: false,
-    isClosed: overrides.state !== 'OPEN',
-    createdAt: NOW,
-    author: 'HiromiShikata',
-    closingIssueReferenceUrls: [],
-    agent: null,
-    stateReason: null,
-  });
-
-  it('skips a URL-named session whose hub task is no longer in the active status', async () => {
-    writeUrlSessionTranscript();
-    seedPreviousCandidates([HUB_TASK_SESSION_NAME]);
-    const runner = urlSessionRunner();
-    const getIssueByUrl = jest
-      .fn()
-      .mockResolvedValue(makeIssue({ state: 'OPEN', status: 'Todo' }));
-
-    await notifySilentTmuxSessions({
-      ...baseParams(runner),
-      activeHubTaskStatus: 'In tmux',
-      hubTaskStatusResolver: { getIssueByUrl },
-    });
-
-    expect(getIssueByUrl).toHaveBeenCalledWith(HUB_TASK_SESSION_NAME);
-    const sendCall = runner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(sendCall).toBeUndefined();
-  });
-
-  it('sends to a URL-named session whose hub task is in the active status', async () => {
-    writeUrlSessionTranscript();
-    seedPreviousCandidates([HUB_TASK_SESSION_NAME]);
-    const runner = urlSessionRunner();
-    const getIssueByUrl = jest
-      .fn()
-      .mockResolvedValue(makeIssue({ state: 'OPEN', status: 'In tmux' }));
-
-    await notifySilentTmuxSessions({
-      ...baseParams(runner),
-      activeHubTaskStatus: 'In tmux',
-      hubTaskStatusResolver: { getIssueByUrl },
-    });
-
-    const sendCall = runner.runCommand.mock.calls.find(
-      (call) => call[0] === 'tmux' && call[1][0] === 'send-keys',
-    );
-    expect(sendCall?.[1][2]).toBe(HUB_TASK_SESSION_NAME);
   });
 });
