@@ -107,6 +107,7 @@ const REPO_NAME_WITH_OWNER =
   'HiromiShikata/npm-cli-github-issue-tower-defence-management';
 
 export const CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/867`;
+const CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/868`;
 export const CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/911`;
 export const CONSOLE_E2E_INLINE_COMMENT_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/912`;
 export const CONSOLE_E2E_REFERENCE_LINK_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/845`;
@@ -585,7 +586,8 @@ const createStubIssueRepository = (
   getOpenPullRequest: async (
     url: string,
   ): Promise<RelatedPullRequest | null> =>
-    url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
+    url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL ||
+    url === CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL
       ? awaitingQualityCheckPullRequestMergeReady
       : null,
   getOpenPullRequestCiStatus: async (
@@ -612,7 +614,8 @@ const createStubIssueRepository = (
     new Map(
       urls.map((url) => [
         url,
-        url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
+        url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL ||
+        url === CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL
           ? awaitingQualityCheckPullRequest
           : null,
       ]),
@@ -812,6 +815,7 @@ export type ConsoleE2eHarness = {
 
 export const startConsoleE2eHarness = async (options?: {
   workflowImprovementIssueUrl?: string | null;
+  mergePullRequest?: () => Promise<void>;
 }): Promise<ConsoleE2eHarness> => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'console-e2e-'));
   const consoleDataOutputDir = path.join(tmpRoot, 'data');
@@ -843,15 +847,20 @@ export const startConsoleE2eHarness = async (options?: {
     accessToken: CONSOLE_E2E_TOKEN,
     uiDistDir,
     consoleDataOutputDir,
-    issueRepository: createStubIssueRepository(
-      reviewCommentCalls,
-      requestChangesCalls,
-      createIssueCalls,
-      storyColorCalls,
-      commentCalls,
-      deleteAllCommentsCalls,
-      closeIssueCalls,
-    ),
+    issueRepository: {
+      ...createStubIssueRepository(
+        reviewCommentCalls,
+        requestChangesCalls,
+        createIssueCalls,
+        storyColorCalls,
+        commentCalls,
+        deleteAllCommentsCalls,
+        closeIssueCalls,
+      ),
+      ...(options?.mergePullRequest !== undefined
+        ? { mergePullRequest: options.mergePullRequest }
+        : {}),
+    },
     resolveProjectRepository: (_projectUrl) => ({
       updateStoryList: async (_updatedProject, stories) => {
         const currentStories = project.story?.stories ?? [];

@@ -46,7 +46,11 @@ export const ConsoleErrorToast = ({
   message,
   onDismiss,
 }: ConsoleErrorToastProps) => (
-  <div className="console-error-toast" role="alert" aria-live="assertive">
+  <div
+    className="console-undo-toast-error console-error-toast"
+    role="alert"
+    aria-live="assertive"
+  >
     {title !== undefined && (
       <span className="console-error-toast-title">{title}</span>
     )}

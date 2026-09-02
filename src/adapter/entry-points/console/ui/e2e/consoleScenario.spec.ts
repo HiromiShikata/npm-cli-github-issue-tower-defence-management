@@ -999,3 +999,35 @@ test('shows Delete Story in the danger zone of a story-labeled item detail page,
     timeout: 8000,
   });
 });
+
+test('error toast renders with background styling when a merge operation fails', async ({
+  page,
+}) => {
+  const failHarness = await startConsoleE2eHarness({
+    mergePullRequest: async () => {
+      throw new Error('merge failed: simulated error for CSS test');
+    },
+  });
+  try {
+    await page.goto(failHarness.appUrl);
+
+    await tabByLabel(page, 'Awaiting Quality Check').click();
+    await itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ).click();
+
+    const approveButton = page
+      .locator('.console-op-button', { hasText: 'Approve' })
+      .first();
+    await expect(approveButton).toBeVisible();
+    await approveButton.click();
+
+    const errorToast = page.locator('.console-error-toast');
+    await expect(errorToast).toBeVisible({ timeout: 8000 });
+    await expect(errorToast).toHaveCSS('background-color', 'rgb(58, 21, 24)');
+    await expect(errorToast).toHaveCSS('position', 'fixed');
+  } finally {
+    await failHarness.stop();
+  }
+});

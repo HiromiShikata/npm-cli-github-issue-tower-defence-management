@@ -1493,7 +1493,8 @@ body {
   color: #f85149;
 }
 
-.console-undo-toast {
+.console-undo-toast,
+.console-error-toast {
   position: fixed;
   top: 12px;
   left: 50%;
@@ -1546,14 +1547,16 @@ body {
   color: #f85149;
 }
 
-.console-undo-toast-message {
+.console-undo-toast-message,
+.console-error-toast-message {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
 }
 
-.console-undo-toast-undo {
+.console-undo-toast-undo,
+.console-error-toast-dismiss {
   flex: 0 0 auto;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.12);
@@ -1565,7 +1568,8 @@ body {
   color: inherit;
 }
 
-.console-undo-toast-undo:hover {
+.console-undo-toast-undo:hover,
+.console-error-toast-dismiss:hover {
   background: rgba(255, 255, 255, 0.22);
 }
 
@@ -1584,6 +1588,11 @@ body {
   background: currentColor;
   opacity: 0.5;
   transition: width 0.1s linear;
+}
+
+.console-error-toast-title {
+  font-weight: 700;
+  flex: 0 0 auto;
 }
 
 .console-file-row {
