@@ -1,9 +1,12 @@
-import { Issue } from '../entities/Issue';
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import type { Issue } from '../entities/Issue';
+import type { IssueRepository } from './adapter-interfaces/IssueRepository';
 
 export class StaleTaskPullRequestCloseUseCase {
   constructor(
-    readonly issueRepository: Pick<IssueRepository, 'closePullRequest'>,
+    readonly issueRepository: Pick<
+      IssueRepository,
+      'closePullRequest' | 'createCommentByUrl'
+    >,
   ) {}
 
   run = async (input: { issues: Issue[] }): Promise<void> => {
@@ -26,7 +29,12 @@ export class StaleTaskPullRequestCloseUseCase {
       if (!everyReferencedTaskIssueClosed) {
         continue;
       }
+      const closedRefs = issue.closingIssueReferenceUrls.join(', ');
       try {
+        await this.issueRepository.createCommentByUrl(
+          issue.url,
+          `Closing this pull request because all referenced task issues are already closed: ${closedRefs}`,
+        );
         await this.issueRepository.closePullRequest(issue.url);
       } catch (error) {
         console.warn(

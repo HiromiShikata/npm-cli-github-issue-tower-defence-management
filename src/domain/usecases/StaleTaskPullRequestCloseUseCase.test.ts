@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import type { Issue } from '../entities/Issue';
+import type { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
-import { Issue } from '../entities/Issue';
 
 describe('StaleTaskPullRequestCloseUseCase', () => {
   const mockIssueRepository = mock<IssueRepository>();
@@ -166,5 +166,33 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
       anotherOpenPrWithClosedTaskIssue.url,
     );
+  });
+
+  it('should post a comment with the closed task issue URLs when closing a stale pull request', async () => {
+    await useCase.run({
+      issues: [closedTaskIssue, openPrWithClosedTaskIssue],
+    });
+
+    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+      openPrWithClosedTaskIssue.url,
+      expect.stringContaining(closedTaskIssue.url),
+    );
+  });
+
+  it('should post a comment before closing the pull request', async () => {
+    const callOrder: string[] = [];
+    mockIssueRepository.createCommentByUrl.mockImplementation(async () => {
+      callOrder.push('comment');
+      return { author: '', body: '', createdAt: new Date() };
+    });
+    mockIssueRepository.closePullRequest.mockImplementation(async () => {
+      callOrder.push('close');
+    });
+
+    await useCase.run({
+      issues: [closedTaskIssue, openPrWithClosedTaskIssue],
+    });
+
+    expect(callOrder).toEqual(['comment', 'close']);
   });
 });
