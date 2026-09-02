@@ -25,8 +25,10 @@ export const parseItemKeyFromHash = (hash: string): string | null => {
   return decodeURIComponent(encoded);
 };
 
+export const SETTINGS_HASH = '#settings';
+
 export const parseSettingsFromHash = (hash: string): boolean =>
-  hash === '#settings';
+  hash === SETTINGS_HASH;
 
 export type ConsoleNavigation = {
   activeTab: ConsoleTabName;

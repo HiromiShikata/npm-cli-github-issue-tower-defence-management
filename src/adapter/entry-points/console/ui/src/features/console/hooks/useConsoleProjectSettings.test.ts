@@ -112,6 +112,33 @@ describe('useConsoleProjectSettings', () => {
     expect(window.location.hash).toBe('#item/PVTI_123');
   });
 
+  it('close replaces the #settings entry so pressing back does not reopen the modal', () => {
+    const replaceStateSpy = jest.spyOn(window.history, 'replaceState');
+    const { result } = renderHook(() => useConsoleProjectSettings('acme'));
+    act(() => {
+      result.current.open();
+    });
+    act(() => {
+      result.current.close();
+    });
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/projects/acme/prs');
+    replaceStateSpy.mockRestore();
+  });
+
+  it('save replaces the #settings entry so pressing back does not reopen the modal', async () => {
+    const replaceStateSpy = jest.spyOn(window.history, 'replaceState');
+    const { result } = renderHook(() => useConsoleProjectSettings('acme'));
+    act(() => {
+      result.current.open();
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => {
+      await result.current.save(5);
+    });
+    expect(replaceStateSpy).toHaveBeenCalledWith({}, '', '/projects/acme/prs');
+    replaceStateSpy.mockRestore();
+  });
+
   it('changeInput updates inputValue', async () => {
     const { result } = renderHook(() => useConsoleProjectSettings('acme'));
     act(() => {

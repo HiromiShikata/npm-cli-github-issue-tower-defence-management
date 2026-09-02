@@ -3,6 +3,7 @@ import {
   fetchProjectReadmeConfig,
   postProjectMaxPreparingUpdate,
 } from '../lib/consoleApi';
+import { SETTINGS_HASH } from './useConsoleNavigation';
 
 export type ConsoleProjectSettingsState = {
   isOpen: boolean;
@@ -15,8 +16,6 @@ export type ConsoleProjectSettingsState = {
   changeInput: (value: string) => void;
   save: (count: number) => Promise<void>;
 };
-
-const SETTINGS_HASH = '#settings';
 
 const isSettingsHash = (): boolean =>
   typeof window !== 'undefined' && window.location.hash === SETTINGS_HASH;
@@ -99,7 +98,7 @@ export const useConsoleProjectSettings = (
     if (typeof window !== 'undefined') {
       const restoredHash = prevHashRef.current;
       const url = `${window.location.pathname}${window.location.search}${restoredHash}`;
-      window.history.pushState({}, '', url);
+      window.history.replaceState({}, '', url);
     }
     setIsOpen(false);
     setError(null);
@@ -124,7 +123,7 @@ export const useConsoleProjectSettings = (
         if (typeof window !== 'undefined') {
           const restoredHash = prevHashRef.current;
           const url = `${window.location.pathname}${window.location.search}${restoredHash}`;
-          window.history.pushState({}, '', url);
+          window.history.replaceState({}, '', url);
         }
         setIsOpen(false);
       } catch (err) {
