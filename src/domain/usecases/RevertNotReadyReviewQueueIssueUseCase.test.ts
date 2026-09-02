@@ -156,6 +156,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     updateStatus: jest.Mock;
     updateStory: jest.Mock;
     findRelatedOpenPRs: jest.Mock;
+    findRelatedOpenPrUrls: jest.Mock;
     getOpenPullRequest: jest.Mock;
     getOpenPullRequests: jest.Mock;
     getPullRequestChangedFilePaths: jest.Mock;
@@ -187,6 +188,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       updateStatus: jest.fn().mockResolvedValue(undefined),
       updateStory: jest.fn().mockResolvedValue(undefined),
       findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
+      findRelatedOpenPrUrls: jest.fn().mockResolvedValue(new Map()),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
       getOpenPullRequests: jest.fn().mockResolvedValue(new Map()),
       getPullRequestChangedFilePaths: jest.fn().mockResolvedValue([]),
@@ -924,6 +926,151 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
         expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
         expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('batched related-PR lookup for issues the bulk items do not cover', () => {
+      const issueUrlOf = (issueNumber: number): string =>
+        `https://github.com/user/repo/issues/${issueNumber}`;
+      const prUrlOf = (prNumber: number): string =>
+        `https://github.com/user/repo/pull/${prNumber}`;
+
+      const createUncoveredAwaitingQualityCheckIssues = (
+        issueNumbers: number[],
+      ): Issue[] => {
+        const issues = issueNumbers.map((issueNumber) =>
+          createMockIssue({
+            status: 'Awaiting Quality Check',
+            number: issueNumber,
+            url: issueUrlOf(issueNumber),
+          }),
+        );
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
+          issues,
+          cacheUsed: false,
+        });
+        return issues;
+      };
+
+      const runCycle = () =>
+        useCase.run({
+          manager: 'manager-user',
+          projectUrl: 'https://github.com/users/user/projects/1',
+          allowedIssueAuthors: ['owner'],
+        });
+
+      it('should resolve every uncovered issue in one batched lookup instead of one per-issue timeline query', async () => {
+        const issues = createUncoveredAwaitingQualityCheckIssues([1, 2, 3]);
+        mockIssueRepository.findRelatedOpenPrUrls.mockResolvedValue(
+          new Map([
+            [issueUrlOf(1), [prUrlOf(100)]],
+            [issueUrlOf(2), [prUrlOf(200)]],
+            [issueUrlOf(3), []],
+          ]),
+        );
+        mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+          new Map([
+            [prUrlOf(100), createReadyPr(prUrlOf(100))],
+            [
+              prUrlOf(200),
+              { ...createReadyPr(prUrlOf(200)), isConflicted: true },
+            ],
+          ]),
+        );
+
+        await runCycle();
+
+        expect(mockIssueRepository.findRelatedOpenPrUrls).toHaveBeenCalledTimes(
+          1,
+        );
+        expect(mockIssueRepository.findRelatedOpenPrUrls).toHaveBeenCalledWith([
+          issueUrlOf(1),
+          issueUrlOf(2),
+          issueUrlOf(3),
+        ]);
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+        expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(
+          1,
+        );
+        expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledWith(
+          expect.arrayContaining([prUrlOf(100), prUrlOf(200)]),
+        );
+        expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(2);
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          issues[1],
+          expect.stringContaining('PULL_REQUEST_CONFLICTED'),
+        );
+        expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+          issues[2],
+          expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+        );
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).not.toHaveBeenCalledWith(issues[0], expect.anything());
+      });
+
+      it('should keep the per-issue lookup only for an issue the batched lookup left unresolved', async () => {
+        createUncoveredAwaitingQualityCheckIssues([1, 2]);
+        mockIssueRepository.findRelatedOpenPrUrls.mockResolvedValue(
+          new Map([[issueUrlOf(1), [prUrlOf(100)]]]),
+        );
+        mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+          new Map([[prUrlOf(100), createReadyPr(prUrlOf(100))]]),
+        );
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(prUrlOf(200)),
+        ]);
+
+        await runCycle();
+
+        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledTimes(1);
+        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+          issueUrlOf(2),
+        );
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+      });
+
+      it('should not report PULL_REQUEST_NOT_FOUND for an unresolved issue whose pull request exists', async () => {
+        const issues = createUncoveredAwaitingQualityCheckIssues([1]);
+        mockIssueRepository.findRelatedOpenPrUrls.mockResolvedValue(new Map());
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr(prUrlOf(100)),
+        ]);
+
+        await runCycle();
+
+        expect(mockIssueRepository.findRelatedOpenPrUrls).toHaveBeenCalledTimes(
+          1,
+        );
+        expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+        expect(
+          mockIssueCommentRepository.createComment,
+        ).not.toHaveBeenCalledWith(
+          issues[0],
+          expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+        );
+      });
+
+      it('should exclude an Awaiting Quality Check pull request item from the batched lookup', async () => {
+        const pullRequestItem = createMockPullRequest({
+          status: 'Awaiting Quality Check',
+          url: prUrlOf(9),
+          number: 9,
+        });
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          project: mockProject,
+          issues: [pullRequestItem],
+          cacheUsed: false,
+        });
+
+        await runCycle();
+
+        expect(
+          mockIssueRepository.findRelatedOpenPrUrls,
+        ).not.toHaveBeenCalled();
       });
     });
 

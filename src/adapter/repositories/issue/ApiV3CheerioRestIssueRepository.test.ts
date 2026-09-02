@@ -3075,6 +3075,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     slimPullRequestBatch?: (
       variables: Record<string, unknown>,
     ) => Response | object;
+    relatedOpenPullRequestUrlsBatch?: (
+      variables: Record<string, unknown>,
+    ) => Response | object;
     branchRules?: (url: string) => Response | object;
     branchDetail?: (url: string) => Response | object;
     checkRuns?: (url: string) => Response | object;
@@ -3151,6 +3154,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           const url = requestUrlOf(input);
           if (url === 'https://api.github.com/graphql') {
             const body = parseGraphqlRequestBody(init);
+            if (
+              body.query.includes('IssueRelatedOpenPullRequestUrlsBatch') &&
+              routes.relatedOpenPullRequestUrlsBatch
+            ) {
+              return toResponse(
+                routes.relatedOpenPullRequestUrlsBatch(body.rawVariables),
+              );
+            }
             if (body.query.includes('timelineItems') && routes.timeline) {
               return toResponse(routes.timeline());
             }
@@ -3230,6 +3241,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       (url, body) =>
         url === 'https://api.github.com/graphql' &&
         body.includes('PullRequestSlimStatusBatch'),
+    );
+
+  const countRelatedOpenPrUrlsBatchQueries = (fetchSpy: FetchSpy): number =>
+    countCallsMatching(
+      fetchSpy,
+      (url, body) =>
+        url === 'https://api.github.com/graphql' &&
+        body.includes('IssueRelatedOpenPullRequestUrlsBatch'),
     );
 
   const buildSlimPullRequestResponse = (
@@ -3440,6 +3459,262 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       expect(countSlimPullRequestBatchQueries(fetchSpy)).toBe(2);
       expect(resolved.size).toBe(prNumbers.length);
+    });
+  });
+
+  describe('findRelatedOpenPrUrls batched resolution', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const issueUrlOf = (issueNumber: number): string =>
+      `https://github.com/HiromiShikata/test-repository/issues/${issueNumber}`;
+    const relatedPrUrlOf = (prNumber: number): string =>
+      `https://github.com/HiromiShikata/test-repository/pull/${prNumber}`;
+
+    const buildCrossReferencedPullRequestNode = (overrides: {
+      prUrl: string;
+      prState?: string;
+      willCloseTarget?: boolean;
+      prBody?: string | null;
+    }) => ({
+      __typename: 'CrossReferencedEvent',
+      willCloseTarget: overrides.willCloseTarget ?? true,
+      source: {
+        __typename: 'PullRequest',
+        url: overrides.prUrl,
+        state: overrides.prState ?? 'OPEN',
+        body: overrides.prBody ?? null,
+      },
+    });
+
+    const buildBatchData = (
+      aliasEntries: { nodes: unknown[]; hasNextPage?: boolean }[],
+    ) =>
+      Object.fromEntries(
+        aliasEntries.map((entry, index) => [
+          `issue${index}`,
+          {
+            issue: {
+              timelineItems: {
+                pageInfo: {
+                  endCursor: null,
+                  hasNextPage: entry.hasNextPage ?? false,
+                },
+                nodes: entry.nodes,
+              },
+            },
+          },
+        ]),
+      );
+
+    it('resolves the related open pull request urls of every issue in one GraphQL request', async () => {
+      const capturedVariables: Record<string, unknown>[] = [];
+      const fetchSpy = mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: (variables) => {
+          capturedVariables.push(variables);
+          return {
+            data: buildBatchData([
+              {
+                nodes: [
+                  buildCrossReferencedPullRequestNode({
+                    prUrl: relatedPrUrlOf(100),
+                  }),
+                ],
+              },
+              {
+                nodes: [
+                  buildCrossReferencedPullRequestNode({
+                    prUrl: relatedPrUrlOf(200),
+                  }),
+                ],
+              },
+              { nodes: [] },
+            ]),
+          };
+        },
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([
+        issueUrlOf(1),
+        issueUrlOf(2),
+        issueUrlOf(3),
+      ]);
+
+      expect(countRelatedOpenPrUrlsBatchQueries(fetchSpy)).toBe(1);
+      expect(capturedVariables).toHaveLength(1);
+      expect(capturedVariables[0].issueNumber0).toBe(1);
+      expect(capturedVariables[0].issueNumber2).toBe(3);
+      expect(resolved.get(issueUrlOf(1))).toEqual([relatedPrUrlOf(100)]);
+      expect(resolved.get(issueUrlOf(2))).toEqual([relatedPrUrlOf(200)]);
+      expect(resolved.get(issueUrlOf(3))).toEqual([]);
+    });
+
+    it('excludes a cross-referenced pull request that is not open', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: relatedPrUrlOf(100),
+                  prState: 'CLOSED',
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+    });
+
+    it('includes a cross-repo pull request whose body carries the closing keyword for the issue', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: 'https://github.com/HiromiShikata/other-repo/pull/5',
+                  willCloseTarget: false,
+                  prBody: `Closes ${issueUrlOf(1)}`,
+                }),
+                buildCrossReferencedPullRequestNode({
+                  prUrl: 'https://github.com/HiromiShikata/other-repo/pull/6',
+                  willCloseTarget: false,
+                  prBody: 'Mentions the issue without a closing keyword',
+                }),
+              ],
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([
+        'https://github.com/HiromiShikata/other-repo/pull/5',
+      ]);
+    });
+
+    it('omits an issue whose timeline does not fit one page so it is resolved by the paginating path', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: buildBatchData([
+            {
+              nodes: [
+                buildCrossReferencedPullRequestNode({
+                  prUrl: relatedPrUrlOf(100),
+                }),
+              ],
+              hasNextPage: true,
+            },
+          ]),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.has(issueUrlOf(1))).toBe(false);
+    });
+
+    it('omits an issue whose alias failed for a reason other than not found so an unknown state is not read as absent', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: { issue0: null },
+          errors: [
+            {
+              message: 'Something went wrong while executing your query',
+              type: 'SERVICE_UNAVAILABLE',
+              path: ['issue0', 'issue'],
+            },
+          ],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.has(issueUrlOf(1))).toBe(false);
+    });
+
+    it('resolves an issue the batch reports as not found to no related open pull request', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: { issue0: null },
+          errors: [
+            {
+              message: 'Could not resolve to an Issue',
+              type: 'NOT_FOUND',
+              path: ['issue0', 'issue'],
+            },
+          ],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([issueUrlOf(1)]);
+
+      expect(resolved.get(issueUrlOf(1))).toEqual([]);
+    });
+
+    it('leaves every issue of a failed batch unresolved so the caller falls back to the per-issue lookup', async () => {
+      mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: () => ({
+          data: null,
+          errors: [
+            { message: 'Something went wrong while executing your query' },
+          ],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([
+        issueUrlOf(1),
+        issueUrlOf(2),
+      ]);
+
+      expect(resolved.size).toBe(0);
+    });
+
+    it('omits a pull request url without issuing any request because it has no related-issue timeline', async () => {
+      const fetchSpy = mockFetchRoutes({});
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls([
+        relatedPrUrlOf(31),
+      ]);
+
+      expect(resolved.size).toBe(0);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('splits more issues than one batch holds into separate GraphQL requests', async () => {
+      const issueNumbers = Array.from({ length: 101 }, (_, index) => index + 1);
+      const fetchSpy = mockFetchRoutes({
+        relatedOpenPullRequestUrlsBatch: (variables) => ({
+          data: buildBatchData(
+            Object.keys(variables)
+              .filter((name) => name.startsWith('issueNumber'))
+              .map(() => ({ nodes: [] })),
+          ),
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const resolved = await repository.findRelatedOpenPrUrls(
+        issueNumbers.map(issueUrlOf),
+      );
+
+      expect(countRelatedOpenPrUrlsBatchQueries(fetchSpy)).toBe(2);
+      expect(resolved.size).toBe(issueNumbers.length);
     });
   });
 

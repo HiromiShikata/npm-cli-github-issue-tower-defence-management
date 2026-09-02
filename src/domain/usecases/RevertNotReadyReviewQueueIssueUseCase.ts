@@ -40,6 +40,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       | 'updateStatus'
       | 'updateStory'
       | 'findRelatedOpenPRs'
+      | 'findRelatedOpenPrUrls'
       | 'getOpenPullRequest'
       | 'getOpenPullRequests'
       | 'getPullRequestChangedFilePaths'
@@ -101,11 +102,22 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     const labelsNotRequiringPullRequest =
       resolveLabelsNotRequiringPullRequest(params);
 
+    const batchedRelatedOpenPrUrlsByIssueUrl =
+      await this.resolveRelatedOpenPrUrlsForUncoveredIssues(
+        awaitingQualityCheckIssues,
+        relatedOpenPrUrlsByIssueUrl,
+      );
+
     const resolvedOpenPrByUrl = await this.issueRepository.getOpenPullRequests(
       Array.from(
         new Set([
           ...awaitingQualityCheckIssues.flatMap(
-            (issue) => relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? [],
+            (issue) =>
+              this.resolveRelatedOpenPrUrls(
+                issue,
+                relatedOpenPrUrlsByIssueUrl,
+                batchedRelatedOpenPrUrlsByIssueUrl,
+              ) ?? [],
           ),
         ]),
       ),
@@ -137,8 +149,11 @@ export class RevertNotReadyReviewQueueIssueUseCase {
             issue,
             labelsNotRequiringPullRequest,
             {
-              relatedOpenPrUrls:
-                relatedOpenPrUrlsByIssueUrl.get(issue.url) ?? null,
+              relatedOpenPrUrls: this.resolveRelatedOpenPrUrls(
+                issue,
+                relatedOpenPrUrlsByIssueUrl,
+                batchedRelatedOpenPrUrlsByIssueUrl,
+              ),
               resolvedOpenPrByUrl,
               developerAgentNames: params.developerAgentNames,
               detectConflictEvenIfEvaluationSkipped: true,
@@ -186,6 +201,42 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       }
     }
   };
+
+  // Resolves in one batched request the related open pull requests of every
+  // Awaiting Quality Check issue the bulk project items do not cover, so a
+  // cycle costs one request instead of one findRelatedOpenPRs timeline query
+  // per uncovered issue. A pull request item is excluded because
+  // findRelatedOpenPRs rejects pull request URLs and IssueRejectionEvaluator
+  // resolves such an item through getOpenPullRequest instead.
+  private resolveRelatedOpenPrUrlsForUncoveredIssues = async (
+    awaitingQualityCheckIssues: Issue[],
+    relatedOpenPrUrlsByIssueUrl: Map<string, string[]>,
+  ): Promise<Map<string, string[]>> => {
+    const uncoveredIssueUrls = awaitingQualityCheckIssues
+      .filter(
+        (issue) => !issue.isPr && !relatedOpenPrUrlsByIssueUrl.has(issue.url),
+      )
+      .map((issue) => issue.url);
+    if (uncoveredIssueUrls.length <= 0) {
+      return new Map();
+    }
+    return this.issueRepository.findRelatedOpenPrUrls(uncoveredIssueUrls);
+  };
+
+  // Keeps the three states apart: the URLs a lookup resolved, an empty list
+  // when a lookup resolved that no open pull request references the issue, and
+  // null when neither lookup resolved it, which routes the issue to the
+  // per-issue findRelatedOpenPRs fallback. Returning an empty list for an
+  // unresolved issue would make IssueRejectionEvaluator report
+  // PULL_REQUEST_NOT_FOUND for an issue whose pull request exists.
+  private resolveRelatedOpenPrUrls = (
+    issue: Issue,
+    relatedOpenPrUrlsByIssueUrl: Map<string, string[]>,
+    batchedRelatedOpenPrUrlsByIssueUrl: Map<string, string[]>,
+  ): string[] | null =>
+    relatedOpenPrUrlsByIssueUrl.get(issue.url) ??
+    batchedRelatedOpenPrUrlsByIssueUrl.get(issue.url) ??
+    null;
 
   // Derives, for each issue, the set of open pull request URLs that reference it
   // via a closing keyword. The linkage is taken from each open PR item's
