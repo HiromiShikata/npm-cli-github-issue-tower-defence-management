@@ -1,3 +1,10 @@
+## [2.45.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.0...v2.45.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* remove all sub-agent silent session reminder notifications ([#1955](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1955)) ([49a9a28](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/49a9a28123f0ce3b63a242101453844b7cc9788e))
+
 # [2.45.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.44.0...v2.45.0) (2026-09-02)
 
 
