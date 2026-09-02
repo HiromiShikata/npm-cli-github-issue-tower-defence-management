@@ -1,4 +1,7 @@
-import { StartPreparationUseCase } from './StartPreparationUseCase';
+import {
+  SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY,
+  StartPreparationUseCase,
+} from './StartPreparationUseCase';
 import {
   IssueRepository,
   RelatedPullRequest,
@@ -95,6 +98,7 @@ describe('StartPreparationUseCase', () => {
       | 'getStoryObjectMap'
       | 'getAllOpened'
       | 'updateStatus'
+      | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
       | 'closePullRequest'
       | 'deletePullRequestBranch'
@@ -120,6 +124,7 @@ describe('StartPreparationUseCase', () => {
       getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
       getAllOpened: jest.fn().mockResolvedValue([]),
       updateStatus: jest.fn(),
+      findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
       closePullRequest: jest.fn().mockResolvedValue(undefined),
       deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
@@ -847,20 +852,33 @@ describe('StartPreparationUseCase', () => {
     expect(awCalls).toHaveLength(1);
   });
 
-  it('should pass --branch i{number} to aw command when issue has no related board PR', async () => {
+  it('should pass --branch to aw command when issue has an existing linked PR', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
         url: 'url1',
-        number: 1,
         title: 'Issue 1',
         labels: ['category:impl'],
         status: 'Awaiting Workspace',
       }),
     ];
+    const existingPR: RelatedPullRequest = {
+      url: 'https://github.com/user/repo/pull/42',
+      branchName: 'i1',
+      createdAt: new Date('2024-01-01'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap(awaitingIssues),
     );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([existingPR]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -952,6 +970,7 @@ describe('StartPreparationUseCase', () => {
         'dependabot/npm_and_yarn/multi-cc382f683c',
       ],
     ]);
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
     expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
       'https://github.com/user/repo/pull/354',
     );
@@ -989,6 +1008,7 @@ describe('StartPreparationUseCase', () => {
     });
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'Skipping non-OPEN PR https://github.com/user/repo/pull/999: wrapper requires an open PR.',
     );
@@ -1095,39 +1115,48 @@ describe('StartPreparationUseCase', () => {
     consoleErrorSpy.mockRestore();
   });
   it('should auto-resolve by adopting oldest PR, closing newer PR with branch delete and comments when issue has multiple related open PRs', async () => {
-    const issueUrl = 'https://github.com/user/repo/issues/1';
     const awaitingIssues: Issue[] = [
       createMockIssue({
-        url: issueUrl,
+        url: 'https://github.com/user/repo/issues/1',
         title: 'Issue 1',
         labels: ['category:impl'],
         status: 'Awaiting Workspace',
       }),
     ];
-    const olderPRUrl = 'https://github.com/user/repo/pull/42';
-    const newerPRUrl = 'https://github.com/user/repo/pull/43';
-    const olderPRBoardItem = createMockIssue({
-      url: olderPRUrl,
-      isPr: true,
-      isClosed: false,
+    const olderPR: RelatedPullRequest = {
+      url: 'https://github.com/user/repo/pull/42',
+      branchName: 'i1',
       createdAt: new Date('2024-01-01T00:00:00Z'),
-      closingIssueReferenceUrls: [issueUrl],
-    });
-    const newerPRBoardItem = createMockIssue({
-      url: newerPRUrl,
-      isPr: true,
-      isClosed: false,
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
+    const newerPR: RelatedPullRequest = {
+      url: 'https://github.com/user/repo/pull/43',
+      branchName: 'i1-fix',
       createdAt: new Date('2024-01-02T00:00:00Z'),
-      closingIssueReferenceUrls: [issueUrl],
-    });
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([
-        awaitingIssues[0],
-        olderPRBoardItem,
-        newerPRBoardItem,
-      ]),
+      createMockStoryObjectMap(awaitingIssues),
     );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      olderPR,
+      newerPR,
+    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1148,29 +1177,28 @@ describe('StartPreparationUseCase', () => {
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
-      newerPRUrl,
+      newerPR.url,
     );
-    // conventionalBranchName is derived from the closing issue URL: i1
     expect(mockIssueRepository.deletePullRequestBranch).toHaveBeenCalledWith(
-      newerPRUrl,
-      'i1',
+      newerPR.url,
+      newerPR.branchName,
     );
     expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
-      newerPRUrl,
-      expect.stringContaining(olderPRUrl),
+      newerPR.url,
+      expect.stringContaining(olderPR.url),
     );
     expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
-      issueUrl,
-      expect.stringContaining(newerPRUrl),
+      'https://github.com/user/repo/issues/1',
+      expect.stringContaining(newerPR.url),
     );
     expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalledWith(
-      olderPRUrl,
+      olderPR.url,
     );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
     expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
       'aw',
       [
-        issueUrl,
+        'https://github.com/user/repo/issues/1',
         'agent1',
         'claude-opus',
         '--configFilePath',
@@ -1181,11 +1209,9 @@ describe('StartPreparationUseCase', () => {
     ]);
   });
   it('should not treat a cross-repository PR as duplicate when a same-repository PR exists', async () => {
-    const issueUrl4290 =
-      'https://github.com/HiromiShikata/secretary/issues/4290';
     const awaitingIssues: Issue[] = [
       createMockIssue({
-        url: issueUrl4290,
+        url: 'https://github.com/HiromiShikata/secretary/issues/4290',
         title: 'Issue 4290',
         nameWithOwner: 'HiromiShikata/secretary',
         number: 4290,
@@ -1195,28 +1221,40 @@ describe('StartPreparationUseCase', () => {
         status: 'Awaiting Workspace',
       }),
     ];
-    const sameRepoPRBoardItem = createMockIssue({
+    const sameRepoPR: RelatedPullRequest = {
       url: 'https://github.com/HiromiShikata/secretary/pull/4610',
-      isPr: true,
-      isClosed: false,
+      branchName: 'i4290',
       createdAt: new Date('2026-08-28T13:38:00Z'),
-      closingIssueReferenceUrls: [issueUrl4290],
-    });
-    const crossRepoPRBoardItem = createMockIssue({
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
+    const crossRepoPR: RelatedPullRequest = {
       url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/1813',
-      isPr: true,
-      isClosed: false,
+      branchName: 'i4290',
       createdAt: new Date('2026-08-28T10:55:00Z'),
-      closingIssueReferenceUrls: [issueUrl4290],
-    });
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([
-        awaitingIssues[0],
-        sameRepoPRBoardItem,
-        crossRepoPRBoardItem,
-      ]),
+      createMockStoryObjectMap(awaitingIssues),
     );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      sameRepoPR,
+      crossRepoPR,
+    ]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
@@ -1247,42 +1285,48 @@ describe('StartPreparationUseCase', () => {
     );
   });
   it('should skip issue after resolving duplicates when adopted canonical PR has null branchName', async () => {
-    // Use a non-standard issue URL so conventionalBranchName is null (no /issues/N pattern)
-    const nonStandardIssueUrl = 'non-standard-url-1';
     const awaitingIssues: Issue[] = [
       createMockIssue({
-        url: nonStandardIssueUrl,
-        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
         title: 'Issue 1',
         labels: ['category:impl'],
         status: 'Awaiting Workspace',
       }),
     ];
-    const olderPRUrl = 'https://github.com/user/repo/pull/42';
-    const newerPRUrl = 'https://github.com/user/repo/pull/43';
-    // Both board PR items reference the non-standard issue URL; both get branchName: null
-    const olderPRBoardItem = createMockIssue({
-      url: olderPRUrl,
-      isPr: true,
-      isClosed: false,
+    const olderPRNullBranch: RelatedPullRequest = {
+      url: 'https://github.com/user/repo/pull/42',
+      branchName: null,
       createdAt: new Date('2024-01-01T00:00:00Z'),
-      closingIssueReferenceUrls: [nonStandardIssueUrl],
-    });
-    const newerPRBoardItem = createMockIssue({
-      url: newerPRUrl,
-      isPr: true,
-      isClosed: false,
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
+    const newerPR: RelatedPullRequest = {
+      url: 'https://github.com/user/repo/pull/43',
+      branchName: 'i1-fix',
       createdAt: new Date('2024-01-02T00:00:00Z'),
-      closingIssueReferenceUrls: [nonStandardIssueUrl],
-    });
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([
-        awaitingIssues[0],
-        olderPRBoardItem,
-        newerPRBoardItem,
-      ]),
+      createMockStoryObjectMap(awaitingIssues),
     );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      olderPRNullBranch,
+      newerPR,
+    ]);
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')
       .mockImplementation(() => {});
@@ -1301,15 +1345,15 @@ describe('StartPreparationUseCase', () => {
       labelsAsLlmAgentName: null,
     });
     expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
-      newerPRUrl,
+      newerPR.url,
     );
     expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
-      newerPRUrl,
-      expect.stringContaining(olderPRUrl),
+      newerPR.url,
+      expect.stringContaining(olderPRNullBranch.url),
     );
     expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
-      nonStandardIssueUrl,
-      expect.stringContaining(newerPRUrl),
+      'https://github.com/user/repo/issues/1',
+      expect.stringContaining(newerPR.url),
     );
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     expect(consoleWarnSpy).toHaveBeenCalledWith(
@@ -1320,28 +1364,34 @@ describe('StartPreparationUseCase', () => {
     consoleWarnSpy.mockRestore();
   });
   it('should skip and not call wrapper when issue has one related open PR with null branchName', async () => {
-    // Use a non-standard issue URL so conventionalBranchName is null (no /issues/N pattern),
-    // which causes the derived RelatedPullRequest.branchName to also be null
-    const nonStandardUrl = 'url1';
     const awaitingIssues: Issue[] = [
       createMockIssue({
-        url: nonStandardUrl,
+        url: 'url1',
         title: 'Issue 1',
         labels: ['category:impl'],
         status: 'Awaiting Workspace',
       }),
     ];
-    const prBoardItem = createMockIssue({
+    const prWithNullBranch: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/42',
-      isPr: true,
-      isClosed: false,
+      branchName: null,
       createdAt: new Date('2024-01-01'),
-      closingIssueReferenceUrls: [nonStandardUrl],
-    });
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    };
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssues[0], prBoardItem]),
+      createMockStoryObjectMap(awaitingIssues),
     );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      prWithNullBranch,
+    ]);
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')
       .mockImplementation(() => {});
@@ -7280,30 +7330,17 @@ describe('StartPreparationUseCase', () => {
   });
 
   it('only prefetches branch sources for candidates within the free preparation slots', async () => {
-    // Arrange: 5 PR-URL candidates but only 2 free slots. getOpenPullRequest is called
-    // for each prefetched candidate, making the call count observable.
-    // OLD code: prefetches all 5 → getOpenPullRequest called 5 times.
-    // NEW code: prefetches only freeSlots=2 → getOpenPullRequest called 2 times.
-    const openPR: RelatedPullRequest = {
-      url: 'https://github.com/user/repo/pull/1',
-      branchName: 'i1',
-      createdAt: new Date('2024-01-01'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
-    const prCandidates = Array.from({ length: 5 }, (_, i) =>
+    // Arrange: 5 issue URL candidates but only 2 free preparation slots.
+    // findRelatedOpenPRs is called once per prefetched issue URL candidate,
+    // making the call count a direct observable of the prefetch cap.
+    // Before: prefetches all 5 → findRelatedOpenPRs called 5 times.
+    // After: prefetches only freeSlots=2 → findRelatedOpenPRs called 2 times.
+    const candidates = Array.from({ length: 5 }, (_, i) =>
       createMockIssue({
         number: i + 1,
-        url: `https://github.com/user/repo/pull/${i + 1}`,
+        url: `https://github.com/user/repo/issues/${i + 1}`,
         itemId: `item-${i + 1}`,
-        title: `PR Candidate ${i + 1}`,
-        labels: ['category:impl'],
+        title: `Candidate ${i + 1}`,
         status: 'Awaiting Workspace',
         author: 'testuser',
         assignees: ['manager-user'],
@@ -7311,17 +7348,17 @@ describe('StartPreparationUseCase', () => {
     );
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(prCandidates),
+      createMockStoryObjectMap(candidates),
     );
     mockIssueRepository.getAllOpened.mockResolvedValue([]);
-    mockIssueRepository.getOpenPullRequest.mockResolvedValue({ ...openPR });
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
       stderr: '',
       exitCode: 0,
     });
 
-    // Act: maximumPreparingIssuesCount = 2, currentPreparation = 0 → freeSlots = 2
+    // Act: maximumPreparingIssuesCount=2, currentPreparation=0 → freeSlots=2.
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
@@ -7337,52 +7374,46 @@ describe('StartPreparationUseCase', () => {
       labelsAsLlmAgentName: null,
     });
 
-    // Assert: exactly 2 prefetches (one per free slot), not 5.
-    // FAILS with current code (getOpenPullRequest called 5 times),
-    // PASSES with new code (called 2 times).
-    expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledTimes(2);
+    // Only candidates within the free slot count are prefetched.
+    // FAILS before cap (called 5 times); passes after cap (called 2 times).
+    expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledTimes(2);
   });
 
-  it('detects duplicate PRs from board closingIssueReferenceUrls and closes the newer one', async () => {
-    // Arrange: 1 candidate issue with 2 board PRs both referencing it.
-    // OLD code: findRelatedOpenPRs (now removed) returned []; duplicates were not detected.
-    // NEW code: in-memory mapping finds both PRs; duplicate detection fires.
-    const issueUrl = 'https://github.com/user/repo/issues/1';
-    const candidate = createMockIssue({
-      number: 1,
-      url: issueUrl,
-      title: 'Candidate',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      author: 'testuser',
-      assignees: ['manager-user'],
-    });
-    const olderPRBoardItem = createMockIssue({
-      url: 'https://github.com/user/repo/pull/10',
-      isPr: true,
-      isClosed: false,
-      createdAt: new Date('2024-01-01T00:00:00Z'),
-      closingIssueReferenceUrls: [issueUrl],
-    });
-    const newerPRBoardItem = createMockIssue({
-      url: 'https://github.com/user/repo/pull/11',
-      isPr: true,
-      isClosed: false,
-      createdAt: new Date('2024-01-02T00:00:00Z'),
-      closingIssueReferenceUrls: [issueUrl],
-    });
+  it('fetches no branch sources when free preparation slots is zero or negative', async () => {
+    // Arrange: 5 issue URL candidates but 2 existing Preparation issues
+    // already fill the configured maximum of 2.
+    // freeSlots = effectiveMaxPreparingIssuesCount(2) - currentPreparation(2) = 0.
+    // findRelatedOpenPRs must not be called at all.
+    // Before: prefetches all 5 → findRelatedOpenPRs called 5 times (FAILS).
+    // After: Math.max(0, 0) = 0 → nothing prefetched (PASSES).
+    const preparingIssues = Array.from({ length: 2 }, (_, i) =>
+      createMockIssue({
+        number: i + 100,
+        url: `https://github.com/user/repo/issues/${i + 100}`,
+        itemId: `prep-item-${i}`,
+        status: 'Preparation',
+        author: 'testuser',
+        assignees: ['manager-user'],
+      }),
+    );
+    const candidates = Array.from({ length: 5 }, (_, i) =>
+      createMockIssue({
+        number: i + 1,
+        url: `https://github.com/user/repo/issues/${i + 1}`,
+        itemId: `item-${i + 1}`,
+        title: `Candidate ${i + 1}`,
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['manager-user'],
+      }),
+    );
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([candidate, olderPRBoardItem, newerPRBoardItem]),
+      createMockStoryObjectMap([...preparingIssues, ...candidates]),
     );
     mockIssueRepository.getAllOpened.mockResolvedValue([]);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
 
-    // Act
+    // Act: maximumPreparingIssuesCount=2, currentPreparation=2 → freeSlots=0.
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
@@ -7390,7 +7421,7 @@ describe('StartPreparationUseCase', () => {
       fallbackLlmModelName: null,
       defaultLlmAgentName: null,
       configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
+      maximumPreparingIssuesCount: 2,
       utilizationPercentageThreshold: 90,
       allowedIssueAuthors: ['testuser'],
       manager: 'manager-user',
@@ -7398,27 +7429,7 @@ describe('StartPreparationUseCase', () => {
       labelsAsLlmAgentName: null,
     });
 
-    // Assert: newer PR closed (duplicate detection), older PR kept, spawn runs.
-    // FAILS with old code (closePullRequest NOT called),
-    // PASSES with new code (closePullRequest called for pull/11).
-    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
-      'https://github.com/user/repo/pull/11',
-    );
-    expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalledWith(
-      'https://github.com/user/repo/pull/10',
-    );
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        issueUrl,
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
   });
 });
 
@@ -7436,6 +7447,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       | 'getStoryObjectMap'
       | 'getAllOpened'
       | 'updateStatus'
+      | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
       | 'closePullRequest'
       | 'deletePullRequestBranch'
@@ -7447,6 +7459,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     getStoryObjectMap: jest.fn(),
     getAllOpened: jest.fn(),
     updateStatus: jest.fn(),
+    findRelatedOpenPRs: jest.fn(),
     getOpenPullRequest: jest.fn(),
     closePullRequest: jest.fn(),
     deletePullRequestBranch: jest.fn(),
@@ -7756,6 +7769,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         getStoryObjectMap: jest.fn(),
         getAllOpened: jest.fn(),
         updateStatus: jest.fn(),
+        findRelatedOpenPRs: jest.fn(),
         getOpenPullRequest: jest.fn(),
         closePullRequest: jest.fn(),
         deletePullRequestBranch: jest.fn(),
@@ -7843,6 +7857,7 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
         .mockResolvedValue(createMockStoryObjectMap([awaitingIssue])),
       getAllOpened: jest.fn().mockResolvedValue([awaitingIssue]),
       updateStatus: jest.fn().mockResolvedValue(undefined),
+      findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
       getOpenPullRequest: jest.fn().mockResolvedValue(null),
       closePullRequest: jest.fn().mockResolvedValue(undefined),
       deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
@@ -7914,6 +7929,20 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
 });
 
 describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
+  const buildRelatedPullRequest = (url: string): RelatedPullRequest => ({
+    url,
+    branchName: 'feature',
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    isDraft: false,
+    isConflicted: false,
+    mergeable: 'MERGEABLE',
+    isPassedAllCiJob: true,
+    isCiStateSuccess: true,
+    isResolvedAllReviewComments: true,
+    isBranchOutOfDate: false,
+    missingRequiredCheckNames: [],
+  });
+
   const buildUseCase = (
     issueRepositoryOverrides: Partial<
       ConstructorParameters<typeof StartPreparationUseCase>[1]
@@ -7929,6 +7958,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         getStoryObjectMap: jest.fn(),
         getAllOpened: jest.fn(),
         updateStatus: jest.fn(),
+        findRelatedOpenPRs: jest.fn(),
         getOpenPullRequest: jest.fn(),
         closePullRequest: jest.fn(),
         deletePullRequestBranch: jest.fn(),
@@ -7951,58 +7981,49 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
       { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
     );
 
-  it('resolves related open PRs from board closingIssueReferenceUrls for issue URLs', async () => {
-    const issueUrl = 'https://github.com/owner/repo/issues/42';
-    const prIssue = createMockIssue({
-      url: 'https://github.com/owner/repo/pull/100',
-      isPr: true,
-      isClosed: false,
-      createdAt: new Date('2026-01-01T00:00:00Z'),
-      closingIssueReferenceUrls: [issueUrl],
+  it('looks up related open pull requests for issue urls concurrently up to the configured limit', async () => {
+    const issueUrls = Array.from(
+      { length: 20 },
+      (_, index) => `https://github.com/owner/repo/issues/${index + 1}`,
+    );
+    let inFlightCount = 0;
+    let observedMaxInFlight = 0;
+    const findRelatedOpenPRs = jest.fn(async (issueUrl: string) => {
+      inFlightCount += 1;
+      observedMaxInFlight = Math.max(observedMaxInFlight, inFlightCount);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      inFlightCount -= 1;
+      return [buildRelatedPullRequest(issueUrl.replace('/issues/', '/pull/'))];
     });
-    const useCase = buildUseCase({});
+    const useCase = buildUseCase({ findRelatedOpenPRs });
 
-    const branchSources = await useCase.fetchSpawnCandidateBranchSources(
-      [issueUrl],
-      [prIssue],
-    );
+    const branchSources =
+      await useCase.fetchSpawnCandidateBranchSources(issueUrls);
 
-    expect(branchSources.get(issueUrl)?.openPullRequest).toBeNull();
-    expect(branchSources.get(issueUrl)?.relatedOpenPullRequests).toHaveLength(
-      1,
-    );
-    expect(branchSources.get(issueUrl)?.relatedOpenPullRequests[0].url).toBe(
-      'https://github.com/owner/repo/pull/100',
-    );
-    expect(
-      branchSources.get(issueUrl)?.relatedOpenPullRequests[0].branchName,
-    ).toBe('i42');
+    expect(findRelatedOpenPRs).toHaveBeenCalledTimes(20);
+    expect(observedMaxInFlight).toBe(SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY);
+    expect(branchSources.size).toBe(20);
+    for (const issueUrl of issueUrls) {
+      expect(branchSources.get(issueUrl)?.relatedOpenPullRequests).toHaveLength(
+        1,
+      );
+      expect(branchSources.get(issueUrl)?.openPullRequest).toBeNull();
+    }
   });
 
-  it('resolves pull request urls through the open pull request lookup', async () => {
+  it('resolves pull request urls through the open pull request lookup instead of the timeline query', async () => {
     const prUrl = 'https://github.com/owner/repo/pull/7';
-    const openPullRequest: RelatedPullRequest = {
-      url: prUrl,
-      branchName: 'feature',
-      createdAt: new Date('2026-01-01T00:00:00Z'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: 'MERGEABLE',
-      isPassedAllCiJob: true,
-      isCiStateSuccess: true,
-      isResolvedAllReviewComments: true,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
+    const openPullRequest = buildRelatedPullRequest(prUrl);
     const getOpenPullRequest = jest.fn().mockResolvedValue(openPullRequest);
-    const useCase = buildUseCase({ getOpenPullRequest });
+    const findRelatedOpenPRs = jest.fn();
+    const useCase = buildUseCase({ getOpenPullRequest, findRelatedOpenPRs });
 
-    const branchSources = await useCase.fetchSpawnCandidateBranchSources(
-      [prUrl],
-      [],
-    );
+    const branchSources = await useCase.fetchSpawnCandidateBranchSources([
+      prUrl,
+    ]);
 
     expect(getOpenPullRequest).toHaveBeenCalledWith(prUrl);
+    expect(findRelatedOpenPRs).not.toHaveBeenCalled();
     expect(branchSources.get(prUrl)?.openPullRequest).toBe(openPullRequest);
     expect(branchSources.get(prUrl)?.relatedOpenPullRequests).toEqual([]);
   });
