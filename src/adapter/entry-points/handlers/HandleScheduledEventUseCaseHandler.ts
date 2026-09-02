@@ -1,7 +1,5 @@
 import YAML from 'yaml';
 import fs from 'fs';
-import os from 'os';
-import path from 'path';
 import { writeSituationFile } from './situationFileWriter';
 import {
   formatConsoleGeneratedAt,
@@ -16,10 +14,7 @@ import { cleanClosedIssueOwnerCallFiles } from './ownerCallFileCleaner';
 import { reconcileInTmuxByHumanSessions } from './inTmuxByHumanSessionReconciler';
 import { handleTokenExhaustionHandover } from './tokenExhaustionHandover';
 import { cleanStaleTmuxSessions } from './staleTmuxSessionCleaner';
-import {
-  notifySilentTmuxSessions,
-  DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS,
-} from './notifySilentTmuxSessions';
+import { notifySilentTmuxSessions } from './notifySilentTmuxSessions';
 import {
   resetDegeneratedTmuxSessions,
   DEFAULT_RESET_DEGENERATED_TMUX_SESSIONS_PARAMS,
@@ -148,22 +143,6 @@ export class HandleScheduledEventUseCaseHandler {
       tokenExhaustionGracePeriodSeconds?: number;
       tokenExhaustionHandoverStateFilePath?: string;
       silentNotificationEnabled?: boolean;
-      subAgentOutputRootDirectory?: string;
-      subAgentProcessMatchPattern?: string;
-      subAgentTranscriptRootDirectory?: string;
-      subAgentRuntimeRootDirectory?: string;
-      subAgentSilentThresholdSeconds?: number;
-      subAgentRunningThresholdSeconds?: number;
-      silentNotificationStaggerSeconds?: number;
-      candidateDebounceRecencyWindowSeconds?: number;
-      candidateDebounceStateFilePath?: string;
-      activeHubTaskStatus?: string;
-      hubTaskStatusCacheStateFilePath?: string;
-      hubTaskStatusCacheTtlSeconds?: number;
-      silentSubAgentIdleMessageHeader?: string;
-      silentSubAgentIdleMessageFooter?: string;
-      silentSubAgentLongRunningMessageHeader?: string;
-      silentSubAgentLongRunningMessageFooter?: string;
       outputDegenerationResetEnabled?: boolean;
       outputDegenerationWarningMessage?: string;
       outputDegenerationGraceSeconds?: number;
@@ -826,89 +805,8 @@ export class HandleScheduledEventUseCaseHandler {
           mergedInput.silentNotificationEnabled ??
           loadSilentNotificationEnabled(fleetConfigFilePath) ??
           process.env.TDPM_SILENT_NOTIFICATION_ENABLED === 'true';
-        const subAgentOutputRootDirectory =
-          mergedInput.subAgentOutputRootDirectory ??
-          process.env.TDPM_SUBAGENT_OUTPUT_ROOT_DIRECTORY ??
-          null;
-        const subAgentProcessMatchPattern =
-          mergedInput.subAgentProcessMatchPattern ??
-          process.env.TDPM_SUBAGENT_PROCESS_MATCH_PATTERN ??
-          null;
-        const subAgentTranscriptRootDirectory =
-          mergedInput.subAgentTranscriptRootDirectory ??
-          process.env.TDPM_SUBAGENT_TRANSCRIPT_ROOT_DIRECTORY ??
-          null;
-        const getuid = process.getuid?.bind(process);
-        const subAgentRuntimeRootDirectory =
-          mergedInput.subAgentRuntimeRootDirectory ??
-          process.env.TDPM_SUBAGENT_RUNTIME_ROOT_DIRECTORY ??
-          (getuid === undefined
-            ? null
-            : path.join(os.tmpdir(), `claude-${getuid()}`));
         await notifySilentTmuxSessions({
           enabled: silentNotificationEnabled,
-          localCommandRunner: nodeLocalCommandRunner,
-          subAgentOutputRootDirectory,
-          subAgentProcessMatchPattern,
-          subAgentTranscriptRootDirectory,
-          subAgentRuntimeRootDirectory,
-          subAgentSilentThresholdSeconds: readSilentSeconds(
-            mergedInput.subAgentSilentThresholdSeconds,
-            process.env.TDPM_SUBAGENT_SILENT_THRESHOLD_SECONDS,
-            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentSilentThresholdSeconds,
-          ),
-          subAgentRunningThresholdSeconds: readSilentSeconds(
-            mergedInput.subAgentRunningThresholdSeconds,
-            process.env.TDPM_SUBAGENT_RUNNING_THRESHOLD_SECONDS,
-            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.subAgentRunningThresholdSeconds,
-          ),
-          staggerSeconds: readSilentSeconds(
-            mergedInput.silentNotificationStaggerSeconds,
-            process.env.TDPM_SILENT_NOTIFICATION_STAGGER_SECONDS,
-            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.staggerSeconds,
-          ),
-          candidateDebounceRecencyWindowSeconds: readSilentSeconds(
-            mergedInput.candidateDebounceRecencyWindowSeconds,
-            process.env.TDPM_SILENT_CANDIDATE_DEBOUNCE_RECENCY_WINDOW_SECONDS,
-            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.candidateDebounceRecencyWindowSeconds,
-          ),
-          candidateDebounceStateFilePath:
-            mergedInput.candidateDebounceStateFilePath ??
-            process.env.TDPM_SILENT_CANDIDATE_DEBOUNCE_STATE_FILE_PATH ??
-            null,
-          activeHubTaskStatus:
-            mergedInput.activeHubTaskStatus ??
-            process.env.TDPM_ACTIVE_HUB_TASK_STATUS ??
-            null,
-          hubTaskStatusResolver: issueRepository,
-          hubTaskStatusCacheStateFilePath:
-            mergedInput.hubTaskStatusCacheStateFilePath ??
-            process.env.TDPM_SILENT_HUB_TASK_STATUS_CACHE_STATE_FILE_PATH ??
-            null,
-          hubTaskStatusCacheTtlSeconds: readSilentSeconds(
-            mergedInput.hubTaskStatusCacheTtlSeconds,
-            process.env.TDPM_SILENT_HUB_TASK_STATUS_CACHE_TTL_SECONDS,
-            DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS.hubTaskStatusCacheTtlSeconds,
-          ),
-          messageTemplates: {
-            subAgentIdleMessageHeader:
-              mergedInput.silentSubAgentIdleMessageHeader ??
-              process.env.TDPM_SILENT_SUBAGENT_IDLE_MESSAGE_HEADER ??
-              null,
-            subAgentIdleMessageFooter:
-              mergedInput.silentSubAgentIdleMessageFooter ??
-              process.env.TDPM_SILENT_SUBAGENT_IDLE_MESSAGE_FOOTER ??
-              null,
-            subAgentLongRunningMessageHeader:
-              mergedInput.silentSubAgentLongRunningMessageHeader ??
-              process.env.TDPM_SILENT_SUBAGENT_LONG_RUNNING_MESSAGE_HEADER ??
-              null,
-            subAgentLongRunningMessageFooter:
-              mergedInput.silentSubAgentLongRunningMessageFooter ??
-              process.env.TDPM_SILENT_SUBAGENT_LONG_RUNNING_MESSAGE_FOOTER ??
-              null,
-          },
-          now: inTmuxNow,
         });
       } catch (error) {
         console.error(
