@@ -1,3 +1,10 @@
+## [2.46.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.0...v2.46.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* **console-ui:** add missing CSS for ConsoleErrorToast component ([#1961](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1961)) ([6c7f62f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6c7f62f44efbce3bdcd8b1b752f46b230f79146b)), closes [#3a1518](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3a1518) [#3a1518](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/3a1518) [#868](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/868) [#2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2) [#2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2) [#868](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/868) [#868](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/868)
+
 # [2.46.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.4...v2.46.0) (2026-09-02)
 
 
