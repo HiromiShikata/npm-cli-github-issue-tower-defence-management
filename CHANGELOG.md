@@ -1,3 +1,10 @@
+# [2.42.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.41.0...v2.42.0) (2026-09-02)
+
+
+### Features
+
+* **console:** add story deletion to Danger Zone when detail page is a story ([#1926](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1926)) ([9e3694d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9e3694dac20a8ef9d69dee7b4a21fe822dd26be9)), closes [HiromiShikata/umino-corporait-operation#31160](https://github.com/HiromiShikata/umino-corporait-operation/issues/31160)
+
 # [2.41.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.40.2...v2.41.0) (2026-09-01)
 
 
