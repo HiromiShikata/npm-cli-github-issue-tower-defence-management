@@ -586,7 +586,13 @@ export class StartPreparationUseCase {
             ) === null,
         )
         .map((issue) => issue.url)
-        .slice(0, Math.max(0, effectiveMaxPreparingIssuesCount - currentPreparationIssueCount)),
+        .slice(
+          0,
+          Math.max(
+            0,
+            effectiveMaxPreparingIssuesCount - currentPreparationIssueCount,
+          ),
+        ),
     );
 
     for (

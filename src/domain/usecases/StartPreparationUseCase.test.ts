@@ -7330,11 +7330,7 @@ describe('StartPreparationUseCase', () => {
   });
 
   it('only prefetches branch sources for candidates within the free preparation slots', async () => {
-    // Arrange: 5 issue URL candidates but only 2 free preparation slots.
-    // findRelatedOpenPRs is called once per prefetched issue URL candidate,
-    // making the call count a direct observable of the prefetch cap.
-    // Before: prefetches all 5 → findRelatedOpenPRs called 5 times.
-    // After: prefetches only freeSlots=2 → findRelatedOpenPRs called 2 times.
+    // 5 candidates, 2 free preparation slots (maximumPreparingIssuesCount=2, currentPreparation=0).
     const candidates = Array.from({ length: 5 }, (_, i) =>
       createMockIssue({
         number: i + 1,
@@ -7358,7 +7354,6 @@ describe('StartPreparationUseCase', () => {
       exitCode: 0,
     });
 
-    // Act: maximumPreparingIssuesCount=2, currentPreparation=0 → freeSlots=2.
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
@@ -7374,18 +7369,11 @@ describe('StartPreparationUseCase', () => {
       labelsAsLlmAgentName: null,
     });
 
-    // Only candidates within the free slot count are prefetched.
-    // FAILS before cap (called 5 times); passes after cap (called 2 times).
     expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledTimes(2);
   });
 
   it('fetches no branch sources when free preparation slots is zero or negative', async () => {
-    // Arrange: 5 issue URL candidates but 2 existing Preparation issues
-    // already fill the configured maximum of 2.
-    // freeSlots = effectiveMaxPreparingIssuesCount(2) - currentPreparation(2) = 0.
-    // findRelatedOpenPRs must not be called at all.
-    // Before: prefetches all 5 → findRelatedOpenPRs called 5 times (FAILS).
-    // After: Math.max(0, 0) = 0 → nothing prefetched (PASSES).
+    // 5 candidates, 2 existing Preparation issues filling the configured maximum of 2.
     const preparingIssues = Array.from({ length: 2 }, (_, i) =>
       createMockIssue({
         number: i + 100,
@@ -7413,7 +7401,6 @@ describe('StartPreparationUseCase', () => {
     );
     mockIssueRepository.getAllOpened.mockResolvedValue([]);
 
-    // Act: maximumPreparingIssuesCount=2, currentPreparation=2 → freeSlots=0.
     await useCase.run({
       projectUrl: 'https://github.com/user/repo',
       defaultAgentName: 'agent1',
