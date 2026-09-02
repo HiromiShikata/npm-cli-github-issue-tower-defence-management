@@ -1591,9 +1591,6 @@ body {
 }
 
 .console-error-toast {
-  background: #3a1518;
-  border: 1px solid #f85149;
-  color: #f85149;
 }
 
 .console-error-toast-title {
