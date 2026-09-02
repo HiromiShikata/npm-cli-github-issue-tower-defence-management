@@ -915,14 +915,18 @@ test('prs agent filter shows counts, hides zero-task agents, narrows the list, a
   await expect(select).toBeVisible();
 
   const nonAllOptions = select.locator('option:not([value=""])');
-  await expect(nonAllOptions).toHaveCount(1);
-  await expect(nonAllOptions.first()).toHaveText('developer (1)');
+  await expect(nonAllOptions).toHaveCount(2);
+  await expect(nonAllOptions.nth(0)).toHaveText('developer (1)');
+  await expect(nonAllOptions.nth(1)).toHaveText('chore (1)');
 
   await expect(
     itemRowByText(
       page,
       'Serve the committed console UI bundle from serveConsole',
     ),
+  ).toBeVisible();
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
   ).toBeVisible();
 
   await select.selectOption('developer');
@@ -932,6 +936,9 @@ test('prs agent filter shows counts, hides zero-task agents, narrows the list, a
       'Serve the committed console UI bundle from serveConsole',
     ),
   ).toBeVisible();
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).not.toBeVisible({ timeout: 2000 });
 
   await itemRowByText(
     page,

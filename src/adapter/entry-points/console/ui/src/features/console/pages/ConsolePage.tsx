@@ -320,6 +320,16 @@ export const ConsolePage = () => {
     return counts;
   }, [pendingItems, activeTab]);
 
+  useEffect(() => {
+    if (
+      activeTab === 'prs' &&
+      prsAgentFilter !== null &&
+      (prsAgentCounts[prsAgentFilter] ?? 0) === 0
+    ) {
+      setPrsAgentFilter(null);
+    }
+  }, [prsAgentCounts, prsAgentFilter, activeTab]);
+
   const agentFilteredPendingItems = useMemo(() => {
     if (activeTab !== 'prs' || prsAgentFilter === null) {
       return pendingItems;
