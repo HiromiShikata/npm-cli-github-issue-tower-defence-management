@@ -4774,13 +4774,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('returns cached result and issues no additional GraphQL query on second call within TTL', async () => {
       const { repository, dateRepository } =
         createApiV3CheerioRestIssueRepository();
-      dateRepository.now.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-01-01T00:00:00.000Z'),
+      );
 
       const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
       mockFetchRoutes({ timeline: timelineFn });
 
-      const issueUrl =
-        'https://github.com/HiromiShikata/secretary/issues/100';
+      const issueUrl = 'https://github.com/HiromiShikata/secretary/issues/100';
       await repository.findRelatedOpenPRs(issueUrl);
       const result = await repository.findRelatedOpenPRs(issueUrl);
 
@@ -4792,9 +4793,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const { repository, dateRepository } =
         createApiV3CheerioRestIssueRepository();
       const t0 = new Date('2026-01-01T00:00:00.000Z');
-      const tExpired = new Date(
-        t0.getTime() + RELATED_OPEN_PRS_CACHE_TTL_MS,
-      );
+      const tExpired = new Date(t0.getTime() + RELATED_OPEN_PRS_CACHE_TTL_MS);
       dateRepository.now
         .mockResolvedValueOnce(t0)
         .mockResolvedValueOnce(tExpired);
@@ -4802,8 +4801,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
       mockFetchRoutes({ timeline: timelineFn });
 
-      const issueUrl =
-        'https://github.com/HiromiShikata/secretary/issues/100';
+      const issueUrl = 'https://github.com/HiromiShikata/secretary/issues/100';
       await repository.findRelatedOpenPRs(issueUrl);
       await repository.findRelatedOpenPRs(issueUrl);
 
@@ -4813,7 +4811,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     it('does not share cache between different issue URLs', async () => {
       const { repository, dateRepository } =
         createApiV3CheerioRestIssueRepository();
-      dateRepository.now.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-01-01T00:00:00.000Z'),
+      );
 
       const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
       mockFetchRoutes({ timeline: timelineFn });
