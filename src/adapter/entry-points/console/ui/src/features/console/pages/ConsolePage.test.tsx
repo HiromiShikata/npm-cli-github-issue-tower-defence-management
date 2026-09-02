@@ -1009,6 +1009,62 @@ describe('ConsolePage auto-advance', () => {
       jest.useRealTimers();
     }
   });
+
+  it('removes the acted item from the list immediately when ok & Awaiting Workspace is clicked from the list', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getAllByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+        ).toHaveLength(2);
+      });
+
+      fireEvent.click(
+        getAllByRole('button', { name: 'ok & Awaiting Workspace' })[0],
+      );
+
+      await waitFor(() => {
+        expect(
+          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+        ).toHaveLength(1);
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('restores the item when Undo is clicked after ok & Awaiting Workspace from the list', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getAllByRole, getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+        ).toHaveLength(2);
+      });
+
+      fireEvent.click(
+        getAllByRole('button', { name: 'ok & Awaiting Workspace' })[0],
+      );
+
+      await waitFor(() => {
+        expect(
+          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+        ).toHaveLength(1);
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Undo' }));
+
+      await waitFor(() => {
+        expect(
+          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+        ).toHaveLength(2);
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage scroll reset', () => {

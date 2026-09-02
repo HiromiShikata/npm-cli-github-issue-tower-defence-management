@@ -470,6 +470,32 @@ describe('useConsoleActionQueue', () => {
     expect(result.current.offlineActions[0].id).toBe('b');
   });
 
+  it('calls revertAdvance when undo is called within the window', () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const revertAdvance = jest.fn();
+    const action = makeAction({ revertAdvance });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    act(() => {
+      result.current.undo();
+    });
+    expect(revertAdvance).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call revertAdvance when the timer commits the action', () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const revertAdvance = jest.fn();
+    const action = makeAction({ revertAdvance });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
+    expect(revertAdvance).not.toHaveBeenCalled();
+  });
+
   it('removes the action from localStorage when discardOfflineAction is called', async () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const action = makeAction({

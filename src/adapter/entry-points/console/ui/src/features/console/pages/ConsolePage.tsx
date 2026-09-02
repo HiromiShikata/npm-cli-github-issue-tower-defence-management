@@ -471,7 +471,9 @@ export const ConsolePage = () => {
         color: actionToastColor(input.kind),
         commit: input.commit,
         offline: input.offline,
+        revertAdvance: input.revertAdvance,
         advance: () => {
+          input.onAdvance?.();
           if (!input.skipAdvance && actionAdvances(input.kind, activeTab)) {
             if (
               timerMode &&
@@ -715,9 +717,23 @@ export const ConsolePage = () => {
         item,
         commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
         skipAdvance: true,
+        onAdvance: () => {
+          overlayState.patchOverlay(
+            overlayKeyForItem(item),
+            { done: true, status: { name: option.name, color: option.color } },
+            activeTab,
+          );
+        },
+        revertAdvance: () => {
+          overlayState.patchOverlay(
+            overlayKeyForItem(item),
+            { done: false },
+            activeTab,
+          );
+        },
       });
     },
-    [handleQueueAction, operations],
+    [handleQueueAction, operations, overlayState, activeTab],
   );
 
   return (
