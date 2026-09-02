@@ -903,11 +903,12 @@ export const handleReorderStory = async (
   const targetIndex = index !== -1 ? index : cachedIndex;
   const swapIndex = targetIndex + (direction === 'up' ? -1 : 1);
   const reordered = [...stories];
-  if (swapIndex >= 0 && swapIndex < reordered.length) {
-    const temp = reordered[targetIndex];
-    reordered[targetIndex] = reordered[swapIndex];
-    reordered[swapIndex] = temp;
+  if (swapIndex < 0 || swapIndex >= reordered.length) {
+    return badRequest('cannot move in that direction');
   }
+  const temp = reordered[targetIndex];
+  reordered[targetIndex] = reordered[swapIndex];
+  reordered[swapIndex] = temp;
   await projectRepository.updateStoryList(project, reordered);
   context.invalidateProject?.(pjcode);
   return ok();
