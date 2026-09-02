@@ -1026,6 +1026,7 @@ test('error toast renders with background styling when a merge operation fails',
     const errorToast = page.locator('.console-error-toast');
     await expect(errorToast).toBeVisible({ timeout: 8000 });
     await expect(errorToast).toHaveCSS('background-color', 'rgb(58, 21, 24)');
+    await expect(errorToast).toHaveCSS('position', 'fixed');
   } finally {
     await failHarness.stop();
   }

@@ -107,7 +107,7 @@ const REPO_NAME_WITH_OWNER =
   'HiromiShikata/npm-cli-github-issue-tower-defence-management';
 
 export const CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/867`;
-export const CONSOLE_E2E_CHORE_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/868`;
+const CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/868`;
 export const CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/911`;
 export const CONSOLE_E2E_INLINE_COMMENT_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/912`;
 export const CONSOLE_E2E_REFERENCE_LINK_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/845`;
@@ -587,7 +587,7 @@ const createStubIssueRepository = (
     url: string,
   ): Promise<RelatedPullRequest | null> =>
     url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL ||
-    url === CONSOLE_E2E_CHORE_PR_URL
+    url === CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL
       ? awaitingQualityCheckPullRequestMergeReady
       : null,
   getOpenPullRequestCiStatus: async (
@@ -615,7 +615,7 @@ const createStubIssueRepository = (
       urls.map((url) => [
         url,
         url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL ||
-        url === CONSOLE_E2E_CHORE_PR_URL
+        url === CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL
           ? awaitingQualityCheckPullRequest
           : null,
       ]),
