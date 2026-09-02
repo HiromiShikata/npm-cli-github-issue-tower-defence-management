@@ -472,7 +472,7 @@ export const ConsolePage = () => {
         commit: input.commit,
         offline: input.offline,
         advance: () => {
-          if (actionAdvances(input.kind, activeTab)) {
+          if (!input.skipAdvance && actionAdvances(input.kind, activeTab)) {
             if (
               timerMode &&
               isTimerExpired(projectMinutes[pjcode ?? ''] ?? 0)
@@ -714,6 +714,7 @@ export const ConsolePage = () => {
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
         commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+        skipAdvance: true,
       });
     },
     [handleQueueAction, operations],
