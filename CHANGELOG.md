@@ -1,3 +1,10 @@
+## [2.45.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.1...v2.45.2) (2026-09-02)
+
+
+### Bug Fixes
+
+* **usecase:** post comment before auto-closing stale pull requests ([#1957](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1957)) ([975b619](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/975b6196da61a3e39051a97504494762b5b14634)), closes [HiromiShikata/secretary#5127](https://github.com/HiromiShikata/secretary/issues/5127)
+
 ## [2.45.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.0...v2.45.1) (2026-09-02)
 
 
