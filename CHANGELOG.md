@@ -1,3 +1,10 @@
+# [2.45.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.44.0...v2.45.0) (2026-09-02)
+
+
+### Features
+
+* **console:** show agent task counts and hide zero-count agents in Awaiting Quality Check tab ([#1952](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1952)) ([ce504a8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ce504a8dbf9ce7bd241b8d91a64555633f24ab27)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#31256](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31256)
+
 # [2.44.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.43.2...v2.44.0) (2026-09-02)
 
 
