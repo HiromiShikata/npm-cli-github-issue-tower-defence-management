@@ -2190,8 +2190,18 @@ describe('consoleOperationApi', () => {
         story: {
           ...cachedStory,
           stories: [
-            { id: 'opt_b', name: 'Beta', color: 'GREEN' as const, description: '' },
-            { id: 'opt_c', name: 'Gamma', color: 'RED' as const, description: '' },
+            {
+              id: 'opt_b',
+              name: 'Beta',
+              color: 'GREEN' as const,
+              description: '',
+            },
+            {
+              id: 'opt_c',
+              name: 'Gamma',
+              color: 'RED' as const,
+              description: '',
+            },
           ],
         },
       };
