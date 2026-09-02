@@ -310,10 +310,7 @@ describe('formatMachineStatusLines', () => {
       load: [108.5, 120.25, 95.1],
       cycleMinutes: 999,
     });
-    expect(lines).toEqual([
-      '🔴M100% 🔴C100% 🔴D100% cy999',
-      '🔴LA 108 120 95',
-    ]);
+    expect(lines).toEqual(['🔴M100% 🔴C100% 🔴D100% cy999', '🔴LA 108 120 95']);
     for (const line of lines) {
       expect(codePointLength(line)).toBeLessThanOrEqual(
         PROJECT_ROW_WIDTH_BUDGET,
