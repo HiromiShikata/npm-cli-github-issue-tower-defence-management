@@ -3240,13 +3240,18 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('returns 502 when readme fetch returns null', async () => {
+    it('creates README and returns 200 when project has no README', async () => {
       fetchProjectReadmeSpy.mockResolvedValue(null);
       const response = await handleProjectMaxPreparingUpdate(context, 'token', {
         pjcode: 'acme',
         maximumPreparingIssuesCount: 3,
       });
-      expect(response.statusCode).toBe(502);
+      expect(response.statusCode).toBe(200);
+      expect(updateProjectV2ReadmeSpy).toHaveBeenCalledWith(
+        project.id,
+        expect.stringContaining('maximumPreparingIssuesCount'),
+        'token',
+      );
     });
 
     it('returns 502 when updateProjectV2Readme throws', async () => {

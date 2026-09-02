@@ -35,6 +35,7 @@ export const useConsoleProjectSettings = (
       return;
     }
     let cancelled = false;
+    setInputValue('');
     setIsLoading(true);
     setError(null);
     fetchProjectReadmeConfig(pjcode)

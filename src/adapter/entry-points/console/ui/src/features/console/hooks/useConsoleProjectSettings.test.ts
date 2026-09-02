@@ -74,6 +74,20 @@ describe('useConsoleProjectSettings', () => {
     expect(result.current.isLoading).toBe(false);
   });
 
+  it('open resets inputValue to empty before fetching so stale value is not shown on failed fetch', async () => {
+    fetchMock.mockRejectedValue(new Error('network failure'));
+    const { result } = renderHook(() => useConsoleProjectSettings('acme'));
+    act(() => {
+      result.current.changeInput('5');
+    });
+    act(() => {
+      result.current.open();
+    });
+    await waitFor(() => expect(result.current.error).toBe('network failure'));
+    expect(result.current.inputValue).toBe('');
+    expect(result.current.isLoading).toBe(false);
+  });
+
   it('open populates empty string when maximumPreparingIssuesCount is null', async () => {
     fetchMock.mockResolvedValue({ maximumPreparingIssuesCount: null });
     const { result } = renderHook(() => useConsoleProjectSettings('acme'));

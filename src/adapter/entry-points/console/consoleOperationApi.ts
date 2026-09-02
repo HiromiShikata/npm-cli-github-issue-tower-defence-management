@@ -1114,11 +1114,11 @@ export const handleProjectMaxPreparingUpdate = async (
     return binding;
   }
   const { project } = binding;
-  const readme = await fetchProjectReadme(project.url, githubToken);
-  if (readme === null) {
-    return badGateway('failed to fetch project README');
-  }
-  const updatedReadme = setProjectReadmeMaxPreparingIssuesCount(readme, count);
+  const existingReadme = await fetchProjectReadme(project.url, githubToken);
+  const updatedReadme = setProjectReadmeMaxPreparingIssuesCount(
+    existingReadme ?? '',
+    count,
+  );
   try {
     await updateProjectV2Readme(project.id, updatedReadme, githubToken);
   } catch (error) {
