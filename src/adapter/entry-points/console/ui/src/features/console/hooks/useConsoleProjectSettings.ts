@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchProjectReadmeConfig,
   postProjectMaxPreparingUpdate,
@@ -16,37 +16,91 @@ export type ConsoleProjectSettingsState = {
   save: (count: number) => Promise<void>;
 };
 
+const SETTINGS_HASH = '#settings';
+
+const isSettingsHash = (): boolean =>
+  typeof window !== 'undefined' && window.location.hash === SETTINGS_HASH;
+
 export const useConsoleProjectSettings = (
   pjcode: string | null,
 ): ConsoleProjectSettingsState => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(isSettingsHash);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState<string>('');
+  const prevHashRef = useRef<string>('');
 
-  const open = useCallback(async () => {
+  useEffect(() => {
+    if (!isOpen || pjcode === null) {
+      return;
+    }
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+    fetchProjectReadmeConfig(pjcode)
+      .then((config) => {
+        if (!cancelled) {
+          setInputValue(
+            config.maximumPreparingIssuesCount !== null
+              ? String(config.maximumPreparingIssuesCount)
+              : '',
+          );
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to load settings',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, pjcode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const sync = (): void => {
+      const nowSettings = window.location.hash === SETTINGS_HASH;
+      if (!nowSettings) {
+        setError(null);
+      }
+      setIsOpen(nowSettings);
+    };
+    window.addEventListener('popstate', sync);
+    window.addEventListener('hashchange', sync);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.removeEventListener('hashchange', sync);
+    };
+  }, []);
+
+  const open = useCallback(() => {
     if (pjcode === null) {
       return;
     }
-    setIsOpen(true);
-    setIsLoading(true);
-    setError(null);
-    try {
-      const config = await fetchProjectReadmeConfig(pjcode);
-      setInputValue(
-        config.maximumPreparingIssuesCount !== null
-          ? String(config.maximumPreparingIssuesCount)
-          : '',
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load settings');
-    } finally {
-      setIsLoading(false);
+    if (typeof window !== 'undefined') {
+      prevHashRef.current = window.location.hash;
+      window.history.pushState({}, '', SETTINGS_HASH);
     }
+    setIsOpen(true);
   }, [pjcode]);
 
   const close = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      const restoredHash = prevHashRef.current;
+      const url = `${window.location.pathname}${window.location.search}${restoredHash}`;
+      window.history.pushState({}, '', url);
+    }
     setIsOpen(false);
     setError(null);
   }, []);
@@ -67,6 +121,11 @@ export const useConsoleProjectSettings = (
           pjcode,
           maximumPreparingIssuesCount: count,
         });
+        if (typeof window !== 'undefined') {
+          const restoredHash = prevHashRef.current;
+          const url = `${window.location.pathname}${window.location.search}${restoredHash}`;
+          window.history.pushState({}, '', url);
+        }
         setIsOpen(false);
       } catch (err) {
         setError(

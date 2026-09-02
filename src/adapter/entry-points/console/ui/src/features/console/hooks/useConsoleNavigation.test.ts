@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import type { ConsoleTabName } from '../logic/types';
 import {
   parseItemKeyFromHash,
+  parseSettingsFromHash,
   parseTabFromPath,
   useConsoleNavigation,
 } from './useConsoleNavigation';
@@ -44,6 +45,24 @@ describe('parseItemKeyFromHash', () => {
 
   it('returns null when the hash is not an item hash', () => {
     expect(parseItemKeyFromHash('#other')).toBeNull();
+  });
+});
+
+describe('parseSettingsFromHash', () => {
+  it('returns true for the settings hash', () => {
+    expect(parseSettingsFromHash('#settings')).toBe(true);
+  });
+
+  it('returns false for an item hash', () => {
+    expect(parseSettingsFromHash('#item/PVTI_123')).toBe(false);
+  });
+
+  it('returns false for an empty hash', () => {
+    expect(parseSettingsFromHash('')).toBe(false);
+  });
+
+  it('returns false for an unrelated hash', () => {
+    expect(parseSettingsFromHash('#other')).toBe(false);
   });
 });
 
