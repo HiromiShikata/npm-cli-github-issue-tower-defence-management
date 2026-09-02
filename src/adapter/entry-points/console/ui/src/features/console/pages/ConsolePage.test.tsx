@@ -981,6 +981,34 @@ describe('ConsolePage auto-advance', () => {
       jest.useRealTimers();
     }
   });
+
+  it('stays on the list when ok & Awaiting Workspace is clicked from the list', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getAllByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
+        ).toHaveLength(2);
+      });
+      expect(window.location.hash).toBe('');
+
+      fireEvent.click(
+        getAllByRole('button', { name: 'ok & Awaiting Workspace' })[0],
+      );
+
+      act(() => {
+        jest.advanceTimersByTime(5100);
+      });
+
+      await waitFor(() => {
+        expect(window.location.hash).toBe('');
+      });
+      expect(document.querySelector('.console-detail-screen')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage scroll reset', () => {

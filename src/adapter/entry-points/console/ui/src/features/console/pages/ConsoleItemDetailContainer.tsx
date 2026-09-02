@@ -43,6 +43,7 @@ export type ConsoleQueueActionInput = {
   item: ConsoleListItem;
   commit: () => Promise<void>;
   offline?: ConsoleOfflinePayload;
+  skipAdvance?: boolean;
 };
 
 const itemOfflineBase = (item: ConsoleListItem) => ({
