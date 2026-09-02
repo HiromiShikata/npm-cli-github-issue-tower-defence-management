@@ -1166,7 +1166,10 @@ describe('webServer new routes integration', () => {
       resolveProject: async (pjcode) =>
         pjcode === 'acme' ? { pjcode, project: projectWithStory } : null,
       isPjcodeConfigured: (pjcode) => pjcode === 'acme',
-      resolveProjectRepository: () => ({ updateStoryList }),
+      resolveProjectRepository: () => ({
+        updateStoryList,
+        getProject: jest.fn().mockResolvedValue(projectWithStory),
+      }),
       port: 0,
     });
     try {
@@ -1246,7 +1249,10 @@ describe('webServer new routes integration', () => {
       resolveProject: async (pjcode) =>
         pjcode === 'acme' ? { pjcode, project: projectWithTwoStories } : null,
       isPjcodeConfigured: (pjcode) => pjcode === 'acme',
-      resolveProjectRepository: () => ({ updateStoryList }),
+      resolveProjectRepository: () => ({
+        updateStoryList,
+        getProject: jest.fn().mockResolvedValue(projectWithTwoStories),
+      }),
       port: 0,
     });
     try {
