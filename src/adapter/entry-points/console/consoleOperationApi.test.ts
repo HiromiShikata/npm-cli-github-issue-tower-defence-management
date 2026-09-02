@@ -2180,6 +2180,32 @@ describe('consoleOperationApi', () => {
       });
       expect(localUpdateStoryList).not.toHaveBeenCalled();
     });
+
+    it('returns 400 when the target option has been deleted server-side', async () => {
+      const cachedProject = projectWithOrderedStories();
+      const cachedStory = cachedProject.story;
+      if (cachedStory === null) throw new Error('cachedStory must not be null');
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          ...cachedStory,
+          stories: cachedStory.stories.filter((s) => s.id !== 'opt_b'),
+        },
+      };
+      const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+      const response = await handleReorderStory(
+        contextWithProjectRepository(() => ({
+          updateStoryList: localUpdateStoryList,
+          getProject: jest.fn().mockResolvedValue(freshProject),
+        })),
+        { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'story option not found' },
+      });
+      expect(localUpdateStoryList).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleStoryAdd', () => {

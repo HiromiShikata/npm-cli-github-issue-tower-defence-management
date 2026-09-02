@@ -898,8 +898,12 @@ export const handleReorderStory = async (
   }
   const projectRepository = context.resolveProjectRepository(project.url);
   const freshProject = await projectRepository.getProject(project.id);
-  const stories = freshProject?.story?.stories ?? cachedStories;
+  const freshStories = freshProject?.story?.stories;
+  const stories = freshStories ?? cachedStories;
   const index = stories.findIndex((s) => s.id === storyOptionId);
+  if (index === -1 && freshStories !== undefined) {
+    return badRequest('story option not found');
+  }
   const targetIndex = index !== -1 ? index : cachedIndex;
   const swapIndex = targetIndex + (direction === 'up' ? -1 : 1);
   const reordered = [...stories];
