@@ -164,13 +164,6 @@ export interface IssueRepository {
   get: (issueUrl: string, project: Project) => Promise<Issue | null>;
   update: (issue: Issue, project: Project) => Promise<void>;
   findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
-  // Resolves the related open pull request urls of many issues in one batched
-  // request, so a cycle sweeping N issues costs one request instead of N.
-  // An issue url is a key of the returned map only when the batch resolved it;
-  // a resolved issue with no related open pull request maps to an empty array,
-  // while an issue the batch could not resolve is absent from the map so the
-  // caller keeps it on the per-issue findRelatedOpenPRs path. Collapsing those
-  // two states would let an unresolved lookup read as a resolved empty result.
   findRelatedOpenPrUrls: (
     issueUrls: string[],
   ) => Promise<Map<string, string[]>>;
