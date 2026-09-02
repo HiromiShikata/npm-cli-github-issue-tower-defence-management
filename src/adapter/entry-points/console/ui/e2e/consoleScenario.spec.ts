@@ -65,7 +65,7 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await page.goto(harness.appUrl);
 
   await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
-  await expect(tabBadge(page, 'Awaiting Quality Check')).toHaveText('1');
+  await expect(tabBadge(page, 'Awaiting Quality Check')).toHaveText('2');
   await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
   await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
@@ -77,6 +77,10 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
     .locator('.console-op-button', { hasText: 'Approve' })
     .first();
   await expect(approveButton).toBeVisible();
+  await approveButton.click();
+
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(approveButton).toBeVisible({ timeout: 8000 });
   await approveButton.click();
 
   await expect(activeTabLabel(page)).toHaveText('Failed Preparation', {
@@ -950,9 +954,10 @@ test('prs agent filter shows counts, hides zero-task agents, narrows the list, a
   await expect(approveButton).toBeVisible();
   await approveButton.click();
 
-  await expect(activeTabLabel(page)).toHaveText('Failed Preparation', {
-    timeout: 8000,
-  });
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).toBeVisible({ timeout: 8000 });
 });
 
 test('shows Delete Story in the danger zone of a story-labeled item detail page, confirms deletion, and closes the panel', async ({
