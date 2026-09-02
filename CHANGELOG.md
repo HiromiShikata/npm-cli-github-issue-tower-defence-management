@@ -1,3 +1,10 @@
+## [2.43.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.43.0...v2.43.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** cap prefetch to free slots and replace findRelatedOpenPRs with in-memory mapping ([#1949](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1949)) ([794b2a7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/794b2a7e1f5e862b630214ac3f76589798ffc61e))
+
 # [2.43.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.42.0...v2.43.0) (2026-09-02)
 
 
