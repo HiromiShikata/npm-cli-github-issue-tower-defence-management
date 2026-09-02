@@ -1,3 +1,10 @@
+## [2.46.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.2...v2.46.3) (2026-09-02)
+
+
+### Bug Fixes
+
+* **console:** fetch fresh story options before full-replace mutations ([#1964](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1964)) ([4ff81b1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4ff81b1271ad130d2a8a4e2f3867c25437e72cfc))
+
 ## [2.46.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.1...v2.46.2) (2026-09-02)
 
 
