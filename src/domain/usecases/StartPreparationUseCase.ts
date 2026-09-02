@@ -585,7 +585,14 @@ export class StartPreparationUseCase {
               skipAgentAuthoredIssues,
             ) === null,
         )
-        .map((issue) => issue.url),
+        .map((issue) => issue.url)
+        .slice(
+          0,
+          Math.max(
+            0,
+            effectiveMaxPreparingIssuesCount - currentPreparationIssueCount,
+          ),
+        ),
     );
 
     for (

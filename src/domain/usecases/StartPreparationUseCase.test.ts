@@ -7328,6 +7328,96 @@ describe('StartPreparationUseCase', () => {
       expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
     });
   });
+
+  it('only prefetches branch sources for candidates within the free preparation slots', async () => {
+    // 5 candidates, 2 free preparation slots (maximumPreparingIssuesCount=2, currentPreparation=0).
+    const candidates = Array.from({ length: 5 }, (_, i) =>
+      createMockIssue({
+        number: i + 1,
+        url: `https://github.com/user/repo/issues/${i + 1}`,
+        itemId: `item-${i + 1}`,
+        title: `Candidate ${i + 1}`,
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['manager-user'],
+      }),
+    );
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap(candidates),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 2,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledTimes(2);
+  });
+
+  it('fetches no branch sources when free preparation slots is zero or negative', async () => {
+    // 5 candidates, 2 existing Preparation issues filling the configured maximum of 2.
+    const preparingIssues = Array.from({ length: 2 }, (_, i) =>
+      createMockIssue({
+        number: i + 100,
+        url: `https://github.com/user/repo/issues/${i + 100}`,
+        itemId: `prep-item-${i}`,
+        status: 'Preparation',
+        author: 'testuser',
+        assignees: ['manager-user'],
+      }),
+    );
+    const candidates = Array.from({ length: 5 }, (_, i) =>
+      createMockIssue({
+        number: i + 1,
+        url: `https://github.com/user/repo/issues/${i + 1}`,
+        itemId: `item-${i + 1}`,
+        title: `Candidate ${i + 1}`,
+        status: 'Awaiting Workspace',
+        author: 'testuser',
+        assignees: ['manager-user'],
+      }),
+    );
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([...preparingIssues, ...candidates]),
+    );
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: 2,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {
