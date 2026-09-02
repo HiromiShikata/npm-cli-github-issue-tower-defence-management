@@ -1122,7 +1122,11 @@ describe('StartPreparationUseCase', () => {
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssues[0], olderPRBoardItem, newerPRBoardItem]),
+      createMockStoryObjectMap([
+        awaitingIssues[0],
+        olderPRBoardItem,
+        newerPRBoardItem,
+      ]),
     );
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
@@ -1177,7 +1181,8 @@ describe('StartPreparationUseCase', () => {
     ]);
   });
   it('should not treat a cross-repository PR as duplicate when a same-repository PR exists', async () => {
-    const issueUrl4290 = 'https://github.com/HiromiShikata/secretary/issues/4290';
+    const issueUrl4290 =
+      'https://github.com/HiromiShikata/secretary/issues/4290';
     const awaitingIssues: Issue[] = [
       createMockIssue({
         url: issueUrl4290,
@@ -1206,7 +1211,11 @@ describe('StartPreparationUseCase', () => {
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssues[0], sameRepoPRBoardItem, crossRepoPRBoardItem]),
+      createMockStoryObjectMap([
+        awaitingIssues[0],
+        sameRepoPRBoardItem,
+        crossRepoPRBoardItem,
+      ]),
     );
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
@@ -1268,7 +1277,11 @@ describe('StartPreparationUseCase', () => {
     });
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssues[0], olderPRBoardItem, newerPRBoardItem]),
+      createMockStoryObjectMap([
+        awaitingIssues[0],
+        olderPRBoardItem,
+        newerPRBoardItem,
+      ]),
     );
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')
@@ -7955,11 +7968,15 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
     );
 
     expect(branchSources.get(issueUrl)?.openPullRequest).toBeNull();
-    expect(branchSources.get(issueUrl)?.relatedOpenPullRequests).toHaveLength(1);
+    expect(branchSources.get(issueUrl)?.relatedOpenPullRequests).toHaveLength(
+      1,
+    );
     expect(branchSources.get(issueUrl)?.relatedOpenPullRequests[0].url).toBe(
       'https://github.com/owner/repo/pull/100',
     );
-    expect(branchSources.get(issueUrl)?.relatedOpenPullRequests[0].branchName).toBe('i42');
+    expect(
+      branchSources.get(issueUrl)?.relatedOpenPullRequests[0].branchName,
+    ).toBe('i42');
   });
 
   it('resolves pull request urls through the open pull request lookup', async () => {

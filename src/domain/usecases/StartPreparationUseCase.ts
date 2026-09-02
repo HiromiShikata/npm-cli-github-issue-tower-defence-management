@@ -256,8 +256,8 @@ export class StartPreparationUseCase {
         const conventionalBranchName = issueNumberMatch
           ? `i${issueNumberMatch[1]}`
           : null;
-        const relatedOpenPullRequests: RelatedPullRequest[] = relatedPrUrls
-          .map((prUrl) => {
+        const relatedOpenPullRequests: RelatedPullRequest[] = relatedPrUrls.map(
+          (prUrl) => {
             const prIssue = boardIssueByUrl.get(prUrl);
             return {
               url: prUrl,
@@ -272,7 +272,8 @@ export class StartPreparationUseCase {
               isBranchOutOfDate: false,
               missingRequiredCheckNames: [],
             };
-          });
+          },
+        );
         branchSourceByIssueUrl.set(issueUrl, {
           openPullRequest: null,
           relatedOpenPullRequests,

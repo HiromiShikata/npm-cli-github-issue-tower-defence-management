@@ -119,5 +119,4 @@ export class ConflictedIssueRevertUseCase {
       await this.issueCommentRepository.createComment(issue, 'conflict');
     }
   };
-
 }
