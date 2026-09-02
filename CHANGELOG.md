@@ -1,3 +1,10 @@
+## [2.45.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.3...v2.45.4) (2026-09-02)
+
+
+### Bug Fixes
+
+* allow saving project settings when README is null and reset stale input on reopen ([#1954](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1954)) ([3e111bd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3e111bdc3d43bb6e6fd0d3c281002f0ef3c05a84)), closes [HiromiShikata/umino-corporait-operation#31260](https://github.com/HiromiShikata/umino-corporait-operation/issues/31260)
+
 ## [2.45.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.2...v2.45.3) (2026-09-02)
 
 
