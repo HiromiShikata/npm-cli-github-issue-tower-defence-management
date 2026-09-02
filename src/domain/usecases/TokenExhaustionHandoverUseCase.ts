@@ -148,6 +148,27 @@ export class TokenExhaustionHandoverUseCase {
           continue;
         }
 
+        if (session.kind === 'bareNameLeader') {
+          if (!input.enabled) {
+            console.log(
+              `Token exhaustion handover: would kill and relaunch ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} (dry-run, enabled=false)`,
+            );
+            delete nextEntries[stateKey];
+            continue;
+          }
+          await this.forceKill(session, {
+            signaledAtEpoch: nowEpochSeconds,
+            pid: session.pid,
+          });
+          await this.relaunchBareNameLeader(session, relaunchedLeaderNames);
+          killedSessionNames.push(this.displayName(session));
+          console.log(
+            `Token exhaustion handover: killed and relaunched ${this.displayName(session)} kind=${session.kind} reason=${verdict.reason} enabled=${input.enabled}`,
+          );
+          delete nextEntries[stateKey];
+          continue;
+        }
+
         const entry = nextEntries[stateKey];
         if (entry === undefined) {
           if (input.enabled) {
