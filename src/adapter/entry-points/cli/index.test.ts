@@ -23,6 +23,7 @@ import {
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import { DoraMetricsWeeklyMeasureUseCase } from '../../../domain/usecases/DoraMetricsWeeklyMeasureUseCase';
 import { ownerCallFileRelativePath } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { toTmuxSessionName } from '../../../domain/usecases/intmux/InTmuxByHumanSessionReconcileUseCase';
 
@@ -56,8 +57,15 @@ jest.mock('../../repositories/GraphqlProjectRepository', () => ({
 jest.mock('../../repositories/issue/ApiV3IssueRepository', () => ({
   ApiV3IssueRepository: jest.fn().mockImplementation(() => ({})),
 }));
+const mockCreateNewIssue = jest.fn().mockResolvedValue(1);
 jest.mock('../../repositories/issue/RestIssueRepository', () => ({
-  RestIssueRepository: jest.fn().mockImplementation(() => ({})),
+  RestIssueRepository: jest.fn().mockImplementation(() => ({
+    createNewIssue: mockCreateNewIssue,
+  })),
+}));
+jest.mock('../../../domain/usecases/DoraMetricsWeeklyMeasureUseCase');
+jest.mock('../../repositories/RestGitHubActionsRepository', () => ({
+  RestGitHubActionsRepository: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('../../repositories/issue/GraphqlProjectItemRepository', () => ({
   GraphqlProjectItemRepository: jest.fn().mockImplementation(() => ({})),
@@ -2851,6 +2859,189 @@ mysteryKey: 'value'
       expect(handleFatalError).not.toHaveBeenCalled();
 
       stdoutSpy.mockRestore();
+    });
+  });
+
+  describe('doraMetrics', () => {
+    const doraConfigYaml = YAML.stringify({
+      reportOwner: 'HiromiShikata',
+      reportRepo: 'umino-corporait-operation',
+      projects: [
+        {
+          name: 'xcare',
+          owner: 'xcare-medical',
+          repo: 'xcare-platform',
+          deployWorkflowFiles: ['deploy.yml'],
+          deployBranch: 'production',
+          prBaseBranch: 'production',
+          mttrLabels: ['hotfix', 'incident'],
+          ghTokenEnvVar: null,
+        },
+      ],
+    });
+
+    it('calls use case run with project config and date range from env', async () => {
+      jest.clearAllMocks();
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(function (
+        this: DoraMetricsWeeklyMeasureUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      jest.mocked(fs.readFileSync).mockReturnValueOnce(doraConfigYaml);
+
+      process.env['GH_TOKEN'] = 'test-token';
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'doraMetrics',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledTimes(1);
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reportOwner: 'HiromiShikata',
+          reportRepo: 'umino-corporait-operation',
+          projects: [expect.objectContaining({ name: 'xcare' })],
+        }),
+      );
+    });
+
+    it('uses --since and --until options when provided', async () => {
+      jest.clearAllMocks();
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(function (
+        this: DoraMetricsWeeklyMeasureUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      jest.mocked(fs.readFileSync).mockReturnValueOnce(doraConfigYaml);
+
+      process.env['GH_TOKEN'] = 'test-token';
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'doraMetrics',
+        '--configFilePath',
+        configFilePath,
+        '--since',
+        '2026-01-01T00:00:00Z',
+        '--until',
+        '2026-01-08T00:00:00Z',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          since: new Date('2026-01-01T00:00:00Z'),
+          until: new Date('2026-01-08T00:00:00Z'),
+        }),
+      );
+    });
+
+    it('passes token override from ghTokenEnvVar to RestGitHubActionsRepository', async () => {
+      const { RestGitHubActionsRepository } = jest.requireMock<{
+        RestGitHubActionsRepository: jest.Mock;
+      }>('../../repositories/RestGitHubActionsRepository');
+      jest.clearAllMocks();
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      jest.mocked(DoraMetricsWeeklyMeasureUseCase).mockImplementation(function (
+        this: DoraMetricsWeeklyMeasureUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const configWithTokenEnvVar = YAML.stringify({
+        reportOwner: 'HiromiShikata',
+        reportRepo: 'umino-corporait-operation',
+        projects: [
+          {
+            name: 'CMG',
+            owner: 'meta-site',
+            repo: 'hr-audit-mock',
+            deployWorkflowFiles: ['deploy.yml'],
+            deployBranch: 'main',
+            prBaseBranch: 'main',
+            mttrLabels: ['hotfix'],
+            ghTokenEnvVar: 'GH_CMG_TOKEN',
+          },
+        ],
+      });
+      jest.mocked(fs.readFileSync).mockReturnValueOnce(configWithTokenEnvVar);
+
+      process.env['GH_TOKEN'] = 'default-token';
+      process.env['GH_CMG_TOKEN'] = 'cmg-override-token';
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'doraMetrics',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(RestGitHubActionsRepository).toHaveBeenCalledWith(
+        'default-token',
+        { 'meta-site': 'cmg-override-token' },
+      );
+
+      delete process.env['GH_CMG_TOKEN'];
+    });
+
+    it('exits with error when ghTokenEnvVar is set but env var is absent', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const processExitSpy = jest
+        .spyOn(process, 'exit')
+        .mockImplementation(() => {
+          throw new Error('process.exit called');
+        });
+
+      const configMissingEnvVar = YAML.stringify({
+        reportOwner: 'HiromiShikata',
+        reportRepo: 'umino-corporait-operation',
+        projects: [
+          {
+            name: 'CMG',
+            owner: 'meta-site',
+            repo: 'hr-audit-mock',
+            deployWorkflowFiles: ['deploy.yml'],
+            deployBranch: 'main',
+            prBaseBranch: 'main',
+            mttrLabels: ['hotfix'],
+            ghTokenEnvVar: 'GH_CMG_TOKEN',
+          },
+        ],
+      });
+      jest.mocked(fs.readFileSync).mockReturnValueOnce(configMissingEnvVar);
+
+      process.env['GH_TOKEN'] = 'default-token';
+      delete process.env['GH_CMG_TOKEN'];
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'doraMetrics',
+          '--configFilePath',
+          configFilePath,
+        ]),
+      ).rejects.toThrow('process.exit called');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('GH_CMG_TOKEN'),
+      );
+      expect(processExitSpy).toHaveBeenCalledWith(1);
+
+      consoleErrorSpy.mockRestore();
+      processExitSpy.mockRestore();
     });
   });
 

@@ -29,6 +29,7 @@ Commands:
   attachOrCreate [options]              Attach to an existing registered tmux session for the issue URL, or create a new one
   ownerCallFileAppend [options]         Append one owner call to the per-session owner call file (writes nothing to stdout)
   ownerCallFileDelete [options]         Delete the per-session owner call file (writes nothing to stdout; an already absent file is not an error)
+  doraMetrics [options]                 Measure DORA metrics for configured projects and create a weekly report issue
   help [command]                        display help for command
 
 Options for schedule:
@@ -241,6 +242,15 @@ TOKEN=$(npx github-issue-tower-defence-management selectLiveSessionOauthToken --
 npx github-issue-tower-defence-management countInTmuxByHumanSessionsPerToken --configFilePath ./preparator-config.yml --tokenListJsonPath ./claudeCodeOauthTokenList.json
 ```
 
+```
+npx github-issue-tower-defence-management doraMetrics --configFilePath ./dora-metrics.yml
+```
+
+Options for doraMetrics:
+-c, --configFilePath <path> Path to DORA metrics YAML config file (required)
+--since <date> Start of measurement period (ISO 8601 UTC, default: 7 days before --until)
+--until <date> End of measurement period (ISO 8601 UTC, default: now)
+
 ## Config
 
 ### Schedule Command Config
@@ -349,6 +359,55 @@ dailySecurityScan:
   enableKevNvdReport: true
   kevReportRepo: 'security-reports'
 ```
+
+### doraMetrics Config
+
+The YAML config file passed to `--configFilePath` must contain the following structure:
+
+```yaml
+reportOwner: string # GitHub owner (user or org) of the repository where the weekly report issue is created (required)
+reportRepo: string # Repository name where the weekly report issue is created (required)
+projects: # Array of projects to measure (required)
+  - name: string # Display name of the project used in the report (required)
+    owner: string # GitHub owner of the project repository (required)
+    repo: string # GitHub repository name of the project (required)
+    deployWorkflowFiles: # Workflow file names (e.g. deploy.yml) that represent a production deployment. When non-empty, deploy frequency = count of workflow runs; when empty, deploy frequency = count of merged pull requests
+      - string
+    deployBranch: string | null # Branch filter for workflow run queries (null = all branches)
+    prBaseBranch: string | null # Base branch filter for pull request queries (null = all branches)
+    mttrLabels: # Issue labels used to identify incidents for MTTR calculation. When empty, MTTR is null
+      - string
+    ghTokenEnvVar: string | null # Name of an environment variable holding a GitHub token for this project's owner. When null, the default GH_TOKEN is used
+```
+
+Example:
+
+```yaml
+reportOwner: my-org
+reportRepo: dora-reports
+projects:
+  - name: My App
+    owner: my-org
+    repo: my-app
+    deployWorkflowFiles:
+      - deploy.yml
+    deployBranch: main
+    prBaseBranch: main
+    mttrLabels:
+      - incident
+      - hotfix
+    ghTokenEnvVar: null
+  - name: Partner Service
+    owner: partner-org
+    repo: partner-service
+    deployWorkflowFiles: []
+    deployBranch: null
+    prBaseBranch: main
+    mttrLabels: []
+    ghTokenEnvVar: GH_PARTNER_TOKEN
+```
+
+`GH_TOKEN` must be set in the environment. When `ghTokenEnvVar` is non-null for a project, that environment variable must also be set; the CLI exits with code 1 if it is absent.
 
 ### startDaemon and notifyFinishedIssuePreparation Commands Config
 
