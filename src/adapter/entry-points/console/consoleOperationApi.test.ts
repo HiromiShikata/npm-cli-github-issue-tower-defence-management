@@ -2142,15 +2142,17 @@ describe('consoleOperationApi', () => {
         { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
       );
       expect(response.statusCode).toBe(200);
-      expect(localUpdateStoryList).toHaveBeenCalledWith(
-        expect.anything(),
-        [
-          { id: 'opt_b', name: 'Beta', color: 'GREEN', description: '' },
-          { id: 'opt_a', name: 'Alpha', color: 'BLUE', description: '' },
-          { id: 'opt_c', name: 'Gamma', color: 'RED', description: '' },
-          { id: 'opt_server_only', name: 'Server only', color: 'PURPLE', description: '' },
-        ],
-      );
+      expect(localUpdateStoryList).toHaveBeenCalledWith(expect.anything(), [
+        { id: 'opt_b', name: 'Beta', color: 'GREEN', description: '' },
+        { id: 'opt_a', name: 'Alpha', color: 'BLUE', description: '' },
+        { id: 'opt_c', name: 'Gamma', color: 'RED', description: '' },
+        {
+          id: 'opt_server_only',
+          name: 'Server only',
+          color: 'PURPLE',
+          description: '',
+        },
+      ]);
     });
 
     it('returns 400 when the target option is at a boundary in fresh data even though cached data allowed the move', async () => {
@@ -2166,12 +2168,10 @@ describe('consoleOperationApi', () => {
       };
       const localUpdateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithProjectRepository(
-          () => ({
-            updateStoryList: localUpdateStoryList,
-            getProject: jest.fn().mockResolvedValue(freshProject),
-          }),
-        ),
+        contextWithProjectRepository(() => ({
+          updateStoryList: localUpdateStoryList,
+          getProject: jest.fn().mockResolvedValue(freshProject),
+        })),
         { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
       );
       expect(response).toEqual({
