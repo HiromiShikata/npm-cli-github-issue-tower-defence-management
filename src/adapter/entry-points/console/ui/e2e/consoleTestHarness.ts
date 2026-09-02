@@ -614,7 +614,8 @@ const createStubIssueRepository = (
     new Map(
       urls.map((url) => [
         url,
-        url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
+        url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL ||
+        url === CONSOLE_E2E_CHORE_PR_URL
           ? awaitingQualityCheckPullRequest
           : null,
       ]),
