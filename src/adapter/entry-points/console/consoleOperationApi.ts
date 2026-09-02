@@ -798,7 +798,10 @@ export const handleStoryColor = async (
   const projectRepository = context.resolveProjectRepository(project.url);
   const freshProject = await projectRepository.getProject(project.id);
   const freshStory = freshProject?.story ?? project.story;
-  const projectWithFreshStory = { ...(freshProject ?? project), story: freshStory };
+  const projectWithFreshStory = {
+    ...(freshProject ?? project),
+    story: freshStory,
+  };
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   await context
