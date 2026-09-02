@@ -1,6 +1,8 @@
 *.xml
 .gitignore
 .prettierignore
+.gitattributes
+.gitleaks.toml
 .gitkeep
 *.sh
 .idea
@@ -8,6 +10,7 @@ reports
 dist
 bin
 .npmignore
+.npmrc
 *.map
 CHANGELOG.md
 .env
@@ -19,3 +22,4 @@ LICENSE
 *.diff
 *.log
 CODEOWNERS
+src/adapter/entry-points/console/ui
