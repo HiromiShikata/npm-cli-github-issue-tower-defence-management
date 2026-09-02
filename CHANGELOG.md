@@ -1,3 +1,10 @@
+## [2.45.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.2...v2.45.3) (2026-09-02)
+
+
+### Bug Fixes
+
+* **console:** stay on list when ok & Awaiting Workspace is clicked from PR list ([#1956](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1956)) ([4960a2d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4960a2d822204612194583102a0ac1dd7dfebe26)), closes [HiromiShikata/umino-corporait-operation#31272](https://github.com/HiromiShikata/umino-corporait-operation/issues/31272)
+
 ## [2.45.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.1...v2.45.2) (2026-09-02)
 
 
