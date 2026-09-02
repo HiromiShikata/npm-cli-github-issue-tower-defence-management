@@ -862,6 +862,7 @@ export const startConsoleE2eHarness = async (options?: {
         : {}),
     },
     resolveProjectRepository: (_projectUrl) => ({
+      getProject: async (_projectId) => project,
       updateStoryList: async (_updatedProject, stories) => {
         const currentStories = project.story?.stories ?? [];
         const currentCount = currentStories.length;

@@ -2093,12 +2093,14 @@ describe('consoleOperationApi', () => {
 
     it('includes story options added server-side after cache was populated in the reordered list', async () => {
       const cachedProject = projectWithOrderedStories();
+      const cachedStory = cachedProject.story;
+      if (cachedStory === null) throw new Error('cachedStory must not be null');
       const serverFreshProject: Project = {
         ...cachedProject,
         story: {
-          ...cachedProject.story!,
+          ...cachedStory,
           stories: [
-            ...cachedProject.story!.stories,
+            ...cachedStory.stories,
             {
               id: 'opt_server_only',
               name: 'Server only',
@@ -2117,10 +2119,10 @@ describe('consoleOperationApi', () => {
         { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
       );
       expect(response.statusCode).toBe(200);
-      const [, storyList] = localUpdateStoryList.mock.calls[0];
-      expect(
-        storyList.find((s: { id: string }) => s.id === 'opt_server_only'),
-      ).toBeDefined();
+      expect(localUpdateStoryList).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.arrayContaining([expect.objectContaining({ id: 'opt_server_only' })]),
+      );
     });
   });
 
@@ -2353,12 +2355,14 @@ describe('consoleOperationApi', () => {
 
     it('includes story options added server-side after cache was populated when adding a story', async () => {
       const cachedProject = buildProjectWithStories();
+      const cachedStory = cachedProject.story;
+      if (cachedStory === null) throw new Error('cachedStory must not be null');
       const serverFreshProject: Project = {
         ...cachedProject,
         story: {
-          ...cachedProject.story!,
+          ...cachedStory,
           stories: [
-            ...cachedProject.story!.stories,
+            ...cachedStory.stories,
             {
               id: 'opt_server_only',
               name: 'Server only story',
@@ -2378,13 +2382,13 @@ describe('consoleOperationApi', () => {
         }),
       };
       await handleStoryAdd(ctx, { pjcode: 'acme', storyName: 'New story' });
-      const [, storyList] = localUpdateStoryList.mock.calls[0];
-      expect(
-        storyList.find((s: { id: string }) => s.id === 'opt_server_only'),
-      ).toBeDefined();
-      expect(
-        storyList.find((s: { name: string }) => s.name === 'New story'),
-      ).toBeDefined();
+      expect(localUpdateStoryList).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'opt_server_only' }),
+          expect.objectContaining({ name: 'New story' }),
+        ]),
+      );
     });
   });
 
@@ -2620,12 +2624,14 @@ describe('consoleOperationApi', () => {
 
     it('includes story options added server-side after cache was populated when changing a color', async () => {
       const cachedProject = projectWithStory();
+      const cachedStory = cachedProject.story;
+      if (cachedStory === null) throw new Error('cachedStory must not be null');
       const serverFreshProject: Project = {
         ...cachedProject,
         story: {
-          ...cachedProject.story!,
+          ...cachedStory,
           stories: [
-            ...cachedProject.story!.stories,
+            ...cachedStory.stories,
             {
               id: 'opt_server_only',
               name: 'Server only story',
@@ -3056,12 +3062,14 @@ describe('consoleOperationApi', () => {
 
     it('preserves story options added server-side after cache was populated when deleting a story', async () => {
       const cachedProject = projectWithStoriesToDelete();
+      const cachedStory = cachedProject.story;
+      if (cachedStory === null) throw new Error('cachedStory must not be null');
       const serverFreshProject: Project = {
         ...cachedProject,
         story: {
-          ...cachedProject.story!,
+          ...cachedStory,
           stories: [
-            ...cachedProject.story!.stories,
+            ...cachedStory.stories,
             {
               id: 'opt_server_only',
               name: 'Server only story',
@@ -3081,13 +3089,14 @@ describe('consoleOperationApi', () => {
         }),
       };
       await handleDeleteStory(ctx, { pjcode: 'acme', storyOptionId: 'opt_remove' });
-      const [, storyList] = localUpdateStoryList.mock.calls[0];
-      expect(
-        storyList.find((s: { id: string }) => s.id === 'opt_server_only'),
-      ).toBeDefined();
-      expect(
-        storyList.find((s: { id: string }) => s.id === 'opt_remove'),
-      ).toBeUndefined();
+      expect(localUpdateStoryList).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.arrayContaining([expect.objectContaining({ id: 'opt_server_only' })]),
+      );
+      expect(localUpdateStoryList).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.arrayContaining([expect.objectContaining({ id: 'opt_remove' })]),
+      );
     });
   });
 
