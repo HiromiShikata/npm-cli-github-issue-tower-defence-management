@@ -1,3 +1,10 @@
+## [2.46.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.1...v2.46.2) (2026-09-02)
+
+
+### Bug Fixes
+
+* **dora-metrics:** exclude failed runs from change lead time calculation ([#1948](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1948)) ([3435944](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3435944069677be6802a17dba1379d9eeccf173e))
+
 ## [2.46.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.0...v2.46.1) (2026-09-02)
 
 
