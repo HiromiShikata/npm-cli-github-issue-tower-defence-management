@@ -2180,6 +2180,33 @@ describe('consoleOperationApi', () => {
       });
       expect(localUpdateStoryList).not.toHaveBeenCalled();
     });
+
+    it('returns 400 when fresh data places the target at a boundary where it cannot move in the requested direction', async () => {
+      const cachedProject = projectWithOrderedStories();
+      const cachedStory = cachedProject.story;
+      if (cachedStory === null) throw new Error('cachedStory must not be null');
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          ...cachedStory,
+          stories: [
+            { id: 'opt_b', name: 'Beta', color: 'GREEN' as const, description: '' },
+            { id: 'opt_c', name: 'Gamma', color: 'RED' as const, description: '' },
+          ],
+        },
+      };
+      const updateStoryList = jest.fn().mockResolvedValue([]);
+      const getProject = jest.fn().mockResolvedValue(freshProject);
+      const response = await handleReorderStory(
+        contextWithProjectRepository(() => ({ updateStoryList, getProject })),
+        { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'cannot move in that direction' },
+      });
+      expect(updateStoryList).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleStoryAdd', () => {
@@ -3406,6 +3433,40 @@ describe('consoleOperationApi', () => {
       });
 
       expect(issueRepository.updateIssue).not.toHaveBeenCalled();
+    });
+
+    it('includes story options added server-side after cache was populated in the renamed list', async () => {
+      const p = projectWithStoriesToRename();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const freshProject: Project = {
+        ...p,
+        story: {
+          ...story,
+          stories: [
+            ...story.stories,
+            {
+              id: 'opt_server_only',
+              name: 'Server only',
+              color: 'PURPLE' as const,
+              description: '',
+            },
+          ],
+        },
+      };
+      renameGetProject.mockResolvedValue(freshProject);
+      const response = await handleStoryRename(renameStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        newName: 'Alpha renamed',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(updateStoryList).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'opt_server_only' }),
+        ]),
+      );
     });
   });
 
