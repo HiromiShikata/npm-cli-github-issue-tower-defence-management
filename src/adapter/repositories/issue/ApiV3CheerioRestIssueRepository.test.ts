@@ -7,6 +7,7 @@ import type { LocalStorageCacheRepository } from '../LocalStorageCacheRepository
 import type { LocalStorageRepository } from '../LocalStorageRepository';
 import {
   ApiV3CheerioRestIssueRepository,
+  RELATED_OPEN_PRS_CACHE_TTL_MS,
   REQUIRED_CHECKS_CACHE_TTL_MS,
 } from './ApiV3CheerioRestIssueRepository';
 import type { ApiV3IssueRepository } from './ApiV3IssueRepository';
@@ -4749,6 +4750,82 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'https://github.com/HiromiShikata/test-repository/issues/99999',
         ),
       );
+    });
+  });
+
+  describe('findRelatedOpenPRs TTL cache', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    const buildEmptyTimelineResponse = () => ({
+      data: {
+        repository: {
+          issue: {
+            timelineItems: {
+              pageInfo: { endCursor: null, hasNextPage: false },
+              nodes: [],
+            },
+          },
+        },
+      },
+    });
+
+    it('returns cached result and issues no additional GraphQL query on second call within TTL', async () => {
+      const { repository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
+
+      const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
+      mockFetchRoutes({ timeline: timelineFn });
+
+      const issueUrl =
+        'https://github.com/HiromiShikata/secretary/issues/100';
+      await repository.findRelatedOpenPRs(issueUrl);
+      const result = await repository.findRelatedOpenPRs(issueUrl);
+
+      expect(timelineFn).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([]);
+    });
+
+    it('issues a new GraphQL query after the TTL has elapsed', async () => {
+      const { repository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const t0 = new Date('2026-01-01T00:00:00.000Z');
+      const tExpired = new Date(
+        t0.getTime() + RELATED_OPEN_PRS_CACHE_TTL_MS,
+      );
+      dateRepository.now
+        .mockResolvedValueOnce(t0)
+        .mockResolvedValueOnce(tExpired);
+
+      const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
+      mockFetchRoutes({ timeline: timelineFn });
+
+      const issueUrl =
+        'https://github.com/HiromiShikata/secretary/issues/100';
+      await repository.findRelatedOpenPRs(issueUrl);
+      await repository.findRelatedOpenPRs(issueUrl);
+
+      expect(timelineFn).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not share cache between different issue URLs', async () => {
+      const { repository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
+
+      const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
+      mockFetchRoutes({ timeline: timelineFn });
+
+      await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/100',
+      );
+      await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/200',
+      );
+
+      expect(timelineFn).toHaveBeenCalledTimes(2);
     });
   });
 

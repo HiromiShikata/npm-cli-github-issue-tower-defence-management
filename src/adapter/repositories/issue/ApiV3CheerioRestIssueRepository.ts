@@ -49,6 +49,7 @@ import {
 export const FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
+export const RELATED_OPEN_PRS_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const SELF_AUTHORED_REVIEW_REFUSAL =
   'Can not request changes on your own pull request';
@@ -610,6 +611,11 @@ export class ApiV3CheerioRestIssueRepository
 
   getLastIssuesFetchedAt = (projectId: Project['id']): string | null =>
     this.lastIssuesFetchedAtByProjectId.get(projectId) ?? null;
+
+  private readonly relatedOpenPrsCache = new Map<
+    string,
+    { fetchedAtMs: number; prs: RelatedPullRequest[] }
+  >();
 
   private fetchWithRateLimitRetry = (
     request: () => Promise<Response>,
@@ -1853,6 +1859,12 @@ export class ApiV3CheerioRestIssueRepository
       );
     }
 
+    const nowMs = (await this.dateRepository.now()).getTime();
+    const cached = this.relatedOpenPrsCache.get(issueUrl);
+    if (cached && nowMs - cached.fetchedAtMs < RELATED_OPEN_PRS_CACHE_TTL_MS) {
+      return cached.prs;
+    }
+
     const query = `
       query IssueRelatedOpenPullRequests($owner: String!, $repo: String!, $issueNumber: Int!, $after: String) {
         repository(owner: $owner, name: $repo) {
@@ -2034,7 +2046,9 @@ export class ApiV3CheerioRestIssueRepository
       after = issueData.timelineItems.pageInfo.endCursor;
     }
 
-    return Array.from(relatedPRsMap.values());
+    const prs = Array.from(relatedPRsMap.values());
+    this.relatedOpenPrsCache.set(issueUrl, { fetchedAtMs: nowMs, prs });
+    return prs;
   };
 
   getAllOpened = async (project: Project): Promise<Issue[]> => {
