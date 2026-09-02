@@ -330,6 +330,7 @@ type RestPullRequestCiStatusResponse = {
   html_url: string;
   state: string;
   draft: boolean;
+  created_at: string;
   mergeable: boolean | null;
   head: { ref: string; sha: string };
   base: { ref: string };
@@ -345,6 +346,7 @@ function isRestPullRequestCiStatusResponse(
     typeof value.html_url === 'string' &&
     typeof value.state === 'string' &&
     typeof value.draft === 'boolean' &&
+    typeof value.created_at === 'string' &&
     (value.mergeable === null || typeof value.mergeable === 'boolean') &&
     isRecord(head) &&
     typeof head.ref === 'string' &&
@@ -2172,6 +2174,9 @@ export class ApiV3CheerioRestIssueRepository
     );
     return {
       url: status.url,
+      branchName: pullRequest.head.ref,
+      createdAt: pullRequest.created_at,
+      isDraft: pullRequest.draft,
       isConflicted: status.isConflicted,
       mergeable: status.mergeable,
       isPassedAllCiJob: status.isPassedAllCiJob,

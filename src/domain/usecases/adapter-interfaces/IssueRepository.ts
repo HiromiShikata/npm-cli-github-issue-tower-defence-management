@@ -20,6 +20,9 @@ export type RelatedPullRequest = {
 
 export type OpenPullRequestCiStatus = {
   url: string;
+  branchName: string | null;
+  createdAt: string | null;
+  isDraft: boolean;
   isConflicted: boolean;
   mergeable: string | null;
   isPassedAllCiJob: boolean;

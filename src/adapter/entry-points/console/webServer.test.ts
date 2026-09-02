@@ -718,6 +718,9 @@ describe('webServer new routes integration', () => {
     const issueRepository = mock<IssueRepository>();
     issueRepository.getOpenPullRequestCiStatus.mockResolvedValue({
       url: 'https://github.com/o/r/pull/1',
+      branchName: 'feature-branch',
+      createdAt: '2024-01-01T00:00:00Z',
+      isDraft: false,
       isConflicted: true,
       mergeable: 'CONFLICTING',
       isPassedAllCiJob: false,
