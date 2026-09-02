@@ -914,7 +914,7 @@ test('prs agent filter shows counts, hides zero-task agents, narrows the list, a
   const select = page.getByRole('combobox', { name: 'Filter by agent' });
   await expect(select).toBeVisible();
 
-  const nonAllOptions = select.locator('option[value!=""]');
+  const nonAllOptions = select.locator('option:not([value=""])');
   await expect(nonAllOptions).toHaveCount(1);
   await expect(nonAllOptions.first()).toHaveText('developer (1)');
 
