@@ -52,7 +52,7 @@ export type ConsoleIssueRepositoryResolver = (
 
 export type ConsoleProjectRepositoryResolver = (
   projectUrl: string,
-) => Pick<ProjectRepository, 'updateStoryList'>;
+) => Pick<ProjectRepository, 'updateStoryList' | 'getProject'>;
 
 export type ConsoleOperationContext = {
   resolveIssueRepository: ConsoleIssueRepositoryResolver;

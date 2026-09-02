@@ -1907,7 +1907,7 @@ describe('consoleOperationApi', () => {
     it('returns 400 when project is not found', async () => {
       const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithProjectRepository(() => ({ updateStoryList })),
+        contextWithProjectRepository(() => ({ updateStoryList, getProject: jest.fn() })),
         {
           pjcode: 'unknown',
           storyOptionId: 'opt_b',
@@ -1923,7 +1923,7 @@ describe('consoleOperationApi', () => {
     it('returns 400 when story option is not found', async () => {
       const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithProjectRepository(() => ({ updateStoryList })),
+        contextWithProjectRepository(() => ({ updateStoryList, getProject: jest.fn() })),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_nonexistent',
@@ -1939,7 +1939,7 @@ describe('consoleOperationApi', () => {
     it('returns 400 when direction is "up" and the option is already first', async () => {
       const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithProjectRepository(() => ({ updateStoryList })),
+        contextWithProjectRepository(() => ({ updateStoryList, getProject: jest.fn() })),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_a',
@@ -1955,7 +1955,7 @@ describe('consoleOperationApi', () => {
     it('returns 400 when direction is "down" and the option is already last', async () => {
       const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
-        contextWithProjectRepository(() => ({ updateStoryList })),
+        contextWithProjectRepository(() => ({ updateStoryList, getProject: jest.fn() })),
         {
           pjcode: 'acme',
           storyOptionId: 'opt_c',
@@ -1970,7 +1970,8 @@ describe('consoleOperationApi', () => {
 
     it('swaps the target option with its neighbor, calls resolveProjectRepository updateStoryList with reordered list, and returns 200', async () => {
       const updateStoryList = jest.fn().mockResolvedValue([]);
-      const resolveProjectRepository = jest.fn(() => ({ updateStoryList }));
+      const getProject = jest.fn().mockResolvedValue(projectWithOrderedStories());
+      const resolveProjectRepository = jest.fn(() => ({ updateStoryList, getProject }));
       const response = await handleReorderStory(
         contextWithProjectRepository(resolveProjectRepository),
         {
@@ -1996,10 +1997,11 @@ describe('consoleOperationApi', () => {
 
     it('calls invalidateProject with pjcode after successful reorder', async () => {
       const updateStoryList = jest.fn().mockResolvedValue([]);
+      const getProject = jest.fn().mockResolvedValue(projectWithOrderedStories());
       const invalidateProject = jest.fn();
       const response = await handleReorderStory(
         {
-          ...contextWithProjectRepository(() => ({ updateStoryList })),
+          ...contextWithProjectRepository(() => ({ updateStoryList, getProject })),
           invalidateProject,
         },
         {
@@ -2020,7 +2022,7 @@ describe('consoleOperationApi', () => {
       const updateStoryList = jest.fn().mockResolvedValue([]);
       const response = await handleReorderStory(
         contextWithProjectRepository(
-          () => ({ updateStoryList }),
+          () => ({ updateStoryList, getProject: jest.fn() }),
           projectWithoutStory,
         ),
         {
@@ -2066,9 +2068,10 @@ describe('consoleOperationApi', () => {
         },
       };
       const updateStoryList = jest.fn().mockResolvedValue([]);
+      const getProject = jest.fn().mockResolvedValue(projectWithGray);
       const response = await handleReorderStory(
         contextWithProjectRepository(
-          () => ({ updateStoryList }),
+          () => ({ updateStoryList, getProject }),
           projectWithGray,
         ),
         {
@@ -2086,6 +2089,38 @@ describe('consoleOperationApi', () => {
           expect.objectContaining({ id: 'opt_gray' }),
         ],
       );
+    });
+
+    it('includes story options added server-side after cache was populated in the reordered list', async () => {
+      const cachedProject = projectWithOrderedStories();
+      const serverFreshProject: Project = {
+        ...cachedProject,
+        story: {
+          ...cachedProject.story!,
+          stories: [
+            ...cachedProject.story!.stories,
+            {
+              id: 'opt_server_only',
+              name: 'Server only',
+              color: 'PURPLE' as const,
+              description: '',
+            },
+          ],
+        },
+      };
+      const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+      const localGetProject = jest.fn().mockResolvedValue(serverFreshProject);
+      const response = await handleReorderStory(
+        contextWithProjectRepository(
+          () => ({ updateStoryList: localUpdateStoryList, getProject: localGetProject }),
+        ),
+        { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
+      );
+      expect(response.statusCode).toBe(200);
+      const [, storyList] = localUpdateStoryList.mock.calls[0];
+      expect(
+        storyList.find((s: { id: string }) => s.id === 'opt_server_only'),
+      ).toBeDefined();
     });
   });
 
@@ -2116,7 +2151,8 @@ describe('consoleOperationApi', () => {
     });
 
     const updateStoryList = jest.fn();
-    const projectRepositoryResolver = jest.fn(() => ({ updateStoryList }));
+    const getProject = jest.fn();
+    const projectRepositoryResolver = jest.fn(() => ({ updateStoryList, getProject }));
 
     const addStoryContext = (p: Project): ConsoleOperationContext => ({
       ...contextForProject(p),
@@ -2125,7 +2161,8 @@ describe('consoleOperationApi', () => {
 
     beforeEach(() => {
       updateStoryList.mockResolvedValue([]);
-      projectRepositoryResolver.mockReturnValue({ updateStoryList });
+      getProject.mockResolvedValue(buildProjectWithStories());
+      projectRepositoryResolver.mockReturnValue({ updateStoryList, getProject });
     });
 
     it('inserts the new story at index 1 and calls updateStoryList', async () => {
@@ -2164,6 +2201,7 @@ describe('consoleOperationApi', () => {
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
       };
+      getProject.mockResolvedValue(emptyStoryProject);
       const response = await handleStoryAdd(
         addStoryContext(emptyStoryProject),
         {
@@ -2275,6 +2313,9 @@ describe('consoleOperationApi', () => {
       });
 
       const consecutiveUpdateStoryList = jest.fn().mockResolvedValue([]);
+      const consecutiveGetProject = jest.fn(async () => {
+        return invalidateCalled ? projectAfterFirstAdd : p;
+      });
       const consecutiveContext: ConsoleOperationContext = {
         resolveIssueRepository: () => issueRepository,
         resolveProject,
@@ -2283,6 +2324,7 @@ describe('consoleOperationApi', () => {
         issueAttachmentRepository: null,
         resolveProjectRepository: jest.fn(() => ({
           updateStoryList: consecutiveUpdateStoryList,
+          getProject: consecutiveGetProject,
         })),
         invalidateProject,
         updateProjectCacheEntry: null,
@@ -2307,6 +2349,42 @@ describe('consoleOperationApi', () => {
           expect.objectContaining({ name: 'Story Y' }),
         ]),
       );
+    });
+
+    it('includes story options added server-side after cache was populated when adding a story', async () => {
+      const cachedProject = buildProjectWithStories();
+      const serverFreshProject: Project = {
+        ...cachedProject,
+        story: {
+          ...cachedProject.story!,
+          stories: [
+            ...cachedProject.story!.stories,
+            {
+              id: 'opt_server_only',
+              name: 'Server only story',
+              color: 'PURPLE' as const,
+              description: '',
+            },
+          ],
+        },
+      };
+      const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+      const localGetProject = jest.fn().mockResolvedValue(serverFreshProject);
+      const ctx: ConsoleOperationContext = {
+        ...addStoryContext(cachedProject),
+        resolveProjectRepository: () => ({
+          updateStoryList: localUpdateStoryList,
+          getProject: localGetProject,
+        }),
+      };
+      await handleStoryAdd(ctx, { pjcode: 'acme', storyName: 'New story' });
+      const [, storyList] = localUpdateStoryList.mock.calls[0];
+      expect(
+        storyList.find((s: { id: string }) => s.id === 'opt_server_only'),
+      ).toBeDefined();
+      expect(
+        storyList.find((s: { name: string }) => s.name === 'New story'),
+      ).toBeDefined();
     });
   });
 
@@ -2339,14 +2417,36 @@ describe('consoleOperationApi', () => {
       issueRepository.updateStoryOptionColor.mockResolvedValue(undefined);
     });
 
-    it('calls updateStoryOptionColor with the correct project, storyOptionId, and newColor', async () => {
-      const storyProject = projectWithStory();
-      const response = await handleStoryColor(contextForProject(storyProject), {
+    it('returns 502 when resolveProjectRepository is null', async () => {
+      const response = await handleStoryColor(contextForProject(projectWithStory()), {
         pjcode: 'acme',
         storyOptionId: 'opt_blue',
         newColor: 'RED',
         nameWithOwner: 'acme-labs/portal',
       });
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'project repository is not configured' },
+      });
+    });
+
+    it('calls updateStoryOptionColor with the correct project, storyOptionId, and newColor', async () => {
+      const storyProject = projectWithStory();
+      const response = await handleStoryColor(
+        {
+          ...contextForProject(storyProject),
+          resolveProjectRepository: () => ({
+            updateStoryList: jest.fn().mockResolvedValue([]),
+            getProject: jest.fn().mockResolvedValue(storyProject),
+          }),
+        },
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_blue',
+          newColor: 'RED',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
 
       expect(response.statusCode).toBe(200);
       expect(issueRepository.updateStoryOptionColor).toHaveBeenCalledWith(
@@ -2357,9 +2457,14 @@ describe('consoleOperationApi', () => {
     });
 
     it('resolves the issue repository from a proxy url of the target repo', async () => {
+      const storyProject = projectWithStory();
       const resolvedUrls: string[] = [];
       const recordingContext: ConsoleOperationContext = {
-        ...contextForProject(projectWithStory()),
+        ...contextForProject(storyProject),
+        resolveProjectRepository: () => ({
+          updateStoryList: jest.fn().mockResolvedValue([]),
+          getProject: jest.fn().mockResolvedValue(storyProject),
+        }),
         resolveIssueRepository: (url: string) => {
           resolvedUrls.push(url);
           return issueRepository;
@@ -2467,6 +2572,10 @@ describe('consoleOperationApi', () => {
       const updatedEntries: { pjcode: string; project: Project }[] = [];
       const contextWithCache: ConsoleOperationContext = {
         ...contextForProject(storyProject),
+        resolveProjectRepository: () => ({
+          updateStoryList: jest.fn().mockResolvedValue([]),
+          getProject: jest.fn().mockResolvedValue(storyProject),
+        }),
         updateProjectCacheEntry: (pjcode, updatedProject) => {
           updatedEntries.push({ pjcode, project: updatedProject });
         },
@@ -2490,8 +2599,15 @@ describe('consoleOperationApi', () => {
     });
 
     it('does not call updateProjectCacheEntry when updateProjectCacheEntry is null', async () => {
+      const storyProject = projectWithStory();
       const response = await handleStoryColor(
-        contextForProject(projectWithStory()),
+        {
+          ...contextForProject(storyProject),
+          resolveProjectRepository: () => ({
+            updateStoryList: jest.fn().mockResolvedValue([]),
+            getProject: jest.fn().mockResolvedValue(storyProject),
+          }),
+        },
         {
           pjcode: 'acme',
           storyOptionId: 'opt_blue',
@@ -2500,6 +2616,45 @@ describe('consoleOperationApi', () => {
         },
       );
       expect(response.statusCode).toBe(200);
+    });
+
+    it('includes story options added server-side after cache was populated when changing a color', async () => {
+      const cachedProject = projectWithStory();
+      const serverFreshProject: Project = {
+        ...cachedProject,
+        story: {
+          ...cachedProject.story!,
+          stories: [
+            ...cachedProject.story!.stories,
+            {
+              id: 'opt_server_only',
+              name: 'Server only story',
+              color: 'PURPLE' as const,
+              description: '',
+            },
+          ],
+        },
+      };
+      const localGetProject = jest.fn().mockResolvedValue(serverFreshProject);
+      const ctx: ConsoleOperationContext = {
+        ...contextForProject(cachedProject),
+        resolveProjectRepository: () => ({
+          updateStoryList: jest.fn().mockResolvedValue([]),
+          getProject: localGetProject,
+        }),
+      };
+      await handleStoryColor(ctx, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_blue',
+        newColor: 'RED',
+        nameWithOwner: 'acme-labs/portal',
+      });
+      const [projectArg] = issueRepository.updateStoryOptionColor.mock.calls[0];
+      expect(
+        projectArg.story.stories.find(
+          (s: { id: string }) => s.id === 'opt_server_only',
+        ),
+      ).toBeDefined();
     });
   });
 
@@ -2657,7 +2812,8 @@ describe('consoleOperationApi', () => {
     });
 
     const updateStoryList = jest.fn();
-    const projectRepositoryResolver = jest.fn(() => ({ updateStoryList }));
+    const getProject = jest.fn();
+    const projectRepositoryResolver = jest.fn(() => ({ updateStoryList, getProject }));
 
     const deleteStoryContext = (p: Project): ConsoleOperationContext => ({
       ...contextForProject(p),
@@ -2666,7 +2822,8 @@ describe('consoleOperationApi', () => {
 
     beforeEach(() => {
       updateStoryList.mockResolvedValue([]);
-      projectRepositoryResolver.mockReturnValue({ updateStoryList });
+      getProject.mockResolvedValue(projectWithStoriesToDelete());
+      projectRepositoryResolver.mockReturnValue({ updateStoryList, getProject });
       issueRepository.getStoryObjectMap.mockResolvedValue(new Map());
       issueRepository.closeIssueByUrl.mockResolvedValue(undefined);
     });
@@ -2896,6 +3053,42 @@ describe('consoleOperationApi', () => {
 
       expect(response.statusCode).toBe(200);
     });
+
+    it('preserves story options added server-side after cache was populated when deleting a story', async () => {
+      const cachedProject = projectWithStoriesToDelete();
+      const serverFreshProject: Project = {
+        ...cachedProject,
+        story: {
+          ...cachedProject.story!,
+          stories: [
+            ...cachedProject.story!.stories,
+            {
+              id: 'opt_server_only',
+              name: 'Server only story',
+              color: 'PURPLE' as const,
+              description: '',
+            },
+          ],
+        },
+      };
+      const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+      const localGetProject = jest.fn().mockResolvedValue(serverFreshProject);
+      const ctx: ConsoleOperationContext = {
+        ...deleteStoryContext(cachedProject),
+        resolveProjectRepository: () => ({
+          updateStoryList: localUpdateStoryList,
+          getProject: localGetProject,
+        }),
+      };
+      await handleDeleteStory(ctx, { pjcode: 'acme', storyOptionId: 'opt_remove' });
+      const [, storyList] = localUpdateStoryList.mock.calls[0];
+      expect(
+        storyList.find((s: { id: string }) => s.id === 'opt_server_only'),
+      ).toBeDefined();
+      expect(
+        storyList.find((s: { id: string }) => s.id === 'opt_remove'),
+      ).toBeUndefined();
+    });
   });
 
   describe('handleStoryRename', () => {
@@ -2925,7 +3118,11 @@ describe('consoleOperationApi', () => {
     });
 
     const updateStoryList = jest.fn();
-    const projectRepositoryResolver = jest.fn(() => ({ updateStoryList }));
+    const renameGetProject = jest.fn();
+    const projectRepositoryResolver = jest.fn(() => ({
+      updateStoryList,
+      getProject: renameGetProject,
+    }));
 
     const renameStoryContext = (p: Project): ConsoleOperationContext => ({
       ...contextForProject(p),
@@ -2934,7 +3131,8 @@ describe('consoleOperationApi', () => {
 
     beforeEach(() => {
       updateStoryList.mockResolvedValue([]);
-      projectRepositoryResolver.mockReturnValue({ updateStoryList });
+      renameGetProject.mockResolvedValue(null);
+      projectRepositoryResolver.mockReturnValue({ updateStoryList, getProject: renameGetProject });
       issueRepository.getStoryObjectMap.mockResolvedValue(new Map());
       issueRepository.updateIssue.mockResolvedValue(undefined);
     });
