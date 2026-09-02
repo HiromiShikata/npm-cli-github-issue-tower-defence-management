@@ -7,6 +7,19 @@ const meta: Meta<typeof ConsolePrsAgentFilter> = {
   component: ConsolePrsAgentFilter,
   args: {
     agentOptions: consoleAgentOptionsFixture,
+    agentCounts: {
+      chore: 4,
+      accounting: 2,
+      triager: 7,
+      liaison: 3,
+      'systems-analyst': 3,
+      developer: 5,
+      'pr-reviewer': 6,
+      gift: 2,
+      'tdpm-workflow-improver': 2,
+      '7sea': 0,
+      'system-design-reviewer': 0,
+    },
     selectedAgent: null,
     onAgentChange: () => {},
   },
@@ -24,8 +37,8 @@ export const FilteredByAgent: Story = {
   },
 };
 
-export const NoAgentOptions: Story = {
+export const NoAgentsWithTasks: Story = {
   args: {
-    agentOptions: [],
+    agentCounts: {},
   },
 };

@@ -2,16 +2,21 @@ import type { ConsoleFieldOption } from '../../logic/types';
 
 export type ConsolePrsAgentFilterProps = {
   agentOptions: ConsoleFieldOption[];
+  agentCounts: Record<string, number>;
   selectedAgent: string | null;
   onAgentChange: (agent: string | null) => void;
 };
 
 export const ConsolePrsAgentFilter = ({
   agentOptions,
+  agentCounts,
   selectedAgent,
   onAgentChange,
 }: ConsolePrsAgentFilterProps) => {
-  if (agentOptions.length === 0) {
+  const optionsWithTasks = agentOptions.filter(
+    (option) => (agentCounts[option.name] ?? 0) > 0,
+  );
+  if (optionsWithTasks.length === 0) {
     return null;
   }
   return (
@@ -24,9 +29,9 @@ export const ConsolePrsAgentFilter = ({
         aria-label="Filter by agent"
       >
         <option value="">All agents</option>
-        {agentOptions.map((option) => (
+        {optionsWithTasks.map((option) => (
           <option key={option.id} value={option.name}>
-            {option.name}
+            {option.name} ({agentCounts[option.name]})
           </option>
         ))}
       </select>

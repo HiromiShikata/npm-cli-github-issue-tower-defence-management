@@ -255,6 +255,16 @@ export const CONSOLE_E2E_TAB_ITEMS: Record<string, ConsoleFixtureListItem[]> = {
       ),
       agent: 'developer',
     },
+    {
+      ...pullRequestItem(
+        868,
+        'Clean up stale console UI test fixtures',
+        'PRS00868',
+        'TDPM Console port',
+        '2026-06-17T23:55:00.000Z',
+      ),
+      agent: 'chore',
+    },
   ],
   'failed-preparation': [
     {

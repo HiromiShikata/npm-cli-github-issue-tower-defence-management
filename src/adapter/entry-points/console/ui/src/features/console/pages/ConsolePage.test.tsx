@@ -5,6 +5,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
 import { ConsolePage } from './ConsolePage';
 
 const tabBar = (): HTMLElement => {
@@ -144,6 +145,24 @@ describe('ConsolePage', () => {
     });
   });
 
+  it('hides agents with zero tasks from the selector and shows the count for agents with tasks', async () => {
+    const { getByRole, getAllByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByRole('combobox', { name: 'Filter by agent' }),
+      ).toBeInTheDocument();
+    });
+    const options = getAllByRole('option');
+    const nonAllOptions = options.filter((o) => o.getAttribute('value') !== '');
+    expect(nonAllOptions.length).toBe(1);
+    expect(nonAllOptions[0]).toHaveValue('developer');
+    expect(nonAllOptions[0]).toHaveTextContent('developer (1)');
+    const prReviewerOption = options.find(
+      (o) => o.getAttribute('value') === 'pr-reviewer',
+    );
+    expect(prReviewerOption).toBeUndefined();
+  });
+
   describe('prs agent filter', () => {
     const installFetchWithTwoPrsItems = (): void => {
       const fetchMock = jest.fn(async (url: string) => {
@@ -231,6 +250,132 @@ describe('ConsolePage', () => {
       expect(
         getByText('Review PR for agent filter feature'),
       ).toBeInTheDocument();
+    });
+
+    it('shows task counts next to each agent name in the selector options', async () => {
+      const { getByRole, getAllByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('combobox', { name: 'Filter by agent' }),
+        ).toBeInTheDocument();
+      });
+      const options = getAllByRole('option');
+      const developerOption = options.find(
+        (o) => o.getAttribute('value') === 'developer',
+      );
+      expect(developerOption).toHaveTextContent('developer (1)');
+      const prReviewerOption = options.find(
+        (o) => o.getAttribute('value') === 'pr-reviewer',
+      );
+      expect(prReviewerOption).toHaveTextContent('pr-reviewer (1)');
+    });
+
+    it('resets prs agent filter when the selected agent no longer has tasks after a data refresh', async () => {
+      jest.useFakeTimers();
+      try {
+        let includeDeveloper = true;
+        const fetchMock = jest.fn(async (url: string) => {
+          const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+          if (listMatch !== null) {
+            const tab = listMatch[1];
+            if (tab === 'prs') {
+              const prsItems = [
+                ...(includeDeveloper
+                  ? [
+                      {
+                        number: 851,
+                        title: 'Add serveConsole subcommand',
+                        url: 'https://github.com/o/r/pull/851',
+                        repo: 'o/r',
+                        nameWithOwner: 'o/r',
+                        projectItemId: 'PVTI_1',
+                        itemId: 'PVTI_1',
+                        isPr: true,
+                        relatedOpenPullRequestUrls: [],
+                        story: 'TDPM Console port',
+                        status: 'Awaiting Quality Check',
+                        agent: 'developer',
+                        nextActionDate: null,
+                        nextActionHour: null,
+                        dependedIssueUrls: [],
+                        labels: [],
+                        createdAt: '2026-06-17T00:00:00.000Z',
+                      },
+                    ]
+                  : []),
+                {
+                  number: 852,
+                  title: 'Review PR for agent filter feature',
+                  url: 'https://github.com/o/r/pull/852',
+                  repo: 'o/r',
+                  nameWithOwner: 'o/r',
+                  projectItemId: 'PVTI_3',
+                  itemId: 'PVTI_3',
+                  isPr: true,
+                  relatedOpenPullRequestUrls: [],
+                  story: 'TDPM Console port',
+                  status: 'Awaiting Quality Check',
+                  agent: 'pr-reviewer',
+                  nextActionDate: null,
+                  nextActionHour: null,
+                  dependedIssueUrls: [],
+                  labels: [],
+                  createdAt: '2026-06-18T00:00:00.000Z',
+                },
+              ];
+              return {
+                ok: true,
+                status: 200,
+                json: async () => ({ ...listPayload('prs'), items: prsItems }),
+              };
+            }
+            return {
+              ok: true,
+              status: 200,
+              json: async () => listPayload(tab),
+            };
+          }
+          if (url === '/api/projects') {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({ pjcodes: ['acme'] }),
+            };
+          }
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ body: '# body' }),
+          };
+        });
+        global.fetch = fetchMock as unknown as typeof fetch;
+
+        const { getByRole, queryByText } = render(<ConsolePage />);
+        await waitFor(() => {
+          expect(
+            queryByText('Review PR for agent filter feature'),
+          ).toBeInTheDocument();
+        });
+
+        fireEvent.change(getByRole('combobox', { name: 'Filter by agent' }), {
+          target: { value: 'developer' },
+        });
+        expect(queryByText('Add serveConsole subcommand')).toBeInTheDocument();
+        expect(queryByText('Review PR for agent filter feature')).toBeNull();
+
+        includeDeveloper = false;
+        await act(async () => {
+          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+        });
+
+        await waitFor(() => {
+          expect(
+            queryByText('Review PR for agent filter feature'),
+          ).toBeInTheDocument();
+        });
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 

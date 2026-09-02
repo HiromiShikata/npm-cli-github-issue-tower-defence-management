@@ -65,7 +65,7 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await page.goto(harness.appUrl);
 
   await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
-  await expect(tabBadge(page, 'Awaiting Quality Check')).toHaveText('1');
+  await expect(tabBadge(page, 'Awaiting Quality Check')).toHaveText('2');
   await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
   await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
@@ -77,6 +77,10 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
     .locator('.console-op-button', { hasText: 'Approve' })
     .first();
   await expect(approveButton).toBeVisible();
+  await approveButton.click();
+
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(approveButton).toBeVisible({ timeout: 8000 });
   await approveButton.click();
 
   await expect(activeTabLabel(page)).toHaveText('Failed Preparation', {
@@ -905,7 +909,7 @@ test('rare actions toggle is in the bottom row left pair alongside the dangerous
   await expect(urlInput).toBeVisible();
 });
 
-test('prs agent filter narrows the list and navigation respects the filter', async ({
+test('prs agent filter shows counts, hides zero-task agents, narrows the list, and navigation respects the filter', async ({
   page,
 }) => {
   await page.goto(harness.appUrl);
@@ -914,20 +918,20 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
   const select = page.getByRole('combobox', { name: 'Filter by agent' });
   await expect(select).toBeVisible();
 
+  const nonAllOptions = select.locator('option:not([value=""])');
+  await expect(nonAllOptions).toHaveCount(2);
+  await expect(nonAllOptions.nth(0)).toHaveText('developer (1)');
+  await expect(nonAllOptions.nth(1)).toHaveText('chore (1)');
+
   await expect(
     itemRowByText(
       page,
       'Serve the committed console UI bundle from serveConsole',
     ),
   ).toBeVisible();
-
-  await select.selectOption('chore');
   await expect(
-    itemRowByText(
-      page,
-      'Serve the committed console UI bundle from serveConsole',
-    ),
-  ).not.toBeVisible({ timeout: 2000 });
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).toBeVisible();
 
   await select.selectOption('developer');
   await expect(
@@ -936,6 +940,9 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
       'Serve the committed console UI bundle from serveConsole',
     ),
   ).toBeVisible();
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).not.toBeVisible({ timeout: 2000 });
 
   await itemRowByText(
     page,
@@ -947,9 +954,10 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
   await expect(approveButton).toBeVisible();
   await approveButton.click();
 
-  await expect(activeTabLabel(page)).toHaveText('Failed Preparation', {
-    timeout: 8000,
-  });
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).toBeVisible({ timeout: 8000 });
 });
 
 test('shows Delete Story in the danger zone of a story-labeled item detail page, confirms deletion, and closes the panel', async ({

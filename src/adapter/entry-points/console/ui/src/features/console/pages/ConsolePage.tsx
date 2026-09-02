@@ -309,6 +309,27 @@ export const ConsolePage = () => {
 
   const [prsAgentFilter, setPrsAgentFilter] = useState<string | null>(null);
 
+  const prsAgentCounts = useMemo((): Record<string, number> => {
+    if (activeTab !== 'prs') return {};
+    const counts: Record<string, number> = {};
+    for (const item of pendingItems) {
+      if (item.agent !== null && item.agent !== '') {
+        counts[item.agent] = (counts[item.agent] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [pendingItems, activeTab]);
+
+  useEffect(() => {
+    if (
+      activeTab === 'prs' &&
+      prsAgentFilter !== null &&
+      (prsAgentCounts[prsAgentFilter] ?? 0) === 0
+    ) {
+      setPrsAgentFilter(null);
+    }
+  }, [prsAgentCounts, prsAgentFilter, activeTab]);
+
   const agentFilteredPendingItems = useMemo(() => {
     if (activeTab !== 'prs' || prsAgentFilter === null) {
       return pendingItems;
@@ -821,6 +842,7 @@ export const ConsolePage = () => {
           <div className="console-list-screen">
             <ConsolePrsAgentFilter
               agentOptions={agentOptions}
+              agentCounts={prsAgentCounts}
               selectedAgent={prsAgentFilter}
               onAgentChange={setPrsAgentFilter}
             />
