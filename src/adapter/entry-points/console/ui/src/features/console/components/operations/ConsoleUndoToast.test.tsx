@@ -63,6 +63,9 @@ describe('ConsoleErrorToast', () => {
     );
     expect(getByText('Operation failed: HTTP 422')).toBeInTheDocument();
     expect(container.querySelector('.console-error-toast')).toBeInTheDocument();
+    expect(
+      container.querySelector('.console-undo-toast-error'),
+    ).toBeInTheDocument();
     expect(getByRole('alert')).toBeInTheDocument();
   });
 

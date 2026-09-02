@@ -1590,9 +1590,6 @@ body {
   transition: width 0.1s linear;
 }
 
-.console-error-toast {
-}
-
 .console-error-toast-title {
   font-weight: 700;
   flex: 0 0 auto;
