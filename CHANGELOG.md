@@ -1,3 +1,10 @@
+# [2.43.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.42.0...v2.43.0) (2026-09-02)
+
+
+### Features
+
+* **dora-metrics:** add doraMetrics CLI command with full unit test coverage ([#1928](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1928)) ([ce5664b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ce5664bb8809bff1e0ab3e711de86efe164cb2f5))
+
 # [2.42.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.41.0...v2.42.0) (2026-09-02)
 
 
