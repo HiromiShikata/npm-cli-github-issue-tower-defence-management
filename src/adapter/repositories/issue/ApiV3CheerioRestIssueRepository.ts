@@ -2401,9 +2401,6 @@ export class ApiV3CheerioRestIssueRepository
     return prs;
   };
 
-  // The one place deciding whether a cross-referenced timeline item is an open
-  // pull request related to the issue, shared by the per-issue lookup and the
-  // batched one so both select exactly the same pull requests.
   private isRelatedOpenPullRequestTimelineItem = (
     item: TimelineItem,
     issueUrl: string,
@@ -2471,9 +2468,6 @@ export class ApiV3CheerioRestIssueRepository
     return resolved;
   };
 
-  // An issue whose cross-referenced timeline does not fit the first page is
-  // omitted from the returned map, so the caller resolves it through the
-  // paginating findRelatedOpenPRs path and no related pull request is lost.
   private fetchRelatedOpenPrUrlsInOneQuery = async (
     references: {
       issueUrl: string;
