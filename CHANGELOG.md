@@ -1,3 +1,10 @@
+## [2.43.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.43.1...v2.43.2) (2026-09-02)
+
+
+### Bug Fixes
+
+* eliminate GraphQL calls in airplane sync by using cached PR URLs ([#1945](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1945)) ([9f26adc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9f26adcd6fd6458bd8a95dd888356ebbefd65ecd)), closes [#31251](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31251)
+
 ## [2.43.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.43.0...v2.43.1) (2026-09-02)
 
 
