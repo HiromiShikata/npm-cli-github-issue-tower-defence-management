@@ -812,6 +812,7 @@ export type ConsoleE2eHarness = {
 
 export const startConsoleE2eHarness = async (options?: {
   workflowImprovementIssueUrl?: string | null;
+  mergePullRequest?: () => Promise<void>;
 }): Promise<ConsoleE2eHarness> => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'console-e2e-'));
   const consoleDataOutputDir = path.join(tmpRoot, 'data');
@@ -843,15 +844,20 @@ export const startConsoleE2eHarness = async (options?: {
     accessToken: CONSOLE_E2E_TOKEN,
     uiDistDir,
     consoleDataOutputDir,
-    issueRepository: createStubIssueRepository(
-      reviewCommentCalls,
-      requestChangesCalls,
-      createIssueCalls,
-      storyColorCalls,
-      commentCalls,
-      deleteAllCommentsCalls,
-      closeIssueCalls,
-    ),
+    issueRepository: {
+      ...createStubIssueRepository(
+        reviewCommentCalls,
+        requestChangesCalls,
+        createIssueCalls,
+        storyColorCalls,
+        commentCalls,
+        deleteAllCommentsCalls,
+        closeIssueCalls,
+      ),
+      ...(options?.mergePullRequest !== undefined
+        ? { mergePullRequest: options.mergePullRequest }
+        : {}),
+    },
     resolveProjectRepository: (_projectUrl) => ({
       updateStoryList: async (_updatedProject, stories) => {
         const currentStories = project.story?.stories ?? [];
