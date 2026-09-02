@@ -143,6 +143,22 @@ describe('create PR workflow: enable auto merge step', () => {
     expect(result.output).toContain('Warning');
   });
 
+  it('exits 0 with a warning when auto-merge is blocked by required protected-branch checks', () => {
+    const result = runEnableAutoMergeScript({
+      curlResponse: JSON.stringify({
+        errors: [
+          {
+            type: 'UNPROCESSABLE',
+            message:
+              'Required status checks must pass before merging into a protected branch',
+          },
+        ],
+      }),
+    });
+    expect(result.exitStatus).toBe(0);
+    expect(result.output).toContain('Warning');
+  });
+
   it('exits 1 when an unrecognised GraphQL error is returned', () => {
     const result = runEnableAutoMergeScript({
       curlResponse: JSON.stringify({
