@@ -313,7 +313,7 @@ describe('DoraMetricsWeeklyMeasureUseCase', () => {
         },
         assert: () => {
           const body = mockCreateNewIssue.mock.calls[0]?.[3] ?? '';
-          expect(body).toContain('5.0');
+          expect(body).toMatch(/xcare \| 2 \| 50\.0% \| 5\.0 \| N\/A/);
         },
       },
       {
