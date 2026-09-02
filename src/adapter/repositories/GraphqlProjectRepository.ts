@@ -580,6 +580,9 @@ export class GraphqlProjectRepository
         description,
       })),
     };
+    console.log(
+      `updateStoryList: fieldId=${project.story.fieldId} optionCount=${newStoryList.length} names=${JSON.stringify(newStoryList.map((o) => o.name))}`,
+    );
     const response = await postGithubGraphqlJson<{
       data: {
         updateProjectV2Field: {

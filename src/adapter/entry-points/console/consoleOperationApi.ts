@@ -791,22 +791,27 @@ export const handleStoryColor = async (
     return badRequest(`story option "${storyOptionId}" not found in project`);
   }
 
+  if (context.resolveProjectRepository === null) {
+    return badGateway('project repository is not configured');
+  }
+
+  const projectRepository = context.resolveProjectRepository(project.url);
+  const freshProject = await projectRepository.getProject(project.id);
+  const freshStory = freshProject?.story ?? project.story;
+  const projectWithFreshStory = { ...(freshProject ?? project), story: freshStory };
+
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   await context
     .resolveIssueRepository(proxyUrl)
-    .updateStoryOptionColor(
-      { ...project, story: project.story },
-      storyOptionId,
-      newColor,
-    );
+    .updateStoryOptionColor(projectWithFreshStory, storyOptionId, newColor);
 
   if (context.updateProjectCacheEntry !== null) {
-    const updatedStories = project.story.stories.map((s) =>
+    const updatedStories = freshStory.stories.map((s) =>
       s.id === storyOptionId ? { ...s, color: newColor } : s,
     );
     const updatedProject: Project = {
-      ...project,
-      story: { ...project.story, stories: updatedStories },
+      ...projectWithFreshStory,
+      story: { ...freshStory, stories: updatedStories },
     };
     context.updateProjectCacheEntry(pjcode, updatedProject);
   }
@@ -879,20 +884,27 @@ export const handleReorderStory = async (
   if (project.story === null) {
     return badRequest('project does not have a story field');
   }
-  const stories = project.story.stories;
-  const index = stories.findIndex((s) => s.id === storyOptionId);
-  if (index === -1) {
+  const cachedStories = project.story.stories;
+  const cachedIndex = cachedStories.findIndex((s) => s.id === storyOptionId);
+  if (cachedIndex === -1) {
     return badRequest('story option not found');
   }
-  const swapIndex = index + (direction === 'up' ? -1 : 1);
-  if (swapIndex < 0 || swapIndex >= stories.length) {
+  const cachedSwapIndex = cachedIndex + (direction === 'up' ? -1 : 1);
+  if (cachedSwapIndex < 0 || cachedSwapIndex >= cachedStories.length) {
     return badRequest('cannot move in that direction');
   }
-  const reordered = [...stories];
-  const temp = reordered[index];
-  reordered[index] = reordered[swapIndex];
-  reordered[swapIndex] = temp;
   const projectRepository = context.resolveProjectRepository(project.url);
+  const freshProject = await projectRepository.getProject(project.id);
+  const stories = freshProject?.story?.stories ?? cachedStories;
+  const index = stories.findIndex((s) => s.id === storyOptionId);
+  const targetIndex = index !== -1 ? index : cachedIndex;
+  const swapIndex = targetIndex + (direction === 'up' ? -1 : 1);
+  const reordered = [...stories];
+  if (swapIndex >= 0 && swapIndex < reordered.length) {
+    const temp = reordered[targetIndex];
+    reordered[targetIndex] = reordered[swapIndex];
+    reordered[swapIndex] = temp;
+  }
   await projectRepository.updateStoryList(project, reordered);
   context.invalidateProject?.(pjcode);
   return ok();
@@ -917,8 +929,10 @@ export const handleStoryAdd = async (
   if (project.story === null) {
     return badRequest('project does not have a story field');
   }
-  const newStoryList = buildStoryListWithNew(project.story.stories, storyName);
   const projectRepository = context.resolveProjectRepository(project.url);
+  const freshProject = await projectRepository.getProject(project.id);
+  const freshStories = freshProject?.story?.stories ?? project.story.stories;
+  const newStoryList = buildStoryListWithNew(freshStories, storyName);
   await projectRepository.updateStoryList(project, newStoryList);
   context.invalidateProject?.(pjcode);
   return ok();
@@ -1000,10 +1014,10 @@ export const handleDeleteStory = async (
   const issueRepository = context.resolveIssueRepository(proxyUrl);
   const storyObjectMap = await issueRepository.getStoryObjectMap(project);
   const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
-  const filteredStories = project.story.stories.filter(
-    (s) => s.id !== storyOptionId,
-  );
   const projectRepository = context.resolveProjectRepository(project.url);
+  const freshProject = await projectRepository.getProject(project.id);
+  const freshStories = freshProject?.story?.stories ?? project.story.stories;
+  const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
   await projectRepository.updateStoryList(project, filteredStories);
   context.invalidateProject?.(pjcode);
   if (storyIssue !== null) {

@@ -1130,6 +1130,9 @@ export class ApiV3CheerioRestIssueRepository
       color: opt.id === storyOptionId ? newColor : opt.color,
       description: opt.description,
     }));
+    console.log(
+      `updateStoryOptionColor: fieldId=${project.story.fieldId} optionCount=${options.length} names=${JSON.stringify(options.map((o) => o.name))}`,
+    );
     const response = await postGithubGraphqlJson<{
       errors?: { message: string }[];
     }>({
