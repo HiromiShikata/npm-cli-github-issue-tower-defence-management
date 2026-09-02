@@ -1,3 +1,10 @@
+# [2.44.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.43.2...v2.44.0) (2026-09-02)
+
+
+### Features
+
+* **console-ui:** reflect project settings modal open state in URL hash ([#1951](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1951)) ([a6e9c13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a6e9c132ba91ab49c91641de49dab4e45e24bc41)), closes [#settings](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/settings) [HiromiShikata/umino-corporait-operation#31261](https://github.com/HiromiShikata/umino-corporait-operation/issues/31261) [#settings](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/settings)
+
 ## [2.43.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.43.1...v2.43.2) (2026-09-02)
 
 
