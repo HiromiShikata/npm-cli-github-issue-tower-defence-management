@@ -1,5 +1,5 @@
-import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { buildRelatedOpenPrUrlsByIssueUrl } from './buildRelatedOpenPrUrlsByIssueUrl';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
@@ -98,7 +98,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     );
 
     const relatedOpenPrUrlsByIssueUrl =
-      this.buildRelatedOpenPrUrlsByIssueUrl(issues);
+      buildRelatedOpenPrUrlsByIssueUrl(issues);
 
     const labelsNotRequiringPullRequest =
       resolveLabelsNotRequiringPullRequest(params);
@@ -205,33 +205,4 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     }
   };
 
-  // Derives, for each issue, the set of open pull request URLs that reference it
-  // via a closing keyword. The linkage is taken from each open PR item's
-  // closingIssueReferenceUrls (populated in bulk by fetchProjectItems), the same
-  // in-memory derivation SetDependedIssueUrlForOpenTaskPRsUseCase uses. This
-  // replaces the per-issue findRelatedOpenPRs timeline query in the
-  // review-readiness sweep with a single in-memory pass over the bulk items.
-  private buildRelatedOpenPrUrlsByIssueUrl = (
-    issues: Issue[],
-  ): Map<string, string[]> => {
-    const openPrUrlsByIssueUrl = new Map<string, Set<string>>();
-    for (const issue of issues) {
-      if (!issue.isPr || issue.isClosed) {
-        continue;
-      }
-      for (const referencedIssueUrl of issue.closingIssueReferenceUrls) {
-        const existing = openPrUrlsByIssueUrl.get(referencedIssueUrl);
-        if (existing) {
-          existing.add(issue.url);
-        } else {
-          openPrUrlsByIssueUrl.set(referencedIssueUrl, new Set([issue.url]));
-        }
-      }
-    }
-    const result = new Map<string, string[]>();
-    for (const [issueUrl, prUrls] of openPrUrlsByIssueUrl) {
-      result.set(issueUrl, Array.from(prUrls));
-    }
-    return result;
-  };
 }

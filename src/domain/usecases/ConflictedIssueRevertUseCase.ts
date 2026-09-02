@@ -1,7 +1,7 @@
-import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
+import { buildRelatedOpenPrUrlsByIssueUrl } from './buildRelatedOpenPrUrlsByIssueUrl';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
@@ -63,7 +63,7 @@ export class ConflictedIssueRevertUseCase {
     );
 
     const relatedOpenPrUrlsByIssueUrl =
-      this.buildRelatedOpenPrUrlsByIssueUrl(issues);
+      buildRelatedOpenPrUrlsByIssueUrl(issues);
 
     const allPrUrls = Array.from(
       new Set(
@@ -120,27 +120,4 @@ export class ConflictedIssueRevertUseCase {
     }
   };
 
-  private buildRelatedOpenPrUrlsByIssueUrl = (
-    issues: Issue[],
-  ): Map<string, string[]> => {
-    const openPrUrlsByIssueUrl = new Map<string, Set<string>>();
-    for (const issue of issues) {
-      if (!issue.isPr || issue.isClosed) {
-        continue;
-      }
-      for (const referencedIssueUrl of issue.closingIssueReferenceUrls) {
-        const existing = openPrUrlsByIssueUrl.get(referencedIssueUrl);
-        if (existing) {
-          existing.add(issue.url);
-        } else {
-          openPrUrlsByIssueUrl.set(referencedIssueUrl, new Set([issue.url]));
-        }
-      }
-    }
-    const result = new Map<string, string[]>();
-    for (const [issueUrl, prUrls] of openPrUrlsByIssueUrl) {
-      result.set(issueUrl, Array.from(prUrls));
-    }
-    return result;
-  };
 }

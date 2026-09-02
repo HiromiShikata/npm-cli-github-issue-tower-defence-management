@@ -3,6 +3,7 @@ import {
   RelatedPullRequest,
 } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
+import { buildRelatedOpenPrUrlsByIssueUrl } from './buildRelatedOpenPrUrlsByIssueUrl';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
@@ -26,7 +27,6 @@ const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
 const FIVE_HOUR_THROTTLE_START_THRESHOLD = 0.8;
 export const DEFAULT_FALLBACK_LLM_MODEL_NAME = 'claude-opus-4-8';
 const LLM_AGENT_LABEL_PREFIX = 'llm-agent:';
-export const SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY = 8;
 
 export type SpawnCandidateExclusionReason =
   | 'dependedIssueUrls'
@@ -66,7 +66,6 @@ export class StartPreparationUseCase {
       | 'getStoryObjectMap'
       | 'getAllOpened'
       | 'updateStatus'
-      | 'findRelatedOpenPRs'
       | 'getOpenPullRequest'
       | 'closePullRequest'
       | 'deletePullRequestBranch'
@@ -234,43 +233,52 @@ export class StartPreparationUseCase {
 
   fetchSpawnCandidateBranchSources = async (
     issueUrls: string[],
+    allBoardIssues: Issue[],
   ): Promise<Map<string, SpawnCandidateBranchSource>> => {
     const branchSourceByIssueUrl = new Map<
       string,
       SpawnCandidateBranchSource
     >();
-    let nextIndex = 0;
-    const fetchSequentially = async (): Promise<void> => {
-      while (nextIndex < issueUrls.length) {
-        const issueUrl = issueUrls[nextIndex];
-        nextIndex += 1;
-        branchSourceByIssueUrl.set(
-          issueUrl,
-          issueUrl.includes('/pull/')
-            ? {
-                openPullRequest:
-                  await this.issueRepository.getOpenPullRequest(issueUrl),
-                relatedOpenPullRequests: [],
-              }
-            : {
-                openPullRequest: null,
-                relatedOpenPullRequests:
-                  await this.issueRepository.findRelatedOpenPRs(issueUrl),
-              },
-        );
-      }
-    };
-    await Promise.all(
-      Array.from(
-        {
-          length: Math.min(
-            SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY,
-            issueUrls.length,
-          ),
-        },
-        fetchSequentially,
-      ),
+    const prUrlsByIssueUrl = buildRelatedOpenPrUrlsByIssueUrl(allBoardIssues);
+    const boardIssueByUrl = new Map(
+      allBoardIssues.map((issue) => [issue.url, issue]),
     );
+    for (const issueUrl of issueUrls) {
+      if (issueUrl.includes('/pull/')) {
+        branchSourceByIssueUrl.set(issueUrl, {
+          openPullRequest:
+            await this.issueRepository.getOpenPullRequest(issueUrl),
+          relatedOpenPullRequests: [],
+        });
+      } else {
+        const relatedPrUrls = prUrlsByIssueUrl.get(issueUrl) ?? [];
+        const issueNumberMatch = /\/issues\/(\d+)$/.exec(issueUrl);
+        const conventionalBranchName = issueNumberMatch
+          ? `i${issueNumberMatch[1]}`
+          : null;
+        const relatedOpenPullRequests: RelatedPullRequest[] = relatedPrUrls
+          .map((prUrl) => {
+            const prIssue = boardIssueByUrl.get(prUrl);
+            return {
+              url: prUrl,
+              branchName: conventionalBranchName,
+              createdAt: prIssue?.createdAt ?? new Date(0),
+              isDraft: false,
+              isConflicted: false,
+              mergeable: null,
+              isPassedAllCiJob: false,
+              isCiStateSuccess: false,
+              isResolvedAllReviewComments: false,
+              isBranchOutOfDate: false,
+              missingRequiredCheckNames: [],
+            };
+          });
+        branchSourceByIssueUrl.set(issueUrl, {
+          openPullRequest: null,
+          relatedOpenPullRequests,
+        });
+      }
+    }
     return branchSourceByIssueUrl;
   };
 
@@ -572,6 +580,8 @@ export class StartPreparationUseCase {
       }
     }
 
+    const freeSlots =
+      effectiveMaxPreparingIssuesCount - currentPreparationIssueCount;
     const branchSourceByIssueUrl = await this.fetchSpawnCandidateBranchSources(
       awaitingWorkspaceIssues
         .filter(
@@ -585,7 +595,9 @@ export class StartPreparationUseCase {
               skipAgentAuthoredIssues,
             ) === null,
         )
-        .map((issue) => issue.url),
+        .map((issue) => issue.url)
+        .slice(0, Math.max(0, freeSlots)),
+      allOpenedIssues,
     );
 
     for (
