@@ -1,3 +1,10 @@
+# [2.46.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.4...v2.46.0) (2026-09-02)
+
+
+### Features
+
+* **dashboard:** add warning and danger color indicators to machine metrics ([#1959](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1959)) ([3699e8b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3699e8b87a41b228989e571a9609823496c6d8c8)), closes [HiromiShikata/umino-corporait-operation#31281](https://github.com/HiromiShikata/umino-corporait-operation/issues/31281)
+
 ## [2.45.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.45.3...v2.45.4) (2026-09-02)
 
 
