@@ -905,7 +905,7 @@ test('rare actions toggle is in the bottom row left pair alongside the dangerous
   await expect(urlInput).toBeVisible();
 });
 
-test('prs agent filter narrows the list and navigation respects the filter', async ({
+test('prs agent filter shows counts, hides zero-task agents, narrows the list, and navigation respects the filter', async ({
   page,
 }) => {
   await page.goto(harness.appUrl);
@@ -914,20 +914,16 @@ test('prs agent filter narrows the list and navigation respects the filter', asy
   const select = page.getByRole('combobox', { name: 'Filter by agent' });
   await expect(select).toBeVisible();
 
+  const nonAllOptions = select.locator('option[value!=""]');
+  await expect(nonAllOptions).toHaveCount(1);
+  await expect(nonAllOptions.first()).toHaveText('developer (1)');
+
   await expect(
     itemRowByText(
       page,
       'Serve the committed console UI bundle from serveConsole',
     ),
   ).toBeVisible();
-
-  await select.selectOption('chore');
-  await expect(
-    itemRowByText(
-      page,
-      'Serve the committed console UI bundle from serveConsole',
-    ),
-  ).not.toBeVisible({ timeout: 2000 });
 
   await select.selectOption('developer');
   await expect(
