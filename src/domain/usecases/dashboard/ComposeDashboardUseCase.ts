@@ -145,22 +145,33 @@ const packTokensWithinBudget = (tokens: string[]): string[] => {
   return lines;
 };
 
+const metricDot = (pct: number): '🔴' | '🟡' | '' => {
+  if (pct >= 90) return '🔴';
+  if (pct >= 80) return '🟡';
+  return '';
+};
+
+const loadDot = (load1m: number): '🔴' | '🟡' | '' => {
+  if (load1m >= 10) return '🔴';
+  if (load1m >= 5) return '🟡';
+  return '';
+};
+
 export const formatMachineStatusLines = (
   machineStatus: ComposeDashboardMachineStatus | null,
 ): string[] => {
-  const memText =
-    machineStatus !== null && machineStatus.memPct !== null
-      ? `${machineStatus.memPct}%`
-      : '?%';
-  const cpuText =
-    machineStatus !== null && machineStatus.cpuPct !== null
-      ? `${machineStatus.cpuPct}%`
-      : '?%';
-  const diskText =
-    machineStatus !== null && machineStatus.diskPct !== null
-      ? `${machineStatus.diskPct}%`
-      : '?%';
+  const memPct = machineStatus !== null ? machineStatus.memPct : null;
+  const cpuPct = machineStatus !== null ? machineStatus.cpuPct : null;
+  const diskPct = machineStatus !== null ? machineStatus.diskPct : null;
+  const memDot = memPct !== null ? metricDot(memPct) : '';
+  const cpuDot = cpuPct !== null ? metricDot(cpuPct) : '';
+  const diskDot = diskPct !== null ? metricDot(diskPct) : '';
+  const memText = memPct !== null ? `${memPct}%` : '?%';
+  const cpuText = cpuPct !== null ? `${cpuPct}%` : '?%';
+  const diskText = diskPct !== null ? `${diskPct}%` : '?%';
   const load = machineStatus !== null ? machineStatus.load : null;
+  const load1m = load !== null ? load[0] : null;
+  const loadPrefix = load1m !== null ? loadDot(load1m) : '';
   const oneMinute = load === null ? '?' : String(roundHalfToEven(load[0]));
   const fiveMinute = load === null ? '?' : String(roundHalfToEven(load[1]));
   const fifteenMinute = load === null ? '?' : String(roundHalfToEven(load[2]));
@@ -168,15 +179,24 @@ export const formatMachineStatusLines = (
     machineStatus !== null && machineStatus.cycleMinutes !== null
       ? `cy${machineStatus.cycleMinutes}`
       : 'cy-';
-  const loadLine = `LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`;
+  const loadLine = `${loadPrefix}LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`;
   const disks =
     machineStatus !== null && machineStatus.disks ? machineStatus.disks : null;
   if (disks !== null && disks.length > 0) {
-    const diskTokens = disks.map((disk) => `${disk.title}${disk.pct}%`);
+    const diskTokens = disks.map(
+      (disk) => `${metricDot(disk.pct)}${disk.title}${disk.pct}%`,
+    );
     const diskLines = packTokensWithinBudget(diskTokens);
-    return [`M${memText} C${cpuText} ${cycle}`, ...diskLines, loadLine];
+    return [
+      `${memDot}M${memText} ${cpuDot}C${cpuText} ${cycle}`,
+      ...diskLines,
+      loadLine,
+    ];
   }
-  return [`M${memText} C${cpuText} D${diskText} ${cycle}`, loadLine];
+  return [
+    `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskDot}D${diskText} ${cycle}`,
+    loadLine,
+  ];
 };
 
 const capTwoDigits = (value: number): string =>

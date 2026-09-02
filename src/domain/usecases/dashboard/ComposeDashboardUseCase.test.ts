@@ -82,7 +82,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% D93% cy13', 'LA 16 23 40']);
+    ).toEqual(['M55% C62% 🔴D93% cy13', '🔴LA 16 23 40']);
   });
 
   it('rounds loads with half-to-even and renders integers', () => {
@@ -125,7 +125,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% D?% cy13', 'LA 16 23 40']);
+    ).toEqual(['M55% C62% D?% cy13', '🔴LA 16 23 40']);
   });
 
   it('renders each configured partition as title and percent on a disk line', () => {
@@ -141,7 +141,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% cy13', 'D89% S41%', 'LA 16 23 40']);
+    ).toEqual(['M55% C62% cy13', '🟡D89% S41%', '🔴LA 16 23 40']);
   });
 
   it('wraps partitions onto a second disk line when they exceed the width budget', () => {
@@ -162,7 +162,7 @@ describe('formatMachineStatusLines', () => {
       cycleMinutes: 13,
     });
     expect(lines[0]).toBe('M55% C62% cy13');
-    expect(lines[lines.length - 1]).toBe('LA 16 23 40');
+    expect(lines[lines.length - 1]).toBe('🔴LA 16 23 40');
     expect(lines.length).toBeGreaterThan(3);
     for (const line of lines) {
       expect(codePointLength(line)).toBeLessThanOrEqual(
@@ -180,7 +180,126 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% D89% cy13', 'LA 16 23 40']);
+    ).toEqual(['M55% C62% 🟡D89% cy13', '🔴LA 16 23 40']);
+  });
+
+  it('prefixes memory with yellow dot at 80% and red dot at 90%', () => {
+    expect(
+      formatMachineStatusLines({
+        memPct: 79,
+        cpuPct: 0,
+        diskPct: 0,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+      })[0],
+    ).toMatch(/^M79%/);
+    expect(
+      formatMachineStatusLines({
+        memPct: 80,
+        cpuPct: 0,
+        diskPct: 0,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+      })[0],
+    ).toMatch(/^🟡M80%/);
+    expect(
+      formatMachineStatusLines({
+        memPct: 90,
+        cpuPct: 0,
+        diskPct: 0,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+      })[0],
+    ).toMatch(/^🔴M90%/);
+  });
+
+  it('prefixes cpu with yellow dot at 80% and red dot at 90%', () => {
+    expect(
+      formatMachineStatusLines({
+        memPct: 0,
+        cpuPct: 79,
+        diskPct: 0,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+      })[0],
+    ).toContain('C79%');
+    expect(
+      formatMachineStatusLines({
+        memPct: 0,
+        cpuPct: 80,
+        diskPct: 0,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+      })[0],
+    ).toContain('🟡C80%');
+    expect(
+      formatMachineStatusLines({
+        memPct: 0,
+        cpuPct: 90,
+        diskPct: 0,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+      })[0],
+    ).toContain('🔴C90%');
+  });
+
+  it('prefixes disk with yellow dot at 80% and red dot at 90%', () => {
+    expect(
+      formatMachineStatusLines({
+        memPct: 0,
+        cpuPct: 0,
+        diskPct: 79,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+      })[0],
+    ).toContain('D79%');
+    expect(
+      formatMachineStatusLines({
+        memPct: 0,
+        cpuPct: 0,
+        diskPct: 80,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+      })[0],
+    ).toContain('🟡D80%');
+    expect(
+      formatMachineStatusLines({
+        memPct: 0,
+        cpuPct: 0,
+        diskPct: 90,
+        load: [0, 0, 0],
+        cycleMinutes: null,
+      })[0],
+    ).toContain('🔴D90%');
+  });
+
+  it('prefixes load line with yellow dot at 1-min load 5 and red dot at 10', () => {
+    const below = formatMachineStatusLines({
+      memPct: 0,
+      cpuPct: 0,
+      diskPct: 0,
+      load: [4.9, 0, 0],
+      cycleMinutes: null,
+    });
+    expect(below[below.length - 1]).toMatch(/^LA/);
+
+    const warning = formatMachineStatusLines({
+      memPct: 0,
+      cpuPct: 0,
+      diskPct: 0,
+      load: [5, 0, 0],
+      cycleMinutes: null,
+    });
+    expect(warning[warning.length - 1]).toMatch(/^🟡LA/);
+
+    const danger = formatMachineStatusLines({
+      memPct: 0,
+      cpuPct: 0,
+      diskPct: 0,
+      load: [10, 0, 0],
+      cycleMinutes: null,
+    });
+    expect(danger[danger.length - 1]).toMatch(/^🔴LA/);
   });
 
   it('keeps both lines within the 32 character width budget at worst case', () => {
@@ -191,7 +310,10 @@ describe('formatMachineStatusLines', () => {
       load: [108.5, 120.25, 95.1],
       cycleMinutes: 999,
     });
-    expect(lines).toEqual(['M100% C100% D100% cy999', 'LA 108 120 95']);
+    expect(lines).toEqual([
+      '🔴M100% 🔴C100% 🔴D100% cy999',
+      '🔴LA 108 120 95',
+    ]);
     for (const line of lines) {
       expect(codePointLength(line)).toBeLessThanOrEqual(
         PROJECT_ROW_WIDTH_BUDGET,
@@ -411,8 +533,8 @@ describe('ComposeDashboardUseCase', () => {
   };
 
   const expectedBody =
-    '<tt>M55%&nbsp;C62%&nbsp;D89%&nbsp;cy14</tt><br>\n' +
-    '<tt>LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
+    '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14</tt><br>\n' +
+    '<tt>🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
     '<tt>pj&nbsp;&nbsp;&nbsp;td&nbsp;qc&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵</tt><br>\n' +
     '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
