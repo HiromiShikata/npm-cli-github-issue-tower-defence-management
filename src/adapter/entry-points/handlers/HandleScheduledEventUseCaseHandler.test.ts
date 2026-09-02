@@ -151,13 +151,6 @@ jest.mock('../cli/fleetConfig', () => ({
 }));
 jest.mock('./notifySilentTmuxSessions', () => ({
   notifySilentTmuxSessions: jest.fn().mockResolvedValue(undefined),
-  DEFAULT_NOTIFY_SILENT_TMUX_SESSIONS_PARAMS: {
-    subAgentSilentThresholdSeconds: 300,
-    subAgentRunningThresholdSeconds: 1800,
-    staggerSeconds: 10,
-    candidateDebounceRecencyWindowSeconds: 120,
-    hubTaskStatusCacheTtlSeconds: 300,
-  },
 }));
 
 import { HandleScheduledEventUseCaseHandler } from './HandleScheduledEventUseCaseHandler';
