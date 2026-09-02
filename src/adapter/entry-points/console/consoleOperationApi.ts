@@ -1057,7 +1057,10 @@ export const handleStoryRename = async (
   if (project.story === null) {
     return badRequest('project does not have a story field');
   }
-  const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
+  const projectRepository = context.resolveProjectRepository(project.url);
+  const freshProject = await projectRepository.getProject(project.id);
+  const freshStories = freshProject?.story?.stories ?? project.story.stories;
+  const storyOption = freshStories.find((s) => s.id === storyOptionId);
   if (storyOption === undefined) {
     return badRequest(`story option "${storyOptionId}" not found in project`);
   }
@@ -1069,10 +1072,9 @@ export const handleStoryRename = async (
   const issueRepository = context.resolveIssueRepository(proxyUrl);
   const storyObjectMap = await issueRepository.getStoryObjectMap(project);
   const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
-  const renamedStories = project.story.stories.map((s) =>
+  const renamedStories = freshStories.map((s) =>
     s.id === storyOptionId ? { ...s, name: newName } : s,
   );
-  const projectRepository = context.resolveProjectRepository(project.url);
   await projectRepository.updateStoryList(project, renamedStories);
   context.invalidateProject?.(pjcode);
   if (storyIssue !== null) {
