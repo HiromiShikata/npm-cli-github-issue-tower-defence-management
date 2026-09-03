@@ -51,6 +51,17 @@ export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 export const RELATED_OPEN_PRS_CACHE_TTL_MS = 10 * 60 * 1000;
 
+type CachedRelatedOpenPrs = {
+  fetchedAtMs: number;
+  prs: Array<Omit<RelatedPullRequest, 'createdAt'> & { createdAt: string }>;
+};
+
+function isCachedRelatedOpenPrs(value: unknown): value is CachedRelatedOpenPrs {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.fetchedAtMs === 'number' && Array.isArray(v.prs);
+}
+
 const SELF_AUTHORED_REVIEW_REFUSAL =
   'Can not request changes on your own pull request';
 
@@ -611,11 +622,6 @@ export class ApiV3CheerioRestIssueRepository
 
   getLastIssuesFetchedAt = (projectId: Project['id']): string | null =>
     this.lastIssuesFetchedAtByProjectId.get(projectId) ?? null;
-
-  private readonly relatedOpenPrsCache = new Map<
-    string,
-    { fetchedAtMs: number; prs: RelatedPullRequest[] }
-  >();
 
   private fetchWithRateLimitRetry = (
     request: () => Promise<Response>,
@@ -1863,9 +1869,17 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const nowMs = (await this.dateRepository.now()).getTime();
-    const cached = this.relatedOpenPrsCache.get(issueUrl);
-    if (cached && nowMs - cached.fetchedAtMs < RELATED_OPEN_PRS_CACHE_TTL_MS) {
-      return cached.prs;
+    const cacheKey = `related-open-prs/${owner}/${repo}/${issueNumber}`;
+    const cachedRaw =
+      await this.localStorageCacheRepository.getSingle(cacheKey);
+    if (
+      isCachedRelatedOpenPrs(cachedRaw) &&
+      nowMs - cachedRaw.fetchedAtMs < RELATED_OPEN_PRS_CACHE_TTL_MS
+    ) {
+      return cachedRaw.prs.map((pr) => ({
+        ...pr,
+        createdAt: new Date(pr.createdAt),
+      }));
     }
 
     const query = `
@@ -2050,7 +2064,10 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const prs = Array.from(relatedPRsMap.values());
-    this.relatedOpenPrsCache.set(issueUrl, { fetchedAtMs: nowMs, prs });
+    await this.localStorageCacheRepository.setSingle(cacheKey, {
+      fetchedAtMs: nowMs,
+      prs: prs.map((pr) => ({ ...pr, createdAt: pr.createdAt.toISOString() })),
+    });
     return prs;
   };
 
