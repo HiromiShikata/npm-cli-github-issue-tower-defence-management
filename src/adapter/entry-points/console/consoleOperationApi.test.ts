@@ -588,7 +588,7 @@ describe('consoleOperationApi', () => {
       });
       expect(response.statusCode).toBe(400);
       expect(response.body).toMatchObject({
-        error: expect.stringContaining('workflow'),
+        error: `Cannot merge: this pull request modifies workflow files and the configured token lacks 'workflow' scope. Please merge this pull request manually.`,
       });
       expect(issueRepository.updateStatus).not.toHaveBeenCalled();
     });
