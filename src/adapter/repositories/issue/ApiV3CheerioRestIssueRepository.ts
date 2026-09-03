@@ -58,8 +58,12 @@ type CachedRelatedOpenPrs = {
 
 function isCachedRelatedOpenPrs(value: unknown): value is CachedRelatedOpenPrs {
   if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return typeof v.fetchedAtMs === 'number' && Array.isArray(v.prs);
+  return (
+    'fetchedAtMs' in value &&
+    typeof value.fetchedAtMs === 'number' &&
+    'prs' in value &&
+    Array.isArray(value.prs)
+  );
 }
 
 const SELF_AUTHORED_REVIEW_REFUSAL =
