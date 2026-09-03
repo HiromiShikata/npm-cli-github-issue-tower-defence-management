@@ -611,6 +611,21 @@ test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaitin
     .toBe(true);
 });
 
+test('removes the list item immediately when ok & Awaiting Workspace is clicked from the list', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  const listButtons = page.locator('.console-list .console-op-button', {
+    hasText: 'ok & Awaiting Workspace',
+  });
+  await expect(listButtons).toHaveCount(2);
+
+  await listButtons.first().click();
+
+  await expect(listButtons).toHaveCount(1);
+});
+
 test('posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked', async ({
   page,
 }) => {
