@@ -1,3 +1,10 @@
+## [2.46.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.4...v2.46.5) (2026-09-03)
+
+
+### Bug Fixes
+
+* **console-ui:** remove list item immediately on ok & Awaiting Workspace click ([#1966](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1966)) ([c2a8a5e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c2a8a5edeca1c7aeada60437ddec7aecd3b9583a)), closes [HiromiShikata/umino-corporait-operation#31294](https://github.com/HiromiShikata/umino-corporait-operation/issues/31294)
+
 ## [2.46.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.3...v2.46.4) (2026-09-03)
 
 
