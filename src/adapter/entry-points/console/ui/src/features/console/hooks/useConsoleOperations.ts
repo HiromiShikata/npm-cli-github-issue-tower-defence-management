@@ -203,11 +203,11 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      markDone(item);
       await postConsoleOperation(
         REVIEW_OPERATION_PATH,
         reviewRequest(pjcode, item, prUrl, action, pendingReviewComments),
       );
+      markDone(item);
       invalidateItemContent(item);
     },
     [pjcode, markDone, invalidateItemContent],
