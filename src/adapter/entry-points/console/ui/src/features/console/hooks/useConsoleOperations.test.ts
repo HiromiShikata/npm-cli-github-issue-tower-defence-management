@@ -518,7 +518,7 @@ describe('useConsoleOperations', () => {
     });
   });
 
-  it('marks reviewPullRequest overlay done before the API call resolves', async () => {
+  it('marks reviewPullRequest overlay done after the API call resolves', async () => {
     let resolveApi!: () => void;
     global.fetch = jest.fn(
       () =>
@@ -541,15 +541,45 @@ describe('useConsoleOperations', () => {
       );
     });
 
-    const stored = JSON.parse(
+    const storedBefore = JSON.parse(
       localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );
-    expect(stored[prItem.projectItemId]?.done).toBe(true);
+    expect(storedBefore[prItem.projectItemId]?.done).not.toBe(true);
 
     await act(async () => {
       resolveApi();
       await Promise.resolve();
     });
+
+    const storedAfter = JSON.parse(
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
+    );
+    expect(storedAfter[prItem.projectItemId]?.done).toBe(true);
+  });
+
+  it('does not mark reviewPullRequest overlay done when the API call fails', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 400,
+      text: async () =>
+        "Cannot merge: this pull request modifies workflow files and the configured token lacks 'workflow' scope. Please merge this pull request manually.",
+    })) as unknown as typeof fetch;
+    const { result } = setup();
+
+    await act(async () => {
+      await expect(
+        result.current.operations.reviewPullRequest(
+          prItem,
+          prItem.url,
+          'approve_and_merge',
+        ),
+      ).rejects.toThrow();
+    });
+
+    const stored = JSON.parse(
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
+    );
+    expect(stored[prItem.projectItemId]?.done).not.toBe(true);
   });
 
   it('marks closeIssue overlay done before the API call resolves', async () => {

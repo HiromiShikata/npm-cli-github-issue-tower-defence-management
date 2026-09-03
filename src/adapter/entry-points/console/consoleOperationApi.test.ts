@@ -574,6 +574,25 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
     });
 
+    it('returns 400 when mergePullRequest fails with a 403 workflow scope error', async () => {
+      issueRepository.mergePullRequest.mockRejectedValue(
+        new Error(
+          'Failed to merge PR https://github.com/o/r/pull/1: HTTP 403 permission denied, the token cannot perform this operation refusing to allow an OAuth App to create or update workflow `.github/workflows/test.yml` without `workflow` scope',
+        ),
+      );
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_403wf',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toMatchObject({
+        error: expect.stringContaining('workflow'),
+      });
+      expect(issueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
     it('posts a conflict comment, moves to Awaiting workspace, and returns 200 when the pull request has a merge conflict', async () => {
       issueRepository.getOpenPullRequest.mockResolvedValue({
         url: 'https://github.com/o/r/pull/1',
