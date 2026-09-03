@@ -27,6 +27,7 @@ export type ConsoleQueuedAction = {
   color: ConsoleToastColor;
   commit: () => Promise<void>;
   advance: () => void;
+  revertAdvance?: () => void;
   offline?: ConsoleOfflinePayload;
 };
 
@@ -182,10 +183,12 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
   }, [clearTimer, runCommit]);
 
   const undo = useCallback((): void => {
+    const action = actionRef.current;
     clearTimer();
     actionRef.current = null;
     committedRef.current = true;
     setPending(null);
+    action?.revertAdvance?.();
   }, [clearTimer]);
 
   const dismissError = useCallback((): void => {
