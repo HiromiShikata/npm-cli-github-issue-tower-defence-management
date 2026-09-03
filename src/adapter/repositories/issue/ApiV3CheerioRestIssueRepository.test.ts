@@ -4772,14 +4772,19 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('returns cached result and issues no additional GraphQL query on second call within TTL', async () => {
-      const { repository, dateRepository } =
+      const { repository, localStorageCacheRepository, dateRepository } =
         createApiV3CheerioRestIssueRepository();
-      dateRepository.now.mockResolvedValue(
-        new Date('2026-01-01T00:00:00.000Z'),
-      );
+      const t = new Date('2026-01-01T00:00:00.000Z');
+      dateRepository.now.mockResolvedValue(t);
 
       const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
       mockFetchRoutes({ timeline: timelineFn });
+
+      const cachedEntry = { fetchedAtMs: t.getTime(), prs: [] };
+      localStorageCacheRepository.getSingle
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(cachedEntry);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       const issueUrl = 'https://github.com/HiromiShikata/secretary/issues/100';
       await repository.findRelatedOpenPRs(issueUrl);
@@ -4790,7 +4795,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('issues a new GraphQL query after the TTL has elapsed', async () => {
-      const { repository, dateRepository } =
+      const { repository, localStorageCacheRepository, dateRepository } =
         createApiV3CheerioRestIssueRepository();
       const t0 = new Date('2026-01-01T00:00:00.000Z');
       const tExpired = new Date(t0.getTime() + RELATED_OPEN_PRS_CACHE_TTL_MS);
@@ -4801,6 +4806,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
       mockFetchRoutes({ timeline: timelineFn });
 
+      const staleEntry = { fetchedAtMs: t0.getTime(), prs: [] };
+      localStorageCacheRepository.getSingle
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(staleEntry);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
       const issueUrl = 'https://github.com/HiromiShikata/secretary/issues/100';
       await repository.findRelatedOpenPRs(issueUrl);
       await repository.findRelatedOpenPRs(issueUrl);
@@ -4809,7 +4820,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
 
     it('does not share cache between different issue URLs', async () => {
-      const { repository, dateRepository } =
+      const { repository, localStorageCacheRepository, dateRepository } =
         createApiV3CheerioRestIssueRepository();
       dateRepository.now.mockResolvedValue(
         new Date('2026-01-01T00:00:00.000Z'),
@@ -4817,6 +4828,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const timelineFn = jest.fn(() => buildEmptyTimelineResponse());
       mockFetchRoutes({ timeline: timelineFn });
+
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
 
       await repository.findRelatedOpenPRs(
         'https://github.com/HiromiShikata/secretary/issues/100',
@@ -4826,6 +4840,70 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
 
       expect(timelineFn).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses the correct cache key per issue and writes to localStorageCacheRepository', async () => {
+      const { repository, localStorageCacheRepository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const t = new Date('2026-01-01T00:00:00.000Z');
+      dateRepository.now.mockResolvedValue(t);
+
+      mockFetchRoutes({
+        timeline: jest.fn(() => buildEmptyTimelineResponse()),
+      });
+
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/100',
+      );
+
+      expect(localStorageCacheRepository.getSingle).toHaveBeenCalledWith(
+        'related-open-prs/HiromiShikata/secretary/100',
+      );
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        'related-open-prs/HiromiShikata/secretary/100',
+        expect.objectContaining({ fetchedAtMs: t.getTime(), prs: [] }),
+      );
+    });
+
+    it('deserializes Date from cached ISO string when returning a cache hit', async () => {
+      const { repository, localStorageCacheRepository, dateRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const t = new Date('2026-01-01T00:00:00.000Z');
+      dateRepository.now.mockResolvedValue(t);
+
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      const prCreatedAt = '2025-06-01T12:00:00.000Z';
+      const cachedEntry = {
+        fetchedAtMs: t.getTime(),
+        prs: [
+          {
+            url: 'https://github.com/HiromiShikata/secretary/pull/50',
+            branchName: 'feature/x',
+            createdAt: prCreatedAt,
+            isDraft: false,
+            isConflicted: false,
+            mergeable: 'MERGEABLE',
+            isPassedAllCiJob: true,
+            isCiStateSuccess: true,
+            isResolvedAllReviewComments: true,
+            isBranchOutOfDate: false,
+            missingRequiredCheckNames: [],
+          },
+        ],
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(cachedEntry);
+
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/secretary/issues/100',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].createdAt).toBeInstanceOf(Date);
+      expect(result[0].createdAt.toISOString()).toBe(prCreatedAt);
     });
   });
 
