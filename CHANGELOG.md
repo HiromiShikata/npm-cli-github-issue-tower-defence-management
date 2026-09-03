@@ -1,3 +1,11 @@
+## [2.46.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.5...v2.46.6) (2026-09-03)
+
+
+### Bug Fixes
+
+* **console:** handle 403 workflow scope error in approve-and-merge ([#1969](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1969)) ([891eba7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/891eba7b28d07ed53441d3bcc63a080d0a7a6b86)), closes [HiromiShikata/umino-corporait-operation#31306](https://github.com/HiromiShikata/umino-corporait-operation/issues/31306)
+* **rate-limit:** persist findRelatedOpenPRs cache across daemon cycles ([#1968](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1968)) ([1d1cae1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1d1cae116d02dea536ae5a41c0f6139215d38296)), closes [#1965](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1965) [HiromiShikata/secretary#5195](https://github.com/HiromiShikata/secretary/issues/5195)
+
 ## [2.46.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.4...v2.46.5) (2026-09-03)
 
 
