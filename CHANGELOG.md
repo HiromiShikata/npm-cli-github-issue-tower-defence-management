@@ -1,3 +1,10 @@
+## [2.46.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.3...v2.46.4) (2026-09-03)
+
+
+### Bug Fixes
+
+* **rate-limit:** add 10-minute TTL cache for findRelatedOpenPRs to reduce GraphQL consumption ([#1965](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1965)) ([97a3481](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/97a348120cd2e1a9b62bb6e50d96eb9877ea1c61)), closes [HiromiShikata/secretary#5169](https://github.com/HiromiShikata/secretary/issues/5169)
+
 ## [2.46.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.2...v2.46.3) (2026-09-02)
 
 
