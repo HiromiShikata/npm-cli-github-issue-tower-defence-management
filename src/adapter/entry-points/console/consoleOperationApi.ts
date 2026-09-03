@@ -411,7 +411,20 @@ export const handleReview = async (
         }
       }
     }
-    await issueRepository.mergePullRequest(prUrl);
+    try {
+      await issueRepository.mergePullRequest(prUrl);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('403') &&
+        error.message.toLowerCase().includes('workflow')
+      ) {
+        return badRequest(
+          `Cannot merge: this pull request modifies workflow files and the configured token lacks 'workflow' scope. Please merge this pull request manually.`,
+        );
+      }
+      throw error;
+    }
     const failure = await updateStatusByName(
       issueRepository,
       project,
