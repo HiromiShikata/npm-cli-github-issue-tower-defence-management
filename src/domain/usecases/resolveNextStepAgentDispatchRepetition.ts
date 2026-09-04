@@ -1,6 +1,5 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
@@ -30,19 +29,20 @@ const countSilentRedispatches = <
   ) {
     return null;
   }
-  const lastAgentReport = findLastAgentReport(
-    params.comments,
-    params.isTrustedAuthor,
+  const lastHumanCommentIndex = params.comments.reduce(
+    (found, comment, index) =>
+      isHumanComment(comment, params.isTrustedAuthor) ? index : found,
+    -1,
   );
-  const commentsAfterLastAgentReport = lastAgentReport
-    ? params.comments.slice(params.comments.indexOf(lastAgentReport) + 1)
-    : [];
+  const commentsInCurrentCycle = params.comments.slice(
+    lastHumanCommentIndex + 1,
+  );
   return (
-    commentsAfterLastAgentReport.filter(
+    commentsInCurrentCycle.filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
         comment.content.startsWith(
-          NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD,
+          `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}`,
         ),
     ).length + 1
   );
