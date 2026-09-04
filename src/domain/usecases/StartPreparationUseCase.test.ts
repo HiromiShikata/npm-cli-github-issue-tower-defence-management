@@ -7915,6 +7915,77 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
   });
 });
 
+describe('StartPreparationUseCase.run board-cache PR guard', () => {
+  it('does not call findRelatedOpenPRs for candidates when the board cache shows no related open PRs', async () => {
+    const mockProject = createMockProject();
+    const awaitingIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Awaiting Workspace',
+      author: 'testuser',
+    });
+    const mockProjectRepository = {
+      getByUrl: jest.fn().mockResolvedValue(mockProject),
+      createField: jest.fn().mockResolvedValue(undefined),
+      updateAgentList: jest.fn().mockResolvedValue([]),
+    };
+    const findRelatedOpenPRs = jest.fn().mockResolvedValue([]);
+    const mockIssueRepository = {
+      getStoryObjectMap: jest
+        .fn()
+        .mockResolvedValue(createMockStoryObjectMap([awaitingIssue])),
+      getAllOpened: jest.fn().mockResolvedValue([]),
+      updateStatus: jest.fn().mockResolvedValue(undefined),
+      findRelatedOpenPRs,
+      getOpenPullRequest: jest.fn().mockResolvedValue(null),
+      closePullRequest: jest.fn().mockResolvedValue(undefined),
+      deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
+      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+      removeLabel: jest.fn().mockResolvedValue(undefined),
+    };
+    const mockLocalCommandRunner = {
+      runCommand: jest
+        .fn()
+        .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
+      spawnInteractive: jest.fn(),
+    };
+    const useCase = new StartPreparationUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockLocalCommandRunner,
+      {
+        ensureObservable: jest.fn().mockResolvedValue(undefined),
+        getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
+        getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
+        proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+      },
+      {
+        listSpawns: jest.fn().mockReturnValue([]),
+        listRunningIssueUrls: jest.fn().mockReturnValue([]),
+      },
+      { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(findRelatedOpenPRs).not.toHaveBeenCalled();
+    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
   const buildRelatedPullRequest = (url: string): RelatedPullRequest => ({
     url,
