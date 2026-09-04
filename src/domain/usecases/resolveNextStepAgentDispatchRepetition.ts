@@ -14,6 +14,35 @@ export type NextStepAgentDispatchRepetition =
   | { type: 'escalateSilentRedispatch'; comment: string }
   | { type: 'escalateDispatchLoop'; comment: string };
 
+const findLastHumanCommentIndex = <
+  CommentLike extends { author: string; content: string },
+>(
+  comments: CommentLike[],
+  isTrustedAuthor: (author: string) => boolean,
+): number =>
+  comments.reduce(
+    (found, comment, index) =>
+      isHumanComment(comment, isTrustedAuthor) ? index : found,
+    -1,
+  );
+
+const isSilentRedispatchCommentForAgent = (
+  content: string,
+  nextStepAgent: string,
+): boolean => {
+  if (!content.startsWith(NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD)) {
+    return false;
+  }
+  const agentNameInComment = content
+    .slice(NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD.length + 1)
+    .split('\n')[0]
+    .trim();
+  return (
+    normalizeProjectFieldName(agentNameInComment) ===
+    normalizeProjectFieldName(nextStepAgent)
+  );
+};
+
 const countSilentRedispatches = <
   CommentLike extends { author: string; content: string },
 >(params: {
@@ -29,10 +58,9 @@ const countSilentRedispatches = <
   ) {
     return null;
   }
-  const lastHumanCommentIndex = params.comments.reduce(
-    (found, comment, index) =>
-      isHumanComment(comment, params.isTrustedAuthor) ? index : found,
-    -1,
+  const lastHumanCommentIndex = findLastHumanCommentIndex(
+    params.comments,
+    params.isTrustedAuthor,
   );
   const commentsInCurrentCycle = params.comments.slice(
     lastHumanCommentIndex + 1,
@@ -41,9 +69,7 @@ const countSilentRedispatches = <
     commentsInCurrentCycle.filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
-        comment.content.startsWith(
-          `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}`,
-        ),
+        isSilentRedispatchCommentForAgent(comment.content, params.nextStepAgent),
     ).length + 1
   );
 };
@@ -55,10 +81,9 @@ const countDispatchesInCurrentCycle = <
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
 }): number => {
-  const lastHumanCommentIndex = params.comments.reduce(
-    (found, comment, index) =>
-      isHumanComment(comment, params.isTrustedAuthor) ? index : found,
-    -1,
+  const lastHumanCommentIndex = findLastHumanCommentIndex(
+    params.comments,
+    params.isTrustedAuthor,
   );
   const reportsInCurrentCycle = params.comments
     .slice(lastHumanCommentIndex + 1)
