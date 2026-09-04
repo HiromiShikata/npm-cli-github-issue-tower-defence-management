@@ -1044,6 +1044,16 @@ export const handleDeleteStory = async (
       console.error('Failed to close story issue after story deletion:', e);
     }
   }
+  const storyTasks = storyObjectMap.get(storyOption.name)?.issues ?? [];
+  for (const task of storyTasks) {
+    if (!task.isClosed) {
+      try {
+        await issueRepository.closeIssueByUrl(task.url, 'not_planned');
+      } catch (e) {
+        console.error(`Failed to close task after story deletion: ${task.url}`, e);
+      }
+    }
+  }
   return ok();
 };
 

@@ -82,8 +82,8 @@ export const ConsoleDangerousActions = ({
         >
           <p className="console-story-delete-confirm-message">
             Delete story option &quot;{storyNameForDeletion}&quot; from the
-            GitHub custom field? Tasks assigned to this story will not be
-            deleted.
+            GitHub custom field? Open tasks assigned to this story will be
+            closed.
           </p>
           {storyDeleteError !== null && (
             <p role="alert" className="console-list-error">
