@@ -231,8 +231,22 @@ export class StartPreparationUseCase {
     return null;
   };
 
+  private buildIssueUrlsWithOpenPrs = (issues: Issue[]): Set<string> => {
+    const issueUrlsWithOpenPrs = new Set<string>();
+    for (const issue of issues) {
+      if (!issue.isPr || issue.isClosed) {
+        continue;
+      }
+      for (const issueUrl of issue.closingIssueReferenceUrls) {
+        issueUrlsWithOpenPrs.add(issueUrl);
+      }
+    }
+    return issueUrlsWithOpenPrs;
+  };
+
   fetchSpawnCandidateBranchSources = async (
     issueUrls: string[],
+    issueUrlsWithKnownOpenPrs: ReadonlySet<string>,
   ): Promise<Map<string, SpawnCandidateBranchSource>> => {
     const branchSourceByIssueUrl = new Map<
       string,
@@ -243,20 +257,24 @@ export class StartPreparationUseCase {
       while (nextIndex < issueUrls.length) {
         const issueUrl = issueUrls[nextIndex];
         nextIndex += 1;
-        branchSourceByIssueUrl.set(
-          issueUrl,
-          issueUrl.includes('/pull/')
-            ? {
-                openPullRequest:
-                  await this.issueRepository.getOpenPullRequest(issueUrl),
-                relatedOpenPullRequests: [],
-              }
-            : {
-                openPullRequest: null,
-                relatedOpenPullRequests:
-                  await this.issueRepository.findRelatedOpenPRs(issueUrl),
-              },
-        );
+        if (issueUrl.includes('/pull/')) {
+          branchSourceByIssueUrl.set(issueUrl, {
+            openPullRequest:
+              await this.issueRepository.getOpenPullRequest(issueUrl),
+            relatedOpenPullRequests: [],
+          });
+        } else if (issueUrlsWithKnownOpenPrs.has(issueUrl)) {
+          branchSourceByIssueUrl.set(issueUrl, {
+            openPullRequest: null,
+            relatedOpenPullRequests:
+              await this.issueRepository.findRelatedOpenPRs(issueUrl),
+          });
+        } else {
+          branchSourceByIssueUrl.set(issueUrl, {
+            openPullRequest: null,
+            relatedOpenPullRequests: [],
+          });
+        }
       }
     };
     await Promise.all(
@@ -571,6 +589,8 @@ export class StartPreparationUseCase {
       }
     }
 
+    const issueUrlsWithOpenPrs =
+      this.buildIssueUrlsWithOpenPrs(allOpenedIssues);
     const branchSourceByIssueUrl = await this.fetchSpawnCandidateBranchSources(
       awaitingWorkspaceIssues
         .filter(
@@ -592,6 +612,7 @@ export class StartPreparationUseCase {
             effectiveMaxPreparingIssuesCount - currentPreparationIssueCount,
           ),
         ),
+      issueUrlsWithOpenPrs,
     );
 
     for (
