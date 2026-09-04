@@ -1,7932 +1,7908 @@
 import {
-  SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY,
-  StartPreparationUseCase,
-} from './StartPreparationUseCase';
+	SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY,
+	StartPreparationUseCase,
+} from "./StartPreparationUseCase";
 import {
-  IssueRepository,
-  RelatedPullRequest,
-} from './adapter-interfaces/IssueRepository';
-import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
-import { ClaudeTokenUsageRepository } from './adapter-interfaces/ClaudeTokenUsageRepository';
-import { TakeOwnershipSpawnRepository } from './adapter-interfaces/TakeOwnershipSpawnRepository';
-import { GitHubGraphqlRateLimitRepository } from './adapter-interfaces/GitHubGraphqlRateLimitRepository';
-import { ClaudeTokenUsage } from '../entities/ClaudeTokenUsage';
-import { Issue } from '../entities/Issue';
-import { FieldOption, Project } from '../entities/Project';
-import { StoryObjectMap } from '../entities/StoryObjectMap';
+	IssueRepository,
+	RelatedPullRequest,
+} from "./adapter-interfaces/IssueRepository";
+import { ProjectRepository } from "./adapter-interfaces/ProjectRepository";
+import { LocalCommandRunner } from "./adapter-interfaces/LocalCommandRunner";
+import { ClaudeTokenUsageRepository } from "./adapter-interfaces/ClaudeTokenUsageRepository";
+import { TakeOwnershipSpawnRepository } from "./adapter-interfaces/TakeOwnershipSpawnRepository";
+import { GitHubGraphqlRateLimitRepository } from "./adapter-interfaces/GitHubGraphqlRateLimitRepository";
+import { ClaudeTokenUsage } from "../entities/ClaudeTokenUsage";
+import { Issue } from "../entities/Issue";
+import { FieldOption, Project } from "../entities/Project";
+import { StoryObjectMap } from "../entities/StoryObjectMap";
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
 const createMockStoryObjectMap = (issues: Issue[]): StoryObjectMap => {
-  const map: StoryObjectMap = new Map();
-  map.set('Default Story', {
-    story: {
-      id: 'story-1',
-      name: 'Default Story',
-      color: 'GRAY',
-      description: '',
-    },
-    storyIssue: null,
-    issues: issues.map((issue) =>
-      issue.story === null ? { ...issue, story: 'Default Story' } : issue,
-    ),
-  });
-  return map;
+	const map: StoryObjectMap = new Map();
+	map.set("Default Story", {
+		story: {
+			id: "story-1",
+			name: "Default Story",
+			color: "GRAY",
+			description: "",
+		},
+		storyIssue: null,
+		issues: issues.map((issue) =>
+			issue.story === null ? { ...issue, story: "Default Story" } : issue,
+		),
+	});
+	return map;
 };
 
 const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
-  nameWithOwner: 'user/repo',
-  number: 1,
-  title: 'Test Issue',
-  state: 'OPEN',
-  status: 'Backlog',
-  story: null,
-  nextActionDate: null,
-  nextActionHour: null,
-  estimationMinutes: null,
-  dependedIssueUrls: [],
-  completionDate50PercentConfidence: null,
-  url: 'https://github.com/user/repo/issues/1',
-  assignees: ['manager-user'],
-  labels: [],
-  org: 'user',
-  repo: 'repo',
-  body: '',
-  itemId: 'item-1',
-  isPr: false,
-  isInProgress: false,
-  isClosed: false,
-  createdAt: new Date(),
-  author: 'testuser',
-  closingIssueReferenceUrls: [],
-  agent: null,
-  stateReason: null,
-  ...overrides,
+	nameWithOwner: "user/repo",
+	number: 1,
+	title: "Test Issue",
+	state: "OPEN",
+	status: "Backlog",
+	story: null,
+	nextActionDate: null,
+	nextActionHour: null,
+	estimationMinutes: null,
+	dependedIssueUrls: [],
+	completionDate50PercentConfidence: null,
+	url: "https://github.com/user/repo/issues/1",
+	assignees: ["manager-user"],
+	labels: [],
+	org: "user",
+	repo: "repo",
+	body: "",
+	itemId: "item-1",
+	isPr: false,
+	isInProgress: false,
+	isClosed: false,
+	createdAt: new Date(),
+	author: "testuser",
+	closingIssueReferenceUrls: [],
+	agent: null,
+	stateReason: null,
+	...overrides,
 });
 
 const createMockProject = (): Project => ({
-  id: 'project-1',
-  url: 'https://github.com/users/user/projects/1',
-  databaseId: 1,
-  name: 'Test Project',
-  status: {
-    name: 'Status',
-    fieldId: 'status-field-id',
-    statuses: [
-      { id: '1', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
-      { id: '2', name: 'Preparation', color: 'YELLOW', description: '' },
-      { id: '3', name: 'Done', color: 'GREEN', description: '' },
-    ],
-  },
-  nextActionDate: null,
-  nextActionHour: null,
-  story: null,
-  remainingEstimationMinutes: null,
-  dependedIssueUrlSeparatedByComma: null,
-  completionDate50PercentConfidence: null,
-  agent: null,
+	id: "project-1",
+	url: "https://github.com/users/user/projects/1",
+	databaseId: 1,
+	name: "Test Project",
+	status: {
+		name: "Status",
+		fieldId: "status-field-id",
+		statuses: [
+			{ id: "1", name: "Awaiting Workspace", color: "GRAY", description: "" },
+			{ id: "2", name: "Preparation", color: "YELLOW", description: "" },
+			{ id: "3", name: "Done", color: "GREEN", description: "" },
+		],
+	},
+	nextActionDate: null,
+	nextActionHour: null,
+	story: null,
+	remainingEstimationMinutes: null,
+	dependedIssueUrlSeparatedByComma: null,
+	completionDate50PercentConfidence: null,
+	agent: null,
 });
 
-describe('StartPreparationUseCase', () => {
-  let useCase: StartPreparationUseCase;
-  let mockProjectRepository: Mocked<
-    Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
-  >;
-  let mockIssueRepository: Mocked<
-    Pick<
-      IssueRepository,
-      | 'getStoryObjectMap'
-      | 'getAllOpened'
-      | 'updateStatus'
-      | 'findRelatedOpenPRs'
-      | 'getOpenPullRequest'
-      | 'closePullRequest'
-      | 'deletePullRequestBranch'
-      | 'createCommentByUrl'
-      | 'setIssueAgentField'
-      | 'removeLabel'
-    >
-  >;
-  let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
-  let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepository>;
-  let mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository>;
-  let mockGitHubGraphqlRateLimitRepository: Mocked<GitHubGraphqlRateLimitRepository>;
-  let mockProject: Project;
-  beforeEach(() => {
-    jest.resetAllMocks();
-    mockProject = createMockProject();
-    mockProjectRepository = {
-      getByUrl: jest.fn(),
-      createField: jest.fn().mockResolvedValue(undefined),
-      updateAgentList: jest.fn().mockResolvedValue([]),
-    };
-    mockIssueRepository = {
-      getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
-      getAllOpened: jest.fn().mockResolvedValue([]),
-      updateStatus: jest.fn(),
-      findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
-      getOpenPullRequest: jest.fn().mockResolvedValue(null),
-      closePullRequest: jest.fn().mockResolvedValue(undefined),
-      deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
-      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
-      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
-      removeLabel: jest.fn().mockResolvedValue(undefined),
-    };
-    mockLocalCommandRunner = {
-      runCommand: jest.fn(),
-      spawnInteractive: jest.fn(),
-    };
-    mockClaudeTokenUsageRepository = {
-      ensureObservable: jest.fn().mockResolvedValue(undefined),
-      getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
-      getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
-      proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
-    };
-    mockTakeOwnershipSpawnRepository = {
-      listSpawns: jest.fn().mockReturnValue([]),
-      listRunningIssueUrls: jest.fn().mockReturnValue([]),
-    };
-    mockGitHubGraphqlRateLimitRepository = {
-      getRemainingRequestCount: jest.fn().mockResolvedValue(null),
-    };
-    useCase = new StartPreparationUseCase(
-      mockProjectRepository,
-      mockIssueRepository,
-      mockLocalCommandRunner,
-      mockClaudeTokenUsageRepository,
-      mockTakeOwnershipSpawnRepository,
-      mockGitHubGraphqlRateLimitRepository,
-    );
-  });
-  it('should run aw command for awaiting workspace issues', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'url1',
-      status: 'Preparation',
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-
-  describe('agent designation label migration to the Agent project field', () => {
-    const projectWithAgentField = (options: FieldOption[]): Project => ({
-      ...createMockProject(),
-      agent: { name: 'Agent', fieldId: 'agent-field-id', options },
-    });
-    const runWithAgents = async (agents: string[] | null): Promise<void> => {
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-        agents,
-      });
-    };
-    const arrangeIssue = (project: Project, labels: string[]): void => {
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            title: 'Issue 1',
-            labels,
-            status: 'Awaiting Workspace',
-          }),
-        ]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-    };
-
-    it('sets the existing Agent field option and removes the label when a label matches a configured agent definition', async () => {
-      const project = projectWithAgentField([
-        {
-          id: 'agent-option-impl',
-          name: 'impl',
-          color: 'GRAY',
-          description: '',
-        },
-        {
-          id: 'agent-option-chore',
-          name: 'chore',
-          color: 'GRAY',
-          description: '',
-        },
-      ]);
-      arrangeIssue(project, ['chore']);
-
-      await runWithAgents(['impl', 'chore', 'accounting']);
-
-      expect(mockProjectRepository.updateAgentList.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
-        ['url1', project, 'agent-option-chore'],
-      ]);
-      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.removeLabel.mock.calls[0][0]).toMatchObject({
-        url: 'url1',
-      });
-      expect(mockIssueRepository.removeLabel.mock.calls[0][1]).toBe('chore');
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'chore',
-      );
-    });
-
-    it('creates the missing Agent field option before setting it on the issue', async () => {
-      const project = projectWithAgentField([]);
-      arrangeIssue(project, ['impl']);
-      mockProjectRepository.updateAgentList.mockResolvedValue([
-        {
-          id: 'agent-option-impl',
-          name: 'impl',
-          color: 'GRAY',
-          description: '',
-        },
-      ]);
-
-      await runWithAgents(['impl']);
-
-      expect(mockProjectRepository.updateAgentList.mock.calls).toHaveLength(1);
-      expect(mockProjectRepository.updateAgentList.mock.calls[0][1]).toEqual([
-        { id: null, name: 'impl', color: 'GRAY', description: '' },
-      ]);
-      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
-        ['url1', project, 'agent-option-impl'],
-      ]);
-      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
-    });
-
-    it('creates the Agent field when the project has none, then sets it and removes the label', async () => {
-      const project = createMockProject();
-      arrangeIssue(project, ['chore']);
-      mockProjectRepository.getByUrl.mockResolvedValueOnce(project);
-      mockProjectRepository.getByUrl.mockResolvedValueOnce(
-        projectWithAgentField([
-          {
-            id: 'agent-option-chore',
-            name: 'chore',
-            color: 'GRAY',
-            description: '',
-          },
-        ]),
-      );
-
-      await runWithAgents(['chore']);
-
-      expect(mockProjectRepository.createField.mock.calls).toHaveLength(1);
-      expect(mockProjectRepository.createField.mock.calls[0][1]).toEqual({
-        name: 'Agent',
-        dataType: 'SINGLE_SELECT',
-        options: [{ name: 'chore', color: 'GRAY', description: '' }],
-      });
-      expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
-        ['url1', project, 'agent-option-chore'],
-      ]);
-      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'chore',
-      );
-    });
-
-    it('keeps the label and still uses it as the agent when the Agent field option cannot be resolved', async () => {
-      const project = createMockProject();
-      arrangeIssue(project, ['chore']);
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-
-      await runWithAgents(['chore']);
-
-      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'chore',
-      );
-    });
-
-    it('leaves the labels untouched when no label matches a configured agent definition', async () => {
-      const project = projectWithAgentField([
-        {
-          id: 'agent-option-impl',
-          name: 'impl',
-          color: 'GRAY',
-          description: '',
-        },
-      ]);
-      arrangeIssue(project, ['category:triager']);
-
-      await runWithAgents(['impl']);
-
-      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'agent1',
-      );
-    });
-
-    it('leaves the labels untouched when no agent definition is configured', async () => {
-      const project = projectWithAgentField([]);
-      arrangeIssue(project, ['chore']);
-
-      await runWithAgents(null);
-
-      expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
-    });
-  });
-
-  describe('spawns with defaultAgentName when the issue has no agent configured, without setting the Agent field', () => {
-    it('does not set the Agent field and spawns with defaultAgentName when the issue has no agent and no configured label matches', async () => {
-      mockProjectRepository.getByUrl.mockResolvedValue(createMockProject());
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            agent: null,
-          }),
-        ]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-        agents: [],
-      });
-
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'agent1',
-      );
-    });
-
-    it('spawns with defaultAgentName when issue.agent is null and no agent option exists in the project', async () => {
-      mockProjectRepository.getByUrl.mockResolvedValue(createMockProject());
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            agent: null,
-          }),
-        ]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-        agents: [],
-      });
-
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'agent1',
-      );
-    });
-  });
-
-  it('keeps an issue out of Preparation when the aw command exits non-zero', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: 'The URL includes test-repository. Exiting.',
-      stderr: '',
-      exitCode: 1,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
-    expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe('1');
-    expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
-      url: 'url1',
-    });
-    expect(awaitingIssues[0].status).toBe('Awaiting Workspace');
-  });
-
-  it('skips an issue whose URL is already in the running worker list', async () => {
-    const runningUrl = 'https://github.com/user/repo/issues/1';
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: runningUrl,
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockReturnValue([
-      runningUrl,
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-
-  it('skips all spawning when active worker count meets the maxConcurrentWorkers cap', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/10',
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-      }),
-      createMockIssue({
-        number: 2,
-        url: 'https://github.com/user/repo/issues/11',
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockReturnValue([
-      'https://github.com/user/repo/issues/1',
-      'https://github.com/user/repo/issues/2',
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-      maxConcurrentWorkers: 2,
-    });
-
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-    expect(
-      mockLocalCommandRunner.runCommand.mock.calls.map((c) => c[0]),
-    ).not.toContain('aw');
-  });
-
-  it('stops spawning mid-loop when workers started in the run bring the count to the cap', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/10',
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-      }),
-      createMockIssue({
-        number: 2,
-        url: 'https://github.com/user/repo/issues/11',
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.getAllOpened.mockResolvedValue([]);
-    mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockReturnValue([]);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-      maxConcurrentWorkers: 1,
-    });
-
-    const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
-      (call) => call[0] === 'aw',
-    );
-    expect(awCalls).toHaveLength(1);
-  });
-
-  it('skips the preparation cycle when GraphQL rate limit is below the floor', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/10',
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockGitHubGraphqlRateLimitRepository.getRemainingRequestCount.mockResolvedValue(
-      499,
-    );
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-      graphqlRateLimitFloor: 500,
-    });
-
-    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-    expect(
-      mockLocalCommandRunner.runCommand.mock.calls.map((c) => c[0]),
-    ).not.toContain('aw');
-  });
-
-  it('proceeds with spawning when GraphQL remaining equals the floor exactly', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/10',
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.getAllOpened.mockResolvedValue([]);
-    mockGitHubGraphqlRateLimitRepository.getRemainingRequestCount.mockResolvedValue(
-      500,
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-      graphqlRateLimitFloor: 500,
-    });
-
-    const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
-      (call) => call[0] === 'aw',
-    );
-    expect(awCalls).toHaveLength(1);
-  });
-
-  it('proceeds with spawning when GraphQL rate limit check returns null', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/10',
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.getAllOpened.mockResolvedValue([]);
-    mockGitHubGraphqlRateLimitRepository.getRemainingRequestCount.mockResolvedValue(
-      null,
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-      graphqlRateLimitFloor: 500,
-    });
-
-    const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
-      (call) => call[0] === 'aw',
-    );
-    expect(awCalls).toHaveLength(1);
-  });
-
-  it('should pass --branch to aw command when issue has an existing linked PR', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    const existingPR: RelatedPullRequest = {
-      url: 'https://github.com/user/repo/pull/42',
-      branchName: 'i1',
-      createdAt: new Date('2024-01-01'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([existingPR]);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-  it('should pass --branch with PR branch name when issue URL is a PR URL', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/pull/354',
-        title: 'PR 354',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-      url: 'https://github.com/user/repo/pull/354',
-      branchName: 'dependabot/npm_and_yarn/multi-cc382f683c',
-      createdAt: new Date('2024-01-01'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    });
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'https://github.com/user/repo/pull/354',
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'dependabot/npm_and_yarn/multi-cc382f683c',
-      ],
-    ]);
-    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
-    expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
-      'https://github.com/user/repo/pull/354',
-    );
-  });
-  it('should skip and not call wrapper when PR URL returns null from getOpenPullRequest', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/pull/999',
-        title: 'PR 999',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'Skipping non-OPEN PR https://github.com/user/repo/pull/999: wrapper requires an open PR.',
-    );
-    consoleWarnSpy.mockRestore();
-  });
-  it('should skip and not call wrapper when PR URL has open PR with null branchName', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/pull/999',
-        title: 'PR 999',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-      url: 'https://github.com/user/repo/pull/999',
-      branchName: null,
-      createdAt: new Date('2024-01-01'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    });
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'Skipping PR https://github.com/user/repo/pull/999: head branch is unavailable.',
-    );
-    consoleWarnSpy.mockRestore();
-  });
-  it('should skip and not call wrapper when PR has branch name with shell-unsafe characters', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/pull/999',
-        title: 'PR 999',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-      url: 'https://github.com/user/repo/pull/999',
-      branchName: 'evil$(rm -rf /)',
-      createdAt: new Date('2024-01-01'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    });
-    const consoleErrorSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('branch name contains unexpected characters'),
-    );
-    consoleErrorSpy.mockRestore();
-  });
-  it('should auto-resolve by adopting oldest PR, closing newer PR with branch delete and comments when issue has multiple related open PRs', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    const olderPR: RelatedPullRequest = {
-      url: 'https://github.com/user/repo/pull/42',
-      branchName: 'i1',
-      createdAt: new Date('2024-01-01T00:00:00Z'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
-    const newerPR: RelatedPullRequest = {
-      url: 'https://github.com/user/repo/pull/43',
-      branchName: 'i1-fix',
-      createdAt: new Date('2024-01-02T00:00:00Z'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      olderPR,
-      newerPR,
-    ]);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
-      newerPR.url,
-    );
-    expect(mockIssueRepository.deletePullRequestBranch).toHaveBeenCalledWith(
-      newerPR.url,
-      newerPR.branchName,
-    );
-    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
-      newerPR.url,
-      expect.stringContaining(olderPR.url),
-    );
-    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
-      'https://github.com/user/repo/issues/1',
-      expect.stringContaining(newerPR.url),
-    );
-    expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalledWith(
-      olderPR.url,
-    );
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'https://github.com/user/repo/issues/1',
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-  it('should not treat a cross-repository PR as duplicate when a same-repository PR exists', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/HiromiShikata/secretary/issues/4290',
-        title: 'Issue 4290',
-        nameWithOwner: 'HiromiShikata/secretary',
-        number: 4290,
-        org: 'HiromiShikata',
-        repo: 'secretary',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    const sameRepoPR: RelatedPullRequest = {
-      url: 'https://github.com/HiromiShikata/secretary/pull/4610',
-      branchName: 'i4290',
-      createdAt: new Date('2026-08-28T13:38:00Z'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
-    const crossRepoPR: RelatedPullRequest = {
-      url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/1813',
-      branchName: 'i4290',
-      createdAt: new Date('2026-08-28T10:55:00Z'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      sameRepoPR,
-      crossRepoPR,
-    ]);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
-    expect(mockIssueRepository.deletePullRequestBranch).not.toHaveBeenCalled();
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
-      '--branch',
-    );
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
-      'i4290',
-    );
-  });
-  it('should skip issue after resolving duplicates when adopted canonical PR has null branchName', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    const olderPRNullBranch: RelatedPullRequest = {
-      url: 'https://github.com/user/repo/pull/42',
-      branchName: null,
-      createdAt: new Date('2024-01-01T00:00:00Z'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
-    const newerPR: RelatedPullRequest = {
-      url: 'https://github.com/user/repo/pull/43',
-      branchName: 'i1-fix',
-      createdAt: new Date('2024-01-02T00:00:00Z'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      olderPRNullBranch,
-      newerPR,
-    ]);
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
-      newerPR.url,
-    );
-    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
-      newerPR.url,
-      expect.stringContaining(olderPRNullBranch.url),
-    );
-    expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
-      'https://github.com/user/repo/issues/1',
-      expect.stringContaining(newerPR.url),
-    );
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'adopted canonical PR has unavailable head branch',
-      ),
-    );
-    consoleWarnSpy.mockRestore();
-  });
-  it('should skip and not call wrapper when issue has one related open PR with null branchName', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    const prWithNullBranch: RelatedPullRequest = {
-      url: 'https://github.com/user/repo/pull/42',
-      branchName: null,
-      createdAt: new Date('2024-01-01'),
-      isDraft: false,
-      isConflicted: false,
-      mergeable: null,
-      isPassedAllCiJob: false,
-      isCiStateSuccess: false,
-      isResolvedAllReviewComments: false,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    };
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      prWithNullBranch,
-    ]);
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'Skipping issue url1: related open PR has unavailable head branch.',
-    );
-    consoleWarnSpy.mockRestore();
-  });
-  it('should assign workspace to awaiting issues', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: [],
-        status: 'Awaiting Workspace',
-      }),
-      createMockIssue({
-        url: 'url2',
-        title: 'Issue 2',
-        labels: [],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    // Both awaiting issues should be updated (forward iteration: url1 first, then url2)
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'url1',
-      status: 'Preparation',
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
-    expect(mockIssueRepository.updateStatus.mock.calls[1][0]).toBe(mockProject);
-    expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
-      url: 'url2',
-      status: 'Preparation',
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe('2');
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
-  });
-  it('should stop assigning after maximum preparing issues count is reached', async () => {
-    // When we already have 6 preparation issues and max is 6 (default),
-    // the loop condition prevents processing any new issues
-    const preparationIssues: Issue[] = Array.from({ length: 6 }, (_, i) =>
-      createMockIssue({
-        url: `url${i + 1}`,
-        title: `Issue ${i + 1}`,
-        labels: [],
-        status: 'Preparation',
-      }),
-    );
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url7',
-        title: 'Issue 7',
-        labels: [],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([...preparationIssues, ...awaitingIssues]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: null,
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    // Loop doesn't run because we're already at max (6 >= 6)
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-  it('should pass configFilePath to aw command', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-  it('should use configFilePath in aw command', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-  it('falls back to defaultAgentName when Agent field is empty, ignoring llm-agent: labels', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['llm-agent:research', 'category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: 'default-llm-agent',
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-sonnet-4-6',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-  it('falls back to defaultAgentName when Agent field is empty, ignoring category: labels', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: 'default-llm-agent',
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-sonnet-4-6',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-  it('falls back to defaultAgentName when Agent field is empty, ignoring defaultLlmAgentName', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: [],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: 'default-llm-agent',
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-sonnet-4-6',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-  it('should use llm-model label over defaultLlmModelName', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl', 'llm-model:claude-sonnet'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-sonnet',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-  it('should log error and skip issue when no llm-model label and no defaultLlmModelName', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const consoleErrorSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: null,
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
-    );
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    consoleErrorSpy.mockRestore();
-  });
-  it('should continue processing subsequent issues when one issue has no model configured', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1 (no model)',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-      createMockIssue({
-        url: 'url2',
-        title: 'Issue 2 (with model label)',
-        labels: ['category:impl', 'llm-model:claude-sonnet-4-6'],
-        status: 'Awaiting Workspace',
-        number: 2,
-        itemId: 'item-2',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const consoleErrorSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: null,
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.',
-    );
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url2',
-        'agent1',
-        'claude-sonnet-4-6',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i2',
-      ],
-    ]);
-    consoleErrorSpy.mockRestore();
-  });
-  it('should handle no awaiting workspace issues gracefully', async () => {
-    // Test that the loop handles an empty awaiting workspace issues array
-    const preparationIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: [],
-        status: 'Preparation',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(preparationIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: null,
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    // No issues are in 'Awaiting Workspace' status, so no updates should happen
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-  it('should use custom maximumPreparingIssuesCount when provided', async () => {
-    const awaitingIssues: Issue[] = Array.from({ length: 10 }, (_, i) =>
-      createMockIssue({
-        url: `url${i + 1}`,
-        title: `Issue ${i + 1}`,
-        labels: [],
-        status: 'Awaiting Workspace',
-      }),
-    );
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: 3,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
-  });
-  it('should use default maximumPreparingIssuesCount of 6 when null is provided', async () => {
-    const awaitingIssues: Issue[] = Array.from({ length: 12 }, (_, i) =>
-      createMockIssue({
-        url: `url${i + 1}`,
-        title: `Issue ${i + 1}`,
-        labels: [],
-        status: 'Awaiting Workspace',
-      }),
-    );
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(6);
-  });
-  it('should allow six preparing processes per available Claude OAuth token when maximumPreparingIssuesCount is null', async () => {
-    const awaitingIssues: Issue[] = Array.from({ length: 20 }, (_, i) =>
-      createMockIssue({
-        url: `url${i + 1}`,
-        title: `Issue ${i + 1}`,
-        labels: [],
-        status: 'Awaiting Workspace',
-        number: i + 1,
-        itemId: `item-${i + 1}`,
-      }),
-    );
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-a',
-        token: 'token-a',
-        fiveHourUtilization: 0,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-b',
-        token: 'token-b',
-        fiveHourUtilization: 0,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: 12,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(12);
-    const spawnedTokens = mockLocalCommandRunner.runCommand.mock.calls.map(
-      (call) => call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN,
-    );
-    expect(spawnedTokens.filter((token) => token === 'token-a')).toHaveLength(
-      6,
-    );
-    expect(spawnedTokens.filter((token) => token === 'token-b')).toHaveLength(
-      6,
-    );
-  });
-  it('should cap configured maximumPreparingIssuesCount to six per available Claude OAuth token', async () => {
-    const awaitingIssues: Issue[] = Array.from({ length: 20 }, (_, i) =>
-      createMockIssue({
-        url: `url${i + 1}`,
-        title: `Issue ${i + 1}`,
-        labels: [],
-        status: 'Awaiting Workspace',
-        number: i + 1,
-        itemId: `item-${i + 1}`,
-      }),
-    );
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-a',
-        token: 'token-a',
-        fiveHourUtilization: 0,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-b',
-        token: 'token-b',
-        fiveHourUtilization: 0,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: 20,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(12);
-  });
-
-  it('should not skip issues from repositories with workflow blockers', async () => {
-    const blockerIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/100',
-      title: 'Blocker Issue',
-      labels: [],
-      status: 'Awaiting Workspace',
-      state: 'OPEN',
-    });
-
-    const issueInBlockedRepo = createMockIssue({
-      url: 'https://github.com/user/repo/issues/101',
-      title: 'Issue in blocked repo',
-      labels: [],
-      status: 'Awaiting Workspace',
-      state: 'OPEN',
-    });
-
-    const workflowBlockerMap: StoryObjectMap = new Map();
-    workflowBlockerMap.set('Workflow blocker', {
-      story: {
-        id: 'story-blocker',
-        name: 'Workflow blocker',
-        color: 'RED',
-        description: '',
-      },
-      storyIssue: null,
-      issues: [blockerIssue],
-    });
-    workflowBlockerMap.set('Default Story', {
-      story: {
-        id: 'story-1',
-        name: 'Default Story',
-        color: 'GRAY',
-        description: '',
-      },
-      storyIssue: null,
-      issues: [issueInBlockedRepo],
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(workflowBlockerMap);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
-    const updatedUrls = mockIssueRepository.updateStatus.mock.calls.map(
-      (call) => call[1].url,
-    );
-    expect(updatedUrls).toContain('https://github.com/user/repo/issues/100');
-    expect(updatedUrls).toContain('https://github.com/user/repo/issues/101');
-  });
-
-  it('should skip issues that have dependedIssueUrls', async () => {
-    const issueWithDependency = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      title: 'Issue with dependency',
-      labels: [],
-      status: 'Awaiting Workspace',
-      dependedIssueUrls: ['https://github.com/user/repo/issues/2'],
-    });
-    const issueWithoutDependency = createMockIssue({
-      url: 'https://github.com/user/repo/issues/3',
-      title: 'Issue without dependency',
-      labels: [],
-      status: 'Awaiting Workspace',
-      dependedIssueUrls: [],
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issueWithDependency, issueWithoutDependency]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/3',
-      status: 'Preparation',
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-  });
-
-  it('should skip issues where nextActionHour is in the future', async () => {
-    jest.useFakeTimers();
-    try {
-      jest.setSystemTime(new Date('2024-01-01T10:00:00'));
-
-      const issueWithFutureNextActionHour = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue with future next action hour',
-        labels: [],
-        status: 'Awaiting Workspace',
-        nextActionHour: 15,
-      });
-      const issueWithoutNextActionHour = createMockIssue({
-        url: 'https://github.com/user/repo/issues/2',
-        title: 'Issue without next action hour',
-        labels: [],
-        status: 'Awaiting Workspace',
-        nextActionHour: null,
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          issueWithFutureNextActionHour,
-          issueWithoutNextActionHour,
-        ]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-        url: 'https://github.com/user/repo/issues/2',
-        status: 'Preparation',
-      });
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('should skip issues where nextActionDate is tomorrow or more future', async () => {
-    jest.useFakeTimers();
-    try {
-      jest.setSystemTime(new Date('2024-01-15T10:00:00'));
-
-      const issueWithFutureNextActionDate = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue with future next action date',
-        labels: [],
-        status: 'Awaiting Workspace',
-        nextActionDate: new Date('2024-01-16'),
-      });
-      const issueWithoutNextActionDate = createMockIssue({
-        url: 'https://github.com/user/repo/issues/2',
-        title: 'Issue without next action date',
-        labels: [],
-        status: 'Awaiting Workspace',
-        nextActionDate: null,
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          issueWithFutureNextActionDate,
-          issueWithoutNextActionDate,
-        ]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-        url: 'https://github.com/user/repo/issues/2',
-        status: 'Preparation',
-      });
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('should not skip issues where nextActionDate is today', async () => {
-    jest.useFakeTimers();
-    try {
-      jest.setSystemTime(new Date('2024-01-15T10:00:00'));
-
-      const issueWithTodayNextActionDate = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue with today next action date',
-        labels: [],
-        status: 'Awaiting Workspace',
-        nextActionDate: new Date('2024-01-15'),
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([issueWithTodayNextActionDate]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-      });
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('should not skip issues where nextActionDate is in the past', async () => {
-    jest.useFakeTimers();
-    try {
-      jest.setSystemTime(new Date('2024-01-15T10:00:00'));
-
-      const issueWithPastNextActionDate = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue with past next action date',
-        labels: [],
-        status: 'Awaiting Workspace',
-        nextActionDate: new Date('2024-01-14'),
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([issueWithPastNextActionDate]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-      });
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('should not skip issues where nextActionHour is in the past or current hour', async () => {
-    jest.useFakeTimers();
-    try {
-      jest.setSystemTime(new Date('2024-01-01T15:00:00'));
-
-      const issueWithPastNextActionHour = createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue with past next action hour',
-        labels: [],
-        status: 'Awaiting Workspace',
-        nextActionHour: 10,
-      });
-
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([issueWithPastNextActionHour]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-        url: 'https://github.com/user/repo/issues/1',
-        status: 'Preparation',
-      });
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('should skip issues from non-allowed authors', async () => {
-    const issueFromAllowedAuthor = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      title: 'Issue from allowed author',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: 'user1',
-    });
-    const issueFromNonAllowedAuthor = createMockIssue({
-      url: 'https://github.com/user/repo/issues/2',
-      title: 'Issue from non-allowed author',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: 'user3',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([
-        issueFromAllowedAuthor,
-        issueFromNonAllowedAuthor,
-      ]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['user1', 'user2'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-  });
-
-  it('should process no issues when allowedIssueAuthors is null (fail-closed)', async () => {
-    const issue1 = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      title: 'Issue 1',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: 'user1',
-    });
-    const issue2 = createMockIssue({
-      url: 'https://github.com/user/repo/issues/2',
-      title: 'Issue 2',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: 'user2',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issue1, issue2]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: null,
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-
-  it('should process no issues when allowedIssueAuthors is an empty list (fail-closed)', async () => {
-    const issue1 = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      title: 'Issue 1',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: 'user1',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issue1]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: [],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-
-  it('should process a previously bot-bypassed author only when explicitly listed', async () => {
-    const botIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      title: 'Bot issue',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: 'dependabot[bot]',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([botIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['dependabot[bot]'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-  });
-
-  it('should not process a previously bot-bypassed author when not listed', async () => {
-    const botIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      title: 'Bot issue',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: 'dependabot[bot]',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([botIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['owner'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-
-  it('should skip issues with empty author when allowedIssueAuthors is configured (deny-by-default)', async () => {
-    const issueWithEmptyAuthor = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      title: 'Issue with empty author',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: '',
-    });
-    const issueWithKnownAuthor = createMockIssue({
-      url: 'https://github.com/user/repo/issues/2',
-      title: 'Issue with known author',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: 'user1',
-      number: 2,
-      itemId: 'item-2',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issueWithEmptyAuthor, issueWithKnownAuthor]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['user1', 'user2'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/2',
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-  });
-
-  it('should skip issue with empty author when allowedIssueAuthors is set', async () => {
-    const issueWithEmptyAuthor = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      title: 'Issue with empty author',
-      labels: [],
-      status: 'Awaiting Workspace',
-      author: '',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issueWithEmptyAuthor]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['user1'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-
-  it('should pick up an awaiting workspace issue assigned to the manager', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue assigned to manager',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-        assignees: ['manager-user'],
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-  });
-
-  it('should skip an awaiting workspace issue with no assignees', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue with no assignees',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-        assignees: [],
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-
-  it('should skip an awaiting workspace issue assigned only to a non-manager', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Issue assigned to non-manager only',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-        assignees: ['someone-else'],
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-  });
-
-  it('should pick up an awaiting workspace issue whose assignees include the manager alongside other assignees', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Renovate PR auto-assigned to manager',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-        assignees: ['renovate[bot]', 'manager-user'],
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-  });
-
-  it('should pick up only the manager-assigned issue among mixed assignee issues', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/1',
-        title: 'Assigned to manager',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-        assignees: ['manager-user'],
-        number: 1,
-        itemId: 'item-1',
-      }),
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/2',
-        title: 'Assigned to client only',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-        assignees: ['client-user'],
-        number: 2,
-        itemId: 'item-2',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/1',
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-  });
-
-  it('should not pass --codexHome when codexHomeCandidates is null', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-
-  it('should not pass --codexHome when codexHomeCandidates is empty array', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: [],
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ],
-    ]);
-  });
-
-  it('should pass --codexHome with the candidate when codexHomeCandidates has one entry', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: ['.codex-dev1'],
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
-      'aw',
-      [
-        'url1',
-        'agent1',
-        'claude-opus',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-        '--codexHome',
-        '.codex-dev1',
-      ],
-    ]);
-  });
-
-  it('should cycle through codexHomeCandidates across multiple issues', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      }),
-      createMockIssue({
-        url: 'url2',
-        title: 'Issue 2',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 2,
-        itemId: 'item-2',
-      }),
-      createMockIssue({
-        url: 'url3',
-        title: 'Issue 3',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 3,
-        itemId: 'item-3',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: ['.codex-dev1', '.codex-dev2'],
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
-      '--codexHome',
-    );
-    expect(
-      mockLocalCommandRunner.runCommand.mock.calls[0][1][
-        mockLocalCommandRunner.runCommand.mock.calls[0][1].indexOf(
-          '--codexHome',
-        ) + 1
-      ],
-    ).toBe('.codex-dev1');
-    expect(mockLocalCommandRunner.runCommand.mock.calls[1][1]).toContain(
-      '--codexHome',
-    );
-    expect(
-      mockLocalCommandRunner.runCommand.mock.calls[1][1][
-        mockLocalCommandRunner.runCommand.mock.calls[1][1].indexOf(
-          '--codexHome',
-        ) + 1
-      ],
-    ).toBe('.codex-dev2');
-    expect(mockLocalCommandRunner.runCommand.mock.calls[2][1]).toContain(
-      '--codexHome',
-    );
-    expect(
-      mockLocalCommandRunner.runCommand.mock.calls[2][1][
-        mockLocalCommandRunner.runCommand.mock.calls[2][1].indexOf(
-          '--codexHome',
-        ) + 1
-      ],
-    ).toBe('.codex-dev1');
-  });
-
-  it('should persist Preparation status via updateStatus with resolved status option id (regression for issue #519)', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/519',
-      title: 'Regression issue',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      itemId: 'item-regression',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/519',
-      itemId: 'item-regression',
-    });
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('2');
-    const updateStatusCallOrder =
-      mockIssueRepository.updateStatus.mock.invocationCallOrder[0];
-    const runCommandCallOrder =
-      mockLocalCommandRunner.runCommand.mock.invocationCallOrder[0];
-    expect(updateStatusCallOrder).toBeLessThan(runCommandCallOrder);
-  });
-
-  it('should return early and log an error when preparationStatus option is not in the project', async () => {
-    const projectWithoutPreparation: Project = {
-      ...createMockProject(),
-      status: {
-        name: 'Status',
-        fieldId: 'status-field-id',
-        statuses: [
-          {
-            id: '1',
-            name: 'Awaiting Workspace',
-            color: 'GRAY',
-            description: '',
-          },
-          { id: '3', name: 'Done', color: 'GREEN', description: '' },
-        ],
-      },
-    };
-    const awaitingIssue = createMockIssue({
-      url: 'url-missing-option',
-      title: 'Missing Preparation Option',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutPreparation);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    const consoleErrorSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "Preparation status option 'Preparation' not found in project.",
-    );
-    consoleErrorSpy.mockRestore();
-  });
-
-  it('should call getStoryObjectMap with the resolved project', async () => {
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([]),
-    );
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: null,
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.getStoryObjectMap).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'project-1' }),
-    );
-  });
-
-  it('should skip closed issues in awaiting workspace status', async () => {
-    const closedIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      title: 'Closed issue',
-      labels: [],
-      status: 'Awaiting Workspace',
-      isClosed: true,
-    });
-    const openIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/2',
-      number: 2,
-      title: 'Open issue',
-      labels: [],
-      status: 'Awaiting Workspace',
-      isClosed: false,
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([closedIssue, openIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
-      url: 'https://github.com/user/repo/issues/2',
-    });
-  });
-
-  it('should pass CLAUDE_CODE_OAUTH_TOKEN and ANTHROPIC_BASE_URL to runCommand when tokens are available', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-a',
-        token: 'token-a',
-        fiveHourUtilization: 0,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mock.calls,
-    ).toHaveLength(1);
-    expect(
-      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
-    ).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-a',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should rotate Claude OAuth tokens round-robin across multiple awaiting issues', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      }),
-      createMockIssue({
-        url: 'url2',
-        title: 'Issue 2',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 2,
-        itemId: 'item-2',
-      }),
-      createMockIssue({
-        url: 'url3',
-        title: 'Issue 3',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 3,
-        itemId: 'item-3',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-a',
-        token: 'token-a',
-        fiveHourUtilization: 0,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-b',
-        token: 'token-b',
-        fiveHourUtilization: 0,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-a',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-b',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-a',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should not inject env when no tokens are available', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue(
-      [],
-    );
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toBeUndefined();
-    expect(
-      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
-    ).toHaveLength(0);
-  });
-
-  it('should choose the sooner-7-day-reset token when two eligible tokens have equal remaining capacity', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-far-reset',
-        token: 'token-far-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 100 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-soon-reset',
-        token: 'token-soon-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-soon-reset' },
-    });
-  });
-
-  it('should choose the larger-remaining-capacity token on the tie-break when two eligible tokens share the same 7-day reset', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
-      'token-busy': 4,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    const sharedResetsAt = nowEpochSeconds + 30 * 3600;
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-busy',
-        token: 'token-busy',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: sharedResetsAt,
-          },
-        },
-      },
-      {
-        name: 'token-idle',
-        token: 'token-idle',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: sharedResetsAt,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-idle' },
-    });
-  });
-
-  it('should exclude a token with zero remaining capacity even when its 7-day reset is the soonest', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
-      'token-soon-but-full': 6,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-soon-but-full',
-        token: 'token-soon-but-full',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 10 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-later-with-capacity',
-        token: 'token-later-with-capacity',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 100 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-later-with-capacity' },
-    });
-  });
-
-  it('should pick the token with the soonest 7-day reset deadline first', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-far-reset',
-        token: 'token-far-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.7,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 100 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-soon-reset',
-        token: 'token-soon-reset',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0.2,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-soon-reset',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should pick the soonest-7-day-reset token first even when existing Preparation issues exist (regression for issue 748)', async () => {
-    const preparationIssues: Issue[] = Array.from({ length: 3 }, (_, i) =>
-      createMockIssue({
-        url: `https://github.com/user/repo/issues/${i + 1}`,
-        title: `Preparing Issue ${i + 1}`,
-        labels: [],
-        status: 'Preparation',
-        number: i + 1,
-        itemId: `item-${i + 1}`,
-      }),
-    );
-    const awaitingIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/100',
-      title: 'Awaiting Issue',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 100,
-      itemId: 'item-100',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([...preparationIssues, awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-far-reset',
-        token: 'token-far-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.7,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 100 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-soon-reset',
-        token: 'token-soon-reset',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0.2,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-soon-reset',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should exclude blocked tokens from rotation', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-blocked',
-        token: 'token-blocked',
-        fiveHourUtilization: 0.05,
-        sevenDayUtilization: 0,
-        blocked: true,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-ok',
-        token: 'token-ok',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-ok',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should exclude a token whose cooldown has not yet lapsed from rotation', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-cooldown',
-        token: 'token-cooldown',
-        fiveHourUtilization: 0.05,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: nowEpochSeconds + 90,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-ok',
-        token: 'token-ok',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-ok',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should skip preparation when every configured token is blocked', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-a',
-        token: 'token-a',
-        fiveHourUtilization: 0.05,
-        sevenDayUtilization: 0,
-        blocked: true,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-b',
-        token: 'token-b',
-        fiveHourUtilization: 0.08,
-        sevenDayUtilization: 0,
-        blocked: true,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(
-      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
-    ).toHaveLength(0);
-    expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Skipping starting preparation'),
-    );
-    consoleWarnSpy.mockRestore();
-  });
-
-  it('should skip preparation when every configured token is at or above 95 percent 5h utilization', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-a',
-        token: 'token-a',
-        fiveHourUtilization: 0.95,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-b',
-        token: 'token-b',
-        fiveHourUtilization: 0.97,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(
-      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
-    ).toHaveLength(0);
-    expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('5h utilization >= 90%'),
-    );
-    consoleWarnSpy.mockRestore();
-  });
-
-  it('should drain the soonest-7-day-reset token first across spawns until its remaining capacity is exhausted', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      }),
-      createMockIssue({
-        url: 'url2',
-        title: 'Issue 2',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 2,
-        itemId: 'item-2',
-      }),
-      createMockIssue({
-        url: 'url3',
-        title: 'Issue 3',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 3,
-        itemId: 'item-3',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-7d-mid-reset',
-        token: 'token-7d-mid-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.5,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 50 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-7d-soon-reset',
-        token: 'token-7d-soon-reset',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 10 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-7d-far-reset',
-        token: 'token-7d-far-reset',
-        fiveHourUtilization: 0.3,
-        sevenDayUtilization: 0.7,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 150 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon-reset' },
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon-reset' },
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon-reset' },
-    });
-  });
-
-  it('should move to the next-soonest-reset token only after the soonest token capacity is exhausted', async () => {
-    const awaitingIssues: Issue[] = Array.from({ length: 3 }, (_, i) =>
-      createMockIssue({
-        url: `url${i + 1}`,
-        title: `Issue ${i + 1}`,
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: i + 1,
-        itemId: `item-${i + 1}`,
-      }),
-    );
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
-      'token-7d-soon-reset': 5,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-7d-soon-reset',
-        token: 'token-7d-soon-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 10 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-7d-far-reset',
-        token: 'token-7d-far-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 150 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon-reset' },
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-far-reset' },
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-far-reset' },
-    });
-  });
-
-  it('should cap total tasks to the sum of per-token 7-day adaptive concurrent limits', async () => {
-    const awaitingIssues: Issue[] = Array.from({ length: 10 }, (_, i) =>
-      createMockIssue({
-        url: `url${i + 1}`,
-        title: `Issue ${i + 1}`,
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: i + 1,
-        itemId: `item-${i + 1}`,
-      }),
-    );
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-at-90-percent-7d',
-        token: 'token-at-90-percent-7d',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.9,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
-    const spawnedTokens = mockLocalCommandRunner.runCommand.mock.calls.map(
-      (call) => call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN,
-    );
-    expect(
-      spawnedTokens.filter((token) => token === 'token-at-90-percent-7d'),
-    ).toHaveLength(3);
-  });
-
-  it('should exclude a rejected token from rotation', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-rejected',
-        token: 'token-rejected',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: true,
-        fiveHourRejected: true,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-ok',
-        token: 'token-ok',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-ok',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should re-admit a token after its 5h window reset normalizes utilization to 0 and clears rejection', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-reset',
-        token: 'token-reset',
-        fiveHourUtilization: 0,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-busy',
-        token: 'token-busy',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-reset',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should exclude a token whose 5h window has not reset and remains at or above threshold', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-saturated',
-        token: 'token-saturated',
-        fiveHourUtilization: 0.95,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: true,
-        fiveHourRejected: true,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-ok',
-        token: 'token-ok',
-        fiveHourUtilization: 0.2,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-ok',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should skip preparation when every configured token is rejected', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-a',
-        token: 'token-a',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: true,
-        fiveHourRejected: true,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-b',
-        token: 'token-b',
-        fiveHourUtilization: 0.2,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: true,
-        fiveHourRejected: true,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(
-      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
-    ).toHaveLength(0);
-    expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Skipping starting preparation'),
-    );
-    consoleWarnSpy.mockRestore();
-  });
-
-  it('should proceed with legacy spawn without env injection when no token list is configured', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue(
-      [],
-    );
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(
-      mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
-    ).toHaveLength(0);
-    expect(mockProjectRepository.getByUrl).toHaveBeenCalled();
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toBeUndefined();
-  });
-
-  it('should re-admit a token whose seven_day_sonnet rejection has been cleared by stale-reset expiry', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const pastReset = Math.floor(Date.now() / 1000) - 3600;
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-recovered',
-        token: 'token-recovered',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_sonnet: { rejected: false, resetsAt: pastReset },
-        },
-      },
-      {
-        name: 'token-busy',
-        token: 'token-busy',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-sonnet-4-6',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-recovered',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should not exclude a token for a sonnet-only rejection when the model is opus', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const futureReset = Math.floor(Date.now() / 1000) + 3600;
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-sonnet-exhausted',
-        token: 'token-sonnet-exhausted',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-        },
-      },
-      {
-        name: 'token-higher-util',
-        token: 'token-higher-util',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-sonnet-exhausted',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should exclude a token whose generic seven_day weekly limit is rejected regardless of model', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const futureReset = Math.floor(Date.now() / 1000) + 3600;
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-weekly-exhausted',
-        token: 'token-weekly-exhausted',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day: { rejected: true, resetsAt: futureReset },
-        },
-      },
-      {
-        name: 'token-ok',
-        token: 'token-ok',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-ok',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should pick the token whose 7-day reset is sooner before the token whose 7-day reset is farther', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-b-far-reset',
-        token: 'token-b-far-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 100 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-a-soon-reset',
-        token: 'token-a-soon-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-a-soon-reset',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should exclude a blocked token even when it has a sooner 7-day reset than an eligible token', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-a-blocked-soon-reset',
-        token: 'token-a-blocked-soon-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: true,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-b-far-reset',
-        token: 'token-b-far-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 100 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-b-far-reset',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should place a token whose 7-day reset is unknown after a token whose 7-day reset is known', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      }),
-      createMockIssue({
-        url: 'url2',
-        title: 'Issue 2',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 2,
-        itemId: 'item-2',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-a-unknown-reset',
-        token: 'token-a-unknown-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'token-b-known-soon-reset',
-        token: 'token-b-known-soon-reset',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-b-known-soon-reset' },
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-b-known-soon-reset' },
-    });
-  });
-
-  it('should drain the soonest-reset token first when only the generic seven_day weekly limit (as bridged by the proxy from the snapshot top-level sevenDayReset) is present', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      }),
-      createMockIssue({
-        url: 'url2',
-        title: 'Issue 2',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 2,
-        itemId: 'item-2',
-      }),
-      createMockIssue({
-        url: 'url3',
-        title: 'Issue 3',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 3,
-        itemId: 'item-3',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-7d-far',
-        token: 'token-7d-far',
-        fiveHourUtilization: 0.05,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 150 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-7d-soon',
-        token: 'token-7d-soon',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 10 * 3600,
-          },
-        },
-      },
-      {
-        name: 'token-7d-mid',
-        token: 'token-7d-mid',
-        fiveHourUtilization: 0.3,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 50 * 3600,
-          },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon' },
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon' },
-    });
-    expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
-      env: { CLAUDE_CODE_OAUTH_TOKEN: 'token-7d-soon' },
-    });
-  });
-
-  it('should fall back to 5-hour utilization ascending as tiebreaker when only the generic seven_day weekly limit (as bridged by the proxy) is present and deadlines tie', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    const sharedResetsAt = nowEpochSeconds + 50 * 3600;
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-busy-5h',
-        token: 'token-busy-5h',
-        fiveHourUtilization: 0.6,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day: { rejected: false, resetsAt: sharedResetsAt },
-        },
-      },
-      {
-        name: 'token-idle-5h',
-        token: 'token-idle-5h',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day: { rejected: false, resetsAt: sharedResetsAt },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-idle-5h',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  it('should fall back to 5-hour utilization ascending as tiebreaker when 7-day reset deadlines are identical', async () => {
-    const awaitingIssue = createMockIssue({
-      url: 'url1',
-      title: 'Issue 1',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 1,
-      itemId: 'item-1',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([awaitingIssue]),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    const sharedResetsAt = nowEpochSeconds + 50 * 3600;
-    mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-      {
-        name: 'token-busy-5h',
-        token: 'token-busy-5h',
-        fiveHourUtilization: 0.6,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: { rejected: false, resetsAt: sharedResetsAt },
-        },
-      },
-      {
-        name: 'token-idle-5h',
-        token: 'token-idle-5h',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: { rejected: false, resetsAt: sharedResetsAt },
-        },
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-      env: {
-        CLAUDE_CODE_OAUTH_TOKEN: 'token-idle-5h',
-        ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-      },
-    });
-  });
-
-  describe('agent selection precedence', () => {
-    const runWithIssueLabels = async (params: {
-      labels: string[];
-      defaultAgentName: string;
-      defaultLlmAgentName: string | null;
-      labelsAsLlmAgentName: string[] | null;
-      agent?: string | null;
-    }): Promise<string> => {
-      const awaitingIssues: Issue[] = [
-        createMockIssue({
-          url: 'url1',
-          title: 'Issue 1',
-          labels: params.labels,
-          status: 'Awaiting Workspace',
-          agent: params.agent ?? null,
-        }),
-      ];
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap(awaitingIssues),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: params.defaultAgentName,
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: params.defaultLlmAgentName,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: params.labelsAsLlmAgentName,
-      });
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      const awArgs = mockLocalCommandRunner.runCommand.mock.calls[0][1];
-      return awArgs[1];
-    };
-
-    it('strips the llm-agent: prefix from the project agent field value', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        agent: 'llm-agent:impl',
-        labels: [],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: null,
-      });
-      expect(selectedAgent).toBe('impl');
-    });
-
-    it('keeps a project agent field value that carries no llm-agent: prefix', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        agent: 'developer',
-        labels: [],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: null,
-      });
-      expect(selectedAgent).toBe('developer');
-    });
-
-    it('uses defaultAgentName when Agent field is empty, ignoring llm-agent: label and labelsAsLlmAgentName', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['llm-agent:explicit-agent', 'story', 'category:impl'],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: ['story'],
-      });
-      expect(selectedAgent).toBe('default-agent');
-    });
-
-    it('uses defaultAgentName when Agent field is empty, ignoring labelsAsLlmAgentName and category: label', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['story', 'category:impl'],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: ['story'],
-      });
-      expect(selectedAgent).toBe('default-agent');
-    });
-
-    it('uses defaultAgentName when Agent field is empty, ignoring colon-containing label in labelsAsLlmAgentName', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['story:body-condition', 'category:impl'],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: ['story', 'story:body-condition'],
-      });
-      expect(selectedAgent).toBe('default-agent');
-    });
-
-    it('uses defaultAgentName when Agent field is empty, ignoring category: label and unmatched labelsAsLlmAgentName', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['unrelated-label', 'category:impl'],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: ['story'],
-      });
-      expect(selectedAgent).toBe('default-agent');
-    });
-
-    it('uses defaultAgentName when Agent field is empty, ignoring defaultLlmAgentName', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['unrelated-label'],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: ['story'],
-      });
-      expect(selectedAgent).toBe('default-agent');
-    });
-
-    it('falls through to defaultAgentName when no llm-agent:, no labelsAsLlmAgentName match, no category: label, and no defaultLlmAgentName', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['unrelated-label'],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: null,
-        labelsAsLlmAgentName: ['story'],
-      });
-      expect(selectedAgent).toBe('default-agent');
-    });
-
-    it('ignores labels that are not listed in labelsAsLlmAgentName', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['untracked-label'],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: ['story'],
-      });
-      expect(selectedAgent).toBe('default-agent');
-    });
-
-    it('ignores labels that are not listed in labelsAsLlmAgentName when other entries are present', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['untracked-label', 'another-untracked-label'],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: ['story', 'story:body-condition'],
-      });
-      expect(selectedAgent).toBe('default-agent');
-    });
-
-    it('uses defaultAgentName when labelsAsLlmAgentName is null and Agent field is empty', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['category:impl'],
-        defaultAgentName: 'default-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: null,
-      });
-      expect(selectedAgent).toBe('default-agent');
-    });
-
-    it('uses defaultAgentName when Agent field is empty and a bare label matches labelsAsLlmAgentName', async () => {
-      const selectedAgent = await runWithIssueLabels({
-        labels: ['chore'],
-        defaultAgentName: 'triage-agent',
-        defaultLlmAgentName: 'default-llm-agent',
-        labelsAsLlmAgentName: ['chore'],
-      });
-      expect(selectedAgent).toBe('triage-agent');
-    });
-  });
-
-  describe('NO STORY story bypasses the Agent field for agent selection', () => {
-    const projectWithAgentOption = (
-      optionId: string,
-      optionName: string,
-    ): Project => ({
-      ...createMockProject(),
-      agent: {
-        name: 'Agent',
-        fieldId: 'agent-field-id',
-        options: [
-          { id: optionId, name: optionName, color: 'GRAY', description: '' },
-        ],
-      },
-    });
-
-    it('dispatches to defaultAgentName and does not overwrite the Agent field when story is NO STORY and agent field is set', async () => {
-      const project = projectWithAgentOption(
-        'agent-option-systems-analyst',
-        'systems-analyst',
-      );
-      mockProjectRepository.getByUrl.mockResolvedValue(project);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            story:
-              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
-            agent: 'systems-analyst',
-          }),
-        ]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-        agents: [],
-      });
-
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'agent1',
-      );
-    });
-
-    it('dispatches to defaultAgentName without setting the Agent field when story is NO STORY and agent field is null', async () => {
-      mockProjectRepository.getByUrl.mockResolvedValue(createMockProject());
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([
-          createMockIssue({
-            url: 'url1',
-            status: 'Awaiting Workspace',
-            labels: [],
-            story:
-              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
-            agent: null,
-          }),
-        ]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-        agents: [],
-      });
-
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'agent1',
-      );
-    });
-  });
-
-  describe('Sonnet-to-Opus weekly limit fallback', () => {
-    const futureReset = Math.floor(Date.now() / 1000) + 3600;
-
-    it('spawns preparations with the Opus fallback model when the sonnet default is selected and every token has its seven_day_sonnet weekly limit exhausted while opus capacity remains', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
-        'url1',
-        'agent1',
-        'claude-opus-4-8',
-        '--configFilePath',
-        '/path/to/config.yml',
-        '--branch',
-        'i1',
-      ]);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-        env: {
-          CLAUDE_CODE_OAUTH_TOKEN: 'token-sonnet-exhausted',
-          ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-        },
-      });
-    });
-
-    it('uses the configured fallbackLlmModelName instead of the default when falling back to opus', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-opus-4-8',
-      );
-    });
-
-    it('skips preparation when the sonnet default is exhausted and the opus fallback is also exhausted via the generic seven_day weekly limit', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-fully-exhausted',
-          token: 'token-fully-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-            seven_day: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('uses the sonnet default with no fallback when sonnet tokens are available', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-ok',
-          token: 'token-ok',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-sonnet-4-6',
-      );
-    });
-
-    it('does not fall back to opus for an issue whose llm-model label explicitly set the model even when the sonnet weekly limit is exhausted', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl', 'llm-model:claude-sonnet-4-6'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-sonnet-4-6',
-      );
-    });
-
-    it('does not fall back to opus when sonnet tokens are merely throttled by 5-hour utilization rather than the weekly limit', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-throttled',
-          token: 'token-throttled',
-          fiveHourUtilization: 0.95,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-  });
-
-  describe('per-token model weekly-limit routing', () => {
-    const futureReset = Math.floor(Date.now() / 1000) + 3600;
-
-    it('routes a token whose seven_day_sonnet weekly limit is rejected to Opus while a sibling token with Sonnet headroom uses Sonnet in the same pass', async () => {
-      const issues = [
-        createMockIssue({
-          url: 'url1',
-          title: 'Issue 1',
-          labels: ['category:impl'],
-          status: 'Awaiting Workspace',
-          number: 1,
-          itemId: 'item-1',
-        }),
-        createMockIssue({
-          url: 'url2',
-          title: 'Issue 2',
-          labels: ['category:impl'],
-          status: 'Awaiting Workspace',
-          number: 2,
-          itemId: 'item-2',
-        }),
-      ];
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap(issues),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
-        },
-        {
-          name: 'token-sonnet-ok',
-          token: 'token-sonnet-ok',
-          fiveHourUtilization: 0.5,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
-      const callForExhausted =
-        mockLocalCommandRunner.runCommand.mock.calls.find(
-          (call) =>
-            call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN === 'token-sonnet-exhausted',
-        );
-      const callForOk = mockLocalCommandRunner.runCommand.mock.calls.find(
-        (call) => call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN === 'token-sonnet-ok',
-      );
-      expect(callForExhausted).toBeDefined();
-      expect(callForOk).toBeDefined();
-      expect(callForExhausted?.[1][2]).toBe('claude-opus-4-8');
-      expect(callForOk?.[1][2]).toBe('claude-sonnet-4-6');
-    });
-
-    it('excludes a token whose seven_day_sonnet and seven_day_opus weekly limits are both rejected', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-both-exhausted',
-          token: 'token-both-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-            seven_day_opus: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('excludes a token whose generic seven_day weekly limit is rejected even when the per-model windows are open', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-general-exhausted',
-          token: 'token-general-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('lets a per-issue llm-model label override the per-token routed model', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl', 'llm-model:claude-3-5-haiku-20241022'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-exhausted',
-          token: 'token-sonnet-exhausted',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-3-5-haiku-20241022',
-      );
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
-        env: {
-          CLAUDE_CODE_OAUTH_TOKEN: 'token-sonnet-exhausted',
-          ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-        },
-      });
-    });
-
-    it('includes a token whose unified representative-claim status is rejected (seven_day_sonnet) while its Opus weekly window is allowed and routes it to Opus', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-sonnet-rejected-unified',
-          token: 'token-sonnet-rejected-unified',
-          fiveHourUtilization: 0.53,
-          sevenDayUtilization: 0.88,
-          blocked: false,
-          rejected: true,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-            seven_day_opus: { rejected: false, resetsAt: futureReset },
-          },
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(
-        mockLocalCommandRunner.runCommand.mock.calls[0][2]?.env
-          ?.CLAUDE_CODE_OAUTH_TOKEN,
-      ).toBe('token-sonnet-rejected-unified');
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
-        'claude-opus-4-8',
-      );
-    });
-
-    it('excludes a token whose 5-hour window is rejected even when its Opus weekly window is allowed', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-5h-rejected',
-          token: 'token-5h-rejected',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: true,
-          fiveHourRejected: true,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_opus: { rejected: false, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-
-    it('excludes a token whose unified status is rejected and whose seven_day_sonnet and seven_day_opus weekly windows are both rejected', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-both-rejected-unified',
-          token: 'token-both-rejected-unified',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0,
-          blocked: false,
-          rejected: true,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {
-            seven_day_sonnet: { rejected: true, resetsAt: futureReset },
-            seven_day_opus: { rejected: true, resetsAt: futureReset },
-          },
-        },
-      ]);
-      const consoleWarnSpy = jest
-        .spyOn(console, 'warn')
-        .mockImplementation(() => {});
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-sonnet-4-6',
-        fallbackLlmModelName: 'claude-opus-4-8',
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Skipping starting preparation'),
-      );
-      consoleWarnSpy.mockRestore();
-    });
-  });
-
-  describe('per-token in-flight global concurrency enforcement', () => {
-    it('should not spawn when the selected token already has its full in-flight limit occupied by processes from other projects', async () => {
-      const awaitingIssues: Issue[] = [
-        createMockIssue({
-          url: 'url1',
-          title: 'Issue 1',
-          labels: ['category:impl'],
-          status: 'Awaiting Workspace',
-          number: 1,
-          itemId: 'item-1',
-        }),
-      ];
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap(awaitingIssues),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-at-90-percent-7d',
-          token: 'token-at-90-percent-7d',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0.9,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
-        'token-at-90-percent-7d': 3,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    });
-
-    it('should allow spawning up to the remaining capacity when a token is partially in use globally', async () => {
-      const awaitingIssues: Issue[] = Array.from({ length: 5 }, (_, i) =>
-        createMockIssue({
-          url: `url${i + 1}`,
-          title: `Issue ${i + 1}`,
-          labels: ['category:impl'],
-          status: 'Awaiting Workspace',
-          number: i + 1,
-          itemId: `item-${i + 1}`,
-        }),
-      );
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap(awaitingIssues),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-at-90-percent-7d',
-          token: 'token-at-90-percent-7d',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0.9,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
-        'token-at-90-percent-7d': 1,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
-    });
-
-    it('should pick the token with the most remaining capacity when multiple tokens are available', async () => {
-      const awaitingIssues: Issue[] = [
-        createMockIssue({
-          url: 'url1',
-          title: 'Issue 1',
-          labels: ['category:impl'],
-          status: 'Awaiting Workspace',
-          number: 1,
-          itemId: 'item-1',
-        }),
-      ];
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap(awaitingIssues),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-a',
-          token: 'token-a',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0.9,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-        {
-          name: 'token-b',
-          token: 'token-b',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0.1,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
-        'token-a': 2,
-        'token-b': 0,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-      expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
-        env: {
-          CLAUDE_CODE_OAUTH_TOKEN: 'token-b',
-          ANTHROPIC_BASE_URL: 'http://127.0.0.1:8787',
-        },
-      });
-    });
-  });
-
-  it('should log one aggregate spawn candidate exclusion summary per run with counts by reason', async () => {
-    const currentHour = new Date().getUTCHours();
-    const dayAfterTomorrow = new Date();
-    dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2);
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/11',
-        title: 'Depended Issue',
-        status: 'Awaiting Workspace',
-        number: 11,
-        dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
-      }),
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/12',
-        title: 'Future Next Action Date Issue',
-        status: 'Awaiting Workspace',
-        number: 12,
-        nextActionDate: dayAfterTomorrow,
-      }),
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/13',
-        title: 'Future Next Action Hour Issue',
-        status: 'Awaiting Workspace',
-        number: 13,
-        nextActionHour: currentHour + 1,
-      }),
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/14',
-        title: 'Disallowed Author Issue',
-        status: 'Awaiting Workspace',
-        number: 14,
-        author: 'not-allowed-user',
-      }),
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/14b',
-        title: 'Not Assigned To Manager Issue',
-        status: 'Awaiting Workspace',
-        number: 145,
-        assignees: ['someone-else'],
-      }),
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/15',
-        title: 'Spawnable Issue',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 15,
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const consoleLogSpy = jest
-      .spyOn(console, 'log')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
-      String(call[0]).includes('Spawn candidate exclusion summary'),
-    );
-    expect(summaryCalls).toHaveLength(1);
-    expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1, agentAuthoredIssue=0',
-    );
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
-      'https://github.com/user/repo/issues/15',
-    );
-    consoleLogSpy.mockRestore();
-  });
-
-  it('should log the aggregate exclusion summary with zero counts when nothing is excluded', async () => {
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/21',
-        title: 'Spawnable Issue',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 21,
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const consoleLogSpy = jest
-      .spyOn(console, 'log')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
-      String(call[0]).includes('Spawn candidate exclusion summary'),
-    );
-    expect(summaryCalls).toHaveLength(1);
-    expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0, agentAuthoredIssue=0',
-    );
-    consoleLogSpy.mockRestore();
-  });
-
-  it('should skip agent-authored issues when skipAgentAuthoredIssues is true', async () => {
-    const agentAuthoredBody =
-      'From: :robot: some-agent (claude-sonnet-4-5)\nSome content written by the agent.';
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/41',
-        title: 'Agent Authored Issue',
-        status: 'Awaiting Workspace',
-        number: 41,
-        body: agentAuthoredBody,
-      }),
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/42',
-        title: 'Human Authored Issue',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 42,
-        body: 'This issue was written by a human.',
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const consoleLogSpy = jest
-      .spyOn(console, 'log')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-      skipAgentAuthoredIssues: true,
-    });
-    const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
-      String(call[0]).includes('Spawn candidate exclusion summary'),
-    );
-    expect(summaryCalls).toHaveLength(1);
-    expect(summaryCalls[0][0]).toBe(
-      'Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0, agentAuthoredIssue=1',
-    );
-    const spawnedUrls = mockLocalCommandRunner.runCommand.mock.calls.map(
-      (call) => call[1][0],
-    );
-    expect(spawnedUrls).not.toContain('https://github.com/user/repo/issues/41');
-    expect(spawnedUrls).toContain('https://github.com/user/repo/issues/42');
-    consoleLogSpy.mockRestore();
-  });
-
-  it('should spawn agent-authored issues when skipAgentAuthoredIssues is false', async () => {
-    const agentAuthoredBody =
-      'From: :robot: some-agent (claude-sonnet-4-5)\nSome content written by the agent.';
-    const awaitingIssues: Issue[] = [
-      createMockIssue({
-        url: 'https://github.com/user/repo/issues/51',
-        title: 'Agent Authored Issue',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 51,
-        body: agentAuthoredBody,
-      }),
-    ];
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(awaitingIssues),
-    );
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-      skipAgentAuthoredIssues: false,
-    });
-    const spawnedUrls = mockLocalCommandRunner.runCommand.mock.calls.map(
-      (call) => call[1][0],
-    );
-    expect(spawnedUrls).toContain('https://github.com/user/repo/issues/51');
-  });
-
-  it('should warn with URLs of Awaiting Workspace issues invisible to selection because Story is unset', async () => {
-    const issueWithStory = createMockIssue({
-      url: 'https://github.com/user/repo/issues/31',
-      title: 'Issue With Story',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 31,
-      story: 'Default Story',
-    });
-    const storyUnsetAwaitingWorkspaceIssueOne = createMockIssue({
-      url: 'https://github.com/user/repo/issues/32',
-      title: 'Story Unset Issue One',
-      status: 'Awaiting Workspace',
-      number: 32,
-      story: null,
-    });
-    const storyUnsetAwaitingWorkspaceIssueTwo = createMockIssue({
-      url: 'https://github.com/user/repo/issues/33',
-      title: 'Story Unset Issue Two',
-      status: 'Awaiting Workspace',
-      number: 33,
-      story: null,
-    });
-    const storyUnsetOtherStatusIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/34',
-      title: 'Story Unset Other Status Issue',
-      status: 'Todo',
-      number: 34,
-      story: null,
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issueWithStory]),
-    );
-    mockIssueRepository.getAllOpened.mockResolvedValue([
-      issueWithStory,
-      storyUnsetAwaitingWorkspaceIssueOne,
-      storyUnsetAwaitingWorkspaceIssueTwo,
-      storyUnsetOtherStatusIssue,
-    ]);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
-      String(call[0]).includes('Story is unset'),
-    );
-    expect(storyUnsetWarningCalls).toHaveLength(1);
-    expect(storyUnsetWarningCalls[0][0]).toBe(
-      'Awaiting Workspace issue(s) invisible to spawn candidate selection because Story is unset: https://github.com/user/repo/issues/32, https://github.com/user/repo/issues/33',
-    );
-    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    consoleWarnSpy.mockRestore();
-  });
-
-  it('should not warn about Story-unset issues when every Awaiting Workspace issue has a Story', async () => {
-    const issueWithStory = createMockIssue({
-      url: 'https://github.com/user/repo/issues/41',
-      title: 'Issue With Story',
-      labels: ['category:impl'],
-      status: 'Awaiting Workspace',
-      number: 41,
-      story: 'Default Story',
-    });
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([issueWithStory]),
-    );
-    mockIssueRepository.getAllOpened.mockResolvedValue([issueWithStory]);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-    const consoleWarnSpy = jest
-      .spyOn(console, 'warn')
-      .mockImplementation(() => {});
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: null,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-    const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
-      String(call[0]).includes('Story is unset'),
-    );
-    expect(storyUnsetWarningCalls).toHaveLength(0);
-    consoleWarnSpy.mockRestore();
-  });
-
-  describe('token in-flight count refresh', () => {
-    it('refreshes the token in-flight counts once before abandoning a run so a freed slot is used', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockLocalCommandRunner.runCommand.mockResolvedValue({
-        stdout: '',
-        stderr: '',
-        exitCode: 0,
-      });
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-a',
-          token: 'token-a',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0.1,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-      mockClaudeTokenUsageRepository.getTokenInFlightCounts
-        .mockResolvedValueOnce({ 'token-a': 6 })
-        .mockResolvedValueOnce({ 'token-a': 0 });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(
-        mockClaudeTokenUsageRepository.getTokenInFlightCounts.mock.calls,
-      ).toHaveLength(2);
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
-    });
-
-    it('abandons the run when the refreshed in-flight counts still leave no token slot', async () => {
-      const awaitingIssue = createMockIssue({
-        url: 'url1',
-        title: 'Issue 1',
-        labels: ['category:impl'],
-        status: 'Awaiting Workspace',
-        number: 1,
-        itemId: 'item-1',
-      });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-        createMockStoryObjectMap([awaitingIssue]),
-      );
-      mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
-        {
-          name: 'token-a',
-          token: 'token-a',
-          fiveHourUtilization: 0.1,
-          sevenDayUtilization: 0.1,
-          blocked: false,
-          rejected: false,
-          fiveHourRejected: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-        },
-      ]);
-      mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
-        'token-a': 6,
-      });
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        defaultAgentName: 'agent1',
-        defaultLlmModelName: 'claude-opus',
-        fallbackLlmModelName: null,
-        defaultLlmAgentName: null,
-        configFilePath: '/path/to/config.yml',
-        maximumPreparingIssuesCount: null,
-        utilizationPercentageThreshold: 90,
-        allowedIssueAuthors: ['testuser'],
-        manager: 'manager-user',
-        codexHomeCandidates: null,
-        labelsAsLlmAgentName: null,
-      });
-
-      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
-    });
-  });
-
-  it('only prefetches branch sources for candidates within the free preparation slots', async () => {
-    // 5 candidates, 2 free preparation slots (maximumPreparingIssuesCount=2, currentPreparation=0).
-    const candidates = Array.from({ length: 5 }, (_, i) =>
-      createMockIssue({
-        number: i + 1,
-        url: `https://github.com/user/repo/issues/${i + 1}`,
-        itemId: `item-${i + 1}`,
-        title: `Candidate ${i + 1}`,
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-        assignees: ['manager-user'],
-      }),
-    );
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap(candidates),
-    );
-    mockIssueRepository.getAllOpened.mockResolvedValue([]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 0,
-    });
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: 2,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledTimes(2);
-  });
-
-  it('fetches no branch sources when free preparation slots is zero or negative', async () => {
-    // 5 candidates, 2 existing Preparation issues filling the configured maximum of 2.
-    const preparingIssues = Array.from({ length: 2 }, (_, i) =>
-      createMockIssue({
-        number: i + 100,
-        url: `https://github.com/user/repo/issues/${i + 100}`,
-        itemId: `prep-item-${i}`,
-        status: 'Preparation',
-        author: 'testuser',
-        assignees: ['manager-user'],
-      }),
-    );
-    const candidates = Array.from({ length: 5 }, (_, i) =>
-      createMockIssue({
-        number: i + 1,
-        url: `https://github.com/user/repo/issues/${i + 1}`,
-        itemId: `item-${i + 1}`,
-        title: `Candidate ${i + 1}`,
-        status: 'Awaiting Workspace',
-        author: 'testuser',
-        assignees: ['manager-user'],
-      }),
-    );
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([...preparingIssues, ...candidates]),
-    );
-    mockIssueRepository.getAllOpened.mockResolvedValue([]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: 2,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-    });
-
-    expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
-  });
+describe("StartPreparationUseCase", () => {
+	let useCase: StartPreparationUseCase;
+	let mockProjectRepository: Mocked<
+		Pick<ProjectRepository, "getByUrl" | "createField" | "updateAgentList">
+	>;
+	let mockIssueRepository: Mocked<
+		Pick<
+			IssueRepository,
+			| "getStoryObjectMap"
+			| "getAllOpened"
+			| "updateStatus"
+			| "findRelatedOpenPRs"
+			| "getOpenPullRequest"
+			| "closePullRequest"
+			| "deletePullRequestBranch"
+			| "createCommentByUrl"
+			| "setIssueAgentField"
+			| "removeLabel"
+		>
+	>;
+	let mockLocalCommandRunner: Mocked<LocalCommandRunner>;
+	let mockClaudeTokenUsageRepository: Mocked<ClaudeTokenUsageRepository>;
+	let mockTakeOwnershipSpawnRepository: Mocked<TakeOwnershipSpawnRepository>;
+	let mockGitHubGraphqlRateLimitRepository: Mocked<GitHubGraphqlRateLimitRepository>;
+	let mockProject: Project;
+	beforeEach(() => {
+		jest.resetAllMocks();
+		mockProject = createMockProject();
+		mockProjectRepository = {
+			getByUrl: jest.fn(),
+			createField: jest.fn().mockResolvedValue(undefined),
+			updateAgentList: jest.fn().mockResolvedValue([]),
+		};
+		mockIssueRepository = {
+			getStoryObjectMap: jest.fn().mockResolvedValue(new Map()),
+			getAllOpened: jest.fn().mockResolvedValue([]),
+			updateStatus: jest.fn(),
+			findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
+			getOpenPullRequest: jest.fn().mockResolvedValue(null),
+			closePullRequest: jest.fn().mockResolvedValue(undefined),
+			deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
+			createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+			setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+			removeLabel: jest.fn().mockResolvedValue(undefined),
+		};
+		mockLocalCommandRunner = {
+			runCommand: jest.fn(),
+			spawnInteractive: jest.fn(),
+		};
+		mockClaudeTokenUsageRepository = {
+			ensureObservable: jest.fn().mockResolvedValue(undefined),
+			getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
+			getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
+			proxyBaseUrl: jest.fn().mockReturnValue("http://127.0.0.1:8787"),
+		};
+		mockTakeOwnershipSpawnRepository = {
+			listSpawns: jest.fn().mockReturnValue([]),
+			listRunningIssueUrls: jest.fn().mockReturnValue([]),
+		};
+		mockGitHubGraphqlRateLimitRepository = {
+			getRemainingRequestCount: jest.fn().mockResolvedValue(null),
+		};
+		useCase = new StartPreparationUseCase(
+			mockProjectRepository,
+			mockIssueRepository,
+			mockLocalCommandRunner,
+			mockClaudeTokenUsageRepository,
+			mockTakeOwnershipSpawnRepository,
+			mockGitHubGraphqlRateLimitRepository,
+		);
+	});
+	it("should run aw command for awaiting workspace issues", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+			url: "url1",
+			status: "Preparation",
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe("2");
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-opus",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+
+	describe("agent designation label migration to the Agent project field", () => {
+		const projectWithAgentField = (options: FieldOption[]): Project => ({
+			...createMockProject(),
+			agent: { name: "Agent", fieldId: "agent-field-id", options },
+		});
+		const runWithAgents = async (agents: string[] | null): Promise<void> => {
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+				agents,
+			});
+		};
+		const arrangeIssue = (project: Project, labels: string[]): void => {
+			mockProjectRepository.getByUrl.mockResolvedValue(project);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([
+					createMockIssue({
+						url: "url1",
+						title: "Issue 1",
+						labels,
+						status: "Awaiting Workspace",
+					}),
+				]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+		};
+
+		it("sets the existing Agent field option and removes the label when a label matches a configured agent definition", async () => {
+			const project = projectWithAgentField([
+				{
+					id: "agent-option-impl",
+					name: "impl",
+					color: "GRAY",
+					description: "",
+				},
+				{
+					id: "agent-option-chore",
+					name: "chore",
+					color: "GRAY",
+					description: "",
+				},
+			]);
+			arrangeIssue(project, ["chore"]);
+
+			await runWithAgents(["impl", "chore", "accounting"]);
+
+			expect(mockProjectRepository.updateAgentList.mock.calls).toHaveLength(0);
+			expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+				["url1", project, "agent-option-chore"],
+			]);
+			expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
+			expect(mockIssueRepository.removeLabel.mock.calls[0][0]).toMatchObject({
+				url: "url1",
+			});
+			expect(mockIssueRepository.removeLabel.mock.calls[0][1]).toBe("chore");
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+				"chore",
+			);
+		});
+
+		it("creates the missing Agent field option before setting it on the issue", async () => {
+			const project = projectWithAgentField([]);
+			arrangeIssue(project, ["impl"]);
+			mockProjectRepository.updateAgentList.mockResolvedValue([
+				{
+					id: "agent-option-impl",
+					name: "impl",
+					color: "GRAY",
+					description: "",
+				},
+			]);
+
+			await runWithAgents(["impl"]);
+
+			expect(mockProjectRepository.updateAgentList.mock.calls).toHaveLength(1);
+			expect(mockProjectRepository.updateAgentList.mock.calls[0][1]).toEqual([
+				{ id: null, name: "impl", color: "GRAY", description: "" },
+			]);
+			expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+				["url1", project, "agent-option-impl"],
+			]);
+			expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
+		});
+
+		it("creates the Agent field when the project has none, then sets it and removes the label", async () => {
+			const project = createMockProject();
+			arrangeIssue(project, ["chore"]);
+			mockProjectRepository.getByUrl.mockResolvedValueOnce(project);
+			mockProjectRepository.getByUrl.mockResolvedValueOnce(
+				projectWithAgentField([
+					{
+						id: "agent-option-chore",
+						name: "chore",
+						color: "GRAY",
+						description: "",
+					},
+				]),
+			);
+
+			await runWithAgents(["chore"]);
+
+			expect(mockProjectRepository.createField.mock.calls).toHaveLength(1);
+			expect(mockProjectRepository.createField.mock.calls[0][1]).toEqual({
+				name: "Agent",
+				dataType: "SINGLE_SELECT",
+				options: [{ name: "chore", color: "GRAY", description: "" }],
+			});
+			expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
+				["url1", project, "agent-option-chore"],
+			]);
+			expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(1);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+				"chore",
+			);
+		});
+
+		it("keeps the label and still uses it as the agent when the Agent field option cannot be resolved", async () => {
+			const project = createMockProject();
+			arrangeIssue(project, ["chore"]);
+			mockProjectRepository.getByUrl.mockResolvedValue(project);
+
+			await runWithAgents(["chore"]);
+
+			expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+			expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+				"chore",
+			);
+		});
+
+		it("leaves the labels untouched when no label matches a configured agent definition", async () => {
+			const project = projectWithAgentField([
+				{
+					id: "agent-option-impl",
+					name: "impl",
+					color: "GRAY",
+					description: "",
+				},
+			]);
+			arrangeIssue(project, ["category:triager"]);
+
+			await runWithAgents(["impl"]);
+
+			expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+			expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+				"agent1",
+			);
+		});
+
+		it("leaves the labels untouched when no agent definition is configured", async () => {
+			const project = projectWithAgentField([]);
+			arrangeIssue(project, ["chore"]);
+
+			await runWithAgents(null);
+
+			expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
+			expect(mockIssueRepository.removeLabel.mock.calls).toHaveLength(0);
+		});
+	});
+
+	describe("spawns with defaultAgentName when the issue has no agent configured, without setting the Agent field", () => {
+		const projectWithAgentOption = (
+			optionId: string,
+			optionName: string,
+		): Project => ({
+			...createMockProject(),
+			agent: {
+				name: "Agent",
+				fieldId: "agent-field-id",
+				options: [
+					{ id: optionId, name: optionName, color: "GRAY", description: "" },
+				],
+			},
+		});
+
+		it("does not set the Agent field even when the project has a matching agent option and the issue has no agent configured", async () => {
+			const project = projectWithAgentOption("agent-option-agent1", "agent1");
+			mockProjectRepository.getByUrl.mockResolvedValue(project);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([
+					createMockIssue({
+						url: "url1",
+						status: "Awaiting Workspace",
+						labels: [],
+						agent: null,
+					}),
+				]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+				agents: [],
+			});
+
+			expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+				"agent1",
+			);
+		});
+	});
+
+	it("keeps an issue out of Preparation when the aw command exits non-zero", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "The URL includes test-repository. Exiting.",
+			stderr: "",
+			exitCode: 1,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe("2");
+		expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe("1");
+		expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
+			url: "url1",
+		});
+		expect(awaitingIssues[0].status).toBe("Awaiting Workspace");
+	});
+
+	it("skips an issue whose URL is already in the running worker list", async () => {
+		const runningUrl = "https://github.com/user/repo/issues/1";
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: runningUrl,
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				author: "testuser",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockReturnValue([
+			runningUrl,
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+	});
+
+	it("skips all spawning when active worker count meets the maxConcurrentWorkers cap", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/10",
+				status: "Awaiting Workspace",
+				author: "testuser",
+			}),
+			createMockIssue({
+				number: 2,
+				url: "https://github.com/user/repo/issues/11",
+				status: "Awaiting Workspace",
+				author: "testuser",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockReturnValue([
+			"https://github.com/user/repo/issues/1",
+			"https://github.com/user/repo/issues/2",
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+			maxConcurrentWorkers: 2,
+		});
+
+		expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+		expect(
+			mockLocalCommandRunner.runCommand.mock.calls.map((c) => c[0]),
+		).not.toContain("aw");
+	});
+
+	it("stops spawning mid-loop when workers started in the run bring the count to the cap", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/10",
+				status: "Awaiting Workspace",
+				author: "testuser",
+			}),
+			createMockIssue({
+				number: 2,
+				url: "https://github.com/user/repo/issues/11",
+				status: "Awaiting Workspace",
+				author: "testuser",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.getAllOpened.mockResolvedValue([]);
+		mockTakeOwnershipSpawnRepository.listRunningIssueUrls.mockReturnValue([]);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+			maxConcurrentWorkers: 1,
+		});
+
+		const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+			(call) => call[0] === "aw",
+		);
+		expect(awCalls).toHaveLength(1);
+	});
+
+	it("skips the preparation cycle when GraphQL rate limit is below the floor", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/10",
+				status: "Awaiting Workspace",
+				author: "testuser",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockGitHubGraphqlRateLimitRepository.getRemainingRequestCount.mockResolvedValue(
+			499,
+		);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+			graphqlRateLimitFloor: 500,
+		});
+
+		expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+		expect(
+			mockLocalCommandRunner.runCommand.mock.calls.map((c) => c[0]),
+		).not.toContain("aw");
+	});
+
+	it("proceeds with spawning when GraphQL remaining equals the floor exactly", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/10",
+				status: "Awaiting Workspace",
+				author: "testuser",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.getAllOpened.mockResolvedValue([]);
+		mockGitHubGraphqlRateLimitRepository.getRemainingRequestCount.mockResolvedValue(
+			500,
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+			graphqlRateLimitFloor: 500,
+		});
+
+		const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+			(call) => call[0] === "aw",
+		);
+		expect(awCalls).toHaveLength(1);
+	});
+
+	it("proceeds with spawning when GraphQL rate limit check returns null", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/10",
+				status: "Awaiting Workspace",
+				author: "testuser",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.getAllOpened.mockResolvedValue([]);
+		mockGitHubGraphqlRateLimitRepository.getRemainingRequestCount.mockResolvedValue(
+			null,
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+			graphqlRateLimitFloor: 500,
+		});
+
+		const awCalls = mockLocalCommandRunner.runCommand.mock.calls.filter(
+			(call) => call[0] === "aw",
+		);
+		expect(awCalls).toHaveLength(1);
+	});
+
+	it("should pass --branch to aw command when issue has an existing linked PR", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		const existingPR: RelatedPullRequest = {
+			url: "https://github.com/user/repo/pull/42",
+			branchName: "i1",
+			createdAt: new Date("2024-01-01"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		};
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([existingPR]);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-opus",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+	it("should pass --branch with PR branch name when issue URL is a PR URL", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/pull/354",
+				title: "PR 354",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+			url: "https://github.com/user/repo/pull/354",
+			branchName: "dependabot/npm_and_yarn/multi-cc382f683c",
+			createdAt: new Date("2024-01-01"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		});
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"https://github.com/user/repo/pull/354",
+				"agent1",
+				"claude-opus",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"dependabot/npm_and_yarn/multi-cc382f683c",
+			],
+		]);
+		expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+		expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
+			"https://github.com/user/repo/pull/354",
+		);
+	});
+	it("should skip and not call wrapper when PR URL returns null from getOpenPullRequest", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/pull/999",
+				title: "PR 999",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
+		const consoleWarnSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			"Skipping non-OPEN PR https://github.com/user/repo/pull/999: wrapper requires an open PR.",
+		);
+		consoleWarnSpy.mockRestore();
+	});
+	it("should skip and not call wrapper when PR URL has open PR with null branchName", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/pull/999",
+				title: "PR 999",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+			url: "https://github.com/user/repo/pull/999",
+			branchName: null,
+			createdAt: new Date("2024-01-01"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		});
+		const consoleWarnSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			"Skipping PR https://github.com/user/repo/pull/999: head branch is unavailable.",
+		);
+		consoleWarnSpy.mockRestore();
+	});
+	it("should skip and not call wrapper when PR has branch name with shell-unsafe characters", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/pull/999",
+				title: "PR 999",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.getOpenPullRequest.mockResolvedValue({
+			url: "https://github.com/user/repo/pull/999",
+			branchName: "evil$(rm -rf /)",
+			createdAt: new Date("2024-01-01"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		});
+		const consoleErrorSpy = jest
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("branch name contains unexpected characters"),
+		);
+		consoleErrorSpy.mockRestore();
+	});
+	it("should auto-resolve by adopting oldest PR, closing newer PR with branch delete and comments when issue has multiple related open PRs", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		const olderPR: RelatedPullRequest = {
+			url: "https://github.com/user/repo/pull/42",
+			branchName: "i1",
+			createdAt: new Date("2024-01-01T00:00:00Z"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		};
+		const newerPR: RelatedPullRequest = {
+			url: "https://github.com/user/repo/pull/43",
+			branchName: "i1-fix",
+			createdAt: new Date("2024-01-02T00:00:00Z"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		};
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+			olderPR,
+			newerPR,
+		]);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+			newerPR.url,
+		);
+		expect(mockIssueRepository.deletePullRequestBranch).toHaveBeenCalledWith(
+			newerPR.url,
+			newerPR.branchName,
+		);
+		expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+			newerPR.url,
+			expect.stringContaining(olderPR.url),
+		);
+		expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+			"https://github.com/user/repo/issues/1",
+			expect.stringContaining(newerPR.url),
+		);
+		expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalledWith(
+			olderPR.url,
+		);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"https://github.com/user/repo/issues/1",
+				"agent1",
+				"claude-opus",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+	it("should not treat a cross-repository PR as duplicate when a same-repository PR exists", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/HiromiShikata/secretary/issues/4290",
+				title: "Issue 4290",
+				nameWithOwner: "HiromiShikata/secretary",
+				number: 4290,
+				org: "HiromiShikata",
+				repo: "secretary",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		const sameRepoPR: RelatedPullRequest = {
+			url: "https://github.com/HiromiShikata/secretary/pull/4610",
+			branchName: "i4290",
+			createdAt: new Date("2026-08-28T13:38:00Z"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		};
+		const crossRepoPR: RelatedPullRequest = {
+			url: "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/1813",
+			branchName: "i4290",
+			createdAt: new Date("2026-08-28T10:55:00Z"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		};
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+			sameRepoPR,
+			crossRepoPR,
+		]);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/users/user/projects/1",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.closePullRequest).not.toHaveBeenCalled();
+		expect(mockIssueRepository.deletePullRequestBranch).not.toHaveBeenCalled();
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
+			"--branch",
+		);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
+			"i4290",
+		);
+	});
+	it("should skip issue after resolving duplicates when adopted canonical PR has null branchName", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		const olderPRNullBranch: RelatedPullRequest = {
+			url: "https://github.com/user/repo/pull/42",
+			branchName: null,
+			createdAt: new Date("2024-01-01T00:00:00Z"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		};
+		const newerPR: RelatedPullRequest = {
+			url: "https://github.com/user/repo/pull/43",
+			branchName: "i1-fix",
+			createdAt: new Date("2024-01-02T00:00:00Z"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		};
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+			olderPRNullBranch,
+			newerPR,
+		]);
+		const consoleWarnSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+			newerPR.url,
+		);
+		expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+			newerPR.url,
+			expect.stringContaining(olderPRNullBranch.url),
+		);
+		expect(mockIssueRepository.createCommentByUrl).toHaveBeenCalledWith(
+			"https://github.com/user/repo/issues/1",
+			expect.stringContaining(newerPR.url),
+		);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			expect.stringContaining(
+				"adopted canonical PR has unavailable head branch",
+			),
+		);
+		consoleWarnSpy.mockRestore();
+	});
+	it("should skip and not call wrapper when issue has one related open PR with null branchName", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		const prWithNullBranch: RelatedPullRequest = {
+			url: "https://github.com/user/repo/pull/42",
+			branchName: null,
+			createdAt: new Date("2024-01-01"),
+			isDraft: false,
+			isConflicted: false,
+			mergeable: null,
+			isPassedAllCiJob: false,
+			isCiStateSuccess: false,
+			isResolvedAllReviewComments: false,
+			isBranchOutOfDate: false,
+			missingRequiredCheckNames: [],
+		};
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+			prWithNullBranch,
+		]);
+		const consoleWarnSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			"Skipping issue url1: related open PR has unavailable head branch.",
+		);
+		consoleWarnSpy.mockRestore();
+	});
+	it("should assign workspace to awaiting issues", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: [],
+				status: "Awaiting Workspace",
+			}),
+			createMockIssue({
+				url: "url2",
+				title: "Issue 2",
+				labels: [],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		// Both awaiting issues should be updated (forward iteration: url1 first, then url2)
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+			url: "url1",
+			status: "Preparation",
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe("2");
+		expect(mockIssueRepository.updateStatus.mock.calls[1][0]).toBe(mockProject);
+		expect(mockIssueRepository.updateStatus.mock.calls[1][1]).toMatchObject({
+			url: "url2",
+			status: "Preparation",
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls[1][2]).toBe("2");
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+	});
+	it("should stop assigning after maximum preparing issues count is reached", async () => {
+		// When we already have 6 preparation issues and max is 6 (default),
+		// the loop condition prevents processing any new issues
+		const preparationIssues: Issue[] = Array.from({ length: 6 }, (_, i) =>
+			createMockIssue({
+				url: `url${i + 1}`,
+				title: `Issue ${i + 1}`,
+				labels: [],
+				status: "Preparation",
+			}),
+		);
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url7",
+				title: "Issue 7",
+				labels: [],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([...preparationIssues, ...awaitingIssues]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: null,
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		// Loop doesn't run because we're already at max (6 >= 6)
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+	});
+	it("should pass configFilePath to aw command", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-opus",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+	it("should use configFilePath in aw command", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-opus",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+	it("falls back to defaultAgentName when Agent field is empty, ignoring llm-agent: labels", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["llm-agent:research", "category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: "default-llm-agent",
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-sonnet-4-6",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+	it("falls back to defaultAgentName when Agent field is empty, ignoring category: labels", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: "default-llm-agent",
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-sonnet-4-6",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+	it("falls back to defaultAgentName when Agent field is empty, ignoring defaultLlmAgentName", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: [],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: "default-llm-agent",
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-sonnet-4-6",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+	it("should use llm-model label over defaultLlmModelName", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl", "llm-model:claude-sonnet"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-sonnet",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+	it("should log error and skip issue when no llm-model label and no defaultLlmModelName", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const consoleErrorSpy = jest
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: null,
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			"No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.",
+		);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		consoleErrorSpy.mockRestore();
+	});
+	it("should continue processing subsequent issues when one issue has no model configured", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1 (no model)",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+			createMockIssue({
+				url: "url2",
+				title: "Issue 2 (with model label)",
+				labels: ["category:impl", "llm-model:claude-sonnet-4-6"],
+				status: "Awaiting Workspace",
+				number: 2,
+				itemId: "item-2",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const consoleErrorSpy = jest
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: null,
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			"No LLM model configured for issue url1. Provide --defaultLlmModelName or add an llm-model: label.",
+		);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url2",
+				"agent1",
+				"claude-sonnet-4-6",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i2",
+			],
+		]);
+		consoleErrorSpy.mockRestore();
+	});
+	it("should handle no awaiting workspace issues gracefully", async () => {
+		// Test that the loop handles an empty awaiting workspace issues array
+		const preparationIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: [],
+				status: "Preparation",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(preparationIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: null,
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		// No issues are in 'Awaiting Workspace' status, so no updates should happen
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+	});
+	it("should use custom maximumPreparingIssuesCount when provided", async () => {
+		const awaitingIssues: Issue[] = Array.from({ length: 10 }, (_, i) =>
+			createMockIssue({
+				url: `url${i + 1}`,
+				title: `Issue ${i + 1}`,
+				labels: [],
+				status: "Awaiting Workspace",
+			}),
+		);
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: 3,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(3);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+	});
+	it("should use default maximumPreparingIssuesCount of 6 when null is provided", async () => {
+		const awaitingIssues: Issue[] = Array.from({ length: 12 }, (_, i) =>
+			createMockIssue({
+				url: `url${i + 1}`,
+				title: `Issue ${i + 1}`,
+				labels: [],
+				status: "Awaiting Workspace",
+			}),
+		);
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(6);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(6);
+	});
+	it("should allow six preparing processes per available Claude OAuth token when maximumPreparingIssuesCount is null", async () => {
+		const awaitingIssues: Issue[] = Array.from({ length: 20 }, (_, i) =>
+			createMockIssue({
+				url: `url${i + 1}`,
+				title: `Issue ${i + 1}`,
+				labels: [],
+				status: "Awaiting Workspace",
+				number: i + 1,
+				itemId: `item-${i + 1}`,
+			}),
+		);
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-a",
+				token: "token-a",
+				fiveHourUtilization: 0,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-b",
+				token: "token-b",
+				fiveHourUtilization: 0,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: 12,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(12);
+		const spawnedTokens = mockLocalCommandRunner.runCommand.mock.calls.map(
+			(call) => call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN,
+		);
+		expect(spawnedTokens.filter((token) => token === "token-a")).toHaveLength(
+			6,
+		);
+		expect(spawnedTokens.filter((token) => token === "token-b")).toHaveLength(
+			6,
+		);
+	});
+	it("should cap configured maximumPreparingIssuesCount to six per available Claude OAuth token", async () => {
+		const awaitingIssues: Issue[] = Array.from({ length: 20 }, (_, i) =>
+			createMockIssue({
+				url: `url${i + 1}`,
+				title: `Issue ${i + 1}`,
+				labels: [],
+				status: "Awaiting Workspace",
+				number: i + 1,
+				itemId: `item-${i + 1}`,
+			}),
+		);
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-a",
+				token: "token-a",
+				fiveHourUtilization: 0,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-b",
+				token: "token-b",
+				fiveHourUtilization: 0,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: 20,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(12);
+	});
+
+	it("should not skip issues from repositories with workflow blockers", async () => {
+		const blockerIssue = createMockIssue({
+			url: "https://github.com/user/repo/issues/100",
+			title: "Blocker Issue",
+			labels: [],
+			status: "Awaiting Workspace",
+			state: "OPEN",
+		});
+
+		const issueInBlockedRepo = createMockIssue({
+			url: "https://github.com/user/repo/issues/101",
+			title: "Issue in blocked repo",
+			labels: [],
+			status: "Awaiting Workspace",
+			state: "OPEN",
+		});
+
+		const workflowBlockerMap: StoryObjectMap = new Map();
+		workflowBlockerMap.set("Workflow blocker", {
+			story: {
+				id: "story-blocker",
+				name: "Workflow blocker",
+				color: "RED",
+				description: "",
+			},
+			storyIssue: null,
+			issues: [blockerIssue],
+		});
+		workflowBlockerMap.set("Default Story", {
+			story: {
+				id: "story-1",
+				name: "Default Story",
+				color: "GRAY",
+				description: "",
+			},
+			storyIssue: null,
+			issues: [issueInBlockedRepo],
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(workflowBlockerMap);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(2);
+		const updatedUrls = mockIssueRepository.updateStatus.mock.calls.map(
+			(call) => call[1].url,
+		);
+		expect(updatedUrls).toContain("https://github.com/user/repo/issues/100");
+		expect(updatedUrls).toContain("https://github.com/user/repo/issues/101");
+	});
+
+	it("should skip issues that have dependedIssueUrls", async () => {
+		const issueWithDependency = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			title: "Issue with dependency",
+			labels: [],
+			status: "Awaiting Workspace",
+			dependedIssueUrls: ["https://github.com/user/repo/issues/2"],
+		});
+		const issueWithoutDependency = createMockIssue({
+			url: "https://github.com/user/repo/issues/3",
+			title: "Issue without dependency",
+			labels: [],
+			status: "Awaiting Workspace",
+			dependedIssueUrls: [],
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([issueWithDependency, issueWithoutDependency]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+			url: "https://github.com/user/repo/issues/3",
+			status: "Preparation",
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+	});
+
+	it("should skip issues where nextActionHour is in the future", async () => {
+		jest.useFakeTimers();
+		try {
+			jest.setSystemTime(new Date("2024-01-01T10:00:00"));
+
+			const issueWithFutureNextActionHour = createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue with future next action hour",
+				labels: [],
+				status: "Awaiting Workspace",
+				nextActionHour: 15,
+			});
+			const issueWithoutNextActionHour = createMockIssue({
+				url: "https://github.com/user/repo/issues/2",
+				title: "Issue without next action hour",
+				labels: [],
+				status: "Awaiting Workspace",
+				nextActionHour: null,
+			});
+
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([
+					issueWithFutureNextActionHour,
+					issueWithoutNextActionHour,
+				]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+			expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+				url: "https://github.com/user/repo/issues/2",
+				status: "Preparation",
+			});
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it("should skip issues where nextActionDate is tomorrow or more future", async () => {
+		jest.useFakeTimers();
+		try {
+			jest.setSystemTime(new Date("2024-01-15T10:00:00"));
+
+			const issueWithFutureNextActionDate = createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue with future next action date",
+				labels: [],
+				status: "Awaiting Workspace",
+				nextActionDate: new Date("2024-01-16"),
+			});
+			const issueWithoutNextActionDate = createMockIssue({
+				url: "https://github.com/user/repo/issues/2",
+				title: "Issue without next action date",
+				labels: [],
+				status: "Awaiting Workspace",
+				nextActionDate: null,
+			});
+
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([
+					issueWithFutureNextActionDate,
+					issueWithoutNextActionDate,
+				]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+			expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+				url: "https://github.com/user/repo/issues/2",
+				status: "Preparation",
+			});
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it("should not skip issues where nextActionDate is today", async () => {
+		jest.useFakeTimers();
+		try {
+			jest.setSystemTime(new Date("2024-01-15T10:00:00"));
+
+			const issueWithTodayNextActionDate = createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue with today next action date",
+				labels: [],
+				status: "Awaiting Workspace",
+				nextActionDate: new Date("2024-01-15"),
+			});
+
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([issueWithTodayNextActionDate]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+			expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+				url: "https://github.com/user/repo/issues/1",
+				status: "Preparation",
+			});
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it("should not skip issues where nextActionDate is in the past", async () => {
+		jest.useFakeTimers();
+		try {
+			jest.setSystemTime(new Date("2024-01-15T10:00:00"));
+
+			const issueWithPastNextActionDate = createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue with past next action date",
+				labels: [],
+				status: "Awaiting Workspace",
+				nextActionDate: new Date("2024-01-14"),
+			});
+
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([issueWithPastNextActionDate]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+			expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+				url: "https://github.com/user/repo/issues/1",
+				status: "Preparation",
+			});
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it("should not skip issues where nextActionHour is in the past or current hour", async () => {
+		jest.useFakeTimers();
+		try {
+			jest.setSystemTime(new Date("2024-01-01T15:00:00"));
+
+			const issueWithPastNextActionHour = createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue with past next action hour",
+				labels: [],
+				status: "Awaiting Workspace",
+				nextActionHour: 10,
+			});
+
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([issueWithPastNextActionHour]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+			expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+				url: "https://github.com/user/repo/issues/1",
+				status: "Preparation",
+			});
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it("should skip issues from non-allowed authors", async () => {
+		const issueFromAllowedAuthor = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			title: "Issue from allowed author",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "user1",
+		});
+		const issueFromNonAllowedAuthor = createMockIssue({
+			url: "https://github.com/user/repo/issues/2",
+			title: "Issue from non-allowed author",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "user3",
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([
+				issueFromAllowedAuthor,
+				issueFromNonAllowedAuthor,
+			]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["user1", "user2"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+			url: "https://github.com/user/repo/issues/1",
+			status: "Preparation",
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+	});
+
+	it("should process no issues when allowedIssueAuthors is null (fail-closed)", async () => {
+		const issue1 = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			title: "Issue 1",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "user1",
+		});
+		const issue2 = createMockIssue({
+			url: "https://github.com/user/repo/issues/2",
+			title: "Issue 2",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "user2",
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([issue1, issue2]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: null,
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+	});
+
+	it("should process no issues when allowedIssueAuthors is an empty list (fail-closed)", async () => {
+		const issue1 = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			title: "Issue 1",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "user1",
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([issue1]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: [],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+	});
+
+	it("should process a previously bot-bypassed author only when explicitly listed", async () => {
+		const botIssue = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			title: "Bot issue",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "dependabot[bot]",
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([botIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["dependabot[bot]"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+	});
+
+	it("should not process a previously bot-bypassed author when not listed", async () => {
+		const botIssue = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			title: "Bot issue",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "dependabot[bot]",
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([botIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["owner"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+	});
+
+	it("should skip issues with empty author when allowedIssueAuthors is configured (deny-by-default)", async () => {
+		const issueWithEmptyAuthor = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			title: "Issue with empty author",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "",
+		});
+		const issueWithKnownAuthor = createMockIssue({
+			url: "https://github.com/user/repo/issues/2",
+			title: "Issue with known author",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "user1",
+			number: 2,
+			itemId: "item-2",
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([issueWithEmptyAuthor, issueWithKnownAuthor]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["user1", "user2"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+			url: "https://github.com/user/repo/issues/2",
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+	});
+
+	it("should skip issue with empty author when allowedIssueAuthors is set", async () => {
+		const issueWithEmptyAuthor = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			title: "Issue with empty author",
+			labels: [],
+			status: "Awaiting Workspace",
+			author: "",
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([issueWithEmptyAuthor]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["user1"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+	});
+
+	it("should pick up an awaiting workspace issue assigned to the manager", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue assigned to manager",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				author: "testuser",
+				assignees: ["manager-user"],
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+			url: "https://github.com/user/repo/issues/1",
+			status: "Preparation",
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+	});
+
+	it("should skip an awaiting workspace issue with no assignees", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue with no assignees",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				author: "testuser",
+				assignees: [],
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+	});
+
+	it("should skip an awaiting workspace issue assigned only to a non-manager", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Issue assigned to non-manager only",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				author: "testuser",
+				assignees: ["someone-else"],
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+	});
+
+	it("should pick up an awaiting workspace issue whose assignees include the manager alongside other assignees", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Renovate PR auto-assigned to manager",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				author: "testuser",
+				assignees: ["renovate[bot]", "manager-user"],
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+	});
+
+	it("should pick up only the manager-assigned issue among mixed assignee issues", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/1",
+				title: "Assigned to manager",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				author: "testuser",
+				assignees: ["manager-user"],
+				number: 1,
+				itemId: "item-1",
+			}),
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/2",
+				title: "Assigned to client only",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				author: "testuser",
+				assignees: ["client-user"],
+				number: 2,
+				itemId: "item-2",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+			url: "https://github.com/user/repo/issues/1",
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+	});
+
+	it("should not pass --codexHome when codexHomeCandidates is null", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-opus",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+
+	it("should not pass --codexHome when codexHomeCandidates is empty array", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: [],
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-opus",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			],
+		]);
+	});
+
+	it("should pass --codexHome with the candidate when codexHomeCandidates has one entry", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: [".codex-dev1"],
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0]).toEqual([
+			"aw",
+			[
+				"url1",
+				"agent1",
+				"claude-opus",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+				"--codexHome",
+				".codex-dev1",
+			],
+		]);
+	});
+
+	it("should cycle through codexHomeCandidates across multiple issues", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			}),
+			createMockIssue({
+				url: "url2",
+				title: "Issue 2",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 2,
+				itemId: "item-2",
+			}),
+			createMockIssue({
+				url: "url3",
+				title: "Issue 3",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 3,
+				itemId: "item-3",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: [".codex-dev1", ".codex-dev2"],
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toContain(
+			"--codexHome",
+		);
+		expect(
+			mockLocalCommandRunner.runCommand.mock.calls[0][1][
+				mockLocalCommandRunner.runCommand.mock.calls[0][1].indexOf(
+					"--codexHome",
+				) + 1
+			],
+		).toBe(".codex-dev1");
+		expect(mockLocalCommandRunner.runCommand.mock.calls[1][1]).toContain(
+			"--codexHome",
+		);
+		expect(
+			mockLocalCommandRunner.runCommand.mock.calls[1][1][
+				mockLocalCommandRunner.runCommand.mock.calls[1][1].indexOf(
+					"--codexHome",
+				) + 1
+			],
+		).toBe(".codex-dev2");
+		expect(mockLocalCommandRunner.runCommand.mock.calls[2][1]).toContain(
+			"--codexHome",
+		);
+		expect(
+			mockLocalCommandRunner.runCommand.mock.calls[2][1][
+				mockLocalCommandRunner.runCommand.mock.calls[2][1].indexOf(
+					"--codexHome",
+				) + 1
+			],
+		).toBe(".codex-dev1");
+	});
+
+	it("should persist Preparation status via updateStatus with resolved status option id (regression for issue #519)", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "https://github.com/user/repo/issues/519",
+			title: "Regression issue",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			itemId: "item-regression",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+			url: "https://github.com/user/repo/issues/519",
+			itemId: "item-regression",
+		});
+		expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe("2");
+		const updateStatusCallOrder =
+			mockIssueRepository.updateStatus.mock.invocationCallOrder[0];
+		const runCommandCallOrder =
+			mockLocalCommandRunner.runCommand.mock.invocationCallOrder[0];
+		expect(updateStatusCallOrder).toBeLessThan(runCommandCallOrder);
+	});
+
+	it("should return early and log an error when preparationStatus option is not in the project", async () => {
+		const projectWithoutPreparation: Project = {
+			...createMockProject(),
+			status: {
+				name: "Status",
+				fieldId: "status-field-id",
+				statuses: [
+					{
+						id: "1",
+						name: "Awaiting Workspace",
+						color: "GRAY",
+						description: "",
+					},
+					{ id: "3", name: "Done", color: "GREEN", description: "" },
+				],
+			},
+		};
+		const awaitingIssue = createMockIssue({
+			url: "url-missing-option",
+			title: "Missing Preparation Option",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutPreparation);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		const consoleErrorSpy = jest
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			"Preparation status option 'Preparation' not found in project.",
+		);
+		consoleErrorSpy.mockRestore();
+	});
+
+	it("should call getStoryObjectMap with the resolved project", async () => {
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([]),
+		);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: null,
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.getStoryObjectMap).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "project-1" }),
+		);
+	});
+
+	it("should skip closed issues in awaiting workspace status", async () => {
+		const closedIssue = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			title: "Closed issue",
+			labels: [],
+			status: "Awaiting Workspace",
+			isClosed: true,
+		});
+		const openIssue = createMockIssue({
+			url: "https://github.com/user/repo/issues/2",
+			number: 2,
+			title: "Open issue",
+			labels: [],
+			status: "Awaiting Workspace",
+			isClosed: false,
+		});
+
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([closedIssue, openIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+			url: "https://github.com/user/repo/issues/2",
+		});
+	});
+
+	it("should pass CLAUDE_CODE_OAUTH_TOKEN and ANTHROPIC_BASE_URL to runCommand when tokens are available", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-a",
+				token: "token-a",
+				fiveHourUtilization: 0,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mock.calls,
+		).toHaveLength(1);
+		expect(
+			mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
+		).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-a",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should rotate Claude OAuth tokens round-robin across multiple awaiting issues", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			}),
+			createMockIssue({
+				url: "url2",
+				title: "Issue 2",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 2,
+				itemId: "item-2",
+			}),
+			createMockIssue({
+				url: "url3",
+				title: "Issue 3",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 3,
+				itemId: "item-3",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-a",
+				token: "token-a",
+				fiveHourUtilization: 0,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-b",
+				token: "token-b",
+				fiveHourUtilization: 0,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-a",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-b",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-a",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should not inject env when no tokens are available", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue(
+			[],
+		);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toBeUndefined();
+		expect(
+			mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
+		).toHaveLength(0);
+	});
+
+	it("should choose the sooner-7-day-reset token when two eligible tokens have equal remaining capacity", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-far-reset",
+				token: "token-far-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 100 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-soon-reset",
+				token: "token-soon-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-soon-reset" },
+		});
+	});
+
+	it("should choose the larger-remaining-capacity token on the tie-break when two eligible tokens share the same 7-day reset", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+			"token-busy": 4,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		const sharedResetsAt = nowEpochSeconds + 30 * 3600;
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-busy",
+				token: "token-busy",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: sharedResetsAt,
+					},
+				},
+			},
+			{
+				name: "token-idle",
+				token: "token-idle",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: sharedResetsAt,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-idle" },
+		});
+	});
+
+	it("should exclude a token with zero remaining capacity even when its 7-day reset is the soonest", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+			"token-soon-but-full": 6,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-soon-but-full",
+				token: "token-soon-but-full",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 10 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-later-with-capacity",
+				token: "token-later-with-capacity",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 100 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-later-with-capacity" },
+		});
+	});
+
+	it("should pick the token with the soonest 7-day reset deadline first", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-far-reset",
+				token: "token-far-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.7,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 100 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-soon-reset",
+				token: "token-soon-reset",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0.2,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-soon-reset",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should pick the soonest-7-day-reset token first even when existing Preparation issues exist (regression for issue 748)", async () => {
+		const preparationIssues: Issue[] = Array.from({ length: 3 }, (_, i) =>
+			createMockIssue({
+				url: `https://github.com/user/repo/issues/${i + 1}`,
+				title: `Preparing Issue ${i + 1}`,
+				labels: [],
+				status: "Preparation",
+				number: i + 1,
+				itemId: `item-${i + 1}`,
+			}),
+		);
+		const awaitingIssue = createMockIssue({
+			url: "https://github.com/user/repo/issues/100",
+			title: "Awaiting Issue",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 100,
+			itemId: "item-100",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([...preparationIssues, awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-far-reset",
+				token: "token-far-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.7,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 100 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-soon-reset",
+				token: "token-soon-reset",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0.2,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-soon-reset",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should exclude blocked tokens from rotation", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-blocked",
+				token: "token-blocked",
+				fiveHourUtilization: 0.05,
+				sevenDayUtilization: 0,
+				blocked: true,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-ok",
+				token: "token-ok",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-ok",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should exclude a token whose cooldown has not yet lapsed from rotation", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-cooldown",
+				token: "token-cooldown",
+				fiveHourUtilization: 0.05,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: nowEpochSeconds + 90,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-ok",
+				token: "token-ok",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-ok",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should skip preparation when every configured token is blocked", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-a",
+				token: "token-a",
+				fiveHourUtilization: 0.05,
+				sevenDayUtilization: 0,
+				blocked: true,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-b",
+				token: "token-b",
+				fiveHourUtilization: 0.08,
+				sevenDayUtilization: 0,
+				blocked: true,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+		const consoleWarnSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(
+			mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
+		).toHaveLength(0);
+		expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Skipping starting preparation"),
+		);
+		consoleWarnSpy.mockRestore();
+	});
+
+	it("should skip preparation when every configured token is at or above 95 percent 5h utilization", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-a",
+				token: "token-a",
+				fiveHourUtilization: 0.95,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-b",
+				token: "token-b",
+				fiveHourUtilization: 0.97,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+		const consoleWarnSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(
+			mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
+		).toHaveLength(0);
+		expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			expect.stringContaining("5h utilization >= 90%"),
+		);
+		consoleWarnSpy.mockRestore();
+	});
+
+	it("should drain the soonest-7-day-reset token first across spawns until its remaining capacity is exhausted", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			}),
+			createMockIssue({
+				url: "url2",
+				title: "Issue 2",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 2,
+				itemId: "item-2",
+			}),
+			createMockIssue({
+				url: "url3",
+				title: "Issue 3",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 3,
+				itemId: "item-3",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-7d-mid-reset",
+				token: "token-7d-mid-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.5,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 50 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-7d-soon-reset",
+				token: "token-7d-soon-reset",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 10 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-7d-far-reset",
+				token: "token-7d-far-reset",
+				fiveHourUtilization: 0.3,
+				sevenDayUtilization: 0.7,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 150 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-7d-soon-reset" },
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-7d-soon-reset" },
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-7d-soon-reset" },
+		});
+	});
+
+	it("should move to the next-soonest-reset token only after the soonest token capacity is exhausted", async () => {
+		const awaitingIssues: Issue[] = Array.from({ length: 3 }, (_, i) =>
+			createMockIssue({
+				url: `url${i + 1}`,
+				title: `Issue ${i + 1}`,
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: i + 1,
+				itemId: `item-${i + 1}`,
+			}),
+		);
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+			"token-7d-soon-reset": 5,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-7d-soon-reset",
+				token: "token-7d-soon-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 10 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-7d-far-reset",
+				token: "token-7d-far-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 150 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-7d-soon-reset" },
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-7d-far-reset" },
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-7d-far-reset" },
+		});
+	});
+
+	it("should cap total tasks to the sum of per-token 7-day adaptive concurrent limits", async () => {
+		const awaitingIssues: Issue[] = Array.from({ length: 10 }, (_, i) =>
+			createMockIssue({
+				url: `url${i + 1}`,
+				title: `Issue ${i + 1}`,
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: i + 1,
+				itemId: `item-${i + 1}`,
+			}),
+		);
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-at-90-percent-7d",
+				token: "token-at-90-percent-7d",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.9,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+		const spawnedTokens = mockLocalCommandRunner.runCommand.mock.calls.map(
+			(call) => call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN,
+		);
+		expect(
+			spawnedTokens.filter((token) => token === "token-at-90-percent-7d"),
+		).toHaveLength(3);
+	});
+
+	it("should exclude a rejected token from rotation", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-rejected",
+				token: "token-rejected",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: true,
+				fiveHourRejected: true,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-ok",
+				token: "token-ok",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-ok",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should re-admit a token after its 5h window reset normalizes utilization to 0 and clears rejection", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-reset",
+				token: "token-reset",
+				fiveHourUtilization: 0,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-busy",
+				token: "token-busy",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-reset",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should exclude a token whose 5h window has not reset and remains at or above threshold", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-saturated",
+				token: "token-saturated",
+				fiveHourUtilization: 0.95,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: true,
+				fiveHourRejected: true,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-ok",
+				token: "token-ok",
+				fiveHourUtilization: 0.2,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-ok",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should skip preparation when every configured token is rejected", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-a",
+				token: "token-a",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: true,
+				fiveHourRejected: true,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-b",
+				token: "token-b",
+				fiveHourUtilization: 0.2,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: true,
+				fiveHourRejected: true,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+		const consoleWarnSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(
+			mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
+		).toHaveLength(0);
+		expect(mockProjectRepository.getByUrl).not.toHaveBeenCalled();
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		expect(consoleWarnSpy).toHaveBeenCalledWith(
+			expect.stringContaining("Skipping starting preparation"),
+		);
+		consoleWarnSpy.mockRestore();
+	});
+
+	it("should proceed with legacy spawn without env injection when no token list is configured", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue(
+			[],
+		);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(
+			mockClaudeTokenUsageRepository.ensureObservable.mock.calls,
+		).toHaveLength(0);
+		expect(mockProjectRepository.getByUrl).toHaveBeenCalled();
+		expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toBeUndefined();
+	});
+
+	it("should re-admit a token whose seven_day_sonnet rejection has been cleared by stale-reset expiry", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const pastReset = Math.floor(Date.now() / 1000) - 3600;
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-recovered",
+				token: "token-recovered",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_sonnet: { rejected: false, resetsAt: pastReset },
+				},
+			},
+			{
+				name: "token-busy",
+				token: "token-busy",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-sonnet-4-6",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-recovered",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should not exclude a token for a sonnet-only rejection when the model is opus", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const futureReset = Math.floor(Date.now() / 1000) + 3600;
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-sonnet-exhausted",
+				token: "token-sonnet-exhausted",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+				},
+			},
+			{
+				name: "token-higher-util",
+				token: "token-higher-util",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-sonnet-exhausted",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should exclude a token whose generic seven_day weekly limit is rejected regardless of model", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const futureReset = Math.floor(Date.now() / 1000) + 3600;
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-weekly-exhausted",
+				token: "token-weekly-exhausted",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day: { rejected: true, resetsAt: futureReset },
+				},
+			},
+			{
+				name: "token-ok",
+				token: "token-ok",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-ok",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should pick the token whose 7-day reset is sooner before the token whose 7-day reset is farther", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-b-far-reset",
+				token: "token-b-far-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 100 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-a-soon-reset",
+				token: "token-a-soon-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-a-soon-reset",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should exclude a blocked token even when it has a sooner 7-day reset than an eligible token", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-a-blocked-soon-reset",
+				token: "token-a-blocked-soon-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: true,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-b-far-reset",
+				token: "token-b-far-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 100 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-b-far-reset",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should place a token whose 7-day reset is unknown after a token whose 7-day reset is known", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			}),
+			createMockIssue({
+				url: "url2",
+				title: "Issue 2",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 2,
+				itemId: "item-2",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-a-unknown-reset",
+				token: "token-a-unknown-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "token-b-known-soon-reset",
+				token: "token-b-known-soon-reset",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-b-known-soon-reset" },
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-b-known-soon-reset" },
+		});
+	});
+
+	it("should drain the soonest-reset token first when only the generic seven_day weekly limit (as bridged by the proxy from the snapshot top-level sevenDayReset) is present", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			}),
+			createMockIssue({
+				url: "url2",
+				title: "Issue 2",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 2,
+				itemId: "item-2",
+			}),
+			createMockIssue({
+				url: "url3",
+				title: "Issue 3",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 3,
+				itemId: "item-3",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-7d-far",
+				token: "token-7d-far",
+				fiveHourUtilization: 0.05,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 150 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-7d-soon",
+				token: "token-7d-soon",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 10 * 3600,
+					},
+				},
+			},
+			{
+				name: "token-7d-mid",
+				token: "token-7d-mid",
+				fiveHourUtilization: 0.3,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 50 * 3600,
+					},
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(3);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-7d-soon" },
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls[1][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-7d-soon" },
+		});
+		expect(mockLocalCommandRunner.runCommand.mock.calls[2][2]).toMatchObject({
+			env: { CLAUDE_CODE_OAUTH_TOKEN: "token-7d-soon" },
+		});
+	});
+
+	it("should fall back to 5-hour utilization ascending as tiebreaker when only the generic seven_day weekly limit (as bridged by the proxy) is present and deadlines tie", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		const sharedResetsAt = nowEpochSeconds + 50 * 3600;
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-busy-5h",
+				token: "token-busy-5h",
+				fiveHourUtilization: 0.6,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day: { rejected: false, resetsAt: sharedResetsAt },
+				},
+			},
+			{
+				name: "token-idle-5h",
+				token: "token-idle-5h",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day: { rejected: false, resetsAt: sharedResetsAt },
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-idle-5h",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	it("should fall back to 5-hour utilization ascending as tiebreaker when 7-day reset deadlines are identical", async () => {
+		const awaitingIssue = createMockIssue({
+			url: "url1",
+			title: "Issue 1",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 1,
+			itemId: "item-1",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([awaitingIssue]),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		const sharedResetsAt = nowEpochSeconds + 50 * 3600;
+		mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+			{
+				name: "token-busy-5h",
+				token: "token-busy-5h",
+				fiveHourUtilization: 0.6,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: { rejected: false, resetsAt: sharedResetsAt },
+				},
+			},
+			{
+				name: "token-idle-5h",
+				token: "token-idle-5h",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: { rejected: false, resetsAt: sharedResetsAt },
+				},
+			},
+		]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+			env: {
+				CLAUDE_CODE_OAUTH_TOKEN: "token-idle-5h",
+				ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+			},
+		});
+	});
+
+	describe("agent selection precedence", () => {
+		const runWithIssueLabels = async (params: {
+			labels: string[];
+			defaultAgentName: string;
+			defaultLlmAgentName: string | null;
+			labelsAsLlmAgentName: string[] | null;
+			agent?: string | null;
+		}): Promise<string> => {
+			const awaitingIssues: Issue[] = [
+				createMockIssue({
+					url: "url1",
+					title: "Issue 1",
+					labels: params.labels,
+					status: "Awaiting Workspace",
+					agent: params.agent ?? null,
+				}),
+			];
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap(awaitingIssues),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: params.defaultAgentName,
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: params.defaultLlmAgentName,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: params.labelsAsLlmAgentName,
+			});
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+			const awArgs = mockLocalCommandRunner.runCommand.mock.calls[0][1];
+			return awArgs[1];
+		};
+
+		it("strips the llm-agent: prefix from the project agent field value", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				agent: "llm-agent:impl",
+				labels: [],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: null,
+			});
+			expect(selectedAgent).toBe("impl");
+		});
+
+		it("keeps a project agent field value that carries no llm-agent: prefix", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				agent: "developer",
+				labels: [],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: null,
+			});
+			expect(selectedAgent).toBe("developer");
+		});
+
+		it("uses defaultAgentName when Agent field is empty, ignoring llm-agent: label and labelsAsLlmAgentName", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["llm-agent:explicit-agent", "story", "category:impl"],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: ["story"],
+			});
+			expect(selectedAgent).toBe("default-agent");
+		});
+
+		it("uses defaultAgentName when Agent field is empty, ignoring labelsAsLlmAgentName and category: label", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["story", "category:impl"],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: ["story"],
+			});
+			expect(selectedAgent).toBe("default-agent");
+		});
+
+		it("uses defaultAgentName when Agent field is empty, ignoring colon-containing label in labelsAsLlmAgentName", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["story:body-condition", "category:impl"],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: ["story", "story:body-condition"],
+			});
+			expect(selectedAgent).toBe("default-agent");
+		});
+
+		it("uses defaultAgentName when Agent field is empty, ignoring category: label and unmatched labelsAsLlmAgentName", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["unrelated-label", "category:impl"],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: ["story"],
+			});
+			expect(selectedAgent).toBe("default-agent");
+		});
+
+		it("uses defaultAgentName when Agent field is empty, ignoring defaultLlmAgentName", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["unrelated-label"],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: ["story"],
+			});
+			expect(selectedAgent).toBe("default-agent");
+		});
+
+		it("falls through to defaultAgentName when no llm-agent:, no labelsAsLlmAgentName match, no category: label, and no defaultLlmAgentName", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["unrelated-label"],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: null,
+				labelsAsLlmAgentName: ["story"],
+			});
+			expect(selectedAgent).toBe("default-agent");
+		});
+
+		it("ignores labels that are not listed in labelsAsLlmAgentName", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["untracked-label"],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: ["story"],
+			});
+			expect(selectedAgent).toBe("default-agent");
+		});
+
+		it("ignores labels that are not listed in labelsAsLlmAgentName when other entries are present", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["untracked-label", "another-untracked-label"],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: ["story", "story:body-condition"],
+			});
+			expect(selectedAgent).toBe("default-agent");
+		});
+
+		it("uses defaultAgentName when labelsAsLlmAgentName is null and Agent field is empty", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["category:impl"],
+				defaultAgentName: "default-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: null,
+			});
+			expect(selectedAgent).toBe("default-agent");
+		});
+
+		it("uses defaultAgentName when Agent field is empty and a bare label matches labelsAsLlmAgentName", async () => {
+			const selectedAgent = await runWithIssueLabels({
+				labels: ["chore"],
+				defaultAgentName: "triage-agent",
+				defaultLlmAgentName: "default-llm-agent",
+				labelsAsLlmAgentName: ["chore"],
+			});
+			expect(selectedAgent).toBe("triage-agent");
+		});
+	});
+
+	describe("NO STORY story bypasses the Agent field for agent selection", () => {
+		const projectWithAgentOption = (
+			optionId: string,
+			optionName: string,
+		): Project => ({
+			...createMockProject(),
+			agent: {
+				name: "Agent",
+				fieldId: "agent-field-id",
+				options: [
+					{ id: optionId, name: optionName, color: "GRAY", description: "" },
+				],
+			},
+		});
+
+		it("dispatches to defaultAgentName and does not overwrite the Agent field when story is NO STORY and agent field is set", async () => {
+			const project = projectWithAgentOption(
+				"agent-option-systems-analyst",
+				"systems-analyst",
+			);
+			mockProjectRepository.getByUrl.mockResolvedValue(project);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([
+					createMockIssue({
+						url: "url1",
+						status: "Awaiting Workspace",
+						labels: [],
+						story:
+							"regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+						agent: "systems-analyst",
+					}),
+				]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+				agents: [],
+			});
+
+			expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+				"agent1",
+			);
+		});
+
+		it("dispatches to defaultAgentName without setting the Agent field when story is NO STORY and agent field is null", async () => {
+			const project = projectWithAgentOption("agent-option-agent1", "agent1");
+			mockProjectRepository.getByUrl.mockResolvedValue(project);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([
+					createMockIssue({
+						url: "url1",
+						status: "Awaiting Workspace",
+						labels: [],
+						story:
+							"regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+						agent: null,
+					}),
+				]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+				agents: [],
+			});
+
+			expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+				"agent1",
+			);
+		});
+	});
+
+	describe("Sonnet-to-Opus weekly limit fallback", () => {
+		const futureReset = Math.floor(Date.now() / 1000) + 3600;
+
+		it("spawns preparations with the Opus fallback model when the sonnet default is selected and every token has its seven_day_sonnet weekly limit exhausted while opus capacity remains", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-sonnet-exhausted",
+					token: "token-sonnet-exhausted",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+					},
+				},
+			]);
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1]).toEqual([
+				"url1",
+				"agent1",
+				"claude-opus-4-8",
+				"--configFilePath",
+				"/path/to/config.yml",
+				"--branch",
+				"i1",
+			]);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+				env: {
+					CLAUDE_CODE_OAUTH_TOKEN: "token-sonnet-exhausted",
+					ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+				},
+			});
+		});
+
+		it("uses the configured fallbackLlmModelName instead of the default when falling back to opus", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-sonnet-exhausted",
+					token: "token-sonnet-exhausted",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+					},
+				},
+			]);
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: "claude-opus-4-8",
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+				"claude-opus-4-8",
+			);
+		});
+
+		it("skips preparation when the sonnet default is exhausted and the opus fallback is also exhausted via the generic seven_day weekly limit", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-fully-exhausted",
+					token: "token-fully-exhausted",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+						seven_day: { rejected: true, resetsAt: futureReset },
+					},
+				},
+			]);
+			const consoleWarnSpy = jest
+				.spyOn(console, "warn")
+				.mockImplementation(() => {});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+			expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Skipping starting preparation"),
+			);
+			consoleWarnSpy.mockRestore();
+		});
+
+		it("uses the sonnet default with no fallback when sonnet tokens are available", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-ok",
+					token: "token-ok",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+				},
+			]);
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+				"claude-sonnet-4-6",
+			);
+		});
+
+		it("does not fall back to opus for an issue whose llm-model label explicitly set the model even when the sonnet weekly limit is exhausted", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl", "llm-model:claude-sonnet-4-6"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-sonnet-exhausted",
+					token: "token-sonnet-exhausted",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+					},
+				},
+			]);
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+				"claude-sonnet-4-6",
+			);
+		});
+
+		it("does not fall back to opus when sonnet tokens are merely throttled by 5-hour utilization rather than the weekly limit", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-throttled",
+					token: "token-throttled",
+					fiveHourUtilization: 0.95,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+				},
+			]);
+			const consoleWarnSpy = jest
+				.spyOn(console, "warn")
+				.mockImplementation(() => {});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Skipping starting preparation"),
+			);
+			consoleWarnSpy.mockRestore();
+		});
+	});
+
+	describe("per-token model weekly-limit routing", () => {
+		const futureReset = Math.floor(Date.now() / 1000) + 3600;
+
+		it("routes a token whose seven_day_sonnet weekly limit is rejected to Opus while a sibling token with Sonnet headroom uses Sonnet in the same pass", async () => {
+			const issues = [
+				createMockIssue({
+					url: "url1",
+					title: "Issue 1",
+					labels: ["category:impl"],
+					status: "Awaiting Workspace",
+					number: 1,
+					itemId: "item-1",
+				}),
+				createMockIssue({
+					url: "url2",
+					title: "Issue 2",
+					labels: ["category:impl"],
+					status: "Awaiting Workspace",
+					number: 2,
+					itemId: "item-2",
+				}),
+			];
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap(issues),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-sonnet-exhausted",
+					token: "token-sonnet-exhausted",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+					},
+				},
+				{
+					name: "token-sonnet-ok",
+					token: "token-sonnet-ok",
+					fiveHourUtilization: 0.5,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+				},
+			]);
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: "claude-opus-4-8",
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+			const callForExhausted =
+				mockLocalCommandRunner.runCommand.mock.calls.find(
+					(call) =>
+						call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN === "token-sonnet-exhausted",
+				);
+			const callForOk = mockLocalCommandRunner.runCommand.mock.calls.find(
+				(call) => call[2]?.env?.CLAUDE_CODE_OAUTH_TOKEN === "token-sonnet-ok",
+			);
+			expect(callForExhausted).toBeDefined();
+			expect(callForOk).toBeDefined();
+			expect(callForExhausted?.[1][2]).toBe("claude-opus-4-8");
+			expect(callForOk?.[1][2]).toBe("claude-sonnet-4-6");
+		});
+
+		it("excludes a token whose seven_day_sonnet and seven_day_opus weekly limits are both rejected", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-both-exhausted",
+					token: "token-both-exhausted",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+						seven_day_opus: { rejected: true, resetsAt: futureReset },
+					},
+				},
+			]);
+			const consoleWarnSpy = jest
+				.spyOn(console, "warn")
+				.mockImplementation(() => {});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: "claude-opus-4-8",
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+			expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Skipping starting preparation"),
+			);
+			consoleWarnSpy.mockRestore();
+		});
+
+		it("excludes a token whose generic seven_day weekly limit is rejected even when the per-model windows are open", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-general-exhausted",
+					token: "token-general-exhausted",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day: { rejected: true, resetsAt: futureReset },
+					},
+				},
+			]);
+			const consoleWarnSpy = jest
+				.spyOn(console, "warn")
+				.mockImplementation(() => {});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: "claude-opus-4-8",
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Skipping starting preparation"),
+			);
+			consoleWarnSpy.mockRestore();
+		});
+
+		it("lets a per-issue llm-model label override the per-token routed model", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl", "llm-model:claude-3-5-haiku-20241022"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-sonnet-exhausted",
+					token: "token-sonnet-exhausted",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+					},
+				},
+			]);
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: "claude-opus-4-8",
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+				"claude-3-5-haiku-20241022",
+			);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toEqual({
+				env: {
+					CLAUDE_CODE_OAUTH_TOKEN: "token-sonnet-exhausted",
+					ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+				},
+			});
+		});
+
+		it("includes a token whose unified representative-claim status is rejected (seven_day_sonnet) while its Opus weekly window is allowed and routes it to Opus", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-sonnet-rejected-unified",
+					token: "token-sonnet-rejected-unified",
+					fiveHourUtilization: 0.53,
+					sevenDayUtilization: 0.88,
+					blocked: false,
+					rejected: true,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+						seven_day_opus: { rejected: false, resetsAt: futureReset },
+					},
+				},
+			]);
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: "claude-opus-4-8",
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+			expect(
+				mockLocalCommandRunner.runCommand.mock.calls[0][2]?.env
+					?.CLAUDE_CODE_OAUTH_TOKEN,
+			).toBe("token-sonnet-rejected-unified");
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][2]).toBe(
+				"claude-opus-4-8",
+			);
+		});
+
+		it("excludes a token whose 5-hour window is rejected even when its Opus weekly window is allowed", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-5h-rejected",
+					token: "token-5h-rejected",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: true,
+					fiveHourRejected: true,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_opus: { rejected: false, resetsAt: futureReset },
+					},
+				},
+			]);
+			const consoleWarnSpy = jest
+				.spyOn(console, "warn")
+				.mockImplementation(() => {});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: "claude-opus-4-8",
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+			expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Skipping starting preparation"),
+			);
+			consoleWarnSpy.mockRestore();
+		});
+
+		it("excludes a token whose unified status is rejected and whose seven_day_sonnet and seven_day_opus weekly windows are both rejected", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-both-rejected-unified",
+					token: "token-both-rejected-unified",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0,
+					blocked: false,
+					rejected: true,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {
+						seven_day_sonnet: { rejected: true, resetsAt: futureReset },
+						seven_day_opus: { rejected: true, resetsAt: futureReset },
+					},
+				},
+			]);
+			const consoleWarnSpy = jest
+				.spyOn(console, "warn")
+				.mockImplementation(() => {});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-sonnet-4-6",
+				fallbackLlmModelName: "claude-opus-4-8",
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+			expect(consoleWarnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Skipping starting preparation"),
+			);
+			consoleWarnSpy.mockRestore();
+		});
+	});
+
+	describe("per-token in-flight global concurrency enforcement", () => {
+		it("should not spawn when the selected token already has its full in-flight limit occupied by processes from other projects", async () => {
+			const awaitingIssues: Issue[] = [
+				createMockIssue({
+					url: "url1",
+					title: "Issue 1",
+					labels: ["category:impl"],
+					status: "Awaiting Workspace",
+					number: 1,
+					itemId: "item-1",
+				}),
+			];
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap(awaitingIssues),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-at-90-percent-7d",
+					token: "token-at-90-percent-7d",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0.9,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+				},
+			]);
+			mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+				"token-at-90-percent-7d": 3,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		});
+
+		it("should allow spawning up to the remaining capacity when a token is partially in use globally", async () => {
+			const awaitingIssues: Issue[] = Array.from({ length: 5 }, (_, i) =>
+				createMockIssue({
+					url: `url${i + 1}`,
+					title: `Issue ${i + 1}`,
+					labels: ["category:impl"],
+					status: "Awaiting Workspace",
+					number: i + 1,
+					itemId: `item-${i + 1}`,
+				}),
+			);
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap(awaitingIssues),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-at-90-percent-7d",
+					token: "token-at-90-percent-7d",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0.9,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+				},
+			]);
+			mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+				"token-at-90-percent-7d": 1,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(2);
+		});
+
+		it("should pick the token with the most remaining capacity when multiple tokens are available", async () => {
+			const awaitingIssues: Issue[] = [
+				createMockIssue({
+					url: "url1",
+					title: "Issue 1",
+					labels: ["category:impl"],
+					status: "Awaiting Workspace",
+					number: 1,
+					itemId: "item-1",
+				}),
+			];
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap(awaitingIssues),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-a",
+					token: "token-a",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0.9,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+				},
+				{
+					name: "token-b",
+					token: "token-b",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0.1,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+				},
+			]);
+			mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+				"token-a": 2,
+				"token-b": 0,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+			expect(mockLocalCommandRunner.runCommand.mock.calls[0][2]).toMatchObject({
+				env: {
+					CLAUDE_CODE_OAUTH_TOKEN: "token-b",
+					ANTHROPIC_BASE_URL: "http://127.0.0.1:8787",
+				},
+			});
+		});
+	});
+
+	it("should log one aggregate spawn candidate exclusion summary per run with counts by reason", async () => {
+		const currentHour = new Date().getUTCHours();
+		const dayAfterTomorrow = new Date();
+		dayAfterTomorrow.setUTCDate(dayAfterTomorrow.getUTCDate() + 2);
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/11",
+				title: "Depended Issue",
+				status: "Awaiting Workspace",
+				number: 11,
+				dependedIssueUrls: ["https://github.com/user/repo/issues/99"],
+			}),
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/12",
+				title: "Future Next Action Date Issue",
+				status: "Awaiting Workspace",
+				number: 12,
+				nextActionDate: dayAfterTomorrow,
+			}),
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/13",
+				title: "Future Next Action Hour Issue",
+				status: "Awaiting Workspace",
+				number: 13,
+				nextActionHour: currentHour + 1,
+			}),
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/14",
+				title: "Disallowed Author Issue",
+				status: "Awaiting Workspace",
+				number: 14,
+				author: "not-allowed-user",
+			}),
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/14b",
+				title: "Not Assigned To Manager Issue",
+				status: "Awaiting Workspace",
+				number: 145,
+				assignees: ["someone-else"],
+			}),
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/15",
+				title: "Spawnable Issue",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 15,
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const consoleLogSpy = jest
+			.spyOn(console, "log")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
+			String(call[0]).includes("Spawn candidate exclusion summary"),
+		);
+		expect(summaryCalls).toHaveLength(1);
+		expect(summaryCalls[0][0]).toBe(
+			"Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=1, futureNextActionDate=1, nextActionHourNotReached=1, authorNotAllowed=1, notAssignedToManager=1, agentAuthoredIssue=0",
+		);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][0]).toBe(
+			"https://github.com/user/repo/issues/15",
+		);
+		consoleLogSpy.mockRestore();
+	});
+
+	it("should log the aggregate exclusion summary with zero counts when nothing is excluded", async () => {
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/21",
+				title: "Spawnable Issue",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 21,
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const consoleLogSpy = jest
+			.spyOn(console, "log")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
+			String(call[0]).includes("Spawn candidate exclusion summary"),
+		);
+		expect(summaryCalls).toHaveLength(1);
+		expect(summaryCalls[0][0]).toBe(
+			"Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0, agentAuthoredIssue=0",
+		);
+		consoleLogSpy.mockRestore();
+	});
+
+	it("should skip agent-authored issues when skipAgentAuthoredIssues is true", async () => {
+		const agentAuthoredBody =
+			"From: :robot: some-agent (claude-sonnet-4-5)\nSome content written by the agent.";
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/41",
+				title: "Agent Authored Issue",
+				status: "Awaiting Workspace",
+				number: 41,
+				body: agentAuthoredBody,
+			}),
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/42",
+				title: "Human Authored Issue",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 42,
+				body: "This issue was written by a human.",
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const consoleLogSpy = jest
+			.spyOn(console, "log")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+			skipAgentAuthoredIssues: true,
+		});
+		const summaryCalls = consoleLogSpy.mock.calls.filter((call) =>
+			String(call[0]).includes("Spawn candidate exclusion summary"),
+		);
+		expect(summaryCalls).toHaveLength(1);
+		expect(summaryCalls[0][0]).toBe(
+			"Spawn candidate exclusion summary for https://github.com/user/repo: dependedIssueUrls=0, futureNextActionDate=0, nextActionHourNotReached=0, authorNotAllowed=0, notAssignedToManager=0, agentAuthoredIssue=1",
+		);
+		const spawnedUrls = mockLocalCommandRunner.runCommand.mock.calls.map(
+			(call) => call[1][0],
+		);
+		expect(spawnedUrls).not.toContain("https://github.com/user/repo/issues/41");
+		expect(spawnedUrls).toContain("https://github.com/user/repo/issues/42");
+		consoleLogSpy.mockRestore();
+	});
+
+	it("should spawn agent-authored issues when skipAgentAuthoredIssues is false", async () => {
+		const agentAuthoredBody =
+			"From: :robot: some-agent (claude-sonnet-4-5)\nSome content written by the agent.";
+		const awaitingIssues: Issue[] = [
+			createMockIssue({
+				url: "https://github.com/user/repo/issues/51",
+				title: "Agent Authored Issue",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 51,
+				body: agentAuthoredBody,
+			}),
+		];
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(awaitingIssues),
+		);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+			skipAgentAuthoredIssues: false,
+		});
+		const spawnedUrls = mockLocalCommandRunner.runCommand.mock.calls.map(
+			(call) => call[1][0],
+		);
+		expect(spawnedUrls).toContain("https://github.com/user/repo/issues/51");
+	});
+
+	it("should warn with URLs of Awaiting Workspace issues invisible to selection because Story is unset", async () => {
+		const issueWithStory = createMockIssue({
+			url: "https://github.com/user/repo/issues/31",
+			title: "Issue With Story",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 31,
+			story: "Default Story",
+		});
+		const storyUnsetAwaitingWorkspaceIssueOne = createMockIssue({
+			url: "https://github.com/user/repo/issues/32",
+			title: "Story Unset Issue One",
+			status: "Awaiting Workspace",
+			number: 32,
+			story: null,
+		});
+		const storyUnsetAwaitingWorkspaceIssueTwo = createMockIssue({
+			url: "https://github.com/user/repo/issues/33",
+			title: "Story Unset Issue Two",
+			status: "Awaiting Workspace",
+			number: 33,
+			story: null,
+		});
+		const storyUnsetOtherStatusIssue = createMockIssue({
+			url: "https://github.com/user/repo/issues/34",
+			title: "Story Unset Other Status Issue",
+			status: "Todo",
+			number: 34,
+			story: null,
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([issueWithStory]),
+		);
+		mockIssueRepository.getAllOpened.mockResolvedValue([
+			issueWithStory,
+			storyUnsetAwaitingWorkspaceIssueOne,
+			storyUnsetAwaitingWorkspaceIssueTwo,
+			storyUnsetOtherStatusIssue,
+		]);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const consoleWarnSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
+			String(call[0]).includes("Story is unset"),
+		);
+		expect(storyUnsetWarningCalls).toHaveLength(1);
+		expect(storyUnsetWarningCalls[0][0]).toBe(
+			"Awaiting Workspace issue(s) invisible to spawn candidate selection because Story is unset: https://github.com/user/repo/issues/32, https://github.com/user/repo/issues/33",
+		);
+		expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		consoleWarnSpy.mockRestore();
+	});
+
+	it("should not warn about Story-unset issues when every Awaiting Workspace issue has a Story", async () => {
+		const issueWithStory = createMockIssue({
+			url: "https://github.com/user/repo/issues/41",
+			title: "Issue With Story",
+			labels: ["category:impl"],
+			status: "Awaiting Workspace",
+			number: 41,
+			story: "Default Story",
+		});
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([issueWithStory]),
+		);
+		mockIssueRepository.getAllOpened.mockResolvedValue([issueWithStory]);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+		const consoleWarnSpy = jest
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: null,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+		const storyUnsetWarningCalls = consoleWarnSpy.mock.calls.filter((call) =>
+			String(call[0]).includes("Story is unset"),
+		);
+		expect(storyUnsetWarningCalls).toHaveLength(0);
+		consoleWarnSpy.mockRestore();
+	});
+
+	describe("token in-flight count refresh", () => {
+		it("refreshes the token in-flight counts once before abandoning a run so a freed slot is used", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockLocalCommandRunner.runCommand.mockResolvedValue({
+				stdout: "",
+				stderr: "",
+				exitCode: 0,
+			});
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-a",
+					token: "token-a",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0.1,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+				},
+			]);
+			mockClaudeTokenUsageRepository.getTokenInFlightCounts
+				.mockResolvedValueOnce({ "token-a": 6 })
+				.mockResolvedValueOnce({ "token-a": 0 });
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(
+				mockClaudeTokenUsageRepository.getTokenInFlightCounts.mock.calls,
+			).toHaveLength(2);
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(1);
+		});
+
+		it("abandons the run when the refreshed in-flight counts still leave no token slot", async () => {
+			const awaitingIssue = createMockIssue({
+				url: "url1",
+				title: "Issue 1",
+				labels: ["category:impl"],
+				status: "Awaiting Workspace",
+				number: 1,
+				itemId: "item-1",
+			});
+			mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+			mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+				createMockStoryObjectMap([awaitingIssue]),
+			);
+			mockClaudeTokenUsageRepository.getAvailableTokenUsages.mockResolvedValue([
+				{
+					name: "token-a",
+					token: "token-a",
+					fiveHourUtilization: 0.1,
+					sevenDayUtilization: 0.1,
+					blocked: false,
+					rejected: false,
+					fiveHourRejected: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+				},
+			]);
+			mockClaudeTokenUsageRepository.getTokenInFlightCounts.mockResolvedValue({
+				"token-a": 6,
+			});
+
+			await useCase.run({
+				projectUrl: "https://github.com/user/repo",
+				defaultAgentName: "agent1",
+				defaultLlmModelName: "claude-opus",
+				fallbackLlmModelName: null,
+				defaultLlmAgentName: null,
+				configFilePath: "/path/to/config.yml",
+				maximumPreparingIssuesCount: null,
+				utilizationPercentageThreshold: 90,
+				allowedIssueAuthors: ["testuser"],
+				manager: "manager-user",
+				codexHomeCandidates: null,
+				labelsAsLlmAgentName: null,
+			});
+
+			expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+		});
+	});
+
+	it("only prefetches branch sources for candidates within the free preparation slots", async () => {
+		// 5 candidates, 2 free preparation slots (maximumPreparingIssuesCount=2, currentPreparation=0).
+		const candidates = Array.from({ length: 5 }, (_, i) =>
+			createMockIssue({
+				number: i + 1,
+				url: `https://github.com/user/repo/issues/${i + 1}`,
+				itemId: `item-${i + 1}`,
+				title: `Candidate ${i + 1}`,
+				status: "Awaiting Workspace",
+				author: "testuser",
+				assignees: ["manager-user"],
+			}),
+		);
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap(candidates),
+		);
+		mockIssueRepository.getAllOpened.mockResolvedValue([]);
+		mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+		mockLocalCommandRunner.runCommand.mockResolvedValue({
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: 2,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledTimes(2);
+	});
+
+	it("fetches no branch sources when free preparation slots is zero or negative", async () => {
+		// 5 candidates, 2 existing Preparation issues filling the configured maximum of 2.
+		const preparingIssues = Array.from({ length: 2 }, (_, i) =>
+			createMockIssue({
+				number: i + 100,
+				url: `https://github.com/user/repo/issues/${i + 100}`,
+				itemId: `prep-item-${i}`,
+				status: "Preparation",
+				author: "testuser",
+				assignees: ["manager-user"],
+			}),
+		);
+		const candidates = Array.from({ length: 5 }, (_, i) =>
+			createMockIssue({
+				number: i + 1,
+				url: `https://github.com/user/repo/issues/${i + 1}`,
+				itemId: `item-${i + 1}`,
+				title: `Candidate ${i + 1}`,
+				status: "Awaiting Workspace",
+				author: "testuser",
+				assignees: ["manager-user"],
+			}),
+		);
+		mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+		mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+			createMockStoryObjectMap([...preparingIssues, ...candidates]),
+		);
+		mockIssueRepository.getAllOpened.mockResolvedValue([]);
+
+		await useCase.run({
+			projectUrl: "https://github.com/user/repo",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: 2,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+		});
+
+		expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+	});
 });
 
-describe('StartPreparationUseCase.buildRotationOrder', () => {
-  const mockProjectRepositoryForRotation: Mocked<
-    Pick<ProjectRepository, 'getByUrl' | 'createField' | 'updateAgentList'>
-  > = {
-    getByUrl: jest.fn(),
-    createField: jest.fn(),
-    updateAgentList: jest.fn(),
-  };
-  const mockIssueRepositoryForRotation: Mocked<
-    Pick<
-      IssueRepository,
-      | 'getStoryObjectMap'
-      | 'getAllOpened'
-      | 'updateStatus'
-      | 'findRelatedOpenPRs'
-      | 'getOpenPullRequest'
-      | 'closePullRequest'
-      | 'deletePullRequestBranch'
-      | 'createCommentByUrl'
-      | 'setIssueAgentField'
-      | 'removeLabel'
-    >
-  > = {
-    getStoryObjectMap: jest.fn(),
-    getAllOpened: jest.fn(),
-    updateStatus: jest.fn(),
-    findRelatedOpenPRs: jest.fn(),
-    getOpenPullRequest: jest.fn(),
-    closePullRequest: jest.fn(),
-    deletePullRequestBranch: jest.fn(),
-    createCommentByUrl: jest.fn(),
-    setIssueAgentField: jest.fn(),
-    removeLabel: jest.fn(),
-  };
-  const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
-    runCommand: jest.fn(),
-    spawnInteractive: jest.fn(),
-  };
-  const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepository> =
-    {
-      ensureObservable: jest.fn(),
-      getAvailableTokenUsages: jest.fn(),
-      getTokenInFlightCounts: jest.fn(),
-      proxyBaseUrl: jest.fn(),
-    };
+describe("StartPreparationUseCase.buildRotationOrder", () => {
+	const mockProjectRepositoryForRotation: Mocked<
+		Pick<ProjectRepository, "getByUrl" | "createField" | "updateAgentList">
+	> = {
+		getByUrl: jest.fn(),
+		createField: jest.fn(),
+		updateAgentList: jest.fn(),
+	};
+	const mockIssueRepositoryForRotation: Mocked<
+		Pick<
+			IssueRepository,
+			| "getStoryObjectMap"
+			| "getAllOpened"
+			| "updateStatus"
+			| "findRelatedOpenPRs"
+			| "getOpenPullRequest"
+			| "closePullRequest"
+			| "deletePullRequestBranch"
+			| "createCommentByUrl"
+			| "setIssueAgentField"
+			| "removeLabel"
+		>
+	> = {
+		getStoryObjectMap: jest.fn(),
+		getAllOpened: jest.fn(),
+		updateStatus: jest.fn(),
+		findRelatedOpenPRs: jest.fn(),
+		getOpenPullRequest: jest.fn(),
+		closePullRequest: jest.fn(),
+		deletePullRequestBranch: jest.fn(),
+		createCommentByUrl: jest.fn(),
+		setIssueAgentField: jest.fn(),
+		removeLabel: jest.fn(),
+	};
+	const mockLocalCommandRunnerForRotation: Mocked<LocalCommandRunner> = {
+		runCommand: jest.fn(),
+		spawnInteractive: jest.fn(),
+	};
+	const mockClaudeTokenUsageRepositoryForRotation: Mocked<ClaudeTokenUsageRepository> =
+		{
+			ensureObservable: jest.fn(),
+			getAvailableTokenUsages: jest.fn(),
+			getTokenInFlightCounts: jest.fn(),
+			proxyBaseUrl: jest.fn(),
+		};
 
-  const useCase = new StartPreparationUseCase(
-    mockProjectRepositoryForRotation,
-    mockIssueRepositoryForRotation,
-    mockLocalCommandRunnerForRotation,
-    mockClaudeTokenUsageRepositoryForRotation,
-    {
-      listSpawns: jest.fn().mockReturnValue([]),
-      listRunningIssueUrls: jest.fn().mockReturnValue([]),
-    },
-    { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
-  );
+	const useCase = new StartPreparationUseCase(
+		mockProjectRepositoryForRotation,
+		mockIssueRepositoryForRotation,
+		mockLocalCommandRunnerForRotation,
+		mockClaudeTokenUsageRepositoryForRotation,
+		{
+			listSpawns: jest.fn().mockReturnValue([]),
+			listRunningIssueUrls: jest.fn().mockReturnValue([]),
+		},
+		{ getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+	);
 
-  it('lists selected tokens first in ascending 7-day reset deadline order then excluded tokens', () => {
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    const tokenUsages: ClaudeTokenUsage[] = [
-      {
-        name: 'far-7d-reset',
-        token: 'sk-ant-far',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0.8,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 100 * 3600,
-          },
-        },
-      },
-      {
-        name: 'soon-7d-reset',
-        token: 'sk-ant-soon',
-        fiveHourUtilization: 0.5,
-        sevenDayUtilization: 0.1,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
-      },
-      {
-        name: 'blocked-token',
-        token: 'sk-ant-blocked',
-        fiveHourUtilization: 0.0,
-        sevenDayUtilization: 0,
-        blocked: true,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+	it("lists selected tokens first in ascending 7-day reset deadline order then excluded tokens", () => {
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		const tokenUsages: ClaudeTokenUsage[] = [
+			{
+				name: "far-7d-reset",
+				token: "sk-ant-far",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0.8,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 100 * 3600,
+					},
+				},
+			},
+			{
+				name: "soon-7d-reset",
+				token: "sk-ant-soon",
+				fiveHourUtilization: 0.5,
+				sevenDayUtilization: 0.1,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+				},
+			},
+			{
+				name: "blocked-token",
+				token: "sk-ant-blocked",
+				fiveHourUtilization: 0.0,
+				sevenDayUtilization: 0,
+				blocked: true,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		];
+		const result = useCase.buildRotationOrder(tokenUsages, 90, null);
 
-    expect(result[0].name).toBe('soon-7d-reset');
-    expect(result[1].name).toBe('far-7d-reset');
-    expect(result[2].name).toBe('blocked-token');
-    expect(result[2].blocked).toBe(true);
-    expect(result[2].thresholdExcluded).toBe(false);
-  });
+		expect(result[0].name).toBe("soon-7d-reset");
+		expect(result[1].name).toBe("far-7d-reset");
+		expect(result[2].name).toBe("blocked-token");
+		expect(result[2].blocked).toBe(true);
+		expect(result[2].thresholdExcluded).toBe(false);
+	});
 
-  it('does not include raw token strings in output entries', () => {
-    const tokenUsages = [
-      {
-        name: 'my-token',
-        token: 'sk-ant-secret-value',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
-    const serialized = JSON.stringify(result);
+	it("does not include raw token strings in output entries", () => {
+		const tokenUsages = [
+			{
+				name: "my-token",
+				token: "sk-ant-secret-value",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		];
+		const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+		const serialized = JSON.stringify(result);
 
-    expect(serialized).not.toContain('sk-ant-secret-value');
-    expect(result[0].name).toBe('my-token');
-  });
+		expect(serialized).not.toContain("sk-ant-secret-value");
+		expect(result[0].name).toBe("my-token");
+	});
 
-  it('marks thresholdExcluded true when token 5h utilization meets or exceeds the threshold', () => {
-    const tokenUsages = [
-      {
-        name: 'over-threshold',
-        token: 'sk-ant-over',
-        fiveHourUtilization: 0.95,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+	it("marks thresholdExcluded true when token 5h utilization meets or exceeds the threshold", () => {
+		const tokenUsages = [
+			{
+				name: "over-threshold",
+				token: "sk-ant-over",
+				fiveHourUtilization: 0.95,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		];
+		const result = useCase.buildRotationOrder(tokenUsages, 90, null);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].thresholdExcluded).toBe(true);
-    expect(result[0].blocked).toBe(false);
-    expect(result[0].rejected).toBe(false);
-  });
+		expect(result).toHaveLength(1);
+		expect(result[0].thresholdExcluded).toBe(true);
+		expect(result[0].blocked).toBe(false);
+		expect(result[0].rejected).toBe(false);
+	});
 
-  it('marks thresholdExcluded true for tokens at or above the 5h utilization threshold', () => {
-    const tokenUsages = [
-      {
-        name: 'at-threshold',
-        token: 'sk-ant-at',
-        fiveHourUtilization: 0.9,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ];
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+	it("marks thresholdExcluded true for tokens at or above the 5h utilization threshold", () => {
+		const tokenUsages = [
+			{
+				name: "at-threshold",
+				token: "sk-ant-at",
+				fiveHourUtilization: 0.9,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		];
+		const result = useCase.buildRotationOrder(tokenUsages, 90, null);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].thresholdExcluded).toBe(true);
-    expect(result[0].blocked).toBe(false);
-    expect(result[0].rejected).toBe(false);
-    expect(result[0].fiveHourUtilization).toBe(0.9);
-  });
+		expect(result).toHaveLength(1);
+		expect(result[0].thresholdExcluded).toBe(true);
+		expect(result[0].blocked).toBe(false);
+		expect(result[0].rejected).toBe(false);
+		expect(result[0].fiveHourUtilization).toBe(0.9);
+	});
 
-  it('excludes a token whose blockedUntilEpoch is in the future and marks it cooldownExcluded', () => {
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    const tokenUsages: ClaudeTokenUsage[] = [
-      {
-        name: 'cooling-down',
-        token: 'sk-ant-cooldown',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: nowEpochSeconds + 90,
-        modelWeeklyLimits: {},
-      },
-      {
-        name: 'available',
-        token: 'sk-ant-available',
-        fiveHourUtilization: 0.2,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ];
+	it("excludes a token whose blockedUntilEpoch is in the future and marks it cooldownExcluded", () => {
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		const tokenUsages: ClaudeTokenUsage[] = [
+			{
+				name: "cooling-down",
+				token: "sk-ant-cooldown",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: nowEpochSeconds + 90,
+				modelWeeklyLimits: {},
+			},
+			{
+				name: "available",
+				token: "sk-ant-available",
+				fiveHourUtilization: 0.2,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+		const result = useCase.buildRotationOrder(tokenUsages, 90, null);
 
-    expect(result[0].name).toBe('available');
-    const cooling = result.find((entry) => entry.name === 'cooling-down');
-    expect(cooling?.cooldownExcluded).toBe(true);
-    expect(cooling?.blocked).toBe(false);
-    expect(cooling?.rejected).toBe(false);
-    expect(cooling?.thresholdExcluded).toBe(false);
-  });
+		expect(result[0].name).toBe("available");
+		const cooling = result.find((entry) => entry.name === "cooling-down");
+		expect(cooling?.cooldownExcluded).toBe(true);
+		expect(cooling?.blocked).toBe(false);
+		expect(cooling?.rejected).toBe(false);
+		expect(cooling?.thresholdExcluded).toBe(false);
+	});
 
-  it('selects a token again once its cooldown has lapsed', () => {
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    const tokenUsages: ClaudeTokenUsage[] = [
-      {
-        name: 'lapsed-cooldown',
-        token: 'sk-ant-lapsed',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: nowEpochSeconds - 1,
-        modelWeeklyLimits: {},
-      },
-    ];
+	it("selects a token again once its cooldown has lapsed", () => {
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		const tokenUsages: ClaudeTokenUsage[] = [
+			{
+				name: "lapsed-cooldown",
+				token: "sk-ant-lapsed",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: nowEpochSeconds - 1,
+				modelWeeklyLimits: {},
+			},
+		];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+		const result = useCase.buildRotationOrder(tokenUsages, 90, null);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('lapsed-cooldown');
-    expect(result[0].cooldownExcluded).toBe(false);
-    expect(result[0].thresholdExcluded).toBe(false);
-  });
+		expect(result).toHaveLength(1);
+		expect(result[0].name).toBe("lapsed-cooldown");
+		expect(result[0].cooldownExcluded).toBe(false);
+		expect(result[0].thresholdExcluded).toBe(false);
+	});
 
-  it('selects a token whose unified status is rejected but whose requested model weekly window is allowed', () => {
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    const tokenUsages: ClaudeTokenUsage[] = [
-      {
-        name: 'sonnet-rejected-opus-ok',
-        token: 'sk-ant-sonnet-rejected',
-        fiveHourUtilization: 0.53,
-        sevenDayUtilization: 0.88,
-        blocked: false,
-        rejected: true,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_sonnet: {
-            rejected: true,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
-      },
-    ];
+	it("selects a token whose unified status is rejected but whose requested model weekly window is allowed", () => {
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		const tokenUsages: ClaudeTokenUsage[] = [
+			{
+				name: "sonnet-rejected-opus-ok",
+				token: "sk-ant-sonnet-rejected",
+				fiveHourUtilization: 0.53,
+				sevenDayUtilization: 0.88,
+				blocked: false,
+				rejected: true,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_sonnet: {
+						rejected: true,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+				},
+			},
+		];
 
-    const result = useCase.buildRotationOrder(
-      tokenUsages,
-      90,
-      'claude-opus-4-8',
-    );
+		const result = useCase.buildRotationOrder(
+			tokenUsages,
+			90,
+			"claude-opus-4-8",
+		);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('sonnet-rejected-opus-ok');
-    expect(result[0].rejected).toBe(false);
-    expect(result[0].thresholdExcluded).toBe(false);
-    expect(result[0].cooldownExcluded).toBe(false);
-  });
+		expect(result).toHaveLength(1);
+		expect(result[0].name).toBe("sonnet-rejected-opus-ok");
+		expect(result[0].rejected).toBe(false);
+		expect(result[0].thresholdExcluded).toBe(false);
+		expect(result[0].cooldownExcluded).toBe(false);
+	});
 
-  it('excludes a token whose 5-hour window is rejected and marks it rejected in the rotation entry', () => {
-    const nowEpochSeconds = Math.floor(Date.now() / 1000);
-    const tokenUsages: ClaudeTokenUsage[] = [
-      {
-        name: 'five-hour-rejected',
-        token: 'sk-ant-5h-rejected',
-        fiveHourUtilization: 0.1,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: true,
-        fiveHourRejected: true,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {
-          seven_day_opus: {
-            rejected: false,
-            resetsAt: nowEpochSeconds + 20 * 3600,
-          },
-        },
-      },
-      {
-        name: 'available',
-        token: 'sk-ant-available',
-        fiveHourUtilization: 0.2,
-        sevenDayUtilization: 0,
-        blocked: false,
-        rejected: false,
-        fiveHourRejected: false,
-        blockedUntilEpoch: 0,
-        modelWeeklyLimits: {},
-      },
-    ];
+	it("excludes a token whose 5-hour window is rejected and marks it rejected in the rotation entry", () => {
+		const nowEpochSeconds = Math.floor(Date.now() / 1000);
+		const tokenUsages: ClaudeTokenUsage[] = [
+			{
+				name: "five-hour-rejected",
+				token: "sk-ant-5h-rejected",
+				fiveHourUtilization: 0.1,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: true,
+				fiveHourRejected: true,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {
+					seven_day_opus: {
+						rejected: false,
+						resetsAt: nowEpochSeconds + 20 * 3600,
+					},
+				},
+			},
+			{
+				name: "available",
+				token: "sk-ant-available",
+				fiveHourUtilization: 0.2,
+				sevenDayUtilization: 0,
+				blocked: false,
+				rejected: false,
+				fiveHourRejected: false,
+				blockedUntilEpoch: 0,
+				modelWeeklyLimits: {},
+			},
+		];
 
-    const result = useCase.buildRotationOrder(tokenUsages, 90, null);
+		const result = useCase.buildRotationOrder(tokenUsages, 90, null);
 
-    expect(result[0].name).toBe('available');
-    const excluded = result.find(
-      (entry) => entry.name === 'five-hour-rejected',
-    );
-    expect(excluded?.rejected).toBe(true);
-    expect(excluded?.thresholdExcluded).toBe(false);
-    expect(excluded?.cooldownExcluded).toBe(false);
-  });
+		expect(result[0].name).toBe("available");
+		const excluded = result.find(
+			(entry) => entry.name === "five-hour-rejected",
+		);
+		expect(excluded?.rejected).toBe(true);
+		expect(excluded?.thresholdExcluded).toBe(false);
+		expect(excluded?.cooldownExcluded).toBe(false);
+	});
 });
 
-describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
-  let useCase: StartPreparationUseCase;
-  beforeEach(() => {
-    useCase = new StartPreparationUseCase(
-      {
-        getByUrl: jest.fn(),
-        createField: jest.fn(),
-        updateAgentList: jest.fn(),
-      },
-      {
-        getStoryObjectMap: jest.fn(),
-        getAllOpened: jest.fn(),
-        updateStatus: jest.fn(),
-        findRelatedOpenPRs: jest.fn(),
-        getOpenPullRequest: jest.fn(),
-        closePullRequest: jest.fn(),
-        deletePullRequestBranch: jest.fn(),
-        createCommentByUrl: jest.fn(),
-        setIssueAgentField: jest.fn(),
-        removeLabel: jest.fn(),
-      },
-      { runCommand: jest.fn(), spawnInteractive: jest.fn() },
-      {
-        ensureObservable: jest.fn(),
-        getAvailableTokenUsages: jest.fn(),
-        getTokenInFlightCounts: jest.fn(),
-        proxyBaseUrl: jest.fn(),
-      },
-      {
-        listSpawns: jest.fn().mockReturnValue([]),
-        listRunningIssueUrls: jest.fn().mockReturnValue([]),
-      },
-      { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
-    );
-  });
+describe("StartPreparationUseCase.getTokenConcurrentLimit", () => {
+	let useCase: StartPreparationUseCase;
+	beforeEach(() => {
+		useCase = new StartPreparationUseCase(
+			{
+				getByUrl: jest.fn(),
+				createField: jest.fn(),
+				updateAgentList: jest.fn(),
+			},
+			{
+				getStoryObjectMap: jest.fn(),
+				getAllOpened: jest.fn(),
+				updateStatus: jest.fn(),
+				findRelatedOpenPRs: jest.fn(),
+				getOpenPullRequest: jest.fn(),
+				closePullRequest: jest.fn(),
+				deletePullRequestBranch: jest.fn(),
+				createCommentByUrl: jest.fn(),
+				setIssueAgentField: jest.fn(),
+				removeLabel: jest.fn(),
+			},
+			{ runCommand: jest.fn(), spawnInteractive: jest.fn() },
+			{
+				ensureObservable: jest.fn(),
+				getAvailableTokenUsages: jest.fn(),
+				getTokenInFlightCounts: jest.fn(),
+				proxyBaseUrl: jest.fn(),
+			},
+			{
+				listSpawns: jest.fn().mockReturnValue([]),
+				listRunningIssueUrls: jest.fn().mockReturnValue([]),
+			},
+			{ getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+		);
+	});
 
-  it('returns the full limit when both 5-hour and 7-day utilization are low', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1)).toBe(6);
-  });
+	it("returns the full limit when both 5-hour and 7-day utilization are low", () => {
+		expect(useCase.getTokenConcurrentLimit(0.1, 0.1)).toBe(6);
+	});
 
-  it('tapers down on high 5-hour utilization even when 7-day utilization is low', () => {
-    const limit = useCase.getTokenConcurrentLimit(0.94, 0.1);
-    expect(limit).toBeLessThan(6);
-    expect(limit).toBe(2);
-  });
+	it("tapers down on high 5-hour utilization even when 7-day utilization is low", () => {
+		const limit = useCase.getTokenConcurrentLimit(0.94, 0.1);
+		expect(limit).toBeLessThan(6);
+		expect(limit).toBe(2);
+	});
 
-  it('preserves the existing 7-day taper when 5-hour utilization is low', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.9)).toBe(3);
-  });
+	it("preserves the existing 7-day taper when 5-hour utilization is low", () => {
+		expect(useCase.getTokenConcurrentLimit(0.1, 0.9)).toBe(3);
+	});
 
-  it('takes the more restrictive window and floors at 1 when both are high', () => {
-    expect(useCase.getTokenConcurrentLimit(0.99, 0.95)).toBe(1);
-  });
+	it("takes the more restrictive window and floors at 1 when both are high", () => {
+		expect(useCase.getTokenConcurrentLimit(0.99, 0.95)).toBe(1);
+	});
 
-  it('takes the minimum of the two windows when both taper', () => {
-    const fiveHourDominant = useCase.getTokenConcurrentLimit(0.94, 0.85);
-    expect(fiveHourDominant).toBe(2);
-    const sevenDayDominant = useCase.getTokenConcurrentLimit(0.85, 0.94);
-    expect(sevenDayDominant).toBe(2);
-  });
+	it("takes the minimum of the two windows when both taper", () => {
+		const fiveHourDominant = useCase.getTokenConcurrentLimit(0.94, 0.85);
+		expect(fiveHourDominant).toBe(2);
+		const sevenDayDominant = useCase.getTokenConcurrentLimit(0.85, 0.94);
+		expect(sevenDayDominant).toBe(2);
+	});
 
-  it('scales the limit down by the token selection weight', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.5)).toBe(3);
-  });
+	it("scales the limit down by the token selection weight", () => {
+		expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.5)).toBe(3);
+	});
 
-  it('keeps the full limit when the token carries no selection weight', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, undefined)).toBe(6);
-  });
+	it("keeps the full limit when the token carries no selection weight", () => {
+		expect(useCase.getTokenConcurrentLimit(0.1, 0.1, undefined)).toBe(6);
+	});
 
-  it('never lets a selection weight take the limit below one slot', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.01)).toBe(1);
-  });
+	it("never lets a selection weight take the limit below one slot", () => {
+		expect(useCase.getTokenConcurrentLimit(0.1, 0.1, 0.01)).toBe(1);
+	});
 
-  it('uses normalConcurrentLimit as the full-speed ceiling when both utilizations are low', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.1, undefined, 10)).toBe(10);
-  });
+	it("uses normalConcurrentLimit as the full-speed ceiling when both utilizations are low", () => {
+		expect(useCase.getTokenConcurrentLimit(0.1, 0.1, undefined, 10)).toBe(10);
+	});
 
-  it('tapers from normalConcurrentLimit when utilization is above the threshold', () => {
-    expect(useCase.getTokenConcurrentLimit(0.1, 0.9, undefined, 10)).toBe(5);
-  });
+	it("tapers from normalConcurrentLimit when utilization is above the threshold", () => {
+		expect(useCase.getTokenConcurrentLimit(0.1, 0.9, undefined, 10)).toBe(5);
+	});
 });
 
-describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
-  it('applies a custom normalConcurrentLimit to cap token concurrency per token', async () => {
-    const mockProject = createMockProject();
-    const awaitingIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Awaiting Workspace',
-      story: 'some-story',
-    });
-    const mockProjectRepository = {
-      getByUrl: jest.fn().mockResolvedValue(mockProject),
-      createField: jest.fn().mockResolvedValue(undefined),
-      updateAgentList: jest.fn().mockResolvedValue([]),
-    };
-    const mockIssueRepository = {
-      getStoryObjectMap: jest
-        .fn()
-        .mockResolvedValue(createMockStoryObjectMap([awaitingIssue])),
-      getAllOpened: jest.fn().mockResolvedValue([awaitingIssue]),
-      updateStatus: jest.fn().mockResolvedValue(undefined),
-      findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
-      getOpenPullRequest: jest.fn().mockResolvedValue(null),
-      closePullRequest: jest.fn().mockResolvedValue(undefined),
-      deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
-      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
-      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
-      removeLabel: jest.fn().mockResolvedValue(undefined),
-    };
-    const mockLocalCommandRunner = {
-      runCommand: jest
-        .fn()
-        .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
-      spawnInteractive: jest.fn(),
-    };
-    const token = 'token-a';
-    const mockClaudeTokenUsageRepository = {
-      ensureObservable: jest.fn().mockResolvedValue(undefined),
-      getAvailableTokenUsages: jest.fn().mockResolvedValue([
-        {
-          token,
-          name: 'token-a',
-          fiveHourUtilization: 0.0,
-          sevenDayUtilization: 0.0,
-          fiveHourRejected: false,
-          blocked: false,
-          blockedUntilEpoch: 0,
-          modelWeeklyLimits: {},
-          selectionWeight: undefined,
-        },
-      ]),
-      getTokenInFlightCounts: jest.fn().mockResolvedValue({ [token]: 0 }),
-      proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
-    };
-    const mockTakeOwnershipSpawnRepository = {
-      listSpawns: jest.fn().mockReturnValue([]),
-      listRunningIssueUrls: jest.fn().mockReturnValue([]),
-    };
-    const useCase = new StartPreparationUseCase(
-      mockProjectRepository,
-      mockIssueRepository,
-      mockLocalCommandRunner,
-      mockClaudeTokenUsageRepository,
-      mockTakeOwnershipSpawnRepository,
-      { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
-    );
+describe("StartPreparationUseCase.run normalConcurrentLimit", () => {
+	it("applies a custom normalConcurrentLimit to cap token concurrency per token", async () => {
+		const mockProject = createMockProject();
+		const awaitingIssue = createMockIssue({
+			url: "https://github.com/user/repo/issues/1",
+			status: "Awaiting Workspace",
+			story: "some-story",
+		});
+		const mockProjectRepository = {
+			getByUrl: jest.fn().mockResolvedValue(mockProject),
+			createField: jest.fn().mockResolvedValue(undefined),
+			updateAgentList: jest.fn().mockResolvedValue([]),
+		};
+		const mockIssueRepository = {
+			getStoryObjectMap: jest
+				.fn()
+				.mockResolvedValue(createMockStoryObjectMap([awaitingIssue])),
+			getAllOpened: jest.fn().mockResolvedValue([awaitingIssue]),
+			updateStatus: jest.fn().mockResolvedValue(undefined),
+			findRelatedOpenPRs: jest.fn().mockResolvedValue([]),
+			getOpenPullRequest: jest.fn().mockResolvedValue(null),
+			closePullRequest: jest.fn().mockResolvedValue(undefined),
+			deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
+			createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+			setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+			removeLabel: jest.fn().mockResolvedValue(undefined),
+		};
+		const mockLocalCommandRunner = {
+			runCommand: jest
+				.fn()
+				.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 }),
+			spawnInteractive: jest.fn(),
+		};
+		const token = "token-a";
+		const mockClaudeTokenUsageRepository = {
+			ensureObservable: jest.fn().mockResolvedValue(undefined),
+			getAvailableTokenUsages: jest.fn().mockResolvedValue([
+				{
+					token,
+					name: "token-a",
+					fiveHourUtilization: 0.0,
+					sevenDayUtilization: 0.0,
+					fiveHourRejected: false,
+					blocked: false,
+					blockedUntilEpoch: 0,
+					modelWeeklyLimits: {},
+					selectionWeight: undefined,
+				},
+			]),
+			getTokenInFlightCounts: jest.fn().mockResolvedValue({ [token]: 0 }),
+			proxyBaseUrl: jest.fn().mockReturnValue("http://127.0.0.1:8787"),
+		};
+		const mockTakeOwnershipSpawnRepository = {
+			listSpawns: jest.fn().mockReturnValue([]),
+			listRunningIssueUrls: jest.fn().mockReturnValue([]),
+		};
+		const useCase = new StartPreparationUseCase(
+			mockProjectRepository,
+			mockIssueRepository,
+			mockLocalCommandRunner,
+			mockClaudeTokenUsageRepository,
+			mockTakeOwnershipSpawnRepository,
+			{ getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+		);
 
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      defaultAgentName: 'agent1',
-      defaultLlmModelName: 'claude-opus',
-      fallbackLlmModelName: null,
-      defaultLlmAgentName: null,
-      configFilePath: '/path/to/config.yml',
-      maximumPreparingIssuesCount: 20,
-      utilizationPercentageThreshold: 90,
-      allowedIssueAuthors: ['testuser'],
-      manager: 'manager-user',
-      codexHomeCandidates: null,
-      labelsAsLlmAgentName: null,
-      normalConcurrentLimit: 10,
-    });
+		await useCase.run({
+			projectUrl: "https://github.com/users/user/projects/1",
+			defaultAgentName: "agent1",
+			defaultLlmModelName: "claude-opus",
+			fallbackLlmModelName: null,
+			defaultLlmAgentName: null,
+			configFilePath: "/path/to/config.yml",
+			maximumPreparingIssuesCount: 20,
+			utilizationPercentageThreshold: 90,
+			allowedIssueAuthors: ["testuser"],
+			manager: "manager-user",
+			codexHomeCandidates: null,
+			labelsAsLlmAgentName: null,
+			normalConcurrentLimit: 10,
+		});
 
-    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledTimes(1);
-    expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledWith(
-      'aw',
-      expect.any(Array),
-      expect.anything(),
-    );
-  });
+		expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledTimes(1);
+		expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledWith(
+			"aw",
+			expect.any(Array),
+			expect.anything(),
+		);
+	});
 });
 
-describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
-  const buildRelatedPullRequest = (url: string): RelatedPullRequest => ({
-    url,
-    branchName: 'feature',
-    createdAt: new Date('2026-01-01T00:00:00Z'),
-    isDraft: false,
-    isConflicted: false,
-    mergeable: 'MERGEABLE',
-    isPassedAllCiJob: true,
-    isCiStateSuccess: true,
-    isResolvedAllReviewComments: true,
-    isBranchOutOfDate: false,
-    missingRequiredCheckNames: [],
-  });
+describe("StartPreparationUseCase.fetchSpawnCandidateBranchSources", () => {
+	const buildRelatedPullRequest = (url: string): RelatedPullRequest => ({
+		url,
+		branchName: "feature",
+		createdAt: new Date("2026-01-01T00:00:00Z"),
+		isDraft: false,
+		isConflicted: false,
+		mergeable: "MERGEABLE",
+		isPassedAllCiJob: true,
+		isCiStateSuccess: true,
+		isResolvedAllReviewComments: true,
+		isBranchOutOfDate: false,
+		missingRequiredCheckNames: [],
+	});
 
-  const buildUseCase = (
-    issueRepositoryOverrides: Partial<
-      ConstructorParameters<typeof StartPreparationUseCase>[1]
-    >,
-  ): StartPreparationUseCase =>
-    new StartPreparationUseCase(
-      {
-        getByUrl: jest.fn(),
-        createField: jest.fn(),
-        updateAgentList: jest.fn(),
-      },
-      {
-        getStoryObjectMap: jest.fn(),
-        getAllOpened: jest.fn(),
-        updateStatus: jest.fn(),
-        findRelatedOpenPRs: jest.fn(),
-        getOpenPullRequest: jest.fn(),
-        closePullRequest: jest.fn(),
-        deletePullRequestBranch: jest.fn(),
-        createCommentByUrl: jest.fn(),
-        setIssueAgentField: jest.fn(),
-        removeLabel: jest.fn(),
-        ...issueRepositoryOverrides,
-      },
-      { runCommand: jest.fn(), spawnInteractive: jest.fn() },
-      {
-        ensureObservable: jest.fn(),
-        getAvailableTokenUsages: jest.fn(),
-        getTokenInFlightCounts: jest.fn(),
-        proxyBaseUrl: jest.fn(),
-      },
-      {
-        listSpawns: jest.fn().mockReturnValue([]),
-        listRunningIssueUrls: jest.fn().mockReturnValue([]),
-      },
-      { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
-    );
+	const buildUseCase = (
+		issueRepositoryOverrides: Partial<
+			ConstructorParameters<typeof StartPreparationUseCase>[1]
+		>,
+	): StartPreparationUseCase =>
+		new StartPreparationUseCase(
+			{
+				getByUrl: jest.fn(),
+				createField: jest.fn(),
+				updateAgentList: jest.fn(),
+			},
+			{
+				getStoryObjectMap: jest.fn(),
+				getAllOpened: jest.fn(),
+				updateStatus: jest.fn(),
+				findRelatedOpenPRs: jest.fn(),
+				getOpenPullRequest: jest.fn(),
+				closePullRequest: jest.fn(),
+				deletePullRequestBranch: jest.fn(),
+				createCommentByUrl: jest.fn(),
+				setIssueAgentField: jest.fn(),
+				removeLabel: jest.fn(),
+				...issueRepositoryOverrides,
+			},
+			{ runCommand: jest.fn(), spawnInteractive: jest.fn() },
+			{
+				ensureObservable: jest.fn(),
+				getAvailableTokenUsages: jest.fn(),
+				getTokenInFlightCounts: jest.fn(),
+				proxyBaseUrl: jest.fn(),
+			},
+			{
+				listSpawns: jest.fn().mockReturnValue([]),
+				listRunningIssueUrls: jest.fn().mockReturnValue([]),
+			},
+			{ getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+		);
 
-  it('looks up related open pull requests for issue urls concurrently up to the configured limit', async () => {
-    const issueUrls = Array.from(
-      { length: 20 },
-      (_, index) => `https://github.com/owner/repo/issues/${index + 1}`,
-    );
-    let inFlightCount = 0;
-    let observedMaxInFlight = 0;
-    const findRelatedOpenPRs = jest.fn(async (issueUrl: string) => {
-      inFlightCount += 1;
-      observedMaxInFlight = Math.max(observedMaxInFlight, inFlightCount);
-      await new Promise((resolve) => setTimeout(resolve, 1));
-      inFlightCount -= 1;
-      return [buildRelatedPullRequest(issueUrl.replace('/issues/', '/pull/'))];
-    });
-    const useCase = buildUseCase({ findRelatedOpenPRs });
+	it("looks up related open pull requests for issue urls concurrently up to the configured limit", async () => {
+		const issueUrls = Array.from(
+			{ length: 20 },
+			(_, index) => `https://github.com/owner/repo/issues/${index + 1}`,
+		);
+		let inFlightCount = 0;
+		let observedMaxInFlight = 0;
+		const findRelatedOpenPRs = jest.fn(async (issueUrl: string) => {
+			inFlightCount += 1;
+			observedMaxInFlight = Math.max(observedMaxInFlight, inFlightCount);
+			await new Promise((resolve) => setTimeout(resolve, 1));
+			inFlightCount -= 1;
+			return [buildRelatedPullRequest(issueUrl.replace("/issues/", "/pull/"))];
+		});
+		const useCase = buildUseCase({ findRelatedOpenPRs });
 
-    const branchSources =
-      await useCase.fetchSpawnCandidateBranchSources(issueUrls);
+		const branchSources =
+			await useCase.fetchSpawnCandidateBranchSources(issueUrls);
 
-    expect(findRelatedOpenPRs).toHaveBeenCalledTimes(20);
-    expect(observedMaxInFlight).toBe(SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY);
-    expect(branchSources.size).toBe(20);
-    for (const issueUrl of issueUrls) {
-      expect(branchSources.get(issueUrl)?.relatedOpenPullRequests).toHaveLength(
-        1,
-      );
-      expect(branchSources.get(issueUrl)?.openPullRequest).toBeNull();
-    }
-  });
+		expect(findRelatedOpenPRs).toHaveBeenCalledTimes(20);
+		expect(observedMaxInFlight).toBe(SPAWN_CANDIDATE_BRANCH_SOURCE_CONCURRENCY);
+		expect(branchSources.size).toBe(20);
+		for (const issueUrl of issueUrls) {
+			expect(branchSources.get(issueUrl)?.relatedOpenPullRequests).toHaveLength(
+				1,
+			);
+			expect(branchSources.get(issueUrl)?.openPullRequest).toBeNull();
+		}
+	});
 
-  it('resolves pull request urls through the open pull request lookup instead of the timeline query', async () => {
-    const prUrl = 'https://github.com/owner/repo/pull/7';
-    const openPullRequest = buildRelatedPullRequest(prUrl);
-    const getOpenPullRequest = jest.fn().mockResolvedValue(openPullRequest);
-    const findRelatedOpenPRs = jest.fn();
-    const useCase = buildUseCase({ getOpenPullRequest, findRelatedOpenPRs });
+	it("resolves pull request urls through the open pull request lookup instead of the timeline query", async () => {
+		const prUrl = "https://github.com/owner/repo/pull/7";
+		const openPullRequest = buildRelatedPullRequest(prUrl);
+		const getOpenPullRequest = jest.fn().mockResolvedValue(openPullRequest);
+		const findRelatedOpenPRs = jest.fn();
+		const useCase = buildUseCase({ getOpenPullRequest, findRelatedOpenPRs });
 
-    const branchSources = await useCase.fetchSpawnCandidateBranchSources([
-      prUrl,
-    ]);
+		const branchSources = await useCase.fetchSpawnCandidateBranchSources([
+			prUrl,
+		]);
 
-    expect(getOpenPullRequest).toHaveBeenCalledWith(prUrl);
-    expect(findRelatedOpenPRs).not.toHaveBeenCalled();
-    expect(branchSources.get(prUrl)?.openPullRequest).toBe(openPullRequest);
-    expect(branchSources.get(prUrl)?.relatedOpenPullRequests).toEqual([]);
-  });
+		expect(getOpenPullRequest).toHaveBeenCalledWith(prUrl);
+		expect(findRelatedOpenPRs).not.toHaveBeenCalled();
+		expect(branchSources.get(prUrl)?.openPullRequest).toBe(openPullRequest);
+		expect(branchSources.get(prUrl)?.relatedOpenPullRequests).toEqual([]);
+	});
 });
