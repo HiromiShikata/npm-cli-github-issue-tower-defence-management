@@ -1,6 +1,6 @@
 import {
   extractExecutiveSummary,
-  extractExecutiveSummaryFromComments,
+  extractLastCommentDisplayText,
 } from './executiveSummary';
 import type { ConsoleComment } from './types';
 
@@ -62,46 +62,47 @@ describe('extractExecutiveSummary', () => {
   });
 });
 
-describe('extractExecutiveSummaryFromComments', () => {
+describe('extractLastCommentDisplayText', () => {
   it('returns null for an empty comments array', () => {
-    expect(extractExecutiveSummaryFromComments([])).toBeNull();
+    expect(extractLastCommentDisplayText([])).toBeNull();
   });
 
-  it('extracts the summary from the last comment', () => {
+  it('extracts only the executive summary when the last comment has one', () => {
     const comments: ConsoleComment[] = [
       makeComment('First comment, no summary.'),
       makeComment(AGENT_COMMENT),
     ];
-    const result = extractExecutiveSummaryFromComments(comments);
+    const result = extractLastCommentDisplayText(comments);
     expect(result).toContain('タスクのゴール:');
+    expect(result).not.toContain('Loaded skills');
   });
 
-  it('returns the summary from an earlier comment when the last comment has none', () => {
+  it('returns the full body of the last comment when it has no executive summary', () => {
+    const followUp = 'A follow-up comment without a summary.';
     const comments: ConsoleComment[] = [
       makeComment(AGENT_COMMENT),
-      makeComment('A follow-up comment without a summary.'),
+      makeComment(followUp),
     ];
-    const result = extractExecutiveSummaryFromComments(comments);
-    expect(result).toContain('タスクのゴール:');
+    const result = extractLastCommentDisplayText(comments);
+    expect(result).toBe(followUp);
   });
 
-  it('returns null when no comment in the array contains an executive summary', () => {
+  it('returns null when the last comment body is empty', () => {
     const comments: ConsoleComment[] = [
-      makeComment('First comment, no summary.'),
-      makeComment('Second comment, no summary.'),
+      makeComment(AGENT_COMMENT),
+      makeComment('   '),
     ];
-    expect(extractExecutiveSummaryFromComments(comments)).toBeNull();
+    expect(extractLastCommentDisplayText(comments)).toBeNull();
   });
 
-  it('returns the most recent summary when multiple comments have one', () => {
+  it('returns the executive summary of the last comment even when earlier comments had one', () => {
     const olderComment = `## エグゼクティブサマリ / Executive Summary\nタスクのゴール: old goal\nFrom: :robot: agent (model)`;
     const newerComment = `## エグゼクティブサマリ / Executive Summary\nタスクのゴール: new goal\nFrom: :robot: agent (model)`;
     const comments: ConsoleComment[] = [
       makeComment(olderComment),
       makeComment(newerComment),
-      makeComment('A routing bot comment without a summary.'),
     ];
-    const result = extractExecutiveSummaryFromComments(comments);
+    const result = extractLastCommentDisplayText(comments);
     expect(result).toBe('タスクのゴール: new goal');
   });
 });

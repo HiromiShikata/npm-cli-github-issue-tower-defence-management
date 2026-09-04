@@ -68,7 +68,7 @@ describe('useConsolePrsTabSummaries', () => {
     expect(result.current['id-2']).toContain('タスクのゴール:');
   });
 
-  it('sets null for an item whose last comment has no executive summary', async () => {
+  it('returns the full comment body for an item whose last comment has no executive summary', async () => {
     const item = makeItem('id-1', 1);
     const fetcher = jest
       .fn()
@@ -83,7 +83,7 @@ describe('useConsolePrsTabSummaries', () => {
       expect('id-1' in result.current).toBe(true);
     });
 
-    expect(result.current['id-1']).toBeNull();
+    expect(result.current['id-1']).toBe('No summary here.');
   });
 
   it('sets null when the fetch fails', async () => {

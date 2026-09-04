@@ -17,14 +17,17 @@ export const extractExecutiveSummary = (body: string): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-export const extractExecutiveSummaryFromComments = (
+export const extractLastCommentDisplayText = (
   comments: ConsoleComment[],
 ): string | null => {
-  for (let i = comments.length - 1; i >= 0; i--) {
-    const summary = extractExecutiveSummary(comments[i].body);
-    if (summary !== null) {
-      return summary;
-    }
+  if (comments.length === 0) {
+    return null;
   }
-  return null;
+  const lastComment = comments[comments.length - 1];
+  const summary = extractExecutiveSummary(lastComment.body);
+  if (summary !== null) {
+    return summary;
+  }
+  const trimmed = lastComment.body.trim();
+  return trimmed.length > 0 ? trimmed : null;
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ResourceCache } from '../lib/resourceCache';
-import { extractExecutiveSummaryFromComments } from '../logic/executiveSummary';
+import { extractLastCommentDisplayText } from '../logic/executiveSummary';
 import type { ConsoleComment, ConsoleListItem } from '../logic/types';
 
 const cacheKey = (item: ConsoleListItem): string =>
@@ -24,7 +24,7 @@ export const useConsolePrsTabSummaries = (
       const key = cacheKey(item);
       const cached = commentsCache.peek(key);
       if (cached !== undefined) {
-        const summary = extractExecutiveSummaryFromComments(cached);
+        const summary = extractLastCommentDisplayText(cached);
         if (!cancelled) {
           setSummaries((prev) => {
             if (prev[item.projectItemId] === summary) return prev;
@@ -40,7 +40,7 @@ export const useConsolePrsTabSummaries = (
           if (cancelled) {
             return;
           }
-          const summary = extractExecutiveSummaryFromComments(comments);
+          const summary = extractLastCommentDisplayText(comments);
           setSummaries((prev) => {
             if (prev[item.projectItemId] === summary) return prev;
             return { ...prev, [item.projectItemId]: summary };
