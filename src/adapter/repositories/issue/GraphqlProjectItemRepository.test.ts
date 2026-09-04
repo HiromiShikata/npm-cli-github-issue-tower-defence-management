@@ -602,6 +602,236 @@ describe('GraphqlProjectItemRepository', () => {
       expect(requestedFirstSeries).toEqual([100, 50, 25, 12, 6, 3, 1]);
     });
 
+    const makeForbiddenContentResponse = (
+      accessibleNodeId: string,
+      forbiddenNodeIndex: number,
+      totalCount: number,
+      hasNextPage: boolean,
+      endCursor: string,
+    ) =>
+      mockJsonResponse({
+        data: {
+          node: {
+            items: {
+              totalCount,
+              pageInfo: {
+                endCursor,
+                startCursor: 'cursor-start',
+                hasNextPage,
+              },
+              nodes: [
+                {
+                  id: accessibleNodeId,
+                  fieldValues: { nodes: [] },
+                  content: {
+                    repository: {
+                      nameWithOwner: 'owner/repo',
+                      isArchived: false,
+                    },
+                    number: 1,
+                    title: 'Accessible Issue',
+                    state: 'OPEN',
+                    url: 'https://github.com/owner/repo/issues/1',
+                    body: 'body',
+                    createdAt: '2024-01-01T00:00:00Z',
+                    updatedAt: '2024-01-01T00:00:00Z',
+                    author: { login: 'author' },
+                    labels: { nodes: [] },
+                    assignees: { nodes: [] },
+                  },
+                },
+                {
+                  id: 'item-forbidden',
+                  fieldValues: { nodes: [] },
+                  content: null,
+                },
+              ],
+            },
+          },
+        },
+        errors: [
+          {
+            type: 'FORBIDDEN',
+            path: ['node', 'items', 'nodes', forbiddenNodeIndex, 'content'],
+            message:
+              '`meta-site` forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions.',
+          },
+        ],
+      });
+
+    it('should return accessible items without throwing when one item has a FORBIDDEN content error', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        makeForbiddenContentResponse('item-1', 1, 2, false, 'cursor-1'),
+      );
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      try {
+        const result = await repository.fetchProjectItems('test-project-id');
+
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('item-1');
+        expect(mockPost).toHaveBeenCalledTimes(1);
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('FORBIDDEN'),
+        );
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
+
+    it('should not issue halving retries when the only errors are FORBIDDEN content errors', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        makeForbiddenContentResponse('item-1', 1, 2, false, 'cursor-1'),
+      );
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      try {
+        await repository.fetchProjectItems('test-project-id');
+
+        expect(mockPost).toHaveBeenCalledTimes(1);
+        expect(extractRequestedFirstFromMockCall(mockPost.mock.calls[0])).toBe(
+          100,
+        );
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
+
+    it('should continue to the next page using endCursor after a page with FORBIDDEN content items', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost
+        .mockReturnValueOnce(
+          makeForbiddenContentResponse('item-1', 1, 3, true, 'cursor-1'),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              node: {
+                items: {
+                  totalCount: 3,
+                  pageInfo: {
+                    endCursor: 'cursor-2',
+                    startCursor: 'cursor-1',
+                    hasNextPage: false,
+                  },
+                  nodes: [
+                    {
+                      id: 'item-3',
+                      fieldValues: { nodes: [] },
+                      content: {
+                        repository: {
+                          nameWithOwner: 'owner/repo',
+                          isArchived: false,
+                        },
+                        number: 3,
+                        title: 'Second Page Issue',
+                        state: 'OPEN',
+                        url: 'https://github.com/owner/repo/issues/3',
+                        body: 'body 3',
+                        createdAt: '2024-01-01T00:00:00Z',
+                        updatedAt: '2024-01-01T00:00:00Z',
+                        author: { login: 'author' },
+                        labels: { nodes: [] },
+                        assignees: { nodes: [] },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          }),
+        );
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      try {
+        const resultPromise = repository.fetchProjectItems('test-project-id');
+        await jest.advanceTimersByTimeAsync(PAGINATION_DELAY_MS);
+        const result = await resultPromise;
+
+        expect(result).toHaveLength(2);
+        expect(result.map((r) => r.id)).toEqual(['item-1', 'item-3']);
+        expect(mockPost).toHaveBeenCalledTimes(2);
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
+
+    it('should still throw when FORBIDDEN content errors are mixed with other error types', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 2,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [],
+              },
+            },
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['node', 'items', 'nodes', 1, 'content'],
+              message: '`meta-site` forbids access.',
+            },
+            { message: 'Something else went wrong.' },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow('GitHub GraphQL errors:');
+    });
+
+    it('should still throw when FORBIDDEN error path points to a non-content field', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          data: null,
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['node', 'items', 'nodes', 0, 'id'],
+              message: 'FORBIDDEN',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow('GitHub GraphQL errors:');
+    });
+
     it('should sleep the 5000ms blanket delay between pages', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(

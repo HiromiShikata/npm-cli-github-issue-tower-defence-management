@@ -59,7 +59,7 @@ type ProjectV2ItemNode = {
   fieldValues: {
     nodes: ProjectV2ItemFieldValueNode[];
   };
-  content: ProjectV2ItemContentNode;
+  content: ProjectV2ItemContentNode | null;
 };
 // Rate-limit cost of a GraphQL query grows with the number of requested
 // nodes (roughly totalNodes / 100, see
@@ -280,9 +280,13 @@ export const callWithRateLimitRetry = async <T>(
   }
 };
 
-const stringifyGraphqlErrorsForLog = (
-  errors: { message: string }[],
-): string => {
+type GraphqlError = {
+  message: string;
+  type?: string;
+  path?: (string | number)[];
+};
+
+const stringifyGraphqlErrorsForLog = (errors: GraphqlError[]): string => {
   const serialized = JSON.stringify(errors);
   if (
     serialized.length <= FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH
@@ -291,6 +295,16 @@ const stringifyGraphqlErrorsForLog = (
   }
   return `${serialized.slice(0, FETCH_PROJECT_ITEMS_GRAPHQL_ERROR_PAYLOAD_MAX_LENGTH)}...[truncated]`;
 };
+
+const isForbiddenContentError = (error: GraphqlError): boolean =>
+  error.type === 'FORBIDDEN' &&
+  Array.isArray(error.path) &&
+  error.path.length >= 5 &&
+  error.path[0] === 'node' &&
+  error.path[1] === 'items' &&
+  error.path[2] === 'nodes' &&
+  typeof error.path[3] === 'number' &&
+  error.path[4] === 'content';
 
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
@@ -424,7 +438,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
               labels: { nodes: { name: string }[] };
               assignees: { nodes: { login: string }[] };
               closingIssuesReferences?: { nodes: { url: string }[] };
-            };
+            } | null;
           }[];
         };
       };
@@ -474,12 +488,12 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                     labels: { nodes: { name: string }[] };
                     assignees: { nodes: { login: string }[] };
                     closingIssuesReferences?: { nodes: { url: string }[] };
-                  };
+                  } | null;
                 }[];
               };
             } | null;
           } | null;
-          errors?: { message: string }[];
+          errors?: GraphqlError[];
         }>({
           ghToken: this.ghToken,
           query: graphqlQuery.query,
@@ -487,8 +501,16 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
         }),
       );
       if (response.errors && response.errors.length > 0) {
-        throw new Error(
-          `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
+        const allForbiddenContent = response.errors.every(
+          isForbiddenContentError,
+        );
+        if (!allForbiddenContent || !response.data) {
+          throw new Error(
+            `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
+          );
+        }
+        console.warn(
+          `fetchProjectItems: skipping ${response.errors.length} item(s) with FORBIDDEN content. paths: ${response.errors.map((e) => JSON.stringify(e.path)).join(', ')}`,
         );
       }
       const rawData = response.data;
@@ -537,7 +559,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
               labels: { nodes: { name: string }[] };
               assignees: { nodes: { login: string }[] };
               closingIssuesReferences?: { nodes: { url: string }[] };
-            };
+            } | null;
           }[];
         };
       };
