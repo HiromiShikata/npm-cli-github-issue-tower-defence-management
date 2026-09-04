@@ -1046,7 +1046,7 @@ export const handleDeleteStory = async (
   }
   const storyTasks = storyObjectMap.get(storyOption.name)?.issues ?? [];
   for (const task of storyTasks) {
-    if (!task.isClosed) {
+    if (!task.isClosed && !task.isPr) {
       try {
         await issueRepository.closeIssueByUrl(task.url, 'not_planned');
       } catch (e) {

@@ -3281,6 +3281,36 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
     });
 
+    it('does not close pull requests assigned to the story when the story is deleted', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const openPr: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/pull/200',
+        isClosed: false,
+        isPr: true,
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.name,
+          { story: storyToRemove, storyIssue: null, issues: [openPr] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+    });
+
     it('preserves story options added server-side after cache was populated when deleting a story', async () => {
       const cachedProject = projectWithStoriesToDelete();
       const cachedStory = cachedProject.story;
