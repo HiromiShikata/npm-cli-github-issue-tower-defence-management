@@ -1,3 +1,10 @@
+## [2.46.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.8...v2.46.9) (2026-09-04)
+
+
+### Bug Fixes
+
+* **issue-repository:** skip null timeline nodes from partial graphql responses ([#1979](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1979)) ([abe6d6e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/abe6d6e8e870f16891adb0f4c44d8f674fc16743))
+
 ## [2.46.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.7...v2.46.8) (2026-09-04)
 
 
