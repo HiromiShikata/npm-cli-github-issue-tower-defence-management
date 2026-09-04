@@ -1,3 +1,10 @@
+## [2.46.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.7...v2.46.8) (2026-09-04)
+
+
+### Bug Fixes
+
+* **start-preparation:** remove direct Agent field write when issue.agent is null ([#1975](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1975)) ([9c3d7dc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9c3d7dc9a543adf5c2fd2e4ef7168567bea319a2))
+
 ## [2.46.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.6...v2.46.7) (2026-09-04)
 
 
