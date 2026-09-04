@@ -624,7 +624,10 @@ describe('GraphqlProjectItemRepository', () => {
                   id: accessibleNodeId,
                   fieldValues: { nodes: [] },
                   content: {
-                    repository: { nameWithOwner: 'owner/repo', isArchived: false },
+                    repository: {
+                      nameWithOwner: 'owner/repo',
+                      isArchived: false,
+                    },
                     number: 1,
                     title: 'Accessible Issue',
                     state: 'OPEN',
@@ -698,9 +701,9 @@ describe('GraphqlProjectItemRepository', () => {
         await repository.fetchProjectItems('test-project-id');
 
         expect(mockPost).toHaveBeenCalledTimes(1);
-        expect(
-          extractRequestedFirstFromMockCall(mockPost.mock.calls[0]),
-        ).toBe(100);
+        expect(extractRequestedFirstFromMockCall(mockPost.mock.calls[0])).toBe(
+          100,
+        );
       } finally {
         consoleSpy.mockRestore();
       }

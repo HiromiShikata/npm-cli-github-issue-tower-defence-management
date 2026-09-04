@@ -501,7 +501,9 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
         }),
       );
       if (response.errors && response.errors.length > 0) {
-        const allForbiddenContent = response.errors.every(isForbiddenContentError);
+        const allForbiddenContent = response.errors.every(
+          isForbiddenContentError,
+        );
         if (!allForbiddenContent || !response.data) {
           throw new Error(
             `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
