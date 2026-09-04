@@ -1274,7 +1274,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       labels: { nodes: { name: string }[] };
       assignees: { nodes: { login: string }[] };
       repository: { nameWithOwner: string; isArchived: boolean };
-      closingIssuesReferences?: { nodes: { url: string }[] };
+      closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
       projectItems: {
         nodes: {
           id: string;

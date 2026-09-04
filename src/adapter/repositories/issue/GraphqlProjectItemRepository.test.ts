@@ -2185,5 +2185,63 @@ describe('GraphqlProjectItemRepository', () => {
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
     });
+
+    it('skips null entries in closingIssuesReferences nodes when fetching by URL', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            repository: {
+              issue: {
+                number: 42,
+                title: 'PR with partial closing refs',
+                state: 'OPEN',
+                url: 'https://github.com/owner/repo/pull/42',
+                body: 'body',
+                createdAt: '2024-01-01T00:00:00Z',
+                updatedAt: '2024-01-01T00:00:00Z',
+                author: { login: 'author' },
+                labels: { nodes: [] },
+                assignees: { nodes: [] },
+                repository: {
+                  nameWithOwner: 'owner/repo',
+                  isArchived: false,
+                },
+                closingIssuesReferences: {
+                  nodes: [
+                    null,
+                    { url: 'https://github.com/owner/repo/issues/7' },
+                  ],
+                },
+                projectItems: {
+                  nodes: [
+                    {
+                      id: 'item-42',
+                      project: null,
+                      fieldValues: { nodes: [] },
+                    },
+                  ],
+                },
+              },
+              pullRequest: null,
+            },
+          },
+        }),
+      );
+
+      const result = await repository.fetchProjectItemByUrl(
+        'https://github.com/owner/repo/pull/42',
+      );
+
+      expect(result).not.toBeNull();
+      expect(result?.closingIssueReferenceUrls).toEqual([
+        'https://github.com/owner/repo/issues/7',
+      ]);
+    });
   });
 });
