@@ -51,7 +51,7 @@ type ProjectV2ItemContentNode = {
   author: { login: string } | null;
   labels: { nodes: { name: string }[] };
   assignees: { nodes: { login: string }[] };
-  closingIssuesReferences?: { nodes: { url: string }[] };
+  closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
   stateReason?: string | null;
 };
 type ProjectV2ItemNode = {
@@ -437,7 +437,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
               author: { login: string } | null;
               labels: { nodes: { name: string }[] };
               assignees: { nodes: { login: string }[] };
-              closingIssuesReferences?: { nodes: { url: string }[] };
+              closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
             } | null;
           }[];
         };
@@ -487,7 +487,9 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                     author: { login: string } | null;
                     labels: { nodes: { name: string }[] };
                     assignees: { nodes: { login: string }[] };
-                    closingIssuesReferences?: { nodes: { url: string }[] };
+                    closingIssuesReferences?: {
+                      nodes: ({ url: string } | null)[];
+                    };
                   } | null;
                 }[];
               };
@@ -558,7 +560,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
               author: { login: string } | null;
               labels: { nodes: { name: string }[] };
               assignees: { nodes: { login: string }[] };
-              closingIssuesReferences?: { nodes: { url: string }[] };
+              closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
             } | null;
           }[];
         };
@@ -669,7 +671,14 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
       author: item.content.author?.login || '',
       closingIssueReferenceUrls:
         item.content.closingIssuesReferences?.nodes
-          ?.map((node) => node.url)
+          ?.filter((node): node is { url: string } => {
+            if (node !== null) return true;
+            console.warn(
+              `GraphqlProjectItemRepository: skipping null closingIssuesReferences node from partial FORBIDDEN access. itemUrl: ${item.content?.url ?? 'unknown'}`,
+            );
+            return false;
+          })
+          .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       isRepoArchived: item.content.repository.isArchived ?? false,
       stateReason: toStateReason(item.content.stateReason),
@@ -1271,7 +1280,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       labels: { nodes: { name: string }[] };
       assignees: { nodes: { login: string }[] };
       repository: { nameWithOwner: string; isArchived: boolean };
-      closingIssuesReferences?: { nodes: { url: string }[] };
+      closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
       projectItems: {
         nodes: {
           id: string;
@@ -1338,7 +1347,14 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       author: content.author?.login || '',
       closingIssueReferenceUrls:
         content.closingIssuesReferences?.nodes
-          ?.map((node) => node.url)
+          ?.filter((node): node is { url: string } => {
+            if (node !== null) return true;
+            console.warn(
+              `GraphqlProjectItemRepository: skipping null closingIssuesReferences node from partial FORBIDDEN access. itemUrl: ${content.url}`,
+            );
+            return false;
+          })
+          .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       isRepoArchived: content.repository.isArchived ?? false,
       stateReason: toStateReason(content.stateReason),

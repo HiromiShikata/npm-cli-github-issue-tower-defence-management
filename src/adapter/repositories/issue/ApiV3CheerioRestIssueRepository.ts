@@ -97,9 +97,9 @@ type IssueTimelineResponse = {
           pageInfo: {
             endCursor: string;
             hasNextPage: boolean;
-          };
-          nodes: TimelineItem[];
-        };
+          } | null;
+          nodes: (TimelineItem | null)[] | null;
+        } | null;
       };
     };
   };
@@ -1959,7 +1959,13 @@ export class ApiV3CheerioRestIssueRepository
         return [];
       }
 
-      for (const item of issueData.timelineItems.nodes) {
+      for (const item of issueData.timelineItems?.nodes ?? []) {
+        if (!item) {
+          console.warn(
+            `ApiV3CheerioRestIssueRepository: skipping null timeline node returned by GitHub GraphQL API. issueUrl: ${issueUrl}`,
+          );
+          continue;
+        }
         if (item.__typename !== 'CrossReferencedEvent') continue;
         if (!item.source || item.source.__typename !== 'PullRequest') continue;
         if (item.source.state !== 'OPEN') continue;
@@ -2063,8 +2069,8 @@ export class ApiV3CheerioRestIssueRepository
         });
       }
 
-      hasNextPage = issueData.timelineItems.pageInfo.hasNextPage;
-      after = issueData.timelineItems.pageInfo.endCursor;
+      hasNextPage = issueData.timelineItems?.pageInfo?.hasNextPage ?? false;
+      after = issueData.timelineItems?.pageInfo?.endCursor ?? null;
     }
 
     const prs = Array.from(relatedPRsMap.values());
