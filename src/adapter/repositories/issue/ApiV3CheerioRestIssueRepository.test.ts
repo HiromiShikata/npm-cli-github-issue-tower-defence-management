@@ -4061,6 +4061,60 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result[0].mergeable).toBe('MERGEABLE');
     });
 
+    it('skips null timeline nodes and returns the remaining pull requests', async () => {
+      mockFetchRoutes({
+        timeline: () => ({
+          data: {
+            repository: {
+              issue: {
+                timelineItems: {
+                  pageInfo: { endCursor: null, hasNextPage: false },
+                  nodes: [
+                    null,
+                    buildPullRequestTimelineNode(11148, 'MERGEABLE'),
+                    null,
+                  ],
+                },
+              },
+            },
+          },
+        }),
+        slimPullRequest: slimForPrNumber,
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].url).toBe(
+        'https://github.com/HiromiShikata/test-repository/pull/11148',
+      );
+    });
+
+    it('returns an empty list when the timeline items object is null', async () => {
+      mockFetchRoutes({
+        timeline: () => ({
+          data: {
+            repository: {
+              issue: {
+                timelineItems: null,
+              },
+            },
+          },
+        }),
+        slimPullRequest: slimForPrNumber,
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toEqual([]);
+    });
+
     const buildTwoPrTimelineResponse = () => ({
       data: {
         repository: {
