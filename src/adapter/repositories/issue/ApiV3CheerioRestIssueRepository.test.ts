@@ -3564,8 +3564,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       });
 
       const { repository } = createApiV3CheerioRestIssueRepository();
-      const prUrl =
-        'https://github.com/HiromiShikata/test-repository/pull/31';
+      const prUrl = 'https://github.com/HiromiShikata/test-repository/pull/31';
       const result1 = await repository.getOpenPullRequest(prUrl);
       const result2 = await repository.getOpenPullRequest(prUrl);
 
@@ -3575,7 +3574,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ? input
             : input instanceof URL
               ? input.toString()
-              : (input as Request).url;
+              : (input).url;
         return url.includes('/check-runs');
       });
       expect(checkRunsCalls).toHaveLength(1);
