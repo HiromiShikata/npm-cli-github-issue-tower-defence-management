@@ -69,7 +69,10 @@ const countSilentRedispatches = <
     commentsInCurrentCycle.filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
-        isSilentRedispatchCommentForAgent(comment.content, params.nextStepAgent),
+        isSilentRedispatchCommentForAgent(
+          comment.content,
+          params.nextStepAgent,
+        ),
     ).length + 1
   );
 };
