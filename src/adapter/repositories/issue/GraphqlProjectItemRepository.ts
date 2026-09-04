@@ -669,7 +669,8 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
       author: item.content.author?.login || '',
       closingIssueReferenceUrls:
         item.content.closingIssuesReferences?.nodes
-          ?.map((node) => node.url)
+          ?.filter((node): node is { url: string } => node !== null)
+          .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       isRepoArchived: item.content.repository.isArchived ?? false,
       stateReason: toStateReason(item.content.stateReason),
@@ -1338,7 +1339,8 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       author: content.author?.login || '',
       closingIssueReferenceUrls:
         content.closingIssuesReferences?.nodes
-          ?.map((node) => node.url)
+          ?.filter((node): node is { url: string } => node !== null)
+          .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       isRepoArchived: content.repository.isArchived ?? false,
       stateReason: toStateReason(content.stateReason),
