@@ -100,6 +100,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     updateBranch: jest.Mock;
   };
   let mockIssueCommentRepository: {
+    getCommentsFromIssue: jest.Mock;
     createComment: jest.Mock;
   };
   let mockProject: Project;
@@ -127,6 +128,7 @@ describe('ConflictedIssueRevertUseCase', () => {
     };
 
     mockIssueCommentRepository = {
+      getCommentsFromIssue: jest.fn().mockResolvedValue([]),
       createComment: jest.fn().mockResolvedValue(undefined),
     };
 
@@ -823,6 +825,69 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
+    it('should continue processing next issue when createComment throws', async () => {
+      const issue1 = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        number: 1,
+        status: 'Preparation',
+      });
+      const issue2 = createMockIssue({
+        url: 'https://github.com/user/repo/issues/2',
+        number: 2,
+        status: 'Preparation',
+      });
+      const prItem1 = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/10',
+        number: 10,
+        closingIssueReferenceUrls: [issue1.url],
+      });
+      const prItem2 = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/20',
+        number: 20,
+        closingIssueReferenceUrls: [issue2.url],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue1, issue2, prItem1, prItem2],
+        cacheUsed: false,
+      });
+      const conflictedPr1 = createMockRelatedPullRequest({
+        url: prItem1.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      const conflictedPr2 = createMockRelatedPullRequest({
+        url: prItem2.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([
+          [conflictedPr1.url, conflictedPr1],
+          [conflictedPr2.url, conflictedPr2],
+        ]),
+      );
+      mockIssueRepository.updateBranch.mockResolvedValue(false);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+      mockIssueCommentRepository.createComment
+        .mockRejectedValueOnce(
+          new Error('Failed to create comment via GitHub REST API: 403'),
+        )
+        .mockResolvedValueOnce(undefined);
+
+      await expect(useCase.run({ projectUrl })).resolves.not.toThrow();
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(2);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue1,
+        'conflict',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue2,
+        'conflict',
+      );
+    });
+
     it('should process multiple conflicted issues in one run when update-branch fails for both', async () => {
       const issue1 = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
@@ -834,6 +899,7 @@ describe('ConflictedIssueRevertUseCase', () => {
         number: 2,
         status: 'In Tmux by agent',
       });
+
       const prItem1 = createMockPrItem({
         url: 'https://github.com/user/repo/pull/10',
         number: 10,
@@ -881,6 +947,75 @@ describe('ConflictedIssueRevertUseCase', () => {
         'awaiting-workspace-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('duplicate comment suppression', () => {
+    const buildConflictedScenario = () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+      const prItem = createMockPrItem({
+        url: 'https://github.com/user/repo/pull/1',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const conflictedPr = createMockRelatedPullRequest({
+        url: prItem.url,
+        isConflicted: true,
+        mergeable: 'CONFLICTING',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue, prItem],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[conflictedPr.url, conflictedPr]]),
+      );
+      mockIssueRepository.updateBranch.mockResolvedValue(false);
+      return issue;
+    };
+
+    it('should not post conflict comment when most recent comment is already conflict', async () => {
+      const issue = buildConflictedScenario();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        { author: 'bot', content: 'conflict', createdAt: new Date() },
+      ]);
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueCommentRepository.getCommentsFromIssue).toHaveBeenCalledWith(
+        issue,
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('should post conflict comment when most recent comment has different content', async () => {
+      const issue = buildConflictedScenario();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        { author: 'bot', content: 'conflict', createdAt: new Date(0) },
+        { author: 'developer', content: 'I will fix this', createdAt: new Date() },
+      ]);
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        'conflict',
+      );
+    });
+
+    it('should post conflict comment when there are no existing comments', async () => {
+      const issue = buildConflictedScenario();
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        'conflict',
+      );
     });
   });
 });
