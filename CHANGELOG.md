@@ -1,3 +1,10 @@
+## [2.46.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.6...v2.46.7) (2026-09-04)
+
+
+### Bug Fixes
+
+* **graphql:** skip FORBIDDEN items in fetchProjectItems instead of aborting ([#1974](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1974)) ([ff017a3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ff017a308d8718dc5588b8de5106f9f9e2d94e4f))
+
 ## [2.46.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.5...v2.46.6) (2026-09-03)
 
 
