@@ -1,939 +1,939 @@
-import type { Issue } from "../../entities/Issue";
-import type { FieldOption, Project } from "../../entities/Project";
-import { GenerateConsoleListsUseCase } from "./GenerateConsoleListsUseCase";
+import type { Issue } from '../../entities/Issue';
+import type { FieldOption, Project } from '../../entities/Project';
+import { GenerateConsoleListsUseCase } from './GenerateConsoleListsUseCase';
 
-const ASSIGNEE = "owner-login";
+const ASSIGNEE = 'owner-login';
 
 const storyOption = (
-	id: string,
-	name: string,
-	color: FieldOption["color"],
-): FieldOption => ({ id, name, color, description: "" });
+  id: string,
+  name: string,
+  color: FieldOption['color'],
+): FieldOption => ({ id, name, color, description: '' });
 
 const STORY_OPTIONS: FieldOption[] = [
-	storyOption("s1", "regular / NO STORY; SET STORY FIELD", "GRAY"),
-	storyOption("s2", "Story Alpha", "BLUE"),
-	storyOption("s3", "Story Beta", "GREEN"),
+  storyOption('s1', 'regular / NO STORY; SET STORY FIELD', 'GRAY'),
+  storyOption('s2', 'Story Alpha', 'BLUE'),
+  storyOption('s3', 'Story Beta', 'GREEN'),
 ];
 
 const STATUS_OPTIONS: FieldOption[] = [
-	storyOption("st-aw", "Awaiting Workspace", "BLUE"),
-	storyOption("st-prep", "Preparation", "YELLOW"),
-	storyOption("st-failed", "Failed Preparation", "RED"),
-	storyOption("st-aqc", "Awaiting Quality Check", "GREEN"),
-	storyOption("st-todo", "Todo by human", "PINK"),
-	storyOption("st-todo-agent", "Todo by agent", "BLUE"),
-	storyOption("st-tmux", "In Tmux by human", "RED"),
-	storyOption("st-tmux-agent", "In Tmux by agent", "YELLOW"),
-	storyOption("st-done", "Done", "PURPLE"),
-	storyOption("st-icebox", "Icebox", "GRAY"),
+  storyOption('st-aw', 'Awaiting Workspace', 'BLUE'),
+  storyOption('st-prep', 'Preparation', 'YELLOW'),
+  storyOption('st-failed', 'Failed Preparation', 'RED'),
+  storyOption('st-aqc', 'Awaiting Quality Check', 'GREEN'),
+  storyOption('st-todo', 'Todo by human', 'PINK'),
+  storyOption('st-todo-agent', 'Todo by agent', 'BLUE'),
+  storyOption('st-tmux', 'In Tmux by human', 'RED'),
+  storyOption('st-tmux-agent', 'In Tmux by agent', 'YELLOW'),
+  storyOption('st-done', 'Done', 'PURPLE'),
+  storyOption('st-icebox', 'Icebox', 'GRAY'),
 ];
 
-const baseProject = (story: Project["story"]): Project => ({
-	id: "project-node-id",
-	url: "https://github.com/orgs/demo/projects/1",
-	databaseId: 1,
-	name: "demo",
-	status: {
-		name: "Status",
-		fieldId: "status-field",
-		statuses: STATUS_OPTIONS,
-	},
-	nextActionDate: null,
-	nextActionHour: null,
-	story,
-	remainingEstimationMinutes: null,
-	dependedIssueUrlSeparatedByComma: null,
-	completionDate50PercentConfidence: null,
-	agent: null,
+const baseProject = (story: Project['story']): Project => ({
+  id: 'project-node-id',
+  url: 'https://github.com/orgs/demo/projects/1',
+  databaseId: 1,
+  name: 'demo',
+  status: {
+    name: 'Status',
+    fieldId: 'status-field',
+    statuses: STATUS_OPTIONS,
+  },
+  nextActionDate: null,
+  nextActionHour: null,
+  story,
+  remainingEstimationMinutes: null,
+  dependedIssueUrlSeparatedByComma: null,
+  completionDate50PercentConfidence: null,
+  agent: null,
 });
 
 const projectWithStory: Project = baseProject({
-	name: "story",
-	fieldId: "story-field",
-	databaseId: 2,
-	stories: STORY_OPTIONS,
-	workflowManagementStory: { id: "wm", name: "workflow management" },
+  name: 'story',
+  fieldId: 'story-field',
+  databaseId: 2,
+  stories: STORY_OPTIONS,
+  workflowManagementStory: { id: 'wm', name: 'workflow management' },
 });
 
 let issueCounter = 0;
 const makeIssue = (overrides: Partial<Issue>): Issue => {
-	issueCounter += 1;
-	return {
-		nameWithOwner: "demo/repo",
-		number: issueCounter,
-		title: `Issue ${issueCounter}`,
-		state: "OPEN",
-		status: null,
-		story: null,
-		nextActionDate: null,
-		nextActionHour: null,
-		estimationMinutes: null,
-		dependedIssueUrls: [],
-		completionDate50PercentConfidence: null,
-		url: `https://github.com/demo/repo/issues/${issueCounter}`,
-		assignees: [ASSIGNEE],
-		labels: [],
-		org: "demo",
-		repo: "repo",
-		body: "should never be projected",
-		itemId: `item-${issueCounter}`,
-		isPr: false,
-		isInProgress: false,
-		isClosed: false,
-		createdAt: new Date("2026-06-13T08:18:45.000Z"),
-		author: "someone",
-		closingIssueReferenceUrls: [],
-		agent: null,
-		stateReason: null,
-		...overrides,
-	};
+  issueCounter += 1;
+  return {
+    nameWithOwner: 'demo/repo',
+    number: issueCounter,
+    title: `Issue ${issueCounter}`,
+    state: 'OPEN',
+    status: null,
+    story: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    estimationMinutes: null,
+    dependedIssueUrls: [],
+    completionDate50PercentConfidence: null,
+    url: `https://github.com/demo/repo/issues/${issueCounter}`,
+    assignees: [ASSIGNEE],
+    labels: [],
+    org: 'demo',
+    repo: 'repo',
+    body: 'should never be projected',
+    itemId: `item-${issueCounter}`,
+    isPr: false,
+    isInProgress: false,
+    isClosed: false,
+    createdAt: new Date('2026-06-13T08:18:45.000Z'),
+    author: 'someone',
+    closingIssueReferenceUrls: [],
+    agent: null,
+    stateReason: null,
+    ...overrides,
+  };
 };
 
-describe("GenerateConsoleListsUseCase", () => {
-	const usecase = new GenerateConsoleListsUseCase();
-	const generatedAt = "2026-06-14T07:22:33Z";
-
-	beforeEach(() => {
-		issueCounter = 0;
-	});
-
-	const run = (
-		issues: Issue[],
-		project: Project = projectWithStory,
-		workflowBlockerStoryName: string | null = "regular / WORKFLOW BLOCKER",
-		urlOfStoryView: string | null = null,
-	) =>
-		usecase.run({
-			project,
-			issues,
-			pjcode: "demo",
-			assigneeLogin: ASSIGNEE,
-			generatedAt,
-			workflowBlockerStoryName,
-			urlOfStoryView,
-		});
-
-	describe("common actionable filter", () => {
-		it("rejects closed issues", () => {
-			const result = run([
-				makeIssue({ status: "Todo by human", isClosed: true }),
-			]);
-			expect(result["todo-by-human"].items).toHaveLength(0);
-		});
-
-		it("rejects issues not assigned to the assignee login", () => {
-			const result = run([
-				makeIssue({ status: "Todo by human", assignees: ["other-person"] }),
-			]);
-			expect(result["todo-by-human"].items).toHaveLength(0);
-		});
-
-		it("rejects issues with a depended issue url", () => {
-			const result = run([
-				makeIssue({
-					status: "Todo by human",
-					dependedIssueUrls: ["https://github.com/demo/repo/issues/99"],
-				}),
-			]);
-			expect(result["todo-by-human"].items).toHaveLength(0);
-		});
-
-		it("rejects issues with a next action date", () => {
-			const result = run([
-				makeIssue({
-					status: "Todo by human",
-					nextActionDate: new Date("2026-07-01T00:00:00.000Z"),
-				}),
-			]);
-			expect(result["todo-by-human"].items).toHaveLength(0);
-		});
-
-		it("rejects issues with a next action hour", () => {
-			const result = run([
-				makeIssue({ status: "Todo by human", nextActionHour: 9 }),
-			]);
-			expect(result["todo-by-human"].items).toHaveLength(0);
-		});
-
-		it("accepts an issue that passes every actionable condition", () => {
-			const result = run([makeIssue({ status: "Todo by human" })]);
-			expect(result["todo-by-human"].items).toHaveLength(1);
-		});
-	});
-
-	describe("per-tab selectors", () => {
-		it("selects awaiting quality check items case-insensitively for prs", () => {
-			const result = run([
-				makeIssue({ status: "awaiting quality check" }),
-				makeIssue({ status: "Awaiting Quality Check" }),
-				makeIssue({ status: "Awaiting Workspace" }),
-			]);
-			expect(result.prs.items).toHaveLength(2);
-		});
-
-		it("shows prs items with nextActionDate set", () => {
-			const result = run([
-				makeIssue({
-					status: "Awaiting Quality Check",
-					nextActionDate: new Date("2026-07-01T00:00:00.000Z"),
-				}),
-			]);
-			expect(result.prs.items).toHaveLength(1);
-		});
-
-		it("shows prs items with nextActionHour set", () => {
-			const result = run([
-				makeIssue({
-					status: "Awaiting Quality Check",
-					nextActionHour: 9,
-				}),
-			]);
-			expect(result.prs.items).toHaveLength(1);
-		});
-
-		it("selects failed preparation items only with exact case", () => {
-			const result = run([
-				makeIssue({ status: "Failed Preparation" }),
-				makeIssue({ status: "failed preparation" }),
-				makeIssue({ status: "FAILED PREPARATION" }),
-			]);
-			expect(result["failed-preparation"].items).toHaveLength(1);
-			expect(result["failed-preparation"].items[0].number).toBe(1);
-		});
-
-		it("includes failed preparation items that have depended issue urls", () => {
-			const result = run([
-				makeIssue({
-					status: "Failed Preparation",
-					dependedIssueUrls: ["https://github.com/demo/repo/issues/99"],
-				}),
-			]);
-			expect(result["failed-preparation"].items).toHaveLength(1);
-		});
-
-		it("selects todo-by-human items for the current and legacy status with exact case", () => {
-			const result = run([
-				makeIssue({ status: "Todo by human" }),
-				makeIssue({ status: "Todo" }),
-				makeIssue({ status: "todo by human" }),
-				makeIssue({ status: "Awaiting Workspace" }),
-			]);
-			expect(result["todo-by-human"].items.map((item) => item.number)).toEqual([
-				1, 2,
-			]);
-		});
-
-		it("rejects a non-actionable todo-by-human issue", () => {
-			const result = run([
-				makeIssue({ status: "Todo by human", nextActionHour: 9 }),
-			]);
-			expect(result["todo-by-human"].items).toHaveLength(0);
-		});
-
-		it("selects todo-by-agent items for the exact status only", () => {
-			const result = run([
-				makeIssue({ status: "Todo by agent" }),
-				makeIssue({ status: "todo by agent" }),
-				makeIssue({ status: "Todo by human" }),
-				makeIssue({ status: "Awaiting Workspace" }),
-			]);
-			expect(result["todo-by-agent"].items.map((item) => item.number)).toEqual([
-				1,
-			]);
-		});
-
-		it("rejects a non-actionable todo-by-agent issue", () => {
-			const result = run([
-				makeIssue({ status: "Todo by agent", nextActionHour: 9 }),
-			]);
-			expect(result["todo-by-agent"].items).toHaveLength(0);
-		});
-	});
-
-	describe("workflow-blocker tab", () => {
-		it("selects items whose story matches the configured name case-insensitively", () => {
-			const result = run([
-				makeIssue({ story: "regular / WORKFLOW BLOCKER" }),
-				makeIssue({ story: "regular / workflow blocker" }),
-				makeIssue({ story: "Story Alpha" }),
-				makeIssue({ story: null }),
-			]);
-			expect(result["workflow-blocker"].items).toHaveLength(2);
-		});
-
-		it("includes matching items regardless of their status", () => {
-			const result = run([
-				makeIssue({ story: "regular / WORKFLOW BLOCKER", status: "Unread" }),
-				makeIssue({
-					story: "regular / WORKFLOW BLOCKER",
-					status: "Awaiting Quality Check",
-				}),
-				makeIssue({ story: "regular / WORKFLOW BLOCKER", status: null }),
-			]);
-			expect(result["workflow-blocker"].items).toHaveLength(3);
-		});
-
-		it("includes matching items that are not actionable", () => {
-			const result = run([
-				makeIssue({
-					story: "regular / WORKFLOW BLOCKER",
-					nextActionDate: new Date("2026-07-01T00:00:00.000Z"),
-				}),
-				makeIssue({
-					story: "regular / WORKFLOW BLOCKER",
-					nextActionHour: 9,
-				}),
-				makeIssue({
-					story: "regular / WORKFLOW BLOCKER",
-					dependedIssueUrls: ["https://github.com/demo/repo/issues/99"],
-				}),
-			]);
-			expect(result["workflow-blocker"].items).toHaveLength(3);
-		});
-
-		it("excludes closed matching items", () => {
-			const result = run([
-				makeIssue({ story: "regular / WORKFLOW BLOCKER", isClosed: true }),
-				makeIssue({ story: "regular / WORKFLOW BLOCKER", isClosed: false }),
-			]);
-			expect(result["workflow-blocker"].items).toHaveLength(1);
-			expect(result["workflow-blocker"].items[0].number).toBe(2);
-		});
-
-		it("returns no items when the workflow blocker story name is not configured", () => {
-			const result = run(
-				[makeIssue({ story: "regular / WORKFLOW BLOCKER" })],
-				projectWithStory,
-				null,
-			);
-			expect(result["workflow-blocker"].items).toHaveLength(0);
-		});
-	});
-
-	describe("In Tmux by agent shared exclusion", () => {
-		const allTabItems = (
-			result: ReturnType<GenerateConsoleListsUseCase["run"]>,
-		) => [
-			...result["workflow-blocker"].items,
-			...result.prs.items,
-			...result["failed-preparation"].items,
-			...result["todo-by-human"].items,
-		];
-
-		it("shows a workflow-blocker-story In Tmux by agent issue on the workflow blocker tab and nowhere else", () => {
-			const result = run([
-				makeIssue({
-					story: "regular / WORKFLOW BLOCKER",
-					status: "In Tmux by agent",
-				}),
-			]);
-			expect(
-				result["workflow-blocker"].items.map((item) => item.status),
-			).toEqual(["In Tmux by agent"]);
-			expect(allTabItems(result)).toHaveLength(1);
-		});
-
-		it("hides a no-story In Tmux by agent issue from all tabs", () => {
-			const result = run([
-				makeIssue({
-					story: "no story",
-					status: "In Tmux by agent",
-				}),
-			]);
-			expect(allTabItems(result)).toHaveLength(0);
-		});
-
-		it("hides In Tmux by agent case-insensitively from every tab other than the workflow blocker tab", () => {
-			const result = run([
-				makeIssue({
-					story: "regular / WORKFLOW BLOCKER",
-					status: "in tmux by agent",
-				}),
-			]);
-			expect(result["workflow-blocker"].items).toHaveLength(1);
-			expect(allTabItems(result)).toHaveLength(1);
-		});
-
-		it("keeps sibling issues with other statuses displaying as before", () => {
-			const result = run([
-				makeIssue({
-					story: "regular / WORKFLOW BLOCKER",
-					status: "In Tmux by agent",
-				}),
-				makeIssue({
-					story: "regular / WORKFLOW BLOCKER",
-					status: "In Tmux by human",
-				}),
-				makeIssue({ story: "no story", status: "Awaiting Workspace" }),
-			]);
-			expect(
-				result["workflow-blocker"].items.map((item) => item.status).sort(),
-			).toEqual(["In Tmux by agent", "In Tmux by human"]);
-			expect(
-				result.prs.items
-					.concat(result["failed-preparation"].items)
-					.concat(result["todo-by-human"].items)
-					.some((item) => item.status === "In Tmux by agent"),
-			).toBe(false);
-		});
-	});
-
-	describe("common item projection", () => {
-		it("projects the expected keys and never includes a body field", () => {
-			const result = run([
-				makeIssue({
-					status: "Awaiting Quality Check",
-					story: "Story Alpha",
-					labels: ["bug", "p1"],
-					isPr: true,
-				}),
-			]);
-			const item = result.prs.items[0];
-			expect(Object.keys(item).sort()).toEqual(
-				[
-					"agent",
-					"createdAt",
-					"dependedIssueUrls",
-					"isPr",
-					"itemId",
-					"labels",
-					"nameWithOwner",
-					"nextActionDate",
-					"nextActionHour",
-					"number",
-					"projectItemId",
-					"relatedOpenPullRequestUrls",
-					"repo",
-					"status",
-					"story",
-					"title",
-					"url",
-				].sort(),
-			);
-			expect(item).not.toHaveProperty("body");
-			expect(item.repo).toBe("demo/repo");
-			expect(item.nameWithOwner).toBe("demo/repo");
-			expect(item.projectItemId).toBe(item.itemId);
-			expect(item.isPr).toBe(true);
-			expect(item.story).toBe("Story Alpha");
-			expect(item.labels).toEqual(["bug", "p1"]);
-		});
-
-		it("emits the status, reactivation-trigger and depended issue url fields", () => {
-			const result = run([
-				makeIssue({
-					story: "regular / WORKFLOW BLOCKER",
-					status: "Unread",
-					nextActionDate: new Date("2026-06-20T07:00:00.000Z"),
-					nextActionHour: 9,
-					dependedIssueUrls: [
-						"https://github.com/demo/repo/issues/10",
-						"https://github.com/demo/repo/issues/11",
-					],
-				}),
-			]);
-			const item = result["workflow-blocker"].items[0];
-			expect(item.status).toBe("Unread");
-			expect(item.nextActionDate).toBe("2026-06-20T07:00:00.000Z");
-			expect(item.nextActionHour).toBe(9);
-			expect(item.dependedIssueUrls).toEqual([
-				"https://github.com/demo/repo/issues/10",
-				"https://github.com/demo/repo/issues/11",
-			]);
-		});
-
-		it("emits null reactivation-trigger fields and an empty depended url array when absent", () => {
-			const result = run([
-				makeIssue({
-					status: "Awaiting Quality Check",
-					nextActionDate: null,
-					nextActionHour: null,
-					dependedIssueUrls: [],
-				}),
-			]);
-			const item = result.prs.items[0];
-			expect(item.status).toBe("Awaiting Quality Check");
-			expect(item.nextActionDate).toBeNull();
-			expect(item.nextActionHour).toBeNull();
-			expect(item.dependedIssueUrls).toEqual([]);
-		});
-
-		it("maps a null story to an empty string", () => {
-			const result = run([
-				makeIssue({ status: "Awaiting Quality Check", story: null }),
-			]);
-			expect(result.prs.items[0].story).toBe("");
-		});
-
-		it("serializes createdAt as an ISO string keeping milliseconds", () => {
-			const result = run([
-				makeIssue({
-					status: "Awaiting Quality Check",
-					createdAt: new Date("2026-06-13T08:18:45.000Z"),
-				}),
-			]);
-			expect(result.prs.items[0].createdAt).toBe("2026-06-13T08:18:45.000Z");
-		});
-	});
-
-	describe("story order stable sort", () => {
-		it("sorts by story field order and places unknown stories last", () => {
-			const result = run([
-				makeIssue({ status: "Todo by human", story: "Story Beta" }),
-				makeIssue({ status: "Todo by human", story: "Unmapped Story" }),
-				makeIssue({ status: "Todo by human", story: "Story Alpha" }),
-				makeIssue({ status: "Todo by human", story: "Story Beta" }),
-			]);
-			expect(result["todo-by-human"].items.map((i) => i.story)).toEqual([
-				"Story Alpha",
-				"Story Beta",
-				"Story Beta",
-				"Unmapped Story",
-			]);
-		});
-
-		it("keeps original order between items sharing the same story (stable)", () => {
-			const result = run([
-				makeIssue({
-					status: "Todo by human",
-					story: "Story Alpha",
-					title: "first",
-				}),
-				makeIssue({
-					status: "Todo by human",
-					story: "Story Alpha",
-					title: "second",
-				}),
-			]);
-			expect(result["todo-by-human"].items.map((i) => i.title)).toEqual([
-				"first",
-				"second",
-			]);
-		});
-
-		it("groups items of different unknown stories contiguously even when interleaved by original position", () => {
-			const result = run([
-				makeIssue({ status: "Todo by human", story: "Unknown Story A" }),
-				makeIssue({ status: "Todo by human", story: "Unknown Story B" }),
-				makeIssue({ status: "Todo by human", story: "Unknown Story A" }),
-			]);
-			expect(result["todo-by-human"].items.map((i) => i.story)).toEqual([
-				"Unknown Story A",
-				"Unknown Story A",
-				"Unknown Story B",
-			]);
-		});
-	});
-
-	describe("options construction", () => {
-		it("excludes awaiting quality check and done from prs status options", () => {
-			const names = run([]).prs.statusOptions.map((o) => o.name);
-			expect(names).not.toContain("Awaiting Quality Check");
-			expect(names).not.toContain("Done");
-			expect(names).toContain("Awaiting Workspace");
-		});
-
-		it("excludes the failed-preparation routing-excluded set", () => {
-			const names = run([])["failed-preparation"].statusOptions.map(
-				(o) => o.name,
-			);
-			for (const excluded of [
-				"Failed Preparation",
-				"Done",
-				"Preparation",
-				"Icebox",
-				"In Tmux by human",
-				"In Tmux by agent",
-				"Todo by agent",
-			]) {
-				expect(names).not.toContain(excluded);
-			}
-			expect(names).toContain("Awaiting Workspace");
-		});
-
-		it("includes todo by human but excludes done from todo-by-human status options", () => {
-			const names = run([])["todo-by-human"].statusOptions.map((o) => o.name);
-			expect(names).toContain("Todo by human");
-			expect(names).not.toContain("Done");
-			expect(names).toContain("Awaiting Workspace");
-		});
-
-		it("excludes todo by agent and done from todo-by-agent status options", () => {
-			const names = run([])["todo-by-agent"].statusOptions.map((o) => o.name);
-			expect(names).not.toContain("Todo by agent");
-			expect(names).not.toContain("Done");
-			expect(names).toContain("Awaiting Workspace");
-		});
-
-		it("builds storyOrder from story field option order", () => {
-			expect(run([]).prs.storyOrder).toEqual([
-				"regular / NO STORY; SET STORY FIELD",
-				"Story Alpha",
-				"Story Beta",
-			]);
-		});
-	});
-
-	describe("storyColors shape per tab", () => {
-		it("uses object color values for prs and failed-preparation", () => {
-			const result = run([]);
-			expect(result.prs.storyColors["Story Alpha"]).toEqual({ color: "BLUE" });
-			expect(result["failed-preparation"].storyColors["Story Alpha"]).toEqual({
-				color: "BLUE",
-			});
-		});
-	});
-
-	describe("generatedAt and pjcode passthrough", () => {
-		it("writes the provided generatedAt without milliseconds on every tab", () => {
-			const result = run([]);
-			expect(result.prs.generatedAt).toBe(generatedAt);
-			expect(result["failed-preparation"].generatedAt).toBe(generatedAt);
-			expect(generatedAt).not.toMatch(/\.\d{3}Z$/);
-		});
-
-		it("writes the configured pjcode on every tab", () => {
-			const result = run([]);
-			expect(result.prs.pjcode).toBe("demo");
-			expect(result["failed-preparation"].pjcode).toBe("demo");
-		});
-	});
-
-	describe("related open pull requests", () => {
-		const awaitingQualityCheckIssue = (): Issue =>
-			makeIssue({ status: "Awaiting Quality Check" });
-
-		it("projects the open pull request that closes the issue", () => {
-			const issue = awaitingQualityCheckIssue();
-			const pullRequest = makeIssue({
-				status: "Awaiting Quality Check",
-				isPr: true,
-				url: "https://github.com/demo/repo/pull/501",
-				closingIssueReferenceUrls: [issue.url],
-			});
-			const result = run([issue, pullRequest]);
-			const projected = result.prs.items.find((item) => item.url === issue.url);
-			expect(projected?.relatedOpenPullRequestUrls).toEqual([
-				"https://github.com/demo/repo/pull/501",
-			]);
-		});
-
-		it("ignores a closed pull request that closes the issue", () => {
-			const issue = awaitingQualityCheckIssue();
-			const pullRequest = makeIssue({
-				isPr: true,
-				isClosed: true,
-				url: "https://github.com/demo/repo/pull/502",
-				closingIssueReferenceUrls: [issue.url],
-			});
-			const result = run([issue, pullRequest]);
-			const projected = result.prs.items.find((item) => item.url === issue.url);
-			expect(projected?.relatedOpenPullRequestUrls).toEqual([]);
-		});
-
-		it("collects the linkage from a pull request that no tab shows", () => {
-			const issue = awaitingQualityCheckIssue();
-			const pullRequest = makeIssue({
-				status: "In Tmux by agent",
-				assignees: ["another-person"],
-				isPr: true,
-				url: "https://github.com/demo/repo/pull/503",
-				closingIssueReferenceUrls: [issue.url],
-			});
-			const result = run([issue, pullRequest]);
-			const projected = result.prs.items.find((item) => item.url === issue.url);
-			expect(projected?.relatedOpenPullRequestUrls).toEqual([
-				"https://github.com/demo/repo/pull/503",
-			]);
-		});
-
-		it("leaves the list empty when no open pull request closes the issue", () => {
-			const issue = awaitingQualityCheckIssue();
-			const unrelatedPullRequest = makeIssue({
-				isPr: true,
-				url: "https://github.com/demo/repo/pull/504",
-				closingIssueReferenceUrls: ["https://github.com/demo/repo/issues/999"],
-			});
-			const result = run([issue, unrelatedPullRequest]);
-			const projected = result.prs.items.find((item) => item.url === issue.url);
-			expect(projected?.relatedOpenPullRequestUrls).toEqual([]);
-		});
-	});
-
-	describe("project without a story field", () => {
-		const projectNoStory = baseProject(null);
-
-		it("degrades story order and colors gracefully", () => {
-			const result = run([makeIssue({ story: "no story" })], projectNoStory);
-			expect(result.prs.storyOrder).toEqual([]);
-			expect(result.prs.storyColors).toEqual({});
-		});
-	});
-
-	describe("stories tab", () => {
-		it("includes one entry per story option including GRAY", () => {
-			const result = run([]);
-			expect(result.stories.stories).toHaveLength(3);
-			expect(result.stories.stories.map((s) => s.storyName)).toEqual([
-				"regular / NO STORY; SET STORY FIELD",
-				"Story Alpha",
-				"Story Beta",
-			]);
-		});
-
-		it("includes story options whose color is GRAY", () => {
-			const result = run([]);
-			const names = result.stories.stories.map((s) => s.storyName);
-			expect(names).toContain("regular / NO STORY; SET STORY FIELD");
-		});
-
-		it("counts open items per story from all open issues on the board", () => {
-			const result = run([
-				makeIssue({ story: "Story Alpha", isClosed: false }),
-				makeIssue({ story: "Story Alpha", isClosed: false }),
-				makeIssue({ story: "Story Beta", isClosed: false }),
-				makeIssue({ story: "Story Alpha", isClosed: true }),
-			]);
-			const alpha = result.stories.stories.find(
-				(s) => s.storyName === "Story Alpha",
-			);
-			const beta = result.stories.stories.find(
-				(s) => s.storyName === "Story Beta",
-			);
-			expect(alpha?.openItemCount).toBe(2);
-			expect(beta?.openItemCount).toBe(1);
-		});
-
-		it("counts open items regardless of assignee or actionability", () => {
-			const result = run([
-				makeIssue({
-					story: "Story Alpha",
-					assignees: ["other-person"],
-					isClosed: false,
-				}),
-				makeIssue({
-					story: "Story Alpha",
-					nextActionDate: new Date("2026-07-01T00:00:00.000Z"),
-					isClosed: false,
-				}),
-			]);
-			const alpha = result.stories.stories.find(
-				(s) => s.storyName === "Story Alpha",
-			);
-			expect(alpha?.openItemCount).toBe(2);
-		});
-
-		it("exposes the storyOptionId from the project field option", () => {
-			const result = run([]);
-			const alpha = result.stories.stories.find(
-				(s) => s.storyName === "Story Alpha",
-			);
-			expect(alpha?.storyOptionId).toBe("s2");
-		});
-
-		it("provides the nameWithOwner of the first issue as defaultNameWithOwner", () => {
-			const result = run([makeIssue({ nameWithOwner: "demo/repo" })]);
-			expect(result.stories.defaultNameWithOwner).toBe("demo/repo");
-		});
-
-		it("sets defaultNameWithOwner to null when no issues are present", () => {
-			const result = run([]);
-			expect(result.stories.defaultNameWithOwner).toBeNull();
-		});
-
-		it("preserves the storyOrder in the stories tab", () => {
-			const result = run([]);
-			expect(result.stories.storyOrder).toEqual([
-				"regular / NO STORY; SET STORY FIELD",
-				"Story Alpha",
-				"Story Beta",
-			]);
-		});
-
-		it("produces an empty stories list when the project has no story field", () => {
-			const result = run([], baseProject(null));
-			expect(result.stories.stories).toEqual([]);
-		});
-
-		it("sets storyViewUrl to null for every entry when urlOfStoryView is null", () => {
-			const result = run([], projectWithStory, null, null);
-			for (const entry of result.stories.stories) {
-				expect(entry.storyViewUrl).toBeNull();
-			}
-		});
-
-		it("computes storyViewUrl with sliceBy query param for each entry when urlOfStoryView is provided", () => {
-			const result = run(
-				[],
-				projectWithStory,
-				null,
-				"https://github.com/orgs/demo/projects/1/views/1",
-			);
-			const alpha = result.stories.stories.find(
-				(s) => s.storyName === "Story Alpha",
-			);
-			const beta = result.stories.stories.find(
-				(s) => s.storyName === "Story Beta",
-			);
-			expect(alpha?.storyViewUrl).toBe(
-				"https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20Alpha",
-			);
-			expect(beta?.storyViewUrl).toBe(
-				"https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20Beta",
-			);
-		});
-
-		it("encodes special characters in the story name when building storyViewUrl", () => {
-			const specialStoryOptions: FieldOption[] = [
-				storyOption("sp1", "Story #1 & More", "BLUE"),
-			];
-			const specialProject = baseProject({
-				name: "story",
-				fieldId: "story-field",
-				databaseId: 2,
-				stories: specialStoryOptions,
-				workflowManagementStory: { id: "wm", name: "workflow management" },
-			});
-			const result = run(
-				[],
-				specialProject,
-				null,
-				"https://github.com/orgs/demo/projects/1/views/1",
-			);
-			const entry = result.stories.stories[0];
-			expect(entry.storyViewUrl).toBe(
-				"https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20%231%20%26%20More",
-			);
-		});
-	});
-
-	describe("agent field propagation", () => {
-		it("copies the agent value from the issue into the list item", () => {
-			const result = run([
-				makeIssue({ status: "Awaiting Quality Check", agent: "developer" }),
-			]);
-			expect(result.prs.items[0].agent).toBe("developer");
-		});
-
-		it("preserves null when the issue has no agent set", () => {
-			const result = run([
-				makeIssue({ status: "Awaiting Quality Check", agent: null }),
-			]);
-			expect(result.prs.items[0].agent).toBeNull();
-		});
-
-		it("copies the agent into every tab that shows the issue", () => {
-			const result = run([
-				makeIssue({ status: "Awaiting Quality Check", agent: "chore" }),
-			]);
-			expect(result.prs.items[0].agent).toBe("chore");
-		});
-	});
-
-	describe("queued tab", () => {
-		it("includes Awaiting Workspace issues", () => {
-			const result = run([
-				makeIssue({
-					status: "Awaiting Workspace",
-					assignees: ["other-person"],
-				}),
-			]);
-			expect(result.queued.items).toHaveLength(1);
-		});
-
-		it("includes Preparation issues", () => {
-			const result = run([
-				makeIssue({ status: "Preparation", assignees: ["other-person"] }),
-			]);
-			expect(result.queued.items).toHaveLength(1);
-		});
-
-		it("excludes issues with statuses other than Awaiting Workspace and Preparation", () => {
-			const result = run([
-				makeIssue({ status: "Todo by human" }),
-				makeIssue({ status: "In Tmux by agent" }),
-				makeIssue({ status: "Awaiting Quality Check" }),
-				makeIssue({ status: "Done" }),
-				makeIssue({ status: "Failed Preparation" }),
-			]);
-			expect(result.queued.items).toHaveLength(0);
-		});
-
-		it("excludes closed issues", () => {
-			const result = run([
-				makeIssue({ status: "Awaiting Workspace", isClosed: true }),
-				makeIssue({ status: "Preparation", isClosed: true }),
-			]);
-			expect(result.queued.items).toHaveLength(0);
-		});
-
-		it("excludes issues with dependedIssueUrls", () => {
-			const result = run([
-				makeIssue({
-					status: "Awaiting Workspace",
-					dependedIssueUrls: ["https://github.com/demo/repo/issues/99"],
-				}),
-				makeIssue({
-					status: "Preparation",
-					dependedIssueUrls: ["https://github.com/demo/repo/issues/100"],
-				}),
-			]);
-			expect(result.queued.items).toHaveLength(0);
-		});
-
-		it("includes issues regardless of assignee", () => {
-			const result = run([
-				makeIssue({ status: "Awaiting Workspace", assignees: [] }),
-				makeIssue({
-					status: "Preparation",
-					assignees: ["completely-other-person"],
-				}),
-				makeIssue({ status: "Awaiting Workspace", assignees: [ASSIGNEE] }),
-			]);
-			expect(result.queued.items).toHaveLength(3);
-		});
-
-		it("propagates agentOptions from project.agent field", () => {
-			const agentOptions: FieldOption[] = [
-				storyOption("ag1", "developer", "GRAY"),
-				storyOption("ag2", "chore", "GRAY"),
-			];
-			const projectWithAgent: Project = {
-				...baseProject(projectWithStory.story),
-				agent: { name: "Agent", fieldId: "agent-field", options: agentOptions },
-			};
-			const result = run([], projectWithAgent);
-			expect(result.queued.agentOptions).toEqual(
-				agentOptions.map((o) => ({ id: o.id, name: o.name, color: o.color })),
-			);
-		});
-
-		it("provides empty agentOptions when project.agent is null", () => {
-			const result = run([]);
-			expect(result.queued.agentOptions).toEqual([]);
-		});
-	});
-
-	describe("prs agentOptions", () => {
-		it("propagates agentOptions from project.agent field to prs tab", () => {
-			const agentOptions: FieldOption[] = [
-				storyOption("ag1", "developer", "GRAY"),
-				storyOption("ag2", "pr-reviewer", "GRAY"),
-			];
-			const projectWithAgent: Project = {
-				...baseProject(projectWithStory.story),
-				agent: { name: "Agent", fieldId: "agent-field", options: agentOptions },
-			};
-			const result = run([], projectWithAgent);
-			expect(result.prs.agentOptions).toEqual(
-				agentOptions.map((o) => ({ id: o.id, name: o.name, color: o.color })),
-			);
-		});
-
-		it("provides empty agentOptions for prs tab when project.agent is null", () => {
-			const result = run([]);
-			expect(result.prs.agentOptions).toEqual([]);
-		});
-	});
+describe('GenerateConsoleListsUseCase', () => {
+  const usecase = new GenerateConsoleListsUseCase();
+  const generatedAt = '2026-06-14T07:22:33Z';
+
+  beforeEach(() => {
+    issueCounter = 0;
+  });
+
+  const run = (
+    issues: Issue[],
+    project: Project = projectWithStory,
+    workflowBlockerStoryName: string | null = 'regular / WORKFLOW BLOCKER',
+    urlOfStoryView: string | null = null,
+  ) =>
+    usecase.run({
+      project,
+      issues,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      generatedAt,
+      workflowBlockerStoryName,
+      urlOfStoryView,
+    });
+
+  describe('common actionable filter', () => {
+    it('rejects closed issues', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human', isClosed: true }),
+      ]);
+      expect(result['todo-by-human'].items).toHaveLength(0);
+    });
+
+    it('rejects issues not assigned to the assignee login', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human', assignees: ['other-person'] }),
+      ]);
+      expect(result['todo-by-human'].items).toHaveLength(0);
+    });
+
+    it('rejects issues with a depended issue url', () => {
+      const result = run([
+        makeIssue({
+          status: 'Todo by human',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+      ]);
+      expect(result['todo-by-human'].items).toHaveLength(0);
+    });
+
+    it('rejects issues with a next action date', () => {
+      const result = run([
+        makeIssue({
+          status: 'Todo by human',
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+        }),
+      ]);
+      expect(result['todo-by-human'].items).toHaveLength(0);
+    });
+
+    it('rejects issues with a next action hour', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human', nextActionHour: 9 }),
+      ]);
+      expect(result['todo-by-human'].items).toHaveLength(0);
+    });
+
+    it('accepts an issue that passes every actionable condition', () => {
+      const result = run([makeIssue({ status: 'Todo by human' })]);
+      expect(result['todo-by-human'].items).toHaveLength(1);
+    });
+  });
+
+  describe('per-tab selectors', () => {
+    it('selects awaiting quality check items case-insensitively for prs', () => {
+      const result = run([
+        makeIssue({ status: 'awaiting quality check' }),
+        makeIssue({ status: 'Awaiting Quality Check' }),
+        makeIssue({ status: 'Awaiting Workspace' }),
+      ]);
+      expect(result.prs.items).toHaveLength(2);
+    });
+
+    it('shows prs items with nextActionDate set', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Quality Check',
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+        }),
+      ]);
+      expect(result.prs.items).toHaveLength(1);
+    });
+
+    it('shows prs items with nextActionHour set', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Quality Check',
+          nextActionHour: 9,
+        }),
+      ]);
+      expect(result.prs.items).toHaveLength(1);
+    });
+
+    it('selects failed preparation items only with exact case', () => {
+      const result = run([
+        makeIssue({ status: 'Failed Preparation' }),
+        makeIssue({ status: 'failed preparation' }),
+        makeIssue({ status: 'FAILED PREPARATION' }),
+      ]);
+      expect(result['failed-preparation'].items).toHaveLength(1);
+      expect(result['failed-preparation'].items[0].number).toBe(1);
+    });
+
+    it('includes failed preparation items that have depended issue urls', () => {
+      const result = run([
+        makeIssue({
+          status: 'Failed Preparation',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+      ]);
+      expect(result['failed-preparation'].items).toHaveLength(1);
+    });
+
+    it('selects todo-by-human items for the current and legacy status with exact case', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human' }),
+        makeIssue({ status: 'Todo' }),
+        makeIssue({ status: 'todo by human' }),
+        makeIssue({ status: 'Awaiting Workspace' }),
+      ]);
+      expect(result['todo-by-human'].items.map((item) => item.number)).toEqual([
+        1, 2,
+      ]);
+    });
+
+    it('rejects a non-actionable todo-by-human issue', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human', nextActionHour: 9 }),
+      ]);
+      expect(result['todo-by-human'].items).toHaveLength(0);
+    });
+
+    it('selects todo-by-agent items for the exact status only', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by agent' }),
+        makeIssue({ status: 'todo by agent' }),
+        makeIssue({ status: 'Todo by human' }),
+        makeIssue({ status: 'Awaiting Workspace' }),
+      ]);
+      expect(result['todo-by-agent'].items.map((item) => item.number)).toEqual([
+        1,
+      ]);
+    });
+
+    it('rejects a non-actionable todo-by-agent issue', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by agent', nextActionHour: 9 }),
+      ]);
+      expect(result['todo-by-agent'].items).toHaveLength(0);
+    });
+  });
+
+  describe('workflow-blocker tab', () => {
+    it('selects items whose story matches the configured name case-insensitively', () => {
+      const result = run([
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER' }),
+        makeIssue({ story: 'regular / workflow blocker' }),
+        makeIssue({ story: 'Story Alpha' }),
+        makeIssue({ story: null }),
+      ]);
+      expect(result['workflow-blocker'].items).toHaveLength(2);
+    });
+
+    it('includes matching items regardless of their status', () => {
+      const result = run([
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER', status: 'Unread' }),
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'Awaiting Quality Check',
+        }),
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER', status: null }),
+      ]);
+      expect(result['workflow-blocker'].items).toHaveLength(3);
+    });
+
+    it('includes matching items that are not actionable', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+        }),
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          nextActionHour: 9,
+        }),
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+      ]);
+      expect(result['workflow-blocker'].items).toHaveLength(3);
+    });
+
+    it('excludes closed matching items', () => {
+      const result = run([
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER', isClosed: true }),
+        makeIssue({ story: 'regular / WORKFLOW BLOCKER', isClosed: false }),
+      ]);
+      expect(result['workflow-blocker'].items).toHaveLength(1);
+      expect(result['workflow-blocker'].items[0].number).toBe(2);
+    });
+
+    it('returns no items when the workflow blocker story name is not configured', () => {
+      const result = run(
+        [makeIssue({ story: 'regular / WORKFLOW BLOCKER' })],
+        projectWithStory,
+        null,
+      );
+      expect(result['workflow-blocker'].items).toHaveLength(0);
+    });
+  });
+
+  describe('In Tmux by agent shared exclusion', () => {
+    const allTabItems = (
+      result: ReturnType<GenerateConsoleListsUseCase['run']>,
+    ) => [
+      ...result['workflow-blocker'].items,
+      ...result.prs.items,
+      ...result['failed-preparation'].items,
+      ...result['todo-by-human'].items,
+    ];
+
+    it('shows a workflow-blocker-story In Tmux by agent issue on the workflow blocker tab and nowhere else', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by agent',
+        }),
+      ]);
+      expect(
+        result['workflow-blocker'].items.map((item) => item.status),
+      ).toEqual(['In Tmux by agent']);
+      expect(allTabItems(result)).toHaveLength(1);
+    });
+
+    it('hides a no-story In Tmux by agent issue from all tabs', () => {
+      const result = run([
+        makeIssue({
+          story: 'no story',
+          status: 'In Tmux by agent',
+        }),
+      ]);
+      expect(allTabItems(result)).toHaveLength(0);
+    });
+
+    it('hides In Tmux by agent case-insensitively from every tab other than the workflow blocker tab', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'in tmux by agent',
+        }),
+      ]);
+      expect(result['workflow-blocker'].items).toHaveLength(1);
+      expect(allTabItems(result)).toHaveLength(1);
+    });
+
+    it('keeps sibling issues with other statuses displaying as before', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by agent',
+        }),
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'In Tmux by human',
+        }),
+        makeIssue({ story: 'no story', status: 'Awaiting Workspace' }),
+      ]);
+      expect(
+        result['workflow-blocker'].items.map((item) => item.status).sort(),
+      ).toEqual(['In Tmux by agent', 'In Tmux by human']);
+      expect(
+        result.prs.items
+          .concat(result['failed-preparation'].items)
+          .concat(result['todo-by-human'].items)
+          .some((item) => item.status === 'In Tmux by agent'),
+      ).toBe(false);
+    });
+  });
+
+  describe('common item projection', () => {
+    it('projects the expected keys and never includes a body field', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Quality Check',
+          story: 'Story Alpha',
+          labels: ['bug', 'p1'],
+          isPr: true,
+        }),
+      ]);
+      const item = result.prs.items[0];
+      expect(Object.keys(item).sort()).toEqual(
+        [
+          'agent',
+          'createdAt',
+          'dependedIssueUrls',
+          'isPr',
+          'itemId',
+          'labels',
+          'nameWithOwner',
+          'nextActionDate',
+          'nextActionHour',
+          'number',
+          'projectItemId',
+          'relatedOpenPullRequestUrls',
+          'repo',
+          'status',
+          'story',
+          'title',
+          'url',
+        ].sort(),
+      );
+      expect(item).not.toHaveProperty('body');
+      expect(item.repo).toBe('demo/repo');
+      expect(item.nameWithOwner).toBe('demo/repo');
+      expect(item.projectItemId).toBe(item.itemId);
+      expect(item.isPr).toBe(true);
+      expect(item.story).toBe('Story Alpha');
+      expect(item.labels).toEqual(['bug', 'p1']);
+    });
+
+    it('emits the status, reactivation-trigger and depended issue url fields', () => {
+      const result = run([
+        makeIssue({
+          story: 'regular / WORKFLOW BLOCKER',
+          status: 'Unread',
+          nextActionDate: new Date('2026-06-20T07:00:00.000Z'),
+          nextActionHour: 9,
+          dependedIssueUrls: [
+            'https://github.com/demo/repo/issues/10',
+            'https://github.com/demo/repo/issues/11',
+          ],
+        }),
+      ]);
+      const item = result['workflow-blocker'].items[0];
+      expect(item.status).toBe('Unread');
+      expect(item.nextActionDate).toBe('2026-06-20T07:00:00.000Z');
+      expect(item.nextActionHour).toBe(9);
+      expect(item.dependedIssueUrls).toEqual([
+        'https://github.com/demo/repo/issues/10',
+        'https://github.com/demo/repo/issues/11',
+      ]);
+    });
+
+    it('emits null reactivation-trigger fields and an empty depended url array when absent', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Quality Check',
+          nextActionDate: null,
+          nextActionHour: null,
+          dependedIssueUrls: [],
+        }),
+      ]);
+      const item = result.prs.items[0];
+      expect(item.status).toBe('Awaiting Quality Check');
+      expect(item.nextActionDate).toBeNull();
+      expect(item.nextActionHour).toBeNull();
+      expect(item.dependedIssueUrls).toEqual([]);
+    });
+
+    it('maps a null story to an empty string', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Quality Check', story: null }),
+      ]);
+      expect(result.prs.items[0].story).toBe('');
+    });
+
+    it('serializes createdAt as an ISO string keeping milliseconds', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Quality Check',
+          createdAt: new Date('2026-06-13T08:18:45.000Z'),
+        }),
+      ]);
+      expect(result.prs.items[0].createdAt).toBe('2026-06-13T08:18:45.000Z');
+    });
+  });
+
+  describe('story order stable sort', () => {
+    it('sorts by story field order and places unknown stories last', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human', story: 'Story Beta' }),
+        makeIssue({ status: 'Todo by human', story: 'Unmapped Story' }),
+        makeIssue({ status: 'Todo by human', story: 'Story Alpha' }),
+        makeIssue({ status: 'Todo by human', story: 'Story Beta' }),
+      ]);
+      expect(result['todo-by-human'].items.map((i) => i.story)).toEqual([
+        'Story Alpha',
+        'Story Beta',
+        'Story Beta',
+        'Unmapped Story',
+      ]);
+    });
+
+    it('keeps original order between items sharing the same story (stable)', () => {
+      const result = run([
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Story Alpha',
+          title: 'first',
+        }),
+        makeIssue({
+          status: 'Todo by human',
+          story: 'Story Alpha',
+          title: 'second',
+        }),
+      ]);
+      expect(result['todo-by-human'].items.map((i) => i.title)).toEqual([
+        'first',
+        'second',
+      ]);
+    });
+
+    it('groups items of different unknown stories contiguously even when interleaved by original position', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human', story: 'Unknown Story A' }),
+        makeIssue({ status: 'Todo by human', story: 'Unknown Story B' }),
+        makeIssue({ status: 'Todo by human', story: 'Unknown Story A' }),
+      ]);
+      expect(result['todo-by-human'].items.map((i) => i.story)).toEqual([
+        'Unknown Story A',
+        'Unknown Story A',
+        'Unknown Story B',
+      ]);
+    });
+  });
+
+  describe('options construction', () => {
+    it('excludes awaiting quality check and done from prs status options', () => {
+      const names = run([]).prs.statusOptions.map((o) => o.name);
+      expect(names).not.toContain('Awaiting Quality Check');
+      expect(names).not.toContain('Done');
+      expect(names).toContain('Awaiting Workspace');
+    });
+
+    it('excludes the failed-preparation routing-excluded set', () => {
+      const names = run([])['failed-preparation'].statusOptions.map(
+        (o) => o.name,
+      );
+      for (const excluded of [
+        'Failed Preparation',
+        'Done',
+        'Preparation',
+        'Icebox',
+        'In Tmux by human',
+        'In Tmux by agent',
+        'Todo by agent',
+      ]) {
+        expect(names).not.toContain(excluded);
+      }
+      expect(names).toContain('Awaiting Workspace');
+    });
+
+    it('includes todo by human but excludes done from todo-by-human status options', () => {
+      const names = run([])['todo-by-human'].statusOptions.map((o) => o.name);
+      expect(names).toContain('Todo by human');
+      expect(names).not.toContain('Done');
+      expect(names).toContain('Awaiting Workspace');
+    });
+
+    it('excludes todo by agent and done from todo-by-agent status options', () => {
+      const names = run([])['todo-by-agent'].statusOptions.map((o) => o.name);
+      expect(names).not.toContain('Todo by agent');
+      expect(names).not.toContain('Done');
+      expect(names).toContain('Awaiting Workspace');
+    });
+
+    it('builds storyOrder from story field option order', () => {
+      expect(run([]).prs.storyOrder).toEqual([
+        'regular / NO STORY; SET STORY FIELD',
+        'Story Alpha',
+        'Story Beta',
+      ]);
+    });
+  });
+
+  describe('storyColors shape per tab', () => {
+    it('uses object color values for prs and failed-preparation', () => {
+      const result = run([]);
+      expect(result.prs.storyColors['Story Alpha']).toEqual({ color: 'BLUE' });
+      expect(result['failed-preparation'].storyColors['Story Alpha']).toEqual({
+        color: 'BLUE',
+      });
+    });
+  });
+
+  describe('generatedAt and pjcode passthrough', () => {
+    it('writes the provided generatedAt without milliseconds on every tab', () => {
+      const result = run([]);
+      expect(result.prs.generatedAt).toBe(generatedAt);
+      expect(result['failed-preparation'].generatedAt).toBe(generatedAt);
+      expect(generatedAt).not.toMatch(/\.\d{3}Z$/);
+    });
+
+    it('writes the configured pjcode on every tab', () => {
+      const result = run([]);
+      expect(result.prs.pjcode).toBe('demo');
+      expect(result['failed-preparation'].pjcode).toBe('demo');
+    });
+  });
+
+  describe('related open pull requests', () => {
+    const awaitingQualityCheckIssue = (): Issue =>
+      makeIssue({ status: 'Awaiting Quality Check' });
+
+    it('projects the open pull request that closes the issue', () => {
+      const issue = awaitingQualityCheckIssue();
+      const pullRequest = makeIssue({
+        status: 'Awaiting Quality Check',
+        isPr: true,
+        url: 'https://github.com/demo/repo/pull/501',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const result = run([issue, pullRequest]);
+      const projected = result.prs.items.find((item) => item.url === issue.url);
+      expect(projected?.relatedOpenPullRequestUrls).toEqual([
+        'https://github.com/demo/repo/pull/501',
+      ]);
+    });
+
+    it('ignores a closed pull request that closes the issue', () => {
+      const issue = awaitingQualityCheckIssue();
+      const pullRequest = makeIssue({
+        isPr: true,
+        isClosed: true,
+        url: 'https://github.com/demo/repo/pull/502',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const result = run([issue, pullRequest]);
+      const projected = result.prs.items.find((item) => item.url === issue.url);
+      expect(projected?.relatedOpenPullRequestUrls).toEqual([]);
+    });
+
+    it('collects the linkage from a pull request that no tab shows', () => {
+      const issue = awaitingQualityCheckIssue();
+      const pullRequest = makeIssue({
+        status: 'In Tmux by agent',
+        assignees: ['another-person'],
+        isPr: true,
+        url: 'https://github.com/demo/repo/pull/503',
+        closingIssueReferenceUrls: [issue.url],
+      });
+      const result = run([issue, pullRequest]);
+      const projected = result.prs.items.find((item) => item.url === issue.url);
+      expect(projected?.relatedOpenPullRequestUrls).toEqual([
+        'https://github.com/demo/repo/pull/503',
+      ]);
+    });
+
+    it('leaves the list empty when no open pull request closes the issue', () => {
+      const issue = awaitingQualityCheckIssue();
+      const unrelatedPullRequest = makeIssue({
+        isPr: true,
+        url: 'https://github.com/demo/repo/pull/504',
+        closingIssueReferenceUrls: ['https://github.com/demo/repo/issues/999'],
+      });
+      const result = run([issue, unrelatedPullRequest]);
+      const projected = result.prs.items.find((item) => item.url === issue.url);
+      expect(projected?.relatedOpenPullRequestUrls).toEqual([]);
+    });
+  });
+
+  describe('project without a story field', () => {
+    const projectNoStory = baseProject(null);
+
+    it('degrades story order and colors gracefully', () => {
+      const result = run([makeIssue({ story: 'no story' })], projectNoStory);
+      expect(result.prs.storyOrder).toEqual([]);
+      expect(result.prs.storyColors).toEqual({});
+    });
+  });
+
+  describe('stories tab', () => {
+    it('includes one entry per story option including GRAY', () => {
+      const result = run([]);
+      expect(result.stories.stories).toHaveLength(3);
+      expect(result.stories.stories.map((s) => s.storyName)).toEqual([
+        'regular / NO STORY; SET STORY FIELD',
+        'Story Alpha',
+        'Story Beta',
+      ]);
+    });
+
+    it('includes story options whose color is GRAY', () => {
+      const result = run([]);
+      const names = result.stories.stories.map((s) => s.storyName);
+      expect(names).toContain('regular / NO STORY; SET STORY FIELD');
+    });
+
+    it('counts open items per story from all open issues on the board', () => {
+      const result = run([
+        makeIssue({ story: 'Story Alpha', isClosed: false }),
+        makeIssue({ story: 'Story Alpha', isClosed: false }),
+        makeIssue({ story: 'Story Beta', isClosed: false }),
+        makeIssue({ story: 'Story Alpha', isClosed: true }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      const beta = result.stories.stories.find(
+        (s) => s.storyName === 'Story Beta',
+      );
+      expect(alpha?.openItemCount).toBe(2);
+      expect(beta?.openItemCount).toBe(1);
+    });
+
+    it('counts open items regardless of assignee or actionability', () => {
+      const result = run([
+        makeIssue({
+          story: 'Story Alpha',
+          assignees: ['other-person'],
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+          isClosed: false,
+        }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      expect(alpha?.openItemCount).toBe(2);
+    });
+
+    it('exposes the storyOptionId from the project field option', () => {
+      const result = run([]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      expect(alpha?.storyOptionId).toBe('s2');
+    });
+
+    it('provides the nameWithOwner of the first issue as defaultNameWithOwner', () => {
+      const result = run([makeIssue({ nameWithOwner: 'demo/repo' })]);
+      expect(result.stories.defaultNameWithOwner).toBe('demo/repo');
+    });
+
+    it('sets defaultNameWithOwner to null when no issues are present', () => {
+      const result = run([]);
+      expect(result.stories.defaultNameWithOwner).toBeNull();
+    });
+
+    it('preserves the storyOrder in the stories tab', () => {
+      const result = run([]);
+      expect(result.stories.storyOrder).toEqual([
+        'regular / NO STORY; SET STORY FIELD',
+        'Story Alpha',
+        'Story Beta',
+      ]);
+    });
+
+    it('produces an empty stories list when the project has no story field', () => {
+      const result = run([], baseProject(null));
+      expect(result.stories.stories).toEqual([]);
+    });
+
+    it('sets storyViewUrl to null for every entry when urlOfStoryView is null', () => {
+      const result = run([], projectWithStory, null, null);
+      for (const entry of result.stories.stories) {
+        expect(entry.storyViewUrl).toBeNull();
+      }
+    });
+
+    it('computes storyViewUrl with sliceBy query param for each entry when urlOfStoryView is provided', () => {
+      const result = run(
+        [],
+        projectWithStory,
+        null,
+        'https://github.com/orgs/demo/projects/1/views/1',
+      );
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      const beta = result.stories.stories.find(
+        (s) => s.storyName === 'Story Beta',
+      );
+      expect(alpha?.storyViewUrl).toBe(
+        'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20Alpha',
+      );
+      expect(beta?.storyViewUrl).toBe(
+        'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20Beta',
+      );
+    });
+
+    it('encodes special characters in the story name when building storyViewUrl', () => {
+      const specialStoryOptions: FieldOption[] = [
+        storyOption('sp1', 'Story #1 & More', 'BLUE'),
+      ];
+      const specialProject = baseProject({
+        name: 'story',
+        fieldId: 'story-field',
+        databaseId: 2,
+        stories: specialStoryOptions,
+        workflowManagementStory: { id: 'wm', name: 'workflow management' },
+      });
+      const result = run(
+        [],
+        specialProject,
+        null,
+        'https://github.com/orgs/demo/projects/1/views/1',
+      );
+      const entry = result.stories.stories[0];
+      expect(entry.storyViewUrl).toBe(
+        'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20%231%20%26%20More',
+      );
+    });
+  });
+
+  describe('agent field propagation', () => {
+    it('copies the agent value from the issue into the list item', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Quality Check', agent: 'developer' }),
+      ]);
+      expect(result.prs.items[0].agent).toBe('developer');
+    });
+
+    it('preserves null when the issue has no agent set', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Quality Check', agent: null }),
+      ]);
+      expect(result.prs.items[0].agent).toBeNull();
+    });
+
+    it('copies the agent into every tab that shows the issue', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Quality Check', agent: 'chore' }),
+      ]);
+      expect(result.prs.items[0].agent).toBe('chore');
+    });
+  });
+
+  describe('queued tab', () => {
+    it('includes Awaiting Workspace issues', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Workspace',
+          assignees: ['other-person'],
+        }),
+      ]);
+      expect(result.queued.items).toHaveLength(1);
+    });
+
+    it('includes Preparation issues', () => {
+      const result = run([
+        makeIssue({ status: 'Preparation', assignees: ['other-person'] }),
+      ]);
+      expect(result.queued.items).toHaveLength(1);
+    });
+
+    it('excludes issues with statuses other than Awaiting Workspace and Preparation', () => {
+      const result = run([
+        makeIssue({ status: 'Todo by human' }),
+        makeIssue({ status: 'In Tmux by agent' }),
+        makeIssue({ status: 'Awaiting Quality Check' }),
+        makeIssue({ status: 'Done' }),
+        makeIssue({ status: 'Failed Preparation' }),
+      ]);
+      expect(result.queued.items).toHaveLength(0);
+    });
+
+    it('excludes closed issues', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Workspace', isClosed: true }),
+        makeIssue({ status: 'Preparation', isClosed: true }),
+      ]);
+      expect(result.queued.items).toHaveLength(0);
+    });
+
+    it('excludes issues with dependedIssueUrls', () => {
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Workspace',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+        }),
+        makeIssue({
+          status: 'Preparation',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/100'],
+        }),
+      ]);
+      expect(result.queued.items).toHaveLength(0);
+    });
+
+    it('includes issues regardless of assignee', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Workspace', assignees: [] }),
+        makeIssue({
+          status: 'Preparation',
+          assignees: ['completely-other-person'],
+        }),
+        makeIssue({ status: 'Awaiting Workspace', assignees: [ASSIGNEE] }),
+      ]);
+      expect(result.queued.items).toHaveLength(3);
+    });
+
+    it('propagates agentOptions from project.agent field', () => {
+      const agentOptions: FieldOption[] = [
+        storyOption('ag1', 'developer', 'GRAY'),
+        storyOption('ag2', 'chore', 'GRAY'),
+      ];
+      const projectWithAgent: Project = {
+        ...baseProject(projectWithStory.story),
+        agent: { name: 'Agent', fieldId: 'agent-field', options: agentOptions },
+      };
+      const result = run([], projectWithAgent);
+      expect(result.queued.agentOptions).toEqual(
+        agentOptions.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty agentOptions when project.agent is null', () => {
+      const result = run([]);
+      expect(result.queued.agentOptions).toEqual([]);
+    });
+  });
+
+  describe('prs agentOptions', () => {
+    it('propagates agentOptions from project.agent field to prs tab', () => {
+      const agentOptions: FieldOption[] = [
+        storyOption('ag1', 'developer', 'GRAY'),
+        storyOption('ag2', 'pr-reviewer', 'GRAY'),
+      ];
+      const projectWithAgent: Project = {
+        ...baseProject(projectWithStory.story),
+        agent: { name: 'Agent', fieldId: 'agent-field', options: agentOptions },
+      };
+      const result = run([], projectWithAgent);
+      expect(result.prs.agentOptions).toEqual(
+        agentOptions.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty agentOptions for prs tab when project.agent is null', () => {
+      const result = run([]);
+      expect(result.prs.agentOptions).toEqual([]);
+    });
+  });
 });
