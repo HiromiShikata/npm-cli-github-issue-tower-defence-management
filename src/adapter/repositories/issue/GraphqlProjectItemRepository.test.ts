@@ -910,6 +910,9 @@ describe('GraphqlProjectItemRepository', () => {
         expect(result[0].closingIssueReferenceUrls).toEqual([
           'https://github.com/owner/repo/issues/42',
         ]);
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('skipping null closingIssuesReferences node'),
+        );
       } finally {
         consoleSpy.mockRestore();
       }
@@ -2192,6 +2195,9 @@ describe('GraphqlProjectItemRepository', () => {
         localStorageRepository,
         'dummy-token',
       );
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
 
       mockPost.mockReturnValueOnce(
         mockJsonResponse({
@@ -2234,14 +2240,21 @@ describe('GraphqlProjectItemRepository', () => {
         }),
       );
 
-      const result = await repository.fetchProjectItemByUrl(
-        'https://github.com/owner/repo/pull/42',
-      );
+      try {
+        const result = await repository.fetchProjectItemByUrl(
+          'https://github.com/owner/repo/pull/42',
+        );
 
-      expect(result).not.toBeNull();
-      expect(result?.closingIssueReferenceUrls).toEqual([
-        'https://github.com/owner/repo/issues/7',
-      ]);
+        expect(result).not.toBeNull();
+        expect(result?.closingIssueReferenceUrls).toEqual([
+          'https://github.com/owner/repo/issues/7',
+        ]);
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('skipping null closingIssuesReferences node'),
+        );
+      } finally {
+        consoleSpy.mockRestore();
+      }
     });
   });
 });

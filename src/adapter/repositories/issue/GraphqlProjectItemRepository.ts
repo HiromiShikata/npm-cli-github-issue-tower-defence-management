@@ -671,7 +671,13 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
       author: item.content.author?.login || '',
       closingIssueReferenceUrls:
         item.content.closingIssuesReferences?.nodes
-          ?.filter((node): node is { url: string } => node !== null)
+          ?.filter((node): node is { url: string } => {
+            if (node !== null) return true;
+            console.warn(
+              `GraphqlProjectItemRepository: skipping null closingIssuesReferences node from partial FORBIDDEN access. itemUrl: ${item.content?.url ?? 'unknown'}`,
+            );
+            return false;
+          })
           .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       isRepoArchived: item.content.repository.isArchived ?? false,
@@ -1341,7 +1347,13 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       author: content.author?.login || '',
       closingIssueReferenceUrls:
         content.closingIssuesReferences?.nodes
-          ?.filter((node): node is { url: string } => node !== null)
+          ?.filter((node): node is { url: string } => {
+            if (node !== null) return true;
+            console.warn(
+              `GraphqlProjectItemRepository: skipping null closingIssuesReferences node from partial FORBIDDEN access. itemUrl: ${content.url}`,
+            );
+            return false;
+          })
           .map((node) => node.url)
           .filter((url) => url.length > 0) || [],
       isRepoArchived: content.repository.isArchived ?? false,
