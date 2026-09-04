@@ -1,3 +1,10 @@
+## [2.46.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.9...v2.46.10) (2026-09-04)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** skip findRelatedOpenPRs when board cache shows no related open PRs ([#1980](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1980)) ([019ca4b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/019ca4b3976f0a4c440f7915900b4661a7c56a49))
+
 ## [2.46.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.8...v2.46.9) (2026-09-04)
 
 
