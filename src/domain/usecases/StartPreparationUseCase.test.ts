@@ -7410,8 +7410,7 @@ describe('StartPreparationUseCase', () => {
         assignees: ['manager-user'],
       }),
     );
-    // One open PR per candidate so the board cache allows findRelatedOpenPRs calls.
-    const prIssues = Array.from({ length: 5 }, (_, i) =>
+    const prIssuesEnablingBoardCacheGuard = Array.from({ length: 5 }, (_, i) =>
       createMockIssue({
         number: i + 1000,
         url: `https://github.com/user/repo/pull/${i + 1000}`,
@@ -7425,7 +7424,10 @@ describe('StartPreparationUseCase', () => {
     );
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
-      createMockStoryObjectMap([...candidates, ...prIssues]),
+      createMockStoryObjectMap([
+        ...candidates,
+        ...prIssuesEnablingBoardCacheGuard,
+      ]),
     );
     mockIssueRepository.getAllOpened.mockResolvedValue([]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -8064,6 +8066,82 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
 
     expect(findRelatedOpenPRs).not.toHaveBeenCalled();
     expect(mockLocalCommandRunner.runCommand).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call findRelatedOpenPRs when the only board PR targeting the candidate is closed', async () => {
+    const mockProject = createMockProject();
+    const awaitingIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Awaiting Workspace',
+      author: 'testuser',
+    });
+    const closedPrIssue = createMockIssue({
+      url: 'https://github.com/user/repo/pull/999',
+      isPr: true,
+      isClosed: true,
+      closingIssueReferenceUrls: ['https://github.com/user/repo/issues/1'],
+    });
+    const mockProjectRepository = {
+      getByUrl: jest.fn().mockResolvedValue(mockProject),
+      createField: jest.fn().mockResolvedValue(undefined),
+      updateAgentList: jest.fn().mockResolvedValue([]),
+    };
+    const findRelatedOpenPRs = jest.fn().mockResolvedValue([]);
+    const mockIssueRepository = {
+      getStoryObjectMap: jest
+        .fn()
+        .mockResolvedValue(
+          createMockStoryObjectMap([awaitingIssue, closedPrIssue]),
+        ),
+      getAllOpened: jest.fn().mockResolvedValue([]),
+      updateStatus: jest.fn().mockResolvedValue(undefined),
+      findRelatedOpenPRs,
+      getOpenPullRequest: jest.fn().mockResolvedValue(null),
+      closePullRequest: jest.fn().mockResolvedValue(undefined),
+      deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
+      createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      setIssueAgentField: jest.fn().mockResolvedValue(undefined),
+      removeLabel: jest.fn().mockResolvedValue(undefined),
+    };
+    const mockLocalCommandRunner = {
+      runCommand: jest
+        .fn()
+        .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
+      spawnInteractive: jest.fn(),
+    };
+    const useCase = new StartPreparationUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockLocalCommandRunner,
+      {
+        ensureObservable: jest.fn().mockResolvedValue(undefined),
+        getAvailableTokenUsages: jest.fn().mockResolvedValue([]),
+        getTokenInFlightCounts: jest.fn().mockResolvedValue({}),
+        proxyBaseUrl: jest.fn().mockReturnValue('http://127.0.0.1:8787'),
+      },
+      {
+        listSpawns: jest.fn().mockReturnValue([]),
+        listRunningIssueUrls: jest.fn().mockReturnValue([]),
+      },
+      { getRemainingRequestCount: jest.fn().mockResolvedValue(null) },
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(findRelatedOpenPRs).not.toHaveBeenCalled();
   });
 });
 
