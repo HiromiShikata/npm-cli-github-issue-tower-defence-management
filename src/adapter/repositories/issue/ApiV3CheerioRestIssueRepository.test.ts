@@ -3574,7 +3574,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ? input
             : input instanceof URL
               ? input.toString()
-              : (input).url;
+              : input.url;
         return url.includes('/check-runs');
       });
       expect(checkRunsCalls).toHaveLength(1);
