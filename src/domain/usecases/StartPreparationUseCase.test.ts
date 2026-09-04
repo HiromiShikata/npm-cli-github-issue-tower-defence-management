@@ -467,7 +467,6 @@ describe('StartPreparationUseCase', () => {
         'agent1',
       );
     });
-
   });
 
   it('keeps an issue out of Preparation when the aw command exits non-zero', async () => {
