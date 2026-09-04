@@ -1050,7 +1050,10 @@ export const handleDeleteStory = async (
       try {
         await issueRepository.closeIssueByUrl(task.url, 'not_planned');
       } catch (e) {
-        console.error(`Failed to close task after story deletion: ${task.url}`, e);
+        console.error(
+          `Failed to close task after story deletion: ${task.url}`,
+          e,
+        );
       }
     }
   }
