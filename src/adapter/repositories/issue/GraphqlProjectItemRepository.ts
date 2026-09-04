@@ -487,7 +487,9 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                     author: { login: string } | null;
                     labels: { nodes: { name: string }[] };
                     assignees: { nodes: { login: string }[] };
-                    closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
+                    closingIssuesReferences?: {
+                      nodes: ({ url: string } | null)[];
+                    };
                   } | null;
                 }[];
               };
