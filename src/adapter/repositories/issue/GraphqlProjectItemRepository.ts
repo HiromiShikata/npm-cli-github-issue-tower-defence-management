@@ -51,7 +51,7 @@ type ProjectV2ItemContentNode = {
   author: { login: string } | null;
   labels: { nodes: { name: string }[] };
   assignees: { nodes: { login: string }[] };
-  closingIssuesReferences?: { nodes: { url: string }[] };
+  closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
   stateReason?: string | null;
 };
 type ProjectV2ItemNode = {
@@ -437,7 +437,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
               author: { login: string } | null;
               labels: { nodes: { name: string }[] };
               assignees: { nodes: { login: string }[] };
-              closingIssuesReferences?: { nodes: { url: string }[] };
+              closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
             } | null;
           }[];
         };
@@ -487,7 +487,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
                     author: { login: string } | null;
                     labels: { nodes: { name: string }[] };
                     assignees: { nodes: { login: string }[] };
-                    closingIssuesReferences?: { nodes: { url: string }[] };
+                    closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
                   } | null;
                 }[];
               };
@@ -558,7 +558,7 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
               author: { login: string } | null;
               labels: { nodes: { name: string }[] };
               assignees: { nodes: { login: string }[] };
-              closingIssuesReferences?: { nodes: { url: string }[] };
+              closingIssuesReferences?: { nodes: ({ url: string } | null)[] };
             } | null;
           }[];
         };

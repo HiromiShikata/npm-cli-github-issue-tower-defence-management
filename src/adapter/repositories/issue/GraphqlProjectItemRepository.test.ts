@@ -832,6 +832,89 @@ describe('GraphqlProjectItemRepository', () => {
       ).rejects.toThrow('GitHub GraphQL errors:');
     });
 
+    it('skips null entries in closingIssuesReferences nodes from nested FORBIDDEN access', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 1,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [
+                  {
+                    id: 'item-1',
+                    fieldValues: { nodes: [] },
+                    content: {
+                      repository: {
+                        nameWithOwner: 'owner/repo',
+                        isArchived: false,
+                      },
+                      number: 1,
+                      title: 'Issue with partial closing refs',
+                      state: 'OPEN',
+                      url: 'https://github.com/owner/repo/issues/1',
+                      body: 'body',
+                      createdAt: '2024-01-01T00:00:00Z',
+                      updatedAt: '2024-01-01T00:00:00Z',
+                      author: { login: 'author' },
+                      labels: { nodes: [] },
+                      assignees: { nodes: [] },
+                      closingIssuesReferences: {
+                        nodes: [
+                          null,
+                          { url: 'https://github.com/owner/repo/issues/42' },
+                        ],
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: [
+                'node',
+                'items',
+                'nodes',
+                0,
+                'content',
+                'closingIssuesReferences',
+                'nodes',
+                0,
+              ],
+              message:
+                '`meta-site` forbids access via a personal access token (classic).',
+            },
+          ],
+        }),
+      );
+
+      try {
+        const result = await repository.fetchProjectItems('test-project-id');
+
+        expect(result).toHaveLength(1);
+        expect(result[0].closingIssueReferenceUrls).toEqual([
+          'https://github.com/owner/repo/issues/42',
+        ]);
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
+
     it('should sleep the 5000ms blanket delay between pages', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
