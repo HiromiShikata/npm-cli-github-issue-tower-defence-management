@@ -1,3 +1,10 @@
+## [2.46.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.11...v2.46.12) (2026-09-05)
+
+
+### Bug Fixes
+
+* **dispatch:** prevent silent redispatch counter from resetting after triager re-routing ([#1984](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1984)) ([2775755](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2775755524567dcd9ac1f93e151a772f59726c79)), closes [HiromiShikata/umino-corporait-operation#31340](https://github.com/HiromiShikata/umino-corporait-operation/issues/31340)
+
 ## [2.46.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.10...v2.46.11) (2026-09-05)
 
 
