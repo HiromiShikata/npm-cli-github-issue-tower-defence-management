@@ -12,7 +12,7 @@ export const CONSOLE_LIST_TAB_NAMES: ConsoleTabName[] = [
 
 const UNKNOWN_STORY_SORT_INDEX = 999999;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 export const sortByStoryOrder = (

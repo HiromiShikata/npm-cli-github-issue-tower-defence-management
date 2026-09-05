@@ -13,6 +13,7 @@ import {
   readDoneProjectItemIds,
   recordDoneProjectItemId,
 } from '../console/consoleDoneStore';
+import { countCloseEvents } from '../console/consoleCloseEventStore';
 import {
   formatConsoleGeneratedAt,
   writeConsoleLists,
@@ -320,6 +321,181 @@ describe('writeConsoleLists', () => {
 
     regenerateTodoByHuman();
     expect(todoByHumanServedItemCount()).toBe(1);
+  });
+
+  describe('close event recording for automatically closed items', () => {
+    const nowMs = 1_700_000_000_000;
+
+    it('records one close event per item that was listed open in the previous write but is now closed', () => {
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
+          makeIssue({
+            itemId: 'item-2',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:33Z',
+        nowMs,
+      });
+
+      expect(countCloseEvents(outDir, 'demo', nowMs + 60_000)).toEqual({
+        h1: 0,
+        h3: 0,
+        h5: 0,
+      });
+
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+          makeIssue({
+            itemId: 'item-2',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:34Z',
+        nowMs: nowMs + 60_000,
+      });
+
+      expect(countCloseEvents(outDir, 'demo', nowMs + 60_000)).toEqual({
+        h1: 2,
+        h3: 2,
+        h5: 2,
+      });
+    });
+
+    it('does not double-count items that remain closed across two consecutive writes', () => {
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:33Z',
+        nowMs,
+      });
+
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:34Z',
+        nowMs: nowMs + 60_000,
+      });
+
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:35Z',
+        nowMs: nowMs + 120_000,
+      });
+
+      expect(countCloseEvents(outDir, 'demo', nowMs + 120_000).h1).toBe(1);
+    });
+
+    it('does not record a close event when an item is already absent from the previous tab list', () => {
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:33Z',
+        nowMs,
+      });
+
+      expect(countCloseEvents(outDir, 'demo', nowMs).h1).toBe(0);
+    });
+
+    it('counts an item appearing in multiple tabs only once', () => {
+      const projectWithBlocker = {
+        ...project,
+      };
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project: projectWithBlocker,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            story: 'regular / WORKFLOW BLOCKER',
+            isClosed: false,
+          }),
+        ],
+        workflowBlockerStoryName: 'regular / WORKFLOW BLOCKER',
+        generatedAt: '2026-06-14T07:22:33Z',
+        nowMs,
+      });
+
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project: projectWithBlocker,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            story: 'regular / WORKFLOW BLOCKER',
+            isClosed: true,
+          }),
+        ],
+        workflowBlockerStoryName: 'regular / WORKFLOW BLOCKER',
+        generatedAt: '2026-06-14T07:22:34Z',
+        nowMs: nowMs + 60_000,
+      });
+
+      expect(countCloseEvents(outDir, 'demo', nowMs + 60_000).h1).toBe(1);
+    });
   });
 });
 
