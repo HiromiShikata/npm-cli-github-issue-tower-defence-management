@@ -1,5 +1,8 @@
 import { BaseGitHubRepository } from './BaseGitHubRepository';
-import { postGithubGraphqlJson } from './githubGraphqlClient';
+import {
+  isMutationOperation,
+  postGithubGraphqlJson,
+} from './githubGraphqlClient';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { ProjectIssuesCacheRepository } from './ProjectIssuesCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
@@ -54,8 +57,9 @@ export class GraphqlProjectRepository
       LocalStorageCacheRepository,
       'getLatest' | 'set' | 'getSingle' | 'setSingle'
     >,
+    readGhTokens: string[] = [],
   ) {
-    super(localStorageRepository, ghToken);
+    super(localStorageRepository, ghToken, readGhTokens);
     this.projectCache = projectCache;
     this.projectIssuesCacheRepository =
       projectCache === undefined
@@ -64,6 +68,7 @@ export class GraphqlProjectRepository
     this.restProjectRepository = new RestProjectRepository(
       localStorageRepository,
       ghToken,
+      readGhTokens,
     );
   }
 
@@ -273,7 +278,9 @@ export class GraphqlProjectRepository
         } | null;
         errors?: { message: string }[];
       }>({
-        ghToken: this.ghToken,
+        ghToken: isMutationOperation(graphqlQuery.query)
+          ? this.ghToken
+          : this.selectReadToken(),
         query: graphqlQuery.query,
         variables: graphqlQuery.variables,
       });
@@ -430,7 +437,9 @@ export class GraphqlProjectRepository
       };
       errors?: { message: string }[];
     }>({
-      ghToken: this.ghToken,
+      ghToken: isMutationOperation(query)
+        ? this.ghToken
+        : this.selectReadToken(),
       query,
       variables,
     });
@@ -520,7 +529,9 @@ export class GraphqlProjectRepository
       };
       errors?: { message: string }[];
     }>({
-      ghToken: this.ghToken,
+      ghToken: isMutationOperation(mutation)
+        ? this.ghToken
+        : this.selectReadToken(),
       query: mutation,
       variables: {
         projectId: project.id,
@@ -592,7 +603,9 @@ export class GraphqlProjectRepository
         };
       };
     }>({
-      ghToken: this.ghToken,
+      ghToken: isMutationOperation(mutation)
+        ? this.ghToken
+        : this.selectReadToken(),
       query: mutation,
       variables,
     });
@@ -648,7 +661,9 @@ export class GraphqlProjectRepository
         };
       };
     }>({
-      ghToken: this.ghToken,
+      ghToken: isMutationOperation(mutation)
+        ? this.ghToken
+        : this.selectReadToken(),
       query: mutation,
       variables,
     });
@@ -695,7 +710,9 @@ export class GraphqlProjectRepository
         };
       };
     }>({
-      ghToken: this.ghToken,
+      ghToken: isMutationOperation(mutation)
+        ? this.ghToken
+        : this.selectReadToken(),
       query: mutation,
       variables,
     });

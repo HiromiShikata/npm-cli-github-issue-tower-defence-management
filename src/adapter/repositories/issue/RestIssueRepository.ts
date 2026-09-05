@@ -86,7 +86,7 @@ export class RestIssueRepository
         `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
         {
           headers: {
-            Authorization: `token ${this.ghToken}`,
+            Authorization: `token ${this.selectReadToken()}`,
             Accept: 'application/vnd.github.v3+json',
           },
         },
@@ -185,7 +185,7 @@ export class RestIssueRepository
         `https://api.github.com/repos/${org}/${repo}/labels/${encodeURIComponent(labelName)}`,
         {
           headers: {
-            Authorization: `token ${this.ghToken}`,
+            Authorization: `token ${this.selectReadToken()}`,
             Accept: 'application/vnd.github.v3+json',
           },
         },
@@ -231,7 +231,7 @@ export class RestIssueRepository
             page,
             advanced_search: 'true',
           },
-          headers: { Authorization: `token ${this.ghToken}` },
+          headers: { Authorization: `token ${this.selectReadToken()}` },
         })
         .json<SearchIssuesResponse>();
       for (const item of response.items) {

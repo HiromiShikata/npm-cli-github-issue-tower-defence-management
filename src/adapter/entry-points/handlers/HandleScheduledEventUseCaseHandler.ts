@@ -48,7 +48,7 @@ import { ClearPastNextActionDateHourUseCase } from '../../../domain/usecases/Cle
 import { AnalyzeProblemByIssueUseCase } from '../../../domain/usecases/AnalyzeProblemByIssueUseCase';
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
-import { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
+
 import { AnalyzeStoriesUseCase } from '../../../domain/usecases/AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from '../../../domain/usecases/SetDependedIssueUrlForOpenTaskPRsUseCase';
@@ -391,9 +391,10 @@ export class HandleScheduledEventUseCaseHandler {
       localStorageRepository,
       cachePath,
     );
-    const githubRepositoryParams: ConstructorParameters<
-      typeof BaseGitHubRepository
-    > = [localStorageRepository, input.credentials.bot.github.token];
+    const githubRepositoryParams: readonly [LocalStorageRepository, string] = [
+      localStorageRepository,
+      input.credentials.bot.github.token,
+    ];
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,
