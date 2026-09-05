@@ -1844,6 +1844,31 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
       expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     });
+
+    it('returns 200 with commentPosted false and logs the error when upstream comment creation fails', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      issueRepository.createCommentByUrl.mockRejectedValue(
+        new Error('HTTP 403 forbidden'),
+      );
+      const response = await handleComment(context, {
+        pjcode: 'acme',
+        url: 'https://github.com/o/r/issues/1',
+        body: 'ok',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true, commentPosted: false });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('pjcode=acme'),
+        expect.any(Error),
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('url=https://github.com/o/r/issues/1'),
+        expect.any(Error),
+      );
+      consoleErrorSpy.mockRestore();
+    });
   });
 
   describe('handleReviewComment', () => {

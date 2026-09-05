@@ -706,20 +706,32 @@ export const handleComment = async (
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
   }
-  const posted = await context
-    .resolveIssueRepository(url)
-    .createCommentByUrl(url, commentBody);
-  return {
-    statusCode: 200,
-    body: {
-      ok: true,
-      comment: {
-        author: posted.author,
-        body: posted.body,
-        createdAt: posted.createdAt.toISOString(),
+  const pjcode = isNonEmptyString(body.pjcode) ? body.pjcode : 'unknown';
+  try {
+    const posted = await context
+      .resolveIssueRepository(url)
+      .createCommentByUrl(url, commentBody);
+    return {
+      statusCode: 200,
+      body: {
+        ok: true,
+        comment: {
+          author: posted.author,
+          body: posted.body,
+          createdAt: posted.createdAt.toISOString(),
+        },
       },
-    },
-  };
+    };
+  } catch (error) {
+    console.error(
+      `[handleComment] pjcode=${pjcode} url=${url} upstream comment post failed:`,
+      error,
+    );
+    return {
+      statusCode: 200,
+      body: { ok: true, commentPosted: false },
+    };
+  }
 };
 
 export const handleAttachmentUpload = async (
