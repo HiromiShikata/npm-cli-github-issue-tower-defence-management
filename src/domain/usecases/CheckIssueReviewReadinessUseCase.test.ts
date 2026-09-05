@@ -28,7 +28,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   createdAt: new Date('2000-01-01T00:00:00Z'),
   author: 'test-user',
   closingIssueReferenceUrls: [],
-  agent: null,
+  agent: 'developer',
   stateReason: null,
   ...overrides,
 });

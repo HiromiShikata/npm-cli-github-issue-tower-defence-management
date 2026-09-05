@@ -51,6 +51,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
         isPr: false,
+        agent: 'developer',
       });
 
       expect(result.rejections).toHaveLength(0);
@@ -66,6 +67,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
         isPr: false,
+        agent: 'developer',
       });
 
       expect(result.rejections).toHaveLength(1);
@@ -103,6 +105,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
         isPr: false,
+        agent: 'developer',
       });
 
       const rejectionTypes = result.rejections.map((r) => r.type);
@@ -122,6 +125,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/pull/10',
         labels: [],
         isPr: true,
+        agent: 'developer',
       });
 
       expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
@@ -393,6 +397,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
         isPr: false,
+        agent: 'developer',
       });
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
@@ -426,6 +431,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['story'],
           isPr: false,
+          agent: 'developer',
         },
         ['bug'],
       );
@@ -448,6 +454,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/7'] },
@@ -469,6 +476,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: [] },
@@ -489,6 +497,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/9'] },
@@ -512,6 +521,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           {
@@ -537,6 +547,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           {
@@ -566,6 +577,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/3'] },
@@ -585,6 +597,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: [],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
@@ -603,6 +616,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/pull/10',
             labels: [],
             isPr: true,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/999'] },
@@ -656,6 +670,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/pull/10',
           labels: [],
           isPr: true,
+          agent: 'developer',
         });
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
@@ -684,6 +699,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           {
@@ -714,6 +730,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/8'] },
@@ -739,6 +756,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           {
@@ -763,6 +781,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/pull/10',
           labels: [],
           isPr: true,
+          agent: 'developer',
         });
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
@@ -993,6 +1012,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(0);
@@ -1014,6 +1034,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(1);
@@ -1043,6 +1064,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(1);
@@ -1066,6 +1088,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:foo'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(1);
@@ -1089,6 +1112,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:foo'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(0);
@@ -1107,6 +1131,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(0);
@@ -1125,6 +1150,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:/src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(0);
