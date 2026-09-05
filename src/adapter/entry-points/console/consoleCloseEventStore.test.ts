@@ -1,7 +1,11 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { appendCloseEvent, countCloseEvents } from './consoleCloseEventStore';
+import {
+  appendCloseEvent,
+  appendCloseEventCount,
+  countCloseEvents,
+} from './consoleCloseEventStore';
 
 describe('consoleCloseEventStore', () => {
   let baseDir: string;
@@ -111,6 +115,44 @@ describe('consoleCloseEventStore', () => {
       appendCloseEvent(baseDir, 'acme', nowMs - 10 * 60 * 1000);
       appendCloseEvent(baseDir, 'acme', nowMs - 5 * 60 * 1000);
       expect(countCloseEvents(baseDir, 'acme', nowMs).h1).toBe(3);
+    });
+  });
+
+  describe('appendCloseEventCount', () => {
+    it('adds the specified number of events at nowMs', () => {
+      const nowMs = 1_000_000_000_000;
+      appendCloseEventCount(baseDir, 'acme', 3, nowMs);
+      expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({
+        h1: 3,
+        h3: 3,
+        h5: 3,
+      });
+    });
+
+    it('is a no-op when count is zero', () => {
+      const nowMs = 1_000_000_000_000;
+      appendCloseEventCount(baseDir, 'acme', 0, nowMs);
+      expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({
+        h1: 0,
+        h3: 0,
+        h5: 0,
+      });
+    });
+
+    it('prunes events older than 5 hours before adding new ones', () => {
+      const baseMs = 1_000_000_000_000;
+      const fiveHoursMs = 5 * 60 * 60 * 1000;
+      appendCloseEvent(baseDir, 'acme', baseMs - fiveHoursMs - 1);
+      appendCloseEventCount(baseDir, 'acme', 2, baseMs);
+      expect(countCloseEvents(baseDir, 'acme', baseMs).h5).toBe(2);
+    });
+
+    it('accumulates with existing events', () => {
+      const nowMs = 1_000_000_000_000;
+      appendCloseEvent(baseDir, 'acme', nowMs - 90 * 60 * 1000);
+      appendCloseEventCount(baseDir, 'acme', 2, nowMs);
+      expect(countCloseEvents(baseDir, 'acme', nowMs).h1).toBe(2);
+      expect(countCloseEvents(baseDir, 'acme', nowMs).h3).toBe(3);
     });
   });
 });

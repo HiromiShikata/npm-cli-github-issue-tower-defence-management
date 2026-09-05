@@ -57,6 +57,22 @@ export const appendCloseEvent = (
   writeCloseEventTimestamps(consoleDataOutputDir, pjcode, [...pruned, nowMs]);
 };
 
+export const appendCloseEventCount = (
+  consoleDataOutputDir: string,
+  pjcode: string,
+  count: number,
+  nowMs: number,
+): void => {
+  if (count <= 0) return;
+  const existing = readCloseEventTimestamps(consoleDataOutputDir, pjcode);
+  const pruned = existing.filter((t) => nowMs - t <= RETENTION_MS);
+  const added = Array.from({ length: count }, () => nowMs);
+  writeCloseEventTimestamps(consoleDataOutputDir, pjcode, [
+    ...pruned,
+    ...added,
+  ]);
+};
+
 export const countCloseEvents = (
   consoleDataOutputDir: string,
   pjcode: string,
