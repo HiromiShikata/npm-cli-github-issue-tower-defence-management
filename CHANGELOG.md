@@ -1,3 +1,10 @@
+## [2.53.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.53.0...v2.53.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** add missing CSS styles for ConsoleOfflinePendingActionsPanel ([#2005](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2005)) ([3747feb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3747febdf4718b3fca21c36dc7764fe26b2fc5ab)), closes [HiromiShikata/umino-corporait-operation#31377](https://github.com/HiromiShikata/umino-corporait-operation/issues/31377)
+
 # [2.53.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.52.0...v2.53.0) (2026-09-05)
 
 
