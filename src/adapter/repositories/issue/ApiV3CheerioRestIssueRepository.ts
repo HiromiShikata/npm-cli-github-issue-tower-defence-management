@@ -989,36 +989,59 @@ export class ApiV3CheerioRestIssueRepository
     url: string,
   ): Promise<Issue | null> => {
     const baseDir = localStorageCacheBaseDirectory();
-    const entries = this.localStorageRepository.listFiles(baseDir);
     const nowMs = (await this.dateRepository.now()).getTime();
-    for (const entry of entries) {
-      if (!entry.startsWith('allIssues-')) {
-        continue;
-      }
-      const raw = await this.localStorageCacheRepository.getSingle(entry);
-      if (
-        typeof raw !== 'object' ||
-        raw === null ||
-        !('lastFetchedAt' in raw) ||
-        typeof raw.lastFetchedAt !== 'string' ||
-        !('issues' in raw) ||
-        !Array.isArray(raw.issues)
-      ) {
-        continue;
-      }
-      if (
-        nowMs - new Date(raw.lastFetchedAt).getTime() >=
-        FULL_ISSUE_FETCH_INTERVAL_MS
-      ) {
-        continue;
-      }
-      const issues = this.restoreIssuesFromCache(raw.issues);
-      if (!issues) {
-        continue;
-      }
-      const match = issues.find((issue) => issue.url === url);
-      if (match) {
-        return match;
+    for (const projectDir of this.localStorageRepository.listFiles(baseDir)) {
+      const projectDirPath = `${baseDir}/${projectDir}`;
+      for (const entry of this.localStorageRepository.listFiles(
+        projectDirPath,
+      )) {
+        if (!entry.startsWith('allIssues-')) {
+          continue;
+        }
+        const cacheDirPath = `${projectDirPath}/${entry}`;
+        if (
+          !this.localStorageRepository
+            .listFiles(cacheDirPath)
+            .includes('latest.json')
+        ) {
+          continue;
+        }
+        let raw: unknown;
+        try {
+          const valueStr = this.localStorageRepository.read(
+            `${cacheDirPath}/latest.json`,
+          );
+          if (!valueStr) {
+            continue;
+          }
+          raw = JSON.parse(valueStr);
+        } catch {
+          continue;
+        }
+        if (
+          typeof raw !== 'object' ||
+          raw === null ||
+          !('lastFetchedAt' in raw) ||
+          typeof raw.lastFetchedAt !== 'string' ||
+          !('issues' in raw) ||
+          !Array.isArray(raw.issues)
+        ) {
+          continue;
+        }
+        if (
+          nowMs - new Date(raw.lastFetchedAt).getTime() >=
+          FULL_ISSUE_FETCH_INTERVAL_MS
+        ) {
+          continue;
+        }
+        const issues = this.restoreIssuesFromCache(raw.issues);
+        if (!issues) {
+          continue;
+        }
+        const match = issues.find((issue) => issue.url === url);
+        if (match) {
+          return match;
+        }
       }
     }
     return null;
