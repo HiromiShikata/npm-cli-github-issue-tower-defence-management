@@ -1171,5 +1171,5 @@ test('offline pending actions panel renders with correct styling when a network 
   await expect(offlinePanel).toContainText('1 action held');
   const offlineItem = offlinePanel.locator('.console-offline-panel-item-green');
   await expect(offlineItem).toBeVisible();
-  await expect(offlineItem).toHaveCSS('border-left-style', 'solid');
+  await expect(offlineItem).toHaveCSS('border-left-color', 'rgb(46, 160, 67)');
 });
