@@ -4115,6 +4115,42 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).toEqual([]);
     });
 
+    it('logs a warning per null timeline node and returns an empty array when all nodes are null', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              repository: {
+                issue: {
+                  timelineItems: {
+                    pageInfo: { endCursor: null, hasNextPage: false },
+                    nodes: [null, null],
+                  },
+                },
+              },
+            },
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.findRelatedOpenPRs(
+        'https://github.com/HiromiShikata/test-repository/issues/11194',
+      );
+
+      expect(result).toEqual([]);
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(2);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'https://github.com/HiromiShikata/test-repository/issues/11194',
+        ),
+      );
+    });
+
     const buildTwoPrTimelineResponse = () => ({
       data: {
         repository: {
