@@ -4,6 +4,7 @@ import {
   resolveNextStepAgentDispatchRepetition,
   SILENT_CRASH_ESCALATION_PHRASE,
   REPORTING_LOOP_ESCALATION_PHRASE,
+  DISPATCH_LOOP_ESCALATION_PHRASE,
 } from './resolveNextStepAgentDispatchRepetition';
 
 const trustAll = (): boolean => true;
@@ -62,6 +63,16 @@ const bareLegacyRepetitionComment = (
 ): TestComment => ({
   author,
   content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}`,
+});
+
+const dispatchLoopEscalationComment = (
+  nextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+
+This agent has been dispatched 3 times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
 });
 
 const humanComment = (author = 'bot'): TestComment => ({
@@ -547,7 +558,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           report('chore'),
           report('chore'),
           report('chore'),
-          escalationComment('chore'),
+          dispatchLoopEscalationComment('chore'),
           report('chore'),
         ],
         isTrustedAuthor: trustAll,
