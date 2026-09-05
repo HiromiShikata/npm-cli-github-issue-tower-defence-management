@@ -320,8 +320,8 @@ describe('ConsoleOperationMenu', () => {
     expect(queryByText('Delete Story')).toBeNull();
   });
 
-  it('renders story and agent select dropdowns when non-empty options are provided', () => {
-    const { getByRole } = render(
+  it('hides story and agent select dropdowns by default', () => {
+    const { queryByRole } = render(
       <ConsoleOperationMenu
         tab="todo-by-human"
         item={issueItem}
@@ -335,7 +335,65 @@ describe('ConsoleOperationMenu', () => {
         handlers={handlers}
       />,
     );
+    expect(queryByRole('combobox', { name: 'Set story' })).toBeNull();
+    expect(queryByRole('combobox', { name: 'Set agent' })).toBeNull();
+  });
+
+  it('renders story and agent select dropdowns when non-empty options are provided', () => {
+    const { getByRole, getByTitle, queryByRole } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-human"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        currentStoryName={null}
+        agentOptions={consoleAgentOptionsFixture}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+    expect(queryByRole('combobox', { name: 'Set story' })).toBeNull();
+    expect(queryByRole('combobox', { name: 'Set agent' })).toBeNull();
+    fireEvent.click(getByTitle('Change agent or story'));
     expect(getByRole('combobox', { name: 'Set story' })).toBeInTheDocument();
     expect(getByRole('combobox', { name: 'Set agent' })).toBeInTheDocument();
+  });
+
+  it('shows field selector toggle button when agent or story options are provided', () => {
+    const { getByTitle } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-human"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+    expect(getByTitle('Change agent or story')).toBeInTheDocument();
+  });
+
+  it('does not show field selector toggle button when both agent and story options are empty', () => {
+    const { queryByTitle } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-human"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+    expect(queryByTitle('Change agent or story')).toBeNull();
   });
 });

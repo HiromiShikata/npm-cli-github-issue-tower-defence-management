@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   type ConsoleOperationHandlers,
   isManualTriageTab,
@@ -42,6 +43,7 @@ export const ConsoleOperationMenu = ({
   handlers,
   storyNameForDeletion,
 }: ConsoleOperationBarProps) => {
+  const [showFieldSelectors, setShowFieldSelectors] = useState(false);
   return (
     <div className="console-operation-bar">
       {hasPullRequest && (
@@ -59,18 +61,34 @@ export const ConsoleOperationMenu = ({
         onSetStatus={handlers.onSetStatus}
         onSetInTmuxByHuman={handlers.onSetInTmuxByHuman}
       />
-      <ConsoleStorySelectActions
-        storyOptions={storyOptions}
-        currentStoryName={currentStoryName}
-        onSetStory={handlers.onSetStory}
-      />
-      <ConsoleAgentSelectActions
-        agentOptions={agentOptions}
-        currentAgentName={currentAgentName}
-        onSetAgent={handlers.onSetAgent}
-      />
+      {showFieldSelectors && (
+        <>
+          <ConsoleStorySelectActions
+            storyOptions={storyOptions}
+            currentStoryName={currentStoryName}
+            onSetStory={handlers.onSetStory}
+          />
+          <ConsoleAgentSelectActions
+            agentOptions={agentOptions}
+            currentAgentName={currentAgentName}
+            onSetAgent={handlers.onSetAgent}
+          />
+        </>
+      )}
       <div className="console-op-group-bottom-row">
         <div className="console-op-group-left-pair">
+          {(storyOptions.length > 0 || agentOptions.length > 0) && (
+            <div className="console-op-group">
+              <button
+                type="button"
+                className="console-op-button"
+                onClick={() => setShowFieldSelectors((prev) => !prev)}
+                title="Change agent or story"
+              >
+                ⚙
+              </button>
+            </div>
+          )}
           <ConsoleRareActions
             onSetDependedIssueUrl={handlers.onSetDependedIssueUrl}
           />

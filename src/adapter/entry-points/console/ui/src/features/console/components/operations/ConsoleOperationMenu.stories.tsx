@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent, within } from 'storybook/test';
 import type { ConsoleOperationHandlers } from '../../logic/operations';
 import {
   consoleAgentOptionsFixture,
@@ -70,5 +71,18 @@ export const TodoByAgentTabIssue: Story = {
     tab: 'todo-by-agent',
     item: consoleListItemsFixture[2],
     hasPullRequest: false,
+  },
+};
+
+export const FieldSelectorsVisible: Story = {
+  args: {
+    tab: 'todo-by-human',
+    item: consoleListItemsFixture[2],
+    hasPullRequest: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggleButton = canvas.getByTitle('Change agent or story');
+    await userEvent.click(toggleButton);
   },
 };
