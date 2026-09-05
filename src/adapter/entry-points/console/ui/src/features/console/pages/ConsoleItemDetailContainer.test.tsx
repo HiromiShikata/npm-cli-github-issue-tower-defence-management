@@ -762,7 +762,7 @@ describe('ConsoleItemDetailContainer', () => {
   it('queues the set_story action when a story option is selected', () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
-    const { getByRole } = render(
+    const { getByRole, getByTitle } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
         item={issueItem}
@@ -778,6 +778,7 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={onQueueAction}
       />,
     );
+    fireEvent.click(getByTitle('Change agent or story'));
     const storySelect = getByRole('combobox', { name: 'Set story' });
     fireEvent.change(storySelect, { target: { value: '28415d6c' } });
     expect(onQueueAction).toHaveBeenCalledTimes(1);
@@ -799,7 +800,7 @@ describe('ConsoleItemDetailContainer', () => {
   it('queues the set_agent action when an agent option is selected', () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
-    const { getByRole } = render(
+    const { getByRole, getByTitle } = render(
       <ConsoleItemDetailContainer
         tab="todo-by-human"
         item={issueItem}
@@ -815,6 +816,7 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={onQueueAction}
       />,
     );
+    fireEvent.click(getByTitle('Change agent or story'));
     const agentSelect = getByRole('combobox', { name: 'Set agent' });
     fireEvent.change(agentSelect, { target: { value: '95c55dd3' } });
     expect(onQueueAction).toHaveBeenCalledTimes(1);
