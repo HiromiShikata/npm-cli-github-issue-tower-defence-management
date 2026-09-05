@@ -1,3 +1,10 @@
+## [2.61.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.61.0...v2.61.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **config:** log errors when token minting fails in githubAppTokenMinter ([#2070](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2070)) ([e3e4bf0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e3e4bf053640e14956c7d4c06ccf755cf6b414e8))
+
 # [2.61.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.60.1...v2.61.0) (2026-09-05)
 
 
