@@ -3278,6 +3278,10 @@ describe('consoleOperationApi', () => {
         storyOptionId: 'opt_remove',
       });
 
+      expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/acme-labs/ops/issues/102',
+        'not_planned',
+      );
       expect(response.statusCode).toBe(200);
     });
 
