@@ -612,86 +612,113 @@ test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaitin
 });
 
 test('removes the list item immediately when ok & Awaiting Workspace is clicked from the list', async ({
-  page,
+  browser,
 }) => {
-  await page.goto(harness.appUrl);
+  const localHarness = await startConsoleE2eHarness();
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appUrl);
 
-  const listButtons = page.locator('.console-list .console-op-button', {
-    hasText: 'ok & Awaiting Workspace',
-  });
-  await expect(listButtons).toHaveCount(2);
+    const listButtons = page.locator('.console-list .console-op-button', {
+      hasText: 'ok & Awaiting Workspace',
+    });
+    await expect(listButtons).toHaveCount(2);
 
-  await listButtons.first().click();
+    await listButtons.first().click();
 
-  await expect(listButtons).toHaveCount(1);
+    await expect(listButtons).toHaveCount(1);
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
 test('posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked', async ({
-  page,
+  browser,
 }) => {
-  await page.goto(harness.appRootUrl);
+  const localHarness = await startConsoleE2eHarness();
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
 
-  await itemRowByText(
-    page,
-    'Resolve the shared GitHub token rate-limit exhaustion blocker',
-  ).click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
 
-  await expect(page.locator('.console-composer-input')).toBeInViewport();
-  await page
-    .locator('.console-composer-input')
-    .fill('handing off to awaiting workspace');
+    await expect(page.locator('.console-composer-input')).toBeInViewport();
+    await page
+      .locator('.console-composer-input')
+      .fill('handing off to awaiting workspace');
 
-  await page
-    .getByRole('button', { name: 'Comment & Awaiting Workspace', exact: true })
-    .click();
+    await page
+      .getByRole('button', {
+        name: 'Comment & Awaiting Workspace',
+        exact: true,
+      })
+      .click();
 
-  await expect
-    .poll(
-      () =>
-        harness.commentCalls.some(
-          (c) => c.body === 'handing off to awaiting workspace',
-        ),
-      { timeout: 10000 },
-    )
-    .toBe(true);
+    await expect
+      .poll(
+        () =>
+          localHarness.commentCalls.some(
+            (c) => c.body === 'handing off to awaiting workspace',
+          ),
+        { timeout: 10000 },
+      )
+      .toBe(true);
 
-  await expect(tabByLabel(page, 'Workflow Blocker')).toHaveCount(0, {
-    timeout: 8000,
-  });
+    await expect(tabByLabel(page, 'Workflow Blocker')).toHaveCount(0, {
+      timeout: 8000,
+    });
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
 test('posts an ok comment and moves the item to Awaiting Workspace when the ok & Awaiting Workspace button is clicked', async ({
-  page,
+  browser,
 }) => {
-  await page.goto(harness.appRootUrl);
+  const localHarness = await startConsoleE2eHarness();
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
 
-  await itemRowByText(
-    page,
-    'Resolve the shared GitHub token rate-limit exhaustion blocker',
-  ).click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
 
-  await expect(page.locator('.console-composer-input')).toBeInViewport();
+    await expect(page.locator('.console-composer-input')).toBeInViewport();
 
-  await page
-    .getByRole('button', { name: 'ok & Awaiting Workspace', exact: true })
-    .click();
+    await page
+      .getByRole('button', { name: 'ok & Awaiting Workspace', exact: true })
+      .click();
 
-  await expect
-    .poll(
-      () =>
-        harness.commentCalls.some(
-          (c) =>
-            c.url ===
-              'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
-            c.body === 'ok',
-        ),
-      { timeout: 10000 },
-    )
-    .toBe(true);
+    await expect
+      .poll(
+        () =>
+          localHarness.commentCalls.some(
+            (c) =>
+              c.url ===
+                'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
+              c.body === 'ok',
+          ),
+        { timeout: 10000 },
+      )
+      .toBe(true);
 
-  await expect(tabByLabel(page, 'Workflow Blocker')).toHaveCount(0, {
-    timeout: 8000,
-  });
+    await expect(tabByLabel(page, 'Workflow Blocker')).toHaveCount(0, {
+      timeout: 8000,
+    });
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
 test('project switcher appears at the left end of the tab bar and opens a dropdown on click', async ({
@@ -925,54 +952,62 @@ test('rare actions toggle is in the bottom row left pair alongside the dangerous
 });
 
 test('prs agent filter shows counts, hides zero-task agents, narrows the list, and navigation respects the filter', async ({
-  page,
+  browser,
 }) => {
-  await page.goto(harness.appUrl);
-  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  const localHarness = await startConsoleE2eHarness();
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appUrl);
+    await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
 
-  const select = page.getByRole('combobox', { name: 'Filter by agent' });
-  await expect(select).toBeVisible();
+    const select = page.getByRole('combobox', { name: 'Filter by agent' });
+    await expect(select).toBeVisible();
 
-  const nonAllOptions = select.locator('option:not([value=""])');
-  await expect(nonAllOptions).toHaveCount(2);
-  await expect(nonAllOptions.nth(0)).toHaveText('developer (1)');
-  await expect(nonAllOptions.nth(1)).toHaveText('chore (1)');
+    const nonAllOptions = select.locator('option:not([value=""])');
+    await expect(nonAllOptions).toHaveCount(2);
+    await expect(nonAllOptions.nth(0)).toHaveText('developer (1)');
+    await expect(nonAllOptions.nth(1)).toHaveText('chore (1)');
 
-  await expect(
-    itemRowByText(
+    await expect(
+      itemRowByText(
+        page,
+        'Serve the committed console UI bundle from serveConsole',
+      ),
+    ).toBeVisible();
+    await expect(
+      itemRowByText(page, 'Clean up stale console UI test fixtures'),
+    ).toBeVisible();
+
+    await select.selectOption('developer');
+    await expect(
+      itemRowByText(
+        page,
+        'Serve the committed console UI bundle from serveConsole',
+      ),
+    ).toBeVisible();
+    await expect(
+      itemRowByText(page, 'Clean up stale console UI test fixtures'),
+    ).not.toBeVisible({ timeout: 2000 });
+
+    await itemRowByText(
       page,
       'Serve the committed console UI bundle from serveConsole',
-    ),
-  ).toBeVisible();
-  await expect(
-    itemRowByText(page, 'Clean up stale console UI test fixtures'),
-  ).toBeVisible();
+    ).click();
+    const approveButton = page
+      .locator('.console-op-button', { hasText: 'Approve' })
+      .first();
+    await expect(approveButton).toBeVisible();
+    await approveButton.click();
 
-  await select.selectOption('developer');
-  await expect(
-    itemRowByText(
-      page,
-      'Serve the committed console UI bundle from serveConsole',
-    ),
-  ).toBeVisible();
-  await expect(
-    itemRowByText(page, 'Clean up stale console UI test fixtures'),
-  ).not.toBeVisible({ timeout: 2000 });
-
-  await itemRowByText(
-    page,
-    'Serve the committed console UI bundle from serveConsole',
-  ).click();
-  const approveButton = page
-    .locator('.console-op-button', { hasText: 'Approve' })
-    .first();
-  await expect(approveButton).toBeVisible();
-  await approveButton.click();
-
-  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
-  await expect(
-    itemRowByText(page, 'Clean up stale console UI test fixtures'),
-  ).toBeVisible({ timeout: 8000 });
+    await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+    await expect(
+      itemRowByText(page, 'Clean up stale console UI test fixtures'),
+    ).toBeVisible({ timeout: 8000 });
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
 test('shows Delete Story in the danger zone of a story-labeled item detail page, confirms deletion, and closes the panel', async ({
