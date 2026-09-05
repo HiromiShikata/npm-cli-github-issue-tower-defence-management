@@ -195,7 +195,10 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     if (
       isDuplicateWithinWindow(
         commentContent,
-        existingComments.map((c) => ({ text: c.content, createdAt: c.createdAt })),
+        existingComments.map((c) => ({
+          text: c.content,
+          createdAt: c.createdAt,
+        })),
         now,
       )
     ) {

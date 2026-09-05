@@ -554,9 +554,11 @@ describe('GitHubIssueCommentRepository', () => {
         body: 'Auto Status Check: REJECTED',
         created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
       };
-      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(JSON.stringify([recentComment]), { status: 200 }),
-      );
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([recentComment]), { status: 200 }),
+        );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/99',
@@ -630,9 +632,11 @@ describe('GitHubIssueCommentRepository', () => {
         body: 'CLI error recurrence at 2026-09-05T10:00:00Z: some error',
         created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
       };
-      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(JSON.stringify([recentComment]), { status: 200 }),
-      );
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([recentComment]), { status: 200 }),
+        );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/99',

@@ -35,9 +35,7 @@ describe('normalizeTimestamps', () => {
   it('replaces multiple timestamps in one string', () => {
     const input =
       'From: 2026-09-05T10:00:00Z to 2026-09-05T12:00:00Z took 2 hours';
-    expect(normalizeTimestamps(input)).toBe(
-      'From: <TS> to <TS> took 2 hours',
-    );
+    expect(normalizeTimestamps(input)).toBe('From: <TS> to <TS> took 2 hours');
   });
 
   it('leaves non-timestamp content unchanged', () => {
@@ -127,8 +125,7 @@ describe('isDuplicateWithinWindow', () => {
   it('returns false when bodies differ after timestamp normalisation', () => {
     const storedComment =
       'CLI error recurrence at 2026-09-05T10:00:00Z: error A';
-    const newComment =
-      'CLI error recurrence at 2026-09-05T11:30:00Z: error B';
+    const newComment = 'CLI error recurrence at 2026-09-05T11:30:00Z: error B';
     const comments = [
       {
         text: storedComment,

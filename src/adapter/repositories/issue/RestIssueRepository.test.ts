@@ -118,9 +118,7 @@ describe('RestIssueRepository', () => {
     beforeEach(() => {
       fetchSpy = jest
         .spyOn(global, 'fetch')
-        .mockResolvedValue(
-          new Response(JSON.stringify([]), { status: 200 }),
-        );
+        .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
     });
 
     it('should create a comment and return the created comment data', async () => {
