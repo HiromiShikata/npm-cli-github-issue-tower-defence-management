@@ -2252,11 +2252,15 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               user: { login: 'alice' },
               body: 'first comment',
               created_at: '2024-01-01T00:00:00Z',
+              html_url:
+                'https://github.com/HiromiShikata/test-repository/issues/42#issuecomment-1',
             },
             {
               user: { login: 'bob' },
               body: 'second comment',
               created_at: '2024-01-02T00:00:00Z',
+              html_url:
+                'https://github.com/HiromiShikata/test-repository/issues/42#issuecomment-2',
             },
           ]),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -2273,11 +2277,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           author: 'alice',
           body: 'first comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
+          url: 'https://github.com/HiromiShikata/test-repository/issues/42#issuecomment-1',
         },
         {
           author: 'bob',
           body: 'second comment',
           createdAt: new Date('2024-01-02T00:00:00Z'),
+          url: 'https://github.com/HiromiShikata/test-repository/issues/42#issuecomment-2',
         },
       ]);
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -2292,12 +2298,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         user: { login: string };
         body: string;
         created_at: string;
+        html_url: string;
       }[] = [];
       for (let i = 0; i < 100; i += 1) {
         firstPage.push({
           user: { login: `user${i}` },
           body: `comment ${i}`,
           created_at: '2024-01-01T00:00:00Z',
+          html_url: `https://github.com/HiromiShikata/test-repository/issues/42#issuecomment-${i}`,
         });
       }
       const secondPage = [
@@ -2305,6 +2313,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           user: { login: 'last' },
           body: 'last comment',
           created_at: '2024-02-01T00:00:00Z',
+          html_url:
+            'https://github.com/HiromiShikata/test-repository/issues/42#issuecomment-100',
         },
       ];
       const fetchSpy = jest

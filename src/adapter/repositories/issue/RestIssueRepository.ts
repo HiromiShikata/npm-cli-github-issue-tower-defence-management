@@ -25,7 +25,7 @@ export class RestIssueRepository
   createComment = async (
     issueUrl: string,
     comment: string,
-  ): Promise<{ author: string; body: string; createdAt: Date }> => {
+  ): Promise<{ author: string; body: string; createdAt: Date; url: string | null }> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
     const response = await ky
       .post(
@@ -39,11 +39,13 @@ export class RestIssueRepository
         user: { login: string } | null;
         body: string;
         created_at: string;
+        html_url: string;
       }>();
     return {
       author: response.user?.login ?? '',
       body: response.body,
       createdAt: new Date(response.created_at),
+      url: response.html_url,
     };
   };
   createNewIssue = async (

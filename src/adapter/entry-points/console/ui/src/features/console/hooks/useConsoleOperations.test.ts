@@ -377,7 +377,7 @@ describe('useConsoleOperations', () => {
       status: 200,
       json: async () => ({
         ok: true,
-        comment: { author: 'a', body: 'b', createdAt: 'c' },
+        comment: { author: 'a', body: 'b', createdAt: 'c', url: null },
       }),
     }));
     global.fetch = fetchMock as unknown as typeof fetch;

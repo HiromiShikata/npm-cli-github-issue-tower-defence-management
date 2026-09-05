@@ -209,6 +209,36 @@ describe('ConsoleItemDetail', () => {
     expect(getByRole('button', { name: 'Copy URL' })).toBeInTheDocument();
   });
 
+  it('renders a workflow incident report link for the task when workflowImprovementIssueUrl is set', () => {
+    const workflowUrl = 'https://github.com/owner/secretary/issues/new';
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        workflowImprovementIssueUrl={workflowUrl}
+      />,
+    );
+    const link = getByRole('link', {
+      name: 'Create workflow incident report for this task',
+    });
+    expect(link).toHaveAttribute(
+      'href',
+      expect.stringContaining(encodeURIComponent(issueItem.url)),
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('does not render a workflow incident report link when workflowImprovementIssueUrl is not set', () => {
+    const { queryByRole } = render(
+      <ConsoleItemDetail item={issueItem} {...baseProps} />,
+    );
+    expect(
+      queryByRole('link', {
+        name: 'Create workflow incident report for this task',
+      }),
+    ).toBeNull();
+  });
+
   it('places opened relative time in the sub bar immediately after the repo name', () => {
     const { container } = render(
       <ConsoleItemDetail item={prItem} {...baseProps} />,

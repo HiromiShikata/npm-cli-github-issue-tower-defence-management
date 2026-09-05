@@ -3,6 +3,7 @@ import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import type { ConsoleRepoContext } from '../../logic/references';
 import { formatRelativeTime } from '../../logic/relativeTime';
 import type { ConsoleComment } from '../../logic/types';
+import { buildWorkflowIncidentReportUrl } from '../../logic/workflowIncidentReport';
 import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 
@@ -14,6 +15,7 @@ export type ConsoleCommentListProps = {
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
+  workflowImprovementIssueUrl?: string | null;
 };
 
 export const ConsoleCommentList = ({
@@ -24,6 +26,7 @@ export const ConsoleCommentList = ({
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
+  workflowImprovementIssueUrl = null,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
 
@@ -62,6 +65,21 @@ export const ConsoleCommentList = ({
             <span className="console-comment-time">
               {formatRelativeTime(comment.createdAt, now)}
             </span>
+            {workflowImprovementIssueUrl !== null &&
+              comment.url !== null && (
+                <a
+                  href={buildWorkflowIncidentReportUrl(
+                    workflowImprovementIssueUrl,
+                    comment.url,
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="console-comment-report-link"
+                  aria-label="Create workflow incident report for this comment"
+                >
+                  ⚡
+                </a>
+              )}
           </header>
           <ConsoleMarkdownContent
             body={comment.body}
