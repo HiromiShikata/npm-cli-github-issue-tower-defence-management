@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { CloseEventCounts } from '../../../domain/usecases/dashboard/ComposeDashboardUseCase';
 
-const CLOSE_EVENTS_FILE_NAME = '.close-events.json';
+export const CLOSE_EVENTS_FILE_NAME = '.close-events.json';
 const RETENTION_MS = 5 * 60 * 60 * 1000;
 
 const closeEventsFilePath = (
@@ -52,14 +53,8 @@ export const appendCloseEvent = (
   nowMs: number,
 ): void => {
   const existing = readCloseEventTimestamps(consoleDataOutputDir, pjcode);
-  const pruned = existing.filter((t) => nowMs - t < RETENTION_MS);
+  const pruned = existing.filter((t) => nowMs - t <= RETENTION_MS);
   writeCloseEventTimestamps(consoleDataOutputDir, pjcode, [...pruned, nowMs]);
-};
-
-export type CloseEventCounts = {
-  h1: number;
-  h3: number;
-  h5: number;
 };
 
 export const countCloseEvents = (

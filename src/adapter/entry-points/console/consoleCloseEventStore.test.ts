@@ -54,7 +54,7 @@ describe('consoleCloseEventStore', () => {
       });
     });
 
-    it('excludes events exactly at the window boundary (strictly older than window)', () => {
+    it('includes an event at exactly the 1h window boundary', () => {
       const nowMs = 1_000_000_000_000;
       const oneHourMs = 60 * 60 * 1000;
       appendCloseEvent(baseDir, 'acme', nowMs - oneHourMs);

@@ -6,6 +6,7 @@ import {
   composeDashboardText,
   dashboardComposeFilesPresent,
 } from './dashboardComposeService';
+import { CLOSE_EVENTS_FILE_NAME } from './consoleCloseEventStore';
 
 const makeDataDir = (): string =>
   fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-compose-'));
@@ -437,7 +438,7 @@ describe('buildComposeDashboardInput', () => {
       const nowMs = 1_000_000_000_000;
       fs.mkdirSync(path.join(consoleDir, 'acme'), { recursive: true });
       fs.writeFileSync(
-        path.join(consoleDir, 'acme', '.close-events.json'),
+        path.join(consoleDir, 'acme', CLOSE_EVENTS_FILE_NAME),
         JSON.stringify([nowMs - 30 * 60 * 1000]),
       );
       const input = buildComposeDashboardInput({
