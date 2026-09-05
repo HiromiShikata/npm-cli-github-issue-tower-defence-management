@@ -42,11 +42,13 @@ export const ConsoleCommentList = ({
     return <p className="console-comment-empty">No comments.</p>;
   }
 
-  const visible = showAll ? comments : comments.slice(-1);
+  const isSummaryMode = !showAll && comments.length > 1;
+  const getFirstLine = (body: string): string =>
+    (body.split('\n').find((line) => line.trim().length > 0) ?? '').trim();
 
   return (
     <div className="console-comment-list">
-      {!showAll && comments.length > 1 && (
+      {isSummaryMode && (
         <button
           type="button"
           className="console-comment-show-all"
@@ -55,7 +57,7 @@ export const ConsoleCommentList = ({
           Show all {comments.length}
         </button>
       )}
-      {visible.map((comment) => (
+      {comments.map((comment) => (
         <article
           key={`${comment.author}:${comment.createdAt}:${comment.body}`}
           className="console-comment"
@@ -80,12 +82,16 @@ export const ConsoleCommentList = ({
               </a>
             )}
           </header>
-          <ConsoleMarkdownContent
-            body={comment.body}
-            buildImageProxyUrl={buildImageProxyUrl}
-            renderReferenceLink={renderReferenceLink}
-            repoContext={repoContext}
-          />
+          {isSummaryMode ? (
+            <p className="console-comment-summary">{getFirstLine(comment.body)}</p>
+          ) : (
+            <ConsoleMarkdownContent
+              body={comment.body}
+              buildImageProxyUrl={buildImageProxyUrl}
+              renderReferenceLink={renderReferenceLink}
+              repoContext={repoContext}
+            />
+          )}
         </article>
       ))}
     </div>
