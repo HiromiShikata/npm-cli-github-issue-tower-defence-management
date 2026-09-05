@@ -71,9 +71,9 @@ const countSilentRedispatches = <
   const commentsInCurrentCycle = params.comments.slice(
     lastHumanCommentIndex + 1,
   );
-  const isEscalationTypeDispatchRepeat = (content: string): boolean =>
-    !content.includes('Dispatching again') &&
-    !content.includes('Dispatching it again');
+  const isSilentRedispatchEscalation = (content: string): boolean =>
+    content.includes('The agent may have crashed or stopped silently') ||
+    content.includes('Owner judgment is required to break the loop');
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
     (found, comment, index) =>
       params.isTrustedAuthor(comment.author) &&
@@ -81,7 +81,7 @@ const countSilentRedispatches = <
         comment.content,
         params.nextStepAgent,
       ) &&
-      isEscalationTypeDispatchRepeat(comment.content)
+      isSilentRedispatchEscalation(comment.content)
         ? index
         : found,
     -1,
