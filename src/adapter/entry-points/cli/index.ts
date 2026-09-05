@@ -21,7 +21,7 @@ import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerC
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
-import type { BaseGitHubRepository } from '../../repositories/BaseGitHubRepository';
+
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
@@ -240,7 +240,7 @@ const resolveScopeLibPath = (): string | null => {
 const buildGithubRepositoryParams = (
   localStorageRepository: LocalStorageRepository,
   token: string,
-): ConstructorParameters<typeof BaseGitHubRepository> => [
+): readonly [LocalStorageRepository, string] => [
   localStorageRepository,
   token,
 ];
@@ -462,15 +462,18 @@ program
       localStorageRepository,
       token,
     );
+    const readGhTokens = config.readGhTokens ?? [];
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,
+      readGhTokens,
     );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
     const restIssueRepository = new RestIssueRepository(
       ...githubRepositoryParams,
+      readGhTokens,
     );
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
       ...githubRepositoryParams,
@@ -696,15 +699,18 @@ program
       localStorageRepository,
       token,
     );
+    const readGhTokens = config.readGhTokens ?? [];
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,
+      readGhTokens,
     );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
     const restIssueRepository = new RestIssueRepository(
       ...githubRepositoryParams,
+      readGhTokens,
     );
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
       ...githubRepositoryParams,
@@ -830,11 +836,13 @@ program
       localStorageRepository,
       token,
     );
+    const readGhTokens = config.readGhTokens ?? [];
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
     const restIssueRepository = new RestIssueRepository(
       ...githubRepositoryParams,
+      readGhTokens,
     );
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
       ...githubRepositoryParams,
@@ -842,6 +850,7 @@ program
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,
+      readGhTokens,
     );
     const issueRepository = new ApiV3CheerioRestIssueRepository(
       apiV3IssueRepository,
@@ -971,15 +980,18 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     localStorageRepository,
     token,
   );
+  const readGhTokens = config.readGhTokens ?? [];
   const projectRepository = new GraphqlProjectRepository(
     ...githubRepositoryParams,
     localStorageCacheRepository,
+    readGhTokens,
   );
   const apiV3IssueRepository = new ApiV3IssueRepository(
     ...githubRepositoryParams,
   );
   const restIssueRepository = new RestIssueRepository(
     ...githubRepositoryParams,
+    readGhTokens,
   );
   const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
     ...githubRepositoryParams,
@@ -1306,15 +1318,18 @@ program
       localStorageRepository,
       token,
     );
+    const readGhTokens = config.readGhTokens ?? [];
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,
+      readGhTokens,
     );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
     const restIssueRepository = new RestIssueRepository(
       ...githubRepositoryParams,
+      readGhTokens,
     );
     const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
       ...githubRepositoryParams,

@@ -70,7 +70,7 @@ export class RestProjectRepository extends BaseGitHubRepository {
     `https://api.github.com/${location.ownerType}/${location.owner}/projectsV2/${location.projectNumber}`;
 
   private requestHeaders = (): Record<string, string> => ({
-    Authorization: `token ${this.ghToken}`,
+    Authorization: `token ${this.selectReadToken()}`,
     Accept: 'application/vnd.github+json',
   });
 

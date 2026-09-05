@@ -35,6 +35,7 @@ export type ConfigFile = {
   disks?: DiskConfig[];
   errorReportingRepository?: string;
   skipAgentAuthoredIssues?: boolean;
+  readGhTokens?: string[];
 };
 
 export type DiskConfig = {
@@ -246,6 +247,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'skipAgentAuthoredIssues',
       ),
+      readGhTokens: getStringArrayValue(parsed, 'readGhTokens'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -453,6 +455,7 @@ export const mergeConfigs = (
     configFile.errorReportingRepository,
   skipAgentAuthoredIssues:
     cliOverrides.skipAgentAuthoredIssues ?? configFile.skipAgentAuthoredIssues,
+  readGhTokens: cliOverrides.readGhTokens ?? configFile.readGhTokens,
 });
 
 type GraphqlProjectV2ReadmeResponse = {

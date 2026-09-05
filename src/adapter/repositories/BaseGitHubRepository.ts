@@ -4,7 +4,22 @@ export class BaseGitHubRepository {
   constructor(
     readonly localStorageRepository: LocalStorageRepository,
     readonly ghToken: string = process.env.GH_TOKEN || 'dummy',
+    readonly readGhTokens: string[] = [],
   ) {}
+
+  private readTokenRoundRobinIndex = 0;
+
+  protected selectReadToken(): string {
+    if (this.readGhTokens.length === 0) return this.ghToken;
+    const token =
+      this.readGhTokens[
+        this.readTokenRoundRobinIndex % this.readGhTokens.length
+      ];
+    this.readTokenRoundRobinIndex =
+      (this.readTokenRoundRobinIndex + 1) % this.readGhTokens.length;
+    return token;
+  }
+
   protected extractIssueFromUrl = (
     issueUrl: string,
   ): { owner: string; repo: string; issueNumber: number; isIssue: boolean } => {
