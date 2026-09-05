@@ -6,6 +6,7 @@ import {
   composeDashboardText,
   dashboardComposeFilesPresent,
 } from './dashboardComposeService';
+import { CLOSE_EVENTS_FILE_NAME } from './consoleCloseEventStore';
 
 const makeDataDir = (): string =>
   fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-compose-'));
@@ -52,8 +53,9 @@ describe('buildComposeDashboardInput', () => {
             humanPendingYellow: 0,
             humanPendingBlue: 0,
           },
+          closeEventCounts: { h1: 0, h3: 0, h5: 0 },
         },
-        { code: 'in', row: null },
+        { code: 'in', row: null, closeEventCounts: { h1: 0, h3: 0, h5: 0 } },
       ]);
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
@@ -389,6 +391,72 @@ describe('buildComposeDashboardInput', () => {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
   });
+
+  it('returns zero close event counts when consoleDataOutputDir is not provided', () => {
+    const dataDir = makeDataDir();
+    try {
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
+        capturedAt: 'x',
+        todo: 0,
+        qc: 0,
+        fail: 0,
+        pr: 0,
+        ws: 0,
+        dep: 0,
+        blocker: 0,
+      });
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: ['acme'],
+      });
+      expect(input.projects[0].closeEventCounts).toEqual({
+        h1: 0,
+        h3: 0,
+        h5: 0,
+      });
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('reads close event counts from consoleDataOutputDir when provided', () => {
+    const dataDir = makeDataDir();
+    const consoleDir = makeDataDir();
+    try {
+      writeProject(dataDir, 'acme', {
+        pjcode: 'acme',
+        capturedAt: 'x',
+        todo: 0,
+        qc: 0,
+        fail: 0,
+        pr: 0,
+        ws: 0,
+        dep: 0,
+        blocker: 0,
+      });
+      const nowMs = 1_000_000_000_000;
+      fs.mkdirSync(path.join(consoleDir, 'acme'), { recursive: true });
+      fs.writeFileSync(
+        path.join(consoleDir, 'acme', CLOSE_EVENTS_FILE_NAME),
+        JSON.stringify([nowMs - 30 * 60 * 1000]),
+      );
+      const input = buildComposeDashboardInput({
+        dashboardDataDir: dataDir,
+        projectNames: ['acme'],
+        consoleDataOutputDir: consoleDir,
+        nowMs,
+      });
+      expect(input.projects[0].closeEventCounts).toEqual({
+        h1: 1,
+        h3: 1,
+        h5: 1,
+      });
+    } finally {
+      fs.rmSync(dataDir, { recursive: true, force: true });
+      fs.rmSync(consoleDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('composeDashboardText', () => {
@@ -443,9 +511,9 @@ describe('composeDashboardText', () => {
       ).toBe(
         '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14</tt><br>\n' +
           '<tt>🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-          '<tt>pj&nbsp;&nbsp;&nbsp;td&nbsp;qc&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵</tt><br>\n' +
-          '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-          '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--</tt><br>\n' +
+          '<tt>pj&nbsp;&nbsp;&nbsp;td&nbsp;qc&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵&nbsp;1h&nbsp;3h&nbsp;5h</tt><br>\n' +
+          '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+          '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
           '<tt></tt><br>\n' +
           '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;1</tt><br>\n' +
           '<tt>🟢ce&nbsp;10&nbsp;0d01h00&nbsp;12&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n',

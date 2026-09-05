@@ -34,6 +34,8 @@ const projectRow = (overrides: Partial<DashboardRow>): DashboardRow => ({
   ...overrides,
 });
 
+const noCloseEvents = { h1: 0, h3: 0, h5: 0 };
+
 const tokenStatus = (overrides: Partial<TokenStatus>): TokenStatus => ({
   name: 'token',
   fiveHourUtilizationPercent: 0,
@@ -320,8 +322,10 @@ describe('formatMachineStatusLines', () => {
 });
 
 describe('formatProjectHeaderLine', () => {
-  it('renders the project grid header with story color signal columns', () => {
-    expect(formatProjectHeaderLine()).toBe('pj   td qc fl pp ws dp 🔴 🟡 🔵');
+  it('renders the project grid header with story color signal and close count columns', () => {
+    expect(formatProjectHeaderLine()).toBe(
+      'pj   td qc fl pp ws dp 🔴 🟡 🔵 1h 3h 5h',
+    );
   });
 
   it('fits within the code point width budget', () => {
@@ -332,13 +336,14 @@ describe('formatProjectHeaderLine', () => {
 });
 
 describe('formatProjectRowLine', () => {
-  it('renders a present row with its severity dot, counts, and story color columns', () => {
+  it('renders a present row with its severity dot, counts, story color columns, and close count columns', () => {
     expect(
       formatProjectRowLine({
         code: 'ac',
         row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }),
+        closeEventCounts: noCloseEvents,
       }),
-    ).toBe('🟢ac  1  2  0  0  4  1  0  0  0');
+    ).toBe('🟢ac  1  2  0  0  4  1  0  0  0  0  0  0');
   });
 
   it('renders non-zero story color counts in the color columns', () => {
@@ -346,8 +351,9 @@ describe('formatProjectRowLine', () => {
       formatProjectRowLine({
         code: 'ac',
         row: projectRow({ humanPendingRed: 8, humanPendingYellow: 3 }),
+        closeEventCounts: noCloseEvents,
       }),
-    ).toBe('🟢ac  0  0  0  0  0  0  8  3  0');
+    ).toBe('🟢ac  0  0  0  0  0  0  8  3  0  0  0  0');
   });
 
   it('caps a story color count above 99 at 99', () => {
@@ -355,50 +361,104 @@ describe('formatProjectRowLine', () => {
       formatProjectRowLine({
         code: 'ac',
         row: projectRow({ humanPendingRed: 100 }),
+        closeEventCounts: noCloseEvents,
       }),
     ).toContain(' 99');
   });
 
-  it('renders placeholder cells with a blank dot for an absent project file', () => {
-    expect(formatProjectRowLine({ code: 'in', row: null })).toBe(
-      '  in -- -- -- -- -- -- -- -- --',
-    );
+  it('renders placeholder cells with a blank dot for an absent project file but shows actual close counts', () => {
+    expect(
+      formatProjectRowLine({
+        code: 'in',
+        row: null,
+        closeEventCounts: noCloseEvents,
+      }),
+    ).toBe('  in -- -- -- -- -- -- -- -- --  0  0  0');
   });
 
   it('caps a count above 99 at 99', () => {
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ todo: 1500 }) }),
-    ).toBe('🟢ac 99  0  0  0  0  0  0  0  0');
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ todo: 1500 }),
+        closeEventCounts: noCloseEvents,
+      }),
+    ).toBe('🟢ac 99  0  0  0  0  0  0  0  0  0  0  0');
+  });
+
+  it('renders close event counts in the h1, h3, h5 columns', () => {
+    expect(
+      formatProjectRowLine({
+        code: 'ac',
+        row: null,
+        closeEventCounts: { h1: 5, h3: 8, h5: 12 },
+      }),
+    ).toBe('  ac -- -- -- -- -- -- -- -- --  5  8 12');
+  });
+
+  it('caps close event counts above 99 at 99', () => {
+    expect(
+      formatProjectRowLine({
+        code: 'ac',
+        row: null,
+        closeEventCounts: { h1: 100, h3: 100, h5: 100 },
+      }),
+    ).toBe('  ac -- -- -- -- -- -- -- -- -- 99 99 99');
   });
 
   it('applies the four level severity dot rules in descending order', () => {
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ blocker: 2 }) }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ blocker: 2 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🔴');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ blocker: 1 }) }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ blocker: 1 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟣');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ qc: 15 }) }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ qc: 15 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟠');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ fail: 5 }) }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ fail: 5 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟠');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ qc: 10 }) }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ qc: 10 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟡');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ fail: 3 }) }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ fail: 3 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟡');
     expect(
       formatProjectRowLine({
         code: 'ac',
         row: projectRow({ qc: 9, fail: 2 }),
+        closeEventCounts: noCloseEvents,
       }),
     ).toContain('🟢');
   });
 
-  it('keeps present and absent rows within the code point width budget', () => {
+  it('keeps present and absent rows within the code point width budget at maximum values', () => {
     const present = formatProjectRowLine({
       code: 'gl',
       row: projectRow({
@@ -412,8 +472,13 @@ describe('formatProjectRowLine', () => {
         humanPendingYellow: 99,
         humanPendingBlue: 99,
       }),
+      closeEventCounts: { h1: 99, h3: 99, h5: 99 },
     });
-    const absent = formatProjectRowLine({ code: 'in', row: null });
+    const absent = formatProjectRowLine({
+      code: 'in',
+      row: null,
+      closeEventCounts: { h1: 99, h3: 99, h5: 99 },
+    });
     expect(codePointLength(present)).toBeLessThanOrEqual(
       PROJECT_ROW_WIDTH_BUDGET,
     );
@@ -487,13 +552,19 @@ describe('ComposeDashboardUseCase', () => {
       {
         code: 'ac',
         row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }),
+        closeEventCounts: noCloseEvents,
       },
       {
         code: 'gl',
         row: projectRow({ qc: 16, fail: 6, pr: 1 }),
+        closeEventCounts: noCloseEvents,
       },
-      { code: 'in', row: null },
-      { code: 'um', row: projectRow({ blocker: 1 }) },
+      { code: 'in', row: null, closeEventCounts: noCloseEvents },
+      {
+        code: 'um',
+        row: projectRow({ blocker: 1 }),
+        closeEventCounts: noCloseEvents,
+      },
     ],
     tokens: [
       tokenStatus({
@@ -532,11 +603,11 @@ describe('ComposeDashboardUseCase', () => {
   const expectedBody =
     '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14</tt><br>\n' +
     '<tt>🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-    '<tt>pj&nbsp;&nbsp;&nbsp;td&nbsp;qc&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵</tt><br>\n' +
-    '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--</tt><br>\n' +
-    '<tt>🟣um&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>pj&nbsp;&nbsp;&nbsp;td&nbsp;qc&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵&nbsp;1h&nbsp;3h&nbsp;5h</tt><br>\n' +
+    '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟣um&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>' +
     '&nbsp;'.repeat(TOKEN_SESSION_COLUMN_START) +
@@ -610,6 +681,7 @@ describe('ComposeDashboardUseCase', () => {
             humanPendingYellow: 99,
             humanPendingBlue: 99,
           }),
+          closeEventCounts: { h1: 99, h3: 99, h5: 99 },
         },
       ],
       tokens: [],
@@ -752,7 +824,13 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     sevenDayWindowAggregate: ComposeDashboardInput['sevenDayWindowAggregate'],
   ): ComposeDashboardInput => ({
     machineStatus: null,
-    projects: [{ code: 'ac', row: projectRow({ todo: 1 }) }],
+    projects: [
+      {
+        code: 'ac',
+        row: projectRow({ todo: 1 }),
+        closeEventCounts: noCloseEvents,
+      },
+    ],
     tokens: [
       tokenStatus({ name: 'alice', sevenDayUtilizationPercent: 60 }),
       tokenStatus({ name: 'bob', sevenDayUtilizationPercent: 66 }),
@@ -790,6 +868,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
       formatProjectRowLine({
         code: 'ac',
         row: projectRow({ todo: 1 }),
+        closeEventCounts: noCloseEvents,
       }),
     );
     expect(lines[combinedIndex + 1]).toContain('ce');

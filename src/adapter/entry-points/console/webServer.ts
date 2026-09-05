@@ -856,6 +856,7 @@ export const resolveDashboardContent = (
     const dashboardText = composeDashboardText({
       dashboardDataDir: options.dashboardDataDir,
       projectNames: options.dashboardProjectNames,
+      consoleDataOutputDir: options.consoleDataOutputDir,
     });
     return Buffer.from(dashboardText, 'utf-8');
   }
