@@ -120,6 +120,19 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         continue;
       }
 
+      if (issue.dependedIssueUrls.length > 0) {
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+        await this.issueCommentRepository.createComment(
+          issue,
+          `Auto Status Check: REJECTED\n- Has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+        );
+        continue;
+      }
+
       if (issueReactivationTriggerIsPending(issue, evaluatedAt)) {
         await this.issueRepository.updateStatus(
           project,

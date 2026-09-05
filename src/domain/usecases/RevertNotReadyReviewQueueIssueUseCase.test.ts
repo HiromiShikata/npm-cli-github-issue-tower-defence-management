@@ -1793,6 +1793,48 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     });
   });
 
+  describe('dependent issue URL gating', () => {
+    it('should revert Awaiting Quality Check issue with depended issue URLs to Awaiting Workspace even when PR is ready', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('https://github.com/user/repo/issues/99'),
+      );
+    });
+
+    it('should not revert Awaiting Quality Check issue when depended issue URLs are empty', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Quality Check',
+        dependedIssueUrls: [],
+      });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
   describe('batched pull request state resolution', () => {
     const projectUrl = 'https://github.com/users/user/projects/1';
 
