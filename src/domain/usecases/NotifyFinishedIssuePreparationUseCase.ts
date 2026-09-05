@@ -186,7 +186,19 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     if (!issue) {
       throw new IssueNotFoundError(params.issueUrl);
-    } else if (issue.status === DONE_STATUS_NAME) {
+    }
+
+    if (params.deferPreparation) {
+      await this.handleTransientFailureDeferral(
+        issue,
+        project,
+        awaitingWorkspaceStatusOption,
+        params.sessionErrorLine ?? null,
+      );
+      return;
+    }
+
+    if (issue.status === DONE_STATUS_NAME) {
       console.log(
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Done`,
       );
@@ -211,16 +223,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       console.warn(
         `tdpmReportingRepository "${params.tdpmReportingRepository}" is not a valid "owner/repo" string; falling back to product repository`,
       );
-    }
-
-    if (params.deferPreparation) {
-      await this.handleTransientFailureDeferral(
-        issue,
-        project,
-        awaitingWorkspaceStatusOption,
-        params.sessionErrorLine ?? null,
-      );
-      return;
     }
 
     if (params.missingAgentName) {

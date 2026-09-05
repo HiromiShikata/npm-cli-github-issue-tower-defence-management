@@ -4672,6 +4672,44 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.stringContaining('(not captured)'),
       );
     });
+
+    it('defers and sets next action date even when issue status is Awaiting Workspace', async () => {
+      const now = new Date('2026-09-05T21:00:00Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Awaiting Workspace',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        deferPreparation: true,
+        sessionErrorLine:
+          'Task failed 3 consecutive times with terminal_reason=aborted_tools',
+      });
+
+      expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining(
+          'Task failed 3 consecutive times with terminal_reason=aborted_tools',
+        ),
+      );
+    });
   });
 
   describe('nextStepAgent validation against agents list', () => {
