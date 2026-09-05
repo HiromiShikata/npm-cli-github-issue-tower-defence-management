@@ -1,3 +1,10 @@
+## [2.62.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.0...v2.62.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **notifyFinishedPreparation:** skip gracefully when issue is already Done ([2f7a166](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2f7a166b7f5ad333e3cec4ac5b03793344c27cc2)), closes [HiromiShikata/secretary#5486](https://github.com/HiromiShikata/secretary/issues/5486)
+
 # [2.62.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.61.1...v2.62.0) (2026-09-05)
 
 
