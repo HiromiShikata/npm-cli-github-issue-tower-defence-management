@@ -1,3 +1,10 @@
+# [2.52.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.51.0...v2.52.0) (2026-09-05)
+
+
+### Features
+
+* replace pullRequestRequired declaration gate with Agent-field positive gate ([#2016](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2016)) ([a14516c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a14516c56176f49baef678e330b48c2054dbe3a1))
+
 # [2.51.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.50.0...v2.51.0) (2026-09-05)
 
 
