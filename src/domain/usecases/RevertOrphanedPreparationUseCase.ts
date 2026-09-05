@@ -17,7 +17,6 @@ import {
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { extractWaitingForOwnerApproval } from './extractWaitingForOwnerApproval';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
@@ -36,8 +35,7 @@ const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 type OrphanedPreparationOutcome =
   | 'advanceToQualityCheck'
   | 'reject'
-  | 'reassignToDeveloper'
-  | 'waitingForOwnerApproval';
+  | 'reassignToDeveloper';
 
 export class RevertOrphanedPreparationUseCase {
   constructor(
@@ -234,18 +232,6 @@ export class RevertOrphanedPreparationUseCase {
         }
         continue;
       }
-      if (outcome === 'waitingForOwnerApproval') {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
-        await this.issueCommentRepository.createComment(
-          issue,
-          'Auto Status Check: AWAITING_OWNER_APPROVAL',
-        );
-        continue;
-      }
       if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
         const effectiveDeveloperAgentName =
           params.developerAgentName ?? 'developer';
@@ -399,10 +385,6 @@ export class RevertOrphanedPreparationUseCase {
     if (this.reportBodyHasNextStep(lastComment.content)) {
       return { outcome: 'reject', comments };
     }
-    if (extractWaitingForOwnerApproval(lastComment.content)) {
-      return { outcome: 'waitingForOwnerApproval', comments };
-    }
-
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
     );
