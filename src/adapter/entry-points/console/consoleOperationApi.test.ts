@@ -787,57 +787,125 @@ describe('consoleOperationApi', () => {
     });
 
     it('snoozes for one hour via updateNextActionHour', async () => {
-      const projectWithHour: Project = {
-        ...project,
-        nextActionHour: {
-          name: 'Next Action Hour',
-          fieldId: 'nahField',
-          options: [],
-        },
-      };
-      const beforeHour = new Date().getUTCHours();
-      const response = await handleTriage(contextForProject(projectWithHour), {
-        pjcode: 'acme',
-        action: 'snooze_1hour',
-        issueUrl: 'https://github.com/o/r/issues/1',
-        projectItemId: 'PVTI_1h',
-      });
-      expect(response.statusCode).toBe(200);
-      expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
-      const call = issueRepository.updateNextActionHour.mock.calls[0];
-      expect(call[0]).toMatchObject({
-        nextActionHour: { fieldId: 'nahField' },
-      });
-      expect(call[2]).toBeGreaterThanOrEqual(beforeHour + 1);
-      expect(call[2]).toBeLessThanOrEqual(beforeHour + 2);
-      expectRecordedAcrossTabs('PVTI_1h');
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-01T12:00:00Z'));
+      try {
+        const projectWithHour: Project = {
+          ...project,
+          nextActionHour: {
+            name: 'Next Action Hour',
+            fieldId: 'nahField',
+            options: [],
+          },
+        };
+        const response = await handleTriage(contextForProject(projectWithHour), {
+          pjcode: 'acme',
+          action: 'snooze_1hour',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_1h',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+        const call = issueRepository.updateNextActionHour.mock.calls[0];
+        expect(call[0]).toMatchObject({
+          nextActionHour: { fieldId: 'nahField' },
+        });
+        expect(call[2]).toBe(13);
+        expect(issueRepository.updateNextActionDate).not.toHaveBeenCalled();
+        expectRecordedAcrossTabs('PVTI_1h');
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('snoozes for three hours via updateNextActionHour', async () => {
-      const projectWithHour: Project = {
-        ...project,
-        nextActionHour: {
-          name: 'Next Action Hour',
-          fieldId: 'nahField',
-          options: [],
-        },
-      };
-      const beforeHour = new Date().getUTCHours();
-      const response = await handleTriage(contextForProject(projectWithHour), {
-        pjcode: 'acme',
-        action: 'snooze_3hours',
-        issueUrl: 'https://github.com/o/r/issues/1',
-        projectItemId: 'PVTI_3h',
-      });
-      expect(response.statusCode).toBe(200);
-      expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
-      const call = issueRepository.updateNextActionHour.mock.calls[0];
-      expect(call[0]).toMatchObject({
-        nextActionHour: { fieldId: 'nahField' },
-      });
-      expect(call[2]).toBeGreaterThanOrEqual(beforeHour + 3);
-      expect(call[2]).toBeLessThanOrEqual(beforeHour + 4);
-      expectRecordedAcrossTabs('PVTI_3h');
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-01T12:00:00Z'));
+      try {
+        const projectWithHour: Project = {
+          ...project,
+          nextActionHour: {
+            name: 'Next Action Hour',
+            fieldId: 'nahField',
+            options: [],
+          },
+        };
+        const response = await handleTriage(contextForProject(projectWithHour), {
+          pjcode: 'acme',
+          action: 'snooze_3hours',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_3h',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+        const call = issueRepository.updateNextActionHour.mock.calls[0];
+        expect(call[0]).toMatchObject({
+          nextActionHour: { fieldId: 'nahField' },
+        });
+        expect(call[2]).toBe(15);
+        expect(issueRepository.updateNextActionDate).not.toHaveBeenCalled();
+        expectRecordedAcrossTabs('PVTI_3h');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('wraps snooze_3hours hour and sets nextActionDate when crossing midnight', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-01T22:00:00Z'));
+      try {
+        const projectWithHour: Project = {
+          ...project,
+          nextActionHour: {
+            name: 'Next Action Hour',
+            fieldId: 'nahField',
+            options: [],
+          },
+        };
+        const response = await handleTriage(contextForProject(projectWithHour), {
+          pjcode: 'acme',
+          action: 'snooze_3hours',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_3h_wrap',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateNextActionHour.mock.calls[0][2]).toBe(1);
+        expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateNextActionDate.mock.calls[0][2]).toEqual(
+          new Date('2026-01-02T00:00:00Z'),
+        );
+        expectRecordedAcrossTabs('PVTI_3h_wrap');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('wraps snooze_1hour hour and sets nextActionDate when crossing midnight', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-01T23:00:00Z'));
+      try {
+        const projectWithHour: Project = {
+          ...project,
+          nextActionHour: {
+            name: 'Next Action Hour',
+            fieldId: 'nahField',
+            options: [],
+          },
+        };
+        const response = await handleTriage(contextForProject(projectWithHour), {
+          pjcode: 'acme',
+          action: 'snooze_1hour',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_1h_wrap',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateNextActionHour.mock.calls[0][2]).toBe(0);
+        expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateNextActionDate.mock.calls[0][2]).toEqual(
+          new Date('2026-01-02T00:00:00Z'),
+        );
+        expectRecordedAcrossTabs('PVTI_1h_wrap');
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('returns 400 when snooze_1hour is used on a project without nextActionHour', async () => {
