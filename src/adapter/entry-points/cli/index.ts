@@ -898,7 +898,12 @@ const buildConsoleErrorReporter = (
   }
   const useCase = new ConsoleErrorReportUseCase(issueRepository);
   return async (error: unknown, requestPath: string): Promise<void> => {
-    await useCase.run({ error, owner: ownerRepo.owner, repo: ownerRepo.repo, requestPath });
+    await useCase.run({
+      error,
+      owner: ownerRepo.owner,
+      repo: ownerRepo.repo,
+      requestPath,
+    });
   };
 };
 

@@ -253,8 +253,7 @@ export type WebServerOptions = {
   issueTitleStateCache?: IssueTitleStateCache | null;
   pullRequestStatusCache?: PullRequestStatusCache | null;
   consoleErrorReporter?:
-    | ((error: unknown, requestPath: string) => Promise<void>)
-    | null;
+    ((error: unknown, requestPath: string) => Promise<void>) | null;
 };
 
 const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
