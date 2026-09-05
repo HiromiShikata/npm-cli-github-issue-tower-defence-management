@@ -12,6 +12,7 @@ import {
   CONSOLE_DONE_TAB_NAMES,
   readDoneProjectItemIds,
 } from './consoleDoneStore';
+import { countCloseEvents } from './consoleCloseEventStore';
 import {
   CONFLICT_RETURNED_MESSAGE,
   type ConsoleOperationContext,
@@ -675,6 +676,23 @@ describe('consoleOperationApi', () => {
         error: 'Cannot merge: pull request not found or already closed',
       });
       expect(issueRepository.mergePullRequest).not.toHaveBeenCalled();
+    });
+
+    it('records a close event when approve_and_merge succeeds', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-10T12:00:00Z'));
+      const response = await handleReview(context, {
+        pjcode: 'acme',
+        action: 'approve_and_merge',
+        prUrl: 'https://github.com/o/r/pull/1',
+        projectItemId: 'PVTI_close',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(countCloseEvents(baseDir, 'acme', Date.now())).toEqual({
+        h1: 1,
+        h3: 1,
+        h5: 1,
+      });
+      jest.useRealTimers();
     });
   });
 

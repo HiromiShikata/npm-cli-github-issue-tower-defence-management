@@ -455,6 +455,7 @@ export const handleReview = async (
       return failure;
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
+    recordTaskClose(context, pjcode);
     return ok();
   }
 
