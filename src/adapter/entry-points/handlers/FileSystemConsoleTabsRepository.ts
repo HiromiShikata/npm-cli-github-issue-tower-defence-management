@@ -110,4 +110,76 @@ export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
       }
     }
   }
+
+  moveItemToQueuedTab(projectItemId: string, newStatus: string): void {
+    let foundItem: Record<string, unknown> | undefined;
+
+    for (const tabName of CONSOLE_LIST_TAB_NAMES) {
+      if (tabName === 'queued') continue;
+      const filePath = path.join(
+        this.consoleDataOutputDir,
+        this.pjcode,
+        tabName,
+        'list.json',
+      );
+      const existing = readTabListJson(filePath);
+      if (existing === null) continue;
+      const rawItems = existing.items;
+      const items: unknown[] = Array.isArray(rawItems) ? rawItems : [];
+      const found = items.find(
+        (i) => isRecord(i) && i.projectItemId === projectItemId,
+      );
+      if (found !== undefined && isRecord(found) && foundItem === undefined) {
+        foundItem = found;
+      }
+      const withoutItem = items.filter(
+        (i) => !(isRecord(i) && i.projectItemId === projectItemId),
+      );
+      if (withoutItem.length !== items.length) {
+        writeJsonAtomic(filePath, { ...existing, items: withoutItem });
+      }
+    }
+
+    const queuedFilePath = path.join(
+      this.consoleDataOutputDir,
+      this.pjcode,
+      'queued',
+      'list.json',
+    );
+    const queuedExisting = readTabListJson(queuedFilePath);
+    if (queuedExisting === null) return;
+
+    const rawQueuedItems = queuedExisting.items;
+    const queuedItems: unknown[] = Array.isArray(rawQueuedItems)
+      ? rawQueuedItems
+      : [];
+    const existingInQueued = queuedItems.find(
+      (i) => isRecord(i) && i.projectItemId === projectItemId,
+    );
+    const sourceItem =
+      foundItem ??
+      (existingInQueued !== undefined && isRecord(existingInQueued)
+        ? existingInQueued
+        : undefined);
+    if (sourceItem === undefined) return;
+
+    const updatedItem = { ...sourceItem, status: newStatus };
+    const withoutFromQueued = queuedItems.filter(
+      (i) => !(isRecord(i) && i.projectItemId === projectItemId),
+    );
+    const rawStoryOrder = queuedExisting.storyOrder;
+    const storyOrder = Array.isArray(rawStoryOrder)
+      ? rawStoryOrder.filter((s): s is string => typeof s === 'string')
+      : [];
+    const newItems = sortByStoryOrder([...withoutFromQueued, updatedItem], storyOrder);
+    writeJsonAtomic(queuedFilePath, { ...queuedExisting, items: newItems });
+
+    const doneFilePath = path.join(
+      this.consoleDataOutputDir,
+      this.pjcode,
+      'queued',
+      '.done.json',
+    );
+    clearProjectItemIdFromDoneJson(doneFilePath, projectItemId);
+  }
 }

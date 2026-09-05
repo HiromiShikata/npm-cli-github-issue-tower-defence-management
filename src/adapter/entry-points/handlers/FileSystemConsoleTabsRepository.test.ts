@@ -216,3 +216,109 @@ describe('FileSystemConsoleTabsRepository', () => {
     expect(mtimeAfter).toBe(mtimeBefore);
   });
 });
+
+describe('FileSystemConsoleTabsRepository.moveItemToQueuedTab', () => {
+  let dir: string;
+  const PJCODE = 'test-project';
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'console-tabs-move-queued-test-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeTabFile = (tab: string, data: unknown): void => {
+    const tabDir = path.join(dir, PJCODE, tab);
+    fs.mkdirSync(tabDir, { recursive: true });
+    fs.writeFileSync(path.join(tabDir, 'list.json'), JSON.stringify(data));
+  };
+
+  const isObjectWithItems = (
+    value: unknown,
+  ): value is { items: unknown[] } => {
+    if (value === null || typeof value !== 'object' || Array.isArray(value))
+      return false;
+    if (!('items' in value)) return false;
+    return Array.isArray(value.items);
+  };
+
+  const readTabItems = (tab: string): unknown[] => {
+    const filePath = path.join(dir, PJCODE, tab, 'list.json');
+    const data: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    return isObjectWithItems(data) ? data.items : [];
+  };
+
+  const makeItem = (overrides: Partial<ConsoleListItem> = {}): ConsoleListItem => ({
+    number: 1,
+    title: 'Test Issue',
+    url: 'https://github.com/user/repo/issues/1',
+    repo: 'user/repo',
+    nameWithOwner: 'user/repo',
+    projectItemId: 'item-1',
+    itemId: 'item-1',
+    isPr: false,
+    story: 'Story A',
+    status: 'Todo by agent',
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
+    relatedOpenPullRequestUrls: [],
+    ...overrides,
+  });
+
+  const makeStatusTab = (
+    pjcode: string,
+    items: ConsoleListItem[],
+    storyOrder: string[] = ['Story A'],
+  ) => ({
+    pjcode,
+    generatedAt: '2026-09-04T00:00:00Z',
+    statusOptions: [],
+    agentOptions: [],
+    storyOrder,
+    storyColors: {},
+    items,
+  });
+
+  it('moves the item from todo-by-agent to queued with the new status', () => {
+    const item = makeItem({ projectItemId: 'item-1', status: 'Todo by agent' });
+    writeTabFile('todo-by-agent', makeStatusTab(PJCODE, [item]));
+    writeTabFile('queued', makeStatusTab(PJCODE, []));
+    const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+
+    repo.moveItemToQueuedTab('item-1', 'Awaiting Workspace');
+
+    expect(readTabItems('queued')).toMatchObject([
+      { projectItemId: 'item-1', status: 'Awaiting Workspace' },
+    ]);
+    expect(readTabItems('todo-by-agent')).toEqual([]);
+  });
+
+  it('is a no-op when the item is not found in any tab', () => {
+    writeTabFile('todo-by-agent', makeStatusTab(PJCODE, []));
+    writeTabFile('queued', makeStatusTab(PJCODE, []));
+    const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+
+    expect(() => repo.moveItemToQueuedTab('nonexistent', 'Awaiting Workspace')).not.toThrow();
+    expect(readTabItems('queued')).toEqual([]);
+  });
+
+  it('moves the item when it is already in the queued tab under a different status', () => {
+    const item = makeItem({ projectItemId: 'item-1', status: 'Preparation' });
+    writeTabFile('queued', makeStatusTab(PJCODE, [item]));
+    const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+
+    repo.moveItemToQueuedTab('item-1', 'Awaiting Workspace');
+
+    expect(readTabItems('queued')).toMatchObject([
+      { projectItemId: 'item-1', status: 'Awaiting Workspace' },
+    ]);
+  });
+});

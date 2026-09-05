@@ -50,6 +50,7 @@ import {
   ConsoleGithubTokenResolver,
   extractRepositoryOwner,
 } from './consoleGithubTokenResolver';
+import { FileSystemConsoleTabsRepository } from '../handlers/FileSystemConsoleTabsRepository';
 import {
   composeDashboardText,
   dashboardComposeFilesPresent,
@@ -598,15 +599,30 @@ const handleOperationApi = async (
   }
   const resolveIssueRepository =
     options.resolveIssueRepository ?? ((): IssueRepository => issueRepository);
+  const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+  const patchItemIntoQueuedTab =
+    consoleDataOutputDir !== null
+      ? (
+          pjcode: string,
+          projectItemId: string,
+          canonicalStatusName: string,
+        ): void => {
+          new FileSystemConsoleTabsRepository(
+            consoleDataOutputDir,
+            pjcode,
+          ).moveItemToQueuedTab(projectItemId, canonicalStatusName);
+        }
+      : null;
   const context: ConsoleOperationContext = {
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
-    consoleDataOutputDir: options.consoleDataOutputDir,
+    consoleDataOutputDir,
     issueAttachmentRepository: options.issueAttachmentRepository ?? null,
     resolveProjectRepository: options.resolveProjectRepository ?? null,
     invalidateProject: options.invalidateProject ?? null,
     updateProjectCacheEntry: options.updateProjectCacheEntry ?? null,
+    patchItemIntoQueuedTab,
   };
   const githubToken =
     options.resolveGithubToken != null ? options.resolveGithubToken('') : null;

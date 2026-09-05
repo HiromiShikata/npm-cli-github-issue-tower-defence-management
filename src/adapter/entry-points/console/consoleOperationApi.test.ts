@@ -126,6 +126,7 @@ describe('consoleOperationApi', () => {
       resolveProjectRepository: null,
       invalidateProject: null,
       updateProjectCacheEntry: null,
+      patchItemIntoQueuedTab: null,
     };
   });
 
@@ -141,6 +142,7 @@ describe('consoleOperationApi', () => {
     resolveProjectRepository: null,
     invalidateProject: null,
     updateProjectCacheEntry: null,
+    patchItemIntoQueuedTab: null,
   });
 
   afterEach(() => {
@@ -728,6 +730,88 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('calls patchItemIntoQueuedTab when set_status changes to Awaiting Workspace', async () => {
+      const patchItemIntoQueuedTab = jest.fn();
+      const ctxWithPatch: ConsoleOperationContext = {
+        ...context,
+        patchItemIntoQueuedTab,
+      };
+      const response = await handleTriage(ctxWithPatch, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_aw',
+        statusName: 'Awaiting workspace',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(patchItemIntoQueuedTab).toHaveBeenCalledWith(
+        'acme',
+        'PVTI_aw',
+        'Awaiting workspace',
+      );
+    });
+
+    it('calls patchItemIntoQueuedTab when set_status changes to Preparation', async () => {
+      const projectWithPrep: Project = {
+        ...project,
+        status: {
+          ...project.status,
+          statuses: [
+            ...project.status.statuses,
+            { id: 'status_prep', name: 'Preparation', color: 'YELLOW', description: '' },
+          ],
+        },
+      };
+      const patchItemIntoQueuedTab = jest.fn();
+      const ctxWithPatch: ConsoleOperationContext = {
+        ...context,
+        resolveProject: async (pjcode: string) =>
+          pjcode === 'acme' ? { pjcode, project: projectWithPrep } : null,
+        patchItemIntoQueuedTab,
+      };
+      const response = await handleTriage(ctxWithPatch, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_prep',
+        statusName: 'Preparation',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(patchItemIntoQueuedTab).toHaveBeenCalledWith(
+        'acme',
+        'PVTI_prep',
+        'Preparation',
+      );
+    });
+
+    it('does not call patchItemIntoQueuedTab when set_status changes to a non-queued status', async () => {
+      const patchItemIntoQueuedTab = jest.fn();
+      const ctxWithPatch: ConsoleOperationContext = {
+        ...context,
+        patchItemIntoQueuedTab,
+      };
+      const response = await handleTriage(ctxWithPatch, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_todo',
+        statusName: 'Todo',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(patchItemIntoQueuedTab).not.toHaveBeenCalled();
+    });
+
+    it('does not call patchItemIntoQueuedTab when it is null', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_status',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_aw_null',
+        statusName: 'Awaiting workspace',
+      });
+      expect(response.statusCode).toBe(200);
+    });
+
     it('rejects an unknown status name', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',
@@ -1030,6 +1114,7 @@ describe('consoleOperationApi', () => {
         resolveProjectRepository: null,
         invalidateProject: null,
         updateProjectCacheEntry: null,
+        patchItemIntoQueuedTab: null,
       };
     });
 
@@ -1278,6 +1363,7 @@ describe('consoleOperationApi', () => {
         resolveProjectRepository: null,
         invalidateProject: null,
         updateProjectCacheEntry: null,
+        patchItemIntoQueuedTab: null,
       };
       const response = await handleTriage(multiContext, {
         pjcode: 'globex',
@@ -2448,6 +2534,7 @@ describe('consoleOperationApi', () => {
         })),
         invalidateProject,
         updateProjectCacheEntry: null,
+        patchItemIntoQueuedTab: null,
       };
 
       await handleStoryAdd(consecutiveContext, {

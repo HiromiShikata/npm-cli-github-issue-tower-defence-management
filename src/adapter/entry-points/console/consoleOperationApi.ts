@@ -64,6 +64,13 @@ export type ConsoleOperationContext = {
   invalidateProject: ((pjcode: string) => void) | null;
   updateProjectCacheEntry:
     ((pjcode: string, updatedProject: Project) => void) | null;
+  patchItemIntoQueuedTab:
+    | ((
+        pjcode: string,
+        projectItemId: string,
+        canonicalStatusName: string,
+      ) => void)
+    | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -541,6 +548,19 @@ export const handleTriage = async (
       return failure;
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
+    const lowerStatusName = statusName.toLowerCase();
+    if (
+      context.patchItemIntoQueuedTab !== null &&
+      (lowerStatusName === AWAITING_WORKSPACE_STATUS_NAME ||
+        lowerStatusName === 'preparation')
+    ) {
+      const canonicalOption = project.status.statuses.find(
+        (opt) => opt.name.toLowerCase() === lowerStatusName,
+      );
+      if (canonicalOption !== undefined) {
+        context.patchItemIntoQueuedTab(pjcode, projectItemId, canonicalOption.name);
+      }
+    }
     return ok();
   }
 
