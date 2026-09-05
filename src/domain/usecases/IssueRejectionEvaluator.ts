@@ -236,15 +236,15 @@ export class IssueRejectionEvaluator {
     const effectiveDeveloperAgentNames = developerAgentNames?.length
       ? developerAgentNames
       : ['developer'];
-    const isNonDeveloperAgent =
+    const isDeveloperAgent =
       issue.agent != null &&
-      !effectiveDeveloperAgentNames.includes(issue.agent) &&
-      issue.agent !== 'pr-reviewer';
+      (effectiveDeveloperAgentNames.includes(issue.agent) ||
+        issue.agent === 'pr-reviewer');
     const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
       labelsNotRequiringPullRequest.includes(label),
     );
     return (
-      !isNonDeveloperAgent &&
+      isDeveloperAgent &&
       !hasLabelNotRequiringPullRequest &&
       (categoryLabels.length <= 0 || categoryLabels.includes('category:e2e'))
     );
