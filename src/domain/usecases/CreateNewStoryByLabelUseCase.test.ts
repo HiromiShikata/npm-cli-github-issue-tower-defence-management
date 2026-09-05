@@ -90,6 +90,7 @@ describe('CreateNewStoryByLabelUseCase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockProjectRepository.getProject.mockResolvedValue(basicProject);
     useCase = new CreateNewStoryByLabelUseCase(
       mockProjectRepository,
       mockIssueRepository,
@@ -559,6 +560,109 @@ describe('CreateNewStoryByLabelUseCase', () => {
       expect(mockProjectRepository.updateStoryList).toHaveBeenCalledTimes(1);
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
+    });
+
+    it('should preserve story options added to GitHub after cache was written when cacheUsed is true', async () => {
+      const staleProject: Project = {
+        ...basicProject,
+        story: {
+          name: 'Story Field',
+          fieldId: 'storyFieldId',
+          databaseId: 123,
+          stories: [
+            {
+              id: 'story1',
+              name: 'First Story',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
+        },
+      };
+
+      const freshProject: Project = {
+        ...basicProject,
+        story: {
+          name: 'Story Field',
+          fieldId: 'storyFieldId',
+          databaseId: 123,
+          stories: [
+            {
+              id: 'story1',
+              name: 'First Story',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'story-added-after-cache',
+              name: 'Story Added After Cache',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
+        },
+      };
+
+      const issueWithNewStory: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/org/repo/issues/2000',
+        title: 'Brand New Story',
+        number: 2000,
+        story: null,
+        labels: ['new-story'],
+      };
+
+      mockProjectRepository.getProject.mockResolvedValue(freshProject);
+      mockProjectRepository.updateStoryList.mockResolvedValue([
+        { id: 'story1', name: 'First Story', color: 'BLUE', description: '' },
+        {
+          id: 'new-brand',
+          name: 'Brand New Story',
+          color: 'RED',
+          description: '',
+        },
+        {
+          id: 'story-added-after-cache',
+          name: 'Story Added After Cache',
+          color: 'GREEN',
+          description: '',
+        },
+      ]);
+
+      await useCase.run({
+        project: staleProject,
+        cacheUsed: true,
+        org: 'testOrg',
+        repo: 'testRepo',
+        storyObjectMap: new Map(),
+        issues: [issueWithNewStory],
+      });
+
+      expect(mockProjectRepository.updateStoryList).toHaveBeenCalledWith(
+        freshProject,
+        [
+          {
+            id: 'story1',
+            name: 'First Story',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: null,
+            name: 'Brand New Story',
+            color: 'RED',
+            description: '',
+          },
+          {
+            id: 'story-added-after-cache',
+            name: 'Story Added After Cache',
+            color: 'GREEN',
+            description: '',
+          },
+        ],
+      );
     });
 
     it('should link the issue to the existing option and remove the label without rewriting the option list when an option already carries the issue title', async () => {

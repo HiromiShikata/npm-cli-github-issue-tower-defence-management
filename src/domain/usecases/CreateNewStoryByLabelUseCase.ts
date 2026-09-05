@@ -1,6 +1,7 @@
 import type { Issue } from '../entities/Issue';
 import {
   buildStoryListWithNew,
+  type FieldOption,
   type Project,
   type StoryListEntry,
 } from '../entities/Project';
@@ -12,7 +13,10 @@ const LOG_PREFIX = '[CreateNewStoryByLabel]';
 
 export class CreateNewStoryByLabelUseCase {
   constructor(
-    readonly projectRepository: Pick<ProjectRepository, 'updateStoryList'>,
+    readonly projectRepository: Pick<
+      ProjectRepository,
+      'updateStoryList' | 'getProject'
+    >,
     readonly issueRepository: Pick<
       IssueRepository,
       'updateLabels' | 'updateStory'
@@ -66,13 +70,33 @@ export class CreateNewStoryByLabelUseCase {
           .join(', ')}`,
       );
     }
-    const savedNewStoryList =
-      addedStories.length === 0
-        ? projectStory.stories
-        : await this.projectRepository.updateStoryList(
-            input.project,
-            newStoryList,
-          );
+    let savedNewStoryList: FieldOption[];
+    if (addedStories.length === 0) {
+      savedNewStoryList = projectStory.stories;
+    } else {
+      const freshProject = await this.projectRepository.getProject(
+        input.project.id,
+      );
+      if (!freshProject) {
+        throw new Error(
+          `${LOG_PREFIX} project ${input.project.id} not found on re-fetch`,
+        );
+      }
+      if (!freshProject.story) {
+        throw new Error(
+          `${LOG_PREFIX} project ${input.project.id} has no story field on re-fetch`,
+        );
+      }
+      const freshNewStoryList = this.createNewStoryList(
+        freshProject.story,
+        input.storyObjectMap,
+        input.issues,
+      );
+      savedNewStoryList = await this.projectRepository.updateStoryList(
+        freshProject,
+        freshNewStoryList,
+      );
+    }
     console.log(
       `${LOG_PREFIX} the story option list holds ${savedNewStoryList.length} options`,
     );

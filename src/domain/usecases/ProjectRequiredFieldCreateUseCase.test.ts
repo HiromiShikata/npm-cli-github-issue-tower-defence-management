@@ -598,6 +598,44 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         submittedNames.indexOf('regular / WORKFLOW BLOCKER') + 1,
       );
     });
+
+    it('should preserve story options added to GitHub between the initial read and updateStoryList when reconcileStoryOptions re-fetches', async () => {
+      const staleProject = buildProjectWithStory(existingStoriesWithoutInquiry);
+      const { projectRepository, useCase } = createUseCase(
+        [
+          'Title',
+          'Status',
+          'Story',
+          'Next Action Date',
+          'Next Action Hour',
+          'Depended Issue URL separated by comma',
+        ],
+        staleProject,
+      );
+
+      const concurrentlyAddedOption: FieldOption = {
+        id: 'opt_concurrent',
+        name: 'regular / concurrent project',
+        color: 'BLUE',
+        description: '',
+      };
+      const freshProject = buildProjectWithStory([
+        ...existingStoriesWithoutInquiry,
+        concurrentlyAddedOption,
+      ]);
+
+      projectRepository.getByUrl
+        .mockResolvedValueOnce(staleProject)
+        .mockResolvedValueOnce(staleProject)
+        .mockResolvedValueOnce(freshProject);
+
+      await useCase.run({ projectUrl });
+
+      const submittedOptions =
+        projectRepository.updateStoryList.mock.calls[0][1];
+      const submittedNames = submittedOptions.map((o) => o.name);
+      expect(submittedNames).toContain('regular / concurrent project');
+    });
   });
 
   describe('reconcileAgentOptions', () => {

@@ -50,20 +50,11 @@ export class ProjectRequiredFieldCreateUseCase {
     }
   };
 
-  private reconcileStoryOptions = async (project: Project): Promise<void> => {
-    if (!project.story) {
-      return;
-    }
-    const storyFieldDefinition = REQUIRED_PROJECT_FIELDS.find(
-      (f) =>
-        normalizeProjectFieldName(f.name) ===
-        normalizeProjectFieldName(STORY_FIELD_NAME),
-    );
-    if (!storyFieldDefinition) {
-      return;
-    }
-    const requiredOptions = storyFieldDefinition.options;
-    const mergedOptions: OptionToSubmit[] = project.story.stories.map((o) => ({
+  private buildMergedStoryOptions = (
+    existingStories: FieldOption[],
+    requiredOptions: Omit<FieldOption, 'id'>[],
+  ): { mergedOptions: OptionToSubmit[]; addedCount: number } => {
+    const mergedOptions: OptionToSubmit[] = existingStories.map((o) => ({
       ...o,
     }));
     let addedCount = 0;
@@ -81,10 +72,45 @@ export class ProjectRequiredFieldCreateUseCase {
       previousRequiredIndex = insertIndex;
       addedCount += 1;
     }
+    return { mergedOptions, addedCount };
+  };
+
+  private reconcileStoryOptions = async (project: Project): Promise<void> => {
+    if (!project.story) {
+      return;
+    }
+    const storyFieldDefinition = REQUIRED_PROJECT_FIELDS.find(
+      (f) =>
+        normalizeProjectFieldName(f.name) ===
+        normalizeProjectFieldName(STORY_FIELD_NAME),
+    );
+    if (!storyFieldDefinition) {
+      return;
+    }
+    const requiredOptions = storyFieldDefinition.options;
+    const { addedCount } = this.buildMergedStoryOptions(
+      project.story.stories,
+      requiredOptions,
+    );
     if (addedCount === 0) {
       return;
     }
-    await this.projectRepository.updateStoryList(project, mergedOptions);
+    const latestProject = await this.projectRepository.getByUrl(project.url);
+    if (!latestProject.story) {
+      return;
+    }
+    const { mergedOptions: freshMergedOptions, addedCount: freshAddedCount } =
+      this.buildMergedStoryOptions(
+        latestProject.story.stories,
+        requiredOptions,
+      );
+    if (freshAddedCount === 0) {
+      return;
+    }
+    await this.projectRepository.updateStoryList(
+      latestProject,
+      freshMergedOptions,
+    );
   };
 
   reconcileAgentOptions = async (
