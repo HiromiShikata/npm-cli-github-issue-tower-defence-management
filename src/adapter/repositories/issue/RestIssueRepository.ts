@@ -14,11 +14,6 @@ import {
   DUPLICATE_COMMENT_WINDOW_MS,
 } from '../commentDeduplication';
 
-type CommentEtagCacheEntry = {
-  etag: string;
-  comments: ReadonlyArray<{ text: string; createdAt: Date }>;
-};
-
 type RestIssueCommentsResponseItem = {
   body: string | null;
   created_at: string;
@@ -55,55 +50,50 @@ export class RestIssueRepository
   implements
     Pick<IssueRepository, 'updateAssigneeList' | 'removeLabel' | 'searchIssues'>
 {
-  private readonly commentEtagCache = new Map<string, CommentEtagCacheEntry>();
-
   private async fetchCommentsForDedupCheck(
     owner: string,
     repo: string,
     issueNumber: number,
   ): Promise<ReadonlyArray<{ text: string; createdAt: Date }> | null> {
-    const cacheKey = `${owner}/${repo}/${issueNumber}`;
-    const cached = this.commentEtagCache.get(cacheKey);
-
+    const since = new Date(
+      Date.now() - DUPLICATE_COMMENT_WINDOW_MS,
+    ).toISOString();
+    const comments: Array<{ text: string; createdAt: Date }> = [];
     const headers: Record<string, string> = {
       Authorization: `token ${this.ghToken}`,
       Accept: 'application/vnd.github+json',
     };
-    if (cached) {
-      headers['If-None-Match'] = cached.etag;
-    }
 
-    let response: Response;
-    try {
-      response = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100`,
-        { headers },
-      );
-    } catch {
-      return null;
-    }
+    let url: string | null =
+      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&since=${encodeURIComponent(since)}`;
 
-    if (response.status === 304 && cached) {
-      return cached.comments;
-    }
+    while (url !== null) {
+      let response: Response;
+      try {
+        response = await fetch(url, { headers });
+      } catch {
+        return null;
+      }
 
-    if (!response.ok) {
-      return null;
-    }
+      if (!response.ok) {
+        return null;
+      }
 
-    const body: unknown = await response.json();
-    if (!isRestIssueCommentsResponse(body)) {
-      return null;
-    }
+      const body: unknown = await response.json();
+      if (!isRestIssueCommentsResponse(body)) {
+        return null;
+      }
 
-    const comments = body.map((item) => ({
-      text: item.body ?? '',
-      createdAt: new Date(item.created_at),
-    }));
+      for (const item of body) {
+        comments.push({
+          text: item.body ?? '',
+          createdAt: new Date(item.created_at),
+        });
+      }
 
-    const newEtag = response.headers.get('ETag');
-    if (newEtag) {
-      this.commentEtagCache.set(cacheKey, { etag: newEtag, comments });
+      const linkHeader = response.headers.get('Link') ?? '';
+      const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+      url = nextMatch?.[1] ?? null;
     }
 
     return comments;

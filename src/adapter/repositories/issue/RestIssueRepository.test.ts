@@ -372,16 +372,27 @@ describe('RestIssueRepository', () => {
       expect(result.url).toBeNull();
     });
 
-    it('sends If-None-Match on the second dedup-check request and skips using the cached comment list on 304', async () => {
+    it('detects a duplicate that lies beyond the first page of comments by following Link rel="next" pagination', async () => {
       const dedupIssueUrl =
         'https://github.com/HiromiShikata/test-repository/issues/505';
-      const freshIssueRepository = new RestIssueRepository(
-        localStorageRepository,
-        'dummy-token',
-      );
       const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 
       fetchSpy
+        // First page: non-matching comment, with Link rel="next"
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              { body: 'Some other comment', created_at: recentTs },
+            ]),
+            {
+              status: 200,
+              headers: {
+                Link: '<https://api.github.com/repos/HiromiShikata/test-repository/issues/505/comments?page=2>; rel="next"',
+              },
+            },
+          ),
+        )
+        // Second page: the duplicate comment
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify([
@@ -390,28 +401,18 @@ describe('RestIssueRepository', () => {
                 created_at: recentTs,
               },
             ]),
-            { status: 200, headers: { ETag: '"etag-5"' } },
+            { status: 200 },
           ),
-        )
-        .mockResolvedValueOnce(new Response(null, { status: 304 }));
+        );
 
-      await freshIssueRepository.createComment(
-        dedupIssueUrl,
-        'Auto Status Check: REJECTED',
-      );
-
-      const secondResult = await freshIssueRepository.createComment(
+      const result = await restIssueRepository.createComment(
         dedupIssueUrl,
         'Auto Status Check: REJECTED',
       );
 
       expect(fetchSpy).toHaveBeenCalledTimes(2);
-      const secondCallArgs = fetchSpy.mock.calls[1];
-      expect(secondCallArgs?.[0]).toContain('/comments');
-      expect(secondCallArgs?.[1]?.headers).toMatchObject({
-        'If-None-Match': '"etag-5"',
-      });
-      expect(secondResult.url).toBeNull();
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(result.url).toBeNull();
     });
 
     it('skips comment but does not prevent other operations from running', async () => {

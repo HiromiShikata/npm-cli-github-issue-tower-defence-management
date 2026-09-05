@@ -190,22 +190,26 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
   async createComment(issue: Issue, commentContent: string): Promise<void> {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
 
-    const existingComments = await this.getCommentsFromIssue(issue);
-    const now = new Date();
-    if (
-      isDuplicateWithinWindow(
-        commentContent,
-        existingComments.map((c) => ({
-          text: c.content,
-          createdAt: c.createdAt,
-        })),
-        now,
-      )
-    ) {
-      console.warn(
-        `GitHubIssueCommentRepository: skipping duplicate comment within ${DUPLICATE_COMMENT_WINDOW_MS / 60000} minutes on ${issue.url}`,
-      );
-      return;
+    try {
+      const existingComments = await this.getCommentsFromIssue(issue);
+      const now = new Date();
+      if (
+        isDuplicateWithinWindow(
+          commentContent,
+          existingComments.map((c) => ({
+            text: c.content,
+            createdAt: c.createdAt,
+          })),
+          now,
+        )
+      ) {
+        console.warn(
+          `GitHubIssueCommentRepository: skipping duplicate comment within ${DUPLICATE_COMMENT_WINDOW_MS / 60000} minutes on ${issue.url}`,
+        );
+        return;
+      }
+    } catch {
+      // Fail open: preflight fetch failed, proceed to post the comment
     }
 
     const response = await fetch(

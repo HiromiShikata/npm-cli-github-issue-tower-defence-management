@@ -626,6 +626,25 @@ describe('GitHubIssueCommentRepository', () => {
       );
     });
 
+    it('posts the comment even when getCommentsFromIssue throws (fail open on preflight error)', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockRejectedValueOnce(new Error('network error'))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 99 }), { status: 201 }),
+        );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/99',
+      );
+      await repository.createComment(issue, 'Auto Status Check: REJECTED');
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
     it('treats bodies with different timestamps as duplicates after normalisation', async () => {
       const recentComment = {
         user: { login: 'bot' },
