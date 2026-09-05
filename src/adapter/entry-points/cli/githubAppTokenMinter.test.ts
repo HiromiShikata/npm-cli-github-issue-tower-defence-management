@@ -4,6 +4,14 @@ import {
 } from './githubAppTokenMinter';
 
 describe('mintTokenFromKeyPath', () => {
+  let errorSpy: jest.SpyInstance;
+  beforeEach(() => {
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
   it('returns null when key file does not exist', async () => {
     const result = await mintTokenFromKeyPath(
       '/nonexistent/path/missing-private-key.pem',
@@ -13,7 +21,6 @@ describe('mintTokenFromKeyPath', () => {
   });
 
   it('logs an error when key file does not exist', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     await mintTokenFromKeyPath(
       '/nonexistent/path/missing-private-key.pem',
       'HiromiShikata',
@@ -23,7 +30,6 @@ describe('mintTokenFromKeyPath', () => {
       '[githubAppTokenMinter] failed to mint token from /nonexistent/path/missing-private-key.pem:',
     );
     expect(errorSpy.mock.calls[0][1]).toHaveProperty('code', 'ENOENT');
-    errorSpy.mockRestore();
   });
 });
 
