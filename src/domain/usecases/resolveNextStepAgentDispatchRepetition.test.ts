@@ -127,6 +127,43 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(comment).not.toContain('ended without a report');
     });
 
+    it('escalates immediately when the agent has reported and is dispatched again and reports again naming itself', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'chore',
+        nextStepAgent: 'chore',
+        comments: [
+          report('chore'),
+          repetitionComment('chore'),
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 99,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+    });
+
+    it('emits an owner-judgment message when escalating due to repeated self-nomination with reports', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'chore',
+        nextStepAgent: 'chore',
+        comments: [
+          report('chore'),
+          repetitionComment('chore'),
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 99,
+      });
+
+      const comment =
+        result.type === 'escalateSilentRedispatch' ? result.comment : '';
+      expect(comment).not.toContain('Failed to receive a report');
+      expect(comment.toLowerCase()).toContain('owner');
+    });
+
     it('escalates once the repetition count reaches the auto reject threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'accounting',
