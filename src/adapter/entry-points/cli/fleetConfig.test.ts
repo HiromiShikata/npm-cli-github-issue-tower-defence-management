@@ -759,7 +759,9 @@ describe('loadErrorReportingRepository', () => {
       'errorReportingRepository: owner/repo\n',
     );
 
-    expect(loadErrorReportingRepository(fleetConfigFilePath)).toBe('owner/repo');
+    expect(loadErrorReportingRepository(fleetConfigFilePath)).toBe(
+      'owner/repo',
+    );
   });
 
   it('returns null when the key is absent from the fleet config', () => {

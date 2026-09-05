@@ -827,7 +827,8 @@ program
       readmeOverrides,
     );
 
-    const checkIssueReviewFleetConfigFilePath = resolveFleetConfigFilePath(null);
+    const checkIssueReviewFleetConfigFilePath =
+      resolveFleetConfigFilePath(null);
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
       loadErrorReportingRepository(checkIssueReviewFleetConfigFilePath) ??
       config.errorReportingRepository ??
