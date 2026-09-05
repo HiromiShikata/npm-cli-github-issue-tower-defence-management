@@ -548,6 +548,49 @@ describe('GitHubIssueCommentRepository', () => {
       );
     });
 
+    it('uses the since-scoped preflight fetch and does not consult the ETag-cached getCommentsFromIssue path when checking for duplicates', async () => {
+      const cacheRepo = buildCommentCacheRepository();
+      const repoWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cacheRepo,
+      );
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              user: { login: 'bot' },
+              body: 'Auto Status Check: REJECTED',
+              created_at: recentTs,
+            },
+          ]),
+          { status: 200 },
+        ),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/99',
+      );
+      await repoWithCache.createComment(issue, 'Auto Status Check: REJECTED');
+
+      // The preflight used the since-scoped URL, not the page-based getCommentsFromIssue URL
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('since='),
+        expect.anything(),
+      );
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('&page='),
+        expect.anything(),
+      );
+      // POST was skipped
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+      // The ETag cache was never read (getCommentsFromIssue was not called)
+      expect(cacheRepo.getSingle).not.toHaveBeenCalled();
+    });
+
     it('skips posting when an identical comment was posted within the last 2 hours', async () => {
       const recentComment = {
         user: { login: 'bot' },
@@ -626,7 +669,7 @@ describe('GitHubIssueCommentRepository', () => {
       );
     });
 
-    it('posts the comment even when getCommentsFromIssue throws (fail open on preflight error)', async () => {
+    it('posts the comment even when the preflight fetch throws (fail open on preflight error)', async () => {
       const fetchSpy = jest
         .spyOn(global, 'fetch')
         .mockRejectedValueOnce(new Error('network error'))
