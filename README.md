@@ -151,9 +151,10 @@ consoleProjects:
   other-project: 'https://github.com/orgs/other-org/projects/2'
 consoleGithubTokens:
   my-project: '<fine-grained-token-for-my-org>'
+  other-project: '<fine-grained-token-for-other-org>'
 ```
 
-In the example above, `my-project`'s token is used for `my-org`; requests for `other-org` fall back to `GH_TOKEN`. The fleet-wide `GH_TOKEN` is still required for the `startDaemon` preparation cycle; only the console HTTP server routes go through the per-project token map.
+In the example above, `my-project`'s token is used for `my-org` and `other-project`'s token is used for `other-org`. The fleet-wide `GH_TOKEN` is still required for the `startDaemon` preparation cycle; only the console HTTP server routes go through the per-project token map.
 
 The optional `storyProgressCommentEnabled` config key controls the daily story progress comment. Once per day the schedule cycle posts a comment containing a mermaid `flowchart TD` of the story and its child issues onto every story issue. Setting the key to `false` stops that comment being posted for the project; the key defaults to `true`, so omitting it leaves the existing behaviour unchanged.
 
