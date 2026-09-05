@@ -1239,3 +1239,30 @@ test('offline pending actions panel renders with correct styling when a network 
   await expect(offlineItem).toBeVisible();
   await expect(offlineItem).toHaveCSS('border-left-color', 'rgb(46, 160, 67)');
 });
+
+test('story select in task detail shows current story pre-selected and fires set_story triage call when selection changes', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Todo by human').click();
+  await itemRowByText(
+    page,
+    'Auto-advance to the next non-empty console tab when one empties',
+  ).click();
+
+  const storySelect = page.getByRole('combobox', { name: 'Set story' });
+  await expect(storySelect).toBeVisible();
+  await expect(storySelect).toHaveValue('1491051e');
+
+  await storySelect.selectOption('28415d6c');
+
+  await expect
+    .poll(
+      () =>
+        harness.setStoryCalls.filter((c) => c.storyOptionId === '28415d6c')
+          .length,
+      { timeout: 10000 },
+    )
+    .toBe(1);
+});

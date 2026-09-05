@@ -962,4 +962,60 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.prs.storyOptions).toEqual([]);
     });
   });
+
+  describe('workflow-blocker storyOptions', () => {
+    it('propagates storyOptions from project.story field to workflow-blocker tab', () => {
+      const result = run([]);
+      expect(result['workflow-blocker'].storyOptions).toEqual(
+        STORY_OPTIONS.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty storyOptions for workflow-blocker tab when project.story is null', () => {
+      const result = run([], baseProject(null));
+      expect(result['workflow-blocker'].storyOptions).toEqual([]);
+    });
+  });
+
+  describe('failed-preparation storyOptions', () => {
+    it('propagates storyOptions from project.story field to failed-preparation tab', () => {
+      const result = run([]);
+      expect(result['failed-preparation'].storyOptions).toEqual(
+        STORY_OPTIONS.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty storyOptions for failed-preparation tab when project.story is null', () => {
+      const result = run([], baseProject(null));
+      expect(result['failed-preparation'].storyOptions).toEqual([]);
+    });
+  });
+
+  describe('todo-by-human storyOptions', () => {
+    it('propagates storyOptions from project.story field to todo-by-human tab', () => {
+      const result = run([]);
+      expect(result['todo-by-human'].storyOptions).toEqual(
+        STORY_OPTIONS.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty storyOptions for todo-by-human tab when project.story is null', () => {
+      const result = run([], baseProject(null));
+      expect(result['todo-by-human'].storyOptions).toEqual([]);
+    });
+  });
+
+  describe('todo-by-agent storyOptions', () => {
+    it('propagates storyOptions from project.story field to todo-by-agent tab', () => {
+      const result = run([]);
+      expect(result['todo-by-agent'].storyOptions).toEqual(
+        STORY_OPTIONS.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty storyOptions for todo-by-agent tab when project.story is null', () => {
+      const result = run([], baseProject(null));
+      expect(result['todo-by-agent'].storyOptions).toEqual([]);
+    });
+  });
 });
