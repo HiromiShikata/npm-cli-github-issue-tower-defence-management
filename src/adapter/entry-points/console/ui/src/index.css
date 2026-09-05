@@ -1847,3 +1847,122 @@ body {
   font-size: 0.6875rem;
   color: #8b949e;
 }
+
+.console-offline-panel {
+  background: #161b22;
+  border-bottom: 2px solid #30363d;
+}
+
+.console-offline-panel-header {
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #c9d1d9;
+  border-bottom: 1px solid #21262d;
+}
+
+.console-offline-panel-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #21262d;
+  border-left: 3px solid #30363d;
+}
+
+.console-offline-panel-item:last-child {
+  border-bottom: none;
+}
+
+.console-offline-panel-item-green {
+  border-left-color: #2ea043;
+  background: rgba(13, 51, 32, 0.4);
+}
+
+.console-offline-panel-item-amber {
+  border-left-color: #a06800;
+  background: rgba(58, 40, 0, 0.4);
+}
+
+.console-offline-panel-item-red {
+  border-left-color: #da3633;
+  background: rgba(58, 21, 24, 0.4);
+}
+
+.console-offline-panel-item-gray {
+  border-left-color: #6e7681;
+  background: rgba(42, 45, 49, 0.4);
+}
+
+.console-offline-panel-item-blue {
+  border-left-color: #4493f8;
+  background: rgba(13, 31, 64, 0.4);
+}
+
+.console-offline-panel-item-error {
+  border-left-color: #f85149;
+  background: rgba(58, 21, 24, 0.4);
+}
+
+.console-offline-panel-item-message {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.console-offline-panel-item-target {
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
+.console-offline-panel-item-fetch-error {
+  font-size: 0.75rem;
+  color: #f85149;
+}
+
+.console-offline-panel-item-pr-status {
+  font-size: 0.75rem;
+  color: #8b949e;
+}
+
+.console-offline-panel-item-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.console-offline-panel-confirm {
+  padding: 4px 12px;
+  background: #238636;
+  border: 1px solid #2ea043;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.console-offline-panel-confirm:hover:not(:disabled) {
+  background: #2ea043;
+}
+
+.console-offline-panel-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.console-offline-panel-discard {
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.console-offline-panel-discard:hover {
+  border-color: #f85149;
+  color: #f85149;
+}
