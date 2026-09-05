@@ -342,12 +342,6 @@ export class RevertOrphanedPreparationUseCase {
           issue,
           awaitingQualityCheckStatusOption.id,
         );
-      } else {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatusOption.id,
-        );
       }
     }
   };

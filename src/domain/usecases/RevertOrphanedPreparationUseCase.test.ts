@@ -2758,4 +2758,35 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
   });
+
+  it('should not call updateStatus for a closed AW issue when project has no Awaiting Quality Check status', async () => {
+    const projectWithoutAqc = {
+      ...mockProject,
+      status: {
+        ...mockProject.status,
+        statuses: mockProject.status.statuses.filter(
+          (s) => s.name !== 'Awaiting Quality Check',
+        ),
+      },
+    };
+    mockProjectRepository.getProject.mockResolvedValue(projectWithoutAqc);
+    const closedAwIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Awaiting Workspace',
+      isClosed: true,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: projectWithoutAqc,
+      issues: [closedAwIssue],
+      cacheUsed: false,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+  });
 });
