@@ -475,6 +475,50 @@ describe('ConsoleItemDetailContainer', () => {
     );
   });
 
+  it('queues the navigation action without waiting for the comment API response when Comment & Awaiting Workspace is clicked', async () => {
+    const operations = buildOperations();
+    let resolveAddComment: (() => void) | undefined;
+    operations.addComment = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveAddComment = () =>
+            resolve({
+              author: 'HiromiShikata',
+              body: 'comment body',
+              createdAt: '2026-06-19T11:58:00.000Z',
+            });
+        }),
+    );
+    const onQueueAction = jest.fn();
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'test comment body' },
+    });
+    fireEvent.click(getByText('Comment & Awaiting Workspace'));
+    await waitFor(() => {
+      expect(onQueueAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: { type: 'set_status', optionName: AWAITING_WORKSPACE_NAME },
+        }),
+      );
+    });
+    expect(operations.addComment).toHaveBeenCalled();
+    resolveAddComment?.();
+  });
+
   it('calls onCommentDraftChange with empty string before queuing the status change when Comment & Awaiting Workspace is clicked', async () => {
     const operations = buildOperations();
     const onCommentDraftChange = jest.fn();

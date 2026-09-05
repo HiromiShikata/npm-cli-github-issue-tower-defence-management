@@ -291,10 +291,9 @@ export const ConsoleItemDetailContainer = ({
   const addCommentAndMoveToAwaitingWorkspace =
     awaitingWorkspaceOption !== null
       ? async (body: string): Promise<ConsoleComment> => {
-          const comment = await addComment(body);
           onCommentDraftChange?.('');
           handlers.onSetStatus(awaitingWorkspaceOption);
-          return comment;
+          return addComment(body);
         }
       : undefined;
 
