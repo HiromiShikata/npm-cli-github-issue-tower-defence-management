@@ -1,6 +1,8 @@
 import { expect, type Page, test } from '@playwright/test';
 import {
+  CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
   CONSOLE_E2E_PJCODE,
+  CONSOLE_E2E_REFERENCE_LINK_URL,
   type ConsoleE2eHarness,
   startConsoleE2eHarness,
 } from './consoleTestHarness';
@@ -64,7 +66,7 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await page.goto(harness.appUrl);
 
   await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
-  await expect(tabBadge(page, 'Awaiting Quality Check')).toHaveText('1');
+  await expect(tabBadge(page, 'Awaiting Quality Check')).toHaveText('2');
   await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
   await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
@@ -76,6 +78,10 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
     .locator('.console-op-button', { hasText: 'Approve' })
     .first();
   await expect(approveButton).toBeVisible();
+  await approveButton.click();
+
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(approveButton).toBeVisible({ timeout: 8000 });
   await approveButton.click();
 
   await expect(activeTabLabel(page)).toHaveText('Failed Preparation', {
@@ -575,6 +581,52 @@ test('shows queued items grouped by story with colored status badges and navigat
   });
 });
 
+test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaiting Workspace button without opening the detail view', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+
+  const listLevelButton = page
+    .locator('.console-list .console-op-button', {
+      hasText: 'ok & Awaiting Workspace',
+    })
+    .first();
+  await expect(listLevelButton).toBeVisible();
+
+  await expect(page.locator('.console-detail')).toHaveCount(0);
+
+  await listLevelButton.click();
+
+  await expect
+    .poll(
+      () =>
+        harness.commentCalls.some(
+          (c) =>
+            c.url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL &&
+            c.body === 'ok',
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+});
+
+test('removes the list item immediately when ok & Awaiting Workspace is clicked from the list', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  const listButtons = page.locator('.console-list .console-op-button', {
+    hasText: 'ok & Awaiting Workspace',
+  });
+  await expect(listButtons).toHaveCount(2);
+
+  await listButtons.first().click();
+
+  await expect(listButtons).toHaveCount(1);
+});
+
 test('posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked', async ({
   page,
 }) => {
@@ -609,14 +661,402 @@ test('posts a comment and moves the item to Awaiting Workspace when the Comment 
   });
 });
 
+test('posts an ok comment and moves the item to Awaiting Workspace when the ok & Awaiting Workspace button is clicked', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  await expect(page.locator('.console-composer-input')).toBeInViewport();
+
+  await page
+    .getByRole('button', { name: 'ok & Awaiting Workspace', exact: true })
+    .click();
+
+  await expect
+    .poll(
+      () =>
+        harness.commentCalls.some(
+          (c) =>
+            c.url ===
+              'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
+            c.body === 'ok',
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+
+  await expect(tabByLabel(page, 'Workflow Blocker')).toHaveCount(0, {
+    timeout: 8000,
+  });
+});
+
+test('project switcher appears at the left end of the tab bar and opens a dropdown on click', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  const nav = page.locator('nav.console-tabbar');
+  const pjnameDiv = nav.locator('.console-tab-pjname');
+  await expect(pjnameDiv).toBeVisible();
+
+  const firstChild = nav.locator(':scope > *').first();
+  await expect(firstChild).toHaveClass(/console-tab-pjname/);
+
+  await expect(page.locator('.console-tab-pjname-dropdown')).toHaveCount(0);
+
+  await pjnameDiv.locator('button').click();
+
+  await expect(page.locator('.console-tab-pjname-dropdown')).toBeVisible();
+});
+
+test('deletes all comments when the dangerous actions panel is opened and the delete button is clicked', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
+  await expect(dangerToggle).toBeVisible();
+
+  await dangerToggle.click();
+
+  const deleteButton = page.locator('.console-op-button', {
+    hasText: 'Delete All Comments',
+  });
+  await expect(deleteButton).toBeVisible();
+
+  await deleteButton.click();
+
+  await expect(deleteButton).toHaveCount(0);
+
+  await expect
+    .poll(() => harness.deleteAllCommentsCalls.length, { timeout: 10000 })
+    .toBe(1);
+
+  expect(harness.deleteAllCommentsCalls[0].issueUrl).toContain('/issues/720');
+});
+
+test('shows the workflow improvement link when workflowImprovementIssueUrl is configured', async ({
+  browser,
+}) => {
+  const workflowUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
+  const localHarness = await startConsoleE2eHarness({
+    workflowImprovementIssueUrl: workflowUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    const link = page.locator('.console-tab-workflow-improvement-link');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', workflowUrl);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noreferrer');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
+});
+
+test('does not show the workflow improvement link when workflowImprovementIssueUrl is not configured', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+  await expect(
+    page.locator('.console-tab-workflow-improvement-link'),
+  ).toHaveCount(0);
+});
+
+test('renames a story option in the GitHub custom field via the rename form', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow).toBeVisible();
+
+  await tdpmRow.getByRole('button', { name: 'Rename story' }).click();
+
+  const input = page.locator('.console-inline-input-form-input');
+  await expect(input).toBeVisible();
+  await expect(input).toHaveValue('TDPM Console port');
+
+  await input.fill('TDPM Console port v2');
+  await page
+    .locator('.console-inline-input-form .console-op-button', {
+      hasText: 'Rename',
+    })
+    .click();
+
+  await expect
+    .poll(() => harness.renameStoryCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.renameStoryCalls[0].storyOptionId).toBe('1491051e');
+  expect(harness.renameStoryCalls[0].newName).toBe('TDPM Console port v2');
+
+  await expect(tdpmRow.locator('.console-inline-input-form')).toHaveCount(0);
+  await expect(
+    page.locator('.console-story-list-row', {
+      hasText: 'TDPM Console port v2',
+    }),
+  ).toBeVisible();
+});
+
+test('deletes a story option from the GitHub custom field when confirmed via the dialog', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow).toBeVisible();
+
+  const deleteButton = tdpmRow.getByRole('button', { name: 'Delete story' });
+  await expect(deleteButton).toBeVisible();
+
+  await deleteButton.click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('TDPM Console port');
+
+  await dialog.getByRole('button', { name: 'Delete' }).click();
+
+  await expect
+    .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.deleteStoryCalls[0].storyOptionId).toBe('1491051e');
+
+  await expect
+    .poll(() => harness.closeIssueCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.closeIssueCalls[0]).toBe(
+    'https://github.com/example/example/issues/1491051e',
+  );
+
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.locator('.console-story-list-row', { hasText: 'TDPM Console port' }),
+  ).toHaveCount(0);
+});
+
+test('shows issue number after resolved title in reference links inside item body', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  const referenceNumber = page.locator('.console-markdown-reference-number');
+  await expect(referenceNumber).toBeVisible();
+  const urlSegments = CONSOLE_E2E_REFERENCE_LINK_URL.split('/');
+  const expectedNumber = `#${urlSegments[urlSegments.length - 1]}`;
+  await expect(referenceNumber).toHaveText(expectedNumber);
+});
+
+test('project timer bar shows remaining time when active and Move to next project when expired', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+  await expect(page.locator('.console-project-timer-bar')).toHaveCount(0);
+
+  harness.setProjectTimer(1800);
+  try {
+    await page.reload();
+    await expect(page.locator('.console-project-timer-bar')).toBeVisible();
+    await expect(page.getByRole('progressbar')).toBeVisible();
+    const label = page.locator('.console-project-timer-bar-label');
+    const text = await label.textContent();
+    expect(text).toMatch(/^\d{2}:\d{2}$/);
+
+    harness.expireProjectTimer();
+    await page.reload();
+    await expect(page.locator('.console-project-timer-bar-label')).toHaveText(
+      'Move to next project',
+    );
+  } finally {
+    harness.clearProjectTimer();
+  }
+});
+
+test('rare actions toggle is in the bottom row left pair alongside the dangerous actions toggle and expands the depended issue URL input', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  const rareToggle = page.getByTitle('Rare actions');
+  await expect(rareToggle).toBeVisible();
+
+  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
+  await expect(dangerToggle).toBeVisible();
+
+  const leftPair = page.locator('.console-op-group-left-pair');
+  await expect(leftPair.locator(rareToggle)).toBeVisible();
+  await expect(leftPair.locator(dangerToggle)).toBeVisible();
+
+  await rareToggle.click();
+
+  const urlInput = page.getByPlaceholder('Depended issue URL');
+  await expect(urlInput).toBeVisible();
+});
+
+test('prs agent filter shows counts, hides zero-task agents, narrows the list, and navigation respects the filter', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+
+  const select = page.getByRole('combobox', { name: 'Filter by agent' });
+  await expect(select).toBeVisible();
+
+  const nonAllOptions = select.locator('option:not([value=""])');
+  await expect(nonAllOptions).toHaveCount(2);
+  await expect(nonAllOptions.nth(0)).toHaveText('developer (1)');
+  await expect(nonAllOptions.nth(1)).toHaveText('chore (1)');
+
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible();
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).toBeVisible();
+
+  await select.selectOption('developer');
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible();
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).not.toBeVisible({ timeout: 2000 });
+
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+  const approveButton = page
+    .locator('.console-op-button', { hasText: 'Approve' })
+    .first();
+  await expect(approveButton).toBeVisible();
+  await approveButton.click();
+
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).toBeVisible({ timeout: 8000 });
+});
+
+test('shows Delete Story in the danger zone of a story-labeled item detail page, confirms deletion, and closes the panel', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Todo by agent').click();
+  await itemRowByText(
+    page,
+    'Publish product documentation site story issue',
+  ).click();
+
+  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
+  await expect(dangerToggle).toBeVisible();
+  await dangerToggle.click();
+
+  const deleteStoryButton = page.locator('.console-op-button', {
+    hasText: 'Delete Story',
+  });
+  await expect(deleteStoryButton).toBeVisible();
+  await deleteStoryButton.click();
+
+  const dialog = page.getByRole('dialog', { name: 'Confirm story deletion' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Publish product documentation site');
+
+  const previousDeleteCount = harness.deleteStoryCalls.length;
+  await dialog.getByRole('button', { name: 'Delete' }).click();
+
+  await expect
+    .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
+    .toBe(previousDeleteCount + 1);
+  expect(
+    harness.deleteStoryCalls[harness.deleteStoryCalls.length - 1].storyOptionId,
+  ).toBe('f7cd5cbc');
+
+  await expect(page.locator('.console-detail')).toHaveCount(0, {
+    timeout: 8000,
+  });
+});
+
+test('error toast renders with background styling when a merge operation fails', async ({
+  page,
+}) => {
+  const failHarness = await startConsoleE2eHarness({
+    mergePullRequest: async () => {
+      throw new Error('merge failed: simulated error for CSS test');
+    },
+  });
+  try {
+    await page.goto(failHarness.appUrl);
+
+    await tabByLabel(page, 'Awaiting Quality Check').click();
+    await itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ).click();
+
+    const approveButton = page
+      .locator('.console-op-button', { hasText: 'Approve' })
+      .first();
+    await expect(approveButton).toBeVisible();
+    await approveButton.click();
+
+    const errorToast = page.locator('.console-error-toast');
+    await expect(errorToast).toBeVisible({ timeout: 8000 });
+    await expect(errorToast).toHaveCSS('background-color', 'rgb(58, 21, 24)');
+    await expect(errorToast).toHaveCSS('position', 'fixed');
+  } finally {
+    await failHarness.stop();
+  }
+});
+
 test('immediately shows item in Queued tab after moving to Awaiting Workspace without waiting for the polling cycle', async ({
   page,
 }) => {
-  const queuedUrl = `**/projects/${CONSOLE_E2E_PJCODE}/queued/list.json`;
-  let queuedFetchCount = 0;
-  await page.route(queuedUrl, async (route) => {
-    queuedFetchCount += 1;
-    if (queuedFetchCount === 1) {
+  const queuedPath = `/projects/${CONSOLE_E2E_PJCODE}/queued/list.json`;
+  let firstQueuedRequestDone = false;
+
+  await page.route(`**${queuedPath}`, async (route) => {
+    if (!firstQueuedRequestDone) {
+      firstQueuedRequestDone = true;
       await route.continue();
       return;
     }
@@ -635,7 +1075,7 @@ test('immediately shows item in Queued tab after moving to Awaiting Workspace wi
           {
             number: 867,
             title: 'Serve the committed console UI bundle from serveConsole',
-            url: `https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/867`,
+            url: CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
             repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
             nameWithOwner:
               'HiromiShikata/npm-cli-github-issue-tower-defence-management',
@@ -670,7 +1110,14 @@ test('immediately shows item in Queued tab after moving to Awaiting Workspace wi
       hasText: 'ok & Awaiting Workspace',
     })
     .first();
-  await listLevelButton.click();
+
+  await Promise.all([
+    page.waitForResponse(
+      (resp) => resp.url().includes(queuedPath) && firstQueuedRequestDone,
+      { timeout: 5000 },
+    ),
+    listLevelButton.click(),
+  ]);
 
   await tabByLabel(page, 'Queued').click();
   await expect(activeTabLabel(page)).toHaveText('Queued');
