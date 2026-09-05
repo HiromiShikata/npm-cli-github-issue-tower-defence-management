@@ -112,7 +112,10 @@ export class RestProjectRepository extends BaseGitHubRepository {
         this.listFieldDefinitions(location),
       ]);
     } catch (error) {
-      if (isHttpStatusResponse(error, 404) || isHttpStatusResponse(error, 403)) {
+      if (
+        isHttpStatusResponse(error, 404) ||
+        isHttpStatusResponse(error, 403)
+      ) {
         return null;
       }
       throw error;
