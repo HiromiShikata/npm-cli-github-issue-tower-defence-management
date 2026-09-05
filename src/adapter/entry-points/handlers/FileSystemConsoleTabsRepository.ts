@@ -112,6 +112,15 @@ export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
   }
 
   moveItemToQueuedTab(projectItemId: string, newStatus: string): void {
+    const queuedFilePath = path.join(
+      this.consoleDataOutputDir,
+      this.pjcode,
+      'queued',
+      'list.json',
+    );
+    const queuedExisting = readTabListJson(queuedFilePath);
+    if (queuedExisting === null) return;
+
     let foundItem: Record<string, unknown> | undefined;
 
     for (const tabName of CONSOLE_LIST_TAB_NAMES) {
@@ -139,15 +148,6 @@ export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
         writeJsonAtomic(filePath, { ...existing, items: withoutItem });
       }
     }
-
-    const queuedFilePath = path.join(
-      this.consoleDataOutputDir,
-      this.pjcode,
-      'queued',
-      'list.json',
-    );
-    const queuedExisting = readTabListJson(queuedFilePath);
-    if (queuedExisting === null) return;
 
     const rawQueuedItems = queuedExisting.items;
     const queuedItems: unknown[] = Array.isArray(rawQueuedItems)

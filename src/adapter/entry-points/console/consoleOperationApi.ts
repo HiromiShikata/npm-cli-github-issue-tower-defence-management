@@ -23,6 +23,7 @@ import {
   deleteProjectTimer,
   writeProjectTimer,
 } from './consoleProjectTimerStore';
+import { PREPARATION_STATUS_NAME } from '../../../domain/entities/WorkflowStatus';
 import {
   fetchProjectReadme,
   setProjectReadmeMaxPreparingIssuesCount,
@@ -552,7 +553,7 @@ export const handleTriage = async (
     if (
       context.patchItemIntoQueuedTab !== null &&
       (lowerStatusName === AWAITING_WORKSPACE_STATUS_NAME ||
-        lowerStatusName === 'preparation')
+        lowerStatusName === PREPARATION_STATUS_NAME.toLowerCase())
     ) {
       const canonicalOption = project.status.statuses.find(
         (opt) => opt.name.toLowerCase() === lowerStatusName,

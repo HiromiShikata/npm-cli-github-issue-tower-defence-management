@@ -628,6 +628,27 @@ test('removes the list item immediately when ok & Awaiting Workspace is clicked 
     await listButtons.first().click();
 
     await expect(listButtons).toHaveCount(1);
+
+    await expect
+      .poll(
+        () =>
+          localHarness.commentCalls.some(
+            (c) =>
+              c.url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL &&
+              c.body === 'ok',
+          ),
+        { timeout: 10000 },
+      )
+      .toBe(true);
+
+    const queuedUrl = localHarness.appUrl.replace('/prs?', '/queued?');
+    await page.goto(queuedUrl);
+    await expect(
+      itemRowByText(
+        page,
+        'Serve the committed console UI bundle from serveConsole',
+      ),
+    ).toBeVisible({ timeout: 8000 });
   } finally {
     await ctx.close();
     await localHarness.stop();

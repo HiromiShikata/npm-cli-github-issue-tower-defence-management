@@ -323,4 +323,16 @@ describe('FileSystemConsoleTabsRepository.moveItemToQueuedTab', () => {
       { projectItemId: 'item-1', status: 'Awaiting Workspace' },
     ]);
   });
+
+  it('leaves the source tab unchanged when queued/list.json does not exist', () => {
+    const item = makeItem({ projectItemId: 'item-1', status: 'Todo by agent' });
+    writeTabFile('todo-by-agent', makeStatusTab(PJCODE, [item]));
+    const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+
+    repo.moveItemToQueuedTab('item-1', 'Awaiting Workspace');
+
+    expect(readTabItems('todo-by-agent')).toMatchObject([
+      { projectItemId: 'item-1' },
+    ]);
+  });
 });
