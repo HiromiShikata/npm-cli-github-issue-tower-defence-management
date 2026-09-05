@@ -1,3 +1,10 @@
+## [2.59.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.59.1...v2.59.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **revert-review-queue:** revert AQC issues with depended URLs to Awaiting Workspace ([#2054](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2054)) ([046a0f0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/046a0f00b0245620e77a2803c530e9e6cd0c7a26))
+
 ## [2.59.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.59.0...v2.59.1) (2026-09-05)
 
 
