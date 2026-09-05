@@ -45,6 +45,19 @@ const isSilentRedispatchCommentForAgent = (
 
 type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
 
+const buildSilentDispatchAgainComment = (
+  silentRedispatch: SilentRedispatch,
+  nextStepAgent: string,
+  threshold: number,
+): string =>
+  silentRedispatch.hasReportsInCycle
+    ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+
+The agent posted a report and nominated itself as the next step without resolving the blocker. Dispatching again (${silentRedispatch.count}/${threshold}).`
+    : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+
+No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatch.count}/${threshold}).`;
+
 const countSilentRedispatches = <
   CommentLike extends { author: string; content: string },
 >(params: {
@@ -148,14 +161,14 @@ This agent has been dispatched ${params.thresholdForDispatchLoop} times since th
     };
   }
   if (silentRedispatches !== null && silentRedispatches.count > 1) {
-    const comment = silentRedispatches.hasReportsInCycle
-      ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
-
-The agent posted a report and nominated itself as the next step without resolving the blocker. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
-      : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
-
-No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
-    return { type: 'dispatchAgain', comment };
+    return {
+      type: 'dispatchAgain',
+      comment: buildSilentDispatchAgainComment(
+        silentRedispatches,
+        params.nextStepAgent,
+        params.thresholdForAutoReject,
+      ),
+    };
   }
   if (dispatchesInCycle > 1) {
     return {
@@ -166,14 +179,14 @@ The latest agent report names this agent as the next step and it has already bee
     };
   }
   if (silentRedispatches !== null) {
-    const comment = silentRedispatches.hasReportsInCycle
-      ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
-
-The agent posted a report and nominated itself as the next step without resolving the blocker. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
-      : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
-
-No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
-    return { type: 'dispatchAgain', comment };
+    return {
+      type: 'dispatchAgain',
+      comment: buildSilentDispatchAgainComment(
+        silentRedispatches,
+        params.nextStepAgent,
+        params.thresholdForAutoReject,
+      ),
+    };
   }
   return { type: 'notRepeated' };
 };

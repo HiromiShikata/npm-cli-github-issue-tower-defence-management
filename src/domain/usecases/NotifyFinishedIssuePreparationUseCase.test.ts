@@ -1060,7 +1060,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should escalate to Failed Preparation when the declared nextStepAgent was already dispatched up to the threshold without a report', async () => {
+  it('should escalate to Failed Preparation when the declared nextStepAgent was repeatedly dispatched until the silent-redispatch threshold is reached while reports are present in the cycle', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1099,7 +1099,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining(
-        'Failed to receive a report from the dispatched agent for 3 times',
+        'reporting every cycle but cannot advance',
       ),
     );
   });
