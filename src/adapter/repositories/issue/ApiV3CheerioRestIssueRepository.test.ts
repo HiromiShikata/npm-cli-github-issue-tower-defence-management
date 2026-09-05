@@ -3554,6 +3554,34 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result?.isPassedAllCiJob).toBe(false);
     });
 
+    it('returns cached check-run results without additional REST calls for the same commit SHA', async () => {
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'ci', conclusion: 'success' }],
+        }),
+      });
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const prUrl = 'https://github.com/HiromiShikata/test-repository/pull/31';
+      const result1 = await repository.getOpenPullRequest(prUrl);
+      const result2 = await repository.getOpenPullRequest(prUrl);
+
+      const checkRunsCalls = fetchSpy.mock.calls.filter(([input]) => {
+        const url =
+          typeof input === 'string'
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        return url.includes('/check-runs');
+      });
+      expect(checkRunsCalls).toHaveLength(1);
+      expect(result1?.isCiStateSuccess).toBe(true);
+      expect(result2?.isCiStateSuccess).toBe(true);
+    });
+
     it('combines REST check runs and commit statuses into one CI success evaluation', async () => {
       mockFetchRoutes({
         slimPullRequest: () => buildSlimPullRequestResponse(),

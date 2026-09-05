@@ -505,6 +505,124 @@ describe('GraphqlProjectItemRepository', () => {
       setTimeoutSpy.mockRestore();
     });
 
+    it('should skip items with FORBIDDEN content access and return the remaining valid items', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 2,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [
+                  {
+                    id: 'item-valid',
+                    fieldValues: { nodes: [] },
+                    content: {
+                      repository: {
+                        nameWithOwner: 'owner/repo',
+                        isArchived: false,
+                      },
+                      number: 1,
+                      title: 'Valid Issue',
+                      state: 'OPEN',
+                      url: 'https://github.com/owner/repo/issues/1',
+                      body: null,
+                      createdAt: '2024-01-01T00:00:00Z',
+                      updatedAt: '2024-01-01T00:00:00Z',
+                      author: { login: 'user' },
+                      labels: { nodes: [] },
+                      assignees: { nodes: [] },
+                      stateReason: null,
+                    },
+                  },
+                  {
+                    id: 'item-forbidden',
+                    fieldValues: { nodes: [] },
+                    content: null,
+                  },
+                ],
+              },
+            },
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['node', 'items', 'nodes', 1, 'content'],
+              message:
+                '`meta-site` forbids access via a personal access token (classic).',
+            },
+          ],
+        }),
+      );
+
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+      try {
+        const result = await repository.fetchProjectItems('test-project-id');
+        expect(result).toHaveLength(1);
+        expect(result[0].number).toBe(1);
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('FORBIDDEN'),
+        );
+      } finally {
+        consoleWarnSpy.mockRestore();
+      }
+    });
+
+    it('should throw when errors include a non-FORBIDDEN type alongside FORBIDDEN', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost.mockImplementation(() =>
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 2,
+                pageInfo: {
+                  endCursor: 'cursor-1',
+                  startCursor: 'cursor-start',
+                  hasNextPage: false,
+                },
+                nodes: [
+                  { id: 'item-1', fieldValues: { nodes: [] }, content: null },
+                  { id: 'item-2', fieldValues: { nodes: [] }, content: null },
+                ],
+              },
+            },
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['node', 'items', 'nodes', 0, 'content'],
+              message: 'FORBIDDEN',
+            },
+            {
+              type: 'INTERNAL',
+              path: ['node', 'items', 'nodes', 1, 'content'],
+              message: 'Internal server error',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItems('test-project-id'),
+      ).rejects.toThrow('GitHub GraphQL errors:');
+    });
+
     it('should stringify full response errors payload including extensions when callGraphql throws', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
