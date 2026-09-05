@@ -44,6 +44,7 @@ export type ConsoleStatusTab = {
   generatedAt: string;
   statusOptions: ConsoleFieldOption[];
   agentOptions: ConsoleFieldOption[];
+  storyOptions: ConsoleFieldOption[];
   storyOrder: string[];
   storyColors: Record<string, { color: ConsoleColor }>;
   items: ConsoleListItem[];
@@ -54,6 +55,7 @@ export type ConsoleQueuedTab = {
   generatedAt: string;
   statusOptions: ConsoleFieldOption[];
   agentOptions: ConsoleFieldOption[];
+  storyOptions: ConsoleFieldOption[];
   storyOrder: string[];
   storyColors: Record<string, { color: ConsoleColor }>;
   items: ConsoleListItem[];
@@ -136,16 +138,22 @@ export class GenerateConsoleListsUseCase {
       this.isActionable(issue, assigneeLogin),
     );
 
+    const allAgentOptions = this.buildFieldOptions(
+      project.agent?.options ?? [],
+      [],
+    );
+    const allStoryOptions = this.buildFieldOptions(storyOptions, []);
+
     const buildStatusTabFromSource = (
       sourceIssues: Issue[],
       selector: (issue: Issue) => boolean,
       excludedStatusNames: string[],
-      agentOptions: ConsoleFieldOption[] = [],
     ): ConsoleStatusTab => ({
       pjcode,
       generatedAt,
       statusOptions: this.buildFieldOptions(statusOptions, excludedStatusNames),
-      agentOptions,
+      agentOptions: allAgentOptions,
+      storyOptions: allStoryOptions,
       storyOrder,
       storyColors: this.buildStoryColorsObject(storyOptions),
       items: this.sortByStoryOrder(
@@ -164,13 +172,11 @@ export class GenerateConsoleListsUseCase {
     const buildStatusTab = (
       selector: (issue: Issue) => boolean,
       excludedStatusNames: string[],
-      agentOptions: ConsoleFieldOption[] = [],
     ): ConsoleStatusTab =>
       buildStatusTabFromSource(
         actionableIssues,
         selector,
         excludedStatusNames,
-        agentOptions,
       );
 
     const openItemCountByStory = new Map<string, number>();
@@ -213,7 +219,6 @@ export class GenerateConsoleListsUseCase {
           issue.status !== null &&
           issue.status.toLowerCase() === 'awaiting quality check',
         ['awaiting quality check', 'done'],
-        this.buildFieldOptions(project.agent?.options ?? [], []),
       ),
       'failed-preparation': buildStatusTabFromSource(
         visibleIssues.filter(
@@ -248,7 +253,8 @@ export class GenerateConsoleListsUseCase {
         pjcode,
         generatedAt,
         statusOptions: this.buildFieldOptions(statusOptions, []),
-        agentOptions: this.buildFieldOptions(project.agent?.options ?? [], []),
+        agentOptions: allAgentOptions,
+        storyOptions: allStoryOptions,
         storyOrder,
         storyColors: this.buildStoryColorsObject(storyOptions),
         items: this.sortByStoryOrder(

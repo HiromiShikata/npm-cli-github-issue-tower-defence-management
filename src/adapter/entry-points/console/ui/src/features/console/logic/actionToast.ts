@@ -18,6 +18,7 @@ export type ConsoleActionKind =
   | { type: 'review'; action: ConsoleReviewAction }
   | { type: 'next_action_date'; action: ConsoleNextActionDateAction }
   | { type: 'set_story'; optionName: string }
+  | { type: 'set_agent'; optionName: string }
   | { type: 'set_status'; optionName: string }
   | { type: 'set_in_tmux_by_human'; optionName: string }
   | { type: 'close'; action: ConsoleCloseAction }
@@ -75,6 +76,8 @@ export const actionToastMessage = (
         : 'Next Action Date +1 week';
     case 'set_story':
       return `Story → ${kind.optionName}`;
+    case 'set_agent':
+      return `Agent → ${kind.optionName}`;
     case 'set_status':
       return `Status → ${kind.optionName}`;
     case 'set_in_tmux_by_human':
@@ -106,6 +109,7 @@ export const actionToastColor = (
     case 'next_action_date':
       return 'amber';
     case 'set_story':
+    case 'set_agent':
     case 'set_status':
     case 'set_in_tmux_by_human':
     case 'ok_and_awaiting_workspace':

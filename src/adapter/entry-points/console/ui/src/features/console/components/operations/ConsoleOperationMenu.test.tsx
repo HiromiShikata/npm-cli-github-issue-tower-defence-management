@@ -10,6 +10,7 @@ const handlers: ConsoleOperationHandlers = {
   onReview: jest.fn(),
   onSetNextActionDate: jest.fn(),
   onSetStory: jest.fn(),
+  onSetAgent: jest.fn(),
   onSetStatus: jest.fn(),
   onSetInTmuxByHuman: jest.fn(),
   onClose: jest.fn(),
@@ -31,6 +32,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -51,6 +56,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -65,6 +74,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -79,6 +92,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -94,6 +111,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -113,6 +134,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -128,6 +153,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -139,6 +168,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={true}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -153,6 +186,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -167,6 +204,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -185,6 +226,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -199,6 +244,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -217,6 +266,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );
@@ -235,6 +288,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={{ ...handlers, onDeleteStory: async () => {} }}
       />,
     );
@@ -250,6 +307,10 @@ describe('ConsoleOperationMenu', () => {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={handlers}
       />,
     );

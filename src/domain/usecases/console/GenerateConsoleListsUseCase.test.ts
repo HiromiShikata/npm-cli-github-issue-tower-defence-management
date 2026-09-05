@@ -913,6 +913,18 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([]);
       expect(result.queued.agentOptions).toEqual([]);
     });
+
+    it('propagates storyOptions from project.story field to queued tab', () => {
+      const result = run([]);
+      expect(result.queued.storyOptions).toEqual(
+        STORY_OPTIONS.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty storyOptions for queued tab when project.story is null', () => {
+      const result = run([], baseProject(null));
+      expect(result.queued.storyOptions).toEqual([]);
+    });
   });
 
   describe('prs agentOptions', () => {
@@ -934,6 +946,20 @@ describe('GenerateConsoleListsUseCase', () => {
     it('provides empty agentOptions for prs tab when project.agent is null', () => {
       const result = run([]);
       expect(result.prs.agentOptions).toEqual([]);
+    });
+  });
+
+  describe('prs storyOptions', () => {
+    it('propagates storyOptions from project.story field to prs tab', () => {
+      const result = run([]);
+      expect(result.prs.storyOptions).toEqual(
+        STORY_OPTIONS.map((o) => ({ id: o.id, name: o.name, color: o.color })),
+      );
+    });
+
+    it('provides empty storyOptions for prs tab when project.story is null', () => {
+      const result = run([], baseProject(null));
+      expect(result.prs.storyOptions).toEqual([]);
     });
   });
 });

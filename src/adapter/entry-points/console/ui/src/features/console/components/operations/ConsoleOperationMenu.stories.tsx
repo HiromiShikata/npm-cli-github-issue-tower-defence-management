@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ConsoleOperationHandlers } from '../../logic/operations';
 import {
+  consoleAgentOptionsFixture,
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
+  consoleStoryOptionsFixture,
 } from '../../testing/fixtures';
 import { ConsoleOperationMenu } from './ConsoleOperationMenu';
 
@@ -10,6 +12,7 @@ const handlers: ConsoleOperationHandlers = {
   onReview: () => {},
   onSetNextActionDate: () => {},
   onSetStory: () => {},
+  onSetAgent: () => {},
   onSetStatus: () => {},
   onSetInTmuxByHuman: () => {},
   onClose: () => {},
@@ -25,6 +28,10 @@ const meta: Meta<typeof ConsoleOperationMenu> = {
   args: {
     rejectEnabled: false,
     statusOptions: consoleStatusOptionsFixture,
+    storyOptions: consoleStoryOptionsFixture,
+    currentStoryName: null,
+    agentOptions: consoleAgentOptionsFixture,
+    currentAgentName: null,
     handlers,
   },
 };
