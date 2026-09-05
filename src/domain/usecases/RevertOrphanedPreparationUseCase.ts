@@ -329,6 +329,27 @@ export class RevertOrphanedPreparationUseCase {
         rejectionStatusMessage,
       );
     }
+
+    const closedAwaitingWorkspaceIssues = issues.filter(
+      (issue) =>
+        issue.status === AWAITING_WORKSPACE_STATUS_NAME && issue.isClosed,
+    );
+
+    for (const issue of closedAwaitingWorkspaceIssues) {
+      if (awaitingQualityCheckStatusOption) {
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingQualityCheckStatusOption.id,
+        );
+      } else {
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          awaitingWorkspaceStatusOption.id,
+        );
+      }
+    }
   };
 
   private isStillInPreparation = async (
