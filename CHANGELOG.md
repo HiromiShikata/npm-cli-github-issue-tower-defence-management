@@ -1,3 +1,10 @@
+## [2.62.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.1...v2.62.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **RestProjectRepository:** return null on 403 to trigger GraphQL fallback ([#2074](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2074)) ([46b6ace](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/46b6ace9b46e0745e05839995bdf232a054e018b)), closes [#2072](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2072)
+
 ## [2.62.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.0...v2.62.1) (2026-09-05)
 
 
