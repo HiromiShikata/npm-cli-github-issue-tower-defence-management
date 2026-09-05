@@ -409,7 +409,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should throw IllegalIssueStatusError when issue status is not Preparation', async () => {
+  it('should return without throwing or mutating when issue status is Done', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Done',
@@ -426,8 +426,32 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
       }),
+    ).resolves.toBeUndefined();
+
+    expect(mockIssueRepository.update).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
+  it('should throw IllegalIssueStatusError when issue status is not Preparation and not Done', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Awaiting Workspace',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+
+    await expect(
+      useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      }),
     ).rejects.toThrow(
-      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation, but got Done',
+      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation, but got Awaiting Workspace',
     );
   });
 
