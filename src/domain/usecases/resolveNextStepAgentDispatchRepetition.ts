@@ -1,6 +1,5 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
@@ -14,6 +13,35 @@ export type NextStepAgentDispatchRepetition =
   | { type: 'dispatchAgain'; comment: string }
   | { type: 'escalateSilentRedispatch'; comment: string }
   | { type: 'escalateDispatchLoop'; comment: string };
+
+const findLastHumanCommentIndex = <
+  CommentLike extends { author: string; content: string },
+>(
+  comments: CommentLike[],
+  isTrustedAuthor: (author: string) => boolean,
+): number =>
+  comments.reduce(
+    (found, comment, index) =>
+      isHumanComment(comment, isTrustedAuthor) ? index : found,
+    -1,
+  );
+
+const isSilentRedispatchCommentForAgent = (
+  content: string,
+  nextStepAgent: string,
+): boolean => {
+  if (!content.startsWith(NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD)) {
+    return false;
+  }
+  const agentNameInComment = content
+    .slice(NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD.length + 1)
+    .split('\n')[0]
+    .trim();
+  return (
+    normalizeProjectFieldName(agentNameInComment) ===
+    normalizeProjectFieldName(nextStepAgent)
+  );
+};
 
 const countSilentRedispatches = <
   CommentLike extends { author: string; content: string },
@@ -30,19 +58,20 @@ const countSilentRedispatches = <
   ) {
     return null;
   }
-  const lastAgentReport = findLastAgentReport(
+  const lastHumanCommentIndex = findLastHumanCommentIndex(
     params.comments,
     params.isTrustedAuthor,
   );
-  const commentsAfterLastAgentReport = lastAgentReport
-    ? params.comments.slice(params.comments.indexOf(lastAgentReport) + 1)
-    : [];
+  const commentsInCurrentCycle = params.comments.slice(
+    lastHumanCommentIndex + 1,
+  );
   return (
-    commentsAfterLastAgentReport.filter(
+    commentsInCurrentCycle.filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
-        comment.content.startsWith(
-          NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD,
+        isSilentRedispatchCommentForAgent(
+          comment.content,
+          params.nextStepAgent,
         ),
     ).length + 1
   );
@@ -55,10 +84,9 @@ const countDispatchesInCurrentCycle = <
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
 }): number => {
-  const lastHumanCommentIndex = params.comments.reduce(
-    (found, comment, index) =>
-      isHumanComment(comment, params.isTrustedAuthor) ? index : found,
-    -1,
+  const lastHumanCommentIndex = findLastHumanCommentIndex(
+    params.comments,
+    params.isTrustedAuthor,
   );
   const reportsInCurrentCycle = params.comments
     .slice(lastHumanCommentIndex + 1)

@@ -143,6 +143,63 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
       expect(result.type).toBe('escalateSilentRedispatch');
     });
+
+    it('counts silent redispatches even when agent name casing in prior comments differs from nextStepAgent', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'pr-reviewer',
+        nextStepAgent: 'pr-reviewer',
+        comments: [
+          report('PR Reviewer'),
+          repetitionComment('PR Reviewer'),
+          repetitionComment('PR Reviewer'),
+          report('PR Reviewer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+    });
+
+    it('does not reset the silent dispatch count when a routing comment is posted after escalation without a human comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          repetitionComment('developer'),
+          repetitionComment('developer'),
+          repetitionComment('developer'),
+          report('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+    });
+
+    it('resets the silent dispatch count after a human comment even if a routing comment follows', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          repetitionComment('developer'),
+          repetitionComment('developer'),
+          repetitionComment('developer'),
+          humanComment(),
+          report('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+    });
   });
 
   describe('dispatch loop bound', () => {
