@@ -135,6 +135,8 @@ export const ConsoleItemDetail = ({
     commentsAreLoading || commentsError !== null ? null : comments.length;
   const commitsCount =
     commitsAreLoading || commitsError !== null ? null : commits.length;
+  const descriptionInitiallyCollapsed =
+    !commentsAreLoading && commentsError === null && comments.length > 0;
   const relatedPullRequestLabel = (url: string): string => {
     const reference = parseGitHubReferenceUrl(url);
     return reference === null ? url : `PR #${reference.number}`;
@@ -294,7 +296,9 @@ export const ConsoleItemDetail = ({
 
       <div className="console-detail-body">
         <ConsolePanel
+          key={descriptionInitiallyCollapsed ? 'desc-collapsed' : 'desc-open'}
           title="Description"
+          defaultCollapsed={descriptionInitiallyCollapsed}
           headerAction={
             <a
               href={item.url}

@@ -770,4 +770,60 @@ describe('ConsoleItemDetail', () => {
     );
     expect(container.querySelector('.console-detail-pill')).toBeNull();
   });
+
+  it('expands the description panel when there are no comments', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        comments={[]}
+        commentsAreLoading={false}
+        commentsError={null}
+      />,
+    );
+    const descriptionButton = getByRole('button', { name: /description/i });
+    expect(descriptionButton).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('collapses the description panel when there is at least one comment', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        comments={consoleCommentsFixture}
+        commentsAreLoading={false}
+        commentsError={null}
+      />,
+    );
+    const descriptionButton = getByRole('button', { name: /description/i });
+    expect(descriptionButton).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('expands the description panel while comments are loading', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        comments={[]}
+        commentsAreLoading={true}
+        commentsError={null}
+      />,
+    );
+    const descriptionButton = getByRole('button', { name: /description/i });
+    expect(descriptionButton).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('expands the description panel when comments failed to load', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        comments={[]}
+        commentsAreLoading={false}
+        commentsError="API rate limit exceeded"
+      />,
+    );
+    const descriptionButton = getByRole('button', { name: /description/i });
+    expect(descriptionButton).toHaveAttribute('aria-expanded', 'true');
+  });
 });
