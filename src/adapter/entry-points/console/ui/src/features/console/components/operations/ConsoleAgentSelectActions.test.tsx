@@ -26,7 +26,9 @@ describe('ConsoleAgentSelectActions', () => {
         onSetAgent={jest.fn()}
       />,
     );
-    expect(screen.getByRole('combobox', { name: 'Set agent' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Set agent' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('developer')).toBeInTheDocument();
     expect(screen.getByText('chore')).toBeInTheDocument();
   });
@@ -39,7 +41,9 @@ describe('ConsoleAgentSelectActions', () => {
         onSetAgent={jest.fn()}
       />,
     );
-    const select = screen.getByRole('combobox', { name: 'Set agent' }) as HTMLSelectElement;
+    const select = screen.getByRole('combobox', {
+      name: 'Set agent',
+    }) as HTMLSelectElement;
     expect(select.value).toBe('agent_2');
   });
 

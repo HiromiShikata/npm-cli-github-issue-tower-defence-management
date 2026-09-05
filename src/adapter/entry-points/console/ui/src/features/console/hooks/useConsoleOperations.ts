@@ -149,7 +149,11 @@ export const buildTriageRequest = (
     | 'set_story'
     | 'set_agent'
     | 'set_status',
-  extra?: { statusName?: string; storyOptionId?: string; agentOptionId?: string },
+  extra?: {
+    statusName?: string;
+    storyOptionId?: string;
+    agentOptionId?: string;
+  },
 ): ConsoleTriageRequest => ({
   pjcode,
   action,

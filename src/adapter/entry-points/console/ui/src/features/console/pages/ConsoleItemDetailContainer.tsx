@@ -83,7 +83,11 @@ const buildTriageOfflinePayload = (
     | 'set_story'
     | 'set_agent'
     | 'set_status',
-  extra?: { statusName?: string; storyOptionId?: string; agentOptionId?: string },
+  extra?: {
+    statusName?: string;
+    storyOptionId?: string;
+    agentOptionId?: string;
+  },
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
   apiPath: TRIAGE_OPERATION_PATH,

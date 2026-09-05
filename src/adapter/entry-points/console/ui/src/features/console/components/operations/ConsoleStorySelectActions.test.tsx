@@ -2,7 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ConsoleStorySelectActions } from './ConsoleStorySelectActions';
 
 const storyOptions = [
-  { id: 'story_1', name: 'regular / workflow improvement', color: 'BLUE' as const },
+  {
+    id: 'story_1',
+    name: 'regular / workflow improvement',
+    color: 'BLUE' as const,
+  },
   { id: 'story_2', name: 'regular / high priority', color: 'RED' as const },
 ];
 
@@ -26,8 +30,12 @@ describe('ConsoleStorySelectActions', () => {
         onSetStory={jest.fn()}
       />,
     );
-    expect(screen.getByRole('combobox', { name: 'Set story' })).toBeInTheDocument();
-    expect(screen.getByText('regular / workflow improvement')).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Set story' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('regular / workflow improvement'),
+    ).toBeInTheDocument();
     expect(screen.getByText('regular / high priority')).toBeInTheDocument();
   });
 
@@ -39,7 +47,9 @@ describe('ConsoleStorySelectActions', () => {
         onSetStory={jest.fn()}
       />,
     );
-    const select = screen.getByRole('combobox', { name: 'Set story' }) as HTMLSelectElement;
+    const select = screen.getByRole('combobox', {
+      name: 'Set story',
+    }) as HTMLSelectElement;
     expect(select.value).toBe('story_2');
   });
 
