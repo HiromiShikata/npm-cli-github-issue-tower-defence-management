@@ -1,3 +1,16 @@
+# [2.47.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.13...v2.47.0) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** close open tasks when their story is deleted ([#1981](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1981)) ([48d5da6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/48d5da64b11065b6aae78aa59b7f007c464d7331)), closes [HiromiShikata/umino-corporait-operation#31338](https://github.com/HiromiShikata/umino-corporait-operation/issues/31338)
+
+
+### Features
+
+* **console:** collapse description panel when comments exist ([#1989](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1989)) ([c45a768](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c45a768dc0f0cf000a20f09dc02e338b8ffaf888)), closes [#31348](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31348)
+* **console:** report errors to fleet-wide problem report issue on console errors ([#1994](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1994)) ([3875f75](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3875f755bafa114eba71e5477f0536f2b9dd6fd3)), closes [HiromiShikata/umino-corporait-operation#31360](https://github.com/HiromiShikata/umino-corporait-operation/issues/31360)
+
 ## [2.46.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.12...v2.46.13) (2026-09-05)
 
 
