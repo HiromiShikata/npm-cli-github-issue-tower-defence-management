@@ -32,6 +32,7 @@ export type ConfigFile = {
   consoleAccessToken?: string;
   consoleProjects?: Record<string, string>;
   consoleGithubTokenFileDir?: string;
+  readOnlyGithubTokens?: string[];
   disks?: DiskConfig[];
   errorReportingRepository?: string;
   skipAgentAuthoredIssues?: boolean;
@@ -238,6 +239,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'consoleGithubTokenFileDir',
       ),
+      readOnlyGithubTokens: getStringArrayValue(parsed, 'readOnlyGithubTokens'),
       disks: getDisksValue(parsed, 'disks'),
       errorReportingRepository: getStringValue(
         parsed,
@@ -448,6 +450,8 @@ export const mergeConfigs = (
   consoleGithubTokenFileDir:
     cliOverrides.consoleGithubTokenFileDir ??
     configFile.consoleGithubTokenFileDir,
+  readOnlyGithubTokens:
+    cliOverrides.readOnlyGithubTokens ?? configFile.readOnlyGithubTokens,
   disks: cliOverrides.disks ?? configFile.disks,
   errorReportingRepository:
     readmeOverrides.errorReportingRepository ??
