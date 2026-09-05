@@ -2700,9 +2700,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         thresholdForAutoReject: 3,
       });
 
-      expect(
-        mockIssueCommentRepository.createComment,
-      ).not.toHaveBeenCalledWith(
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.stringContaining('ORPHANED_PREPARATION'),
       );

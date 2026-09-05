@@ -1,7 +1,10 @@
 import { extractFencedJsonBlocks } from './extractFencedJsonBlocks';
 
 export const extractWaitingForOwnerApproval = (body: string): boolean => {
-  for (const block of extractFencedJsonBlocks(body, 'waitingForOwnerApproval')) {
+  for (const block of extractFencedJsonBlocks(
+    body,
+    'waitingForOwnerApproval',
+  )) {
     if (typeof block !== 'object' || block === null) {
       continue;
     }

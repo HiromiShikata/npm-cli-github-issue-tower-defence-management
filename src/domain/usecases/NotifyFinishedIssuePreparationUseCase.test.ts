@@ -5197,9 +5197,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       });
 
-      expect(
-        mockIssueCommentRepository.createComment,
-      ).not.toHaveBeenCalledWith(
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
       );
