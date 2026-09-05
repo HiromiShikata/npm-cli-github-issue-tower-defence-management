@@ -1,3 +1,10 @@
+# [2.53.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.52.0...v2.53.0) (2026-09-05)
+
+
+### Features
+
+* **console:** add workflow incident report links for tasks and comments ([#1996](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1996)) ([d5217a6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d5217a6a66ccb42ca238ba485209f8db6f1088a3))
+
 # [2.52.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.51.0...v2.52.0) (2026-09-05)
 
 
