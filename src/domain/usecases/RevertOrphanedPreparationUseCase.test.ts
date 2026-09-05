@@ -385,7 +385,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
       expect.stringContaining(
-        'Failed to receive a report from the dispatched agent for 3 times',
+        'Failed to receive a report from the dispatched agent for 3 consecutive dispatches',
       ),
     );
   });

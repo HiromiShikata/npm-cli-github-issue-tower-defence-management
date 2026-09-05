@@ -1099,7 +1099,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining(
-        'Failed to receive a report from the dispatched agent for 3 times',
+        'Failed to receive a report from the dispatched agent for 3 consecutive dispatches',
       ),
     );
   });

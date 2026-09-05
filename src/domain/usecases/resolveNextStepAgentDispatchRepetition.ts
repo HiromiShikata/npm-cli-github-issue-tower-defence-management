@@ -1,6 +1,10 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { isAgentReportBody } from './isAgentReportBody';
+import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
+import {
+  isAgentReportBody,
+  stripLeadingFencedBlocks,
+} from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
 
@@ -43,6 +47,8 @@ const isSilentRedispatchCommentForAgent = (
   );
 };
 
+type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
+
 const countSilentRedispatches = <
   CommentLike extends { author: string; content: string },
 >(params: {
@@ -50,7 +56,7 @@ const countSilentRedispatches = <
   nextStepAgent: string;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
-}): number | null => {
+}): SilentRedispatch | null => {
   if (
     params.agentFieldValue === null ||
     normalizeProjectFieldName(params.agentFieldValue) !==
@@ -65,7 +71,7 @@ const countSilentRedispatches = <
   const commentsInCurrentCycle = params.comments.slice(
     lastHumanCommentIndex + 1,
   );
-  return (
+  const count =
     commentsInCurrentCycle.filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
@@ -73,8 +79,22 @@ const countSilentRedispatches = <
           comment.content,
           params.nextStepAgent,
         ),
-    ).length + 1
-  );
+    ).length + 1;
+  const hasReportsInCycle = commentsInCurrentCycle.some((comment) => {
+    if (!params.isTrustedAuthor(comment.author)) return false;
+    const cleaned = stripLeadingFencedBlocks(comment.content);
+    if (!cleaned.startsWith(AGENT_REPORT_PREFIX)) return false;
+    const reportingAgent = cleaned
+      .slice(AGENT_REPORT_PREFIX.length)
+      .trimStart()
+      .split(/[\n(]/)[0]
+      .trim();
+    return (
+      normalizeProjectFieldName(reportingAgent) ===
+      normalizeProjectFieldName(params.nextStepAgent)
+    );
+  });
+  return { count, hasReportsInCycle };
 };
 
 const countDispatchesInCurrentCycle = <
@@ -120,14 +140,16 @@ export const resolveNextStepAgentDispatchRepetition = <
   const silentRedispatches = countSilentRedispatches(params);
   if (
     silentRedispatches !== null &&
-    silentRedispatches >= params.thresholdForAutoReject
+    silentRedispatches.count >= params.thresholdForAutoReject
   ) {
-    return {
-      type: 'escalateSilentRedispatch',
-      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+    const comment = silentRedispatches.hasReportsInCycle
+      ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} times`,
-    };
+The agent has been reporting every cycle but cannot advance — it has been dispatched ${params.thresholdForAutoReject} times since the last human comment without resolving the underlying blocker. Owner judgment is required to break the loop.`
+      : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+
+Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. The agent may have crashed or stopped silently.`;
+    return { type: 'escalateSilentRedispatch', comment };
   }
   const dispatchesInCycle = countDispatchesInCurrentCycle(params);
   if (dispatchesInCycle >= params.thresholdForDispatchLoop) {
@@ -138,14 +160,15 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
 This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so the issue is escalated for a decision instead of being dispatched again.`,
     };
   }
-  const silentRedispatchMessage = {
-    type: 'dispatchAgain' as const,
-    comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+  if (silentRedispatches !== null && silentRedispatches.count > 1) {
+    const comment = silentRedispatches.hasReportsInCycle
+      ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-The latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${silentRedispatches}/${params.thresholdForAutoReject}).`,
-  };
-  if (silentRedispatches !== null && silentRedispatches > 1) {
-    return silentRedispatchMessage;
+The agent posted a report and nominated itself as the next step without resolving the blocker. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
+      : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+
+No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
+    return { type: 'dispatchAgain', comment };
   }
   if (dispatchesInCycle > 1) {
     return {
@@ -156,7 +179,14 @@ The latest agent report names this agent as the next step and it has already bee
     };
   }
   if (silentRedispatches !== null) {
-    return silentRedispatchMessage;
+    const comment = silentRedispatches.hasReportsInCycle
+      ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+
+The agent posted a report and nominated itself as the next step without resolving the blocker. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
+      : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+
+No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
+    return { type: 'dispatchAgain', comment };
   }
   return { type: 'notRepeated' };
 };

@@ -8,7 +8,7 @@ type TestComment = { author: string; content: string };
 
 const report = (nextStepAgent: string, author = 'bot'): TestComment => ({
   author,
-  content: `From: :robot: agent (model)
+  content: `From: :robot: ${nextStepAgent} (model)
 
 \`\`\`json
 { "nextStepAgent": "${nextStepAgent}" }
@@ -142,6 +142,46 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
+    });
+
+    it('emits a stuck-agent message when reports are present at escalation', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'accounting',
+        nextStepAgent: 'accounting',
+        comments: [
+          report('accounting'),
+          repetitionComment('accounting'),
+          repetitionComment('accounting'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+      const comment =
+        result.type === 'escalateSilentRedispatch' ? result.comment : '';
+      expect(comment).not.toContain('Failed to receive a report');
+      expect(comment.toLowerCase()).toContain('owner');
+    });
+
+    it('emits a no-report message when no reports are present at escalation', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'accounting',
+        nextStepAgent: 'accounting',
+        comments: [
+          repetitionComment('accounting'),
+          repetitionComment('accounting'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+      const comment =
+        result.type === 'escalateSilentRedispatch' ? result.comment : '';
+      expect(comment).toContain('Failed to receive a report');
     });
 
     it('counts silent redispatches even when agent name casing in prior comments differs from nextStepAgent', () => {
