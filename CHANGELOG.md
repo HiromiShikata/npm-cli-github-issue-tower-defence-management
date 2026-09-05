@@ -1,3 +1,10 @@
+## [2.56.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.56.1...v2.56.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **resolveNextStepAgentDispatchRepetition:** distinguish reporting-but-stuck agent from silently-dead agent ([#2037](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2037)) ([f67dde2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f67dde2ba57bbcde2aa31a90c098c6407a1954c5))
+
 ## [2.56.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.56.0...v2.56.1) (2026-09-05)
 
 
