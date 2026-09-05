@@ -1,174 +1,174 @@
 export type ConsoleColor =
-  | 'GRAY'
-  | 'BLUE'
-  | 'GREEN'
-  | 'YELLOW'
-  | 'ORANGE'
-  | 'RED'
-  | 'PINK'
-  | 'PURPLE';
+	| "GRAY"
+	| "BLUE"
+	| "GREEN"
+	| "YELLOW"
+	| "ORANGE"
+	| "RED"
+	| "PINK"
+	| "PURPLE";
 
 export type ConsoleListItem = {
-  number: number;
-  title: string;
-  url: string;
-  repo: string;
-  nameWithOwner: string;
-  projectItemId: string;
-  itemId: string;
-  isPr: boolean;
-  story: string;
-  status: string | null;
-  agent: string | null;
-  nextActionDate: string | null;
-  nextActionHour: number | null;
-  dependedIssueUrls: string[];
-  labels: string[];
-  createdAt: string;
-  relatedOpenPullRequestUrls: string[];
+	number: number;
+	title: string;
+	url: string;
+	repo: string;
+	nameWithOwner: string;
+	projectItemId: string;
+	itemId: string;
+	isPr: boolean;
+	story: string;
+	status: string | null;
+	agent: string | null;
+	nextActionDate: string | null;
+	nextActionHour: number | null;
+	dependedIssueUrls: string[];
+	labels: string[];
+	createdAt: string;
+	relatedOpenPullRequestUrls: string[];
 };
 
 export type ConsoleFieldOption = {
-  id: string;
-  name: string;
-  color: ConsoleColor;
+	id: string;
+	name: string;
+	color: ConsoleColor;
 };
 
 export type ConsoleStatusTab = {
-  pjcode: string;
-  generatedAt: string;
-  statusOptions: ConsoleFieldOption[];
-  storyOrder: string[];
-  storyColors: Record<string, { color: ConsoleColor }>;
-  items: ConsoleListItem[];
+	pjcode: string;
+	generatedAt: string;
+	statusOptions: ConsoleFieldOption[];
+	storyOrder: string[];
+	storyColors: Record<string, { color: ConsoleColor }>;
+	items: ConsoleListItem[];
 };
 
 export type ConsoleQueuedTab = {
-  pjcode: string;
-  generatedAt: string;
-  statusOptions: ConsoleFieldOption[];
-  agentOptions: ConsoleFieldOption[];
-  storyOrder: string[];
-  storyColors: Record<string, { color: ConsoleColor }>;
-  items: ConsoleListItem[];
+	pjcode: string;
+	generatedAt: string;
+	statusOptions: ConsoleFieldOption[];
+	agentOptions: ConsoleFieldOption[];
+	storyOrder: string[];
+	storyColors: Record<string, { color: ConsoleColor }>;
+	items: ConsoleListItem[];
 };
 
 export type ConsoleStoryColorSource = Record<
-  string,
-  ConsoleColor | { color: ConsoleColor }
+	string,
+	ConsoleColor | { color: ConsoleColor }
 >;
 
 export type ConsoleIssueState = {
-  state: string;
-  merged: boolean;
-  isPullRequest: boolean;
-  title: string;
+	state: string;
+	merged: boolean;
+	isPullRequest: boolean;
+	title: string;
 };
 
-export type ConsoleMergeableStatus = 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+export type ConsoleMergeableStatus = "MERGEABLE" | "CONFLICTING" | "UNKNOWN";
 
 export type ConsolePullRequestStatus = {
-  found: boolean;
-  isConflicted: boolean;
-  mergeableStatus: ConsoleMergeableStatus;
-  isPassedAllCiJob: boolean;
-  isCiStateSuccess: boolean;
-  isBranchOutOfDate: boolean;
-  missingRequiredCheckNames: string[];
+	found: boolean;
+	isConflicted: boolean;
+	mergeableStatus: ConsoleMergeableStatus;
+	isPassedAllCiJob: boolean;
+	isCiStateSuccess: boolean;
+	isBranchOutOfDate: boolean;
+	missingRequiredCheckNames: string[];
 };
 
 export type ConsoleComment = {
-  author: string;
-  body: string;
-  createdAt: string;
-  url: string | null;
+	author: string;
+	body: string;
+	createdAt: string;
+	url: string | null;
 };
 
 export type ConsoleChangedFile = {
-  path: string;
-  additions: number;
-  deletions: number;
-  status: string;
-  patch: string | null;
-  rawUrl: string | null;
+	path: string;
+	additions: number;
+	deletions: number;
+	status: string;
+	patch: string | null;
+	rawUrl: string | null;
 };
 
 export type ConsoleCommit = {
-  sha: string;
-  message: string;
-  author: string;
-  authoredAt: string;
+	sha: string;
+	message: string;
+	author: string;
+	authoredAt: string;
 };
 
 export type ConsoleRelatedPullRequest = {
-  url: string;
-  branchName: string | null;
-  createdAt: string;
-  isDraft: boolean;
-  isConflicted: boolean;
-  mergeableStatus: ConsoleMergeableStatus;
-  isPassedAllCiJob: boolean;
-  isCiStateSuccess: boolean;
-  isResolvedAllReviewComments: boolean;
-  isBranchOutOfDate: boolean;
-  missingRequiredCheckNames: string[];
-  summary: {
-    title: string;
-    body: string;
-    additions: number;
-    deletions: number;
-    changedFiles: number;
-  } | null;
+	url: string;
+	branchName: string | null;
+	createdAt: string;
+	isDraft: boolean;
+	isConflicted: boolean;
+	mergeableStatus: ConsoleMergeableStatus;
+	isPassedAllCiJob: boolean;
+	isCiStateSuccess: boolean;
+	isResolvedAllReviewComments: boolean;
+	isBranchOutOfDate: boolean;
+	missingRequiredCheckNames: string[];
+	summary: {
+		title: string;
+		body: string;
+		additions: number;
+		deletions: number;
+		changedFiles: number;
+	} | null;
 };
 
 export type ConsoleOverlayStatus = {
-  name: string;
-  color: ConsoleColor;
+	name: string;
+	color: ConsoleColor;
 };
 
 export type ConsoleOverlayStory = {
-  name: string;
-  color: ConsoleColor;
+	name: string;
+	color: ConsoleColor;
 };
 
 export type ConsoleOverlayEntry = {
-  done?: boolean;
-  status?: ConsoleOverlayStatus;
-  story?: ConsoleOverlayStory;
-  ts: number;
-  mode: ConsoleTabName;
+	done?: boolean;
+	status?: ConsoleOverlayStatus;
+	story?: ConsoleOverlayStory;
+	ts: number;
+	mode: ConsoleTabName;
 };
 
 export type ConsoleOverlay = Record<string, ConsoleOverlayEntry>;
 
 export type ConsoleTabName =
-  | 'workflow-blocker'
-  | 'prs'
-  | 'failed-preparation'
-  | 'todo-by-human'
-  | 'todo-by-agent'
-  | 'queued'
-  | 'stories';
+	| "workflow-blocker"
+	| "prs"
+	| "failed-preparation"
+	| "todo-by-human"
+	| "todo-by-agent"
+	| "queued"
+	| "stories";
 
 export type ConsoleStoryEntry = {
-  storyName: string;
-  storyOptionId: string;
-  color: ConsoleColor;
-  openItemCount: number;
-  storyViewUrl: string | null;
+	storyName: string;
+	storyOptionId: string;
+	color: ConsoleColor;
+	openItemCount: number;
+	storyViewUrl: string | null;
 };
 
 export type ConsoleTab = {
-  name: ConsoleTabName;
-  label: string;
+	name: ConsoleTabName;
+	label: string;
 };
 
 export const CONSOLE_TABS: ConsoleTab[] = [
-  { name: 'workflow-blocker', label: 'Workflow Blocker' },
-  { name: 'prs', label: 'Awaiting Quality Check' },
-  { name: 'failed-preparation', label: 'Failed Preparation' },
-  { name: 'todo-by-human', label: 'Todo by human' },
-  { name: 'todo-by-agent', label: 'Todo by agent' },
-  { name: 'queued', label: 'Queued' },
-  { name: 'stories', label: 'Stories' },
+	{ name: "workflow-blocker", label: "Workflow Blocker" },
+	{ name: "prs", label: "Awaiting Quality Check" },
+	{ name: "failed-preparation", label: "Failed Preparation" },
+	{ name: "todo-by-human", label: "Todo by human" },
+	{ name: "todo-by-agent", label: "Todo by agent" },
+	{ name: "queued", label: "Queued" },
+	{ name: "stories", label: "Stories" },
 ];

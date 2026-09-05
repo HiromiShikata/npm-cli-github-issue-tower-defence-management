@@ -1782,6 +1782,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         author: 'HiromiShikata',
         body: 'test comment',
         createdAt: new Date('2026-08-30T09:00:00Z'),
+        url: 'https://github.com/HiromiShikata/test-repository/issues/40#issuecomment-999',
       };
       restIssueRepository.createComment.mockResolvedValue(commentData);
 
