@@ -1,3 +1,10 @@
+## [2.59.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.59.0...v2.59.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** return 502 instead of re-throwing upstream GitHub errors in read handlers ([7e43ebb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7e43ebbb8b6696671dbdaec03d221236b7ca0d93)), closes [#2051](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2051)
+
 # [2.59.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.58.0...v2.59.0) (2026-09-05)
 
 
