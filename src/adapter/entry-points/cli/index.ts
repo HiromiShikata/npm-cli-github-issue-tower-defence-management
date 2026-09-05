@@ -29,6 +29,7 @@ import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3C
 import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
+import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { LocalCommandIssueAttachmentRepository } from '../../repositories/LocalCommandIssueAttachmentRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
@@ -769,29 +770,39 @@ program
           .filter(Boolean)
       : null;
 
-    await useCase.run({
-      projectUrl,
-      issueUrl: options.issueUrl,
-      thresholdForAutoReject,
-      thresholdForDispatchLoop,
-      workflowBlockerResolvedWebhookUrl,
-      allowedIssueAuthors,
-      labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
-      labelsNotRequiringPullRequest:
-        config.labelsNotRequiringPullRequest ?? null,
-      changeTargetPathAliases: config.changeTargetPathAliases ?? null,
-      agents: config.agents ?? null,
-      missingAgentName: options.missingAgentName ?? null,
-      sessionErrorLine: options.sessionErrorLine ?? null,
-      manager: config.manager ?? null,
-      developerAgentNames: config.developerAgentNames ?? null,
-      deferPreparation: options.deferPreparation ?? null,
-      workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
-        notifyFleetConfigFilePath,
-      ),
-      tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
-      projectName: config.projectName ?? null,
-    });
+    try {
+      await useCase.run({
+        projectUrl,
+        issueUrl: options.issueUrl,
+        thresholdForAutoReject,
+        thresholdForDispatchLoop,
+        workflowBlockerResolvedWebhookUrl,
+        allowedIssueAuthors,
+        labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+        labelsNotRequiringPullRequest:
+          config.labelsNotRequiringPullRequest ?? null,
+        changeTargetPathAliases: config.changeTargetPathAliases ?? null,
+        agents: config.agents ?? null,
+        missingAgentName: options.missingAgentName ?? null,
+        sessionErrorLine: options.sessionErrorLine ?? null,
+        manager: config.manager ?? null,
+        developerAgentNames: config.developerAgentNames ?? null,
+        deferPreparation: options.deferPreparation ?? null,
+        workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
+          notifyFleetConfigFilePath,
+        ),
+        tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
+        projectName: config.projectName ?? null,
+      });
+    } catch (e) {
+      if (e instanceof GitHubRateLimitError) {
+        console.warn(
+          `notifyFinishedIssuePreparation rate-limited, will retry next cycle: ${e.message}`,
+        );
+        return;
+      }
+      throw e;
+    }
   });
 
 program

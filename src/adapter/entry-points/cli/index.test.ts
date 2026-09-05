@@ -2173,6 +2173,50 @@ mysteryKey: 'value'
 
       fs.unlinkSync(fleetConfigPath);
     });
+
+    it('exits cleanly without throwing when useCase.run rejects with GitHubRateLimitError', async () => {
+      const { GitHubRateLimitError } =
+        await import('../../repositories/issue/githubRateLimitRetry');
+      const mockRun = jest
+        .fn()
+        .mockRejectedValue(
+          new GitHubRateLimitError(
+            'HTTP 403 GitHub API rate limit exceeded',
+            null,
+          ),
+        );
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+
+      await expect(
+        program.parseAsync([
+          'node',
+          'test',
+          'notifyFinishedIssuePreparation',
+          '--configFilePath',
+          configFilePath,
+          '--issueUrl',
+          'https://github.com/test/repo/issues/1',
+        ]),
+      ).resolves.toBeDefined();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('rate-limited'),
+      );
+      consoleWarnSpy.mockRestore();
+    });
   });
 
   describe('checkIssueReviewReadiness', () => {

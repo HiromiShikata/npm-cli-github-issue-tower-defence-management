@@ -532,4 +532,84 @@ describe('RestIssueRepository', () => {
       expect(searchedIssues).toHaveLength(101);
     });
   });
+
+  describe('updateIssue', () => {
+    it('throws GitHubRateLimitError with reset time when ky returns 403 with rate-limit headers', async () => {
+      const resetEpoch = 1725547200;
+      const mockHeaders = new Headers({
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': String(resetEpoch),
+      });
+      mockPatch.mockRejectedValue(
+        new MockHTTPError({
+          status: 403,
+          headers: mockHeaders,
+          clone: () => ({
+            text: async () =>
+              'You have exceeded a secondary rate limit and have been temporarily blocked from content creation.',
+          }),
+        }),
+      );
+
+      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
+      let thrownError: unknown;
+      try {
+        await restIssueRepository.updateIssue(buildIssue());
+      } catch (e) {
+        thrownError = e;
+      }
+      expect(thrownError).toBeInstanceOf(GitHubRateLimitError);
+      expect(thrownError).toMatchObject({
+        rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
+      });
+    });
+
+    it('rethrows non-rate-limit HTTPError from ky unchanged', async () => {
+      const mockHeaders = new Headers({ 'x-ratelimit-remaining': '100' });
+      mockPatch.mockRejectedValue(
+        new MockHTTPError({
+          status: 403,
+          headers: mockHeaders,
+          clone: () => ({ text: async () => 'Forbidden' }),
+        }),
+      );
+
+      await expect(
+        restIssueRepository.updateIssue(buildIssue()),
+      ).rejects.toBeInstanceOf(MockHTTPError);
+    });
+
+    it('throws GitHubRateLimitError even when clone() throws (body already consumed by ky 2.x)', async () => {
+      const resetEpoch = 1725547200;
+      const mockHeaders = new Headers({
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': String(resetEpoch),
+      });
+      mockPatch.mockRejectedValue(
+        new MockHTTPError({
+          status: 403,
+          headers: mockHeaders,
+          clone: () => ({
+            text: async () => {
+              throw new TypeError(
+                'Response.clone: Body has already been consumed.',
+              );
+            },
+          }),
+        }),
+      );
+
+      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
+      let thrownError: unknown;
+      try {
+        await restIssueRepository.updateIssue(buildIssue());
+      } catch (e) {
+        thrownError = e;
+      }
+      expect(thrownError).toBeInstanceOf(GitHubRateLimitError);
+      expect(thrownError).toMatchObject({
+        rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
+      });
+    });
+  });
 });

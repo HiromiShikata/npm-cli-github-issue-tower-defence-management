@@ -144,19 +144,37 @@ export class RestIssueRepository
     };
   };
   updateIssue = async (issue: Issue) => {
-    await ky.patch(
-      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
-      {
-        json: {
-          title: issue.title,
-          body: issue.body,
-          assignees: issue.assignees,
-          labels: issue.labels,
-          state: issue.state,
+    try {
+      await ky.patch(
+        `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
+        {
+          json: {
+            title: issue.title,
+            body: issue.body,
+            assignees: issue.assignees,
+            labels: issue.labels,
+            state: issue.state,
+          },
+          headers: { Authorization: `token ${this.ghToken}` },
         },
-        headers: { Authorization: `token ${this.ghToken}` },
-      },
-    );
+      );
+    } catch (e) {
+      if (e instanceof HTTPError) {
+        const bodyText = await e.response
+          .clone()
+          .text()
+          .catch(() => '');
+        if (
+          hasRateLimitSignals(e.response.status, e.response.headers, bodyText)
+        ) {
+          throw new GitHubRateLimitError(
+            `HTTP ${e.response.status} GitHub API rate limit exceeded`,
+            computeRateLimitResetIso(e.response.headers),
+          );
+        }
+      }
+      throw e;
+    }
   };
 
   updateIssueBody = async (
