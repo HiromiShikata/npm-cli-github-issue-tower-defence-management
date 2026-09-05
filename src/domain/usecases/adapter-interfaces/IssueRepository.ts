@@ -164,6 +164,9 @@ export interface IssueRepository {
   get: (issueUrl: string, project: Project) => Promise<Issue | null>;
   update: (issue: Issue, project: Project) => Promise<void>;
   findRelatedOpenPRs: (issueUrl: string) => Promise<RelatedPullRequest[]>;
+  findRelatedOpenPrUrls: (
+    issueUrls: string[],
+  ) => Promise<Map<string, string[]>>;
   getOpenPullRequest: (prUrl: string) => Promise<RelatedPullRequest | null>;
   getOpenPullRequestCiStatus: (
     prUrl: string,

@@ -587,6 +587,7 @@ const createStubIssueRepository = (
     url === CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL
       ? [inlineCommentRelatedPullRequest]
       : [],
+  findRelatedOpenPrUrls: async (): Promise<Map<string, string[]>> => new Map(),
   getOpenPullRequest: async (
     url: string,
   ): Promise<RelatedPullRequest | null> =>

@@ -153,6 +153,30 @@ type PrStatusComputationData = {
 // API by reading the rateLimit cost field it returns.
 const SLIM_PULL_REQUEST_BATCH_SIZE = 100;
 const SLIM_PULL_REQUEST_REVIEW_THREADS_PAGE_SIZE = 100;
+const RELATED_OPEN_PULL_REQUEST_URLS_BATCH_SIZE = 100;
+const RELATED_OPEN_PULL_REQUEST_URLS_TIMELINE_PAGE_SIZE = 100;
+
+type IssueRelatedOpenPullRequestUrlsBatchResponse = {
+  data?: Record<
+    string,
+    {
+      issue?: {
+        timelineItems: {
+          pageInfo: {
+            endCursor: string | null;
+            hasNextPage: boolean;
+          };
+          nodes: TimelineItem[];
+        };
+      } | null;
+    } | null
+  > | null;
+  errors?: Array<{
+    message: string;
+    type?: string;
+    path?: Array<string | number>;
+  }>;
+};
 
 type SlimPullRequestNodeResponse = {
   url: string;
@@ -293,6 +317,13 @@ function isSlimPullRequestResponse(
 function isSlimPullRequestBatchResponse(
   value: unknown,
 ): value is SlimPullRequestBatchResponse {
+  if (typeof value !== 'object' || value === null) return false;
+  return true;
+}
+
+function isIssueRelatedOpenPullRequestUrlsBatchResponse(
+  value: unknown,
+): value is IssueRelatedOpenPullRequestUrlsBatchResponse {
   if (typeof value !== 'object' || value === null) return false;
   return true;
 }
@@ -2264,16 +2295,7 @@ export class ApiV3CheerioRestIssueRepository
           );
           continue;
         }
-        if (item.__typename !== 'CrossReferencedEvent') continue;
-        if (!item.source || item.source.__typename !== 'PullRequest') continue;
-        if (item.source.state !== 'OPEN') continue;
-        if (
-          !item.willCloseTarget &&
-          !this.prBodyContainsCrossRepoClosingKeyword(
-            item.source.body ?? null,
-            issueUrl,
-          )
-        )
+        if (!this.isRelatedOpenPullRequestTimelineItem(item, issueUrl))
           continue;
 
         const pr = item.source;
@@ -2377,6 +2399,194 @@ export class ApiV3CheerioRestIssueRepository
       prs: prs.map((pr) => ({ ...pr, createdAt: pr.createdAt.toISOString() })),
     });
     return prs;
+  };
+
+  private isRelatedOpenPullRequestTimelineItem = (
+    item: TimelineItem,
+    issueUrl: string,
+  ): item is TimelineItem & {
+    source: NonNullable<TimelineItem['source']>;
+  } => {
+    if (item.__typename !== 'CrossReferencedEvent') return false;
+    if (!item.source || item.source.__typename !== 'PullRequest') return false;
+    if (item.source.state !== 'OPEN') return false;
+    return (
+      item.willCloseTarget === true ||
+      this.prBodyContainsCrossRepoClosingKeyword(
+        item.source.body ?? null,
+        issueUrl,
+      )
+    );
+  };
+
+  findRelatedOpenPrUrls = async (
+    issueUrls: string[],
+  ): Promise<Map<string, string[]>> => {
+    const references: {
+      issueUrl: string;
+      owner: string;
+      repo: string;
+      issueNumber: number;
+    }[] = [];
+    for (const issueUrl of Array.from(new Set(issueUrls))) {
+      const parsedUrl = this.parseIssueUrl(issueUrl);
+      if (parsedUrl.isPr) {
+        continue;
+      }
+      references.push({
+        issueUrl,
+        owner: parsedUrl.owner,
+        repo: parsedUrl.repo,
+        issueNumber: parsedUrl.issueNumber,
+      });
+    }
+
+    const resolved = new Map<string, string[]>();
+    for (
+      let start = 0;
+      start < references.length;
+      start += RELATED_OPEN_PULL_REQUEST_URLS_BATCH_SIZE
+    ) {
+      const batchReferences = references.slice(
+        start,
+        start + RELATED_OPEN_PULL_REQUEST_URLS_BATCH_SIZE,
+      );
+      let prUrlsByIssueUrl: Map<string, string[]>;
+      try {
+        prUrlsByIssueUrl =
+          await this.fetchRelatedOpenPrUrlsInOneQuery(batchReferences);
+      } catch (error) {
+        console.warn(
+          `ApiV3CheerioRestIssueRepository: batched related open pull request query failed, leaving ${batchReferences.length} issue(s) to per-issue resolution. error: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        continue;
+      }
+      for (const [issueUrl, prUrls] of prUrlsByIssueUrl) {
+        resolved.set(issueUrl, prUrls);
+      }
+    }
+    return resolved;
+  };
+
+  private fetchRelatedOpenPrUrlsInOneQuery = async (
+    references: {
+      issueUrl: string;
+      owner: string;
+      repo: string;
+      issueNumber: number;
+    }[],
+  ): Promise<Map<string, string[]>> => {
+    const aliasOf = (index: number): string => `issue${index}`;
+    const variableDeclarations = references
+      .map(
+        (_, index) =>
+          `$owner${index}: String!, $repo${index}: String!, $issueNumber${index}: Int!`,
+      )
+      .join(', ');
+    const selections = references
+      .map(
+        (
+          _,
+          index,
+        ) => `  ${aliasOf(index)}: repository(owner: $owner${index}, name: $repo${index}) {
+    issue(number: $issueNumber${index}) {
+      timelineItems(first: ${RELATED_OPEN_PULL_REQUEST_URLS_TIMELINE_PAGE_SIZE}, itemTypes: [CROSS_REFERENCED_EVENT]) {
+        pageInfo {
+          endCursor
+          hasNextPage
+        }
+        nodes {
+          __typename
+          ... on CrossReferencedEvent {
+            willCloseTarget
+            source {
+              __typename
+              ... on PullRequest {
+                url
+                state
+                body
+              }
+            }
+          }
+        }
+      }
+    }
+  }`,
+      )
+      .join('\n');
+    const query = `query IssueRelatedOpenPullRequestUrlsBatch(${variableDeclarations}) {\n${selections}\n}`;
+    const variables: Record<string, string | number> = {};
+    references.forEach((reference, index) => {
+      variables[`owner${index}`] = reference.owner;
+      variables[`repo${index}`] = reference.repo;
+      variables[`issueNumber${index}`] = reference.issueNumber;
+    });
+
+    const response = await this.fetchWithRateLimitRetry(() =>
+      fetchGithubGraphql({ ghToken: this.ghToken, query, variables }),
+    );
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch issue timelines from GitHub GraphQL API: HTTP ${response.status}`,
+      );
+    }
+    const responseData: unknown = await response.json();
+    if (!isIssueRelatedOpenPullRequestUrlsBatchResponse(responseData)) {
+      throw new Error(
+        'Unexpected response shape when fetching issue timelines',
+      );
+    }
+    const errors = responseData.errors || [];
+    const notFoundAliases = new Set(
+      errors
+        .filter((error) => error.type === 'NOT_FOUND')
+        .map((error) => String(error.path?.[0] ?? '')),
+    );
+    const otherErrorAliases = new Set(
+      errors
+        .filter((error) => error.type !== 'NOT_FOUND')
+        .map((error) => String(error.path?.[0] ?? '')),
+    );
+    if (!responseData.data) {
+      throw new Error(`GraphQL errors: ${JSON.stringify(errors)}`);
+    }
+    const unattributedError = errors.some(
+      (error) => error.type !== 'NOT_FOUND' && !error.path,
+    );
+    if (unattributedError) {
+      throw new Error(`GraphQL errors: ${JSON.stringify(errors)}`);
+    }
+
+    const prUrlsByIssueUrl = new Map<string, string[]>();
+    references.forEach((reference, index) => {
+      const alias = aliasOf(index);
+      if (otherErrorAliases.has(alias)) {
+        return;
+      }
+      const issueNode = responseData.data?.[alias]?.issue ?? null;
+      if (!issueNode) {
+        if (notFoundAliases.has(alias) || !errors.length) {
+          prUrlsByIssueUrl.set(reference.issueUrl, []);
+        }
+        return;
+      }
+      if (issueNode.timelineItems.pageInfo.hasNextPage) {
+        return;
+      }
+      const prUrls = new Set<string>();
+      for (const item of issueNode.timelineItems.nodes) {
+        if (
+          !this.isRelatedOpenPullRequestTimelineItem(item, reference.issueUrl)
+        ) {
+          continue;
+        }
+        const prUrl = item.source.url || '';
+        if (!prUrl) continue;
+        prUrls.add(prUrl);
+      }
+      prUrlsByIssueUrl.set(reference.issueUrl, Array.from(prUrls));
+    });
+    return prUrlsByIssueUrl;
   };
 
   getAllOpened = async (project: Project): Promise<Issue[]> => {
