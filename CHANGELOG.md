@@ -1,3 +1,10 @@
+# [2.59.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.58.0...v2.59.0) (2026-09-05)
+
+
+### Features
+
+* **console:** add toggle button to show/hide agent and story dropdowns ([#2050](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2050)) ([ffd2c75](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ffd2c750dea42fe584523e9960146c96ffb76129)), closes [HiromiShikata/umino-corporait-operation#31418](https://github.com/HiromiShikata/umino-corporait-operation/issues/31418)
+
 # [2.58.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.57.0...v2.58.0) (2026-09-05)
 
 
