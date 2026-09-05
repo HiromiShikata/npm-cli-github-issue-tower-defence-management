@@ -797,12 +797,15 @@ describe('consoleOperationApi', () => {
             options: [],
           },
         };
-        const response = await handleTriage(contextForProject(projectWithHour), {
-          pjcode: 'acme',
-          action: 'snooze_1hour',
-          issueUrl: 'https://github.com/o/r/issues/1',
-          projectItemId: 'PVTI_1h',
-        });
+        const response = await handleTriage(
+          contextForProject(projectWithHour),
+          {
+            pjcode: 'acme',
+            action: 'snooze_1hour',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            projectItemId: 'PVTI_1h',
+          },
+        );
         expect(response.statusCode).toBe(200);
         expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
         const call = issueRepository.updateNextActionHour.mock.calls[0];
@@ -828,12 +831,15 @@ describe('consoleOperationApi', () => {
             options: [],
           },
         };
-        const response = await handleTriage(contextForProject(projectWithHour), {
-          pjcode: 'acme',
-          action: 'snooze_3hours',
-          issueUrl: 'https://github.com/o/r/issues/1',
-          projectItemId: 'PVTI_3h',
-        });
+        const response = await handleTriage(
+          contextForProject(projectWithHour),
+          {
+            pjcode: 'acme',
+            action: 'snooze_3hours',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            projectItemId: 'PVTI_3h',
+          },
+        );
         expect(response.statusCode).toBe(200);
         expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
         const call = issueRepository.updateNextActionHour.mock.calls[0];
@@ -859,12 +865,15 @@ describe('consoleOperationApi', () => {
             options: [],
           },
         };
-        const response = await handleTriage(contextForProject(projectWithHour), {
-          pjcode: 'acme',
-          action: 'snooze_3hours',
-          issueUrl: 'https://github.com/o/r/issues/1',
-          projectItemId: 'PVTI_3h_wrap',
-        });
+        const response = await handleTriage(
+          contextForProject(projectWithHour),
+          {
+            pjcode: 'acme',
+            action: 'snooze_3hours',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            projectItemId: 'PVTI_3h_wrap',
+          },
+        );
         expect(response.statusCode).toBe(200);
         expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
         expect(issueRepository.updateNextActionHour.mock.calls[0][2]).toBe(1);
@@ -889,12 +898,15 @@ describe('consoleOperationApi', () => {
             options: [],
           },
         };
-        const response = await handleTriage(contextForProject(projectWithHour), {
-          pjcode: 'acme',
-          action: 'snooze_1hour',
-          issueUrl: 'https://github.com/o/r/issues/1',
-          projectItemId: 'PVTI_1h_wrap',
-        });
+        const response = await handleTriage(
+          contextForProject(projectWithHour),
+          {
+            pjcode: 'acme',
+            action: 'snooze_1hour',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            projectItemId: 'PVTI_1h_wrap',
+          },
+        );
         expect(response.statusCode).toBe(200);
         expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
         expect(issueRepository.updateNextActionHour.mock.calls[0][2]).toBe(0);
