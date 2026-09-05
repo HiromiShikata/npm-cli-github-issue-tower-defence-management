@@ -1544,6 +1544,7 @@ mysteryKey: 'value'
         deferPreparation: null,
         workflowIssueReporterSettings: null,
         tdpmReportingRepository: null,
+        projectName: 'test-project',
       });
     });
 
@@ -1590,6 +1591,7 @@ mysteryKey: 'value'
         deferPreparation: null,
         workflowIssueReporterSettings: null,
         tdpmReportingRepository: null,
+        projectName: 'test-project',
       });
     });
 
@@ -1898,6 +1900,163 @@ mysteryKey: 'value'
       expect(mockRun).toHaveBeenCalledWith(
         expect.objectContaining({ manager: 'alice' }),
       );
+    });
+
+    it('passes projectName from config file to useCase.run', async () => {
+      writeConfig({
+        ...defaultConfig,
+        projectName: 'my-unique-project',
+      });
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ projectName: 'my-unique-project' }),
+      );
+    });
+
+    it('passes null projectName when not configured', async () => {
+      writeConfig({
+        projectUrl: 'https://github.com/orgs/test/projects/1',
+        defaultAgentName: 'agent1',
+        manager: 'test-manager',
+      });
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ projectName: null }),
+      );
+    });
+
+    it('uses fleet config errorReportingRepository as tdpmReportingRepository with priority over project config', async () => {
+      const fleetConfigPath = path.join(tmpDir, 'fleet-test.config.yaml');
+      fs.writeFileSync(
+        fleetConfigPath,
+        'errorReportingRepository: fleet-owner/fleet-repo\n',
+      );
+
+      writeConfig({
+        ...defaultConfig,
+        errorReportingRepository: 'project-owner/project-repo',
+      });
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+        '--fleetConfigFilePath',
+        fleetConfigPath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tdpmReportingRepository: 'fleet-owner/fleet-repo',
+        }),
+      );
+
+      fs.unlinkSync(fleetConfigPath);
+    });
+
+    it('falls back to project config errorReportingRepository when fleet config has no errorReportingRepository', async () => {
+      const fleetConfigPath = path.join(tmpDir, 'fleet-test-noerr.config.yaml');
+      fs.writeFileSync(
+        fleetConfigPath,
+        'workflowImprovementIssueUrl: https://github.com/owner/repo/issues/new\n',
+      );
+
+      writeConfig({
+        ...defaultConfig,
+        errorReportingRepository: 'project-owner/project-repo',
+      });
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+        '--fleetConfigFilePath',
+        fleetConfigPath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tdpmReportingRepository: 'project-owner/project-repo',
+        }),
+      );
+
+      fs.unlinkSync(fleetConfigPath);
     });
   });
 

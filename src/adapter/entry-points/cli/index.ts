@@ -289,6 +289,11 @@ program
       process.exit(1);
     }
     if (options.trigger === 'schedule') {
+      const scheduleFleetConfigFilePath = resolveFleetConfigFilePath(null);
+      process.env.TDPM_ERROR_REPORT_REPOSITORY =
+        loadErrorReportingRepository(scheduleFleetConfigFilePath) ??
+        loadConfigFile(options.config).errorReportingRepository ??
+        '';
       const { HandleScheduledEventUseCaseHandler } =
         await import('../handlers/HandleScheduledEventUseCaseHandler');
       const handler = new HandleScheduledEventUseCaseHandler();
