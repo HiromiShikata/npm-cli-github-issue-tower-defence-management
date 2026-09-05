@@ -134,10 +134,7 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       const repo2 = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
       const expected = new Map([
-        [
-          'https://github.com/o/r/issues/1',
-          ['https://github.com/o/r/pull/2'],
-        ],
+        ['https://github.com/o/r/issues/1', ['https://github.com/o/r/pull/2']],
       ]);
       repo1.findRelatedOpenPrUrls.mockRejectedValue(
         new GitHubRateLimitError('rate limited token-1'),
