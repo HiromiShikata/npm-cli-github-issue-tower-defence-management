@@ -1,3 +1,10 @@
+## [2.62.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.3...v2.62.4) (2026-09-05)
+
+
+### Bug Fixes
+
+* **githubGraphqlClient:** set ky timeout to GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS in postGithubGraphqlJson ([#2075](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2075)) ([dbb1708](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dbb1708306ca0fe28a320452d64f44d0a9c3bffa))
+
 ## [2.62.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.2...v2.62.3) (2026-09-05)
 
 
