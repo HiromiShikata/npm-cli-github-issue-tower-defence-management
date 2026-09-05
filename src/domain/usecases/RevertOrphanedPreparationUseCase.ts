@@ -33,9 +33,7 @@ import {
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
 type OrphanedPreparationOutcome =
-  | 'advanceToQualityCheck'
-  | 'reject'
-  | 'reassignToDeveloper';
+  'advanceToQualityCheck' | 'reject' | 'reassignToDeveloper';
 
 export class RevertOrphanedPreparationUseCase {
   constructor(

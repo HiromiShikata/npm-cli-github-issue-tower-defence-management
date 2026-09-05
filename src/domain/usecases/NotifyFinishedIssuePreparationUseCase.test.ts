@@ -5388,7 +5388,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
-        expect.objectContaining({ url: issueUrl, status: 'Awaiting Quality Check' }),
+        expect.objectContaining({
+          url: issueUrl,
+          status: 'Awaiting Quality Check',
+        }),
         'awaiting-quality-check-id',
       );
     });
