@@ -1,3 +1,10 @@
+## [2.49.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.49.0...v2.49.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** immediately refresh queued tab after moving item to Awaiting Workspace ([#2006](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2006)) ([4d5a0de](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4d5a0de323aefecaab25feaaa848983ee47581ae)), closes [HiromiShikata/umino-corporait-operation#31356](https://github.com/HiromiShikata/umino-corporait-operation/issues/31356)
+
 # [2.49.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.48.1...v2.49.0) (2026-09-05)
 
 
