@@ -201,24 +201,29 @@ export const createReadOnlyTokenRotatingIssueRepository = (
   };
 };
 
-export const buildReadIssueRepositoryResolver = (
-  readOnlyGithubTokens: string[] | undefined,
+export const buildReadIssueRepositoryResolver = async (
+  githubAppPrivateKeyPaths: string[] | undefined,
+  mintTokens: (paths: string[]) => Promise<string[]>,
   buildIssueRepositoryForToken: (token: string) => IssueRepository,
   resolveGithubToken: ConsoleGithubTokenResolver,
-): ((url: string) => IssueRepository) => {
-  if (readOnlyGithubTokens && readOnlyGithubTokens.length > 0) {
-    const readRepositories = readOnlyGithubTokens.map((token) =>
-      buildIssueRepositoryForToken(token),
-    );
-    const writeResolver = createConsoleIssueRepositoryResolver<IssueRepository>(
-      resolveGithubToken,
-      buildIssueRepositoryForToken,
-    );
-    return (url: string) =>
-      createReadOnlyTokenRotatingIssueRepository(
-        readRepositories,
-        writeResolver(url),
+): Promise<(url: string) => IssueRepository> => {
+  if (githubAppPrivateKeyPaths && githubAppPrivateKeyPaths.length > 0) {
+    const tokens = await mintTokens(githubAppPrivateKeyPaths);
+    if (tokens.length > 0) {
+      const readRepositories = tokens.map((token) =>
+        buildIssueRepositoryForToken(token),
       );
+      const writeResolver =
+        createConsoleIssueRepositoryResolver<IssueRepository>(
+          resolveGithubToken,
+          buildIssueRepositoryForToken,
+        );
+      return (url: string) =>
+        createReadOnlyTokenRotatingIssueRepository(
+          readRepositories,
+          writeResolver(url),
+        );
+    }
   }
   return createConsoleIssueRepositoryResolver<IssueRepository>(
     resolveGithubToken,

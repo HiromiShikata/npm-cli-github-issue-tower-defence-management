@@ -54,6 +54,7 @@ import {
   createConsoleProjectRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
 import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
+import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
 import {
   buildPjcodeToProjectUrl,
   createConsoleProjectLoader,
@@ -459,7 +460,9 @@ program
       localStorageRepository,
       token,
     );
-    const readGhTokens = config.readGhTokens ?? [];
+    const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+      config.githubAppPrivateKeyPaths ?? [],
+    );
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,
@@ -696,7 +699,9 @@ program
       localStorageRepository,
       token,
     );
-    const readGhTokens = config.readGhTokens ?? [];
+    const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+      config.githubAppPrivateKeyPaths ?? [],
+    );
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,
@@ -833,7 +838,9 @@ program
       localStorageRepository,
       token,
     );
-    const readGhTokens = config.readGhTokens ?? [];
+    const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+      config.githubAppPrivateKeyPaths ?? [],
+    );
     const apiV3IssueRepository = new ApiV3IssueRepository(
       ...githubRepositoryParams,
     );
@@ -977,7 +984,9 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     localStorageRepository,
     token,
   );
-  const readGhTokens = config.readGhTokens ?? [];
+  const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+    config.githubAppPrivateKeyPaths ?? [],
+  );
   const projectRepository = new GraphqlProjectRepository(
     ...githubRepositoryParams,
     localStorageCacheRepository,
@@ -1036,8 +1045,9 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     issueRepositoryByToken.set(repositoryToken, built);
     return built;
   };
-  const resolveIssueRepository = buildReadIssueRepositoryResolver(
-    config.readOnlyGithubTokens,
+  const resolveIssueRepository = await buildReadIssueRepositoryResolver(
+    config.githubAppPrivateKeyPaths,
+    mintReadOnlyTokensFromKeyPaths,
     buildIssueRepositoryForToken,
     resolveGithubToken,
   );
@@ -1314,7 +1324,9 @@ program
       localStorageRepository,
       token,
     );
-    const readGhTokens = config.readGhTokens ?? [];
+    const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+      config.githubAppPrivateKeyPaths ?? [],
+    );
     const projectRepository = new GraphqlProjectRepository(
       ...githubRepositoryParams,
       localStorageCacheRepository,

@@ -206,8 +206,8 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
 });
 
 describe('buildReadIssueRepositoryResolver', () => {
-  describe('readOnlyGithubTokens absent — falls back to standard owner-based resolver', () => {
-    it('returns a resolver that calls the token resolver with the repository owner', () => {
+  describe('githubAppPrivateKeyPaths absent — falls back to standard owner-based resolver', () => {
+    it('returns a resolver that calls the token resolver with the repository owner', async () => {
       const primaryRepo = mock<IssueRepository>();
       const buildIssueRepositoryForToken = jest
         .fn()
@@ -215,9 +215,11 @@ describe('buildReadIssueRepositoryResolver', () => {
       const resolveGithubToken = jest
         .fn()
         .mockReturnValue('resolved-write-token');
+      const mintTokens = jest.fn().mockResolvedValue([]);
 
-      const resolver = buildReadIssueRepositoryResolver(
+      const resolver = await buildReadIssueRepositoryResolver(
         undefined,
+        mintTokens,
         buildIssueRepositoryForToken,
         resolveGithubToken,
       );
@@ -228,9 +230,10 @@ describe('buildReadIssueRepositoryResolver', () => {
       expect(buildIssueRepositoryForToken).toHaveBeenCalledWith(
         'resolved-write-token',
       );
+      expect(mintTokens).not.toHaveBeenCalled();
     });
 
-    it('returns a resolver when readOnlyGithubTokens is an empty array', () => {
+    it('returns a resolver when githubAppPrivateKeyPaths is an empty array', async () => {
       const primaryRepo = mock<IssueRepository>();
       const buildIssueRepositoryForToken = jest
         .fn()
@@ -238,9 +241,11 @@ describe('buildReadIssueRepositoryResolver', () => {
       const resolveGithubToken = jest
         .fn()
         .mockReturnValue('resolved-write-token');
+      const mintTokens = jest.fn().mockResolvedValue([]);
 
-      const resolver = buildReadIssueRepositoryResolver(
+      const resolver = await buildReadIssueRepositoryResolver(
         [],
+        mintTokens,
         buildIssueRepositoryForToken,
         resolveGithubToken,
       );
@@ -248,11 +253,37 @@ describe('buildReadIssueRepositoryResolver', () => {
 
       expect(repo).toBe(primaryRepo);
       expect(resolveGithubToken).toHaveBeenCalledWith('owner');
+      expect(mintTokens).not.toHaveBeenCalled();
+    });
+
+    it('falls back to owner-based resolver when mintTokens returns empty array', async () => {
+      const primaryRepo = mock<IssueRepository>();
+      const buildIssueRepositoryForToken = jest
+        .fn()
+        .mockReturnValue(primaryRepo);
+      const resolveGithubToken = jest
+        .fn()
+        .mockReturnValue('resolved-write-token');
+      const mintTokens = jest.fn().mockResolvedValue([]);
+
+      const resolver = await buildReadIssueRepositoryResolver(
+        ['/path/key1-private-key.pem', '/path/key2-private-key.pem'],
+        mintTokens,
+        buildIssueRepositoryForToken,
+        resolveGithubToken,
+      );
+      const repo = resolver('https://github.com/owner/repo/issues/1');
+
+      expect(repo).toBe(primaryRepo);
+      expect(mintTokens).toHaveBeenCalledWith([
+        '/path/key1-private-key.pem',
+        '/path/key2-private-key.pem',
+      ]);
     });
   });
 
-  describe('readOnlyGithubTokens present — uses rotating resolver', () => {
-    it('builds one repository per read-only token and routes reads through the rotating pool', async () => {
+  describe('githubAppPrivateKeyPaths present — mints tokens and uses rotating resolver', () => {
+    it('mints tokens and routes reads through the rotating pool', async () => {
       const readRepo1 = mock<IssueRepository>();
       const readRepo2 = mock<IssueRepository>();
       const writeRepo = mock<IssueRepository>();
@@ -269,13 +300,19 @@ describe('buildReadIssueRepositoryResolver', () => {
         .mockImplementationOnce(() => readRepo2)
         .mockImplementation(() => writeRepo);
       const resolveGithubToken = jest.fn().mockReturnValue('write-token');
+      const mintTokens = jest.fn().mockResolvedValue(['token-1', 'token-2']);
 
-      const resolver = buildReadIssueRepositoryResolver(
-        ['token-1', 'token-2'],
+      const resolver = await buildReadIssueRepositoryResolver(
+        ['/path/key1-private-key.pem', '/path/key2-private-key.pem'],
+        mintTokens,
         buildIssueRepositoryForToken,
         resolveGithubToken,
       );
 
+      expect(mintTokens).toHaveBeenCalledWith([
+        '/path/key1-private-key.pem',
+        '/path/key2-private-key.pem',
+      ]);
       expect(buildIssueRepositoryForToken).toHaveBeenCalledWith('token-1');
       expect(buildIssueRepositoryForToken).toHaveBeenCalledWith('token-2');
       expect(resolveGithubToken).not.toHaveBeenCalled();
@@ -285,6 +322,39 @@ describe('buildReadIssueRepositoryResolver', () => {
         'https://github.com/owner/repo/issues/1',
       );
       expect(result).toBe('body from token-2');
+    });
+
+    it('skips the first key path when it yields no token and uses the second', async () => {
+      const readRepo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      readRepo.getIssueOrPullRequestBody.mockResolvedValue(
+        'body from second key',
+      );
+
+      const buildIssueRepositoryForToken = jest
+        .fn()
+        .mockImplementationOnce(() => readRepo)
+        .mockImplementation(() => writeRepo);
+      const resolveGithubToken = jest.fn().mockReturnValue('write-token');
+      const mintTokens = jest.fn().mockResolvedValue(['token-from-second-key']);
+
+      const resolver = await buildReadIssueRepositoryResolver(
+        ['/path/key1-private-key.pem', '/path/key2-private-key.pem'],
+        mintTokens,
+        buildIssueRepositoryForToken,
+        resolveGithubToken,
+      );
+
+      expect(buildIssueRepositoryForToken).toHaveBeenCalledTimes(1);
+      expect(buildIssueRepositoryForToken).toHaveBeenCalledWith(
+        'token-from-second-key',
+      );
+
+      const repo = resolver('https://github.com/owner/repo/issues/1');
+      const result = await repo.getIssueOrPullRequestBody(
+        'https://github.com/owner/repo/issues/1',
+      );
+      expect(result).toBe('body from second key');
     });
 
     it('routes write operations to the URL-specific write repository, not a read-only token', async () => {
@@ -297,9 +367,11 @@ describe('buildReadIssueRepositoryResolver', () => {
         .mockImplementationOnce(() => readRepo)
         .mockImplementation(() => writeRepo);
       const resolveGithubToken = jest.fn().mockReturnValue('write-token');
+      const mintTokens = jest.fn().mockResolvedValue(['token-1']);
 
-      const resolver = buildReadIssueRepositoryResolver(
-        ['token-1'],
+      const resolver = await buildReadIssueRepositoryResolver(
+        ['/path/key1-private-key.pem'],
+        mintTokens,
         buildIssueRepositoryForToken,
         resolveGithubToken,
       );

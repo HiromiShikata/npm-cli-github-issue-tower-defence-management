@@ -33,11 +33,10 @@ export type ConfigFile = {
   consoleProjects?: Record<string, string>;
   consoleGithubTokens?: Record<string, string>;
   consoleGithubTokenFileDir?: string;
-  readOnlyGithubTokens?: string[];
+  githubAppPrivateKeyPaths?: string[];
   disks?: DiskConfig[];
   errorReportingRepository?: string;
   skipAgentAuthoredIssues?: boolean;
-  readGhTokens?: string[];
 };
 
 export type DiskConfig = {
@@ -241,7 +240,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'consoleGithubTokenFileDir',
       ),
-      readOnlyGithubTokens: getStringArrayValue(parsed, 'readOnlyGithubTokens'),
+      githubAppPrivateKeyPaths: getStringArrayValue(
+        parsed,
+        'githubAppPrivateKeyPaths',
+      ),
       disks: getDisksValue(parsed, 'disks'),
       errorReportingRepository: getStringValue(
         parsed,
@@ -251,7 +253,6 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'skipAgentAuthoredIssues',
       ),
-      readGhTokens: getStringArrayValue(parsed, 'readGhTokens'),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -454,8 +455,9 @@ export const mergeConfigs = (
   consoleGithubTokenFileDir:
     cliOverrides.consoleGithubTokenFileDir ??
     configFile.consoleGithubTokenFileDir,
-  readOnlyGithubTokens:
-    cliOverrides.readOnlyGithubTokens ?? configFile.readOnlyGithubTokens,
+  githubAppPrivateKeyPaths:
+    cliOverrides.githubAppPrivateKeyPaths ??
+    configFile.githubAppPrivateKeyPaths,
   disks: cliOverrides.disks ?? configFile.disks,
   errorReportingRepository:
     readmeOverrides.errorReportingRepository ??
@@ -463,7 +465,6 @@ export const mergeConfigs = (
     configFile.errorReportingRepository,
   skipAgentAuthoredIssues:
     cliOverrides.skipAgentAuthoredIssues ?? configFile.skipAgentAuthoredIssues,
-  readGhTokens: cliOverrides.readGhTokens ?? configFile.readGhTokens,
 });
 
 type GraphqlProjectV2ReadmeResponse = {
