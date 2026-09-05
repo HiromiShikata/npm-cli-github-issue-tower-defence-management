@@ -61,7 +61,9 @@ export class RestIssueRepository
     } catch (e) {
       if (e instanceof HTTPError) {
         const bodyText = await e.response.clone().text();
-        if (hasRateLimitSignals(e.response.status, e.response.headers, bodyText)) {
+        if (
+          hasRateLimitSignals(e.response.status, e.response.headers, bodyText)
+        ) {
           throw new GitHubRateLimitError(
             `HTTP ${e.response.status} GitHub API rate limit exceeded`,
             computeRateLimitResetIso(e.response.headers),

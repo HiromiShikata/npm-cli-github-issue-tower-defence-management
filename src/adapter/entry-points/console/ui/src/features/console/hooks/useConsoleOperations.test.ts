@@ -558,7 +558,9 @@ describe('useConsoleOperations', () => {
         caughtMessage = e instanceof Error ? e.message : String(e);
       }
     });
-    expect(caughtMessage).toContain('Rate limit resets at 2026-09-05T15:20:00.000Z');
+    expect(caughtMessage).toContain(
+      'Rate limit resets at 2026-09-05T15:20:00.000Z',
+    );
     expect(caughtMessage).toContain('Re-post: ok');
     expect(calledUrls).toContain('/api/triage');
   });

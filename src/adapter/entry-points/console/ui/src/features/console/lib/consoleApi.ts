@@ -347,18 +347,29 @@ export const postConsoleComment = async (
   }
   const payload: unknown = await response.json();
   if (!isRecord(payload)) {
-    return { posted: false, error: 'unexpected response shape', rateLimitResetAt: null };
+    return {
+      posted: false,
+      error: 'unexpected response shape',
+      rateLimitResetAt: null,
+    };
   }
   if (payload.ok === false) {
     return {
       posted: false,
-      error: typeof payload.error === 'string' ? payload.error : 'upstream error',
+      error:
+        typeof payload.error === 'string' ? payload.error : 'upstream error',
       rateLimitResetAt:
-        typeof payload.rateLimitResetAt === 'string' ? payload.rateLimitResetAt : null,
+        typeof payload.rateLimitResetAt === 'string'
+          ? payload.rateLimitResetAt
+          : null,
     };
   }
   if (!isRecord(payload.comment)) {
-    return { posted: false, error: 'comment was not returned', rateLimitResetAt: null };
+    return {
+      posted: false,
+      error: 'comment was not returned',
+      rateLimitResetAt: null,
+    };
   }
   return { posted: true, comment: parseCommentRecord(payload.comment) };
 };

@@ -5,10 +5,16 @@ const mockPatch = jest.fn();
 const mockDelete = jest.fn();
 
 class MockHTTPError extends Error {
-  response: { status: number; headers: Headers; clone: () => { text: () => Promise<string> } };
-  constructor(
-    response: { status: number; headers: Headers; clone: () => { text: () => Promise<string> } },
-  ) {
+  response: {
+    status: number;
+    headers: Headers;
+    clone: () => { text: () => Promise<string> };
+  };
+  constructor(response: {
+    status: number;
+    headers: Headers;
+    clone: () => { text: () => Promise<string> };
+  }) {
     super(`Request failed with status code ${response.status}`);
     this.response = response;
   }
@@ -166,7 +172,9 @@ describe('RestIssueRepository', () => {
           new MockHTTPError({
             status: 403,
             headers: mockHeaders,
-            clone: () => ({ text: async () => 'API rate limit exceeded for user ID 6440811' }),
+            clone: () => ({
+              text: async () => 'API rate limit exceeded for user ID 6440811',
+            }),
           }),
         ),
       }));
