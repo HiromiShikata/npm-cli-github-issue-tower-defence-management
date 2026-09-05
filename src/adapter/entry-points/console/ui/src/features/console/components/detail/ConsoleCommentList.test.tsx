@@ -1,25 +1,36 @@
 import { fireEvent, render } from '@testing-library/react';
-import { consoleCommentsFixture } from '../../testing/fixtures';
 import { ConsoleCommentList } from './ConsoleCommentList';
 
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 
 describe('ConsoleCommentList', () => {
-  it('shows only the latest comment until expanded', () => {
-    const { getByText, queryByText } = render(
+  it('shows all comments as first-line summaries when not expanded, then full content when expanded', () => {
+    const multiLineComment = {
+      author: 'reviewer',
+      body: 'First line summary.\n\nSecond paragraph detail.',
+      createdAt: '2026-06-17T08:00:00.000Z',
+      url: null,
+    };
+    const secondComment = {
+      author: 'HiromiShikata',
+      body: 'Acknowledged.',
+      createdAt: '2026-06-17T09:00:00.000Z',
+      url: null,
+    };
+    const { getByText, queryByText, container } = render(
       <ConsoleCommentList
-        comments={consoleCommentsFixture}
+        comments={[multiLineComment, secondComment]}
         isLoading={false}
         error={null}
         now={now}
       />,
     );
-    expect(
-      getByText(/Looks good now\. Approving once the rebase is green\./),
-    ).toBeInTheDocument();
-    expect(queryByText(/Please split the token validation/)).toBeNull();
-    fireEvent.click(getByText('Show all 3'));
-    expect(getByText(/Please split the token validation/)).toBeInTheDocument();
+    expect(getByText('First line summary.')).toBeInTheDocument();
+    expect(queryByText('Second paragraph detail.')).toBeNull();
+    expect(getByText('Acknowledged.')).toBeInTheDocument();
+    fireEvent.click(getByText('Show all 2'));
+    expect(container.querySelector('.console-comment-summary')).toBeNull();
+    expect(getByText('Second paragraph detail.')).toBeInTheDocument();
   });
 
   it('shows the loading state', () => {

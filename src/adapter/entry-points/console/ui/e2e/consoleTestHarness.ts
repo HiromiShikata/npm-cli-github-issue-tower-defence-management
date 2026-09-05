@@ -834,6 +834,7 @@ export type ConsoleE2eHarness = {
 export const startConsoleE2eHarness = async (options?: {
   workflowImprovementIssueUrl?: string | null;
   mergePullRequest?: () => Promise<void>;
+  getIssueOrPullRequestComments?: () => Promise<IssueComment[]>;
 }): Promise<ConsoleE2eHarness> => {
   const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'console-e2e-'));
   const consoleDataOutputDir = path.join(tmpRoot, 'data');
@@ -879,6 +880,12 @@ export const startConsoleE2eHarness = async (options?: {
       ),
       ...(options?.mergePullRequest !== undefined
         ? { mergePullRequest: options.mergePullRequest }
+        : {}),
+      ...(options?.getIssueOrPullRequestComments !== undefined
+        ? {
+            getIssueOrPullRequestComments:
+              options.getIssueOrPullRequestComments,
+          }
         : {}),
     },
     resolveProjectRepository: (_projectUrl) => ({
