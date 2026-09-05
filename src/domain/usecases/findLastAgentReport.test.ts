@@ -29,7 +29,7 @@ describe('findLastAgentReport', () => {
 
   it('returns the most recent agent report even when it declares no agent', () => {
     const withoutDeclaration =
-      'From: :robot: agent (model)\n```json\n{"pullRequestRequired": false, "reviewResult": "PASS", "nextStep": null}\n```';
+      'From: :robot: agent (model)\n```json\n{"reviewResult": "PASS", "nextStep": null}\n```';
     expect(
       findLastAgentReport(
         [
@@ -57,7 +57,7 @@ describe('findLastAgentReport', () => {
 
   it('returns the most recent agent report whose prefix follows a leading fenced json block', () => {
     const fencedBeforePrefix =
-      '```json\n{ "pullRequestRequired": false }\n```\n\nFrom: :robot: agent (model)\n\n## Result\nDone.';
+      '```json\n{ "nextStep": null }\n```\n\nFrom: :robot: agent (model)\n\n## Result\nDone.';
     expect(
       findLastAgentReport(
         [

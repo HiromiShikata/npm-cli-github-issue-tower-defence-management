@@ -4,10 +4,10 @@ describe('extractFencedJsonBlocks', () => {
   it('returns every fenced json block in the order they appear', () => {
     expect(
       extractFencedJsonBlocks(
-        'From: :robot: agent (model)\n\n```json\n{ "pullRequestRequired": false }\n```\n\ntext\n\n```json\n{ "nextStepAgent": "developer" }\n```\n',
+        'From: :robot: agent (model)\n\n```json\n{ "nextStep": null }\n```\n\ntext\n\n```json\n{ "nextStepAgent": "developer" }\n```\n',
         'test',
       ),
-    ).toEqual([{ pullRequestRequired: false }, { nextStepAgent: 'developer' }]);
+    ).toEqual([{ nextStep: null }, { nextStepAgent: 'developer' }]);
   });
 
   it('returns an empty list when the body carries no fenced json block', () => {

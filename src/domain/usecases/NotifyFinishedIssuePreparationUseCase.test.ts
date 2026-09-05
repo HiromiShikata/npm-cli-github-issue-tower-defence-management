@@ -1030,7 +1030,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       }),
       createMockComment({
         content:
-          '```json\n{ "pullRequestRequired": false, "nextStep": null }\n```\n\nFrom: :robot: accounting (model)\n\n## Result\nDone.',
+          '```json\n{ "nextStep": null }\n```\n\nFrom: :robot: accounting (model)\n\n## Result\nDone.',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -1661,6 +1661,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -1696,14 +1697,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content:
-          'From: :robot: Test report\n```json\n{"pullRequestRequired": false}\n```',
+        content: 'From: :robot: Test report\n```json\n{"nextStep": null}\n```',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
@@ -1765,36 +1766,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should not reject a missing PR when the last agent report declares pullRequestRequired false', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: triager (claude-sonnet-4-6)\n\n```json\n{ "pullRequestRequired": false, "waitingForOwnerApproval": true }\n```\n\nThis task needs no pull request.',
-      }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
-    );
-  });
-
   it('should reject a missing PR when the issue agent matches developerAgentNames', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
@@ -1830,6 +1801,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -1884,6 +1856,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -1929,6 +1902,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -1974,6 +1948,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -2025,6 +2000,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -2076,6 +2052,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -2115,6 +2092,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -2160,6 +2138,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -3055,6 +3034,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       url: 'https://github.com/user/repo/pull/10',
       status: 'Preparation',
       isPr: true,
+      agent: 'developer',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -3537,6 +3517,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
+        agent: 'developer',
         ...issueOverrides,
       });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -5145,7 +5126,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: systems-analyst (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+            'From: :robot: systems-analyst (model)\n```json\n{"waitingForOwnerApproval": true, "nextStep": null}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -5626,7 +5607,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it('should keep the missing pull request rejection when the designated next step agent is not the triager', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
+      const issue = createMockIssue({ status: 'Preparation', agent: 'developer' });
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([

@@ -5,8 +5,6 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
-import { isTriagerAgentName } from './triagerAgentName';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import {
@@ -50,7 +48,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
-      'createComment' | 'getCommentsFromIssue'
+      'createComment'
     >,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
@@ -146,22 +144,6 @@ export class RevertNotReadyReviewQueueIssueUseCase {
               detectConflictEvenIfEvaluationSkipped: true,
             },
           );
-        if (
-          rejections.length === 1 &&
-          rejections[0].type === 'PULL_REQUEST_NOT_FOUND' &&
-          isTriagerAgentName(
-            extractNextStepAgentFromComments(
-              await this.issueCommentRepository.getCommentsFromIssue(issue),
-              (author) =>
-                isAuthorAuthorizedForAutoStatusCheck(
-                  author,
-                  allowedIssueAuthors,
-                ),
-            ),
-          )
-        ) {
-          continue;
-        }
         if (rejections.length > 0) {
           if (!issue.assignees.includes(params.manager)) {
             continue;

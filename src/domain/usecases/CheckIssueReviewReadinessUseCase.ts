@@ -13,7 +13,6 @@ import {
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { findLastAgentReport } from './findLastAgentReport';
 import { TRIAGER_AGENT_NAME } from './triagerAgentName';
-import { extractPullRequestRequired } from './extractPullRequestRequired';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -96,9 +95,6 @@ export class CheckIssueReviewReadinessUseCase {
     const lastReportIsFromTriager =
       lastAgentReport !== null &&
       isAgentReportBodyFromAgent(lastAgentReport.content, TRIAGER_AGENT_NAME);
-    const lastReportDeclaresPullRequestNotRequired =
-      lastAgentReport !== null &&
-      extractPullRequestRequired(lastAgentReport.content) === false;
 
     const { rejections: prRejections } =
       await this.issueRejectionEvaluator.evaluate(
@@ -106,7 +102,6 @@ export class CheckIssueReviewReadinessUseCase {
         resolveLabelsNotRequiringPullRequest(params),
         {
           developerAgentNames: params.developerAgentNames,
-          pullRequestNotRequired: lastReportDeclaresPullRequestNotRequired,
         },
       );
 

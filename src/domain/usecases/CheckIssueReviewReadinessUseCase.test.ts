@@ -194,7 +194,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
     });
 
     it('should return reviewReady=false with PULL_REQUEST_NOT_FOUND when no related PR exists', async () => {
-      const issue = createMockIssue();
+      const issue = createMockIssue({ agent: 'developer' });
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment(),
@@ -253,7 +253,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
     });
 
     it('should keep rejecting a missing PR when the last report is not from the triager', async () => {
-      const issue = createMockIssue();
+      const issue = createMockIssue({ agent: 'developer' });
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -275,7 +275,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
     });
 
     it('should keep every rejection other than PULL_REQUEST_NOT_FOUND when the last report is from the triager', async () => {
-      const issue = createMockIssue();
+      const issue = createMockIssue({ agent: 'developer' });
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -323,7 +323,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
     });
 
     it('should return reviewReady=false with ANY_CI_JOB_FAILED_OR_IN_PROGRESS when PR CI is failing', async () => {
-      const issue = createMockIssue();
+      const issue = createMockIssue({ agent: 'developer' });
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment(),
@@ -433,94 +433,5 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       });
     });
 
-    describe('pullRequestRequired: false in completion comment', () => {
-      it('should return reviewReady=true when last agent report has pullRequestRequired: false and no related PR exists', async () => {
-        const issue = createMockIssue({ agent: 'developer' });
-        mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
-        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-          createMockComment({
-            author: 'agent-bot',
-            content:
-              'From: :robot: developer (claude-sonnet-4-6)\n```json\n{"pullRequestRequired": false, "nextStep": null}\n```',
-          }),
-        ]);
-        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-        const result = await useCase.run({
-          issueUrl: 'https://github.com/user/repo/issues/1',
-          allowedIssueAuthors: ['agent-bot'],
-        });
-
-        expect(result.rejections).toEqual([]);
-        expect(result.reviewReady).toBe(true);
-      });
-
-      it('should not call findRelatedOpenPRs when last agent report has pullRequestRequired: false', async () => {
-        const issue = createMockIssue({ agent: 'developer' });
-        mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
-        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-          createMockComment({
-            author: 'agent-bot',
-            content:
-              'From: :robot: developer (claude-sonnet-4-6)\n```json\n{"pullRequestRequired": false, "nextStep": null}\n```',
-          }),
-        ]);
-
-        await useCase.run({
-          issueUrl: 'https://github.com/user/repo/issues/1',
-          allowedIssueAuthors: ['agent-bot'],
-        });
-
-        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
-      });
-
-      it('should still reject PULL_REQUEST_NOT_FOUND when last agent report has pullRequestRequired: true', async () => {
-        const issue = createMockIssue({ agent: 'developer' });
-        mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
-        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-          createMockComment({
-            author: 'agent-bot',
-            content:
-              'From: :robot: developer (claude-sonnet-4-6)\n```json\n{"pullRequestRequired": true, "nextStep": null}\n```',
-          }),
-        ]);
-        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-        const result = await useCase.run({
-          issueUrl: 'https://github.com/user/repo/issues/1',
-          allowedIssueAuthors: ['agent-bot'],
-        });
-
-        expect(result.reviewReady).toBe(false);
-        expect(result.rejections).toContainEqual({
-          type: 'PULL_REQUEST_NOT_FOUND',
-          detail: 'PULL_REQUEST_NOT_FOUND',
-        });
-      });
-
-      it('should still reject PULL_REQUEST_NOT_FOUND when last agent report has no pullRequestRequired field', async () => {
-        const issue = createMockIssue({ agent: 'developer' });
-        mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
-        mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-          createMockComment({
-            author: 'agent-bot',
-            content:
-              'From: :robot: developer (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```',
-          }),
-        ]);
-        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-        const result = await useCase.run({
-          issueUrl: 'https://github.com/user/repo/issues/1',
-          allowedIssueAuthors: ['agent-bot'],
-        });
-
-        expect(result.reviewReady).toBe(false);
-        expect(result.rejections).toContainEqual({
-          type: 'PULL_REQUEST_NOT_FOUND',
-          detail: 'PULL_REQUEST_NOT_FOUND',
-        });
-      });
-    });
   });
 });

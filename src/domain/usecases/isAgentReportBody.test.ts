@@ -14,7 +14,7 @@ describe('isAgentReportBody', () => {
   it('accepts a body whose report prefix follows a leading fenced json block', () => {
     expect(
       isAgentReportBody(
-        '```json\n{ "pullRequestRequired": false }\n```\n\nFrom: :robot: agent (model)\n\n## Result',
+        '```json\n{ "nextStep": null }\n```\n\nFrom: :robot: agent (model)\n\n## Result',
       ),
     ).toBe(true);
   });
@@ -22,7 +22,7 @@ describe('isAgentReportBody', () => {
   it('accepts a body whose report prefix follows two leading fenced blocks', () => {
     expect(
       isAgentReportBody(
-        '```json\n{ "pullRequestRequired": false }\n```\n~~~\nplain\n~~~\nFrom: :robot: agent (model)',
+        '```json\n{ "nextStep": null }\n```\n~~~\nplain\n~~~\nFrom: :robot: agent (model)',
       ),
     ).toBe(true);
   });
@@ -30,7 +30,7 @@ describe('isAgentReportBody', () => {
   it('accepts a body whose leading fence carries a longer marker than three backticks', () => {
     expect(
       isAgentReportBody(
-        '````json\n```\n{ "pullRequestRequired": false }\n```\n````\nFrom: :robot: agent (model)',
+        '````json\n```\n{ "nextStep": null }\n```\n````\nFrom: :robot: agent (model)',
       ),
     ).toBe(true);
   });
@@ -42,7 +42,7 @@ describe('isAgentReportBody', () => {
   it('accepts a body written with carriage returns and escaped backticks', () => {
     expect(
       isAgentReportBody(
-        '\\`\\`\\`json\r\n{ "pullRequestRequired": false }\r\n\\`\\`\\`\r\nFrom: :robot: agent (model)',
+        '\\`\\`\\`json\r\n{ "nextStep": null }\r\n\\`\\`\\`\r\nFrom: :robot: agent (model)',
       ),
     ).toBe(true);
   });
@@ -62,7 +62,7 @@ describe('isAgentReportBody', () => {
   it('rejects a body whose leading fence is never closed', () => {
     expect(
       isAgentReportBody(
-        '```json\n{ "pullRequestRequired": false }\nFrom: :robot: agent (model)',
+        '```json\n{ "nextStep": null }\nFrom: :robot: agent (model)',
       ),
     ).toBe(false);
   });

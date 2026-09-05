@@ -51,6 +51,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
         isPr: false,
+        agent: 'developer',
       });
 
       expect(result.rejections).toHaveLength(0);
@@ -66,6 +67,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
         isPr: false,
+        agent: 'developer',
       });
 
       expect(result.rejections).toHaveLength(1);
@@ -86,6 +88,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
         isPr: false,
+        agent: 'developer',
       });
 
       expect(result.approvedPrUrl).toBeNull();
@@ -103,6 +106,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
         isPr: false,
+        agent: 'developer',
       });
 
       const rejectionTypes = result.rejections.map((r) => r.type);
@@ -122,6 +126,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/pull/10',
         labels: [],
         isPr: true,
+        agent: 'developer',
       });
 
       expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
@@ -160,9 +165,7 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
     });
 
-    it('should require PR evaluation when issue has null agent field (default developer)', async () => {
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
+    it('should not require PR evaluation when issue has null agent field', async () => {
       const result = await evaluator.evaluate({
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
@@ -170,9 +173,9 @@ describe('IssueRejectionEvaluator', () => {
         agent: null,
       });
 
-      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
-      expect(result.rejections).toHaveLength(1);
-      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(0);
+      expect(result.approvedPrUrl).toBeNull();
     });
 
     it('should require PR evaluation when issue has agent field set to developer even with llm-agent:developer label', async () => {
@@ -382,6 +385,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: ['category:frontend'],
         isPr: false,
+        agent: 'developer',
       });
 
       expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -395,6 +399,7 @@ describe('IssueRejectionEvaluator', () => {
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
         isPr: false,
+        agent: 'developer',
       });
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
@@ -411,6 +416,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['story'],
           isPr: false,
+          agent: 'developer',
         },
         ['story'],
       );
@@ -428,6 +434,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['story'],
           isPr: false,
+          agent: 'developer',
         },
         ['bug'],
       );
@@ -450,6 +457,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/7'] },
@@ -471,6 +479,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: [] },
@@ -491,6 +500,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/9'] },
@@ -514,6 +524,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           {
@@ -539,6 +550,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           {
@@ -568,6 +580,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/3'] },
@@ -587,6 +600,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: [],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
@@ -605,6 +619,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/pull/10',
             labels: [],
             isPr: true,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/999'] },
@@ -643,6 +658,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/pull/10',
           labels: [],
           isPr: true,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(0);
@@ -658,6 +674,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/pull/10',
           labels: [],
           isPr: true,
+          agent: 'developer',
         });
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
@@ -686,6 +703,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           {
@@ -716,6 +734,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           { relatedOpenPrUrls: ['https://github.com/user/repo/pull/8'] },
@@ -741,6 +760,7 @@ describe('IssueRejectionEvaluator', () => {
             url: 'https://github.com/user/repo/issues/1',
             labels: [],
             isPr: false,
+            agent: 'developer',
           },
           [],
           {
@@ -764,6 +784,7 @@ describe('IssueRejectionEvaluator', () => {
         const result = await evaluator.evaluate({
           url: 'https://github.com/user/repo/pull/10',
           labels: [],
+          agent: 'developer',
           isPr: true,
         });
 
@@ -995,6 +1016,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(0);
@@ -1016,6 +1038,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(1);
@@ -1045,6 +1068,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(1);
@@ -1068,6 +1092,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:foo'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(1);
@@ -1091,6 +1116,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:foo'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(0);
@@ -1109,6 +1135,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(0);
@@ -1127,6 +1154,7 @@ describe('IssueRejectionEvaluator', () => {
           url: 'https://github.com/user/repo/issues/1',
           labels: ['change-target-must:/src/domain'],
           isPr: false,
+          agent: 'developer',
         });
 
         expect(result.rejections).toHaveLength(0);
@@ -1184,79 +1212,5 @@ describe('IssueRejectionEvaluator', () => {
       });
     });
 
-    describe('pullRequestNotRequired option', () => {
-      it('should not call findRelatedOpenPRs and return no rejections when pullRequestNotRequired is true for a developer issue', async () => {
-        const result = await evaluator.evaluate(
-          {
-            url: 'https://github.com/user/repo/issues/1',
-            labels: [],
-            isPr: false,
-            agent: 'developer',
-          },
-          [],
-          { pullRequestNotRequired: true },
-        );
-
-        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
-        expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
-        expect(result.rejections).toHaveLength(0);
-        expect(result.approvedPrUrl).toBeNull();
-      });
-
-      it('should not call findRelatedOpenPRs and return no rejections when pullRequestNotRequired is true for an issue with null agent', async () => {
-        const result = await evaluator.evaluate(
-          {
-            url: 'https://github.com/user/repo/issues/1',
-            labels: [],
-            isPr: false,
-            agent: null,
-          },
-          [],
-          { pullRequestNotRequired: true },
-        );
-
-        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
-        expect(result.rejections).toHaveLength(0);
-        expect(result.approvedPrUrl).toBeNull();
-      });
-
-      it('should still perform normal PR evaluation when pullRequestNotRequired is false', async () => {
-        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-        const result = await evaluator.evaluate(
-          {
-            url: 'https://github.com/user/repo/issues/1',
-            labels: [],
-            isPr: false,
-            agent: 'developer',
-          },
-          [],
-          { pullRequestNotRequired: false },
-        );
-
-        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
-        expect(result.rejections).toHaveLength(1);
-        expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
-      });
-
-      it('should still perform normal PR evaluation when pullRequestNotRequired is undefined', async () => {
-        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-        const result = await evaluator.evaluate(
-          {
-            url: 'https://github.com/user/repo/issues/1',
-            labels: [],
-            isPr: false,
-            agent: 'developer',
-          },
-          [],
-          {},
-        );
-
-        expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
-        expect(result.rejections).toHaveLength(1);
-        expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
-      });
-    });
   });
 });
