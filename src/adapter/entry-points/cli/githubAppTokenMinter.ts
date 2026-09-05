@@ -47,7 +47,7 @@ export const mintTokenFromKeyPath = async (
     ) {
       return null;
     }
-    const clientId = (config).client_id;
+    const clientId = config.client_id;
     if (typeof clientId !== 'string' || !clientId) {
       return null;
     }
