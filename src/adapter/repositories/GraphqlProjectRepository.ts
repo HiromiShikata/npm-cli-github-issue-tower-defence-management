@@ -464,6 +464,13 @@ export class GraphqlProjectRepository
       );
       if (fallbackResponse.data) {
         project = fallbackResponse.data.node;
+      } else {
+        const fallbackErrors = fallbackResponse.errors
+          ? fallbackResponse.errors.map((e) => e.message).join('; ')
+          : 'no data field in response';
+        console.warn(
+          `GraphqlProjectRepository: write-token fallback for GetProjectV2 also failed: ${fallbackErrors}`,
+        );
       }
     }
     if (!project) {

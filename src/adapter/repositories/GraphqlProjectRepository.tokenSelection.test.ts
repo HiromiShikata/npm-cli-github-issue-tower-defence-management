@@ -238,6 +238,42 @@ describe('GraphqlProjectRepository token selection', () => {
       ).rejects.toThrow('Project not found for ID: PVT_test');
     });
 
+    it('logs a warning when write-token fallback response has errors', async () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const repository = new GraphqlProjectRepository(
+        localStorageRepository,
+        'manager-token',
+        undefined,
+        ['read-token-1'],
+      );
+
+      // fetchProjectId
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            organization: null,
+            user: { projectV2: { id: 'PVT_test', databaseId: 1 } },
+          },
+        }),
+      );
+      // fetchProjectByGraphql with read token → null node
+      mockPost.mockReturnValueOnce(mockJsonResponse({ data: { node: null } }));
+      // fetchProjectByGraphql with write token → errors, no data
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({ errors: [{ message: 'insufficient scope' }] }),
+      );
+
+      await expect(
+        repository.getByUrl('https://github.com/users/test/projects/1'),
+      ).rejects.toThrow('Project not found for ID: PVT_test');
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('write-token fallback for GetProjectV2 also failed'),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
     it('does not retry when read token equals write token (no readGhTokens)', async () => {
       const repository = new GraphqlProjectRepository(
         localStorageRepository,
