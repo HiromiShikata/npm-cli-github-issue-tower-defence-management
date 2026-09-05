@@ -1134,6 +1134,56 @@ describe('IssueRejectionEvaluator', () => {
       });
     });
 
+    describe('Agent-field gate', () => {
+      it('should not evaluate pull request and return no PULL_REQUEST_NOT_FOUND when Agent field is unset (null)', async () => {
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: null,
+        });
+
+        expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+        expect(
+          result.rejections.some((r) => r.type === 'PULL_REQUEST_NOT_FOUND'),
+        ).toBe(false);
+      });
+
+      it('should produce PULL_REQUEST_NOT_FOUND when Agent field names a registered developer agent and no open PR exists', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
+
+        expect(
+          result.rejections.some((r) => r.type === 'PULL_REQUEST_NOT_FOUND'),
+        ).toBe(true);
+      });
+
+      it('should produce PULL_REQUEST_NOT_FOUND when Agent field is pr-reviewer and no open PR exists', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'pr-reviewer',
+        });
+
+        expect(
+          result.rejections.some((r) => r.type === 'PULL_REQUEST_NOT_FOUND'),
+        ).toBe(true);
+      });
+    });
+
     describe('pullRequestNotRequired option', () => {
       it('should not call findRelatedOpenPRs and return no rejections when pullRequestNotRequired is true for a developer issue', async () => {
         const result = await evaluator.evaluate(
