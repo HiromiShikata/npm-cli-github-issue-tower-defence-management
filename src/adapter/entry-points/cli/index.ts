@@ -51,9 +51,9 @@ import * as os from 'os';
 import {
   createConsoleGithubTokenResolver,
   createConsoleGithubTokenResolverByItemUrl,
-  createConsoleIssueRepositoryResolver,
   createConsoleProjectRepositoryResolver,
 } from '../console/consoleGithubTokenResolver';
+import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
 import {
   buildPjcodeToProjectUrl,
   createConsoleProjectLoader,
@@ -1028,11 +1028,11 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     issueRepositoryByToken.set(repositoryToken, built);
     return built;
   };
-  const resolveIssueRepository =
-    createConsoleIssueRepositoryResolver<IssueRepository>(
-      resolveGithubToken,
-      buildIssueRepositoryForToken,
-    );
+  const resolveIssueRepository = buildReadIssueRepositoryResolver(
+    config.readOnlyGithubTokens,
+    buildIssueRepositoryForToken,
+    resolveGithubToken,
+  );
   const resolveGithubTokenForItemUrl =
     createConsoleGithubTokenResolverByItemUrl(resolveGithubToken);
   const projectRepositoryByToken = new Map<string, GraphqlProjectRepository>();

@@ -380,3 +380,74 @@ describe('setProjectReadmeMaxPreparingIssuesCount', () => {
     );
   });
 });
+
+describe('loadConfigFile readOnlyGithubTokens', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-readonly-tokens-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('yields undefined when readOnlyGithubTokens is absent', () => {
+    const filePath = writeConfig("projectName: 'demo'\n");
+    expect(loadConfigFile(filePath).readOnlyGithubTokens).toBeUndefined();
+  });
+
+  it('parses a list of read-only github tokens', () => {
+    const filePath = writeConfig(
+      [
+        "projectName: 'demo'",
+        'readOnlyGithubTokens:',
+        "  - 'ghs_token_1'",
+        "  - 'ghs_token_2'",
+      ].join('\n'),
+    );
+    expect(loadConfigFile(filePath).readOnlyGithubTokens).toEqual([
+      'ghs_token_1',
+      'ghs_token_2',
+    ]);
+  });
+
+  it('yields undefined when readOnlyGithubTokens contains a non-string entry', () => {
+    const filePath = writeConfig(
+      ['readOnlyGithubTokens:', '  - 123'].join('\n'),
+    );
+    expect(loadConfigFile(filePath).readOnlyGithubTokens).toBeUndefined();
+  });
+});
+
+describe('mergeConfigs readOnlyGithubTokens', () => {
+  it('takes the array from the config file when no cli override is present', () => {
+    const merged = mergeConfigs(
+      { readOnlyGithubTokens: ['t1', 't2'] },
+      {},
+      {},
+    );
+    expect(merged.readOnlyGithubTokens).toEqual(['t1', 't2']);
+  });
+
+  it('prefers the cli override array over the config file array', () => {
+    const merged = mergeConfigs(
+      { readOnlyGithubTokens: ['t1'] },
+      { readOnlyGithubTokens: ['t2', 't3'] },
+      {},
+    );
+    expect(merged.readOnlyGithubTokens).toEqual(['t2', 't3']);
+  });
+
+  it('yields undefined when neither source provides the array', () => {
+    expect(mergeConfigs({}, {}, {}).readOnlyGithubTokens).toBeUndefined();
+  });
+});
