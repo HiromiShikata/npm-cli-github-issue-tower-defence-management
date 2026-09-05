@@ -31,3 +31,13 @@ export const NotLoaded: Story = {
     error: 'API rate limit already exceeded',
   },
 };
+
+export const WithWorkflowLink: Story = {
+  args: {
+    comments: consoleCommentsFixture,
+    isLoading: false,
+    error: null,
+    workflowImprovementIssueUrl:
+      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata',
+  },
+};

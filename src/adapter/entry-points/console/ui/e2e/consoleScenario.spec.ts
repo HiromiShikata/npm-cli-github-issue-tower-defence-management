@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import {
   CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
+  CONSOLE_E2E_COMMENT_URL,
   CONSOLE_E2E_PJCODE,
   CONSOLE_E2E_REFERENCE_LINK_URL,
   type ConsoleE2eHarness,
@@ -775,6 +776,62 @@ test('does not show the workflow improvement link when workflowImprovementIssueU
   await expect(
     page.locator('.console-tab-workflow-improvement-link'),
   ).toHaveCount(0);
+});
+
+test('shows the task-level workflow incident report link in the detail subbar when workflowImprovementIssueUrl is configured', async ({
+  browser,
+}) => {
+  const workflowUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
+  const localHarness = await startConsoleE2eHarness({
+    workflowImprovementIssueUrl: workflowUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    const link = page.locator('.console-detail-report-link');
+    await expect(link).toBeVisible();
+    const href = await link.getAttribute('href');
+    expect(href).toContain(workflowUrl);
+    expect(href).toContain('body=');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
+});
+
+test('shows per-comment workflow incident report links when workflowImprovementIssueUrl is configured', async ({
+  browser,
+}) => {
+  const workflowUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
+  const localHarness = await startConsoleE2eHarness({
+    workflowImprovementIssueUrl: workflowUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    const link = page.locator('.console-comment-report-link').first();
+    await expect(link).toBeVisible({ timeout: 10000 });
+    const href = await link.getAttribute('href');
+    expect(href).toContain(workflowUrl);
+    expect(href).toContain(encodeURIComponent(CONSOLE_E2E_COMMENT_URL));
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
 test('renames a story option in the GitHub custom field via the rename form', async ({

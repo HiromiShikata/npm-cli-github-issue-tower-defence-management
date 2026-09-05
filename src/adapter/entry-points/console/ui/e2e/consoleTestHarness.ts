@@ -111,6 +111,7 @@ const CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL = `https://github.com/${REPO_N
 export const CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/911`;
 export const CONSOLE_E2E_INLINE_COMMENT_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/912`;
 export const CONSOLE_E2E_REFERENCE_LINK_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/845`;
+export const CONSOLE_E2E_COMMENT_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/720#issuecomment-200001`;
 
 const INLINE_COMMENT_PR_FILE: PullRequestFile = {
   filename: 'src/adapter/entry-points/console/ui/src/index.css',
@@ -718,7 +719,14 @@ const createStubIssueRepository = (
         (_, index) => `Description line ${index + 1} of the fixture body.`,
       ),
     ].join('\n'),
-  getIssueOrPullRequestComments: async (): Promise<IssueComment[]> => [],
+  getIssueOrPullRequestComments: async (): Promise<IssueComment[]> => [
+    {
+      author: 'HiromiShikata',
+      body: 'Console E2E fixture comment.',
+      createdAt: new Date('2026-06-17T06:12:40.000Z'),
+      url: CONSOLE_E2E_COMMENT_URL,
+    },
+  ],
   getPullRequestDetail: async (
     url: string,
   ): Promise<PullRequestDetail | null> =>
