@@ -32,7 +32,7 @@ type RestProjectFieldResponse = {
   }[];
 };
 
-const isNotFoundResponse = (error: unknown): boolean => {
+const isHttpStatusResponse = (error: unknown, status: number): boolean => {
   if (typeof error !== 'object' || error === null || !('response' in error)) {
     return false;
   }
@@ -41,20 +41,7 @@ const isNotFoundResponse = (error: unknown): boolean => {
     typeof response === 'object' &&
     response !== null &&
     'status' in response &&
-    response.status === 404
-  );
-};
-
-const isForbiddenResponse = (error: unknown): boolean => {
-  if (typeof error !== 'object' || error === null || !('response' in error)) {
-    return false;
-  }
-  const response = error.response;
-  return (
-    typeof response === 'object' &&
-    response !== null &&
-    'status' in response &&
-    response.status === 403
+    response.status === status
   );
 };
 
@@ -125,7 +112,7 @@ export class RestProjectRepository extends BaseGitHubRepository {
         this.listFieldDefinitions(location),
       ]);
     } catch (error) {
-      if (isNotFoundResponse(error) || isForbiddenResponse(error)) {
+      if (isHttpStatusResponse(error, 404) || isHttpStatusResponse(error, 403)) {
         return null;
       }
       throw error;
