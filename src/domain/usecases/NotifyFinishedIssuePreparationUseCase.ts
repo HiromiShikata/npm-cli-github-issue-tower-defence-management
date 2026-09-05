@@ -25,7 +25,6 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { extractWaitingForOwnerApproval } from './extractWaitingForOwnerApproval';
 import { findLastAgentReport } from './findLastAgentReport';
 
 import { isAgentReportBody } from './isAgentReportBody';
@@ -316,25 +315,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         nextStepAgent,
         reportingTarget,
         params.projectName ?? null,
-      );
-      return;
-    }
-
-    const waitingForOwnerApproval = lastAgentReport
-      ? extractWaitingForOwnerApproval(lastAgentReport.content)
-      : false;
-    if (waitingForOwnerApproval) {
-      issue.status = AWAITING_WORKSPACE_STATUS_NAME;
-      await this.issueRepository.update(issue, project);
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingWorkspaceStatusOption.id,
-      );
-      await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
-        issue,
-        'Auto Status Check: AWAITING_OWNER_APPROVAL',
       );
       return;
     }
