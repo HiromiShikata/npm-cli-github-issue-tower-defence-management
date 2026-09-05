@@ -30,6 +30,7 @@ import {
 } from '../cli/projectConfig';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
+export const PREPARATION_STATUS_NAME = 'preparation';
 export const CONFLICT_RETURNED_MESSAGE =
   'Auto Status Check: CONFLICT\nThis pull request has a merge conflict and has been returned to Awaiting Workspace.';
 export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
@@ -64,6 +65,13 @@ export type ConsoleOperationContext = {
   invalidateProject: ((pjcode: string) => void) | null;
   updateProjectCacheEntry:
     ((pjcode: string, updatedProject: Project) => void) | null;
+  patchItemIntoQueuedTab:
+    | ((
+        pjcode: string,
+        projectItemId: string,
+        canonicalStatusName: string,
+      ) => void)
+    | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -541,6 +549,21 @@ export const handleTriage = async (
       return failure;
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
+    const lowerStatus = statusName.toLowerCase();
+    if (
+      lowerStatus === AWAITING_WORKSPACE_STATUS_NAME ||
+      lowerStatus === PREPARATION_STATUS_NAME
+    ) {
+      const canonicalStatusName =
+        project.status.statuses.find(
+          (o) => o.name.toLowerCase() === lowerStatus,
+        )?.name ?? statusName;
+      context.patchItemIntoQueuedTab?.(
+        pjcode,
+        projectItemId,
+        canonicalStatusName,
+      );
+    }
     return ok();
   }
 

@@ -215,4 +215,67 @@ describe('FileSystemConsoleTabsRepository', () => {
     ).mtimeMs;
     expect(mtimeAfter).toBe(mtimeBefore);
   });
+
+  describe('moveItemToQueuedTab', () => {
+    it('adds the item to the queued tab with the updated status without modifying the source tab', () => {
+      const existingItem = makeItem({
+        projectItemId: 'item-q',
+        status: 'In Tmux by human',
+      });
+      writeTabFile('todo-by-human', makeStatusTab(PJCODE, [existingItem]));
+      writeTabFile('queued', makeStatusTab(PJCODE, []));
+      const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+
+      repo.moveItemToQueuedTab('item-q', 'Awaiting Workspace');
+
+      expect(readTabFile('queued')).toMatchObject({
+        items: [{ projectItemId: 'item-q', status: 'Awaiting Workspace' }],
+      });
+      expect(readTabFile('todo-by-human')).toMatchObject({
+        items: [{ projectItemId: 'item-q' }],
+      });
+    });
+
+    it('is a no-op when the item is not found in any tab', () => {
+      writeTabFile('queued', makeStatusTab(PJCODE, []));
+      const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+
+      expect(() =>
+        repo.moveItemToQueuedTab('item-missing', 'Awaiting Workspace'),
+      ).not.toThrow();
+      expect(readTabFile('queued')).toMatchObject({ items: [] });
+    });
+
+    it('is a no-op when queued/list.json does not exist', () => {
+      const existingItem = makeItem({ projectItemId: 'item-nq' });
+      writeTabFile('todo-by-agent', makeStatusTab(PJCODE, [existingItem]));
+      const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+
+      expect(() =>
+        repo.moveItemToQueuedTab('item-nq', 'Awaiting Workspace'),
+      ).not.toThrow();
+      expect(fs.existsSync(path.join(dir, PJCODE, 'queued', 'list.json'))).toBe(
+        false,
+      );
+    });
+
+    it('adds the item to the queued tab without removing it from the source tab', () => {
+      const existingItem = makeItem({
+        projectItemId: 'item-r',
+        status: 'Todo by agent',
+      });
+      writeTabFile('todo-by-agent', makeStatusTab(PJCODE, [existingItem]));
+      writeTabFile('queued', makeStatusTab(PJCODE, []));
+      const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+
+      repo.moveItemToQueuedTab('item-r', 'Preparation');
+
+      expect(readTabFile('todo-by-agent')).toMatchObject({
+        items: [{ projectItemId: 'item-r' }],
+      });
+      expect(readTabFile('queued')).toMatchObject({
+        items: [{ projectItemId: 'item-r', status: 'Preparation' }],
+      });
+    });
+  });
 });

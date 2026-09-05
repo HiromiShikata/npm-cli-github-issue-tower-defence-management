@@ -63,6 +63,79 @@ export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
     private readonly pjcode: string,
   ) {}
 
+  moveItemToQueuedTab(
+    projectItemId: string,
+    canonicalStatusName: string,
+  ): void {
+    let foundRawItem: Record<string, unknown> | null = null;
+
+    for (const tabName of CONSOLE_LIST_TAB_NAMES) {
+      if (tabName === 'queued') {
+        continue;
+      }
+      const filePath = path.join(
+        this.consoleDataOutputDir,
+        this.pjcode,
+        tabName,
+        'list.json',
+      );
+      const existing = readTabListJson(filePath);
+      if (existing === null) {
+        continue;
+      }
+
+      const rawItems = existing.items;
+      const items: unknown[] = Array.isArray(rawItems) ? rawItems : [];
+      for (const item of items) {
+        if (isRecord(item) && item.projectItemId === projectItemId) {
+          foundRawItem = { ...item, status: canonicalStatusName };
+          break;
+        }
+      }
+      if (foundRawItem !== null) {
+        break;
+      }
+    }
+
+    if (foundRawItem === null) {
+      return;
+    }
+
+    const queuedFilePath = path.join(
+      this.consoleDataOutputDir,
+      this.pjcode,
+      'queued',
+      'list.json',
+    );
+    const queuedExisting = readTabListJson(queuedFilePath);
+    if (queuedExisting === null) {
+      return;
+    }
+
+    const rawItems = queuedExisting.items;
+    const queuedItems: unknown[] = Array.isArray(rawItems) ? rawItems : [];
+    const withoutThisItem = queuedItems.filter(
+      (i) => !(isRecord(i) && i.projectItemId === projectItemId),
+    );
+    const rawStoryOrder = queuedExisting.storyOrder;
+    const storyOrder = Array.isArray(rawStoryOrder)
+      ? rawStoryOrder.filter((s): s is string => typeof s === 'string')
+      : [];
+    const newItems = sortByStoryOrder(
+      [...withoutThisItem, foundRawItem],
+      storyOrder,
+    );
+    writeJsonAtomic(queuedFilePath, { ...queuedExisting, items: newItems });
+
+    const doneFilePath = path.join(
+      this.consoleDataOutputDir,
+      this.pjcode,
+      'queued',
+      '.done.json',
+    );
+    clearProjectItemIdFromDoneJson(doneFilePath, projectItemId);
+  }
+
   patchIssueTabTransition(params: {
     projectItemId: string;
     item: ConsoleListItem;
