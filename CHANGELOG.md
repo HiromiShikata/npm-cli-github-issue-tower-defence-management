@@ -1,3 +1,10 @@
+# [2.62.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.61.1...v2.62.0) (2026-09-05)
+
+
+### Features
+
+* **fleet-config:** route TDPM error issues to fleet-wide errorReportingRepository ([#2071](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2071)) ([ff481f8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ff481f84ffec7689db1fd201951867d3e34cdcc4)), closes [#2069](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2069)
+
 ## [2.61.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.61.0...v2.61.1) (2026-09-05)
 
 
