@@ -548,6 +548,7 @@ const createStubIssueRepository = (
   commentCalls: ConsoleE2eCommentCall[],
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[],
   closeIssueCalls: string[],
+  setStoryCalls: ConsoleE2eSetStoryCall[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
@@ -568,7 +569,9 @@ const createStubIssueRepository = (
   updateNextActionDate: async (): Promise<void> => undefined,
   updateNextActionHour: () => notImplemented('updateNextActionHour'),
   updateProjectTextField: () => notImplemented('updateProjectTextField'),
-  updateStory: async (): Promise<void> => undefined,
+  updateStory: async (_project, issue, storyId): Promise<void> => {
+    setStoryCalls.push({ issueUrl: issue.url, storyOptionId: storyId });
+  },
   updateStatus: async (): Promise<void> => undefined,
   clearProjectField: () => notImplemented('clearProjectField'),
   createComment: () => notImplemented('createComment'),
@@ -799,6 +802,11 @@ export type ConsoleE2eRenameStoryCall = {
   newName: string;
 };
 
+export type ConsoleE2eSetStoryCall = {
+  issueUrl: string;
+  storyOptionId: string;
+};
+
 export type ConsoleE2eHarness = {
   baseUrl: string;
   appUrl: string;
@@ -812,6 +820,7 @@ export type ConsoleE2eHarness = {
   addStoryCalls: ConsoleE2eAddStoryCall[];
   deleteStoryCalls: ConsoleE2eDeleteStoryCall[];
   renameStoryCalls: ConsoleE2eRenameStoryCall[];
+  setStoryCalls: ConsoleE2eSetStoryCall[];
   closeIssueCalls: string[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
@@ -850,6 +859,7 @@ export const startConsoleE2eHarness = async (options?: {
   const closeIssueCalls: string[] = [];
   const storyColorCalls: ConsoleE2eStoryColorCall[] = [];
   const deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[] = [];
+  const setStoryCalls: ConsoleE2eSetStoryCall[] = [];
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
@@ -864,6 +874,7 @@ export const startConsoleE2eHarness = async (options?: {
         commentCalls,
         deleteAllCommentsCalls,
         closeIssueCalls,
+        setStoryCalls,
       ),
       ...(options?.mergePullRequest !== undefined
         ? { mergePullRequest: options.mergePullRequest }
@@ -950,6 +961,7 @@ export const startConsoleE2eHarness = async (options?: {
     addStoryCalls,
     deleteStoryCalls,
     renameStoryCalls,
+    setStoryCalls,
     closeIssueCalls,
     storyColorCalls,
     deleteAllCommentsCalls,
