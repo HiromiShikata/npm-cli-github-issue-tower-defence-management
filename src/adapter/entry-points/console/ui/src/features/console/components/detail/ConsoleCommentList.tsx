@@ -83,7 +83,9 @@ export const ConsoleCommentList = ({
             )}
           </header>
           {isSummaryMode ? (
-            <p className="console-comment-summary">{getFirstLine(comment.body)}</p>
+            <p className="console-comment-summary">
+              {getFirstLine(comment.body)}
+            </p>
           ) : (
             <ConsoleMarkdownContent
               body={comment.body}
