@@ -1,3 +1,12 @@
+## [2.62.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.5...v2.62.6) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** resolve github token per project org for max preparing count update ([#2081](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2081)) ([75546cf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/75546cfd05c06a6e62e21ca52b390e9f092b74c6)), closes [HiromiShikata/umino-corporait-operation#31433](https://github.com/HiromiShikata/umino-corporait-operation/issues/31433)
+* **notify-finished-issue-preparation:** remove waitingForOwnerApproval mechanism ([#2085](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2085)) ([2fdb001](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2fdb0019fe632fd7b3d35f24057fceecdc657a67))
+* **RevertOrphanedPreparationUseCase:** stop pushing closed Awaiting Workspace issues to Awaiting Quality Check ([#2083](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2083)) ([896cfd8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/896cfd8a334792ab81e222fe69be09e339b626b6))
+
 ## [2.62.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.4...v2.62.5) (2026-09-05)
 
 
