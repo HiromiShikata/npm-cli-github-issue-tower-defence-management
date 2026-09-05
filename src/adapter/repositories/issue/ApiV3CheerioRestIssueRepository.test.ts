@@ -5433,8 +5433,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         localStorageRepository,
         dateRepository,
       } = createApiV3CheerioRestIssueRepository();
-      const issueUrl =
-        'https://github.com/o/r/issues/1';
+      const issueUrl = 'https://github.com/o/r/issues/1';
       const now = new Date('2026-07-07T00:30:00.000Z');
       const lastFetchedAt = '2026-07-07T00:00:00.000Z';
       dateRepository.now.mockResolvedValue(now);
@@ -5462,8 +5461,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         localStorageRepository,
         dateRepository,
       } = createApiV3CheerioRestIssueRepository();
-      const issueUrl =
-        'https://github.com/o/r/issues/2';
+      const issueUrl = 'https://github.com/o/r/issues/2';
       const now = new Date('2026-07-07T01:01:00.000Z');
       const lastFetchedAt = '2026-07-07T00:00:00.000Z';
       dateRepository.now.mockResolvedValue(now);
@@ -5492,8 +5490,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         localStorageRepository,
         dateRepository,
       } = createApiV3CheerioRestIssueRepository();
-      const issueUrl =
-        'https://github.com/o/r/issues/3';
+      const issueUrl = 'https://github.com/o/r/issues/3';
       const now = new Date('2026-07-07T00:30:00.000Z');
       const lastFetchedAt = '2026-07-07T00:00:00.000Z';
       dateRepository.now.mockResolvedValue(now);
@@ -5527,8 +5524,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         localStorageRepository,
         dateRepository,
       } = createApiV3CheerioRestIssueRepository();
-      const issueUrl =
-        'https://github.com/o/r/issues/4';
+      const issueUrl = 'https://github.com/o/r/issues/4';
       const now = new Date('2026-07-07T00:30:00.000Z');
       dateRepository.now.mockResolvedValue(now);
       localStorageRepository.listFiles.mockReturnValue(['allIssues-proj1']);
