@@ -455,12 +455,13 @@ export class GraphqlProjectRepository
     }
     let project = response.data.node;
     if (!project && readToken !== this.ghToken) {
-      const fallbackResponse =
-        await postGithubGraphqlJson<ProjectNodeResponse>({
+      const fallbackResponse = await postGithubGraphqlJson<ProjectNodeResponse>(
+        {
           ghToken: this.ghToken,
           query,
           variables,
-        });
+        },
+      );
       if (fallbackResponse.data) {
         project = fallbackResponse.data.node;
       }
