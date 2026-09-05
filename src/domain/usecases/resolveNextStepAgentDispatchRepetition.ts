@@ -1,6 +1,7 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { isAgentReportBody } from './isAgentReportBody';
+import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
+import { isAgentReportBody, stripLeadingFencedBlocks } from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
 
@@ -76,11 +77,20 @@ const countSilentRedispatches = <
           params.nextStepAgent,
         ),
     ).length + 1;
-  const hasReportsInCycle = commentsInCurrentCycle.some(
-    (comment) =>
-      params.isTrustedAuthor(comment.author) &&
-      isAgentReportBody(comment.content),
-  );
+  const hasReportsInCycle = commentsInCurrentCycle.some((comment) => {
+    if (!params.isTrustedAuthor(comment.author)) return false;
+    const cleaned = stripLeadingFencedBlocks(comment.content);
+    if (!cleaned.startsWith(AGENT_REPORT_PREFIX)) return false;
+    const reportingAgent = cleaned
+      .slice(AGENT_REPORT_PREFIX.length)
+      .trimStart()
+      .split(/[\n(]/)[0]
+      .trim();
+    return (
+      normalizeProjectFieldName(reportingAgent) ===
+      normalizeProjectFieldName(params.nextStepAgent)
+    );
+  });
   return { count, hasReportsInCycle };
 };
 

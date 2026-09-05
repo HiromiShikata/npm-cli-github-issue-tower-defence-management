@@ -8,7 +8,7 @@ type TestComment = { author: string; content: string };
 
 const report = (nextStepAgent: string, author = 'bot'): TestComment => ({
   author,
-  content: `From: :robot: agent (model)
+  content: `From: :robot: ${nextStepAgent} (model)
 
 \`\`\`json
 { "nextStepAgent": "${nextStepAgent}" }
