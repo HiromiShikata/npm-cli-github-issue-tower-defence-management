@@ -6,6 +6,7 @@ import { ConsoleTabsRepository } from './adapter-interfaces/ConsoleTabsRepositor
 import {
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
+  DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
@@ -185,6 +186,11 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     if (!issue) {
       throw new IssueNotFoundError(params.issueUrl);
+    } else if (issue.status === DONE_STATUS_NAME) {
+      console.log(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Done`,
+      );
+      return;
     } else if (issue.status !== PREPARATION_STATUS_NAME) {
       throw new IllegalIssueStatusError(
         params.issueUrl,
