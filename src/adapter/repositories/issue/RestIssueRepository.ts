@@ -160,7 +160,10 @@ export class RestIssueRepository
       );
     } catch (e) {
       if (e instanceof HTTPError) {
-        const bodyText = await e.response.clone().text().catch(() => '');
+        const bodyText = await e.response
+          .clone()
+          .text()
+          .catch(() => '');
         if (
           hasRateLimitSignals(e.response.status, e.response.headers, bodyText)
         ) {
