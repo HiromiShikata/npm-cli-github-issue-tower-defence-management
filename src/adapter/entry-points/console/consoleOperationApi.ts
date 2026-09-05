@@ -549,10 +549,7 @@ export const handleTriage = async (
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
     const lowerStatus = statusName.toLowerCase();
-    if (
-      lowerStatus === 'awaiting workspace' ||
-      lowerStatus === 'preparation'
-    ) {
+    if (lowerStatus === 'awaiting workspace' || lowerStatus === 'preparation') {
       context.patchItemIntoQueuedTab?.(pjcode, projectItemId, statusName);
     }
     return ok();
