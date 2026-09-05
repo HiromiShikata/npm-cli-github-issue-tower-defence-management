@@ -1,3 +1,10 @@
+# [2.55.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.54.0...v2.55.0) (2026-09-05)
+
+
+### Features
+
+* **console:** add story and agent select dropdowns to task detail page ([#2022](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2022)) ([1b5cf89](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1b5cf891d30a931f91ad88f72915f275833ae18a)), closes [#31396](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31396)
+
 # [2.54.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.53.1...v2.54.0) (2026-09-05)
 
 
