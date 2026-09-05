@@ -34,6 +34,7 @@ import {
 } from '../githubGraphqlClient';
 import { normalizeFieldName } from '../utils';
 import { LocalStorageRepository } from '../LocalStorageRepository';
+import { localStorageCacheBaseDirectory } from '../localStorageCacheDirectory';
 import { Member } from '../../../domain/entities/Member';
 import { ProjectRepository } from '../../../domain/usecases/adapter-interfaces/ProjectRepository';
 import { DateRepository } from '../../../domain/usecases/adapter-interfaces/DateRepository';
@@ -984,7 +985,50 @@ export class ApiV3CheerioRestIssueRepository
   ): Promise<void> => {
     await this.restIssueRepository.updateIssueBody(issue, body);
   };
+  private findIssueInAllIssuesCache = async (
+    url: string,
+  ): Promise<Issue | null> => {
+    const baseDir = localStorageCacheBaseDirectory();
+    const entries = this.localStorageRepository.listFiles(baseDir);
+    const nowMs = (await this.dateRepository.now()).getTime();
+    for (const entry of entries) {
+      if (!entry.startsWith('allIssues-')) {
+        continue;
+      }
+      const raw = await this.localStorageCacheRepository.getSingle(entry);
+      if (
+        typeof raw !== 'object' ||
+        raw === null ||
+        !('lastFetchedAt' in raw) ||
+        typeof raw.lastFetchedAt !== 'string' ||
+        !('issues' in raw) ||
+        !Array.isArray(raw.issues)
+      ) {
+        continue;
+      }
+      if (
+        nowMs - new Date(raw.lastFetchedAt).getTime() >=
+        FULL_ISSUE_FETCH_INTERVAL_MS
+      ) {
+        continue;
+      }
+      const issues = this.restoreIssuesFromCache(raw.issues);
+      if (!issues) {
+        continue;
+      }
+      const match = issues.find((issue) => issue.url === url);
+      if (match) {
+        return match;
+      }
+    }
+    return null;
+  };
+
   getIssueByUrl = async (url: string): Promise<Issue | null> => {
+    const cached = await this.findIssueInAllIssuesCache(url);
+    if (cached) {
+      return cached;
+    }
     const projectItem =
       await this.graphqlProjectItemRepository.fetchProjectItemByUrl(url);
     if (!projectItem) {
