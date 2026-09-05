@@ -238,6 +238,58 @@ describe('CLI', () => {
         null,
       );
     });
+
+    it('sets TDPM_ERROR_REPORT_REPOSITORY from fleet config when schedule trigger runs', async () => {
+      const fleetConfigPath = path.join(tmpDir, 'fleet-schedule.config.yaml');
+      fs.writeFileSync(
+        fleetConfigPath,
+        'errorReportingRepository: fleet-owner/fleet-repo\n',
+      );
+      const originalFleetConfig = process.env.TDPM_FLEET_CONFIG;
+      const originalErrRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
+      process.env.TDPM_FLEET_CONFIG = fleetConfigPath;
+      writeConfig({
+        ...defaultConfig,
+        errorReportingRepository: 'project/repo',
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'schedule',
+        '-t',
+        'schedule',
+        '-c',
+        configFilePath,
+      ]);
+
+      expect(process.env.TDPM_ERROR_REPORT_REPOSITORY).toBe(
+        'fleet-owner/fleet-repo',
+      );
+      process.env.TDPM_FLEET_CONFIG = originalFleetConfig;
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = originalErrRepo ?? '';
+      fs.unlinkSync(fleetConfigPath);
+    });
+
+    it('preserves shell-set TDPM_ERROR_REPORT_REPOSITORY when no config provides errorReportingRepository in schedule', async () => {
+      const originalErrRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = 'shell-set-value';
+      process.env.TDPM_FLEET_CONFIG = '';
+      writeConfig(defaultConfig);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'schedule',
+        '-t',
+        'schedule',
+        '-c',
+        configFilePath,
+      ]);
+
+      expect(process.env.TDPM_ERROR_REPORT_REPOSITORY).toBe('shell-set-value');
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = originalErrRepo ?? '';
+    });
   });
 
   describe('loadConfigFile', () => {
@@ -1499,6 +1551,69 @@ mysteryKey: 'value'
 
       processExitSpy.mockRestore();
     });
+
+    it('sets TDPM_ERROR_REPORT_REPOSITORY from fleet config with priority over project config', async () => {
+      const fleetConfigPath = path.join(
+        tmpDir,
+        'fleet-startdaemon.config.yaml',
+      );
+      fs.writeFileSync(
+        fleetConfigPath,
+        'errorReportingRepository: fleet-owner/fleet-repo\n',
+      );
+      writeConfig({
+        ...defaultConfig,
+        errorReportingRepository: 'project-owner/project-repo',
+      });
+      const originalErrRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      jest.mocked(StartPreparationUseCase).mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+        '--fleetConfigFilePath',
+        fleetConfigPath,
+      ]);
+
+      expect(process.env.TDPM_ERROR_REPORT_REPOSITORY).toBe(
+        'fleet-owner/fleet-repo',
+      );
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = originalErrRepo ?? '';
+      fs.unlinkSync(fleetConfigPath);
+    });
+
+    it('preserves shell-set TDPM_ERROR_REPORT_REPOSITORY when no config provides errorReportingRepository', async () => {
+      const originalErrRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = 'shell-set-value';
+      writeConfig(defaultConfig);
+      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
+      jest.mocked(StartPreparationUseCase).mockImplementation(function (
+        this: StartPreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'startDaemon',
+        '--configFilePath',
+        configFilePath,
+      ]);
+
+      expect(process.env.TDPM_ERROR_REPORT_REPOSITORY).toBe('shell-set-value');
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = originalErrRepo ?? '';
+    });
   });
 
   describe('notifyFinishedIssuePreparation', () => {
@@ -1544,6 +1659,7 @@ mysteryKey: 'value'
         deferPreparation: null,
         workflowIssueReporterSettings: null,
         tdpmReportingRepository: null,
+        projectName: 'test-project',
       });
     });
 
@@ -1590,6 +1706,7 @@ mysteryKey: 'value'
         deferPreparation: null,
         workflowIssueReporterSettings: null,
         tdpmReportingRepository: null,
+        projectName: 'test-project',
       });
     });
 
@@ -1899,6 +2016,163 @@ mysteryKey: 'value'
         expect.objectContaining({ manager: 'alice' }),
       );
     });
+
+    it('passes projectName from config file to useCase.run', async () => {
+      writeConfig({
+        ...defaultConfig,
+        projectName: 'my-unique-project',
+      });
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ projectName: 'my-unique-project' }),
+      );
+    });
+
+    it('passes null projectName when not configured', async () => {
+      writeConfig({
+        projectUrl: 'https://github.com/orgs/test/projects/1',
+        defaultAgentName: 'agent1',
+        manager: 'test-manager',
+      });
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({ projectName: null }),
+      );
+    });
+
+    it('uses fleet config errorReportingRepository as tdpmReportingRepository with priority over project config', async () => {
+      const fleetConfigPath = path.join(tmpDir, 'fleet-test.config.yaml');
+      fs.writeFileSync(
+        fleetConfigPath,
+        'errorReportingRepository: fleet-owner/fleet-repo\n',
+      );
+
+      writeConfig({
+        ...defaultConfig,
+        errorReportingRepository: 'project-owner/project-repo',
+      });
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+        '--fleetConfigFilePath',
+        fleetConfigPath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tdpmReportingRepository: 'fleet-owner/fleet-repo',
+        }),
+      );
+
+      fs.unlinkSync(fleetConfigPath);
+    });
+
+    it('falls back to project config errorReportingRepository when fleet config has no errorReportingRepository', async () => {
+      const fleetConfigPath = path.join(tmpDir, 'fleet-test-noerr.config.yaml');
+      fs.writeFileSync(
+        fleetConfigPath,
+        'workflowImprovementIssueUrl: https://github.com/owner/repo/issues/new\n',
+      );
+
+      writeConfig({
+        ...defaultConfig,
+        errorReportingRepository: 'project-owner/project-repo',
+      });
+
+      const mockRun = jest.fn().mockResolvedValue(undefined);
+      const MockedNotifyFinishedUseCase = jest.mocked(
+        NotifyFinishedIssuePreparationUseCase,
+      );
+
+      MockedNotifyFinishedUseCase.mockImplementation(function (
+        this: NotifyFinishedIssuePreparationUseCase,
+      ) {
+        this.run = mockRun;
+        return this;
+      });
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'notifyFinishedIssuePreparation',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+        '--fleetConfigFilePath',
+        fleetConfigPath,
+      ]);
+
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tdpmReportingRepository: 'project-owner/project-repo',
+        }),
+      );
+
+      fs.unlinkSync(fleetConfigPath);
+    });
   });
 
   describe('checkIssueReviewReadiness', () => {
@@ -2061,6 +2335,88 @@ mysteryKey: 'value'
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
+    });
+
+    it('sets TDPM_ERROR_REPORT_REPOSITORY from fleet config via env var for checkIssueReviewReadiness', async () => {
+      const fleetConfigPath = path.join(tmpDir, 'fleet-check.config.yaml');
+      fs.writeFileSync(
+        fleetConfigPath,
+        'errorReportingRepository: fleet-owner/fleet-repo\n',
+      );
+      const originalFleetConfig = process.env.TDPM_FLEET_CONFIG;
+      const originalErrRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
+      process.env.TDPM_FLEET_CONFIG = fleetConfigPath;
+      writeConfig({
+        ...defaultConfig,
+        errorReportingRepository: 'project-owner/project-repo',
+      });
+
+      const mockRun = jest
+        .fn()
+        .mockResolvedValue({ reviewReady: true, rejections: [] });
+      jest
+        .mocked(CheckIssueReviewReadinessUseCase)
+        .mockImplementation(function (this: CheckIssueReviewReadinessUseCase) {
+          this.run = mockRun;
+          return this;
+        });
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'checkIssueReviewReadiness',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(process.env.TDPM_ERROR_REPORT_REPOSITORY).toBe(
+        'fleet-owner/fleet-repo',
+      );
+      process.env.TDPM_FLEET_CONFIG = originalFleetConfig;
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = originalErrRepo ?? '';
+      stdoutSpy.mockRestore();
+      fs.unlinkSync(fleetConfigPath);
+    });
+
+    it('preserves shell-set TDPM_ERROR_REPORT_REPOSITORY when no config provides errorReportingRepository in checkIssueReviewReadiness', async () => {
+      const originalErrRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = 'shell-set-value';
+      process.env.TDPM_FLEET_CONFIG = '';
+      writeConfig(defaultConfig);
+
+      const mockRun = jest
+        .fn()
+        .mockResolvedValue({ reviewReady: true, rejections: [] });
+      jest
+        .mocked(CheckIssueReviewReadinessUseCase)
+        .mockImplementation(function (this: CheckIssueReviewReadinessUseCase) {
+          this.run = mockRun;
+          return this;
+        });
+
+      const stdoutSpy = jest
+        .spyOn(process.stdout, 'write')
+        .mockImplementation(() => true);
+
+      await program.parseAsync([
+        'node',
+        'test',
+        'checkIssueReviewReadiness',
+        '--configFilePath',
+        configFilePath,
+        '--issueUrl',
+        'https://github.com/test/repo/issues/1',
+      ]);
+
+      expect(process.env.TDPM_ERROR_REPORT_REPOSITORY).toBe('shell-set-value');
+      process.env.TDPM_ERROR_REPORT_REPOSITORY = originalErrRepo ?? '';
+      stdoutSpy.mockRestore();
     });
   });
 

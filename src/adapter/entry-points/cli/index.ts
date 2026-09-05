@@ -78,6 +78,7 @@ import {
 } from '../handlers/ownerCallFileStore';
 import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import {
+  loadErrorReportingRepository,
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
   loadWorkflowImprovementIssueUrl,
@@ -288,6 +289,12 @@ program
       process.exit(1);
     }
     if (options.trigger === 'schedule') {
+      const scheduleFleetConfigFilePath = resolveFleetConfigFilePath(null);
+      process.env.TDPM_ERROR_REPORT_REPOSITORY =
+        loadErrorReportingRepository(scheduleFleetConfigFilePath) ??
+        loadConfigFile(options.config).errorReportingRepository ??
+        process.env.TDPM_ERROR_REPORT_REPOSITORY ??
+        '';
       const { HandleScheduledEventUseCaseHandler } =
         await import('../handlers/HandleScheduledEventUseCaseHandler');
       const handler = new HandleScheduledEventUseCaseHandler();
@@ -381,10 +388,14 @@ program
       readmeOverrides,
     );
 
-    if (config.errorReportingRepository) {
-      process.env.TDPM_ERROR_REPORT_REPOSITORY =
-        config.errorReportingRepository;
-    }
+    const fleetConfigFilePath = resolveFleetConfigFilePath(
+      options.fleetConfigFilePath ?? null,
+    );
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      loadErrorReportingRepository(fleetConfigFilePath) ??
+      config.errorReportingRepository ??
+      process.env.TDPM_ERROR_REPORT_REPOSITORY ??
+      '';
 
     const projectUrl = config.projectUrl;
     const defaultAgentName = config.defaultAgentName;
@@ -430,9 +441,6 @@ program
       `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
     );
 
-    const fleetConfigFilePath = resolveFleetConfigFilePath(
-      options.fleetConfigFilePath ?? null,
-    );
     const preparationWorkerSettings =
       loadPreparationWorkerSettings(fleetConfigFilePath);
     const fleetConfigSource =
@@ -660,10 +668,17 @@ program
       readmeOverrides,
     );
 
-    if (config.errorReportingRepository) {
-      process.env.TDPM_ERROR_REPORT_REPOSITORY =
-        config.errorReportingRepository;
-    }
+    const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
+      options.fleetConfigFilePath ?? null,
+    );
+    const notifyEffectiveErrorReportingRepo =
+      loadErrorReportingRepository(notifyFleetConfigFilePath) ??
+      config.errorReportingRepository ??
+      null;
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      notifyEffectiveErrorReportingRepo ??
+      process.env.TDPM_ERROR_REPORT_REPOSITORY ??
+      '';
 
     const projectUrl = config.projectUrl;
 
@@ -754,9 +769,6 @@ program
           .filter(Boolean)
       : null;
 
-    const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
-      options.fleetConfigFilePath ?? null,
-    );
     await useCase.run({
       projectUrl,
       issueUrl: options.issueUrl,
@@ -777,7 +789,8 @@ program
       workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
         notifyFleetConfigFilePath,
       ),
-      tdpmReportingRepository: config.errorReportingRepository ?? null,
+      tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
+      projectName: config.projectName ?? null,
     });
   });
 
@@ -822,10 +835,13 @@ program
       readmeOverrides,
     );
 
-    if (config.errorReportingRepository) {
-      process.env.TDPM_ERROR_REPORT_REPOSITORY =
-        config.errorReportingRepository;
-    }
+    const checkIssueReviewFleetConfigFilePath =
+      resolveFleetConfigFilePath(null);
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      loadErrorReportingRepository(checkIssueReviewFleetConfigFilePath) ??
+      config.errorReportingRepository ??
+      process.env.TDPM_ERROR_REPORT_REPOSITORY ??
+      '';
 
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository();
