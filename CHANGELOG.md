@@ -1,3 +1,10 @@
+# [2.51.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.50.0...v2.51.0) (2026-09-05)
+
+
+### Features
+
+* **dashboard:** add 1h/3h/5h task close counts per project to dashboard ([#2009](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2009)) ([4acbb8a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4acbb8a8895985d86e8f2a1af7c63c6c3b504676)), closes [HiromiShikata/umino-corporait-operation#31381](https://github.com/HiromiShikata/umino-corporait-operation/issues/31381)
+
 # [2.50.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.49.1...v2.50.0) (2026-09-05)
 
 
