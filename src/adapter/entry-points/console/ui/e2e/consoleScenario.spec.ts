@@ -924,6 +924,13 @@ test('shows issue number after resolved title in reference links inside item bod
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
   ).click();
 
+  // Wait for comments to render (they collapse the description), then expand description
+  await expect(page.locator('.console-comment')).toBeVisible({ timeout: 10000 });
+  const descriptionToggle = page.locator('.console-panel-toggle', {
+    hasText: 'Description',
+  });
+  await descriptionToggle.click();
+
   const referenceNumber = page.locator('.console-markdown-reference-number');
   await expect(referenceNumber).toBeVisible();
   const urlSegments = CONSOLE_E2E_REFERENCE_LINK_URL.split('/');

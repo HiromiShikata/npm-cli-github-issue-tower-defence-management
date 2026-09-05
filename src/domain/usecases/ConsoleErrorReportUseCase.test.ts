@@ -56,6 +56,7 @@ describe('ConsoleErrorReportUseCase', () => {
         author: 'bot',
         body: 'Console error: TypeError: something went wrong',
         createdAt: new Date(0),
+        url: null,
       });
 
       await useCase.run({ error, owner, repo, requestPath });
