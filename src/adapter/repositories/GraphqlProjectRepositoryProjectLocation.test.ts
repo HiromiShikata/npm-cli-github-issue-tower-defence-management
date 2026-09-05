@@ -295,4 +295,43 @@ describe('GraphqlProjectRepository project location', () => {
     });
     warn.mockRestore();
   });
+
+  it('should fall back to GraphQL when the token lacks projects scope and REST returns 403', async () => {
+    const projectCache = buildProjectCache();
+    projectCache.stored.set(`projectLocation-${projectId}`, {
+      owner: 'HiromiShikata',
+      ownerType: 'users',
+      projectNumber: 48,
+    });
+    mockGet.mockImplementation(() => {
+      throw Object.assign(new Error('Forbidden'), {
+        response: { status: 403 },
+      });
+    });
+    mockPostGithubGraphqlJson.mockResolvedValue(graphqlProjectResponse);
+    const warn = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
+    const repository = new GraphqlProjectRepository(
+      localStorageRepository,
+      'dummy-token',
+      projectCache,
+    );
+
+    const project = await repository.getProject(projectId);
+
+    expect(project?.id).toEqual(projectId);
+    expect(mockPostGithubGraphqlJson).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'the recorded project location no longer resolves over REST, re-reading the project over GraphQL',
+      ),
+    );
+    expect(projectCache.stored.get(`projectLocation-${projectId}`)).toEqual({
+      owner: 'HiromiShikata',
+      ownerType: 'users',
+      projectNumber: 48,
+    });
+    warn.mockRestore();
+  });
 });
