@@ -69,6 +69,18 @@ describe('extractExecutiveSummary', () => {
       'タスクのゴール: fix the extraction bug\n残りの作業と判断: nothing remains',
     );
   });
+
+  it('stops at From line when both From line and ## heading are present and From comes first', () => {
+    const body = `## エグゼクティブサマリ / Executive Summary\nタスクのゴール: goal\nFrom: :robot: agent (model)\n## Other section\nother content`;
+    const result = extractExecutiveSummary(body);
+    expect(result).toBe('タスクのゴール: goal');
+  });
+
+  it('stops at ## heading when both From line and ## heading are present and ## comes first', () => {
+    const body = `## エグゼクティブサマリ / Executive Summary\nタスクのゴール: goal\n## Loaded skills\nskill1\nFrom: :robot: agent (model)`;
+    const result = extractExecutiveSummary(body);
+    expect(result).toBe('タスクのゴール: goal');
+  });
 });
 
 describe('extractExecutiveSummaryFromComments', () => {
