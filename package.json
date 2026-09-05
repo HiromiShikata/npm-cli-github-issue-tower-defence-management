@@ -20,6 +20,7 @@
     "console-ui:storybook": "storybook dev -p 6006 -c src/adapter/entry-points/console/ui/.storybook",
     "console-ui:build-storybook": "storybook build -c src/adapter/entry-points/console/ui/.storybook -o src/adapter/entry-points/console/ui/storybook-static",
     "test": "jest",
+    "test:related": "jest --onlyChanged --passWithNoTests",
     "prepare": "true"
   },
   "bin": {

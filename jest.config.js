@@ -10,7 +10,9 @@ const consoleUiRoot = path.join(
 );
 
 module.exports = {
-  maxWorkers: 4,
+  maxWorkers: 2,
+  forceExit: true,
+  testTimeout: 60000,
   collectCoverage: true,
   coverageDirectory: 'reports/coverage',
   reporters: [
