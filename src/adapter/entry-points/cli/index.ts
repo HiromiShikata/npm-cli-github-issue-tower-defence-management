@@ -293,6 +293,7 @@ program
       process.env.TDPM_ERROR_REPORT_REPOSITORY =
         loadErrorReportingRepository(scheduleFleetConfigFilePath) ??
         loadConfigFile(options.config).errorReportingRepository ??
+        process.env.TDPM_ERROR_REPORT_REPOSITORY ??
         '';
       const { HandleScheduledEventUseCaseHandler } =
         await import('../handlers/HandleScheduledEventUseCaseHandler');
@@ -393,6 +394,7 @@ program
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
       loadErrorReportingRepository(fleetConfigFilePath) ??
       config.errorReportingRepository ??
+      process.env.TDPM_ERROR_REPORT_REPOSITORY ??
       '';
 
     const projectUrl = config.projectUrl;
@@ -674,7 +676,9 @@ program
       config.errorReportingRepository ??
       null;
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
-      notifyEffectiveErrorReportingRepo ?? '';
+      notifyEffectiveErrorReportingRepo ??
+      process.env.TDPM_ERROR_REPORT_REPOSITORY ??
+      '';
 
     const projectUrl = config.projectUrl;
 
@@ -836,6 +840,7 @@ program
     process.env.TDPM_ERROR_REPORT_REPOSITORY =
       loadErrorReportingRepository(checkIssueReviewFleetConfigFilePath) ??
       config.errorReportingRepository ??
+      process.env.TDPM_ERROR_REPORT_REPOSITORY ??
       '';
 
     const projectName = config.projectName ?? 'default';
