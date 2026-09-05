@@ -33,10 +33,7 @@ describe('mintReadOnlyTokensFromKeyPaths', () => {
       .mockResolvedValueOnce('minted-token-from-second-key');
 
     const result = await mintReadOnlyTokensFromKeyPaths(
-      [
-        '/path/key1-private-key.pem',
-        '/path/key2-private-key.pem',
-      ],
+      ['/path/key1-private-key.pem', '/path/key2-private-key.pem'],
       'HiromiShikata',
       mintFn,
     );

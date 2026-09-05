@@ -300,9 +300,7 @@ describe('buildReadIssueRepositoryResolver', () => {
         .mockImplementationOnce(() => readRepo2)
         .mockImplementation(() => writeRepo);
       const resolveGithubToken = jest.fn().mockReturnValue('write-token');
-      const mintTokens = jest
-        .fn()
-        .mockResolvedValue(['token-1', 'token-2']);
+      const mintTokens = jest.fn().mockResolvedValue(['token-1', 'token-2']);
 
       const resolver = await buildReadIssueRepositoryResolver(
         ['/path/key1-private-key.pem', '/path/key2-private-key.pem'],

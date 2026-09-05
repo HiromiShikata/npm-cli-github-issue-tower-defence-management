@@ -456,7 +456,8 @@ export const mergeConfigs = (
     cliOverrides.consoleGithubTokenFileDir ??
     configFile.consoleGithubTokenFileDir,
   githubAppPrivateKeyPaths:
-    cliOverrides.githubAppPrivateKeyPaths ?? configFile.githubAppPrivateKeyPaths,
+    cliOverrides.githubAppPrivateKeyPaths ??
+    configFile.githubAppPrivateKeyPaths,
   disks: cliOverrides.disks ?? configFile.disks,
   errorReportingRepository:
     readmeOverrides.errorReportingRepository ??
