@@ -1,3 +1,10 @@
+## [2.62.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.6...v2.62.7) (2026-09-05)
+
+
+### Bug Fixes
+
+* **graphql-project:** retry GetProjectV2 node query with write token when read token lacks Projects V2 access ([#2087](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2087)) ([86d55ce](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/86d55ce2d2c543df81ca58cee9addf1bdd395641)), closes [HiromiShikata/secretary#5499](https://github.com/HiromiShikata/secretary/issues/5499)
+
 ## [2.62.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.5...v2.62.6) (2026-09-05)
 
 
