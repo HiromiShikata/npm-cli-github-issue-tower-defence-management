@@ -361,6 +361,21 @@ describe('githubGraphqlClient', () => {
       expect(json.query).toBe(mutation);
       expect(consoleLogSpy).not.toHaveBeenCalled();
     });
+
+    it('passes GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS as the ky timeout so slow GitHub responses do not trigger the 10-second ky default', async () => {
+      mockPost.mockReturnValue({
+        json: jest.fn().mockResolvedValue({
+          data: { node: { id: 'x' }, rateLimit: { cost: 1, remaining: 4999 } },
+        }),
+      });
+      await postGithubGraphqlJson({
+        ghToken: 'token-a',
+        query: 'query GetItem($id: ID!) { node(id: $id) { id } }',
+      });
+      const call = getMockCallArguments(mockPost, 0);
+      const options = expectRecord(call[1]);
+      expect(options.timeout).toBe(GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS);
+    });
   });
 
   describe('fetchGithubGraphql', () => {
