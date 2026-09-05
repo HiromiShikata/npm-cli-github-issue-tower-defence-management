@@ -1039,6 +1039,90 @@ describe('webServer new routes integration', () => {
     }
   });
 
+  it('calls consoleErrorReporter with error and request path when an operation rejects', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.get.mockResolvedValue({
+      ...mock<Issue>(),
+      itemId: 'PVTI_loaded',
+    });
+    issueRepository.getOpenPullRequest.mockResolvedValue({
+      url: 'https://github.com/o/r/pull/1',
+      branchName: null,
+      createdAt: new Date(0),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: 'MERGEABLE',
+      isPassedAllCiJob: true,
+      isCiStateSuccess: true,
+      isResolvedAllReviewComments: true,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+    });
+    issueRepository.getPullRequestDetail.mockResolvedValue({
+      title: 'Test PR',
+      state: 'open',
+      merged: false,
+      isDraft: false,
+      additions: 0,
+      deletions: 0,
+      changedFiles: 0,
+      headRefName: 'feature',
+      baseRefName: 'main',
+      author: 'other-user',
+      files: [],
+    });
+    issueRepository.getAuthenticatedUserLogin.mockResolvedValue(
+      'authenticated-user',
+    );
+    const operationError = new Error(
+      'Failed to merge PR https://github.com/o/r/pull/1: HTTP 405',
+    );
+    issueRepository.mergePullRequest.mockRejectedValue(operationError);
+    const reportedErrors: { error: unknown; requestPath: string }[] = [];
+    const consoleErrorReporter = jest.fn(
+      async (error: unknown, requestPath: string) => {
+        reportedErrors.push({ error, requestPath });
+      },
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: buildProject() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      consoleErrorReporter,
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/review?k=${testToken}`,
+        {
+          pjcode: 'acme',
+          action: 'approve_and_merge',
+          prUrl: 'https://github.com/o/r/pull/1',
+          projectItemId: 'PVTI_op',
+        },
+      );
+      expect(response.statusCode).toBe(502);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(consoleErrorReporter).toHaveBeenCalledTimes(1);
+      expect(reportedErrors[0].error).toBe(operationError);
+      expect(reportedErrors[0].requestPath).toBe('/api/review');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('rejects an operation api with a malformed json body', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();

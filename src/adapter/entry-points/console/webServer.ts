@@ -252,6 +252,8 @@ export type WebServerOptions = {
     ((pjcode: string, updatedProject: Project) => void) | null;
   issueTitleStateCache?: IssueTitleStateCache | null;
   pullRequestStatusCache?: PullRequestStatusCache | null;
+  consoleErrorReporter?:
+    ((error: unknown, requestPath: string) => Promise<void>) | null;
 };
 
 const FLAT_IN_TMUX_PREFIX = '/in-tmux-by-human/';
@@ -618,6 +620,9 @@ const handleOperationApi = async (
     return await dispatched;
   } catch (error) {
     console.error('console operation failed', error);
+    if (options.consoleErrorReporter != null) {
+      void options.consoleErrorReporter(error, requestPath);
+    }
     return {
       statusCode: 502,
       body: { error: operationErrorMessage(error) },
@@ -955,6 +960,9 @@ export const createWebServer = (options: WebServerOptions): http.Server =>
   http.createServer((request, response) => {
     handleWebRequest(options, request, response).catch((error) => {
       console.error('console request failed', error);
+      if (options.consoleErrorReporter != null) {
+        void options.consoleErrorReporter(error, request.url ?? '/');
+      }
       sendInternalServerError(response);
     });
   });
