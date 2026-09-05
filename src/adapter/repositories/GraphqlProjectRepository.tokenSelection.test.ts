@@ -189,9 +189,7 @@ describe('GraphqlProjectRepository token selection', () => {
         }),
       );
       // Second call: fetchProjectByGraphql with read token → null node (no Projects V2 access)
-      mockPost.mockReturnValueOnce(
-        mockJsonResponse({ data: { node: null } }),
-      );
+      mockPost.mockReturnValueOnce(mockJsonResponse({ data: { node: null } }));
       // Third call: fetchProjectByGraphql with write token (fallback) → returns project
       mockPost.mockReturnValueOnce(mockJsonResponse(projectNodeResponse));
 
