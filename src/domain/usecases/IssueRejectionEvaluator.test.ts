@@ -160,9 +160,7 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
     });
 
-    it('should require PR evaluation when issue has null agent field (default developer)', async () => {
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
+    it('should not require PR evaluation when issue has null agent field', async () => {
       const result = await evaluator.evaluate({
         url: 'https://github.com/user/repo/issues/1',
         labels: [],
@@ -170,9 +168,9 @@ describe('IssueRejectionEvaluator', () => {
         agent: null,
       });
 
-      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
-      expect(result.rejections).toHaveLength(1);
-      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(0);
+      expect(result.approvedPrUrl).toBeNull();
     });
 
     it('should require PR evaluation when issue has agent field set to developer even with llm-agent:developer label', async () => {
