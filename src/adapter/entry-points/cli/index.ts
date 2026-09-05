@@ -669,10 +669,12 @@ program
     const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
       options.fleetConfigFilePath ?? null,
     );
-    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+    const notifyEffectiveErrorReportingRepo =
       loadErrorReportingRepository(notifyFleetConfigFilePath) ??
       config.errorReportingRepository ??
-      '';
+      null;
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      notifyEffectiveErrorReportingRepo ?? '';
 
     const projectUrl = config.projectUrl;
 
@@ -783,10 +785,7 @@ program
       workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
         notifyFleetConfigFilePath,
       ),
-      tdpmReportingRepository:
-        loadErrorReportingRepository(notifyFleetConfigFilePath) ??
-        config.errorReportingRepository ??
-        null,
+      tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
       projectName: config.projectName ?? null,
     });
   });
