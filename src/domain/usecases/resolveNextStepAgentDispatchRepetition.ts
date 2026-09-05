@@ -47,13 +47,6 @@ const isSilentRedispatchCommentForAgent = (
   );
 };
 
-/**
- * Returns true when a NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD comment
- * represents a final escalation that asks for owner judgment, as opposed to an
- * intermediate re-dispatch notice or a bare header with no body.
- * Re-dispatch notices say "Dispatching it again" / "Dispatching again".
- * Escalation comments contain one of the owner-facing phrases below.
- */
 const isEscalationDispatchComment = (content: string): boolean =>
   content.includes('Owner judgment is required') ||
   content.includes('Failed to receive a report') ||
