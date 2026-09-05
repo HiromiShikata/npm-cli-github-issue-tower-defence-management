@@ -374,8 +374,12 @@ export const useConsoleOperations = (
       invalidateItemContent(item);
       await onAfterMoveToAwaitingWorkspace?.();
       if (!commentResult.posted) {
+        const resetInfo =
+          commentResult.rateLimitResetAt !== null
+            ? ` Rate limit resets at ${commentResult.rateLimitResetAt}.`
+            : '';
         throw new Error(
-          `Comment not posted — ${commentResult.error}. Status was changed. Re-post: ${AWAITING_WORKSPACE_COMMENT_BODY}`,
+          `Comment not posted — ${commentResult.error}.${resetInfo} Status was changed. Re-post: ${AWAITING_WORKSPACE_COMMENT_BODY}`,
         );
       }
     },
@@ -395,7 +399,11 @@ export const useConsoleOperations = (
       }
       const result = await postConsoleComment({ pjcode, url: item.url, body });
       if (!result.posted) {
-        throw new Error(result.error);
+        const resetInfo =
+          result.rateLimitResetAt !== null
+            ? ` Rate limit resets at ${result.rateLimitResetAt}.`
+            : '';
+        throw new Error(`${result.error}.${resetInfo}`);
       }
       invalidateItemContent(item);
       return result.comment;

@@ -641,6 +641,7 @@ describe('postConsoleComment', () => {
     expect(result).toEqual({
       posted: false,
       error: 'github token is not configured',
+      rateLimitResetAt: null,
     });
   });
 
@@ -650,12 +651,31 @@ describe('postConsoleComment', () => {
     expect(result).toEqual({
       posted: false,
       error: 'API rate limit exceeded',
+      rateLimitResetAt: null,
+    });
+  });
+
+  it('returns posted false with rateLimitResetAt when the backend signals a rate-limit', async () => {
+    mockFetchOnce({
+      ok: false,
+      error: 'HTTP 403 GitHub API rate limit exceeded',
+      rateLimitResetAt: '2026-09-05T15:20:00.000Z',
+    });
+    const result = await postConsoleComment(request);
+    expect(result).toEqual({
+      posted: false,
+      error: 'HTTP 403 GitHub API rate limit exceeded',
+      rateLimitResetAt: '2026-09-05T15:20:00.000Z',
     });
   });
 
   it('returns posted false with a fallback error when the comment field is absent', async () => {
     mockFetchOnce({ ok: true });
     const result = await postConsoleComment(request);
-    expect(result).toEqual({ posted: false, error: 'comment was not returned' });
+    expect(result).toEqual({
+      posted: false,
+      error: 'comment was not returned',
+      rateLimitResetAt: null,
+    });
   });
 });

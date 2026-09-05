@@ -526,6 +526,43 @@ describe('useConsoleOperations', () => {
     expect(calledUrls).toContain('/api/triage');
   });
 
+  it('includes the rate-limit reset time in the error message when rateLimitResetAt is returned', async () => {
+    const calledUrls: string[] = [];
+    global.fetch = jest.fn(async (url: unknown) => {
+      calledUrls.push(url as string);
+      if ((url as string).includes('/api/comment')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: false,
+            error: 'HTTP 403 GitHub API rate limit exceeded',
+            rateLimitResetAt: '2026-09-05T15:20:00.000Z',
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }) as unknown as typeof fetch;
+    const { result } = setup();
+    const [option] = consoleStatusOptionsFixture.filter(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    );
+    let caughtMessage = '';
+    await act(async () => {
+      try {
+        await result.current.operations.okAndMoveToAwaitingWorkspace(
+          issueItem,
+          option,
+        );
+      } catch (e: unknown) {
+        caughtMessage = e instanceof Error ? e.message : String(e);
+      }
+    });
+    expect(caughtMessage).toContain('Rate limit resets at 2026-09-05T15:20:00.000Z');
+    expect(caughtMessage).toContain('Re-post: ok');
+    expect(calledUrls).toContain('/api/triage');
+  });
+
   it('marks setStatus overlay done before the API call resolves', async () => {
     let resolveApi!: () => void;
     global.fetch = jest.fn(

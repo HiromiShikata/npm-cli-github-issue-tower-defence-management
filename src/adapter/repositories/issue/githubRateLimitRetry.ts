@@ -1,5 +1,11 @@
 export class GitHubRateLimitError extends Error {
   readonly name = 'GitHubRateLimitError';
+  readonly rateLimitResetAt: string | null;
+
+  constructor(message: string, rateLimitResetAt: string | null = null) {
+    super(message);
+    this.rateLimitResetAt = rateLimitResetAt;
+  }
 }
 
 export const RATE_LIMIT_MAX_RETRIES = 3;

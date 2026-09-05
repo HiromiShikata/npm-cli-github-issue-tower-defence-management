@@ -18,6 +18,7 @@ import {
   recordDoneProjectItemIdForTabs,
 } from './consoleDoneStore';
 import { appendCloseEvent } from './consoleCloseEventStore';
+import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { extractProjectOwner } from './consoleGithubTokenResolver';
 import { findConsoleItemUrl } from './consoleItemUrlLookup';
 import {
@@ -732,6 +733,16 @@ export const handleComment = async (
       { pjcode, url },
       error,
     );
+    if (error instanceof GitHubRateLimitError) {
+      return {
+        statusCode: 200,
+        body: {
+          ok: false,
+          error: errorMessage,
+          rateLimitResetAt: error.rateLimitResetAt,
+        },
+      };
+    }
     return {
       statusCode: 200,
       body: { ok: false, error: errorMessage },

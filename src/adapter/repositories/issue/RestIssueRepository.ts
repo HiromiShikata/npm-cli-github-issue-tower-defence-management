@@ -4,6 +4,11 @@ import { Issue } from '../../../domain/entities/Issue';
 import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Member } from '../../../domain/entities/Member';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
+import {
+  computeRateLimitResetIso,
+  GitHubRateLimitError,
+  hasRateLimitSignals,
+} from './githubRateLimitRetry';
 
 type SearchIssuesResponseItem = {
   html_url: string;
@@ -32,25 +37,44 @@ export class RestIssueRepository
     url: string | null;
   }> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
-    const response = await ky
-      .post(
-        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
-        {
-          json: { body: comment },
-          headers: { Authorization: `token ${this.ghToken}` },
-        },
-      )
-      .json<{
-        user: { login: string } | null;
-        body: string;
-        created_at: string;
-        html_url: string;
-      }>();
+    let result: {
+      user: { login: string } | null;
+      body: string;
+      created_at: string;
+      html_url: string;
+    };
+    try {
+      result = await ky
+        .post(
+          `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+          {
+            json: { body: comment },
+            headers: { Authorization: `token ${this.ghToken}` },
+          },
+        )
+        .json<{
+          user: { login: string } | null;
+          body: string;
+          created_at: string;
+          html_url: string;
+        }>();
+    } catch (e) {
+      if (e instanceof HTTPError) {
+        const bodyText = await e.response.clone().text();
+        if (hasRateLimitSignals(e.response.status, e.response.headers, bodyText)) {
+          throw new GitHubRateLimitError(
+            `HTTP ${e.response.status} GitHub API rate limit exceeded`,
+            computeRateLimitResetIso(e.response.headers),
+          );
+        }
+      }
+      throw e;
+    }
     return {
-      author: response.user?.login ?? '',
-      body: response.body,
-      createdAt: new Date(response.created_at),
-      url: response.html_url,
+      author: result.user?.login ?? '',
+      body: result.body,
+      createdAt: new Date(result.created_at),
+      url: result.html_url,
     };
   };
   createNewIssue = async (
