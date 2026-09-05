@@ -423,20 +423,25 @@ describe('GitHubIssueCommentRepository', () => {
   });
 
   describe('createComment', () => {
-    it('should call the REST endpoint with correct URL, headers, and body for an issue', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify({ id: 1 }), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      );
+    it('fetches existing comments then posts to the correct REST endpoint with correct headers and body for an issue', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 1 }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/42',
       );
       await repository.createComment(issue, 'hello world');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.github.com/repos/HiromiShikata/test-repository/issues/42/comments',
         {
           method: 'POST',
@@ -450,20 +455,25 @@ describe('GitHubIssueCommentRepository', () => {
       );
     });
 
-    it('should call the REST endpoint with correct URL for a pull request', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify({ id: 2 }), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      );
+    it('posts to the correct REST endpoint for a pull request', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 2 }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/pull/10',
       );
       await repository.createComment(issue, 'pr comment');
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.github.com/repos/HiromiShikata/test-repository/issues/10/comments',
         expect.objectContaining({
           method: 'POST',
@@ -471,13 +481,18 @@ describe('GitHubIssueCommentRepository', () => {
       );
     });
 
-    it('should throw an error when the response is not 2xx', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response('Not Found', {
-          status: 404,
-          statusText: 'Not Found',
-        }),
-      );
+    it('throws an error when the POST response is not 2xx', async () => {
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response('Not Found', {
+            status: 404,
+            statusText: 'Not Found',
+          }),
+        );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/42',
@@ -488,38 +503,149 @@ describe('GitHubIssueCommentRepository', () => {
       ).rejects.toThrow('404');
     });
 
-    it('should issue exactly one HTTP request per call', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify({ id: 3 }), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      );
+    it('issues a GET for duplicate check followed by a POST, exactly two HTTP requests per call', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 3 }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/5',
       );
       await repository.createComment(issue, 'single request');
 
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
     });
 
-    it('should not call the GraphQL endpoint', async () => {
-      jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response(JSON.stringify({ id: 4 }), {
-          status: 201,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      );
+    it('does not call the GraphQL endpoint', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 4 }), {
+            status: 201,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/7',
       );
       await repository.createComment(issue, 'no graphql');
 
-      expect(global.fetch).not.toHaveBeenCalledWith(
+      expect(fetchSpy).not.toHaveBeenCalledWith(
         'https://api.github.com/graphql',
         expect.anything(),
+      );
+    });
+
+    it('skips posting when an identical comment was posted within the last 2 hours', async () => {
+      const recentComment = {
+        user: { login: 'bot' },
+        body: 'Auto Status Check: REJECTED',
+        created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+      };
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify([recentComment]), { status: 200 }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/99',
+      );
+      await repository.createComment(issue, 'Auto Status Check: REJECTED');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('still posts when an identical comment was posted more than 2 hours ago', async () => {
+      const oldComment = {
+        user: { login: 'bot' },
+        body: 'Auto Status Check: REJECTED',
+        created_at: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+      };
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([oldComment]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 10 }), { status: 201 }),
+        );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/99',
+      );
+      await repository.createComment(issue, 'Auto Status Check: REJECTED');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('still posts when the recent comment body differs', async () => {
+      const recentComment = {
+        user: { login: 'bot' },
+        body: 'Auto Status Check: AWAITING_OWNER_APPROVAL',
+        created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+      };
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify([recentComment]), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 11 }), { status: 201 }),
+        );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/99',
+      );
+      await repository.createComment(issue, 'Auto Status Check: REJECTED');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('treats bodies with different timestamps as duplicates after normalisation', async () => {
+      const recentComment = {
+        user: { login: 'bot' },
+        body: 'CLI error recurrence at 2026-09-05T10:00:00Z: some error',
+        created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+      };
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify([recentComment]), { status: 200 }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/99',
+      );
+      await repository.createComment(
+        issue,
+        'CLI error recurrence at 2026-09-05T11:30:00Z: some error',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
       );
     });
   });

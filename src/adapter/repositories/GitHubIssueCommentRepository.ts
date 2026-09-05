@@ -1,6 +1,10 @@
 import { IssueCommentRepository } from '../../domain/usecases/adapter-interfaces/IssueCommentRepository';
 import { Issue } from '../../domain/entities/Issue';
 import { Comment } from '../../domain/entities/Comment';
+import {
+  isDuplicateWithinWindow,
+  DUPLICATE_COMMENT_WINDOW_MS,
+} from './commentDeduplication';
 
 type RestCommentPayload = {
   user: { login: string } | null;
@@ -185,6 +189,21 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
 
   async createComment(issue: Issue, commentContent: string): Promise<void> {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
+
+    const existingComments = await this.getCommentsFromIssue(issue);
+    const now = new Date();
+    if (
+      isDuplicateWithinWindow(
+        commentContent,
+        existingComments.map((c) => ({ text: c.content, createdAt: c.createdAt })),
+        now,
+      )
+    ) {
+      console.warn(
+        `GitHubIssueCommentRepository: skipping duplicate comment within ${DUPLICATE_COMMENT_WINDOW_MS / 60000} minutes on ${issue.url}`,
+      );
+      return;
+    }
 
     const response = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,

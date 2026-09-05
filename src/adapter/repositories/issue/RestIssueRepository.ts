@@ -9,6 +9,34 @@ import {
   GitHubRateLimitError,
   hasRateLimitSignals,
 } from './githubRateLimitRetry';
+import {
+  isDuplicateWithinWindow,
+  DUPLICATE_COMMENT_WINDOW_MS,
+} from '../commentDeduplication';
+
+type CommentEtagCacheEntry = {
+  etag: string;
+  comments: ReadonlyArray<{ text: string; createdAt: Date }>;
+};
+
+type RestIssueCommentsResponseItem = {
+  body: string | null;
+  created_at: string;
+};
+
+function isStringRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isRestIssueCommentsResponse(
+  value: unknown,
+): value is RestIssueCommentsResponseItem[] {
+  if (!Array.isArray(value)) return false;
+  return value.every(
+    (item: unknown) =>
+      isStringRecord(item) && typeof item['created_at'] === 'string',
+  );
+}
 
 type SearchIssuesResponseItem = {
   html_url: string;
@@ -27,6 +55,60 @@ export class RestIssueRepository
   implements
     Pick<IssueRepository, 'updateAssigneeList' | 'removeLabel' | 'searchIssues'>
 {
+  private readonly commentEtagCache = new Map<string, CommentEtagCacheEntry>();
+
+  private async fetchCommentsForDedupCheck(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+  ): Promise<ReadonlyArray<{ text: string; createdAt: Date }> | null> {
+    const cacheKey = `${owner}/${repo}/${issueNumber}`;
+    const cached = this.commentEtagCache.get(cacheKey);
+
+    const headers: Record<string, string> = {
+      Authorization: `token ${this.ghToken}`,
+      Accept: 'application/vnd.github+json',
+    };
+    if (cached) {
+      headers['If-None-Match'] = cached.etag;
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100`,
+        { headers },
+      );
+    } catch {
+      return null;
+    }
+
+    if (response.status === 304 && cached) {
+      return cached.comments;
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const body: unknown = await response.json();
+    if (!isRestIssueCommentsResponse(body)) {
+      return null;
+    }
+
+    const comments = body.map((item) => ({
+      text: item.body ?? '',
+      createdAt: new Date(item.created_at),
+    }));
+
+    const newEtag = response.headers.get('ETag');
+    if (newEtag) {
+      this.commentEtagCache.set(cacheKey, { etag: newEtag, comments });
+    }
+
+    return comments;
+  }
+
   createComment = async (
     issueUrl: string,
     comment: string,
@@ -37,6 +119,22 @@ export class RestIssueRepository
     url: string | null;
   }> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
+
+    const existingComments = await this.fetchCommentsForDedupCheck(
+      owner,
+      repo,
+      issueNumber,
+    );
+    if (existingComments !== null) {
+      const now = new Date();
+      if (isDuplicateWithinWindow(comment, existingComments, now)) {
+        console.warn(
+          `RestIssueRepository: skipping duplicate comment within ${DUPLICATE_COMMENT_WINDOW_MS / 60000} minutes on ${issueUrl}`,
+        );
+        return { author: '', body: comment, createdAt: now, url: null };
+      }
+    }
+
     let result: {
       user: { login: string } | null;
       body: string;
