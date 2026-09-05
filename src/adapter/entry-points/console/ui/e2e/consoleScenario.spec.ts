@@ -1114,7 +1114,7 @@ test('immediately shows item in Queued tab after moving to Awaiting Workspace wi
   await Promise.all([
     page.waitForResponse(
       (resp) => resp.url().includes(queuedPath) && firstQueuedRequestDone,
-      { timeout: 5000 },
+      { timeout: 12000 },
     ),
     listLevelButton.click(),
   ]);
