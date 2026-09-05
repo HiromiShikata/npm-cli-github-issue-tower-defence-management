@@ -2700,12 +2700,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
         thresholdForAutoReject: 3,
       });
 
-      const commentCalls = mockIssueCommentRepository.createComment.mock.calls;
       expect(
-        commentCalls.every(
-          (call) => !String(call[1]).includes('ORPHANED_PREPARATION'),
-        ),
-      ).toBe(true);
+        mockIssueCommentRepository.createComment,
+      ).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('ORPHANED_PREPARATION'),
+      );
     });
   });
 });

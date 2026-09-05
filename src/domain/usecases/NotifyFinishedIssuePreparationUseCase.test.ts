@@ -5197,12 +5197,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       });
 
-      const commentCalls = mockIssueCommentRepository.createComment.mock.calls;
       expect(
-        commentCalls.every(
-          (call) => !String(call[1]).includes('PULL_REQUEST_NOT_FOUND'),
-        ),
-      ).toBe(true);
+        mockIssueCommentRepository.createComment,
+      ).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+      );
     });
   });
 
