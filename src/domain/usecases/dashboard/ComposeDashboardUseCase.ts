@@ -373,11 +373,26 @@ export class ComposeDashboardUseCase {
       input.sevenDayWindowAggregate ?? null,
     );
     const sessionTotalLine = formatTokenSessionTotalLine(sortedTokens);
+    const aggrTotalLines = (() => {
+      if (aggregateLine !== null && sessionTotalLine !== null) {
+        const aggrPadded = padEnd(
+          aggregateLine,
+          TOKEN_SESSION_COLUMN_START,
+          ' ',
+        );
+        return [
+          aggrPadded + sessionTotalLine.slice(TOKEN_SESSION_COLUMN_START),
+        ];
+      }
+      return [
+        aggregateLine !== null ? aggregateLine : '',
+        ...(sessionTotalLine !== null ? [sessionTotalLine] : []),
+      ];
+    })();
     const lines = [
       ...statsLines,
       ...projectLines,
-      aggregateLine === null ? '' : aggregateLine,
-      ...(sessionTotalLine !== null ? [sessionTotalLine] : []),
+      ...aggrTotalLines,
       ...tokenLines,
     ];
     return lines.map((line) => wrapLine(line)).join('\n') + '\n';

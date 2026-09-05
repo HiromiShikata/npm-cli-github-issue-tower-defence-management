@@ -771,7 +771,7 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
           .replace(/&nbsp;/g, ' '),
       );
 
-  it('places the aggregate line immediately above the session total, with the first token row after both', () => {
+  it('places the aggregate and session total on the same line, with project rows before and token rows after', () => {
     const lines = unwrappedLines(
       new ComposeDashboardUseCase().run(
         aggregateInput({
@@ -781,18 +781,35 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
         }),
       ),
     );
-    const aggregateIndex = lines.indexOf(
-      ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '63',
+    const aggregatePart = ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '63';
+    const combinedIndex = lines.findIndex((line) =>
+      line.startsWith(aggregatePart),
     );
-    expect(aggregateIndex).toBeGreaterThan(-1);
-    expect(lines[aggregateIndex - 1]).toBe(
+    expect(combinedIndex).toBeGreaterThan(-1);
+    expect(lines[combinedIndex - 1]).toBe(
       formatProjectRowLine({
         code: 'ac',
         row: projectRow({ todo: 1 }),
       }),
     );
-    expect(lines[aggregateIndex + 1]).toMatch(/^ +\d+ \d+$/);
-    expect(lines[aggregateIndex + 2]).toContain('ce');
+    expect(lines[combinedIndex + 1]).toContain('ce');
+  });
+
+  it('shows the seven-day aggregate percentage on the same line as the session total', () => {
+    const lines = unwrappedLines(
+      new ComposeDashboardUseCase().run(
+        aggregateInput({
+          usedPercent: 63,
+          includedTokenCount: 2,
+          totalTokenCount: 2,
+        }),
+      ),
+    );
+    const aggregatePart = ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '63';
+    const combined = lines.find((line) => line.startsWith(aggregatePart));
+    expect(combined).toBeDefined();
+    expect(combined?.slice(TOKEN_SESSION_COLUMN_START).trim()).toBe('0 0');
+    expect(lines.filter((line) => line === aggregatePart)).toHaveLength(0);
   });
 
   const AGGREGATE_LINE_SHAPE = /^ +\d+( \(\d+\))?$/;
