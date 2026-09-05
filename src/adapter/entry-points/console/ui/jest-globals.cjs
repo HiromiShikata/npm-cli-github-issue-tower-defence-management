@@ -4,7 +4,11 @@ const { TextDecoder, TextEncoder } = require('util');
 global.TextDecoder = TextDecoder;
 global.TextEncoder = TextEncoder;
 
-const { ReadableStream, TextDecoderStream, TransformStream } = require('stream/web');
+const {
+  ReadableStream,
+  TextDecoderStream,
+  TransformStream,
+} = require('stream/web');
 global.ReadableStream = ReadableStream;
 global.TextDecoderStream = TextDecoderStream;
 global.TransformStream = TransformStream;
