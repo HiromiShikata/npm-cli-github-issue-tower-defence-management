@@ -2732,7 +2732,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
     expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(closedAwIssue);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(
+      closedAwIssue,
+    );
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
   });
 
