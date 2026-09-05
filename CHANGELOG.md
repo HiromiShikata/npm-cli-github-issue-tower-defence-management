@@ -1,3 +1,10 @@
+## [2.55.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.55.0...v2.55.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **executiveSummary:** stop extraction at next ## heading for new comment format ([#2024](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2024)) ([bcf1155](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bcf11552c8dc3c55dba37e2ab37286553e16d051)), closes [HiromiShikata/umino-corporait-operation#31399](https://github.com/HiromiShikata/umino-corporait-operation/issues/31399)
+
 # [2.55.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.54.0...v2.55.0) (2026-09-05)
 
 
