@@ -491,6 +491,7 @@ program
     if (preparationProcessCheckCommand) {
       const revertIssueCommentRepository = new GitHubIssueCommentRepository(
         token,
+        localStorageCacheRepository,
       );
       const revertUseCase = new RevertOrphanedPreparationUseCase(
         projectRepository,
@@ -717,7 +718,10 @@ program
       new SystemDateRepository(),
       ...githubRepositoryParams,
     );
-    const issueCommentRepository = new GitHubIssueCommentRepository(token);
+    const issueCommentRepository = new GitHubIssueCommentRepository(
+      token,
+      localStorageCacheRepository,
+    );
     const webhookRepository = new FetchWebhookRepository();
 
     const consoleDataOutputDir = config.consoleDataOutputDir ?? null;
@@ -848,7 +852,10 @@ program
       new SystemDateRepository(),
       ...githubRepositoryParams,
     );
-    const issueCommentRepository = new GitHubIssueCommentRepository(token);
+    const issueCommentRepository = new GitHubIssueCommentRepository(
+      token,
+      localStorageCacheRepository,
+    );
 
     const rawAllowedIssueAuthors = config.allowedIssueAuthors;
     const allowedIssueAuthors = rawAllowedIssueAuthors

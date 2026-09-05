@@ -34,6 +34,11 @@ const TEST_URL = 'https://github.com/HiromiShikata/test-repo/issues/123';
 const EXPECTED_REST_URL =
   'https://api.github.com/repos/HiromiShikata/test-repo/issues/123/comments?per_page=100&page=1';
 
+const buildCommentCacheRepository = () => ({
+  getSingle: jest.fn<Promise<unknown>, [string]>(),
+  setSingle: jest.fn<Promise<void>, [string, unknown]>(),
+});
+
 describe('GitHubIssueCommentRepository', () => {
   let repository: GitHubIssueCommentRepository;
 
@@ -171,6 +176,249 @@ describe('GitHubIssueCommentRepository', () => {
       await expect(
         repository.getCommentsFromIssue(buildIssue(TEST_URL)),
       ).rejects.toThrow('Not Found');
+    });
+
+    it('caches comments with ETag on first call, sends If-None-Match on second call and returns cached comments on 304', async () => {
+      const commentPayloads = [
+        {
+          user: { login: 'testuser' },
+          body: 'Cached comment',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      ];
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue(null);
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify(commentPayloads), {
+          status: 200,
+          headers: { ETag: '"etag-abc"' },
+        }),
+      );
+
+      const firstResult = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(cache.setSingle).toHaveBeenCalledWith(
+        'comments/HiromiShikata-test-repo-123',
+        {
+          etag: '"etag-abc"',
+          comments: [
+            {
+              author: 'testuser',
+              content: 'Cached comment',
+              createdAt: '2024-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+      );
+      expect(firstResult).toEqual([
+        {
+          author: 'testuser',
+          content: 'Cached comment',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+      ]);
+
+      cache.getSingle.mockResolvedValue({
+        etag: '"etag-abc"',
+        comments: [
+          {
+            author: 'testuser',
+            content: 'Cached comment',
+            createdAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+      });
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 304 }));
+
+      const secondResult = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(EXPECTED_REST_URL, {
+        headers: {
+          Authorization: 'Bearer test-token',
+          Accept: 'application/vnd.github+json',
+          'If-None-Match': '"etag-abc"',
+        },
+      });
+      expect(secondResult).toEqual([
+        {
+          author: 'testuser',
+          content: 'Cached comment',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+      ]);
+    });
+
+    it('updates cache when server returns 200 with a changed ETag', async () => {
+      const newCommentPayloads = [
+        {
+          user: { login: 'user-new' },
+          body: 'New comment',
+          created_at: '2024-02-01T00:00:00Z',
+        },
+      ];
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        etag: '"etag-old"',
+        comments: [
+          {
+            author: 'user-old',
+            content: 'Old comment',
+            createdAt: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify(newCommentPayloads), {
+          status: 200,
+          headers: { ETag: '"etag-new"' },
+        }),
+      );
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(result).toEqual([
+        {
+          author: 'user-new',
+          content: 'New comment',
+          createdAt: new Date('2024-02-01T00:00:00Z'),
+        },
+      ]);
+      expect(cache.setSingle).toHaveBeenCalledWith(
+        'comments/HiromiShikata-test-repo-123',
+        expect.objectContaining({ etag: '"etag-new"' }),
+      );
+      expect(cache.setSingle).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ etag: '"etag-old"' }),
+      );
+    });
+
+    it('leaves behaviour unchanged when commentCacheRepository is null', async () => {
+      const commentPayloads = [
+        {
+          user: { login: 'testuser' },
+          body: 'Comment body',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      ];
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response(JSON.stringify(commentPayloads), { status: 200 }),
+        );
+
+      const result = await repository.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledWith(EXPECTED_REST_URL, {
+        headers: {
+          Authorization: 'Bearer test-token',
+          Accept: 'application/vnd.github+json',
+        },
+      });
+      expect(result).toEqual([
+        {
+          author: 'testuser',
+          content: 'Comment body',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+      ]);
+    });
+
+    it('writes cache only after all pages are fetched for multi-page responses', async () => {
+      const page1Payloads = [
+        {
+          user: { login: 'user1' },
+          body: 'Page 1 comment',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      ];
+      const page2Payloads = [
+        {
+          user: { login: 'user2' },
+          body: 'Page 2 comment',
+          created_at: '2024-01-02T00:00:00Z',
+        },
+      ];
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue(null);
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(page1Payloads), {
+            status: 200,
+            headers: {
+              ETag: '"etag-page1"',
+              Link: '<https://api.github.com/repos/HiromiShikata/test-repo/issues/123/comments?per_page=100&page=2>; rel="next"',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(page2Payloads), { status: 200 }),
+        );
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(result).toEqual([
+        {
+          author: 'user1',
+          content: 'Page 1 comment',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+        {
+          author: 'user2',
+          content: 'Page 2 comment',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+        },
+      ]);
+      expect(cache.setSingle).toHaveBeenCalledTimes(1);
+      expect(cache.setSingle).toHaveBeenCalledWith(
+        'comments/HiromiShikata-test-repo-123',
+        {
+          etag: '"etag-page1"',
+          comments: [
+            {
+              author: 'user1',
+              content: 'Page 1 comment',
+              createdAt: '2024-01-01T00:00:00.000Z',
+            },
+            {
+              author: 'user2',
+              content: 'Page 2 comment',
+              createdAt: '2024-01-02T00:00:00.000Z',
+            },
+          ],
+        },
+      );
     });
   });
 
