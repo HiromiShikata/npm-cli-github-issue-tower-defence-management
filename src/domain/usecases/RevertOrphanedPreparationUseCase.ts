@@ -330,20 +330,6 @@ export class RevertOrphanedPreparationUseCase {
       );
     }
 
-    const closedAwaitingWorkspaceIssues = issues.filter(
-      (issue) =>
-        issue.status === AWAITING_WORKSPACE_STATUS_NAME && issue.isClosed,
-    );
-
-    for (const issue of closedAwaitingWorkspaceIssues) {
-      if (awaitingQualityCheckStatusOption) {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingQualityCheckStatusOption.id,
-        );
-      }
-    }
   };
 
   private isStillInPreparation = async (
