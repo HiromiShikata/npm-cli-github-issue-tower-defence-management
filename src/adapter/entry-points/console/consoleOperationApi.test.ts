@@ -1028,7 +1028,7 @@ describe('consoleOperationApi', () => {
       expect(patchItemIntoQueuedTab).toHaveBeenCalledWith(
         'acme',
         'PVTI_aw',
-        'Awaiting Workspace',
+        'Awaiting workspace',
       );
     });
 
