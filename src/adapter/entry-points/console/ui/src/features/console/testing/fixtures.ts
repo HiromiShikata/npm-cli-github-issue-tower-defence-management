@@ -1,188 +1,188 @@
 import type {
-	ConsoleChangedFile,
-	ConsoleComment,
-	ConsoleCommit,
-	ConsoleFieldOption,
-	ConsoleIssueState,
-	ConsoleListItem,
-	ConsoleRelatedPullRequest,
-	ConsoleStoryColorSource,
-} from "../logic/types";
+  ConsoleChangedFile,
+  ConsoleComment,
+  ConsoleCommit,
+  ConsoleFieldOption,
+  ConsoleIssueState,
+  ConsoleListItem,
+  ConsoleRelatedPullRequest,
+  ConsoleStoryColorSource,
+} from '../logic/types';
 
 export const consoleStatusOptionsFixture: ConsoleFieldOption[] = [
-	{ id: "f75ad846", name: "Unread", color: "ORANGE" },
-	{ id: "d1c19cce", name: "Awaiting Workspace", color: "BLUE" },
-	{ id: "f57f1ce9", name: "Preparation", color: "YELLOW" },
-	{ id: "fd313492", name: "Failed Preparation", color: "RED" },
-	{ id: "e9931e57", name: "Todo by human", color: "PINK" },
-	{ id: "a1e4b7c9", name: "Todo by agent", color: "BLUE" },
-	{ id: "c2d278b2", name: "In Tmux by human", color: "RED" },
-	{ id: "e9f6a726", name: "In Tmux by agent", color: "YELLOW" },
-	{ id: "bd8358eb", name: "Icebox", color: "GRAY" },
+  { id: 'f75ad846', name: 'Unread', color: 'ORANGE' },
+  { id: 'd1c19cce', name: 'Awaiting Workspace', color: 'BLUE' },
+  { id: 'f57f1ce9', name: 'Preparation', color: 'YELLOW' },
+  { id: 'fd313492', name: 'Failed Preparation', color: 'RED' },
+  { id: 'e9931e57', name: 'Todo by human', color: 'PINK' },
+  { id: 'a1e4b7c9', name: 'Todo by agent', color: 'BLUE' },
+  { id: 'c2d278b2', name: 'In Tmux by human', color: 'RED' },
+  { id: 'e9f6a726', name: 'In Tmux by agent', color: 'YELLOW' },
+  { id: 'bd8358eb', name: 'Icebox', color: 'GRAY' },
 ];
 
 export const consoleAgentOptionsFixture: ConsoleFieldOption[] = [
-	{ id: "2301e20d", name: "chore", color: "GRAY" },
-	{ id: "ffb35756", name: "accounting", color: "GRAY" },
-	{ id: "d2317bef", name: "triager", color: "GRAY" },
-	{ id: "cfde902a", name: "liaison", color: "GRAY" },
-	{ id: "91b9185d", name: "systems-analyst", color: "GRAY" },
-	{ id: "95c55dd3", name: "developer", color: "GRAY" },
-	{ id: "a3f73530", name: "pr-reviewer", color: "GRAY" },
-	{ id: "eb8ccd60", name: "gift", color: "GRAY" },
-	{ id: "68f1f4d6", name: "tdpm-workflow-improver", color: "GRAY" },
-	{ id: "e8f370d9", name: "7sea", color: "GRAY" },
-	{ id: "30ecd1b3", name: "system-design-reviewer", color: "GRAY" },
+  { id: '2301e20d', name: 'chore', color: 'GRAY' },
+  { id: 'ffb35756', name: 'accounting', color: 'GRAY' },
+  { id: 'd2317bef', name: 'triager', color: 'GRAY' },
+  { id: 'cfde902a', name: 'liaison', color: 'GRAY' },
+  { id: '91b9185d', name: 'systems-analyst', color: 'GRAY' },
+  { id: '95c55dd3', name: 'developer', color: 'GRAY' },
+  { id: 'a3f73530', name: 'pr-reviewer', color: 'GRAY' },
+  { id: 'eb8ccd60', name: 'gift', color: 'GRAY' },
+  { id: '68f1f4d6', name: 'tdpm-workflow-improver', color: 'GRAY' },
+  { id: 'e8f370d9', name: '7sea', color: 'GRAY' },
+  { id: '30ecd1b3', name: 'system-design-reviewer', color: 'GRAY' },
 ];
 
 export const consoleStoryOptionsFixture: ConsoleFieldOption[] = [
-	{ id: "28415d6c", name: "regular / workflow improvement", color: "GRAY" },
-	{ id: "1491051e", name: "TDPM Console port", color: "BLUE" },
-	{ id: "e35b3da2", name: "regular / WORKFLOW BLOCKER", color: "RED" },
-	{
-		id: "d7cdcb61",
-		name: "regular / regular payment invoice tax",
-		color: "YELLOW",
-	},
-	{
-		id: "f7cd5cbc",
-		name: "Publish product documentation site",
-		color: "GREEN",
-	},
-	{ id: "564803ee", name: "Move to Okinawa", color: "PURPLE" },
+  { id: '28415d6c', name: 'regular / workflow improvement', color: 'GRAY' },
+  { id: '1491051e', name: 'TDPM Console port', color: 'BLUE' },
+  { id: 'e35b3da2', name: 'regular / WORKFLOW BLOCKER', color: 'RED' },
+  {
+    id: 'd7cdcb61',
+    name: 'regular / regular payment invoice tax',
+    color: 'YELLOW',
+  },
+  {
+    id: 'f7cd5cbc',
+    name: 'Publish product documentation site',
+    color: 'GREEN',
+  },
+  { id: '564803ee', name: 'Move to Okinawa', color: 'PURPLE' },
 ];
 
 export const consoleStoryColorsFixture: ConsoleStoryColorSource = {
-	"TDPM Console port": { color: "BLUE" },
-	"regular / workflow improvement": { color: "GRAY" },
-	"Publish product documentation site": { color: "GREEN" },
-	"Move to Okinawa": { color: "PURPLE" },
+  'TDPM Console port': { color: 'BLUE' },
+  'regular / workflow improvement': { color: 'GRAY' },
+  'Publish product documentation site': { color: 'GREEN' },
+  'Move to Okinawa': { color: 'PURPLE' },
 };
 
 export const consoleListItemsFixture: ConsoleListItem[] = [
-	{
-		number: 851,
-		title: "Add serveConsole subcommand under entry-points",
-		url: "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851",
-		repo: "HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		nameWithOwner:
-			"HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		projectItemId: "PVTI_lADOABCD1234zgABCD01",
-		itemId: "PVTI_lADOABCD1234zgABCD01",
-		isPr: true,
-		relatedOpenPullRequestUrls: [],
-		story: "TDPM Console port",
-		status: "Awaiting Quality Check",
-		agent: null,
-		nextActionDate: null,
-		nextActionHour: null,
-		dependedIssueUrls: [
-			"https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845",
-		],
-		labels: ["claude"],
-		createdAt: "2026-06-17T02:14:33.000Z",
-	},
-	{
-		number: 853,
-		title:
-			"Add server-side console API handlers for read and operation endpoints",
-		url: "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/853",
-		repo: "HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		nameWithOwner:
-			"HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		projectItemId: "PVTI_lADOABCD1234zgABCD02",
-		itemId: "PVTI_lADOABCD1234zgABCD02",
-		isPr: true,
-		relatedOpenPullRequestUrls: [],
-		story: "TDPM Console port",
-		status: "Preparation",
-		agent: null,
-		nextActionDate: null,
-		nextActionHour: null,
-		dependedIssueUrls: [],
-		labels: ["claude"],
-		createdAt: "2026-06-17T05:48:09.000Z",
-	},
-	{
-		number: 845,
-		title: "Scaffold React console UI under entry-points with build bundling",
-		url: "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845",
-		repo: "HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		nameWithOwner:
-			"HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		projectItemId: "PVTI_lADOABCD1234zgABCD03",
-		itemId: "PVTI_lADOABCD1234zgABCD03",
-		isPr: false,
-		relatedOpenPullRequestUrls: [],
-		story: "TDPM Console port",
-		status: "Todo by human",
-		agent: null,
-		nextActionDate: "2026-06-20T07:00:00.000Z",
-		nextActionHour: 9,
-		dependedIssueUrls: [],
-		labels: [],
-		createdAt: "2026-06-16T22:01:55.000Z",
-	},
-	{
-		number: 778,
-		title: "Add Sonnet to Opus weekly-limit fallback routing per token",
-		url: "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/778",
-		repo: "HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		nameWithOwner:
-			"HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		projectItemId: "PVTI_lADOABCD1234zgABCD04",
-		itemId: "PVTI_lADOABCD1234zgABCD04",
-		isPr: false,
-		relatedOpenPullRequestUrls: [],
-		story: "regular / workflow improvement",
-		status: null,
-		agent: null,
-		nextActionDate: null,
-		nextActionHour: 14,
-		dependedIssueUrls: [],
-		labels: [],
-		createdAt: "2026-06-12T23:01:55.000Z",
-	},
-	{
-		number: 692,
-		title: "Publish the generated documentation site to GitHub Pages",
-		url: "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692",
-		repo: "HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		nameWithOwner:
-			"HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		projectItemId: "PVTI_lADOABCD1234zgABCD05",
-		itemId: "PVTI_lADOABCD1234zgABCD05",
-		isPr: false,
-		relatedOpenPullRequestUrls: [],
-		story: "Publish product documentation site",
-		status: "Icebox",
-		agent: null,
-		nextActionDate: null,
-		nextActionHour: null,
-		dependedIssueUrls: [],
-		labels: ["documentation"],
-		createdAt: "2026-06-10T11:42:00.000Z",
-	},
-	{
-		number: 860,
-		title: "Display agent field next to status in TDPM console items",
-		url: "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/860",
-		repo: "HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		nameWithOwner:
-			"HiromiShikata/npm-cli-github-issue-tower-defence-management",
-		projectItemId: "PVTI_lADOABCD1234zgABCD06",
-		itemId: "PVTI_lADOABCD1234zgABCD06",
-		isPr: false,
-		relatedOpenPullRequestUrls: [],
-		story: "TDPM Console port",
-		status: "Preparation",
-		agent: "developer",
-		nextActionDate: null,
-		nextActionHour: null,
-		dependedIssueUrls: [],
-		labels: [],
-		createdAt: "2026-06-18T09:11:00.000Z",
-	},
+  {
+    number: 851,
+    title: 'Add serveConsole subcommand under entry-points',
+    url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851',
+    repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    nameWithOwner:
+      'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    projectItemId: 'PVTI_lADOABCD1234zgABCD01',
+    itemId: 'PVTI_lADOABCD1234zgABCD01',
+    isPr: true,
+    relatedOpenPullRequestUrls: [],
+    story: 'TDPM Console port',
+    status: 'Awaiting Quality Check',
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [
+      'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845',
+    ],
+    labels: ['claude'],
+    createdAt: '2026-06-17T02:14:33.000Z',
+  },
+  {
+    number: 853,
+    title:
+      'Add server-side console API handlers for read and operation endpoints',
+    url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/853',
+    repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    nameWithOwner:
+      'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    projectItemId: 'PVTI_lADOABCD1234zgABCD02',
+    itemId: 'PVTI_lADOABCD1234zgABCD02',
+    isPr: true,
+    relatedOpenPullRequestUrls: [],
+    story: 'TDPM Console port',
+    status: 'Preparation',
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: ['claude'],
+    createdAt: '2026-06-17T05:48:09.000Z',
+  },
+  {
+    number: 845,
+    title: 'Scaffold React console UI under entry-points with build bundling',
+    url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845',
+    repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    nameWithOwner:
+      'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    projectItemId: 'PVTI_lADOABCD1234zgABCD03',
+    itemId: 'PVTI_lADOABCD1234zgABCD03',
+    isPr: false,
+    relatedOpenPullRequestUrls: [],
+    story: 'TDPM Console port',
+    status: 'Todo by human',
+    agent: null,
+    nextActionDate: '2026-06-20T07:00:00.000Z',
+    nextActionHour: 9,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: '2026-06-16T22:01:55.000Z',
+  },
+  {
+    number: 778,
+    title: 'Add Sonnet to Opus weekly-limit fallback routing per token',
+    url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/778',
+    repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    nameWithOwner:
+      'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    projectItemId: 'PVTI_lADOABCD1234zgABCD04',
+    itemId: 'PVTI_lADOABCD1234zgABCD04',
+    isPr: false,
+    relatedOpenPullRequestUrls: [],
+    story: 'regular / workflow improvement',
+    status: null,
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: 14,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: '2026-06-12T23:01:55.000Z',
+  },
+  {
+    number: 692,
+    title: 'Publish the generated documentation site to GitHub Pages',
+    url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692',
+    repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    nameWithOwner:
+      'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    projectItemId: 'PVTI_lADOABCD1234zgABCD05',
+    itemId: 'PVTI_lADOABCD1234zgABCD05',
+    isPr: false,
+    relatedOpenPullRequestUrls: [],
+    story: 'Publish product documentation site',
+    status: 'Icebox',
+    agent: null,
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: ['documentation'],
+    createdAt: '2026-06-10T11:42:00.000Z',
+  },
+  {
+    number: 860,
+    title: 'Display agent field next to status in TDPM console items',
+    url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/860',
+    repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    nameWithOwner:
+      'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+    projectItemId: 'PVTI_lADOABCD1234zgABCD06',
+    itemId: 'PVTI_lADOABCD1234zgABCD06',
+    isPr: false,
+    relatedOpenPullRequestUrls: [],
+    story: 'TDPM Console port',
+    status: 'Preparation',
+    agent: 'developer',
+    nextActionDate: null,
+    nextActionHour: null,
+    dependedIssueUrls: [],
+    labels: [],
+    createdAt: '2026-06-18T09:11:00.000Z',
+  },
 ];
 
 export const consoleMarkdownBodyFixture = `## Summary
@@ -214,30 +214,30 @@ External references such as https://example.com/spec stay as plain links.
 `;
 
 export const consoleReferenceStatesFixture: Record<string, ConsoleIssueState> =
-	{
-		"https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851":
-			{
-				state: "closed",
-				merged: true,
-				isPullRequest: true,
-				title: "Add serveConsole subcommand under entry-points",
-			},
-		"https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845":
-			{
-				state: "open",
-				merged: false,
-				isPullRequest: false,
-				title:
-					"Scaffold React console UI under entry-points with build bundling",
-			},
-		"https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692":
-			{
-				state: "closed",
-				merged: false,
-				isPullRequest: false,
-				title: "Publish the generated documentation site to GitHub Pages",
-			},
-	};
+  {
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/851':
+      {
+        state: 'closed',
+        merged: true,
+        isPullRequest: true,
+        title: 'Add serveConsole subcommand under entry-points',
+      },
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845':
+      {
+        state: 'open',
+        merged: false,
+        isPullRequest: false,
+        title:
+          'Scaffold React console UI under entry-points with build bundling',
+      },
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/692':
+      {
+        state: 'closed',
+        merged: false,
+        isPullRequest: false,
+        title: 'Publish the generated documentation site to GitHub Pages',
+      },
+  };
 
 export const consoleMarkdownImageBodyFixture = `## Screenshot
 
@@ -309,33 +309,33 @@ export const consoleMermaidCodeFixture = `sequenceDiagram
   ConsoleServer-->>Browser: { body }`;
 
 export const consoleCommentsFixture: ConsoleComment[] = [
-	{
-		author: "HiromiShikata",
-		body: "Please split the token validation into its own tested function.",
-		createdAt: "2026-06-17T06:12:40.000Z",
-		url: "https://github.com/owner/repo/issues/1#issuecomment-100001",
-	},
-	{
-		author: "github-actions",
-		body: "All required checks have passed on this pull request.",
-		createdAt: "2026-06-17T07:48:11.000Z",
-		url: "https://github.com/owner/repo/issues/1#issuecomment-100002",
-	},
-	{
-		author: "HiromiShikata",
-		body: "Looks good now. Approving once the rebase is green.",
-		createdAt: "2026-06-17T09:03:27.000Z",
-		url: null,
-	},
+  {
+    author: 'HiromiShikata',
+    body: 'Please split the token validation into its own tested function.',
+    createdAt: '2026-06-17T06:12:40.000Z',
+    url: 'https://github.com/owner/repo/issues/1#issuecomment-100001',
+  },
+  {
+    author: 'github-actions',
+    body: 'All required checks have passed on this pull request.',
+    createdAt: '2026-06-17T07:48:11.000Z',
+    url: 'https://github.com/owner/repo/issues/1#issuecomment-100002',
+  },
+  {
+    author: 'HiromiShikata',
+    body: 'Looks good now. Approving once the rebase is green.',
+    createdAt: '2026-06-17T09:03:27.000Z',
+    url: null,
+  },
 ];
 
 export const consoleChangedFilesFixture: ConsoleChangedFile[] = [
-	{
-		path: "src/adapter/entry-points/console/consoleServer.ts",
-		additions: 312,
-		deletions: 4,
-		status: "added",
-		patch: `@@ -54,7 +54,12 @@ export const serveConsole = (
+  {
+    path: 'src/adapter/entry-points/console/consoleServer.ts',
+    additions: 312,
+    deletions: 4,
+    status: 'added',
+    patch: `@@ -54,7 +54,12 @@ export const serveConsole = (
            loose-matching: true
        - name: Install dependencies
          run: |
@@ -344,78 +344,78 @@ export const consoleChangedFilesFixture: ConsoleChangedFile[] = [
 +          npm run build:console-ui
        - name: Start the token-protected console server
          run: node bin/serveConsole.js --port 9981`,
-		rawUrl:
-			"https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/0123456789abcdef0123456789abcdef01234567/src/adapter/entry-points/console/consoleServer.ts",
-	},
-	{
-		path: "src/adapter/entry-points/console/consoleServer.test.ts",
-		additions: 268,
-		deletions: 0,
-		status: "added",
-		patch: `@@ -0,0 +1,4 @@
+    rawUrl:
+      'https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/0123456789abcdef0123456789abcdef01234567/src/adapter/entry-points/console/consoleServer.ts',
+  },
+  {
+    path: 'src/adapter/entry-points/console/consoleServer.test.ts',
+    additions: 268,
+    deletions: 0,
+    status: 'added',
+    patch: `@@ -0,0 +1,4 @@
 +describe('serveConsole', () => {
 +  it('rejects a request without a valid token', async () => {
 +  });
 +});`,
-		rawUrl:
-			"https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/0123456789abcdef0123456789abcdef01234567/src/adapter/entry-points/console/consoleServer.test.ts",
-	},
-	{
-		path: "package.json",
-		additions: 6,
-		deletions: 1,
-		status: "modified",
-		patch: `@@ -12,7 +12,7 @@
+    rawUrl:
+      'https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/0123456789abcdef0123456789abcdef01234567/src/adapter/entry-points/console/consoleServer.test.ts',
+  },
+  {
+    path: 'package.json',
+    additions: 6,
+    deletions: 1,
+    status: 'modified',
+    patch: `@@ -12,7 +12,7 @@
    "scripts": {
 -    "build": "tsc -p ./tsconfig.build.json"
 +    "build": "tsc -p ./tsconfig.build.json && npm run build:console-ui"
    },`,
-		rawUrl:
-			"https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/0123456789abcdef0123456789abcdef01234567/package.json",
-	},
+    rawUrl:
+      'https://raw.githubusercontent.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/0123456789abcdef0123456789abcdef01234567/package.json',
+  },
 ];
 
 export const consoleCommitsFixture: ConsoleCommit[] = [
-	{
-		sha: "4f9c2a1b6d8e0f3a7c5b9d1e2f4a6c8b0d2e4f6a",
-		message: "feat(console): add serveConsole subcommand and HTTP server",
-		author: "HiromiShikata",
-		authoredAt: "2026-06-17T02:10:11.000Z",
-	},
-	{
-		sha: "8b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d",
-		message: "test(console): cover token validation and data routing",
-		author: "HiromiShikata",
-		authoredAt: "2026-06-17T05:41:52.000Z",
-	},
+  {
+    sha: '4f9c2a1b6d8e0f3a7c5b9d1e2f4a6c8b0d2e4f6a',
+    message: 'feat(console): add serveConsole subcommand and HTTP server',
+    author: 'HiromiShikata',
+    authoredAt: '2026-06-17T02:10:11.000Z',
+  },
+  {
+    sha: '8b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d',
+    message: 'test(console): cover token validation and data routing',
+    author: 'HiromiShikata',
+    authoredAt: '2026-06-17T05:41:52.000Z',
+  },
 ];
 
 export const consoleRelatedPullRequestsFixture: ConsoleRelatedPullRequest[] = [
-	{
-		url: "https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/849",
-		branchName: "feature/849-react-console-scaffold",
-		createdAt: "2026-06-16T22:30:00.000Z",
-		isDraft: false,
-		isConflicted: false,
-		mergeableStatus: "MERGEABLE",
-		isPassedAllCiJob: true,
-		isCiStateSuccess: true,
-		isResolvedAllReviewComments: true,
-		isBranchOutOfDate: false,
-		missingRequiredCheckNames: [],
-		summary: {
-			title: "Scaffold React console UI under entry-points with build bundling",
-			body: "Adds the React + Vite + Tailwind scaffold and the committed `ui-dist` single artifact.",
-			additions: 1184,
-			deletions: 12,
-			changedFiles: 27,
-		},
-	},
+  {
+    url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/849',
+    branchName: 'feature/849-react-console-scaffold',
+    createdAt: '2026-06-16T22:30:00.000Z',
+    isDraft: false,
+    isConflicted: false,
+    mergeableStatus: 'MERGEABLE',
+    isPassedAllCiJob: true,
+    isCiStateSuccess: true,
+    isResolvedAllReviewComments: true,
+    isBranchOutOfDate: false,
+    missingRequiredCheckNames: [],
+    summary: {
+      title: 'Scaffold React console UI under entry-points with build bundling',
+      body: 'Adds the React + Vite + Tailwind scaffold and the committed `ui-dist` single artifact.',
+      additions: 1184,
+      deletions: 12,
+      changedFiles: 27,
+    },
+  },
 ];
 
 export const consoleIssueStateFixture: ConsoleIssueState = {
-	state: "open",
-	merged: false,
-	isPullRequest: true,
-	title: "Add serveConsole subcommand under entry-points",
+  state: 'open',
+  merged: false,
+  isPullRequest: true,
+  title: 'Add serveConsole subcommand under entry-points',
 };

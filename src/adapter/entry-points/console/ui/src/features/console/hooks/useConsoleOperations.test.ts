@@ -258,6 +258,7 @@ describe('useConsoleOperations', () => {
       author: 'HiromiShikata',
       body: 'Thanks for the parity fix.',
       createdAt: '2026-06-18T03:21:00.000Z',
+      url: null,
     });
   });
 

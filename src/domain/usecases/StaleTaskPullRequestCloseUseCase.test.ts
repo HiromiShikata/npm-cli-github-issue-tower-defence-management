@@ -183,7 +183,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     const callOrder: string[] = [];
     mockIssueRepository.createCommentByUrl.mockImplementation(async () => {
       callOrder.push('comment');
-      return { author: '', body: '', createdAt: new Date() };
+      return { author: '', body: '', createdAt: new Date(), url: null };
     });
     mockIssueRepository.closePullRequest.mockImplementation(async () => {
       callOrder.push('close');

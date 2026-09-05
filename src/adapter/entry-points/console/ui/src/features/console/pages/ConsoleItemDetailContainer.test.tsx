@@ -79,6 +79,7 @@ const buildOperations = (): ConsoleOperationsApi => ({
     author: 'HiromiShikata',
     body: 'comment body',
     createdAt: '2026-06-19T11:58:00.000Z',
+    url: null,
   })),
   uploadAttachment: jest.fn(async () => ''),
   addInlineReviewComment: jest.fn(async () => {}),
@@ -161,6 +162,7 @@ describe('ConsoleItemDetailContainer', () => {
       author: 'HiromiShikata',
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
+      url: null,
     }));
     const { container, getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
@@ -202,6 +204,7 @@ describe('ConsoleItemDetailContainer', () => {
       author: 'HiromiShikata',
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
+      url: null,
     }));
     const { container, getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer
@@ -249,6 +252,7 @@ describe('ConsoleItemDetailContainer', () => {
       author: 'HiromiShikata',
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
+      url: null,
     }));
     const { container, getByPlaceholderText, getByText } = render(
       <ConsoleItemDetailContainer

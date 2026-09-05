@@ -1,8 +1,8 @@
 export const buildWorkflowIncidentReportUrl = (
-	workflowImprovementIssueUrl: string,
-	referenceUrl: string,
+  workflowImprovementIssueUrl: string,
+  referenceUrl: string,
 ): string => {
-	const body = `Related: ${referenceUrl}`;
-	const separator = workflowImprovementIssueUrl.includes("?") ? "&" : "?";
-	return `${workflowImprovementIssueUrl}${separator}body=${encodeURIComponent(body)}`;
+  const body = `Related: ${referenceUrl}`;
+  const separator = workflowImprovementIssueUrl.includes('?') ? '&' : '?';
+  return `${workflowImprovementIssueUrl}${separator}body=${encodeURIComponent(body)}`;
 };
