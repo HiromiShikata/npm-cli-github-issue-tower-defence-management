@@ -60,7 +60,14 @@ export class RestIssueRepository
         }>();
     } catch (e) {
       if (e instanceof HTTPError) {
-        const bodyText = await e.response.clone().text();
+        let bodyText = '';
+        try {
+          bodyText = await e.response.clone().text();
+        } catch {
+          // ky 2.x consumes the response body into error.data before throwing,
+          // making clone() fail; fall back to headers-only detection
+          // (x-ratelimit-remaining: 0 is sufficient to identify rate limits)
+        }
         if (
           hasRateLimitSignals(e.response.status, e.response.headers, bodyText)
         ) {

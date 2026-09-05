@@ -214,6 +214,44 @@ describe('RestIssueRepository', () => {
         ),
       ).rejects.toBeInstanceOf(MockHTTPError);
     });
+
+    it('throws GitHubRateLimitError even when clone() throws (body already consumed by ky 2.x)', async () => {
+      const resetEpoch = 1725547200;
+      const mockHeaders = new Headers({
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': String(resetEpoch),
+      });
+      mockPost.mockImplementation(() => ({
+        json: jest.fn().mockRejectedValue(
+          new MockHTTPError({
+            status: 403,
+            headers: mockHeaders,
+            clone: () => ({
+              text: async () => {
+                throw new TypeError(
+                  'Response.clone: Body has already been consumed.',
+                );
+              },
+            }),
+          }),
+        ),
+      }));
+
+      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
+      let thrownError: unknown;
+      try {
+        await restIssueRepository.createComment(
+          'https://github.com/HiromiShikata/test-repository/issues/40',
+          'test comment',
+        );
+      } catch (e) {
+        thrownError = e;
+      }
+      expect(thrownError).toBeInstanceOf(GitHubRateLimitError);
+      expect(thrownError).toMatchObject({
+        rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
+      });
+    });
   });
   describe('createNewIssue', () => {
     it('should create a new issue', async () => {
