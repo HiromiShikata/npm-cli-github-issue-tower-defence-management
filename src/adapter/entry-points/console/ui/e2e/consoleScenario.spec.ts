@@ -925,7 +925,9 @@ test('shows issue number after resolved title in reference links inside item bod
   ).click();
 
   // Wait for comments to render (they collapse the description), then expand description
-  await expect(page.locator('.console-comment')).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('.console-comment')).toBeVisible({
+    timeout: 10000,
+  });
   const descriptionToggle = page.locator('.console-panel-toggle', {
     hasText: 'Description',
   });
