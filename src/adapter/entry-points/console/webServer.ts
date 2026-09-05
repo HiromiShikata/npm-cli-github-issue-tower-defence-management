@@ -58,6 +58,7 @@ import {
   OWNER_CALL_FILE_DIRECTORY_NAME,
   OWNER_CALL_FILE_EXTENSION,
 } from '../../../domain/usecases/intmux/OwnerCallFile';
+import { FileSystemConsoleTabsRepository } from '../handlers/FileSystemConsoleTabsRepository';
 
 export const DEFAULT_WEB_PORT = 9980;
 
@@ -598,15 +599,25 @@ const handleOperationApi = async (
   }
   const resolveIssueRepository =
     options.resolveIssueRepository ?? ((): IssueRepository => issueRepository);
+  const consoleDataOutputDir = options.consoleDataOutputDir;
   const context: ConsoleOperationContext = {
     resolveIssueRepository,
     resolveProject,
     isPjcodeConfigured,
-    consoleDataOutputDir: options.consoleDataOutputDir,
+    consoleDataOutputDir,
     issueAttachmentRepository: options.issueAttachmentRepository ?? null,
     resolveProjectRepository: options.resolveProjectRepository ?? null,
     invalidateProject: options.invalidateProject ?? null,
     updateProjectCacheEntry: options.updateProjectCacheEntry ?? null,
+    patchItemIntoQueuedTab:
+      consoleDataOutputDir !== null
+        ? (pjcode, projectItemId, canonicalStatusName) => {
+            new FileSystemConsoleTabsRepository(
+              consoleDataOutputDir,
+              pjcode,
+            ).moveItemToQueuedTab(projectItemId, canonicalStatusName);
+          }
+        : null,
   };
   const githubToken =
     options.resolveGithubToken != null ? options.resolveGithubToken('') : null;

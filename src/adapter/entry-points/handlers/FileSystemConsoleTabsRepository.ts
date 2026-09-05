@@ -63,6 +63,51 @@ export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
     private readonly pjcode: string,
   ) {}
 
+  moveItemToQueuedTab(
+    projectItemId: string,
+    canonicalStatusName: string,
+  ): void {
+    let foundItem: ConsoleListItem | null = null;
+
+    for (const tabName of CONSOLE_LIST_TAB_NAMES) {
+      const filePath = path.join(
+        this.consoleDataOutputDir,
+        this.pjcode,
+        tabName,
+        'list.json',
+      );
+      const existing = readTabListJson(filePath);
+      if (existing === null) {
+        continue;
+      }
+
+      const rawItems = existing.items;
+      const items: unknown[] = Array.isArray(rawItems) ? rawItems : [];
+      for (const item of items) {
+        if (isRecord(item) && item.projectItemId === projectItemId) {
+          foundItem = {
+            ...(item as ConsoleListItem),
+            status: canonicalStatusName,
+          };
+          break;
+        }
+      }
+      if (foundItem !== null) {
+        break;
+      }
+    }
+
+    if (foundItem === null) {
+      return;
+    }
+
+    this.patchIssueTabTransition({
+      projectItemId,
+      item: foundItem,
+      targetTabName: 'queued',
+    });
+  }
+
   patchIssueTabTransition(params: {
     projectItemId: string;
     item: ConsoleListItem;

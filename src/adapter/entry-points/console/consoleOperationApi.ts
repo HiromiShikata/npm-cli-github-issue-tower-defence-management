@@ -64,6 +64,13 @@ export type ConsoleOperationContext = {
   invalidateProject: ((pjcode: string) => void) | null;
   updateProjectCacheEntry:
     ((pjcode: string, updatedProject: Project) => void) | null;
+  patchItemIntoQueuedTab:
+    | ((
+        pjcode: string,
+        projectItemId: string,
+        canonicalStatusName: string,
+      ) => void)
+    | null;
 };
 
 export type ConsoleOperationResponse = {
@@ -541,6 +548,13 @@ export const handleTriage = async (
       return failure;
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
+    const lowerStatus = statusName.toLowerCase();
+    if (
+      lowerStatus === 'awaiting workspace' ||
+      lowerStatus === 'preparation'
+    ) {
+      context.patchItemIntoQueuedTab?.(pjcode, projectItemId, statusName);
+    }
     return ok();
   }
 
