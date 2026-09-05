@@ -25,11 +25,12 @@ describe('mintTokenFromKeyPath', () => {
       '/nonexistent/path/missing-private-key.pem',
       'HiromiShikata',
     );
-    expect(errorSpy).toHaveBeenCalledTimes(1);
-    expect(errorSpy.mock.calls[0][0]).toContain(
-      '[githubAppTokenMinter] failed to mint token from /nonexistent/path/missing-private-key.pem:',
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '[githubAppTokenMinter] failed to mint token from /nonexistent/path/missing-private-key.pem:',
+      ),
+      expect.objectContaining({ code: 'ENOENT' }),
     );
-    expect(errorSpy.mock.calls[0][1]).toHaveProperty('code', 'ENOENT');
   });
 });
 
