@@ -368,7 +368,11 @@ describe('formatProjectRowLine', () => {
 
   it('renders placeholder cells with a blank dot for an absent project file but shows actual close counts', () => {
     expect(
-      formatProjectRowLine({ code: 'in', row: null, closeEventCounts: noCloseEvents }),
+      formatProjectRowLine({
+        code: 'in',
+        row: null,
+        closeEventCounts: noCloseEvents,
+      }),
     ).toBe('  in -- -- -- -- -- -- -- -- --  0  0  0');
   });
 
@@ -404,22 +408,46 @@ describe('formatProjectRowLine', () => {
 
   it('applies the four level severity dot rules in descending order', () => {
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ blocker: 2 }), closeEventCounts: noCloseEvents }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ blocker: 2 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🔴');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ blocker: 1 }), closeEventCounts: noCloseEvents }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ blocker: 1 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟣');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ qc: 15 }), closeEventCounts: noCloseEvents }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ qc: 15 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟠');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ fail: 5 }), closeEventCounts: noCloseEvents }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ fail: 5 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟠');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ qc: 10 }), closeEventCounts: noCloseEvents }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ qc: 10 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟡');
     expect(
-      formatProjectRowLine({ code: 'ac', row: projectRow({ fail: 3 }), closeEventCounts: noCloseEvents }),
+      formatProjectRowLine({
+        code: 'ac',
+        row: projectRow({ fail: 3 }),
+        closeEventCounts: noCloseEvents,
+      }),
     ).toContain('🟡');
     expect(
       formatProjectRowLine({
@@ -532,7 +560,11 @@ describe('ComposeDashboardUseCase', () => {
         closeEventCounts: noCloseEvents,
       },
       { code: 'in', row: null, closeEventCounts: noCloseEvents },
-      { code: 'um', row: projectRow({ blocker: 1 }), closeEventCounts: noCloseEvents },
+      {
+        code: 'um',
+        row: projectRow({ blocker: 1 }),
+        closeEventCounts: noCloseEvents,
+      },
     ],
     tokens: [
       tokenStatus({
@@ -792,7 +824,13 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     sevenDayWindowAggregate: ComposeDashboardInput['sevenDayWindowAggregate'],
   ): ComposeDashboardInput => ({
     machineStatus: null,
-    projects: [{ code: 'ac', row: projectRow({ todo: 1 }), closeEventCounts: noCloseEvents }],
+    projects: [
+      {
+        code: 'ac',
+        row: projectRow({ todo: 1 }),
+        closeEventCounts: noCloseEvents,
+      },
+    ],
     tokens: [
       tokenStatus({ name: 'alice', sevenDayUtilizationPercent: 60 }),
       tokenStatus({ name: 'bob', sevenDayUtilizationPercent: 66 }),

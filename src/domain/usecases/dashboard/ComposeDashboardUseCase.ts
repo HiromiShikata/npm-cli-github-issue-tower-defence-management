@@ -270,7 +270,13 @@ export const formatProjectRowLine = (
     const cell = capTwoDigits(project.closeEventCounts[column.key]);
     return ' ' + padStart(cell, CLOSE_COUNT_COLUMN_WIDTH);
   }).join('');
-  return mark + padEnd(project.code, 2, ' ') + cells + storyColorCells + closeCountCells;
+  return (
+    mark +
+    padEnd(project.code, 2, ' ') +
+    cells +
+    storyColorCells +
+    closeCountCells
+  );
 };
 
 const formatUtilization = (percent: number | null): string =>
