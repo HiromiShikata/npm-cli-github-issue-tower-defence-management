@@ -2175,9 +2175,8 @@ mysteryKey: 'value'
     });
 
     it('exits cleanly without throwing when useCase.run rejects with GitHubRateLimitError', async () => {
-      const { GitHubRateLimitError } = await import(
-        '../../repositories/issue/githubRateLimitRetry'
-      );
+      const { GitHubRateLimitError } =
+        await import('../../repositories/issue/githubRateLimitRetry');
       const mockRun = jest
         .fn()
         .mockRejectedValue(
