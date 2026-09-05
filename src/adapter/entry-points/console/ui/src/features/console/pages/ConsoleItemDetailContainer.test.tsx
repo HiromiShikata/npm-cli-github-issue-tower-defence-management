@@ -490,6 +490,7 @@ describe('ConsoleItemDetailContainer', () => {
               author: 'HiromiShikata',
               body: 'comment body',
               createdAt: '2026-06-19T11:58:00.000Z',
+              url: null,
             });
         }),
     );
