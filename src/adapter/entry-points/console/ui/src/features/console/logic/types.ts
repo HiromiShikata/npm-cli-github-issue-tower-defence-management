@@ -38,6 +38,8 @@ export type ConsoleStatusTab = {
   pjcode: string;
   generatedAt: string;
   statusOptions: ConsoleFieldOption[];
+  agentOptions: ConsoleFieldOption[];
+  storyOptions: ConsoleFieldOption[];
   storyOrder: string[];
   storyColors: Record<string, { color: ConsoleColor }>;
   items: ConsoleListItem[];
@@ -48,6 +50,7 @@ export type ConsoleQueuedTab = {
   generatedAt: string;
   statusOptions: ConsoleFieldOption[];
   agentOptions: ConsoleFieldOption[];
+  storyOptions: ConsoleFieldOption[];
   storyOrder: string[];
   storyColors: Record<string, { color: ConsoleColor }>;
   items: ConsoleListItem[];

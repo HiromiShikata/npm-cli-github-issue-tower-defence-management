@@ -368,6 +368,7 @@ export const ConsolePage = () => {
   const storyColors = activeSnapshot?.storyColors ?? {};
   const statusOptions = activeSnapshot?.statusOptions ?? [];
   const agentOptions = activeSnapshot?.agentOptions ?? [];
+  const storyOptions = activeSnapshot?.storyOptions ?? [];
   const generatedAt = activeSnapshot?.generatedAt ?? null;
   const fromCache = activeSnapshot?.fromCache ?? false;
 
@@ -905,6 +906,8 @@ export const ConsolePage = () => {
             operations={operations}
             pjcode={pjcode}
             statusOptions={statusOptions}
+            storyOptions={storyOptions}
+            agentOptions={agentOptions}
             storyColors={storyColors}
             storyName={storyNameForSelected}
             overlayStatus={overlayStatusForSelected}

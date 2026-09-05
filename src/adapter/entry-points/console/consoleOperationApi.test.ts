@@ -1306,6 +1306,64 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('rejects set_agent without an agentOptionId', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'set_agent',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_h',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('rejects set_agent when the project has no agent field', async () => {
+      const contextWithoutAgent = contextForProject({
+        ...project,
+        agent: null,
+      });
+      const response = await handleTriage(contextWithoutAgent, {
+        pjcode: 'acme',
+        action: 'set_agent',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_h',
+        agentOptionId: 'agent_opt_1',
+      });
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+
+    it('sets the agent using the request issue url and project', async () => {
+      const agentField = {
+        name: 'Agent',
+        fieldId: 'agentField',
+        options: [
+          {
+            id: 'agent_opt_1',
+            name: 'developer',
+            color: 'GRAY' as const,
+            description: '',
+          },
+        ],
+      };
+      const contextWithAgent = contextForProject({
+        ...project,
+        agent: agentField,
+      });
+      const response = await handleTriage(contextWithAgent, {
+        pjcode: 'acme',
+        action: 'set_agent',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_h',
+        agentOptionId: 'agent_opt_1',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+        expect.objectContaining({ id: 'PVT_1', agent: agentField }),
+        'agent_opt_1',
+      );
+    });
+
     it('calls patchItemIntoQueuedTab after set_status to Awaiting Workspace', async () => {
       const patchItemIntoQueuedTab = jest.fn();
       const awContext: ConsoleOperationContext = {

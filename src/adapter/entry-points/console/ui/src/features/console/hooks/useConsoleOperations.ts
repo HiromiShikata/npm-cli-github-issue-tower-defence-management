@@ -51,6 +51,10 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     option: ConsoleFieldOption,
   ) => Promise<void>;
+  setAgent: (
+    item: ConsoleListItem,
+    option: ConsoleFieldOption,
+  ) => Promise<void>;
   setStatus: (
     item: ConsoleListItem,
     option: ConsoleFieldOption,
@@ -143,8 +147,13 @@ export const buildTriageRequest = (
     | ConsoleNextActionDateAction
     | ConsoleCloseAction
     | 'set_story'
+    | 'set_agent'
     | 'set_status',
-  extra?: { statusName?: string; storyOptionId?: string },
+  extra?: {
+    statusName?: string;
+    storyOptionId?: string;
+    agentOptionId?: string;
+  },
 ): ConsoleTriageRequest => ({
   pjcode,
   action,
@@ -230,6 +239,25 @@ export const useConsoleOperations = (
       invalidateItemContent(item);
     },
     [pjcode, markDone, invalidateItemContent],
+  );
+
+  const setAgent = useCallback(
+    async (item: ConsoleListItem, option: ConsoleFieldOption) => {
+      if (pjcode === null) {
+        throw missingPjcodeError();
+      }
+      const request: ConsoleTriageRequest = {
+        pjcode,
+        action: 'set_agent',
+        issueUrl: item.url,
+        projectItemId: item.projectItemId,
+        agentOptionId: option.id,
+      };
+      patchOverlay(overlayKeyForItem(item), { done: true }, mode);
+      await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
+      invalidateItemContent(item);
+    },
+    [pjcode, invalidateItemContent, patchOverlay, mode],
   );
 
   const setStory = useCallback(
@@ -432,6 +460,7 @@ export const useConsoleOperations = (
     reviewPullRequest,
     setNextActionDate,
     setStory,
+    setAgent,
     setStatus,
     setInTmuxByHuman,
     closeIssue,

@@ -44,6 +44,7 @@ export type ConsoleOperationHandlers = {
   onReview: (action: ConsoleReviewAction) => void;
   onSetNextActionDate: (action: ConsoleNextActionDateAction) => void;
   onSetStory: (option: ConsoleFieldOption) => void;
+  onSetAgent: (option: ConsoleFieldOption) => void;
   onSetStatus: (option: ConsoleFieldOption) => void;
   onSetInTmuxByHuman: (option: ConsoleFieldOption) => void;
   onClose: (action: ConsoleCloseAction) => void;

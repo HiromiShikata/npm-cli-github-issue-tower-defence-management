@@ -598,6 +598,21 @@ export const handleTriage = async (
     return ok();
   }
 
+  if (action === 'set_agent') {
+    const agentOptionId = body.agentOptionId;
+    if (!isNonEmptyString(agentOptionId)) {
+      return badRequest('agentOptionId is required for set_agent');
+    }
+    if (project.agent === null) {
+      return badRequest('project does not have an agent field');
+    }
+    await context
+      .resolveIssueRepository(issueUrl)
+      .setIssueAgentField(issueUrl, project, agentOptionId);
+    recordDone(context, pjcode, projectItemId);
+    return ok();
+  }
+
   if (
     action === 'snooze_1hour' ||
     action === 'snooze_3hours' ||

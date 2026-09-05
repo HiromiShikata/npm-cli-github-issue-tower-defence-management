@@ -16,6 +16,7 @@ const noopOperationHandlers: ConsoleOperationHandlers = {
   onReview: () => {},
   onSetNextActionDate: () => {},
   onSetStory: () => {},
+  onSetAgent: () => {},
   onSetStatus: () => {},
   onSetInTmuxByHuman: () => {},
   onClose: () => {},
@@ -264,6 +265,10 @@ export const IssueWithRichMarkdownBody: Story = {
         hasPullRequest={false}
         rejectEnabled={false}
         statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={[]}
+        currentAgentName={null}
         handlers={noopOperationHandlers}
       />
     ),

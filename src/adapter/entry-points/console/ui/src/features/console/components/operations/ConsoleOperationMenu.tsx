@@ -7,12 +7,14 @@ import type {
   ConsoleListItem,
   ConsoleTabName,
 } from '../../logic/types';
+import { ConsoleAgentSelectActions } from './ConsoleAgentSelectActions';
 import { ConsoleCloseActions } from './ConsoleCloseActions';
 import { ConsoleDangerousActions } from './ConsoleDangerousActions';
 import { ConsoleNextActionDateActions } from './ConsoleNextActionDateActions';
 import { ConsolePullRequestReviewActions } from './ConsolePullRequestReviewActions';
 import { ConsoleRareActions } from './ConsoleRareActions';
 import { ConsoleStatusActions } from './ConsoleStatusActions';
+import { ConsoleStorySelectActions } from './ConsoleStorySelectActions';
 
 export type ConsoleOperationBarProps = {
   tab: ConsoleTabName;
@@ -20,6 +22,10 @@ export type ConsoleOperationBarProps = {
   hasPullRequest: boolean;
   rejectEnabled: boolean;
   statusOptions: ConsoleFieldOption[];
+  storyOptions: ConsoleFieldOption[];
+  currentStoryName: string | null;
+  agentOptions: ConsoleFieldOption[];
+  currentAgentName: string | null;
   handlers: ConsoleOperationHandlers;
   storyNameForDeletion?: string | null;
 };
@@ -29,6 +35,10 @@ export const ConsoleOperationMenu = ({
   hasPullRequest,
   rejectEnabled,
   statusOptions,
+  storyOptions,
+  currentStoryName,
+  agentOptions,
+  currentAgentName,
   handlers,
   storyNameForDeletion,
 }: ConsoleOperationBarProps) => {
@@ -48,6 +58,16 @@ export const ConsoleOperationMenu = ({
         statusOptions={statusOptions}
         onSetStatus={handlers.onSetStatus}
         onSetInTmuxByHuman={handlers.onSetInTmuxByHuman}
+      />
+      <ConsoleStorySelectActions
+        storyOptions={storyOptions}
+        currentStoryName={currentStoryName}
+        onSetStory={handlers.onSetStory}
+      />
+      <ConsoleAgentSelectActions
+        agentOptions={agentOptions}
+        currentAgentName={currentAgentName}
+        onSetAgent={handlers.onSetAgent}
       />
       <div className="console-op-group-bottom-row">
         <div className="console-op-group-left-pair">

@@ -81,8 +81,13 @@ const buildTriageOfflinePayload = (
     | ConsoleNextActionDateAction
     | ConsoleCloseAction
     | 'set_story'
+    | 'set_agent'
     | 'set_status',
-  extra?: { statusName?: string; storyOptionId?: string },
+  extra?: {
+    statusName?: string;
+    storyOptionId?: string;
+    agentOptionId?: string;
+  },
 ): ConsoleOfflinePayload => ({
   ...itemOfflineBase(item),
   apiPath: TRIAGE_OPERATION_PATH,
@@ -110,6 +115,8 @@ export type ConsoleItemDetailContainerProps = {
   operations: ConsoleOperationsApi;
   pjcode?: string | null;
   statusOptions: ConsoleFieldOption[];
+  storyOptions: ConsoleFieldOption[];
+  agentOptions: ConsoleFieldOption[];
   storyColors: ConsoleStoryColorSource;
   storyName: string | null;
   overlayStatus: ConsoleOverlayStatus | null;
@@ -129,6 +136,8 @@ export const ConsoleItemDetailContainer = ({
   operations,
   pjcode,
   statusOptions,
+  storyOptions,
+  agentOptions,
   storyColors,
   storyName,
   overlayStatus,
@@ -227,6 +236,19 @@ export const ConsoleItemDetailContainer = ({
           pjcode != null
             ? buildTriageOfflinePayload(pjcode, item, 'set_story', {
                 storyOptionId: option.id,
+              })
+            : undefined,
+      });
+    },
+    onSetAgent: (option: ConsoleFieldOption) => {
+      onQueueAction({
+        kind: { type: 'set_agent', optionName: option.name },
+        item,
+        commit: () => operations.setAgent(item, option),
+        offline:
+          pjcode != null
+            ? buildTriageOfflinePayload(pjcode, item, 'set_agent', {
+                agentOptionId: option.id,
               })
             : undefined,
       });
@@ -360,6 +382,10 @@ export const ConsoleItemDetailContainer = ({
           hasPullRequest={hasPullRequest}
           rejectEnabled={pendingReviewComments.length > 0}
           statusOptions={statusOptions}
+          storyOptions={storyOptions}
+          currentStoryName={resolvedStoryName}
+          agentOptions={agentOptions}
+          currentAgentName={item.agent}
           handlers={handlers}
           storyNameForDeletion={storyNameForDeletion}
         />
