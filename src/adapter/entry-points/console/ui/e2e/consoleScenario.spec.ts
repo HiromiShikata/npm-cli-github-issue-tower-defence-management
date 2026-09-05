@@ -1251,6 +1251,8 @@ test('story select in task detail shows current story pre-selected and fires set
     'Auto-advance to the next non-empty console tab when one empties',
   ).click();
 
+  await page.getByTitle('Change agent or story').click();
+
   const storySelect = page.getByRole('combobox', { name: 'Set story' });
   await expect(storySelect).toBeVisible();
   await expect(storySelect).toHaveValue('1491051e');
