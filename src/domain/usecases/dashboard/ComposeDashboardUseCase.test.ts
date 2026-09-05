@@ -795,6 +795,23 @@ describe('ComposeDashboardUseCase seven day window aggregate line', () => {
     expect(lines[aggregateIndex + 2]).toContain('ce');
   });
 
+  it('shows the seven-day aggregate percentage on the same line as the session total', () => {
+    const lines = unwrappedLines(
+      new ComposeDashboardUseCase().run(
+        aggregateInput({
+          usedPercent: 63,
+          includedTokenCount: 2,
+          totalTokenCount: 2,
+        }),
+      ),
+    );
+    const aggregatePart = ' '.repeat(SEVEN_DAY_UTILIZATION_COLUMN_START) + '63';
+    const combined = lines.find((line) => line.startsWith(aggregatePart));
+    expect(combined).toBeDefined();
+    expect(combined?.slice(TOKEN_SESSION_COLUMN_START).trim()).toBe('0 0');
+    expect(lines.filter((line) => line === aggregatePart)).toHaveLength(0);
+  });
+
   const AGGREGATE_LINE_SHAPE = /^ +\d+( \(\d+\))?$/;
 
   it('keeps the blank separator line when the aggregate is absent', () => {
