@@ -876,10 +876,22 @@ describe('consoleOperationApi', () => {
         );
         expect(response.statusCode).toBe(200);
         expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+        expect(
+          issueRepository.updateNextActionHour.mock.calls[0][0],
+        ).toMatchObject({ nextActionHour: { fieldId: 'nahField' } });
         expect(issueRepository.updateNextActionHour.mock.calls[0][2]).toBe(1);
         expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateNextActionDate.mock.calls[0][0]).toBe(
+          'https://github.com/o/r/issues/1',
+        );
+        expect(
+          issueRepository.updateNextActionDate.mock.calls[0][1],
+        ).toMatchObject(projectWithHour);
         expect(issueRepository.updateNextActionDate.mock.calls[0][2]).toEqual(
           new Date('2026-01-02T00:00:00Z'),
+        );
+        expect(issueRepository.updateNextActionDate.mock.calls[0][3]).toBe(
+          'PVTI_3h_wrap',
         );
         expectRecordedAcrossTabs('PVTI_3h_wrap');
       } finally {
@@ -909,10 +921,22 @@ describe('consoleOperationApi', () => {
         );
         expect(response.statusCode).toBe(200);
         expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+        expect(
+          issueRepository.updateNextActionHour.mock.calls[0][0],
+        ).toMatchObject({ nextActionHour: { fieldId: 'nahField' } });
         expect(issueRepository.updateNextActionHour.mock.calls[0][2]).toBe(0);
         expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateNextActionDate.mock.calls[0][0]).toBe(
+          'https://github.com/o/r/issues/1',
+        );
+        expect(
+          issueRepository.updateNextActionDate.mock.calls[0][1],
+        ).toMatchObject(projectWithHour);
         expect(issueRepository.updateNextActionDate.mock.calls[0][2]).toEqual(
           new Date('2026-01-02T00:00:00Z'),
+        );
+        expect(issueRepository.updateNextActionDate.mock.calls[0][3]).toBe(
+          'PVTI_1h_wrap',
         );
         expectRecordedAcrossTabs('PVTI_1h_wrap');
       } finally {
