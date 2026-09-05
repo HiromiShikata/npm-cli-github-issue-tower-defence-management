@@ -237,9 +237,7 @@ describe('FileSystemConsoleTabsRepository.moveItemToQueuedTab', () => {
     fs.writeFileSync(path.join(tabDir, 'list.json'), JSON.stringify(data));
   };
 
-  const isObjectWithItems = (
-    value: unknown,
-  ): value is { items: unknown[] } => {
+  const isObjectWithItems = (value: unknown): value is { items: unknown[] } => {
     if (value === null || typeof value !== 'object' || Array.isArray(value))
       return false;
     if (!('items' in value)) return false;
@@ -252,7 +250,9 @@ describe('FileSystemConsoleTabsRepository.moveItemToQueuedTab', () => {
     return isObjectWithItems(data) ? data.items : [];
   };
 
-  const makeItem = (overrides: Partial<ConsoleListItem> = {}): ConsoleListItem => ({
+  const makeItem = (
+    overrides: Partial<ConsoleListItem> = {},
+  ): ConsoleListItem => ({
     number: 1,
     title: 'Test Issue',
     url: 'https://github.com/user/repo/issues/1',
@@ -306,7 +306,9 @@ describe('FileSystemConsoleTabsRepository.moveItemToQueuedTab', () => {
     writeTabFile('queued', makeStatusTab(PJCODE, []));
     const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
 
-    expect(() => repo.moveItemToQueuedTab('nonexistent', 'Awaiting Workspace')).not.toThrow();
+    expect(() =>
+      repo.moveItemToQueuedTab('nonexistent', 'Awaiting Workspace'),
+    ).not.toThrow();
     expect(readTabItems('queued')).toEqual([]);
   });
 

@@ -758,7 +758,12 @@ describe('consoleOperationApi', () => {
           ...project.status,
           statuses: [
             ...project.status.statuses,
-            { id: 'status_prep', name: 'Preparation', color: 'YELLOW', description: '' },
+            {
+              id: 'status_prep',
+              name: 'Preparation',
+              color: 'YELLOW',
+              description: '',
+            },
           ],
         },
       };

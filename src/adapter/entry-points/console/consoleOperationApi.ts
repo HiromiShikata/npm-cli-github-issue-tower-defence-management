@@ -558,7 +558,11 @@ export const handleTriage = async (
         (opt) => opt.name.toLowerCase() === lowerStatusName,
       );
       if (canonicalOption !== undefined) {
-        context.patchItemIntoQueuedTab(pjcode, projectItemId, canonicalOption.name);
+        context.patchItemIntoQueuedTab(
+          pjcode,
+          projectItemId,
+          canonicalOption.name,
+        );
       }
     }
     return ok();

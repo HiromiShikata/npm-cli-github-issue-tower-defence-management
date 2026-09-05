@@ -171,7 +171,10 @@ export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
     const storyOrder = Array.isArray(rawStoryOrder)
       ? rawStoryOrder.filter((s): s is string => typeof s === 'string')
       : [];
-    const newItems = sortByStoryOrder([...withoutFromQueued, updatedItem], storyOrder);
+    const newItems = sortByStoryOrder(
+      [...withoutFromQueued, updatedItem],
+      storyOrder,
+    );
     writeJsonAtomic(queuedFilePath, { ...queuedExisting, items: newItems });
 
     const doneFilePath = path.join(
