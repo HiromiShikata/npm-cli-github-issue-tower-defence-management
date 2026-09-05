@@ -133,7 +133,22 @@ test('renders the Workflow Blocker tab leftmost and shows its detail operations'
     page.locator('.console-op-button', { hasText: '+3 hours' }),
   ).toBeVisible();
   await expect(
+    page.locator('.console-op-button', { hasText: '+6 hours' }),
+  ).toBeVisible();
+  await expect(
     page.locator('.console-op-button', { hasText: '+1 day' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+2 days' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+3 days' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+5 days' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+1 month' }),
   ).toBeVisible();
 });
 

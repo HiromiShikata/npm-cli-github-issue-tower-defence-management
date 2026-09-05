@@ -52,8 +52,23 @@ export const actionToastMessage = (
       if (kind.action === 'snooze_3hours') {
         return 'Next Action Hour +3 hours';
       }
+      if (kind.action === 'snooze_6hours') {
+        return 'Next Action Hour +6 hours';
+      }
       if (kind.action === 'snooze_1day') {
         return 'Next Action Date +1 day';
+      }
+      if (kind.action === 'snooze_2days') {
+        return 'Next Action Date +2 days';
+      }
+      if (kind.action === 'snooze_3days') {
+        return 'Next Action Date +3 days';
+      }
+      if (kind.action === 'snooze_5days') {
+        return 'Next Action Date +5 days';
+      }
+      if (kind.action === 'snooze_1month') {
+        return 'Next Action Date +1 month';
       }
       return isManualTriageTab(tab)
         ? 'Next Action Date +1 week and skip'

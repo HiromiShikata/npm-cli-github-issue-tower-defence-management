@@ -94,6 +94,61 @@ describe('actionToastMessage', () => {
     );
   });
 
+  it('labels the +6 hours snooze the same on every tab', () => {
+    const kind: ConsoleActionKind = {
+      type: 'next_action_date',
+      action: 'snooze_6hours',
+    };
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Hour +6 hours');
+    expect(actionToastMessage(kind, 'todo-by-human')).toBe(
+      'Next Action Hour +6 hours',
+    );
+  });
+
+  it('labels the +2 days snooze the same on every tab', () => {
+    const kind: ConsoleActionKind = {
+      type: 'next_action_date',
+      action: 'snooze_2days',
+    };
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +2 days');
+    expect(actionToastMessage(kind, 'todo-by-human')).toBe(
+      'Next Action Date +2 days',
+    );
+  });
+
+  it('labels the +3 days snooze the same on every tab', () => {
+    const kind: ConsoleActionKind = {
+      type: 'next_action_date',
+      action: 'snooze_3days',
+    };
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +3 days');
+    expect(actionToastMessage(kind, 'todo-by-human')).toBe(
+      'Next Action Date +3 days',
+    );
+  });
+
+  it('labels the +5 days snooze the same on every tab', () => {
+    const kind: ConsoleActionKind = {
+      type: 'next_action_date',
+      action: 'snooze_5days',
+    };
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +5 days');
+    expect(actionToastMessage(kind, 'todo-by-human')).toBe(
+      'Next Action Date +5 days',
+    );
+  });
+
+  it('labels the +1 month snooze the same on every tab', () => {
+    const kind: ConsoleActionKind = {
+      type: 'next_action_date',
+      action: 'snooze_1month',
+    };
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +1 month');
+    expect(actionToastMessage(kind, 'todo-by-human')).toBe(
+      'Next Action Date +1 month',
+    );
+  });
+
   it('labels close actions', () => {
     expect(actionToastMessage({ type: 'close', action: 'close' }, 'prs')).toBe(
       'Closed',
