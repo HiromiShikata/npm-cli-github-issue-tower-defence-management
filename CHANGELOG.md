@@ -1,3 +1,10 @@
+## [2.55.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.55.1...v2.55.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **consoleOperationApi:** record close event on approve_and_merge in handleReview ([#2028](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2028)) ([e858015](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e8580156b934e78f00867d67e25caa1ce149fb6e)), closes [#2027](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2027)
+
 ## [2.55.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.55.0...v2.55.1) (2026-09-05)
 
 
