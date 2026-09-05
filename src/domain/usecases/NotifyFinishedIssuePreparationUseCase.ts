@@ -191,6 +191,11 @@ export class NotifyFinishedIssuePreparationUseCase {
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Done`,
       );
       return;
+    } else if (issue.status === AWAITING_WORKSPACE_STATUS_NAME) {
+      console.log(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Awaiting Workspace`,
+      );
+      return;
     } else if (issue.status !== PREPARATION_STATUS_NAME) {
       throw new IllegalIssueStatusError(
         params.issueUrl,
