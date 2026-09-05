@@ -4692,7 +4692,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
         deferPreparation: true,
-        sessionErrorLine: 'Task failed 3 consecutive times with terminal_reason=aborted_tools',
+        sessionErrorLine:
+          'Task failed 3 consecutive times with terminal_reason=aborted_tools',
       });
 
       expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
@@ -4704,7 +4705,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(1);
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.objectContaining({ url: issueUrl }),
-        expect.stringContaining('Task failed 3 consecutive times with terminal_reason=aborted_tools'),
+        expect.stringContaining(
+          'Task failed 3 consecutive times with terminal_reason=aborted_tools',
+        ),
       );
     });
   });
