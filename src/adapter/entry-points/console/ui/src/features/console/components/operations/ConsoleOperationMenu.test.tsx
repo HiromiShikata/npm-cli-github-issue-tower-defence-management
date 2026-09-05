@@ -396,4 +396,46 @@ describe('ConsoleOperationMenu', () => {
     );
     expect(queryByTitle('Change agent or story')).toBeNull();
   });
+
+  it('toggle button appears when only agentOptions is non-empty and reveals only the agent dropdown', () => {
+    const { getByTitle, getByRole, queryByRole } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-human"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        currentStoryName={null}
+        agentOptions={consoleAgentOptionsFixture}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+    expect(getByTitle('Change agent or story')).toBeInTheDocument();
+    fireEvent.click(getByTitle('Change agent or story'));
+    expect(getByRole('combobox', { name: 'Set agent' })).toBeInTheDocument();
+    expect(queryByRole('combobox', { name: 'Set story' })).toBeNull();
+  });
+
+  it('clicking the toggle button a second time hides the selectors again', () => {
+    const { getByTitle, queryByRole } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-human"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        currentStoryName={null}
+        agentOptions={consoleAgentOptionsFixture}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+    fireEvent.click(getByTitle('Change agent or story'));
+    fireEvent.click(getByTitle('Change agent or story'));
+    expect(queryByRole('combobox', { name: 'Set story' })).toBeNull();
+    expect(queryByRole('combobox', { name: 'Set agent' })).toBeNull();
+  });
 });
