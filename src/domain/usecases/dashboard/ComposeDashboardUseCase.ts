@@ -380,7 +380,9 @@ export class ComposeDashboardUseCase {
           TOKEN_SESSION_COLUMN_START,
           ' ',
         );
-        return [aggrPadded + sessionTotalLine.slice(TOKEN_SESSION_COLUMN_START)];
+        return [
+          aggrPadded + sessionTotalLine.slice(TOKEN_SESSION_COLUMN_START),
+        ];
       }
       return [
         aggregateLine !== null ? aggregateLine : '',
