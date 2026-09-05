@@ -2619,4 +2619,91 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
     });
   });
+
+  describe('waitingForOwnerApproval', () => {
+    it('should move to Awaiting Workspace with AWAITING_OWNER_APPROVAL when orphaned issue last comment has waitingForOwnerApproval: true', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        agent: 'triager',
+      });
+      mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
+      mockProjectRepository.getProject.mockResolvedValue(mockProject);
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueRepository.get.mockResolvedValue(stuckIssue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content:
+            'From: :robot: triager (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        stuckIssue,
+        '1',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        stuckIssue,
+        'Auto Status Check: AWAITING_OWNER_APPROVAL',
+      );
+    });
+
+    it('should not post ORPHANED_PREPARATION when orphaned issue last comment has waitingForOwnerApproval: true', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        agent: 'triager',
+      });
+      mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
+      mockProjectRepository.getProject.mockResolvedValue(mockProject);
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueRepository.get.mockResolvedValue(stuckIssue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content:
+            'From: :robot: triager (model)\n```json\n{"pullRequestRequired": false, "waitingForOwnerApproval": true}\n```',
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('ORPHANED_PREPARATION'),
+      );
+    });
+  });
 });
