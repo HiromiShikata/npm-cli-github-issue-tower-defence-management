@@ -197,6 +197,7 @@ export const postGithubGraphqlJson = async <T>(params: {
       headers: {
         Authorization: `Bearer ${params.ghToken}`,
       },
+      timeout: GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
     })
     .json<T>();
   logGithubGraphqlCost({
