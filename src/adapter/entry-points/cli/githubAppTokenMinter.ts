@@ -91,7 +91,11 @@ export const mintTokenFromKeyPath = async (
       .json<AccessTokenResponse>();
 
     return tokenResponse.token ?? null;
-  } catch {
+  } catch (error) {
+    console.error(
+      `[githubAppTokenMinter] failed to mint token from ${keyPath}:`,
+      error,
+    );
     return null;
   }
 };
