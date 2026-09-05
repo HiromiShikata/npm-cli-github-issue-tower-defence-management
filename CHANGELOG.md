@@ -1,3 +1,10 @@
+## [2.62.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.2...v2.62.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** skip silently when status is Awaiting Workspace ([#2077](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2077)) ([4462adf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4462adff8ce181b2433acd5eedd7a82f5698bf2f)), closes [HiromiShikata/secretary#5492](https://github.com/HiromiShikata/secretary/issues/5492)
+
 ## [2.62.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.1...v2.62.2) (2026-09-05)
 
 
