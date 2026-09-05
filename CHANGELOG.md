@@ -1,3 +1,10 @@
+## [2.46.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.12...v2.46.13) (2026-09-05)
+
+
+### Bug Fixes
+
+* **ConflictedIssueRevertUseCase:** suppress duplicate conflict comments and handle createComment errors ([#1993](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1993)) ([1b94bdf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1b94bdf7e68419caad9477ec8a515d19f9abbbeb))
+
 ## [2.46.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.11...v2.46.12) (2026-09-05)
 
 
