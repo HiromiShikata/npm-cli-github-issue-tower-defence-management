@@ -10,6 +10,7 @@ import {
   RELATED_OPEN_PRS_CACHE_TTL_MS,
   REQUIRED_CHECKS_CACHE_TTL_MS,
 } from './ApiV3CheerioRestIssueRepository';
+import { GitHubRateLimitError } from './githubRateLimitRetry';
 import type { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import type {
   GraphqlProjectItemRepository,
@@ -3892,6 +3893,232 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         countCallsMatching(fetchSpy, (url) =>
           url.includes('/rules/branches/develop'),
         ),
+      ).toBe(1);
+    });
+  });
+
+  describe('getCommitCiContexts disk cache and graceful rate-limit degradation', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('fetches from API and writes disk cache when no cache exists', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'ci', conclusion: 'success' }],
+        }),
+      });
+
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(localStorageCacheRepository.getSingle).toHaveBeenCalledWith(
+        expect.stringContaining('ciContexts/'),
+      );
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        expect.stringContaining('ciContexts/'),
+        expect.anything(),
+      );
+      const cacheData: unknown =
+        localStorageCacheRepository.setSingle.mock.calls[0]?.[1];
+      expect(
+        typeof cacheData === 'object' &&
+          cacheData !== null &&
+          'fetchedAt' in cacheData &&
+          typeof cacheData.fetchedAt === 'string',
+      ).toBe(true);
+      expect(
+        typeof cacheData === 'object' &&
+          cacheData !== null &&
+          'contexts' in cacheData &&
+          Array.isArray(cacheData.contexts) &&
+          cacheData.contexts.some(
+            (ctx: unknown) =>
+              typeof ctx === 'object' &&
+              ctx !== null &&
+              'name' in ctx &&
+              ctx.name === 'ci',
+          ),
+      ).toBe(true);
+    });
+
+    it('returns disk-cached contexts immediately when all CheckRun conclusions are non-null', async () => {
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+      });
+
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        etag: '"abc123"',
+        contexts: [
+          {
+            __typename: 'CheckRun',
+            name: 'ci',
+            conclusion: 'SUCCESS',
+            databaseId: 1,
+          },
+        ],
+        fetchedAt: '2026-09-05T06:00:00.000Z',
+      });
+
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result?.isCiStateSuccess).toBe(true);
+      expect(
+        countCallsMatching(fetchSpy, (url) => url.includes('/check-runs')),
+      ).toBe(0);
+    });
+
+    it('sends If-None-Match header when ETag is cached and returns 304 without a new API call', async () => {
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => new Response(null, { status: 304 }),
+      });
+
+      const cachedContexts = [
+        {
+          __typename: 'CheckRun' as const,
+          name: 'ci',
+          conclusion: null,
+          databaseId: 1,
+        },
+      ];
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        etag: '"etag-value-42"',
+        contexts: cachedContexts,
+        fetchedAt: '2026-09-05T06:10:00.000Z',
+      });
+
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      const checkRunsCall = fetchSpy.mock.calls.find(([input]) =>
+        requestUrlOf(input).includes('/check-runs'),
+      );
+      expect(checkRunsCall).toBeDefined();
+      const rawHeaders = checkRunsCall?.[1]?.headers;
+      const ifNoneMatch =
+        rawHeaders !== null &&
+        typeof rawHeaders === 'object' &&
+        'If-None-Match' in rawHeaders
+          ? String(rawHeaders['If-None-Match'])
+          : undefined;
+      expect(ifNoneMatch).toBe('"etag-value-42"');
+      expect(
+        countCallsMatching(fetchSpy, (url) => url.includes('/check-runs')),
+      ).toBe(1);
+      expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+    });
+
+    it('returns stale disk-cached contexts and logs a warning when rate-limited and cache exists', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () =>
+          new Response(
+            JSON.stringify({ message: 'secondary rate limit exceeded' }),
+            {
+              status: 403,
+              headers: {
+                'x-ratelimit-remaining': '0',
+                'x-ratelimit-reset': String(
+                  Math.floor(Date.now() / 1000) + 60,
+                ),
+              },
+            },
+          ),
+      });
+
+      const cachedContexts = [
+        {
+          __typename: 'CheckRun' as const,
+          name: 'ci',
+          conclusion: null,
+          databaseId: 1,
+        },
+      ];
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        etag: null,
+        contexts: cachedContexts,
+        fetchedAt: new Date(Date.now() - 120_000).toISOString(),
+      });
+
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result).not.toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Rate limited'),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('returning cached state'),
+      );
+    });
+
+    it('throws GitHubRateLimitError when rate-limited and no disk cache exists', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () =>
+          new Response(
+            JSON.stringify({ message: 'secondary rate limit exceeded' }),
+            {
+              status: 403,
+              headers: { 'x-ratelimit-remaining': '0' },
+            },
+          ),
+      });
+
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+
+      await expect(
+        repository.getOpenPullRequest(
+          'https://github.com/HiromiShikata/test-repository/pull/31',
+        ),
+      ).rejects.toThrow(GitHubRateLimitError);
+    });
+
+    it('makes only one check-runs HTTP call for two getOpenPullRequest calls with the same commit SHA', async () => {
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'ci', conclusion: 'success' }],
+        }),
+      });
+
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(
+        countCallsMatching(fetchSpy, (url) => url.includes('/check-runs')),
       ).toBe(1);
     });
   });

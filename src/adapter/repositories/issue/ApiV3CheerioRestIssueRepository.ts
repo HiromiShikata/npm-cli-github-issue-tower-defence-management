@@ -56,6 +56,24 @@ type CachedRelatedOpenPrs = {
   prs: Array<Omit<RelatedPullRequest, 'createdAt'> & { createdAt: string }>;
 };
 
+type CiContextDiskCache = {
+  etag: string | null;
+  contexts: CiContextNode[];
+  fetchedAt: string;
+};
+
+function isCiContextDiskCache(value: unknown): value is CiContextDiskCache {
+  if (typeof value !== 'object' || value === null) return false;
+  return (
+    'etag' in value &&
+    (value.etag === null || typeof value.etag === 'string') &&
+    'contexts' in value &&
+    Array.isArray(value.contexts) &&
+    'fetchedAt' in value &&
+    typeof value.fetchedAt === 'string'
+  );
+}
+
 function isCachedRelatedOpenPrs(value: unknown): value is CachedRelatedOpenPrs {
   if (typeof value !== 'object' || value === null) return false;
   return (
@@ -615,6 +633,11 @@ export class ApiV3CheerioRestIssueRepository
   }
 
   private readonly projectIssuesCacheRepository: ProjectIssuesCacheRepository;
+
+  private readonly commitCiContextsInMemoryCache = new Map<
+    string,
+    CiContextNode[]
+  >();
 
   private readonly getAllIssuesRefreshMemo = new Map<
     Project['id'],
@@ -1466,6 +1489,37 @@ export class ApiV3CheerioRestIssueRepository
     return names;
   };
 
+  private ciContextDiskCacheKey = (
+    owner: string,
+    repo: string,
+    sha: string,
+  ): string => `ciContexts/${owner}-${repo}-${sha}`;
+
+  private readCiContextDiskCache = async (
+    owner: string,
+    repo: string,
+    sha: string,
+  ): Promise<CiContextDiskCache | null> => {
+    const raw = await this.localStorageCacheRepository.getSingle(
+      this.ciContextDiskCacheKey(owner, repo, sha),
+    );
+    if (!isCiContextDiskCache(raw)) return null;
+    return raw;
+  };
+
+  private writeCiContextDiskCache = async (
+    owner: string,
+    repo: string,
+    sha: string,
+    etag: string | null,
+    contexts: CiContextNode[],
+  ): Promise<void> => {
+    await this.localStorageCacheRepository.setSingle(
+      this.ciContextDiskCacheKey(owner, repo, sha),
+      { etag, contexts, fetchedAt: new Date().toISOString() },
+    );
+  };
+
   private getCheckRunsViaCheckSuitesFallback = async (
     owner: string,
     repo: string,
@@ -1567,17 +1621,139 @@ export class ApiV3CheerioRestIssueRepository
     repo: string,
     commitSha: string,
   ): Promise<CiContextNode[]> => {
+    const inMemoryCacheKey = `${owner}/${repo}/${commitSha}`;
+    const inMemoryCached =
+      this.commitCiContextsInMemoryCache.get(inMemoryCacheKey);
+    if (inMemoryCached) {
+      return inMemoryCached;
+    }
+
+    const diskCache = await this.readCiContextDiskCache(owner, repo, commitSha);
+    if (
+      diskCache &&
+      diskCache.contexts.every(
+        (ctx) =>
+          ctx.__typename === 'StatusContext' ||
+          (ctx.__typename === 'CheckRun' && ctx.conclusion !== null),
+      )
+    ) {
+      this.commitCiContextsInMemoryCache.set(
+        inMemoryCacheKey,
+        diskCache.contexts,
+      );
+      return diskCache.contexts;
+    }
+
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
     const shaSegment = encodeURIComponent(commitSha);
+
+    const page1Headers: Record<string, string> = {
+      Authorization: `Bearer ${this.ghToken}`,
+      Accept: 'application/vnd.github+json',
+    };
+    if (diskCache?.etag) {
+      page1Headers['If-None-Match'] = diskCache.etag;
+    }
+
+    const page1Response = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-runs?per_page=100&page=1`,
+        { method: 'GET', headers: page1Headers },
+      ),
+    );
+
+    if (
+      !page1Response.ok &&
+      hasRateLimitSignals(
+        page1Response.status,
+        page1Response.headers,
+        await page1Response.clone().text(),
+      )
+    ) {
+      if (diskCache) {
+        const ageSeconds = Math.round(
+          (Date.now() - new Date(diskCache.fetchedAt).getTime()) / 1000,
+        );
+        console.warn(
+          `Rate limited fetching CI contexts for ${owner}/${repo}@${commitSha}; returning cached state from ${ageSeconds}s ago`,
+        );
+        this.commitCiContextsInMemoryCache.set(
+          inMemoryCacheKey,
+          diskCache.contexts,
+        );
+        return diskCache.contexts;
+      }
+      const formatted = await this.formatGitHubErrorWithStatus(page1Response);
+      throw new GitHubRateLimitError(
+        `Failed to fetch check runs for ${owner}/${repo}@${commitSha}: ${formatted}`,
+      );
+    }
+
+    if (page1Response.status === 304 && diskCache) {
+      this.commitCiContextsInMemoryCache.set(
+        inMemoryCacheKey,
+        diskCache.contexts,
+      );
+      return diskCache.contexts;
+    }
+
+    const newEtag = page1Response.headers.get('etag');
+
+    if (!page1Response.ok && page1Response.status === 404) {
+      const fallbackContexts = await this.getCheckRunsViaCheckSuitesFallback(
+        owner,
+        repo,
+        commitSha,
+      );
+      await this.writeCiContextDiskCache(
+        owner,
+        repo,
+        commitSha,
+        null,
+        fallbackContexts,
+      );
+      this.commitCiContextsInMemoryCache.set(
+        inMemoryCacheKey,
+        fallbackContexts,
+      );
+      return fallbackContexts;
+    }
+
+    if (!page1Response.ok) {
+      const reason = await this.formatGitHubErrorWithStatus(page1Response);
+      throw new Error(
+        `Failed to fetch check runs for ${owner}/${repo}@${commitSha}: ${reason}`,
+      );
+    }
+
+    const page1Body: unknown = await page1Response.json();
+    if (!isCheckRunsResponse(page1Body)) {
+      throw new Error(
+        `Unexpected response shape when fetching check runs: ${owner}/${repo}@${commitSha}`,
+      );
+    }
+
     const contexts: CiContextNode[] = [];
+    for (const checkRun of page1Body.check_runs) {
+      contexts.push({
+        __typename: 'CheckRun',
+        name: checkRun.name,
+        conclusion: checkRun.conclusion
+          ? checkRun.conclusion.toUpperCase()
+          : null,
+        databaseId: checkRun.id,
+      });
+    }
 
     const perPage = 100;
-    let page = 1;
-    let hasMore = true;
-    let usedCheckSuitesFallback = false;
+    let page = 2;
+    let hasMore =
+      page1Body.check_runs.length >= perPage &&
+      perPage < page1Body.total_count;
+
     while (hasMore) {
-      const checkRunsResponse = await this.fetchWithRateLimitRetry(() =>
+      const pageResponse = await this.fetchWithRateLimitRetry(() =>
         fetch(
           `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-runs?per_page=${perPage}&page=${page}`,
           {
@@ -1589,31 +1765,48 @@ export class ApiV3CheerioRestIssueRepository
           },
         ),
       );
-      if (!checkRunsResponse.ok) {
-        if (checkRunsResponse.status === 404 && page === 1) {
-          const fallbackContexts =
-            await this.getCheckRunsViaCheckSuitesFallback(
-              owner,
-              repo,
-              commitSha,
-            );
-          contexts.push(...fallbackContexts);
-          usedCheckSuitesFallback = true;
-          break;
+
+      if (
+        !pageResponse.ok &&
+        hasRateLimitSignals(
+          pageResponse.status,
+          pageResponse.headers,
+          await pageResponse.clone().text(),
+        )
+      ) {
+        if (diskCache) {
+          const ageSeconds = Math.round(
+            (Date.now() - new Date(diskCache.fetchedAt).getTime()) / 1000,
+          );
+          console.warn(
+            `Rate limited fetching CI context page ${page} for ${owner}/${repo}@${commitSha}; returning cached state from ${ageSeconds}s ago`,
+          );
+          this.commitCiContextsInMemoryCache.set(
+            inMemoryCacheKey,
+            diskCache.contexts,
+          );
+          return diskCache.contexts;
         }
-        const reason =
-          await this.formatGitHubErrorWithStatus(checkRunsResponse);
+        const formatted = await this.formatGitHubErrorWithStatus(pageResponse);
+        throw new GitHubRateLimitError(
+          `Failed to fetch check runs for ${owner}/${repo}@${commitSha}: ${formatted}`,
+        );
+      }
+
+      if (!pageResponse.ok) {
+        const reason = await this.formatGitHubErrorWithStatus(pageResponse);
         throw new Error(
           `Failed to fetch check runs for ${owner}/${repo}@${commitSha}: ${reason}`,
         );
       }
-      const checkRunsBody: unknown = await checkRunsResponse.json();
-      if (!isCheckRunsResponse(checkRunsBody)) {
+
+      const pageBody: unknown = await pageResponse.json();
+      if (!isCheckRunsResponse(pageBody)) {
         throw new Error(
           `Unexpected response shape when fetching check runs: ${owner}/${repo}@${commitSha}`,
         );
       }
-      for (const checkRun of checkRunsBody.check_runs) {
+      for (const checkRun of pageBody.check_runs) {
         contexts.push({
           __typename: 'CheckRun',
           name: checkRun.name,
@@ -1624,8 +1817,8 @@ export class ApiV3CheerioRestIssueRepository
         });
       }
       if (
-        checkRunsBody.check_runs.length < perPage ||
-        page * perPage >= checkRunsBody.total_count
+        pageBody.check_runs.length < perPage ||
+        page * perPage >= pageBody.total_count
       ) {
         hasMore = false;
       } else {
@@ -1633,42 +1826,72 @@ export class ApiV3CheerioRestIssueRepository
       }
     }
 
-    if (!usedCheckSuitesFallback) {
-      const combinedStatusResponse = await this.fetchWithRateLimitRetry(() =>
-        fetch(
-          `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/status?per_page=100`,
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${this.ghToken}`,
-              Accept: 'application/vnd.github+json',
-            },
+    const combinedStatusResponse = await this.fetchWithRateLimitRetry(() =>
+      fetch(
+        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/status?per_page=100`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
           },
-        ),
+        },
+      ),
+    );
+
+    if (
+      !combinedStatusResponse.ok &&
+      hasRateLimitSignals(
+        combinedStatusResponse.status,
+        combinedStatusResponse.headers,
+        await combinedStatusResponse.clone().text(),
+      )
+    ) {
+      if (diskCache) {
+        const ageSeconds = Math.round(
+          (Date.now() - new Date(diskCache.fetchedAt).getTime()) / 1000,
+        );
+        console.warn(
+          `Rate limited fetching combined status for ${owner}/${repo}@${commitSha}; returning cached state from ${ageSeconds}s ago`,
+        );
+        this.commitCiContextsInMemoryCache.set(
+          inMemoryCacheKey,
+          diskCache.contexts,
+        );
+        return diskCache.contexts;
+      }
+      const formatted =
+        await this.formatGitHubErrorWithStatus(combinedStatusResponse);
+      throw new GitHubRateLimitError(
+        `Failed to fetch combined status for ${owner}/${repo}@${commitSha}: ${formatted}`,
       );
-      if (!combinedStatusResponse.ok) {
-        const reason = await this.formatGitHubErrorWithStatus(
-          combinedStatusResponse,
-        );
-        throw new Error(
-          `Failed to fetch combined status for ${owner}/${repo}@${commitSha}: ${reason}`,
-        );
-      }
-      const combinedStatusBody: unknown = await combinedStatusResponse.json();
-      if (!isCombinedStatusResponse(combinedStatusBody)) {
-        throw new Error(
-          `Unexpected response shape when fetching combined status: ${owner}/${repo}@${commitSha}`,
-        );
-      }
-      for (const status of combinedStatusBody.statuses) {
-        contexts.push({
-          __typename: 'StatusContext',
-          context: status.context,
-          state: status.state.toUpperCase(),
-        });
-      }
     }
 
+    if (!combinedStatusResponse.ok) {
+      const reason = await this.formatGitHubErrorWithStatus(
+        combinedStatusResponse,
+      );
+      throw new Error(
+        `Failed to fetch combined status for ${owner}/${repo}@${commitSha}: ${reason}`,
+      );
+    }
+
+    const combinedStatusBody: unknown = await combinedStatusResponse.json();
+    if (!isCombinedStatusResponse(combinedStatusBody)) {
+      throw new Error(
+        `Unexpected response shape when fetching combined status: ${owner}/${repo}@${commitSha}`,
+      );
+    }
+    for (const status of combinedStatusBody.statuses) {
+      contexts.push({
+        __typename: 'StatusContext',
+        context: status.context,
+        state: status.state.toUpperCase(),
+      });
+    }
+
+    await this.writeCiContextDiskCache(owner, repo, commitSha, newEtag, contexts);
+    this.commitCiContextsInMemoryCache.set(inMemoryCacheKey, contexts);
     return contexts;
   };
 
