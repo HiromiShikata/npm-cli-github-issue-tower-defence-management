@@ -10,9 +10,13 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
   describe('single repository', () => {
     it('returns the result from the only repository', async () => {
       const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
       repo.getIssueOrPullRequestBody.mockResolvedValue('body text');
 
-      const rotating = createReadOnlyTokenRotatingIssueRepository([repo]);
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
       const result = await rotating.getIssueOrPullRequestBody(
         'https://github.com/o/r/issues/1',
       );
@@ -25,10 +29,14 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
 
     it('re-throws any error from the single repository without rotating', async () => {
       const repo = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
       const error = new GitHubRateLimitError('rate limited');
       repo.getIssueOrPullRequestBody.mockRejectedValue(error);
 
-      const rotating = createReadOnlyTokenRotatingIssueRepository([repo]);
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo],
+        writeRepo,
+      );
       await expect(
         rotating.getIssueOrPullRequestBody('https://github.com/o/r/issues/1'),
       ).rejects.toBe(error);
@@ -39,15 +47,16 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
     it('tries the second repository when the first throws GitHubRateLimitError', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
       repo1.getIssueOrPullRequestBody.mockRejectedValue(
         new GitHubRateLimitError('rate limited token-1'),
       );
       repo2.getIssueOrPullRequestBody.mockResolvedValue('body from token-2');
 
-      const rotating = createReadOnlyTokenRotatingIssueRepository([
-        repo1,
-        repo2,
-      ]);
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
       const result = await rotating.getIssueOrPullRequestBody(
         'https://github.com/o/r/issues/1',
       );
@@ -64,15 +73,16 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
     it('re-throws the last GitHubRateLimitError when all repositories are exhausted', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
       const error1 = new GitHubRateLimitError('rate limited token-1');
       const error2 = new GitHubRateLimitError('rate limited token-2');
       repo1.getIssueOrPullRequestBody.mockRejectedValue(error1);
       repo2.getIssueOrPullRequestBody.mockRejectedValue(error2);
 
-      const rotating = createReadOnlyTokenRotatingIssueRepository([
-        repo1,
-        repo2,
-      ]);
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
       await expect(
         rotating.getIssueOrPullRequestBody('https://github.com/o/r/issues/1'),
       ).rejects.toBe(error2);
@@ -81,13 +91,14 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
     it('does not rotate when the error is not a GitHubRateLimitError', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
       const networkError = new Error('Connection refused');
       repo1.getIssueOrPullRequestBody.mockRejectedValue(networkError);
 
-      const rotating = createReadOnlyTokenRotatingIssueRepository([
-        repo1,
-        repo2,
-      ]);
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
       await expect(
         rotating.getIssueOrPullRequestBody('https://github.com/o/r/issues/1'),
       ).rejects.toBe(networkError);
@@ -98,6 +109,7 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
       const repo3 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
       repo1.getIssueOrPullRequestBody.mockRejectedValue(
         new GitHubRateLimitError('rate limited token-1'),
       );
@@ -106,11 +118,10 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
       repo3.getIssueOrPullRequestBody.mockResolvedValue('body from token-3');
 
-      const rotating = createReadOnlyTokenRotatingIssueRepository([
-        repo1,
-        repo2,
-        repo3,
-      ]);
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2, repo3],
+        writeRepo,
+      );
       const result = await rotating.getIssueOrPullRequestBody(
         'https://github.com/o/r/issues/1',
       );
@@ -121,15 +132,16 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
     it('rotates on getIssueOrPullRequestComments as well', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
       repo1.getIssueOrPullRequestComments.mockRejectedValue(
         new GitHubRateLimitError('rate limited token-1'),
       );
       repo2.getIssueOrPullRequestComments.mockResolvedValue([]);
 
-      const rotating = createReadOnlyTokenRotatingIssueRepository([
-        repo1,
-        repo2,
-      ]);
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
       const result = await rotating.getIssueOrPullRequestComments(
         'https://github.com/o/r/issues/1',
       );
@@ -143,20 +155,22 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       );
     });
 
-    it('delegates write methods to the first repository without rotation', async () => {
+    it('delegates write methods to the dedicated write repository, not any read repository', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
-      repo1.deleteAllCommentsByUrl.mockResolvedValue(undefined);
+      const writeRepo = mock<IssueRepository>();
+      writeRepo.deleteAllCommentsByUrl.mockResolvedValue(undefined);
 
-      const rotating = createReadOnlyTokenRotatingIssueRepository([
-        repo1,
-        repo2,
-      ]);
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
       await rotating.deleteAllCommentsByUrl('https://github.com/o/r/issues/1');
 
-      expect(repo1.deleteAllCommentsByUrl).toHaveBeenCalledWith(
+      expect(writeRepo.deleteAllCommentsByUrl).toHaveBeenCalledWith(
         'https://github.com/o/r/issues/1',
       );
+      expect(repo1.deleteAllCommentsByUrl).not.toHaveBeenCalled();
       expect(repo2.deleteAllCommentsByUrl).not.toHaveBeenCalled();
     });
   });
@@ -209,9 +223,10 @@ describe('buildReadIssueRepositoryResolver', () => {
   });
 
   describe('readOnlyGithubTokens present — uses rotating resolver', () => {
-    it('builds one repository per read-only token and returns a rotating repository', async () => {
+    it('builds one repository per read-only token and routes reads through the rotating pool', async () => {
       const readRepo1 = mock<IssueRepository>();
       const readRepo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
       readRepo1.getIssueOrPullRequestBody.mockRejectedValue(
         new GitHubRateLimitError('rate limited token-1'),
       );
@@ -222,8 +237,9 @@ describe('buildReadIssueRepositoryResolver', () => {
       const buildIssueRepositoryForToken = jest
         .fn()
         .mockImplementationOnce(() => readRepo1)
-        .mockImplementationOnce(() => readRepo2);
-      const resolveGithubToken = jest.fn();
+        .mockImplementationOnce(() => readRepo2)
+        .mockImplementation(() => writeRepo);
+      const resolveGithubToken = jest.fn().mockReturnValue('write-token');
 
       const resolver = buildReadIssueRepositoryResolver(
         ['token-1', 'token-2'],
@@ -242,10 +258,16 @@ describe('buildReadIssueRepositoryResolver', () => {
       expect(result).toBe('body from token-2');
     });
 
-    it('returns the same rotating repository for any URL', () => {
+    it('routes write operations to the URL-specific write repository, not a read-only token', async () => {
       const readRepo = mock<IssueRepository>();
-      const buildIssueRepositoryForToken = jest.fn().mockReturnValue(readRepo);
-      const resolveGithubToken = jest.fn();
+      const writeRepo = mock<IssueRepository>();
+      writeRepo.deleteAllCommentsByUrl.mockResolvedValue(undefined);
+
+      const buildIssueRepositoryForToken = jest
+        .fn()
+        .mockImplementationOnce(() => readRepo)
+        .mockImplementation(() => writeRepo);
+      const resolveGithubToken = jest.fn().mockReturnValue('write-token');
 
       const resolver = buildReadIssueRepositoryResolver(
         ['token-1'],
@@ -253,10 +275,14 @@ describe('buildReadIssueRepositoryResolver', () => {
         resolveGithubToken,
       );
 
-      const repo1 = resolver('https://github.com/owner-a/repo/issues/1');
-      const repo2 = resolver('https://github.com/owner-b/repo/issues/2');
-      expect(repo1).toBe(repo2);
-      expect(resolveGithubToken).not.toHaveBeenCalled();
+      const repo = resolver('https://github.com/owner-a/repo/issues/1');
+      await repo.deleteAllCommentsByUrl('https://github.com/o/r/issues/1');
+
+      expect(writeRepo.deleteAllCommentsByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/1',
+      );
+      expect(readRepo.deleteAllCommentsByUrl).not.toHaveBeenCalled();
+      expect(resolveGithubToken).toHaveBeenCalledWith('owner-a');
     });
   });
 });

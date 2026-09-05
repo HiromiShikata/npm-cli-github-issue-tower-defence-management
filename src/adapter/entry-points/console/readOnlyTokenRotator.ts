@@ -32,11 +32,11 @@ const withReadOnlyTokenRotation = async <T>(
 };
 
 export const createReadOnlyTokenRotatingIssueRepository = (
-  repositories: IssueRepository[],
+  readRepositories: IssueRepository[],
+  writeRepository: IssueRepository,
 ): IssueRepository => {
-  const primary = repositories[0];
   const rotate = <T>(fn: (repo: IssueRepository) => Promise<T>): Promise<T> =>
-    withReadOnlyTokenRotation(repositories, fn);
+    withReadOnlyTokenRotation(readRepositories, fn);
 
   return {
     getAllIssues: (projectId: Project['id']) =>
@@ -83,67 +83,78 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       body: string,
       assignees: Member['name'][],
       labels: Label[],
-    ) => primary.createNewIssue(org, repo, title, body, assignees, labels),
-    updateIssue: (issue: Issue) => primary.updateIssue(issue),
+    ) =>
+      writeRepository.createNewIssue(org, repo, title, body, assignees, labels),
+    updateIssue: (issue: Issue) => writeRepository.updateIssue(issue),
     updateIssueBody: (
       issue: Pick<Issue, 'org' | 'repo' | 'number'>,
       body: string,
-    ) => primary.updateIssueBody(issue, body),
+    ) => writeRepository.updateIssueBody(issue, body),
     updateNextActionDate: (
       issueUrl: string,
       project: Project,
       date: Date,
       projectItemId?: string,
-    ) => primary.updateNextActionDate(issueUrl, project, date, projectItemId),
+    ) =>
+      writeRepository.updateNextActionDate(
+        issueUrl,
+        project,
+        date,
+        projectItemId,
+      ),
     updateNextActionHour: (
       project: Project & {
         nextActionHour: NonNullable<Project['nextActionHour']>;
       },
       issue: Issue,
       hour: number,
-    ) => primary.updateNextActionHour(project, issue, hour),
+    ) => writeRepository.updateNextActionHour(project, issue, hour),
     updateProjectTextField: (
       project: Project,
       fieldId: string,
       issue: Issue,
       text: string,
-    ) => primary.updateProjectTextField(project, fieldId, issue, text),
+    ) => writeRepository.updateProjectTextField(project, fieldId, issue, text),
     updateStory: (
       project: Project & { story: NonNullable<Project['story']> },
       issue: Issue,
       storyId: FieldOption['id'],
-    ) => primary.updateStory(project, issue, storyId),
+    ) => writeRepository.updateStory(project, issue, storyId),
     updateStoryOptionColor: (
       project: Project & { story: NonNullable<Project['story']> },
       storyOptionId: string,
       newColor: FieldOption['color'],
-    ) => primary.updateStoryOptionColor(project, storyOptionId, newColor),
+    ) =>
+      writeRepository.updateStoryOptionColor(project, storyOptionId, newColor),
     updateStatus: (project: Project, issue: Issue, statusId: string) =>
-      primary.updateStatus(project, issue, statusId),
+      writeRepository.updateStatus(project, issue, statusId),
     clearProjectField: (project: Project, fieldId: string, issue: Issue) =>
-      primary.clearProjectField(project, fieldId, issue),
+      writeRepository.clearProjectField(project, fieldId, issue),
     createComment: (issue: Issue, commentBody: string) =>
-      primary.createComment(issue, commentBody),
+      writeRepository.createComment(issue, commentBody),
     updateLabels: (issue: Issue, labels: Issue['labels']) =>
-      primary.updateLabels(issue, labels),
+      writeRepository.updateLabels(issue, labels),
     removeLabel: (issue: Issue, label: Label) =>
-      primary.removeLabel(issue, label),
+      writeRepository.removeLabel(issue, label),
     getOrCreateLabel: (org: string, repo: string, labelName: string) =>
-      primary.getOrCreateLabel(org, repo, labelName),
+      writeRepository.getOrCreateLabel(org, repo, labelName),
     updateAssigneeList: (
       issue: Pick<Issue, 'org' | 'repo' | 'number'>,
       assigneeList: Member['name'][],
-    ) => primary.updateAssigneeList(issue, assigneeList),
-    update: (issue: Issue, project: Project) => primary.update(issue, project),
-    approvePullRequest: (prUrl: string) => primary.approvePullRequest(prUrl),
-    mergePullRequest: (prUrl: string) => primary.mergePullRequest(prUrl),
+    ) => writeRepository.updateAssigneeList(issue, assigneeList),
+    update: (issue: Issue, project: Project) =>
+      writeRepository.update(issue, project),
+    approvePullRequest: (prUrl: string) =>
+      writeRepository.approvePullRequest(prUrl),
+    mergePullRequest: (prUrl: string) =>
+      writeRepository.mergePullRequest(prUrl),
     requestChangesWithInlineComment: (
       prUrl: string,
       changedFilePath: string | null,
       commentBody: string,
       inlineCommentLocation?: PullRequestReviewInlineLocation | null,
     ) =>
-      primary.requestChangesWithInlineComment(
+      writeRepository.requestChangesWithInlineComment(
         prUrl,
         changedFilePath,
         commentBody,
@@ -156,34 +167,35 @@ export const createReadOnlyTokenRotatingIssueRepository = (
       side: PullRequestReviewCommentSide,
       commentBody: string,
     ) =>
-      primary.createPullRequestReviewComment(
+      writeRepository.createPullRequestReviewComment(
         prUrl,
         path,
         line,
         side,
         commentBody,
       ),
-    closePullRequest: (prUrl: string) => primary.closePullRequest(prUrl),
+    closePullRequest: (prUrl: string) =>
+      writeRepository.closePullRequest(prUrl),
     closeIssueByUrl: (
       issueUrl: string,
       stateReason: 'completed' | 'not_planned',
-    ) => primary.closeIssueByUrl(issueUrl, stateReason),
+    ) => writeRepository.closeIssueByUrl(issueUrl, stateReason),
     deletePullRequestBranch: (prUrl: string, branchName: string) =>
-      primary.deletePullRequestBranch(prUrl, branchName),
+      writeRepository.deletePullRequestBranch(prUrl, branchName),
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) =>
-      primary.createCommentByUrl(issueOrPrUrl, commentBody),
+      writeRepository.createCommentByUrl(issueOrPrUrl, commentBody),
     addIssueToProject: (project: Project, issueUrl: string) =>
-      primary.addIssueToProject(project, issueUrl),
+      writeRepository.addIssueToProject(project, issueUrl),
     setDependedIssueUrl: (prUrl: string, project: Project, issueUrl: string) =>
-      primary.setDependedIssueUrl(prUrl, project, issueUrl),
+      writeRepository.setDependedIssueUrl(prUrl, project, issueUrl),
     setIssueAgentField: (
       issueUrl: string,
       project: Project,
       agentOptionId: string,
-    ) => primary.setIssueAgentField(issueUrl, project, agentOptionId),
-    updateBranch: (prUrl: string) => primary.updateBranch(prUrl),
+    ) => writeRepository.setIssueAgentField(issueUrl, project, agentOptionId),
+    updateBranch: (prUrl: string) => writeRepository.updateBranch(prUrl),
     deleteAllCommentsByUrl: (issueOrPrUrl: string) =>
-      primary.deleteAllCommentsByUrl(issueOrPrUrl),
+      writeRepository.deleteAllCommentsByUrl(issueOrPrUrl),
   };
 };
 
@@ -193,12 +205,18 @@ export const buildReadIssueRepositoryResolver = (
   resolveGithubToken: ConsoleGithubTokenResolver,
 ): ((url: string) => IssueRepository) => {
   if (readOnlyGithubTokens && readOnlyGithubTokens.length > 0) {
-    const repositories = readOnlyGithubTokens.map((token) =>
+    const readRepositories = readOnlyGithubTokens.map((token) =>
       buildIssueRepositoryForToken(token),
     );
-    const rotatingRepo =
-      createReadOnlyTokenRotatingIssueRepository(repositories);
-    return (_url: string) => rotatingRepo;
+    const writeResolver = createConsoleIssueRepositoryResolver<IssueRepository>(
+      resolveGithubToken,
+      buildIssueRepositoryForToken,
+    );
+    return (url: string) =>
+      createReadOnlyTokenRotatingIssueRepository(
+        readRepositories,
+        writeResolver(url),
+      );
   }
   return createConsoleIssueRepositoryResolver<IssueRepository>(
     resolveGithubToken,
