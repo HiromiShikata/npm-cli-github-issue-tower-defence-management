@@ -1,3 +1,16 @@
+# [2.58.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.57.0...v2.58.0) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** resolve per-project GitHub token from consoleGithubTokens config map ([#2047](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2047)) ([f576e05](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f576e0536da73bf4f6f6150f4cd3fb3ada811d95))
+* **RevertOrphanedPreparationUseCase:** advance closed Awaiting Workspace issues to quality check ([#2044](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2044)) ([d2698ac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d2698ac6f405a1686242704f294f2f3a4dea6bcc))
+
+
+### Features
+
+* **console:** rotate read-only GitHub tokens on rate-limit to reduce 403 errors ([#2030](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2030)) ([37ea49d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/37ea49da8723e04551b24bdb4f0bf758c8c6897c))
+
 # [2.57.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.56.3...v2.57.0) (2026-09-05)
 
 
