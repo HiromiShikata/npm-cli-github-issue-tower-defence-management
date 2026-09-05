@@ -1,3 +1,11 @@
+## [2.47.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.47.0...v2.47.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** navigate to next task immediately on Comment & Awaiting Workspace without waiting for server ([#1992](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1992)) ([f138f83](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f138f831c29ab5f110d39a83a241c96b19feb481)), closes [HiromiShikata/umino-corporait-operation#31367](https://github.com/HiromiShikata/umino-corporait-operation/issues/31367)
+* honor pullRequestRequired false in preparation auto status check ([#2007](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2007)) ([e080720](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e080720b70d37e0b6db0e7369763179d1bfc994e))
+
 # [2.47.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.13...v2.47.0) (2026-09-05)
 
 
