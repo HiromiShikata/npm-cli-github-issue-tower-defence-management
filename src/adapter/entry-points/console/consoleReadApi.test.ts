@@ -774,7 +774,11 @@ describe('consoleReadApi', () => {
     });
 
     it('returns 502 when resolveProject is null', async () => {
-      const response = await handleProjectReadmeConfig(null, 'token', 'acme');
+      const response = await handleProjectReadmeConfig(
+        null,
+        () => 'token',
+        'acme',
+      );
       expect(response.statusCode).toBe(502);
     });
 
@@ -790,7 +794,7 @@ describe('consoleReadApi', () => {
     it('returns 400 when pjcode is null', async () => {
       const response = await handleProjectReadmeConfig(
         makeResolver(),
-        'token',
+        () => 'token',
         null,
       );
       expect(response.statusCode).toBe(400);
@@ -799,7 +803,7 @@ describe('consoleReadApi', () => {
     it('returns 404 when project is not found', async () => {
       const response = await handleProjectReadmeConfig(
         makeResolver(),
-        'token',
+        () => 'token',
         'unknown',
       );
       expect(response.statusCode).toBe(404);
@@ -809,7 +813,7 @@ describe('consoleReadApi', () => {
       fetchProjectReadmeSpy.mockResolvedValue(null);
       const response = await handleProjectReadmeConfig(
         makeResolver(),
-        'token',
+        () => 'token',
         'acme',
       );
       expect(response.statusCode).toBe(200);
@@ -819,7 +823,7 @@ describe('consoleReadApi', () => {
     it('returns maximumPreparingIssuesCount from parsed readme config', async () => {
       const response = await handleProjectReadmeConfig(
         makeResolver(),
-        'gh-token',
+        (owner: string) => (owner === 'acme' ? 'gh-token' : 'default'),
         'acme',
       );
       expect(response.statusCode).toBe(200);
@@ -827,6 +831,23 @@ describe('consoleReadApi', () => {
       expect(fetchProjectReadmeSpy).toHaveBeenCalledWith(
         projectUrl,
         'gh-token',
+      );
+    });
+
+    it('resolves github token using the project organization owner', async () => {
+      const tokenResolver = jest.fn((owner: string) =>
+        owner === 'acme' ? 'acme-token' : 'other-token',
+      );
+      const response = await handleProjectReadmeConfig(
+        makeResolver(),
+        tokenResolver,
+        'acme',
+      );
+      expect(response.statusCode).toBe(200);
+      expect(tokenResolver).toHaveBeenCalledWith('acme');
+      expect(fetchProjectReadmeSpy).toHaveBeenCalledWith(
+        projectUrl,
+        'acme-token',
       );
     });
   });

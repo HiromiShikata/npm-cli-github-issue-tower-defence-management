@@ -9,6 +9,7 @@ import {
   parseProjectReadmeConfig,
 } from '../cli/projectConfig';
 import type { ConsoleProjectResolver } from './consoleOperationApi';
+import { extractProjectOwner } from './consoleGithubTokenResolver';
 
 export const ISSUE_TITLE_CACHE_TTL_MS = 300 * 1000;
 
@@ -379,7 +380,7 @@ export const handlePullRequestStatus = async (
 
 export const handleProjectReadmeConfig = async (
   resolveProject: ConsoleProjectResolver | null,
-  githubToken: string | null,
+  resolveGithubToken: ((owner: string) => string) | null,
   pjcode: string | null,
 ): Promise<{ statusCode: number; body: unknown }> => {
   if (resolveProject === null) {
@@ -388,7 +389,7 @@ export const handleProjectReadmeConfig = async (
       body: { error: 'project resolver is not configured' },
     };
   }
-  if (githubToken === null || githubToken.length === 0) {
+  if (resolveGithubToken === null) {
     return {
       statusCode: 502,
       body: { error: 'github token is not configured' },
@@ -404,6 +405,14 @@ export const handleProjectReadmeConfig = async (
       body: { error: `project "${pjcode}" is not configured` },
     };
   }
+  const projectOwner = extractProjectOwner(binding.project.url);
+  if (projectOwner === null) {
+    return {
+      statusCode: 502,
+      body: { error: 'cannot determine project owner from project URL' },
+    };
+  }
+  const githubToken = resolveGithubToken(projectOwner);
   const readme = await fetchProjectReadme(binding.project.url, githubToken);
   if (readme === null) {
     return {

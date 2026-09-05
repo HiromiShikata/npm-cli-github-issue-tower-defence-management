@@ -1274,10 +1274,10 @@ export const handleTimer = (
 
 export const handleProjectMaxPreparingUpdate = async (
   context: ConsoleOperationContext,
-  githubToken: string | null,
+  resolveGithubToken: ((owner: string) => string) | null,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
-  if (githubToken === null || githubToken.length === 0) {
+  if (resolveGithubToken === null) {
     return badGateway('github token is not configured');
   }
   const count = body.maximumPreparingIssuesCount;
@@ -1289,6 +1289,11 @@ export const handleProjectMaxPreparingUpdate = async (
     return binding;
   }
   const { project } = binding;
+  const projectOwner = extractProjectOwner(project.url);
+  if (projectOwner === null) {
+    return badGateway('cannot determine project owner from project URL');
+  }
+  const githubToken = resolveGithubToken(projectOwner);
   const existingReadme = await fetchProjectReadme(project.url, githubToken);
   const updatedReadme = setProjectReadmeMaxPreparingIssuesCount(
     existingReadme ?? '',

@@ -86,6 +86,7 @@ describe('consoleOperationApi', () => {
     project = {
       ...mock<Project>(),
       id: 'PVT_1',
+      url: 'https://github.com/orgs/acme/projects/1',
       status: {
         name: 'Status',
         fieldId: 'statusField',
@@ -4248,27 +4249,39 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when maximumPreparingIssuesCount is not a positive integer', async () => {
-      const response = await handleProjectMaxPreparingUpdate(context, 'token', {
-        pjcode: 'acme',
-        maximumPreparingIssuesCount: 0,
-      });
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        () => 'token',
+        {
+          pjcode: 'acme',
+          maximumPreparingIssuesCount: 0,
+        },
+      );
       expect(response.statusCode).toBe(400);
     });
 
     it('returns 400 when pjcode is not configured', async () => {
-      const response = await handleProjectMaxPreparingUpdate(context, 'token', {
-        pjcode: 'unknown',
-        maximumPreparingIssuesCount: 3,
-      });
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        () => 'token',
+        {
+          pjcode: 'unknown',
+          maximumPreparingIssuesCount: 3,
+        },
+      );
       expect(response.statusCode).toBe(400);
     });
 
     it('creates README and returns 200 when project has no README', async () => {
       fetchProjectReadmeSpy.mockResolvedValue(null);
-      const response = await handleProjectMaxPreparingUpdate(context, 'token', {
-        pjcode: 'acme',
-        maximumPreparingIssuesCount: 3,
-      });
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        () => 'token',
+        {
+          pjcode: 'acme',
+          maximumPreparingIssuesCount: 3,
+        },
+      );
       expect(response.statusCode).toBe(200);
       expect(updateProjectV2ReadmeSpy).toHaveBeenCalledWith(
         project.id,
@@ -4279,17 +4292,21 @@ describe('consoleOperationApi', () => {
 
     it('returns 502 when updateProjectV2Readme throws', async () => {
       updateProjectV2ReadmeSpy.mockRejectedValue(new Error('update failed'));
-      const response = await handleProjectMaxPreparingUpdate(context, 'token', {
-        pjcode: 'acme',
-        maximumPreparingIssuesCount: 3,
-      });
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        () => 'token',
+        {
+          pjcode: 'acme',
+          maximumPreparingIssuesCount: 3,
+        },
+      );
       expect(response.statusCode).toBe(502);
     });
 
     it('returns 200 and updates the README on success', async () => {
       const response = await handleProjectMaxPreparingUpdate(
         context,
-        'gh-token',
+        (owner: string) => (owner === 'acme' ? 'gh-token' : 'default'),
         { pjcode: 'acme', maximumPreparingIssuesCount: 5 },
       );
       expect(response.statusCode).toBe(200);
@@ -4301,6 +4318,47 @@ describe('consoleOperationApi', () => {
         project.id,
         expect.stringContaining('maximumPreparingIssuesCount'),
         'gh-token',
+      );
+    });
+
+    it('resolves github token using the project organization owner', async () => {
+      const metaSiteProject: Project = {
+        ...mock<Project>(),
+        id: 'PVT_meta',
+        url: 'https://github.com/orgs/meta-site/projects/1',
+        status: project.status,
+        story: project.story,
+      };
+      const metaContext: ConsoleOperationContext = {
+        resolveIssueRepository: () => issueRepository,
+        resolveProject: async (pjcode: string) =>
+          pjcode === 'acme' ? { pjcode, project: metaSiteProject } : null,
+        isPjcodeConfigured: (pjcode: string) => pjcode === 'acme',
+        consoleDataOutputDir: baseDir,
+        issueAttachmentRepository: null,
+        resolveProjectRepository: null,
+        invalidateProject: null,
+        updateProjectCacheEntry: null,
+        patchItemIntoQueuedTab: null,
+      };
+      const tokenResolver = jest.fn((owner: string) =>
+        owner === 'meta-site' ? 'meta-site-token' : 'other-token',
+      );
+      const response = await handleProjectMaxPreparingUpdate(
+        metaContext,
+        tokenResolver,
+        { pjcode: 'acme', maximumPreparingIssuesCount: 2 },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(tokenResolver).toHaveBeenCalledWith('meta-site');
+      expect(fetchProjectReadmeSpy).toHaveBeenCalledWith(
+        metaSiteProject.url,
+        'meta-site-token',
+      );
+      expect(updateProjectV2ReadmeSpy).toHaveBeenCalledWith(
+        metaSiteProject.id,
+        expect.stringContaining('maximumPreparingIssuesCount'),
+        'meta-site-token',
       );
     });
   });
