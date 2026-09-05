@@ -129,6 +129,35 @@ describe('createReadOnlyTokenRotatingIssueRepository', () => {
       expect(result).toBe('body from token-3');
     });
 
+    it('rotates on findRelatedOpenPrUrls as well', async () => {
+      const repo1 = mock<IssueRepository>();
+      const repo2 = mock<IssueRepository>();
+      const writeRepo = mock<IssueRepository>();
+      const expected = new Map([
+        ['https://github.com/o/r/issues/1', ['https://github.com/o/r/pull/2']],
+      ]);
+      repo1.findRelatedOpenPrUrls.mockRejectedValue(
+        new GitHubRateLimitError('rate limited token-1'),
+      );
+      repo2.findRelatedOpenPrUrls.mockResolvedValue(expected);
+
+      const rotating = createReadOnlyTokenRotatingIssueRepository(
+        [repo1, repo2],
+        writeRepo,
+      );
+      const result = await rotating.findRelatedOpenPrUrls([
+        'https://github.com/o/r/issues/1',
+      ]);
+
+      expect(result).toEqual(expected);
+      expect(repo1.findRelatedOpenPrUrls).toHaveBeenCalledWith([
+        'https://github.com/o/r/issues/1',
+      ]);
+      expect(repo2.findRelatedOpenPrUrls).toHaveBeenCalledWith([
+        'https://github.com/o/r/issues/1',
+      ]);
+    });
+
     it('rotates on getIssueOrPullRequestComments as well', async () => {
       const repo1 = mock<IssueRepository>();
       const repo2 = mock<IssueRepository>();
