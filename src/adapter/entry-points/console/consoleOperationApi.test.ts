@@ -854,6 +854,42 @@ describe('consoleOperationApi', () => {
       }
     });
 
+
+    it('snoozes for six hours via updateNextActionHour', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-01T12:00:00Z'));
+      try {
+        const projectWithHour: Project = {
+          ...project,
+          nextActionHour: {
+            name: 'Next Action Hour',
+            fieldId: 'nahField',
+            options: [],
+          },
+        };
+        const response = await handleTriage(
+          contextForProject(projectWithHour),
+          {
+            pjcode: 'acme',
+            action: 'snooze_6hours',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            projectItemId: 'PVTI_6h',
+          },
+        );
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+        const call = issueRepository.updateNextActionHour.mock.calls[0];
+        expect(call[0]).toMatchObject({
+          nextActionHour: { fieldId: 'nahField' },
+        });
+        expect(call[2]).toBe(18);
+        expect(issueRepository.updateNextActionDate).not.toHaveBeenCalled();
+        expectRecordedAcrossTabs('PVTI_6h');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+
     it('wraps snooze_3hours hour and sets nextActionDate when crossing midnight', async () => {
       jest.useFakeTimers().setSystemTime(new Date('2026-01-01T22:00:00Z'));
       try {
@@ -920,6 +956,116 @@ describe('consoleOperationApi', () => {
       }
     });
 
+    it('wraps snooze_6hours hour and sets nextActionDate when crossing midnight', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-01T20:00:00Z'));
+      try {
+        const projectWithHour: Project = {
+          ...project,
+          nextActionHour: {
+            name: 'Next Action Hour',
+            fieldId: 'nahField',
+            options: [],
+          },
+        };
+        const response = await handleTriage(
+          contextForProject(projectWithHour),
+          {
+            pjcode: 'acme',
+            action: 'snooze_6hours',
+            issueUrl: 'https://github.com/o/r/issues/1',
+            projectItemId: 'PVTI_6h_wrap',
+          },
+        );
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionHour).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateNextActionHour.mock.calls[0][2]).toBe(2);
+        expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        expect(issueRepository.updateNextActionDate.mock.calls[0][2]).toEqual(
+          new Date('2026-01-02T00:00:00Z'),
+        );
+        expectRecordedAcrossTabs('PVTI_6h_wrap');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('snoozes for two days via updateNextActionDate', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'snooze_2days',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_2d',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+      const call = issueRepository.updateNextActionDate.mock.calls[0];
+      expect(call[0]).toBe('https://github.com/o/r/issues/1');
+      expect(call[1]).toBe(project);
+      expect(call[2]).toBeInstanceOf(Date);
+      expectRecordedAcrossTabs('PVTI_2d');
+    });
+
+    it('snoozes for three days via updateNextActionDate', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'snooze_3days',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_3d',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+      expectRecordedAcrossTabs('PVTI_3d');
+    });
+
+    it('snoozes for five days via updateNextActionDate', async () => {
+      const response = await handleTriage(context, {
+        pjcode: 'acme',
+        action: 'snooze_5days',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_5d',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+      expectRecordedAcrossTabs('PVTI_5d');
+    });
+
+    it('snoozes for one month via updateNextActionDate', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-15T10:00:00Z'));
+      try {
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'snooze_1month',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_1mo',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        const call = issueRepository.updateNextActionDate.mock.calls[0];
+        expect(call[2]).toEqual(new Date('2026-02-15T00:00:00Z'));
+        expectRecordedAcrossTabs('PVTI_1mo');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('snoozes one month correctly at month end (Jan 31 → Feb 28)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-31T10:00:00Z'));
+      try {
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'snooze_1month',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_1mo_end',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        const call = issueRepository.updateNextActionDate.mock.calls[0];
+        expect(call[2]).toEqual(new Date('2026-02-28T00:00:00Z'));
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('returns 400 when snooze_1hour is used on a project without nextActionHour', async () => {
       const projectWithoutHour: Project = { ...project, nextActionHour: null };
       const response = await handleTriage(
@@ -944,6 +1090,21 @@ describe('consoleOperationApi', () => {
           action: 'snooze_3hours',
           issueUrl: 'https://github.com/o/r/issues/1',
           projectItemId: 'PVTI_nah3',
+        },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.updateNextActionHour).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when snooze_6hours is used on a project without nextActionHour', async () => {
+      const projectWithoutHour: Project = { ...project, nextActionHour: null };
+      const response = await handleTriage(
+        contextForProject(projectWithoutHour),
+        {
+          pjcode: 'acme',
+          action: 'snooze_6hours',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_nah6',
         },
       );
       expect(response.statusCode).toBe(400);

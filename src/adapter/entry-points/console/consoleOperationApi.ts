@@ -563,15 +563,19 @@ export const handleTriage = async (
     return ok();
   }
 
-  if (action === 'snooze_1hour' || action === 'snooze_3hours') {
+  if (
+    action === 'snooze_1hour' ||
+    action === 'snooze_3hours' ||
+    action === 'snooze_6hours'
+  ) {
     if (project.nextActionHour === null) {
       return badRequest('project does not have a nextActionHour field');
     }
-    const hoursToAdd = action === 'snooze_1hour' ? 1 : 3;
+    const hoursToAdd = action === 'snooze_1hour' ? 1 : action === 'snooze_3hours' ? 3 : 6;
     const now = Date.now();
     const rawHour = new Date(now).getUTCHours() + hoursToAdd;
     const crossesMidnight = rawHour >= 24;
-    const targetHour = crossesMidnight ? rawHour - 24 : rawHour;
+    const targetHour = rawHour % 24;
     const issueRepo = context.resolveIssueRepository(issueUrl);
     await issueRepo.updateNextActionHour(
       { ...project, nextActionHour: project.nextActionHour },
@@ -593,9 +597,41 @@ export const handleTriage = async (
     return ok();
   }
 
-  if (action === 'snooze_1day' || action === 'snooze_1week') {
-    const days = action === 'snooze_1day' ? 1 : 7;
+  if (
+    action === 'snooze_1day' ||
+    action === 'snooze_2days' ||
+    action === 'snooze_3days' ||
+    action === 'snooze_5days' ||
+    action === 'snooze_1week'
+  ) {
+    const days =
+      action === 'snooze_1day'
+        ? 1
+        : action === 'snooze_2days'
+          ? 2
+          : action === 'snooze_3days'
+            ? 3
+            : action === 'snooze_5days'
+              ? 5
+              : 7;
     const target = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    await context
+      .resolveIssueRepository(issueUrl)
+      .updateNextActionDate(issueUrl, project, target, projectItemId);
+    recordDone(context, pjcode, projectItemId);
+    return ok();
+  }
+
+  if (action === 'snooze_1month') {
+    const now = new Date();
+    const targetYear = now.getUTCFullYear();
+    const targetMonth = now.getUTCMonth() + 1;
+    const sourceDay = now.getUTCDate();
+    const lastDayOfTargetMonth = new Date(
+      Date.UTC(targetYear, targetMonth + 1, 0),
+    ).getUTCDate();
+    const targetDay = Math.min(sourceDay, lastDayOfTargetMonth);
+    const target = new Date(Date.UTC(targetYear, targetMonth, targetDay));
     await context
       .resolveIssueRepository(issueUrl)
       .updateNextActionDate(issueUrl, project, target, projectItemId);

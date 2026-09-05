@@ -30,8 +30,13 @@ export type ConsoleReviewAction =
 export type ConsoleNextActionDateAction =
   | 'snooze_1hour'
   | 'snooze_3hours'
+  | 'snooze_6hours'
   | 'snooze_1day'
-  | 'snooze_1week';
+  | 'snooze_2days'
+  | 'snooze_3days'
+  | 'snooze_5days'
+  | 'snooze_1week'
+  | 'snooze_1month';
 
 export type ConsoleCloseAction = 'close' | 'close_not_planned';
 
