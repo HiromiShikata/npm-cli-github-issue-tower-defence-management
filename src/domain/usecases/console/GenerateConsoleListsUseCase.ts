@@ -173,11 +173,7 @@ export class GenerateConsoleListsUseCase {
       selector: (issue: Issue) => boolean,
       excludedStatusNames: string[],
     ): ConsoleStatusTab =>
-      buildStatusTabFromSource(
-        actionableIssues,
-        selector,
-        excludedStatusNames,
-      );
+      buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
 
     const openItemCountByStory = new Map<string, number>();
     for (const issue of issues) {

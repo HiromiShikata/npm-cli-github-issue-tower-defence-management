@@ -1336,7 +1336,14 @@ describe('consoleOperationApi', () => {
       const agentField = {
         name: 'Agent',
         fieldId: 'agentField',
-        options: [{ id: 'agent_opt_1', name: 'developer', color: 'GRAY' as const, description: '' }],
+        options: [
+          {
+            id: 'agent_opt_1',
+            name: 'developer',
+            color: 'GRAY' as const,
+            description: '',
+          },
+        ],
       };
       const contextWithAgent = contextForProject({
         ...project,
