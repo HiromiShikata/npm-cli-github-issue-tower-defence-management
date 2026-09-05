@@ -509,5 +509,24 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         }),
       ).toEqual({ type: 'notRepeated' });
     });
+
+    it('resets the dispatch loop count after an escalation comment so one new dispatch does not re-trigger the loop', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: null,
+        nextStepAgent: 'chore',
+        comments: [
+          report('chore'),
+          report('chore'),
+          report('chore'),
+          escalationComment('chore'),
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(result.type).not.toBe('escalateDispatchLoop');
+    });
   });
 });

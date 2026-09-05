@@ -47,6 +47,18 @@ const isSilentRedispatchCommentForAgent = (
   );
 };
 
+/**
+ * Returns true when a NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD comment
+ * represents a final escalation that asks for owner judgment, as opposed to an
+ * intermediate re-dispatch notice or a bare header with no body.
+ * Re-dispatch notices say "Dispatching it again" / "Dispatching again".
+ * Escalation comments contain one of the owner-facing phrases below.
+ */
+const isEscalationDispatchComment = (content: string): boolean =>
+  content.includes('Owner judgment is required') ||
+  content.includes('Failed to receive a report') ||
+  content.includes('escalated for a decision');
+
 type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
 
 const countSilentRedispatches = <
@@ -71,9 +83,6 @@ const countSilentRedispatches = <
   const commentsInCurrentCycle = params.comments.slice(
     lastHumanCommentIndex + 1,
   );
-  const isSilentRedispatchEscalation = (content: string): boolean =>
-    content.includes('The agent may have crashed or stopped silently') ||
-    content.includes('Owner judgment is required to break the loop');
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
     (found, comment, index) =>
       params.isTrustedAuthor(comment.author) &&
@@ -81,7 +90,7 @@ const countSilentRedispatches = <
         comment.content,
         params.nextStepAgent,
       ) &&
-      isSilentRedispatchEscalation(comment.content)
+      isEscalationDispatchComment(comment.content)
         ? index
         : found,
     -1,
@@ -127,8 +136,23 @@ const countDispatchesInCurrentCycle = <
     params.comments,
     params.isTrustedAuthor,
   );
+  const lastEscalationCommentIndex = params.comments.reduce(
+    (found, comment, index) =>
+      params.isTrustedAuthor(comment.author) &&
+      comment.content.startsWith(
+        NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD,
+      ) &&
+      isEscalationDispatchComment(comment.content)
+        ? index
+        : found,
+    -1,
+  );
+  const cycleStart = Math.max(
+    lastHumanCommentIndex,
+    lastEscalationCommentIndex,
+  );
   const reportsInCurrentCycle = params.comments
-    .slice(lastHumanCommentIndex + 1)
+    .slice(cycleStart + 1)
     .filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
