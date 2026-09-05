@@ -61,6 +61,14 @@ describe('extractExecutiveSummary', () => {
       'タスクのゴール: partial summary',
     );
   });
+
+  it('stops at the next ## heading when executive summary appears at top of comment (new format)', () => {
+    const body = `From: :robot: agent (model)\n## エグゼクティブサマリ / Executive Summary\nタスクのゴール: fix the extraction bug\n残りの作業と判断: nothing remains\n## Loaded skills\nskill1, skill2\n## Other section\nother content`;
+    const result = extractExecutiveSummary(body);
+    expect(result).toBe(
+      'タスクのゴール: fix the extraction bug\n残りの作業と判断: nothing remains',
+    );
+  });
 });
 
 describe('extractExecutiveSummaryFromComments', () => {
