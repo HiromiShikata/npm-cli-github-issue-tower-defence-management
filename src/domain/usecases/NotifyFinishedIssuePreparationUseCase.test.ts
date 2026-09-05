@@ -457,10 +457,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
-  it('should throw IllegalIssueStatusError when issue status is not Preparation and not Done', async () => {
+  it('should throw IllegalIssueStatusError when issue status is not Preparation, not Done, and not Awaiting Workspace', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
-      status: 'Awaiting Workspace',
+      status: 'In Progress',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -475,7 +475,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       }),
     ).rejects.toThrow(
-      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation, but got Awaiting Workspace',
+      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation, but got In Progress',
     );
   });
 
