@@ -19,3 +19,4 @@ LICENSE
 *.diff
 *.log
 CODEOWNERS
+src/adapter/entry-points/console/ui

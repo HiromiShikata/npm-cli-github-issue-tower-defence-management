@@ -7,7 +7,12 @@ import {
 import type { ConsoleListItem, ConsoleTabName } from './types';
 
 export type ConsoleToastColor =
-  'green' | 'amber' | 'red' | 'gray' | 'blue' | 'error';
+  | 'green'
+  | 'amber'
+  | 'red'
+  | 'gray'
+  | 'blue'
+  | 'error';
 
 export type ConsoleActionKind =
   | { type: 'review'; action: ConsoleReviewAction }

@@ -93,12 +93,14 @@ describe('ConsoleCommentComposer', () => {
   });
 
   it('submits the comment, empties the draft and renders no comment of its own', async () => {
-    const onSubmit = jest.fn(async (body: string): Promise<ConsoleComment> => ({
-      author: 'HiromiShikata',
-      body,
-      createdAt: '2026-06-19T11:58:00.000Z',
-      url: null,
-    }));
+    const onSubmit = jest.fn(
+      async (body: string): Promise<ConsoleComment> => ({
+        author: 'HiromiShikata',
+        body,
+        createdAt: '2026-06-19T11:58:00.000Z',
+        url: null,
+      }),
+    );
     const { container, getByPlaceholderText, getByText, queryByText } = render(
       <ConsoleCommentComposer initiallyOpen onSubmit={onSubmit} />,
     );

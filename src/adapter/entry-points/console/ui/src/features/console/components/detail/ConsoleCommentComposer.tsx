@@ -14,7 +14,9 @@ export type ConsoleCommentComposerProps = {
 };
 
 type ComposerStatus =
-  { kind: 'idle' } | { kind: 'posting' } | { kind: 'error'; message: string };
+  | { kind: 'idle' }
+  | { kind: 'posting' }
+  | { kind: 'error'; message: string };
 
 type UploadStatus =
   | { kind: 'idle' }

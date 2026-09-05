@@ -22,7 +22,10 @@ export const buildRequestChangesBody = (
     .join('\n\n');
 
 export type ConsoleReviewAction =
-  'approve_and_merge' | 'request_changes' | 'unnecessary' | 'totally_wrong';
+  | 'approve_and_merge'
+  | 'request_changes'
+  | 'unnecessary'
+  | 'totally_wrong';
 
 export type ConsoleNextActionDateAction =
   | 'snooze_1hour'
