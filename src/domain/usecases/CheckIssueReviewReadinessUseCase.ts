@@ -13,7 +13,7 @@ import {
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { findLastAgentReport } from './findLastAgentReport';
 import { TRIAGER_AGENT_NAME } from './triagerAgentName';
-import { extractFencedJsonBlocks } from './extractFencedJsonBlocks';
+import { extractPullRequestRequired } from './extractPullRequestRequired';
 
 type RejectedReasonType =
   | 'ISSUE_NOT_FOUND'
@@ -98,7 +98,7 @@ export class CheckIssueReviewReadinessUseCase {
       isAgentReportBodyFromAgent(lastAgentReport.content, TRIAGER_AGENT_NAME);
     const lastReportDeclaresPullRequestNotRequired =
       lastAgentReport !== null &&
-      this.extractPullRequestRequired(lastAgentReport.content) === false;
+      extractPullRequestRequired(lastAgentReport.content) === false;
 
     const { rejections: prRejections } =
       await this.issueRejectionEvaluator.evaluate(
@@ -122,23 +122,6 @@ export class CheckIssueReviewReadinessUseCase {
       reviewReady: allRejections.length === 0,
       rejections: allRejections,
     };
-  };
-
-  private extractPullRequestRequired = (body: string): boolean | null => {
-    const blocks = extractFencedJsonBlocks(body, 'pullRequestRequired');
-    const firstBlock = blocks[0];
-    if (
-      typeof firstBlock !== 'object' ||
-      firstBlock === null ||
-      !('pullRequestRequired' in firstBlock)
-    ) {
-      return null;
-    }
-    const value = Reflect.get(firstBlock, 'pullRequestRequired');
-    if (typeof value !== 'boolean') {
-      return null;
-    }
-    return value;
   };
 
   private reportBodyHasNextStep = (body: string): boolean => {
