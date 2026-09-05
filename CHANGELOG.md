@@ -1,3 +1,15 @@
+# [2.57.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.56.3...v2.57.0) (2026-09-05)
+
+
+### Features
+
+* add readGhTokens config for read-only token separation ([#2043](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2043)) ([691c277](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/691c2774b1a151fbe8207127914d710360b04069)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#2019](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2019)
+
+
+### Performance Improvements
+
+* **usecases:** batch the Awaiting Quality Check related pull request lookup ([#1953](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1953)) ([4258a02](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4258a02ce5cae816a4d2a0cfece96f4a514cba91))
+
 ## [2.56.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.56.2...v2.56.3) (2026-09-05)
 
 
