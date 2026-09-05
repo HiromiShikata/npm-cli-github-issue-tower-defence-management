@@ -181,6 +181,27 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('escalateSilentRedispatch');
     });
 
+    it('resets the consecutive silent dispatch count after a successful agent report', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'accounting',
+        nextStepAgent: 'accounting',
+        comments: [
+          report('accounting'),
+          repetitionComment('accounting'),
+          repetitionComment('accounting'),
+          report('accounting'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+      expect(result.type === 'dispatchAgain' ? result.comment : '').toContain(
+        '(1/3)',
+      );
+    });
+
     it('resets the silent dispatch count after a human comment even if a routing comment follows', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
