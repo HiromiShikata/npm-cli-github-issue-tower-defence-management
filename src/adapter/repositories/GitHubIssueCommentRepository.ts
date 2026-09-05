@@ -79,7 +79,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     repo: string,
     issueNumber: number,
   ): string {
-    return `comments/${owner}-${repo}-${issueNumber}`;
+    return `comments/${owner}/${repo}/${issueNumber}`;
   }
 
   private async readCommentCache(

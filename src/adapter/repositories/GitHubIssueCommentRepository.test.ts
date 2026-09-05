@@ -206,7 +206,7 @@ describe('GitHubIssueCommentRepository', () => {
       );
 
       expect(cache.setSingle).toHaveBeenCalledWith(
-        'comments/HiromiShikata-test-repo-123',
+        'comments/HiromiShikata/test-repo/123',
         {
           etag: '"etag-abc"',
           comments: [
@@ -304,7 +304,7 @@ describe('GitHubIssueCommentRepository', () => {
         },
       ]);
       expect(cache.setSingle).toHaveBeenCalledWith(
-        'comments/HiromiShikata-test-repo-123',
+        'comments/HiromiShikata/test-repo/123',
         expect.objectContaining({ etag: '"etag-new"' }),
       );
       expect(cache.setSingle).not.toHaveBeenCalledWith(
@@ -402,7 +402,7 @@ describe('GitHubIssueCommentRepository', () => {
       ]);
       expect(cache.setSingle).toHaveBeenCalledTimes(1);
       expect(cache.setSingle).toHaveBeenCalledWith(
-        'comments/HiromiShikata-test-repo-123',
+        'comments/HiromiShikata/test-repo/123',
         {
           etag: '"etag-page1"',
           comments: [
