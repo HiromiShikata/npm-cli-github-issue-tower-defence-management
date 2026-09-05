@@ -3187,6 +3187,134 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
     });
 
+    it('closes open tasks assigned to the story when the story is deleted', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const openTask: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/100',
+        isClosed: false,
+        isPr: false,
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.name,
+          { story: storyToRemove, storyIssue: null, issues: [openTask] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/acme-labs/ops/issues/100',
+        'not_planned',
+      );
+    });
+
+    it('does not close tasks that are already closed when the story is deleted', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const closedTask: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/101',
+        isClosed: true,
+        isPr: false,
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.name,
+          { story: storyToRemove, storyIssue: null, issues: [closedTask] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+    });
+
+    it('returns 200 even when closing a task throws after story deletion', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const openTask: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/102',
+        isClosed: false,
+        isPr: false,
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.name,
+          { story: storyToRemove, storyIssue: null, issues: [openTask] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+      issueRepository.closeIssueByUrl.mockRejectedValue(
+        new Error('network error'),
+      );
+
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/acme-labs/ops/issues/102',
+        'not_planned',
+      );
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('does not close pull requests assigned to the story when the story is deleted', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const openPr: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/pull/200',
+        isClosed: false,
+        isPr: true,
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.name,
+          { story: storyToRemove, storyIssue: null, issues: [openPr] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+    });
+
     it('preserves story options added server-side after cache was populated when deleting a story', async () => {
       const cachedProject = projectWithStoriesToDelete();
       const cachedStory = cachedProject.story;

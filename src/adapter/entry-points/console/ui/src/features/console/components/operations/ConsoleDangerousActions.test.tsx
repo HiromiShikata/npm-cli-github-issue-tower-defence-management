@@ -87,6 +87,21 @@ describe('ConsoleDangerousActions', () => {
       expect(getByText('Cancel')).toBeInTheDocument();
     });
 
+    it('informs user that open tasks will be closed in the confirm dialog', () => {
+      const { getByText } = render(
+        <ConsoleDangerousActions
+          onDeleteAllComments={() => {}}
+          onDeleteStory={async () => {}}
+          storyNameForDeletion="my story"
+        />,
+      );
+      fireEvent.click(getByText('⚠'));
+      fireEvent.click(getByText('Delete Story'));
+      expect(
+        getByText(/Open tasks assigned to this story will be closed/),
+      ).toBeInTheDocument();
+    });
+
     it('hides confirm dialog when Cancel is clicked', () => {
       const { getByText, queryByRole } = render(
         <ConsoleDangerousActions
