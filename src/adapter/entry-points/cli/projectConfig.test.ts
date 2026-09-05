@@ -440,12 +440,12 @@ describe('setProjectReadmeMaxPreparingIssuesCount', () => {
   });
 });
 
-describe('loadConfigFile readOnlyGithubTokens', () => {
+describe('loadConfigFile githubAppPrivateKeyPaths', () => {
   let dir: string;
 
   beforeEach(() => {
     dir = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'project-config-readonly-tokens-'),
+      path.join(os.tmpdir(), 'project-config-github-app-keys-'),
     );
   });
 
@@ -459,50 +459,58 @@ describe('loadConfigFile readOnlyGithubTokens', () => {
     return filePath;
   };
 
-  it('yields undefined when readOnlyGithubTokens is absent', () => {
+  it('yields undefined when githubAppPrivateKeyPaths is absent', () => {
     const filePath = writeConfig("projectName: 'demo'\n");
-    expect(loadConfigFile(filePath).readOnlyGithubTokens).toBeUndefined();
+    expect(loadConfigFile(filePath).githubAppPrivateKeyPaths).toBeUndefined();
   });
 
-  it('parses a list of read-only github tokens', () => {
+  it('parses a list of GitHub App private key paths', () => {
     const filePath = writeConfig(
       [
         "projectName: 'demo'",
-        'readOnlyGithubTokens:',
-        "  - 'ghs_token_1'",
-        "  - 'ghs_token_2'",
+        'githubAppPrivateKeyPaths:',
+        "  - '/home/hiromi/.config/secretary/creds/hs-bot-gh-app-private-key.pem'",
       ].join('\n'),
     );
-    expect(loadConfigFile(filePath).readOnlyGithubTokens).toEqual([
-      'ghs_token_1',
-      'ghs_token_2',
+    expect(loadConfigFile(filePath).githubAppPrivateKeyPaths).toEqual([
+      '/home/hiromi/.config/secretary/creds/hs-bot-gh-app-private-key.pem',
     ]);
   });
 
-  it('yields undefined when readOnlyGithubTokens contains a non-string entry', () => {
+  it('yields undefined when githubAppPrivateKeyPaths contains a non-string entry', () => {
     const filePath = writeConfig(
-      ['readOnlyGithubTokens:', '  - 123'].join('\n'),
+      ['githubAppPrivateKeyPaths:', '  - 123'].join('\n'),
     );
-    expect(loadConfigFile(filePath).readOnlyGithubTokens).toBeUndefined();
+    expect(loadConfigFile(filePath).githubAppPrivateKeyPaths).toBeUndefined();
   });
 });
 
-describe('mergeConfigs readOnlyGithubTokens', () => {
+describe('mergeConfigs githubAppPrivateKeyPaths', () => {
   it('takes the array from the config file when no cli override is present', () => {
-    const merged = mergeConfigs({ readOnlyGithubTokens: ['t1', 't2'] }, {}, {});
-    expect(merged.readOnlyGithubTokens).toEqual(['t1', 't2']);
+    const merged = mergeConfigs(
+      { githubAppPrivateKeyPaths: ['/path/key1.pem', '/path/key2.pem'] },
+      {},
+      {},
+    );
+    expect(merged.githubAppPrivateKeyPaths).toEqual([
+      '/path/key1.pem',
+      '/path/key2.pem',
+    ]);
   });
 
   it('prefers the cli override array over the config file array', () => {
     const merged = mergeConfigs(
-      { readOnlyGithubTokens: ['t1'] },
-      { readOnlyGithubTokens: ['t2', 't3'] },
+      { githubAppPrivateKeyPaths: ['/path/key1.pem'] },
+      { githubAppPrivateKeyPaths: ['/path/key2.pem', '/path/key3.pem'] },
       {},
     );
-    expect(merged.readOnlyGithubTokens).toEqual(['t2', 't3']);
+    expect(merged.githubAppPrivateKeyPaths).toEqual([
+      '/path/key2.pem',
+      '/path/key3.pem',
+    ]);
   });
 
   it('yields undefined when neither source provides the array', () => {
-    expect(mergeConfigs({}, {}, {}).readOnlyGithubTokens).toBeUndefined();
+    expect(mergeConfigs({}, {}, {}).githubAppPrivateKeyPaths).toBeUndefined();
   });
 });
