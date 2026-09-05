@@ -30,6 +30,7 @@ describe('ConsoleCommentList', () => {
     expect(getByText('Acknowledged.')).toBeInTheDocument();
     fireEvent.click(getByText('Show all 2'));
     expect(container.querySelector('.console-comment-summary')).toBeNull();
+    expect(getByText('Second paragraph detail.')).toBeInTheDocument();
   });
 
   it('shows the loading state', () => {

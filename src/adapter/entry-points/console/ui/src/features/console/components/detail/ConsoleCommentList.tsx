@@ -7,6 +7,9 @@ import { buildWorkflowIncidentReportUrl } from '../../logic/workflowIncidentRepo
 import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 
+const getFirstLine = (body: string): string =>
+  (body.split('\n').find((line) => line.trim().length > 0) ?? '').trim();
+
 export type ConsoleCommentListProps = {
   comments: ConsoleComment[];
   isLoading: boolean;
@@ -43,8 +46,6 @@ export const ConsoleCommentList = ({
   }
 
   const isSummaryMode = !showAll && comments.length > 1;
-  const getFirstLine = (body: string): string =>
-    (body.split('\n').find((line) => line.trim().length > 0) ?? '').trim();
 
   return (
     <div className="console-comment-list">
