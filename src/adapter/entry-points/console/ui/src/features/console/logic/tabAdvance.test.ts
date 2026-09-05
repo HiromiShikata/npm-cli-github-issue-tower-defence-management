@@ -72,7 +72,7 @@ describe('resolveDefaultActiveTab', () => {
           'todo-by-human': 4,
         }),
       ),
-    ).toBe('workflow-blocker');
+    ).toBe('prs');
   });
 
   it('skips empty left-most tabs and returns the first non-empty tab', () => {
@@ -84,6 +84,6 @@ describe('resolveDefaultActiveTab', () => {
   });
 
   it('falls back to the first tab when every tab is empty', () => {
-    expect(resolveDefaultActiveTab(counts({}))).toBe('workflow-blocker');
+    expect(resolveDefaultActiveTab(counts({}))).toBe('prs');
   });
 });

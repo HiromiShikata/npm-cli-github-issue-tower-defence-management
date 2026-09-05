@@ -131,7 +131,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
         }),
       ),
     );
-    expect(result.current.activeTab).toBe('workflow-blocker');
+    expect(result.current.activeTab).toBe('prs');
   });
 
   it('skips the empty left-most tab and lands on the next non-empty tab', () => {
@@ -146,7 +146,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
 
   it('falls back to the first tab when every tab is empty', () => {
     const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
-    expect(result.current.activeTab).toBe('workflow-blocker');
+    expect(result.current.activeTab).toBe('prs');
   });
 
   it('updates the default tab when counts arrive after the initial render', () => {
@@ -155,7 +155,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
         useConsoleNavigation('acme', tabCounts),
       { initialProps: { tabCounts: counts() } },
     );
-    expect(result.current.activeTab).toBe('workflow-blocker');
+    expect(result.current.activeTab).toBe('prs');
     rerender({ tabCounts: counts({ 'failed-preparation': 6 }) });
     expect(result.current.activeTab).toBe('failed-preparation');
   });

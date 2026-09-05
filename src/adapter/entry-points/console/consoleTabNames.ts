@@ -1,10 +1,10 @@
 import type { ConsoleTabName } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 
 export const CONSOLE_LIST_TAB_NAMES: ConsoleTabName[] = [
-  'workflow-blocker',
   'prs',
   'failed-preparation',
   'todo-by-human',
+  'workflow-blocker',
   'todo-by-agent',
   'queued',
   'stories',
