@@ -33,7 +33,9 @@ const updateStoryListResponse = {
   data: {
     updateProjectV2Field: {
       projectV2Field: {
-        options: [{ id: 'opt1', name: 'story1', color: 'GRAY', description: '' }],
+        options: [
+          { id: 'opt1', name: 'story1', color: 'GRAY', description: '' },
+        ],
       },
     },
   },

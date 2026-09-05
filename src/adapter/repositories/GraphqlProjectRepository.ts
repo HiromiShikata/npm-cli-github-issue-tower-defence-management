@@ -437,7 +437,9 @@ export class GraphqlProjectRepository
       };
       errors?: { message: string }[];
     }>({
-      ghToken: isMutationOperation(query) ? this.ghToken : this.selectReadToken(),
+      ghToken: isMutationOperation(query)
+        ? this.ghToken
+        : this.selectReadToken(),
       query,
       variables,
     });

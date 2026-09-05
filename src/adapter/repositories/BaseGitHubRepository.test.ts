@@ -4,11 +4,12 @@ import { LocalStorageRepository } from './LocalStorageRepository';
 const localStorageRepository = new LocalStorageRepository();
 
 class TestGitHubRepository extends BaseGitHubRepository {
-  constructor(
-    ghToken?: string,
-    readGhTokens: string[] = [],
-  ) {
-    super(localStorageRepository, ghToken ?? process.env.GH_TOKEN, readGhTokens);
+  constructor(ghToken?: string, readGhTokens: string[] = []) {
+    super(
+      localStorageRepository,
+      ghToken ?? process.env.GH_TOKEN,
+      readGhTokens,
+    );
   }
   extractIssueFromUrlPublic = this.extractIssueFromUrl;
   selectReadTokenPublic(): string {

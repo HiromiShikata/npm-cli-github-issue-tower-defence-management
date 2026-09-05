@@ -240,10 +240,7 @@ const resolveScopeLibPath = (): string | null => {
 const buildGithubRepositoryParams = (
   localStorageRepository: LocalStorageRepository,
   token: string,
-): readonly [LocalStorageRepository, string] => [
-  localStorageRepository,
-  token,
-];
+): readonly [LocalStorageRepository, string] => [localStorageRepository, token];
 
 const parseInTmuxProjectOrder = (raw: string | undefined): string[] | null => {
   if (raw === undefined) {
