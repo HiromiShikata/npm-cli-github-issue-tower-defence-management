@@ -106,13 +106,15 @@ test('renders the Workflow Blocker tab immediately right of Todo by human and sh
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await expect(tabBadge(page, 'Workflow Blocker')).toHaveText('1');
+  await expect(tabByLabel(page, 'Todo by human')).toBeVisible();
+
   const labels = page.locator('.console-tab .console-tab-label');
   const allLabels = await labels.allTextContents();
   const todoHumanIndex = allLabels.indexOf('Todo by human');
   const blockerIndex = allLabels.indexOf('Workflow Blocker');
   expect(todoHumanIndex).toBeGreaterThanOrEqual(0);
   expect(blockerIndex).toBe(todoHumanIndex + 1);
-  await expect(tabBadge(page, 'Workflow Blocker')).toHaveText('1');
 
   await expect(page.locator('.console-tab-count-heading')).toHaveCount(0);
 
