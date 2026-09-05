@@ -256,6 +256,65 @@ describe('mergeConfigs consoleGithubTokenFileDir', () => {
   });
 });
 
+describe('loadConfigFile consoleGithubTokens', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'project-config-console-github-tokens-'),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeConfig = (content: string): string => {
+    const filePath = path.join(dir, 'config.yml');
+    fs.writeFileSync(filePath, content);
+    return filePath;
+  };
+
+  it('parses consoleGithubTokens map from the config file', () => {
+    const filePath = writeConfig(
+      "projectName: 'demo'\nconsoleGithubTokens:\n  acme: 'token-abc'\n  other: 'token-xyz'\n",
+    );
+    expect(loadConfigFile(filePath).consoleGithubTokens).toEqual({
+      acme: 'token-abc',
+      other: 'token-xyz',
+    });
+  });
+
+  it('yields undefined consoleGithubTokens when the key is absent', () => {
+    const filePath = writeConfig("projectName: 'demo'\n");
+    expect(loadConfigFile(filePath).consoleGithubTokens).toBeUndefined();
+  });
+});
+
+describe('mergeConfigs consoleGithubTokens', () => {
+  it('prefers the cli override consoleGithubTokens over the config file value', () => {
+    const merged = mergeConfigs(
+      { consoleGithubTokens: { acme: 'config-token' } },
+      { consoleGithubTokens: { acme: 'cli-token' } },
+      {},
+    );
+    expect(merged.consoleGithubTokens).toEqual({ acme: 'cli-token' });
+  });
+
+  it('falls back to the config file consoleGithubTokens when no cli override is present', () => {
+    const merged = mergeConfigs(
+      { consoleGithubTokens: { acme: 'config-token' } },
+      {},
+      {},
+    );
+    expect(merged.consoleGithubTokens).toEqual({ acme: 'config-token' });
+  });
+
+  it('yields undefined consoleGithubTokens when neither source provides it', () => {
+    expect(mergeConfigs({}, {}, {}).consoleGithubTokens).toBeUndefined();
+  });
+});
+
 describe('loadConfigFile developerAgentNames', () => {
   let dir: string;
 
