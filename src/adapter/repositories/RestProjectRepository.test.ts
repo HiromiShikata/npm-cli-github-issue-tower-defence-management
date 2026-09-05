@@ -218,6 +218,16 @@ describe('RestProjectRepository', () => {
       expect(await repository.getProject(location)).toBeNull();
     });
 
+    it('should return null when the token lacks projects scope and GitHub returns 403', async () => {
+      mockGet.mockImplementation(() => {
+        throw Object.assign(new Error('Forbidden'), {
+          response: { status: 403 },
+        });
+      });
+
+      expect(await repository.getProject(location)).toBeNull();
+    });
+
     it('should rethrow a failure that is not a not found response', async () => {
       mockGet.mockImplementation(() => {
         throw Object.assign(new Error('Bad Gateway'), {
