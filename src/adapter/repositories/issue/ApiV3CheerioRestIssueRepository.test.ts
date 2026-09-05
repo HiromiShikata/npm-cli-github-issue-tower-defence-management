@@ -4035,9 +4035,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               status: 403,
               headers: {
                 'x-ratelimit-remaining': '0',
-                'x-ratelimit-reset': String(
-                  Math.floor(Date.now() / 1000) + 60,
-                ),
+                'x-ratelimit-reset': String(Math.floor(Date.now() / 1000) + 60),
               },
             },
           ),

@@ -1749,8 +1749,7 @@ export class ApiV3CheerioRestIssueRepository
     const perPage = 100;
     let page = 2;
     let hasMore =
-      page1Body.check_runs.length >= perPage &&
-      perPage < page1Body.total_count;
+      page1Body.check_runs.length >= perPage && perPage < page1Body.total_count;
 
     while (hasMore) {
       const pageResponse = await this.fetchWithRateLimitRetry(() =>
@@ -1860,8 +1859,9 @@ export class ApiV3CheerioRestIssueRepository
         );
         return diskCache.contexts;
       }
-      const formatted =
-        await this.formatGitHubErrorWithStatus(combinedStatusResponse);
+      const formatted = await this.formatGitHubErrorWithStatus(
+        combinedStatusResponse,
+      );
       throw new GitHubRateLimitError(
         `Failed to fetch combined status for ${owner}/${repo}@${commitSha}: ${formatted}`,
       );
@@ -1890,7 +1890,13 @@ export class ApiV3CheerioRestIssueRepository
       });
     }
 
-    await this.writeCiContextDiskCache(owner, repo, commitSha, newEtag, contexts);
+    await this.writeCiContextDiskCache(
+      owner,
+      repo,
+      commitSha,
+      newEtag,
+      contexts,
+    );
     this.commitCiContextsInMemoryCache.set(inMemoryCacheKey, contexts);
     return contexts;
   };
