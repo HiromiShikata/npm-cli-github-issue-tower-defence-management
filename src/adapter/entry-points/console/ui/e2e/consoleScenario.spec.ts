@@ -1295,8 +1295,12 @@ test('shows all comments as first-line summaries when not expanded and expands a
       'Resolve the shared GitHub token rate-limit exhaustion blocker',
     ).click();
     await expect(page.locator('.console-comment-summary')).toHaveCount(2);
+    await expect(
+      page.locator('.console-comment-summary').first(),
+    ).toContainText('First review comment.');
     await page.getByRole('button', { name: 'Show all 2' }).click();
     await expect(page.locator('.console-comment-summary')).toHaveCount(0);
+    await expect(page.getByText('Second paragraph detail.')).toBeVisible();
   } finally {
     await multiCommentHarness.stop();
   }
