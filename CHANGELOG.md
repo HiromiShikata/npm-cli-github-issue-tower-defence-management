@@ -1,3 +1,15 @@
+# [2.56.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.55.3...v2.56.0) (2026-09-05)
+
+
+### Bug Fixes
+
+* **rate-limit:** skip FORBIDDEN item content errors in fetchProjectItems and cache commit CI contexts by SHA ([#1973](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1973)) ([f505210](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f50521016aca4c4e99e62e339672ed6da2c1f758)), closes [HiromiShikata/secretary#5219](https://github.com/HiromiShikata/secretary/issues/5219)
+
+
+### Features
+
+* **ApiV3CheerioRestIssueRepository:** serve getIssueByUrl from allIssues disk cache before calling fetchProjectItemByUrl ([#2026](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2026)) ([d13d4aa](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d13d4aac5ca662e85274432ab2fc6642e45cc94f))
+
 ## [2.55.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.55.2...v2.55.3) (2026-09-05)
 
 
