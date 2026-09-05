@@ -1,8 +1,10 @@
 import { fireEvent, render } from '@testing-library/react';
 import type { ConsoleOperationHandlers } from '../../logic/operations';
 import {
+  consoleAgentOptionsFixture,
   consoleListItemsFixture,
   consoleStatusOptionsFixture,
+  consoleStoryOptionsFixture,
 } from '../../testing/fixtures';
 import { ConsoleOperationMenu } from './ConsoleOperationMenu';
 
@@ -316,5 +318,24 @@ describe('ConsoleOperationMenu', () => {
     );
     fireEvent.click(getByText('⚠'));
     expect(queryByText('Delete Story')).toBeNull();
+  });
+
+  it('renders story and agent select dropdowns when non-empty options are provided', () => {
+    const { getByRole } = render(
+      <ConsoleOperationMenu
+        tab="todo-by-human"
+        item={issueItem}
+        hasPullRequest={false}
+        rejectEnabled={false}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        currentStoryName={null}
+        agentOptions={consoleAgentOptionsFixture}
+        currentAgentName={null}
+        handlers={handlers}
+      />,
+    );
+    expect(getByRole('combobox', { name: 'Set story' })).toBeInTheDocument();
+    expect(getByRole('combobox', { name: 'Set agent' })).toBeInTheDocument();
   });
 });

@@ -8,11 +8,13 @@ import type {
   ConsoleRelatedPullRequest,
 } from '../logic/types';
 import {
+  consoleAgentOptionsFixture,
   consoleChangedFilesFixture,
   consoleListItemsFixture,
   consoleRelatedPullRequestsFixture,
   consoleStatusOptionsFixture,
   consoleStoryColorsFixture,
+  consoleStoryOptionsFixture,
 } from '../testing/fixtures';
 import { ConsoleItemDetailContainer } from './ConsoleItemDetailContainer';
 
@@ -755,5 +757,76 @@ describe('ConsoleItemDetailContainer', () => {
 
     const input = onQueueAction.mock.calls[0][0];
     await expect(input.commit()).rejects.toThrow('GitHub API failure');
+  });
+
+  it('queues the set_story action when a story option is selected', () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByRole } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={consoleStoryOptionsFixture}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    const storySelect = getByRole('combobox', { name: 'Set story' });
+    fireEvent.change(storySelect, { target: { value: '28415d6c' } });
+    expect(onQueueAction).toHaveBeenCalledTimes(1);
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.kind).toEqual({
+      type: 'set_story',
+      optionName: 'regular / workflow improvement',
+    });
+    expect(input.item).toBe(issueItem);
+    expect(operations.setStory).not.toHaveBeenCalled();
+    input.commit();
+    expect(operations.setStory).toHaveBeenCalledWith(issueItem, {
+      id: '28415d6c',
+      name: 'regular / workflow improvement',
+      color: 'GRAY',
+    });
+  });
+
+  it('queues the set_agent action when an agent option is selected', () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByRole } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={consoleAgentOptionsFixture}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    const agentSelect = getByRole('combobox', { name: 'Set agent' });
+    fireEvent.change(agentSelect, { target: { value: '95c55dd3' } });
+    expect(onQueueAction).toHaveBeenCalledTimes(1);
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.kind).toEqual({ type: 'set_agent', optionName: 'developer' });
+    expect(input.item).toBe(issueItem);
+    expect(operations.setAgent).not.toHaveBeenCalled();
+    input.commit();
+    expect(operations.setAgent).toHaveBeenCalledWith(issueItem, {
+      id: '95c55dd3',
+      name: 'developer',
+      color: 'GRAY',
+    });
   });
 });
