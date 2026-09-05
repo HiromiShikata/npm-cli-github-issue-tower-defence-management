@@ -1,3 +1,10 @@
+## [2.59.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.59.2...v2.59.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* **dashboard:** record close events for tasks closed via automated paths ([6cc26d6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6cc26d6cd1ecb7472984bf6021aa985f83d4a975))
+
 ## [2.59.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.59.1...v2.59.2) (2026-09-05)
 
 
