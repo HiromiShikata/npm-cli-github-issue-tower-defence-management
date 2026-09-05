@@ -1268,3 +1268,36 @@ test('story select in task detail shows current story pre-selected and fires set
     )
     .toBe(1);
 });
+
+test('shows all comments as first-line summaries when not expanded and expands all on Show all click', async ({
+  page,
+}) => {
+  const multiCommentHarness = await startConsoleE2eHarness({
+    getIssueOrPullRequestComments: async () => [
+      {
+        author: 'reviewer',
+        body: 'First review comment.\n\nSecond paragraph detail.',
+        createdAt: new Date('2026-06-17T06:12:40.000Z'),
+        url: null,
+      },
+      {
+        author: 'HiromiShikata',
+        body: 'Acknowledged.',
+        createdAt: new Date('2026-06-17T09:00:00.000Z'),
+        url: null,
+      },
+    ],
+  });
+  try {
+    await page.goto(multiCommentHarness.appRootUrl);
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    await expect(page.locator('.console-comment-summary')).toHaveCount(2);
+    await page.getByRole('button', { name: 'Show all 2' }).click();
+    await expect(page.locator('.console-comment-summary')).toHaveCount(0);
+  } finally {
+    await multiCommentHarness.stop();
+  }
+});
