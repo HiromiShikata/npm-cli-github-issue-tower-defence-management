@@ -724,7 +724,8 @@ export const handleComment = async (
     };
   } catch (error) {
     console.error(
-      `[handleComment] pjcode=${pjcode} url=${url} upstream comment post failed:`,
+      '[handleComment] upstream comment post failed:',
+      { pjcode, url },
       error,
     );
     return {

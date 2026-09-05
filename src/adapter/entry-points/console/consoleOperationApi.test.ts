@@ -1860,11 +1860,8 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(response.body).toEqual({ ok: true, commentPosted: false });
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('pjcode=acme'),
-        expect.any(Error),
-      );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('url=https://github.com/o/r/issues/1'),
+        '[handleComment] upstream comment post failed:',
+        { pjcode: 'acme', url: 'https://github.com/o/r/issues/1' },
         expect.any(Error),
       );
       consoleErrorSpy.mockRestore();
