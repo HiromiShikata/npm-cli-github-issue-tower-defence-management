@@ -19,6 +19,7 @@ import {
   fetchProjectReadme,
   runCliProgram,
   reportFatalErrorAndExit,
+  extractOwnerRepoFromGithubUrl,
 } from './index';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
@@ -3064,6 +3065,34 @@ mysteryKey: 'value'
 
       consoleErrorSpy.mockRestore();
       processExitSpy.mockRestore();
+    });
+  });
+
+  describe('extractOwnerRepoFromGithubUrl', () => {
+    it('extracts owner and repo from a GitHub issue URL', () => {
+      expect(
+        extractOwnerRepoFromGithubUrl(
+          'https://github.com/HiromiShikata/secretary/issues/4700',
+        ),
+      ).toEqual({ owner: 'HiromiShikata', repo: 'secretary' });
+    });
+
+    it('extracts owner and repo from a GitHub pull request URL', () => {
+      expect(
+        extractOwnerRepoFromGithubUrl(
+          'https://github.com/owner/my-repo/pull/123',
+        ),
+      ).toEqual({ owner: 'owner', repo: 'my-repo' });
+    });
+
+    it('returns null for a non-GitHub URL', () => {
+      expect(
+        extractOwnerRepoFromGithubUrl('https://example.com/owner/repo'),
+      ).toBeNull();
+    });
+
+    it('returns null for an empty string', () => {
+      expect(extractOwnerRepoFromGithubUrl('')).toBeNull();
     });
   });
 });

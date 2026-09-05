@@ -15,6 +15,7 @@ import * as path from 'path';
 import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
 import { CliErrorReportUseCase } from '../../../domain/usecases/CliErrorReportUseCase';
+import { ConsoleErrorReportUseCase } from '../../../domain/usecases/ConsoleErrorReportUseCase';
 import { assertDashboardDisplayLabelsUnique } from '../../../domain/usecases/dashboard/DashboardProjectCode';
 import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerCallFile';
 import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
@@ -874,6 +875,33 @@ program
     process.stdout.write(`${JSON.stringify(result)}\n`);
   });
 
+export const extractOwnerRepoFromGithubUrl = (
+  url: string,
+): { owner: string; repo: string } | null => {
+  const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
+  if (match === null) {
+    return null;
+  }
+  return { owner: match[1], repo: match[2] };
+};
+
+const buildConsoleErrorReporter = (
+  workflowImprovementIssueUrl: string | null,
+  issueRepository: IssueRepository | null,
+): ((error: unknown, requestPath: string) => Promise<void>) | null => {
+  if (workflowImprovementIssueUrl === null || issueRepository === null) {
+    return null;
+  }
+  const ownerRepo = extractOwnerRepoFromGithubUrl(workflowImprovementIssueUrl);
+  if (ownerRepo === null) {
+    return null;
+  }
+  const useCase = new ConsoleErrorReportUseCase(issueRepository);
+  return async (error: unknown, requestPath: string): Promise<void> => {
+    await useCase.run({ error, owner: ownerRepo.owner, repo: ownerRepo.repo, requestPath });
+  };
+};
+
 const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const config = loadConfigFile(options.configFilePath);
 
@@ -1049,6 +1077,11 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const workflowImprovementIssueUrl =
     loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
 
+  const consoleErrorReporter = buildConsoleErrorReporter(
+    workflowImprovementIssueUrl,
+    issueRepository,
+  );
+
   await startWebServer({
     accessToken,
     uiDistDir,
@@ -1072,6 +1105,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     ),
     issueTitleStateCache: new IssueTitleStateCache(),
     pullRequestStatusCache: new PullRequestStatusCache(),
+    consoleErrorReporter,
     port,
   });
   console.log(`TDPM web server listening on port ${port}`);
