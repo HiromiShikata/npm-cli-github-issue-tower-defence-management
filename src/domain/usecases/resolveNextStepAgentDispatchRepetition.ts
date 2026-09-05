@@ -71,8 +71,24 @@ const countSilentRedispatches = <
   const commentsInCurrentCycle = params.comments.slice(
     lastHumanCommentIndex + 1,
   );
+  const isEscalationTypeDispatchRepeat = (content: string): boolean =>
+    !content.includes('Dispatching again') &&
+    !content.includes('Dispatching it again');
+  const lastEscalationIndex = commentsInCurrentCycle.reduce(
+    (found, comment, index) =>
+      params.isTrustedAuthor(comment.author) &&
+      isSilentRedispatchCommentForAgent(comment.content, params.nextStepAgent) &&
+      isEscalationTypeDispatchRepeat(comment.content)
+        ? index
+        : found,
+    -1,
+  );
+  const commentsAfterLastEscalation =
+    lastEscalationIndex >= 0
+      ? commentsInCurrentCycle.slice(lastEscalationIndex + 1)
+      : commentsInCurrentCycle;
   const count =
-    commentsInCurrentCycle.filter(
+    commentsAfterLastEscalation.filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
         isSilentRedispatchCommentForAgent(
@@ -80,7 +96,7 @@ const countSilentRedispatches = <
           params.nextStepAgent,
         ),
     ).length + 1;
-  const hasReportsInCycle = commentsInCurrentCycle.some((comment) => {
+  const hasReportsInCycle = commentsAfterLastEscalation.some((comment) => {
     if (!params.isTrustedAuthor(comment.author)) return false;
     const cleaned = stripLeadingFencedBlocks(comment.content);
     if (!cleaned.startsWith(AGENT_REPORT_PREFIX)) return false;
