@@ -1,3 +1,15 @@
+# [2.49.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.48.1...v2.49.0) (2026-09-05)
+
+
+### Bug Fixes
+
+* **jest:** cap maxWorkers to 4 to prevent OOM when workspace preparations run concurrently ([#2004](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2004)) ([c80cd16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c80cd1684b576325f0e9c43131508228b76c2726))
+
+
+### Features
+
+* **console:** constrain queued task title to left third and reserve right third for actions ([#1999](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1999)) ([7ad762d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7ad762de5a24f243e2003afa35e5246a80a6f8bb)), closes [HiromiShikata/umino-corporait-operation#31370](https://github.com/HiromiShikata/umino-corporait-operation/issues/31370)
+
 ## [2.48.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.48.0...v2.48.1) (2026-09-05)
 
 
