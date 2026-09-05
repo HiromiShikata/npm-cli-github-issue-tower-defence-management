@@ -65,8 +65,19 @@ const countSilentRedispatches = <
   const commentsInCurrentCycle = params.comments.slice(
     lastHumanCommentIndex + 1,
   );
+  const lastAgentReportIndex = commentsInCurrentCycle.reduce(
+    (found, comment, index) =>
+      params.isTrustedAuthor(comment.author) &&
+      isAgentReportBody(comment.content)
+        ? index
+        : found,
+    -1,
+  );
+  const commentsAfterLastReport = commentsInCurrentCycle.slice(
+    lastAgentReportIndex + 1,
+  );
   return (
-    commentsInCurrentCycle.filter(
+    commentsAfterLastReport.filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
         isSilentRedispatchCommentForAgent(

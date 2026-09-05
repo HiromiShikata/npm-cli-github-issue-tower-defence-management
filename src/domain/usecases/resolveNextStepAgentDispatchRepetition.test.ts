@@ -144,7 +144,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('escalateSilentRedispatch');
     });
 
-    it('counts silent redispatches even when agent name casing in prior comments differs from nextStepAgent', () => {
+    it('counts silent redispatches ignoring case differences in agent name', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'pr-reviewer',
         nextStepAgent: 'pr-reviewer',
@@ -152,7 +152,6 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           report('PR Reviewer'),
           repetitionComment('PR Reviewer'),
           repetitionComment('PR Reviewer'),
-          report('PR Reviewer'),
         ],
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
@@ -162,7 +161,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('escalateSilentRedispatch');
     });
 
-    it('does not reset the silent dispatch count when a routing comment is posted after escalation without a human comment', () => {
+    it('does not reset the consecutive dispatch count when a routing comment rather than an agent report is interspersed', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
@@ -171,7 +170,6 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           repetitionComment('developer'),
           repetitionComment('developer'),
           repetitionComment('developer'),
-          report('developer'),
         ],
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
@@ -186,7 +184,6 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [
-          report('accounting'),
           repetitionComment('accounting'),
           repetitionComment('accounting'),
           report('accounting'),
