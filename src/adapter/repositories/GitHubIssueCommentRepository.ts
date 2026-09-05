@@ -39,9 +39,12 @@ function isCommentCacheEntry(value: unknown): value is CommentCacheEntry {
     (c: unknown) =>
       typeof c === 'object' &&
       c !== null &&
-      'author' in c && typeof c.author === 'string' &&
-      'content' in c && typeof c.content === 'string' &&
-      'createdAt' in c && typeof c.createdAt === 'string',
+      'author' in c &&
+      typeof c.author === 'string' &&
+      'content' in c &&
+      typeof c.content === 'string' &&
+      'createdAt' in c &&
+      typeof c.createdAt === 'string',
   );
 }
 
