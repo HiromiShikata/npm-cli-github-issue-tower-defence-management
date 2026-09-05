@@ -160,15 +160,25 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
 This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so the issue is escalated for a decision instead of being dispatched again.`,
     };
   }
+  if (
+    silentRedispatches !== null &&
+    silentRedispatches.count >= 2 &&
+    silentRedispatches.hasReportsInCycle
+  ) {
+    return {
+      type: 'escalateSilentRedispatch',
+      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+
+The agent has been reporting every cycle but cannot advance — it has been dispatched again after its report without resolving the underlying blocker. Owner judgment is required to break the loop.`,
+    };
+  }
   if (silentRedispatches !== null && silentRedispatches.count > 1) {
-    const comment = silentRedispatches.hasReportsInCycle
-      ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+    return {
+      type: 'dispatchAgain',
+      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-The agent posted a report and nominated itself as the next step without resolving the blocker. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
-      : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
-
-No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
-    return { type: 'dispatchAgain', comment };
+No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`,
+    };
   }
   if (dispatchesInCycle > 1) {
     return {
