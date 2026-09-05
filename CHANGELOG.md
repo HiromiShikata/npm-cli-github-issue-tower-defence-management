@@ -1,3 +1,10 @@
+## [2.48.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.48.0...v2.48.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** wrap Next Action Hour when snooze crosses midnight ([#2002](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2002)) ([a6c127c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a6c127cabfd33f4ae236f84abf5b6e1648af908a)), closes [#1998](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1998)
+
 # [2.48.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.47.2...v2.48.0) (2026-09-05)
 
 
