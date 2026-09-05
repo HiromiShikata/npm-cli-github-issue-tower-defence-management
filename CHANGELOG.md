@@ -1,3 +1,10 @@
+## [2.47.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.47.1...v2.47.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **dashboard:** combine seven-day aggregate percentage with session total on same line ([#2003](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2003)) ([836bdb8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/836bdb8445097636dfc0945617cdd1c49cd7f790)), closes [HiromiShikata/umino-corporait-operation#31376](https://github.com/HiromiShikata/umino-corporait-operation/issues/31376)
+
 ## [2.47.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.47.0...v2.47.1) (2026-09-05)
 
 
