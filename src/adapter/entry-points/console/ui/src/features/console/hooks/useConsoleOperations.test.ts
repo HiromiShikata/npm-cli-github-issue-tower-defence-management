@@ -464,12 +464,12 @@ describe('useConsoleOperations', () => {
     });
   });
 
-  it('does not call the status endpoint when the comment post fails', async () => {
-    let callCount = 0;
-    global.fetch = jest.fn(async () => {
-      callCount += 1;
-      if (callCount === 1) {
-        return { ok: false, status: 500, text: async () => 'error' };
+  it('still calls the status endpoint when the comment post fails and then throws with the comment text', async () => {
+    const calledUrls: string[] = [];
+    global.fetch = jest.fn(async (url: unknown) => {
+      calledUrls.push(url as string);
+      if ((url as string).includes('/api/comment')) {
+        return { ok: false, status: 500, text: async () => 'upstream refused' };
       }
       return { ok: true, status: 200, json: async () => ({ ok: true }) };
     }) as unknown as typeof fetch;
@@ -477,15 +477,53 @@ describe('useConsoleOperations', () => {
     const [option] = consoleStatusOptionsFixture.filter(
       (o) => o.name.toLowerCase() === 'awaiting workspace',
     );
-    await expect(
-      act(async () => {
+    let caughtMessage = '';
+    await act(async () => {
+      try {
         await result.current.operations.okAndMoveToAwaitingWorkspace(
           issueItem,
           option,
         );
-      }),
-    ).rejects.toThrow();
-    expect(callCount).toBe(1);
+      } catch (e: unknown) {
+        caughtMessage = e instanceof Error ? e.message : String(e);
+      }
+    });
+    expect(caughtMessage).toContain('Re-post: ok');
+    expect(calledUrls).toContain('/api/comment');
+    expect(calledUrls).toContain('/api/triage');
+  });
+
+  it('throws with ok: false error from backend when comment soft-fails', async () => {
+    const calledUrls: string[] = [];
+    global.fetch = jest.fn(async (url: unknown) => {
+      calledUrls.push(url as string);
+      if ((url as string).includes('/api/comment')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: false, error: 'rate limit exceeded' }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }) as unknown as typeof fetch;
+    const { result } = setup();
+    const [option] = consoleStatusOptionsFixture.filter(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    );
+    let caughtMessage = '';
+    await act(async () => {
+      try {
+        await result.current.operations.okAndMoveToAwaitingWorkspace(
+          issueItem,
+          option,
+        );
+      } catch (e: unknown) {
+        caughtMessage = e instanceof Error ? e.message : String(e);
+      }
+    });
+    expect(caughtMessage).toContain('rate limit exceeded');
+    expect(calledUrls).toContain('/api/comment');
+    expect(calledUrls).toContain('/api/triage');
   });
 
   it('marks setStatus overlay done before the API call resolves', async () => {

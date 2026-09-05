@@ -1845,7 +1845,7 @@ describe('consoleOperationApi', () => {
       expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
     });
 
-    it('returns 200 with commentPosted false and logs the error when upstream comment creation fails', async () => {
+    it('returns 200 with ok false and the error message when upstream comment creation fails', async () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => {});
@@ -1858,13 +1858,35 @@ describe('consoleOperationApi', () => {
         body: 'ok',
       });
       expect(response.statusCode).toBe(200);
-      expect(response.body).toEqual({ ok: true, commentPosted: false });
+      expect(response.body).toEqual({ ok: false, error: 'HTTP 403 forbidden' });
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '[handleComment] upstream comment post failed:',
         { pjcode: 'acme', url: 'https://github.com/o/r/issues/1' },
         expect.any(Error),
       );
       consoleErrorSpy.mockRestore();
+    });
+
+    it('logs a warning and uses null pjcode when pjcode is absent from the request body', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+      issueRepository.createCommentByUrl.mockResolvedValue({
+        author: 'bot',
+        body: 'ok',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        url: null,
+      });
+      const response = await handleComment(context, {
+        url: 'https://github.com/o/r/issues/1',
+        body: 'ok',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[handleComment] pjcode absent in request body',
+        { url: 'https://github.com/o/r/issues/1' },
+      );
+      consoleWarnSpy.mockRestore();
     });
   });
 

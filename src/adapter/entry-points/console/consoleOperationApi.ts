@@ -706,7 +706,10 @@ export const handleComment = async (
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
   }
-  const pjcode = isNonEmptyString(body.pjcode) ? body.pjcode : 'unknown';
+  const pjcode = isNonEmptyString(body.pjcode) ? body.pjcode : null;
+  if (pjcode === null) {
+    console.warn('[handleComment] pjcode absent in request body', { url });
+  }
   try {
     const posted = await context
       .resolveIssueRepository(url)
@@ -723,6 +726,7 @@ export const handleComment = async (
       },
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(
       '[handleComment] upstream comment post failed:',
       { pjcode, url },
@@ -730,7 +734,7 @@ export const handleComment = async (
     );
     return {
       statusCode: 200,
-      body: { ok: true, commentPosted: false },
+      body: { ok: false, error: errorMessage },
     };
   }
 };

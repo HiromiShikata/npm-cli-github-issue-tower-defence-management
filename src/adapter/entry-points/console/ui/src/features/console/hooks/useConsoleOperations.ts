@@ -175,6 +175,8 @@ export const buildIntmuxRequest = (
 const missingPjcodeError = (): Error =>
   new Error('No project specified in the URL path.');
 
+const AWAITING_WORKSPACE_COMMENT_BODY = 'ok';
+
 export const useConsoleOperations = (
   pjcode: string | null,
   mode: ConsoleTabName,
@@ -356,7 +358,11 @@ export const useConsoleOperations = (
         { done: true, status: { name: option.name, color: option.color } },
         mode,
       );
-      await postConsoleComment({ pjcode, url: item.url, body: 'ok' });
+      const commentResult = await postConsoleComment({
+        pjcode,
+        url: item.url,
+        body: AWAITING_WORKSPACE_COMMENT_BODY,
+      });
       const request: ConsoleTriageRequest = {
         pjcode,
         action: 'set_status',
@@ -367,6 +373,11 @@ export const useConsoleOperations = (
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
       await onAfterMoveToAwaitingWorkspace?.();
+      if (!commentResult.posted) {
+        throw new Error(
+          `Comment not posted — ${commentResult.error}. Status was changed. Re-post: ${AWAITING_WORKSPACE_COMMENT_BODY}`,
+        );
+      }
     },
     [
       pjcode,
@@ -382,13 +393,12 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      const comment = await postConsoleComment({
-        pjcode,
-        url: item.url,
-        body,
-      });
+      const result = await postConsoleComment({ pjcode, url: item.url, body });
+      if (!result.posted) {
+        throw new Error(result.error);
+      }
       invalidateItemContent(item);
-      return comment;
+      return result.comment;
     },
     [pjcode, invalidateItemContent],
   );

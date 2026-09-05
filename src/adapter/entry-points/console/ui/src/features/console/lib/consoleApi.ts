@@ -317,30 +317,44 @@ export type ConsoleCommentRequest = {
   body: string;
 };
 
-const parsePostedComment = (payload: unknown): ConsoleComment => {
-  if (!isRecord(payload) || !isRecord(payload.comment)) {
-    throw new Error('comment was not returned');
-  }
-  return {
-    author: getString(payload.comment.author),
-    body: getString(payload.comment.body),
-    createdAt: getString(payload.comment.createdAt),
-    url: typeof payload.comment.url === 'string' ? payload.comment.url : null,
-  };
-};
+export type ConsoleCommentResult =
+  | { posted: true; comment: ConsoleComment }
+  | { posted: false; error: string };
+
+const parseCommentRecord = (
+  commentRecord: Record<string, unknown>,
+): ConsoleComment => ({
+  author: getString(commentRecord.author),
+  body: getString(commentRecord.body),
+  createdAt: getString(commentRecord.createdAt),
+  url: typeof commentRecord.url === 'string' ? commentRecord.url : null,
+});
 
 export const postConsoleComment = async (
   request: ConsoleCommentRequest,
-): Promise<ConsoleComment> => {
+): Promise<ConsoleCommentResult> => {
   const response = await fetch(COMMENT_OPERATION_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
+    return { posted: false, error: await readOperationErrorReason(response) };
   }
-  return parsePostedComment(await response.json());
+  const payload: unknown = await response.json();
+  if (!isRecord(payload)) {
+    return { posted: false, error: 'unexpected response shape' };
+  }
+  if (payload.ok === false) {
+    return {
+      posted: false,
+      error: typeof payload.error === 'string' ? payload.error : 'upstream error',
+    };
+  }
+  if (!isRecord(payload.comment)) {
+    return { posted: false, error: 'comment was not returned' };
+  }
+  return { posted: true, comment: parseCommentRecord(payload.comment) };
 };
 
 export const ATTACHMENT_UPLOAD_OPERATION_PATH = '/api/upload';
