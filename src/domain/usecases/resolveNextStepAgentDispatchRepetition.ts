@@ -10,6 +10,11 @@ import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentD
 
 export { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD };
 
+export const SILENT_CRASH_ESCALATION_PHRASE =
+  'The agent may have crashed or stopped silently';
+export const REPORTING_LOOP_ESCALATION_PHRASE =
+  'Owner judgment is required to break the loop';
+
 export const DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP = 6;
 
 export type NextStepAgentDispatchRepetition =
@@ -181,10 +186,10 @@ export const resolveNextStepAgentDispatchRepetition = <
     const comment = silentRedispatches.hasReportsInCycle
       ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-The agent has been reporting every cycle but cannot advance — it has been dispatched ${params.thresholdForAutoReject} times since the last human comment without resolving the underlying blocker. Owner judgment is required to break the loop.`
+The agent has been reporting every cycle but cannot advance — it has been dispatched ${params.thresholdForAutoReject} times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`
       : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. The agent may have crashed or stopped silently.`;
+Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`;
     return { type: 'escalateSilentRedispatch', comment };
   }
   const dispatchesInCycle = countDispatchesInCurrentCycle(params);
