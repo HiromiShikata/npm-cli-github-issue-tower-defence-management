@@ -6,6 +6,7 @@ const acceptComment = async (body: string): Promise<ConsoleComment> => ({
   author: 'HiromiShikata',
   body,
   createdAt: '2026-06-19T11:58:00.000Z',
+  url: null,
 });
 
 const meta: Meta<typeof ConsoleCommentComposer> = {

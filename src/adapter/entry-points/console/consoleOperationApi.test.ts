@@ -1700,6 +1700,7 @@ describe('consoleOperationApi', () => {
         author: 'HiromiShikata',
         body: 'Please rebase onto the latest main branch.',
         createdAt: new Date('2026-06-17T09:03:27.000Z'),
+        url: null,
       });
       const response = await handleComment(context, {
         pjcode: 'acme',
@@ -1729,6 +1730,7 @@ describe('consoleOperationApi', () => {
         author: 'github-actions',
         body: 'A first comment on this issue.',
         createdAt: new Date('2026-06-17T08:00:00.000Z'),
+        url: null,
       });
       const response = await handleComment(context, {
         pjcode: 'acme',

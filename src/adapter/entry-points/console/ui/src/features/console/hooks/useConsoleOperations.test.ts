@@ -258,6 +258,7 @@ describe('useConsoleOperations', () => {
       author: 'HiromiShikata',
       body: 'Thanks for the parity fix.',
       createdAt: '2026-06-18T03:21:00.000Z',
+      url: null,
     });
   });
 
@@ -377,7 +378,7 @@ describe('useConsoleOperations', () => {
       status: 200,
       json: async () => ({
         ok: true,
-        comment: { author: 'a', body: 'b', createdAt: 'c' },
+        comment: { author: 'a', body: 'b', createdAt: 'c', url: null },
       }),
     }));
     global.fetch = fetchMock as unknown as typeof fetch;

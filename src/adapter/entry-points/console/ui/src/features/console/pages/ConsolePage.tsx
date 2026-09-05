@@ -925,6 +925,7 @@ export const ConsolePage = () => {
                 : null
             }
             storyNameForDeletion={selectedItemStoryEntry?.storyName ?? null}
+            workflowImprovementIssueUrl={workflowImprovementIssueUrl}
           />
         </div>
       )}

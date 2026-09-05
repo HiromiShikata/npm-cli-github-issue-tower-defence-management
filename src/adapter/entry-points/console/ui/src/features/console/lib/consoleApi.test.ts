@@ -107,7 +107,32 @@ describe('createConsoleApiClient', () => {
     }
   });
 
-  it('parses comments', async () => {
+  it('parses comments including url when present', async () => {
+    mockFetchOnce({
+      comments: [
+        {
+          author: 'a',
+          body: 'hello',
+          createdAt: '2026-06-19T00:00:00.000Z',
+          url: 'https://github.com/o/r/issues/1#issuecomment-99',
+        },
+      ],
+    });
+    const client = createConsoleApiClient();
+    const comments = await client.fetchComments(
+      'https://github.com/o/r/issues/1',
+    );
+    expect(comments).toEqual([
+      {
+        author: 'a',
+        body: 'hello',
+        createdAt: '2026-06-19T00:00:00.000Z',
+        url: 'https://github.com/o/r/issues/1#issuecomment-99',
+      },
+    ]);
+  });
+
+  it('parses comments with null url when url is absent', async () => {
     mockFetchOnce({
       comments: [
         { author: 'a', body: 'hello', createdAt: '2026-06-19T00:00:00.000Z' },
@@ -118,7 +143,12 @@ describe('createConsoleApiClient', () => {
       'https://github.com/o/r/issues/1',
     );
     expect(comments).toEqual([
-      { author: 'a', body: 'hello', createdAt: '2026-06-19T00:00:00.000Z' },
+      {
+        author: 'a',
+        body: 'hello',
+        createdAt: '2026-06-19T00:00:00.000Z',
+        url: null,
+      },
     ]);
   });
 
@@ -309,6 +339,7 @@ describe('createConsoleApiClient', () => {
           author: 'alice',
           body: 'hello',
           createdAt: '2026-06-19T00:00:00.000Z',
+          url: null,
         },
       ],
     };
@@ -322,7 +353,12 @@ describe('createConsoleApiClient', () => {
       'https://github.com/o/r/issues/1',
     );
     expect(comments).toEqual([
-      { author: 'alice', body: 'hello', createdAt: '2026-06-19T00:00:00.000Z' },
+      {
+        author: 'alice',
+        body: 'hello',
+        createdAt: '2026-06-19T00:00:00.000Z',
+        url: null,
+      },
     ]);
   });
 

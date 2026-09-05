@@ -772,6 +772,7 @@ describe('webServer new routes integration', () => {
       author: 'HiromiShikata',
       body: 'Thanks, this resolves the parity gap.',
       createdAt: new Date('2026-06-18T03:21:00.000Z'),
+      url: null,
     });
     const server = await startWebServer({
       accessToken: testToken,

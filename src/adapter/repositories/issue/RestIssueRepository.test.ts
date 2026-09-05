@@ -99,6 +99,8 @@ describe('RestIssueRepository', () => {
           user: { login: 'HiromiShikata' },
           body: 'test comment',
           created_at: '2026-08-30T09:00:00Z',
+          html_url:
+            'https://github.com/HiromiShikata/test-repository/issues/40#issuecomment-999',
         }),
       );
 
@@ -119,6 +121,7 @@ describe('RestIssueRepository', () => {
         author: 'HiromiShikata',
         body: 'test comment',
         createdAt: new Date('2026-08-30T09:00:00Z'),
+        url: 'https://github.com/HiromiShikata/test-repository/issues/40#issuecomment-999',
       });
     });
 
@@ -128,6 +131,8 @@ describe('RestIssueRepository', () => {
           user: null,
           body: 'test comment',
           created_at: '2026-08-30T09:00:00Z',
+          html_url:
+            'https://github.com/HiromiShikata/test-repository/issues/40#issuecomment-998',
         }),
       );
 

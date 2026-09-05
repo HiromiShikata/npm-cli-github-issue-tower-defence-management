@@ -313,16 +313,19 @@ export const consoleCommentsFixture: ConsoleComment[] = [
     author: 'HiromiShikata',
     body: 'Please split the token validation into its own tested function.',
     createdAt: '2026-06-17T06:12:40.000Z',
+    url: 'https://github.com/owner/repo/issues/1#issuecomment-100001',
   },
   {
     author: 'github-actions',
     body: 'All required checks have passed on this pull request.',
     createdAt: '2026-06-17T07:48:11.000Z',
+    url: 'https://github.com/owner/repo/issues/1#issuecomment-100002',
   },
   {
     author: 'HiromiShikata',
     body: 'Looks good now. Approving once the rebase is green.',
     createdAt: '2026-06-17T09:03:27.000Z',
+    url: null,
   },
 ];
 

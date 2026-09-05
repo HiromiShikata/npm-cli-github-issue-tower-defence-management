@@ -5,12 +5,14 @@ const loadedComment: ConsoleComment = {
   author: 'HiromiShikata',
   body: 'Loaded from GitHub.',
   createdAt: '2026-06-19T10:00:00.000Z',
+  url: null,
 };
 
 const postedComment: ConsoleComment = {
   author: 'HiromiShikata',
   body: 'Posted from the console.',
   createdAt: '2026-06-19T11:58:00.000Z',
+  url: null,
 };
 
 describe('mergePostedComments', () => {

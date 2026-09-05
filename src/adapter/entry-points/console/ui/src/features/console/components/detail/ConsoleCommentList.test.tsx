@@ -54,4 +54,79 @@ describe('ConsoleCommentList', () => {
     expect(queryByText('No comments.')).toBeNull();
     expect(queryByRole('alert')).toBeNull();
   });
+
+  it('shows a workflow incident report link for comments with a url when workflowImprovementIssueUrl is set', () => {
+    const commentWithUrl = {
+      author: 'HiromiShikata',
+      body: 'Some comment body.',
+      createdAt: '2026-06-19T09:00:00.000Z',
+      url: 'https://github.com/owner/repo/issues/1#issuecomment-12345',
+    };
+    const { getAllByRole } = render(
+      <ConsoleCommentList
+        comments={[commentWithUrl]}
+        isLoading={false}
+        error={null}
+        now={now}
+        workflowImprovementIssueUrl="https://github.com/owner/secretary/issues/new"
+      />,
+    );
+    const links = getAllByRole('link', {
+      name: 'Create workflow incident report for this comment',
+    });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute(
+      'href',
+      expect.stringContaining(
+        encodeURIComponent(
+          'https://github.com/owner/repo/issues/1#issuecomment-12345',
+        ),
+      ),
+    );
+  });
+
+  it('does not show a workflow incident report link for comments with null url', () => {
+    const commentWithoutUrl = {
+      author: 'HiromiShikata',
+      body: 'Some comment body.',
+      createdAt: '2026-06-19T09:00:00.000Z',
+      url: null,
+    };
+    const { queryByRole } = render(
+      <ConsoleCommentList
+        comments={[commentWithoutUrl]}
+        isLoading={false}
+        error={null}
+        now={now}
+        workflowImprovementIssueUrl="https://github.com/owner/secretary/issues/new"
+      />,
+    );
+    expect(
+      queryByRole('link', {
+        name: 'Create workflow incident report for this comment',
+      }),
+    ).toBeNull();
+  });
+
+  it('does not show a workflow incident report link when workflowImprovementIssueUrl is not set', () => {
+    const commentWithUrl = {
+      author: 'HiromiShikata',
+      body: 'Some comment body.',
+      createdAt: '2026-06-19T09:00:00.000Z',
+      url: 'https://github.com/owner/repo/issues/1#issuecomment-12345',
+    };
+    const { queryByRole } = render(
+      <ConsoleCommentList
+        comments={[commentWithUrl]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    expect(
+      queryByRole('link', {
+        name: 'Create workflow incident report for this comment',
+      }),
+    ).toBeNull();
+  });
 });

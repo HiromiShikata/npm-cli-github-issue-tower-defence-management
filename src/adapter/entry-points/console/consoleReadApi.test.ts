@@ -69,13 +69,14 @@ describe('consoleReadApi', () => {
   });
 
   describe('handleComments', () => {
-    it('serializes comment createdAt to ISO string', async () => {
+    it('serializes comment createdAt to ISO string and includes url', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getIssueOrPullRequestComments.mockResolvedValue([
         {
           author: 'octocat',
           body: 'hello',
           createdAt: new Date('2026-01-02T03:04:05Z'),
+          url: 'https://github.com/o/r/issues/1#issuecomment-42',
         },
       ]);
       const response = await handleComments(
@@ -89,6 +90,7 @@ describe('consoleReadApi', () => {
             author: 'octocat',
             body: 'hello',
             createdAt: '2026-01-02T03:04:05.000Z',
+            url: 'https://github.com/o/r/issues/1#issuecomment-42',
           },
         ],
       });

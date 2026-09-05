@@ -236,6 +236,7 @@ const parseComment = (item: unknown): ConsoleComment | null => {
     author: getString(item.author),
     body: getString(item.body),
     createdAt: getString(item.createdAt),
+    url: typeof item.url === 'string' ? item.url : null,
   };
 };
 

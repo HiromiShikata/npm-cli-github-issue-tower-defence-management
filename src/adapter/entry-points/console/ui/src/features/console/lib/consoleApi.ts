@@ -141,6 +141,7 @@ const parseComments = (payload: unknown): ConsoleComment[] => {
     author: getString(comment.author),
     body: getString(comment.body),
     createdAt: getString(comment.createdAt),
+    url: typeof comment.url === 'string' ? comment.url : null,
   }));
 };
 
@@ -323,6 +324,7 @@ const parsePostedComment = (payload: unknown): ConsoleComment => {
     author: getString(payload.comment.author),
     body: getString(payload.comment.body),
     createdAt: getString(payload.comment.createdAt),
+    url: typeof payload.comment.url === 'string' ? payload.comment.url : null,
   };
 };
 
