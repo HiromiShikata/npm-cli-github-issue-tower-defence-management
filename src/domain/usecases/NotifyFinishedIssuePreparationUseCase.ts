@@ -25,7 +25,7 @@ import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
-import { extractPullRequestRequired } from './extractPullRequestRequired';
+
 import { isAgentReportBody } from './isAgentReportBody';
 import {
   issueReactivationTriggerIsPending,
@@ -753,24 +753,17 @@ export class NotifyFinishedIssuePreparationUseCase {
       });
     }
 
-    const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
-    const lastReportDeclaresPullRequestNotRequired =
-      lastAgentReport !== null &&
-      extractPullRequestRequired(lastAgentReport.content) === false;
-
     const { rejections: prRejections, approvedPrUrl } =
       await this.issueRejectionEvaluator.evaluate(
         issue,
         labelsNotRequiringPullRequest,
         { developerAgentNames },
       );
-    const requiredPrRejections =
-      isTriagerAgentName(nextStepAgent) ||
-      lastReportDeclaresPullRequestNotRequired
-        ? prRejections.filter(
-            (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
-          )
-        : prRejections;
+    const requiredPrRejections = isTriagerAgentName(nextStepAgent)
+      ? prRejections.filter(
+          (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
+        )
+      : prRejections;
     return {
       rejections: [...rejections, ...requiredPrRejections],
       approvedPrUrl,

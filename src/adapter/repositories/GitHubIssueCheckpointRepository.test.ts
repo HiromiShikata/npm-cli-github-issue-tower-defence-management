@@ -4,7 +4,7 @@ const VALID_URL = 'https://github.com/owner/repo/issues/42';
 const EXPECTED_API_URL =
   'https://api.github.com/repos/owner/repo/issues/42/comments';
 const EXPECTED_BODY = JSON.stringify({
-  body: 'From: :robot: preparation-daemon (-)\n\n```json\n{"pullRequestRequired": false}\n```\n\nThis implementation session was interrupted by the preparation daemon due to token near exhaustion. The task will be re-dispatched.',
+  body: 'From: :robot: preparation-daemon (-)\n\n```json\n{"nextStep": null}\n```\n\nThis implementation session was interrupted by the preparation daemon due to token near exhaustion. The task will be re-dispatched.',
 });
 
 describe('GitHubIssueCheckpointRepository', () => {

@@ -77,7 +77,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   createdAt: new Date(),
   author: 'owner',
   closingIssueReferenceUrls: [],
-  agent: null,
+  agent: 'developer',
   stateReason: null,
   ...overrides,
 });
@@ -164,7 +164,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   };
   let mockIssueCommentRepository: {
     createComment: jest.Mock;
-    getCommentsFromIssue: jest.Mock;
   };
   let mockProject: Project;
   let useCase: RevertNotReadyReviewQueueIssueUseCase;
@@ -197,7 +196,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     mockIssueCommentRepository = {
       createComment: jest.fn().mockResolvedValue(undefined),
-      getCommentsFromIssue: jest.fn().mockResolvedValue([]),
     };
 
     useCase = new RevertNotReadyReviewQueueIssueUseCase(
@@ -388,48 +386,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should not revert an issue whose last agent report designates the triager', async () => {
+    it('should revert an issue whose linked PR is conflicted and agent field is null', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
-      });
-      mockIssueRepository.getAllIssues.mockResolvedValue({
-        project: mockProject,
-        issues: [issue],
-        cacheUsed: false,
-      });
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        {
-          author: 'owner',
-          content:
-            'From: :robot: Agent report\n```json\n{"nextStepAgent": "triager"}\n```',
-          createdAt: new Date(),
-        },
-      ]);
-
-      await useCase.run({
-        manager: 'manager-user',
-        projectUrl: 'https://github.com/users/user/projects/1',
-        allowedIssueAuthors: ['owner'],
-      });
-
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('should still revert an issue whose linked PR is conflicted even when the last agent report designates the triager', async () => {
-      const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        agent: null,
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         { ...createReadyPr(), isConflicted: true },
-      ]);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        {
-          author: 'owner',
-          content:
-            'From: :robot: Agent report\n```json\n{"nextStepAgent": "triager"}\n```',
-          createdAt: new Date(),
-        },
       ]);
 
       await useCase.run({
@@ -449,7 +412,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should not read the comments of an issue whose linked PR is ready', async () => {
+    it('should not revert an issue whose linked PR is ready', async () => {
       const issue = createMockIssue({
         status: 'Awaiting Quality Check',
       });
@@ -461,9 +424,6 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         allowedIssueAuthors: ['owner'],
       });
 
-      expect(
-        mockIssueCommentRepository.getCommentsFromIssue,
-      ).not.toHaveBeenCalled();
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
 
