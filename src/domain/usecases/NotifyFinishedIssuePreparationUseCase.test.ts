@@ -1098,9 +1098,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining(
-        'reporting every cycle but cannot advance',
-      ),
+      expect.stringContaining('reporting every cycle but cannot advance'),
     );
   });
 

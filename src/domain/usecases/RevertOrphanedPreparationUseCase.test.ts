@@ -384,9 +384,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining(
-        'reporting every cycle but cannot advance',
-      ),
+      expect.stringContaining('reporting every cycle but cannot advance'),
     );
   });
 
