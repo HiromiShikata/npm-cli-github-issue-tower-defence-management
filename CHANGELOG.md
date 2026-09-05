@@ -1,3 +1,15 @@
+# [2.50.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.49.1...v2.50.0) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** immediately show item in queued tab after set_status to Awaiting Workspace ([#2001](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2001)) ([fd968ca](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fd968cacebf5cdea30a2932cc1cb29e0f0c7b2c7)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#1986](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1986)
+
+
+### Features
+
+* **console:** add +6h/+2d/+3d/+5d/+1mo snooze buttons and fix midnight wrapping ([#2008](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2008)) ([1fc38ad](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1fc38ade93296252c1068c95d23288ad7ffeac66))
+
 ## [2.49.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.49.0...v2.49.1) (2026-09-05)
 
 
