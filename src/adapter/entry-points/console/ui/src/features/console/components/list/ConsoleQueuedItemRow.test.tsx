@@ -95,4 +95,19 @@ describe('ConsoleQueuedItemRow', () => {
     );
     expect(getByRole('button')).toHaveAttribute('data-active', 'true');
   });
+
+  it('renders the right-side actions placeholder for future buttons', () => {
+    const { container } = render(
+      <ConsoleQueuedItemRow
+        item={awaitingWorkspaceItem}
+        isActive={false}
+        statusOptions={consoleStatusOptionsFixture}
+        agentOptions={consoleAgentOptionsFixture}
+        onSelect={() => {}}
+      />,
+    );
+    expect(
+      container.querySelector('.console-queued-item-actions'),
+    ).toBeInTheDocument();
+  });
 });

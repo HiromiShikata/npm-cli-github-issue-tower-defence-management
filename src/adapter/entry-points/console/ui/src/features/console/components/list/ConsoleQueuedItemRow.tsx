@@ -61,6 +61,7 @@ export const ConsoleQueuedItemRow = ({
           </span>
         )}
       </span>
+      <span className="console-queued-item-actions" />
     </button>
   );
 };
