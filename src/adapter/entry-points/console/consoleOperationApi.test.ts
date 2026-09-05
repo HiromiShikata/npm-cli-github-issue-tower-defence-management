@@ -1004,27 +1004,41 @@ describe('consoleOperationApi', () => {
     });
 
     it('snoozes for three days via updateNextActionDate', async () => {
-      const response = await handleTriage(context, {
-        pjcode: 'acme',
-        action: 'snooze_3days',
-        issueUrl: 'https://github.com/o/r/issues/1',
-        projectItemId: 'PVTI_3d',
-      });
-      expect(response.statusCode).toBe(200);
-      expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
-      expectRecordedAcrossTabs('PVTI_3d');
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-10T00:00:00Z'));
+      try {
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'snooze_3days',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_3d',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        const call = issueRepository.updateNextActionDate.mock.calls[0];
+        expect(call[2]).toEqual(new Date('2026-01-13T00:00:00Z'));
+        expectRecordedAcrossTabs('PVTI_3d');
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('snoozes for five days via updateNextActionDate', async () => {
-      const response = await handleTriage(context, {
-        pjcode: 'acme',
-        action: 'snooze_5days',
-        issueUrl: 'https://github.com/o/r/issues/1',
-        projectItemId: 'PVTI_5d',
-      });
-      expect(response.statusCode).toBe(200);
-      expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
-      expectRecordedAcrossTabs('PVTI_5d');
+      jest.useFakeTimers().setSystemTime(new Date('2026-01-10T00:00:00Z'));
+      try {
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'snooze_5days',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_5d',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        const call = issueRepository.updateNextActionDate.mock.calls[0];
+        expect(call[2]).toEqual(new Date('2026-01-15T00:00:00Z'));
+        expectRecordedAcrossTabs('PVTI_5d');
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('snoozes for one month via updateNextActionDate', async () => {
@@ -1059,6 +1073,24 @@ describe('consoleOperationApi', () => {
         expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
         const call = issueRepository.updateNextActionDate.mock.calls[0];
         expect(call[2]).toEqual(new Date('2026-02-28T00:00:00Z'));
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('snoozes one month crossing year boundary (Dec 15 → Jan 15)', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-12-15T10:00:00Z'));
+      try {
+        const response = await handleTriage(context, {
+          pjcode: 'acme',
+          action: 'snooze_1month',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_1mo_dec',
+        });
+        expect(response.statusCode).toBe(200);
+        expect(issueRepository.updateNextActionDate).toHaveBeenCalledTimes(1);
+        const call = issueRepository.updateNextActionDate.mock.calls[0];
+        expect(call[2]).toEqual(new Date('2027-01-15T00:00:00Z'));
       } finally {
         jest.useRealTimers();
       }
