@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { AirplaneSnapshot } from '../lib/airplaneSnapshot';
 import type {
   ConsoleFieldOption,
@@ -28,6 +28,7 @@ export type ConsoleTabDataState = {
   snapshots: Record<ConsoleTabName, ConsoleTabSnapshot | null>;
   isLoading: boolean;
   error: string | null;
+  refreshSingleTab: (tabName: ConsoleTabName) => Promise<void>;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -286,5 +287,18 @@ export const useConsoleTabData = (
     };
   }, [pjcode, airplaneSnapshot]);
 
-  return { snapshots, isLoading, error };
+  const refreshSingleTab = useCallback(
+    async (tabName: ConsoleTabName): Promise<void> => {
+      if (pjcode === null) {
+        return;
+      }
+      const { snapshot } = await fetchSingleSnapshot(pjcode, tabName);
+      if (snapshot !== null) {
+        setSnapshots((prev) => ({ ...prev, [tabName]: snapshot }));
+      }
+    },
+    [pjcode],
+  );
+
+  return { snapshots, isLoading, error, refreshSingleTab };
 };

@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import {
   CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
+  CONSOLE_E2E_PJCODE,
   CONSOLE_E2E_REFERENCE_LINK_URL,
   type ConsoleE2eHarness,
   startConsoleE2eHarness,
@@ -1045,4 +1046,85 @@ test('error toast renders with background styling when a merge operation fails',
   } finally {
     await failHarness.stop();
   }
+});
+
+test('immediately shows item in Queued tab after moving to Awaiting Workspace without waiting for the polling cycle', async ({
+  page,
+}) => {
+  const queuedPath = `/projects/${CONSOLE_E2E_PJCODE}/queued/list.json`;
+  let firstQueuedRequestDone = false;
+
+  await page.route(`**${queuedPath}`, async (route) => {
+    if (!firstQueuedRequestDone) {
+      firstQueuedRequestDone = true;
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        pjcode: CONSOLE_E2E_PJCODE,
+        generatedAt: new Date().toISOString(),
+        statusOptions: [],
+        agentOptions: [],
+        storyOptions: [],
+        storyColors: {},
+        storyOrder: [],
+        items: [
+          {
+            number: 867,
+            title: 'Serve the committed console UI bundle from serveConsole',
+            url: CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
+            repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+            nameWithOwner:
+              'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+            projectItemId: 'PVTI_lADOABCD1234zgPRS00867',
+            itemId: 'PVTI_lADOABCD1234zgPRS00867',
+            isPr: true,
+            relatedOpenPullRequestUrls: [],
+            story: 'TDPM Console port',
+            status: 'Awaiting Workspace',
+            agent: 'developer',
+            nextActionDate: null,
+            nextActionHour: null,
+            dependedIssueUrls: [],
+            labels: ['claude'],
+            createdAt: '2026-06-17T23:41:08.000Z',
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto(harness.appUrl);
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible({ timeout: 5000 });
+
+  const listLevelButton = page
+    .locator('.console-list .console-op-button', {
+      hasText: 'ok & Awaiting Workspace',
+    })
+    .first();
+
+  await Promise.all([
+    page.waitForResponse(
+      (resp) => resp.url().includes(queuedPath) && firstQueuedRequestDone,
+      { timeout: 12000 },
+    ),
+    listLevelButton.click(),
+  ]);
+
+  await tabByLabel(page, 'Queued').click();
+  await expect(activeTabLabel(page)).toHaveText('Queued');
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible({ timeout: 3000 });
 });

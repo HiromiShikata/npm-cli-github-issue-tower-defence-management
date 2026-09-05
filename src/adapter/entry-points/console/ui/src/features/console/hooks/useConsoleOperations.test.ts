@@ -656,4 +656,55 @@ describe('useConsoleOperations', () => {
       await Promise.resolve();
     });
   });
+
+  it('calls onAfterMoveToAwaitingWorkspace after the triage API call completes', async () => {
+    const apiCallUrls: string[] = [];
+    let callbackCalledAfterTriageCount = 0;
+    global.fetch = jest.fn(async (url: string) => {
+      apiCallUrls.push(url as string);
+      if ((url as string).includes('/api/comment')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comment: {
+              author: 'bot',
+              body: 'ok',
+              createdAt: '2026-01-01T00:00:00Z',
+            },
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
+    }) as unknown as typeof fetch;
+    const onAfterMoveToAwaitingWorkspace = jest.fn(async () => {
+      callbackCalledAfterTriageCount = apiCallUrls.filter((u) =>
+        u.includes('/api/triage'),
+      ).length;
+    });
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const { result } = renderHook(() => {
+      const overlay = useConsoleOverlay('acme');
+      const operations = useConsoleOperations(
+        'acme',
+        'prs',
+        overlay,
+        undefined,
+        onAfterMoveToAwaitingWorkspace,
+      );
+      return { overlay, operations };
+    });
+    const [option] = consoleStatusOptionsFixture.filter(
+      (o) => o.name.toLowerCase() === 'awaiting workspace',
+    );
+    await act(async () => {
+      await result.current.operations.okAndMoveToAwaitingWorkspace(
+        issueItem,
+        option,
+      );
+    });
+    expect(onAfterMoveToAwaitingWorkspace).toHaveBeenCalledTimes(1);
+    expect(callbackCalledAfterTriageCount).toBe(1);
+  });
 });

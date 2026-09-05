@@ -171,6 +171,7 @@ export const useConsoleOperations = (
   mode: ConsoleTabName,
   overlayState: ConsoleOverlayState,
   caches?: ConsoleCaches,
+  onAfterMoveToAwaitingWorkspace?: () => Promise<void>,
 ): ConsoleOperationsApi => {
   const { patchOverlay } = overlayState;
 
@@ -337,8 +338,15 @@ export const useConsoleOperations = (
       };
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
+      await onAfterMoveToAwaitingWorkspace?.();
     },
-    [pjcode, invalidateItemContent, patchOverlay, mode],
+    [
+      pjcode,
+      invalidateItemContent,
+      patchOverlay,
+      mode,
+      onAfterMoveToAwaitingWorkspace,
+    ],
   );
 
   const addComment = useCallback(

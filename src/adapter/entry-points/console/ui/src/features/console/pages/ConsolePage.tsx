@@ -93,7 +93,7 @@ export const ConsolePage = () => {
   const airplaneMode = useAirplaneMode();
   const airplaneSnapshot =
     airplaneMode.status === 'on' ? airplaneMode.snapshot : null;
-  const { snapshots, isLoading, error } = useConsoleTabData(
+  const { snapshots, isLoading, error, refreshSingleTab } = useConsoleTabData(
     pjcode,
     airplaneSnapshot,
   );
@@ -162,11 +162,16 @@ export const ConsolePage = () => {
   );
 
   const caches = useConsoleCaches(airplaneSnapshot);
+  const refreshQueuedTab = useCallback(
+    () => refreshSingleTab('queued'),
+    [refreshSingleTab],
+  );
   const operations = useConsoleOperations(
     pjcode,
     activeTab,
     overlayState,
     caches,
+    refreshQueuedTab,
   );
   const actionQueue = useConsoleActionQueue();
   const [now, setNow] = useState(() => Date.now());

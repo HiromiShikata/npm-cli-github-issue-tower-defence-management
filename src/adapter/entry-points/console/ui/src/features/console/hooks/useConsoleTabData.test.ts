@@ -609,4 +609,42 @@ describe('useConsoleTabData', () => {
     });
     expect(result.current.snapshots.prs?.agentOptions).toEqual([]);
   });
+
+  it('refreshSingleTab fetches only the queued tab and updates its snapshot without altering other tabs', async () => {
+    const fetchMock = installNetworkFetch();
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    const snapshotBefore = result.current.snapshots.prs;
+    fetchMock.mockClear();
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true,
+      status: 200,
+      json: async () =>
+        makeTabPayload({
+          generatedAt: '2026-07-01T00:00:00.000Z',
+          items: url.includes('/queued/')
+            ? [
+                {
+                  number: 999,
+                  itemId: 'NEW_ITEM',
+                  projectItemId: 'NEW_ITEM',
+                  relatedOpenPullRequestUrls: [],
+                },
+              ]
+            : [],
+        }),
+    }));
+    await act(async () => {
+      await result.current.refreshSingleTab('queued');
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/acme/queued/list.json'),
+    );
+    expect(result.current.snapshots.queued?.items).toHaveLength(1);
+    expect(result.current.snapshots.queued?.generatedAt).toBe(
+      '2026-07-01T00:00:00.000Z',
+    );
+    expect(result.current.snapshots.prs).toBe(snapshotBefore);
+  });
 });
