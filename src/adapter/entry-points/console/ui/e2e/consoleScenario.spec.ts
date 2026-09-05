@@ -1143,3 +1143,32 @@ test('immediately shows item in Queued tab after moving to Awaiting Workspace wi
     ),
   ).toBeVisible({ timeout: 3000 });
 });
+
+test('offline pending actions panel renders with correct styling when a network error queues an action', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  await tabByLabel(page, 'Awaiting Quality Check').click();
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+
+  const approveButton = page
+    .locator('.console-op-button', { hasText: 'Approve' })
+    .first();
+  await expect(approveButton).toBeVisible();
+
+  await page.route('**/api/review', (route) => route.abort('failed'));
+
+  await approveButton.click();
+
+  const offlinePanel = page.locator('.console-offline-panel');
+  await expect(offlinePanel).toBeVisible({ timeout: 10000 });
+  await expect(offlinePanel).toContainText('1 action held');
+  await expect(
+    offlinePanel.locator('.console-offline-panel-item-green'),
+  ).toBeVisible();
+  await expect(offlinePanel).toHaveCSS('border', /solid/);
+});

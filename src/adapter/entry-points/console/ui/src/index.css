@@ -1899,6 +1899,11 @@ body {
   background: rgba(13, 31, 64, 0.4);
 }
 
+.console-offline-panel-item-error {
+  border-left-color: #f85149;
+  background: rgba(58, 21, 24, 0.4);
+}
+
 .console-offline-panel-item-message {
   font-size: 0.8125rem;
   font-weight: 600;
