@@ -552,9 +552,9 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(names).toContain('Awaiting Workspace');
     });
 
-    it('excludes todo by human and done from todo-by-human status options', () => {
+    it('includes todo by human but excludes done from todo-by-human status options', () => {
       const names = run([])['todo-by-human'].statusOptions.map((o) => o.name);
-      expect(names).not.toContain('Todo by human');
+      expect(names).toContain('Todo by human');
       expect(names).not.toContain('Done');
       expect(names).toContain('Awaiting Workspace');
     });

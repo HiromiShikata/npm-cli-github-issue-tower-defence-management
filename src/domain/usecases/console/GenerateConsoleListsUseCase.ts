@@ -238,7 +238,7 @@ export class GenerateConsoleListsUseCase {
         (issue) =>
           issue.status === TODO_STATUS_NAME ||
           issue.status === LEGACY_TODO_STATUS_NAME,
-        [TODO_STATUS_NAME.toLowerCase(), 'done'],
+        ['done'],
       ),
       'todo-by-agent': buildStatusTab(
         (issue) => issue.status === TODO_BY_AGENT_STATUS_NAME,
