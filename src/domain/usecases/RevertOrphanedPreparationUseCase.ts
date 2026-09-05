@@ -329,7 +329,6 @@ export class RevertOrphanedPreparationUseCase {
         rejectionStatusMessage,
       );
     }
-
   };
 
   private isStillInPreparation = async (
