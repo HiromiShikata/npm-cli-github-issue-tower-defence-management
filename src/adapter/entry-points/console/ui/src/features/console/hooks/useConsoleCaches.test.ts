@@ -35,6 +35,7 @@ describe('useConsoleCaches', () => {
               author: 'alice',
               body: 'LGTM',
               createdAt: '2026-08-01T09:00:00Z',
+              url: null,
             },
           ],
           state: {
