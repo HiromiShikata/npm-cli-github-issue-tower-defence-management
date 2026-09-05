@@ -8,7 +8,7 @@ import {
 } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 import { appendCloseEventCount } from '../console/consoleCloseEventStore';
 import { resetDoneProjectItemIdsAcrossTabs } from '../console/consoleDoneStore';
-import { CONSOLE_LIST_TAB_NAMES } from '../console/consoleTabNames';
+import { CONSOLE_LIST_TAB_NAMES, isRecord } from '../console/consoleTabNames';
 
 export type ConsoleListsWriterParams = {
   consoleDataOutputDir: string | null | undefined;
@@ -24,9 +24,6 @@ export type ConsoleListsWriterParams = {
 
 export const formatConsoleGeneratedAt = (date: Date): string =>
   date.toISOString().replace(/\.\d{3}Z$/, 'Z');
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 const writeJsonAtomic = (filePath: string, data: unknown): void => {
   const dir = path.dirname(filePath);
