@@ -17,6 +17,7 @@ jest.mock('ky', () => ({
 
 jest.mock('./githubGraphqlClient', () => ({
   postGithubGraphqlJson: mockPostGithubGraphqlJson,
+  isMutationOperation: jest.fn().mockReturnValue(false),
 }));
 
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
