@@ -77,7 +77,10 @@ const countSilentRedispatches = <
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
     (found, comment, index) =>
       params.isTrustedAuthor(comment.author) &&
-      isSilentRedispatchCommentForAgent(comment.content, params.nextStepAgent) &&
+      isSilentRedispatchCommentForAgent(
+        comment.content,
+        params.nextStepAgent,
+      ) &&
       isEscalationTypeDispatchRepeat(comment.content)
         ? index
         : found,
