@@ -29,7 +29,7 @@ export class ConflictedIssueRevertUseCase {
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
-      'createComment'
+      'getCommentsFromIssue' | 'createComment'
     >,
   ) {}
 
@@ -116,7 +116,19 @@ export class ConflictedIssueRevertUseCase {
         issue,
         awaitingWorkspaceStatusOption.id,
       );
-      await this.issueCommentRepository.createComment(issue, 'conflict');
+      const existingComments =
+        await this.issueCommentRepository.getCommentsFromIssue(issue);
+      const lastComment = existingComments[existingComments.length - 1];
+      if (lastComment?.content === 'conflict') {
+        continue;
+      }
+      try {
+        await this.issueCommentRepository.createComment(issue, 'conflict');
+      } catch (error) {
+        console.error(
+          `Failed to post conflict comment on ${issue.url}: ${String(error)}`,
+        );
+      }
     }
   };
 
