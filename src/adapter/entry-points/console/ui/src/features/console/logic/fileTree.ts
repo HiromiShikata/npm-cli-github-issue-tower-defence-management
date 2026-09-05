@@ -15,8 +15,7 @@ export type ConsoleFileTreeDirectoryNode = {
 };
 
 export type ConsoleFileTreeNode =
-  | ConsoleFileTreeDirectoryNode
-  | ConsoleFileTreeFileNode;
+  ConsoleFileTreeDirectoryNode | ConsoleFileTreeFileNode;
 
 type DirectoryBuilder = {
   directories: Map<string, DirectoryBuilder>;

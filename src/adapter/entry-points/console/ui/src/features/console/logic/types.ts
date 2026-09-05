@@ -1,12 +1,5 @@
 export type ConsoleColor =
-  | 'GRAY'
-  | 'BLUE'
-  | 'GREEN'
-  | 'YELLOW'
-  | 'ORANGE'
-  | 'RED'
-  | 'PINK'
-  | 'PURPLE';
+  'GRAY' | 'BLUE' | 'GREEN' | 'YELLOW' | 'ORANGE' | 'RED' | 'PINK' | 'PURPLE';
 
 export type ConsoleListItem = {
   number: number;
