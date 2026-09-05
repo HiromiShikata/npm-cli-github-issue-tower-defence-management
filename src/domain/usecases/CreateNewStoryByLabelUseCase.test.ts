@@ -566,7 +566,9 @@ describe('CreateNewStoryByLabelUseCase', () => {
       const staleProject: Project = {
         ...basicProject,
         story: {
-          ...basicProject.story!,
+          name: 'Story Field',
+          fieldId: 'storyFieldId',
+          databaseId: 123,
           stories: [
             {
               id: 'story1',
@@ -575,13 +577,16 @@ describe('CreateNewStoryByLabelUseCase', () => {
               description: '',
             },
           ],
+          workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
         },
       };
 
       const freshProject: Project = {
         ...basicProject,
         story: {
-          ...basicProject.story!,
+          name: 'Story Field',
+          fieldId: 'storyFieldId',
+          databaseId: 123,
           stories: [
             {
               id: 'story1',
@@ -596,6 +601,7 @@ describe('CreateNewStoryByLabelUseCase', () => {
               description: '',
             },
           ],
+          workflowManagementStory: { id: 'workflow1', name: 'Workflow Story' },
         },
       };
 
