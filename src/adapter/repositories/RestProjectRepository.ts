@@ -45,6 +45,19 @@ const isNotFoundResponse = (error: unknown): boolean => {
   );
 };
 
+const isForbiddenResponse = (error: unknown): boolean => {
+  if (typeof error !== 'object' || error === null || !('response' in error)) {
+    return false;
+  }
+  const response = error.response;
+  return (
+    typeof response === 'object' &&
+    response !== null &&
+    'status' in response &&
+    response.status === 403
+  );
+};
+
 export const projectUrlFromLocation = (location: ProjectLocation): string =>
   `https://github.com/${location.ownerType}/${location.owner}/projects/${location.projectNumber}`;
 
@@ -112,7 +125,7 @@ export class RestProjectRepository extends BaseGitHubRepository {
         this.listFieldDefinitions(location),
       ]);
     } catch (error) {
-      if (isNotFoundResponse(error)) {
+      if (isNotFoundResponse(error) || isForbiddenResponse(error)) {
         return null;
       }
       throw error;
