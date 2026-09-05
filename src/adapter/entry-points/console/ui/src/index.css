@@ -486,6 +486,28 @@ body {
   flex: 0 0 auto;
 }
 
+.console-queued-item-title {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-queued-item-badges {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.console-queued-item-actions {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .console-group-header {
   display: flex;
   align-items: center;
