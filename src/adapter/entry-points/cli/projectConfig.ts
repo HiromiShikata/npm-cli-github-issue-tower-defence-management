@@ -238,10 +238,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         parsed,
         'consoleGithubTokenFileDir',
       ),
-      readOnlyGithubTokens: getStringArrayValue(
-        parsed,
-        'readOnlyGithubTokens',
-      ),
+      readOnlyGithubTokens: getStringArrayValue(parsed, 'readOnlyGithubTokens'),
       disks: getDisksValue(parsed, 'disks'),
       errorReportingRepository: getStringValue(
         parsed,

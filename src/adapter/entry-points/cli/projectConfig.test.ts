@@ -430,11 +430,7 @@ describe('loadConfigFile readOnlyGithubTokens', () => {
 
 describe('mergeConfigs readOnlyGithubTokens', () => {
   it('takes the array from the config file when no cli override is present', () => {
-    const merged = mergeConfigs(
-      { readOnlyGithubTokens: ['t1', 't2'] },
-      {},
-      {},
-    );
+    const merged = mergeConfigs({ readOnlyGithubTokens: ['t1', 't2'] }, {}, {});
     expect(merged.readOnlyGithubTokens).toEqual(['t1', 't2']);
   });
 

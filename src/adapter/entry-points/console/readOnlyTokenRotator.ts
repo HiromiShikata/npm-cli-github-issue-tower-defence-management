@@ -1,20 +1,10 @@
-import type {
-  FieldOption,
-  Project,
-} from '../../../domain/entities/Project';
+import type { FieldOption, Project } from '../../../domain/entities/Project';
 import type { Issue, Label } from '../../../domain/entities/Issue';
 import type { Member } from '../../../domain/entities/Member';
-import type { SearchedIssue } from '../../../domain/entities/SearchedIssue';
-import type { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import type {
-  IssueComment,
   IssueRepository,
-  OpenPullRequestCiStatus,
-  PullRequestCommit,
-  PullRequestDetail,
   PullRequestReviewCommentSide,
   PullRequestReviewInlineLocation,
-  RelatedPullRequest,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import type { ConsoleGithubTokenResolver } from './consoleGithubTokenResolver';
@@ -24,7 +14,7 @@ const withReadOnlyTokenRotation = async <T>(
   repositories: IssueRepository[],
   fn: (repo: IssueRepository) => Promise<T>,
 ): Promise<T> => {
-  let lastError: unknown;
+  let lastError: Error | undefined;
   for (const repo of repositories) {
     try {
       return await fn(repo);
@@ -36,7 +26,9 @@ const withReadOnlyTokenRotation = async <T>(
       throw error;
     }
   }
-  throw lastError ?? new Error('readOnlyTokenRotator: no repositories provided');
+  throw (
+    lastError ?? new Error('readOnlyTokenRotator: no repositories provided')
+  );
 };
 
 export const createReadOnlyTokenRotatingIssueRepository = (
@@ -204,19 +196,12 @@ export const buildReadIssueRepositoryResolver = (
     const repositories = readOnlyGithubTokens.map((token) =>
       buildIssueRepositoryForToken(token),
     );
-    const rotatingRepo = createReadOnlyTokenRotatingIssueRepository(repositories);
+    const rotatingRepo =
+      createReadOnlyTokenRotatingIssueRepository(repositories);
     return (_url: string) => rotatingRepo;
   }
   return createConsoleIssueRepositoryResolver<IssueRepository>(
     resolveGithubToken,
     buildIssueRepositoryForToken,
   );
-};
-
-export type {
-  IssueComment,
-  OpenPullRequestCiStatus,
-  PullRequestCommit,
-  PullRequestDetail,
-  RelatedPullRequest,
 };
