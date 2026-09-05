@@ -1,3 +1,10 @@
+## [2.46.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.10...v2.46.11) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** Todo by human に移すtdpmコンソールのボタンがなくなった ([#1983](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1983)) ([b0ab065](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b0ab065878e64f145d4dc1e6ba12040cf800e6d3)), closes [HiromiShikata/umino-corporait-operation#31327](https://github.com/HiromiShikata/umino-corporait-operation/issues/31327)
+
 ## [2.46.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.46.9...v2.46.10) (2026-09-04)
 
 
