@@ -1,3 +1,10 @@
+## [2.62.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.4...v2.62.5) (2026-09-05)
+
+
+### Bug Fixes
+
+* **notify-finished-issue-preparation:** defer even when issue status is Awaiting Workspace ([#2078](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2078)) ([cdf9a1f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cdf9a1f22ebe9552c2e446908bb4f5ac2c60d284))
+
 ## [2.62.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.3...v2.62.4) (2026-09-05)
 
 
