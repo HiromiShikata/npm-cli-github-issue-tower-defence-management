@@ -5649,6 +5649,138 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('getIssueByUrl', () => {
+    it('returns the cached issue without calling fetchProjectItemByUrl when a fresh cache entry matches the url', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const issueUrl = 'https://github.com/o/r/issues/1';
+      const now = new Date('2026-07-07T00:30:00.000Z');
+      const lastFetchedAt = '2026-07-07T00:00:00.000Z';
+      dateRepository.now.mockResolvedValue(now);
+      localStorageRepository.listFiles
+        .mockReturnValueOnce(['umino'])
+        .mockReturnValueOnce(['allIssues-proj1'])
+        .mockReturnValueOnce(['latest.json']);
+      localStorageRepository.read.mockReturnValue(
+        JSON.stringify({
+          lastFetchedAt,
+          issues: [buildCachedIssueRecord(issueUrl, 'Cached Issue')],
+        }),
+      );
+
+      const result = await repository.getIssueByUrl(issueUrl);
+
+      expect(result).not.toBeNull();
+      expect(result?.url).toBe(issueUrl);
+      expect(result?.title).toBe('Cached Issue');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('falls back to fetchProjectItemByUrl when the matching cache entry is stale', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const issueUrl = 'https://github.com/o/r/issues/2';
+      const now = new Date('2026-07-07T01:01:00.000Z');
+      const lastFetchedAt = '2026-07-07T00:00:00.000Z';
+      dateRepository.now.mockResolvedValue(now);
+      localStorageRepository.listFiles
+        .mockReturnValueOnce(['umino'])
+        .mockReturnValueOnce(['allIssues-proj1'])
+        .mockReturnValueOnce(['latest.json']);
+      localStorageRepository.read.mockReturnValue(
+        JSON.stringify({
+          lastFetchedAt,
+          issues: [buildCachedIssueRecord(issueUrl, 'Stale Cached Issue')],
+        }),
+      );
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem(issueUrl, 'Fresh Issue From GraphQL'),
+      );
+
+      const result = await repository.getIssueByUrl(issueUrl);
+
+      expect(result?.title).toBe('Fresh Issue From GraphQL');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).toHaveBeenCalledWith(issueUrl);
+    });
+
+    it('falls back to fetchProjectItemByUrl when no cache entry matches the url', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const issueUrl = 'https://github.com/o/r/issues/3';
+      const now = new Date('2026-07-07T00:30:00.000Z');
+      const lastFetchedAt = '2026-07-07T00:00:00.000Z';
+      dateRepository.now.mockResolvedValue(now);
+      localStorageRepository.listFiles
+        .mockReturnValueOnce(['umino'])
+        .mockReturnValueOnce(['allIssues-proj1'])
+        .mockReturnValueOnce(['latest.json']);
+      localStorageRepository.read.mockReturnValue(
+        JSON.stringify({
+          lastFetchedAt,
+          issues: [
+            buildCachedIssueRecord(
+              'https://github.com/o/r/issues/99',
+              'Other Issue',
+            ),
+          ],
+        }),
+      );
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem(issueUrl, 'Issue From GraphQL'),
+      );
+
+      const result = await repository.getIssueByUrl(issueUrl);
+
+      expect(result?.title).toBe('Issue From GraphQL');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).toHaveBeenCalledWith(issueUrl);
+    });
+
+    it('falls back to fetchProjectItemByUrl gracefully when the cache file is malformed', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const issueUrl = 'https://github.com/o/r/issues/4';
+      const now = new Date('2026-07-07T00:30:00.000Z');
+      dateRepository.now.mockResolvedValue(now);
+      localStorageRepository.listFiles
+        .mockReturnValueOnce(['umino'])
+        .mockReturnValueOnce(['allIssues-proj1'])
+        .mockReturnValueOnce(['latest.json']);
+      localStorageRepository.read.mockReturnValue('not valid json{{{');
+      graphqlProjectItemRepository.fetchProjectItemByUrl.mockResolvedValue(
+        buildProjectItem(issueUrl, 'Issue From GraphQL'),
+      );
+
+      const result = await repository.getIssueByUrl(issueUrl);
+
+      expect(result?.title).toBe('Issue From GraphQL');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItemByUrl,
+      ).toHaveBeenCalledWith(issueUrl);
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
@@ -5686,6 +5818,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       restIssueRepository,
       graphqlProjectItemRepository,
       localStorageCacheRepository,
+      localStorageRepository,
       projectRepository,
       dateRepository,
       sleep,
