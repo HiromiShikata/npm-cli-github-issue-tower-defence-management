@@ -2706,4 +2706,87 @@ describe('RevertOrphanedPreparationUseCase', () => {
       );
     });
   });
+
+  it('should advance closed Awaiting Workspace issue to Awaiting Quality Check without running a process check', async () => {
+    const closedAwIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Awaiting Workspace',
+      isClosed: true,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [closedAwIssue],
+      cacheUsed: false,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+    expect(
+      mockIssueCommentRepository.getCommentsFromIssue.mock.calls,
+    ).toHaveLength(0);
+    expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(
+      closedAwIssue,
+    );
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+  });
+
+  it('should not process open Awaiting Workspace issue in the closed-AW loop', async () => {
+    const openAwIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/11',
+      status: 'Awaiting Workspace',
+      isClosed: false,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [openAwIssue],
+      cacheUsed: false,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+  });
+
+  it('should not call updateStatus for a closed AW issue when project has no Awaiting Quality Check status', async () => {
+    const projectWithoutAqc = {
+      ...mockProject,
+      status: {
+        ...mockProject.status,
+        statuses: mockProject.status.statuses.filter(
+          (s) => s.name !== 'Awaiting Quality Check',
+        ),
+      },
+    };
+    mockProjectRepository.getProject.mockResolvedValue(projectWithoutAqc);
+    const closedAwIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Awaiting Workspace',
+      isClosed: true,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: projectWithoutAqc,
+      issues: [closedAwIssue],
+      cacheUsed: false,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+  });
 });
