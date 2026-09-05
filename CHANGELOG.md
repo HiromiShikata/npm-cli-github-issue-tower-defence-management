@@ -1,3 +1,10 @@
+# [2.54.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.53.1...v2.54.0) (2026-09-05)
+
+
+### Features
+
+* **GitHubIssueCommentRepository:** add ETag-based disk cache to reduce API quota usage ([#2020](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2020)) ([2a3f390](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2a3f39031ac7864c7aac6fc84cf5893a056e1936)), closes [#2018](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2018)
+
 ## [2.53.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.53.0...v2.53.1) (2026-09-05)
 
 
