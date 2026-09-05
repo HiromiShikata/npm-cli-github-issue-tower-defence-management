@@ -5,13 +5,15 @@ const readJestConfig = () => {
   const content = readFileSync(join(__dirname, '..', 'jest.config.js'), 'utf8');
 
   const maxWorkersMatch = content.match(/\bmaxWorkers\s*:\s*(\d+)/);
-  if (!maxWorkersMatch) throw new Error('maxWorkers not found in jest.config.js');
+  if (!maxWorkersMatch)
+    throw new Error('maxWorkers not found in jest.config.js');
 
   const forceExitMatch = content.match(/\bforceExit\s*:\s*(true|false)/);
   if (!forceExitMatch) throw new Error('forceExit not found in jest.config.js');
 
   const testTimeoutMatch = content.match(/\btestTimeout\s*:\s*(\d+)/);
-  if (!testTimeoutMatch) throw new Error('testTimeout not found in jest.config.js');
+  if (!testTimeoutMatch)
+    throw new Error('testTimeout not found in jest.config.js');
 
   return {
     maxWorkers: Number(maxWorkersMatch[1]),
