@@ -1,3 +1,10 @@
+## [2.56.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.56.0...v2.56.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **intmux:** detect live claude session by process command line only ([#2036](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2036)) ([05adf2f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/05adf2f2305a6c52e4152ad1e55a98c1a02e82b1)), closes [HiromiShikata/umino-corporait-operation#31343](https://github.com/HiromiShikata/umino-corporait-operation/issues/31343)
+
 # [2.56.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.55.3...v2.56.0) (2026-09-05)
 
 
