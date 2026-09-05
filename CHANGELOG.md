@@ -1,3 +1,16 @@
+## [2.60.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.60.0...v2.60.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **console:** handleComment propagates upstream 403 blocking status change; relatedprs returns 502 for PR URLs ([#2061](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2061)) ([f72144d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f72144d558b8767162ef920dae9b013f6550f3e0)), closes [#2060](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2060)
+* **preparation:** escalate immediately when reporting agent cannot advance after re-dispatch ([#2064](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2064)) ([e58d37e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e58d37e1e50dafa180022e94c4f1fa2c5b1993e7)), closes [HiromiShikata/secretary#5470](https://github.com/HiromiShikata/secretary/issues/5470)
+
+
+### Performance Improvements
+
+* **jest:** limit workers to 2, add forceExit and timeout to prevent OOM ([#2062](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2062)) ([54f33b5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/54f33b5e61296b377d55620dacdbdae561ce2ab4))
+
 # [2.60.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.59.3...v2.60.0) (2026-09-05)
 
 
