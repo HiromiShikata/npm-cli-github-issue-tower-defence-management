@@ -854,7 +854,6 @@ describe('consoleOperationApi', () => {
       }
     });
 
-
     it('snoozes for six hours via updateNextActionHour', async () => {
       jest.useFakeTimers().setSystemTime(new Date('2026-01-01T12:00:00Z'));
       try {
@@ -888,7 +887,6 @@ describe('consoleOperationApi', () => {
         jest.useRealTimers();
       }
     });
-
 
     it('wraps snooze_3hours hour and sets nextActionDate when crossing midnight', async () => {
       jest.useFakeTimers().setSystemTime(new Date('2026-01-01T22:00:00Z'));

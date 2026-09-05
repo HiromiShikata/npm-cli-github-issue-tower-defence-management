@@ -571,7 +571,8 @@ export const handleTriage = async (
     if (project.nextActionHour === null) {
       return badRequest('project does not have a nextActionHour field');
     }
-    const hoursToAdd = action === 'snooze_1hour' ? 1 : action === 'snooze_3hours' ? 3 : 6;
+    const hoursToAdd =
+      action === 'snooze_1hour' ? 1 : action === 'snooze_3hours' ? 3 : 6;
     const now = Date.now();
     const rawHour = new Date(now).getUTCHours() + hoursToAdd;
     const crossesMidnight = rawHour >= 24;
