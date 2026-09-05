@@ -46,17 +46,12 @@ export class InTmuxByHumanSessionReconcileUseCase {
       return { launchedIssueUrls: [] };
     }
 
-    const liveSessionNames = new Set(
-      await this.tmuxSessionRepository.listLiveSessionNames(),
-    );
     const processCommandLines =
       await this.tmuxSessionRepository.listInteractiveProcessCommandLines();
 
     const launchedIssueUrls: string[] = [];
     for (const issue of targetIssues) {
-      if (
-        this.hasLiveSession(issue.url, liveSessionNames, processCommandLines)
-      ) {
+      if (this.hasLiveSession(issue.url, processCommandLines)) {
         continue;
       }
       const liveState =
@@ -89,15 +84,7 @@ export class InTmuxByHumanSessionReconcileUseCase {
 
   private hasLiveSession = (
     issueUrl: string,
-    liveSessionNames: Set<string>,
     processCommandLines: string[],
-  ): boolean => {
-    const sessionName = toTmuxSessionName(issueUrl);
-    if (!liveSessionNames.has(sessionName)) {
-      return false;
-    }
-    return processCommandLines.some((commandLine) =>
-      commandLine.includes(issueUrl),
-    );
-  };
+  ): boolean =>
+    processCommandLines.some((commandLine) => commandLine.includes(issueUrl));
 }

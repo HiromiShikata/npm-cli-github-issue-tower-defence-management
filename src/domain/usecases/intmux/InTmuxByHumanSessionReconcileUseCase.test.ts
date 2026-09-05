@@ -381,6 +381,30 @@ describe('InTmuxByHumanSessionReconcileUseCase', () => {
     expect(issueStateRepository.fetchedUrls).toEqual([]);
   });
 
+  it('does not launch when claude is running for the issue url even when the tmux session was renamed by cl', async () => {
+    const issue = makeIssue();
+    const repository = createFakeTmuxSessionRepository({
+      liveSessionNames: ['a1b2c3d4e5f6a7b8'],
+      processCommandLines: [
+        `claude --model opus --agent leader --name ${issue.url}`,
+      ],
+    });
+    const useCase = new InTmuxByHumanSessionReconcileUseCase(
+      repository,
+      createFakeIssueStateRepository(),
+    );
+
+    const result = await useCase.run({
+      issues: [issue],
+      assigneeLogin: ASSIGNEE,
+      launcherCommand: LAUNCHER,
+      now: NOW,
+    });
+
+    expect(repository.launches).toEqual([]);
+    expect(result.launchedIssueUrls).toEqual([]);
+  });
+
   it('transforms an issue url into the same session name tmux derives from the raw url, replacing only "." and ":" and keeping "/"', () => {
     expect(toTmuxSessionName('https://github.com/demo/repo/issues/42')).toBe(
       'https_//github_com/demo/repo/issues/42',
