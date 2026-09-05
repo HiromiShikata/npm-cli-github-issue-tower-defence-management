@@ -25,7 +25,12 @@ export class RestIssueRepository
   createComment = async (
     issueUrl: string,
     comment: string,
-  ): Promise<{ author: string; body: string; createdAt: Date; url: string | null }> => {
+  ): Promise<{
+    author: string;
+    body: string;
+    createdAt: Date;
+    url: string | null;
+  }> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
     const response = await ky
       .post(
