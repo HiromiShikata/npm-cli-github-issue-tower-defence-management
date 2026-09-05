@@ -217,7 +217,7 @@ describe('FileSystemConsoleTabsRepository', () => {
   });
 
   describe('moveItemToQueuedTab', () => {
-    it('moves an item found in an existing tab into the queued tab with the updated status', () => {
+    it('adds the item to the queued tab with the updated status without modifying the source tab', () => {
       const existingItem = makeItem({
         projectItemId: 'item-q',
         status: 'In Tmux by human',
@@ -231,7 +231,9 @@ describe('FileSystemConsoleTabsRepository', () => {
       expect(readTabFile('queued')).toMatchObject({
         items: [{ projectItemId: 'item-q', status: 'Awaiting Workspace' }],
       });
-      expect(readTabFile('todo-by-human')).toMatchObject({ items: [] });
+      expect(readTabFile('todo-by-human')).toMatchObject({
+        items: [{ projectItemId: 'item-q' }],
+      });
     });
 
     it('is a no-op when the item is not found in any tab', () => {
@@ -244,7 +246,7 @@ describe('FileSystemConsoleTabsRepository', () => {
       expect(readTabFile('queued')).toMatchObject({ items: [] });
     });
 
-    it('removes the item from its source tab after moving to queued', () => {
+    it('adds the item to the queued tab without removing it from the source tab', () => {
       const existingItem = makeItem({
         projectItemId: 'item-r',
         status: 'Todo by agent',
@@ -255,7 +257,9 @@ describe('FileSystemConsoleTabsRepository', () => {
 
       repo.moveItemToQueuedTab('item-r', 'Preparation');
 
-      expect(readTabFile('todo-by-agent')).toMatchObject({ items: [] });
+      expect(readTabFile('todo-by-agent')).toMatchObject({
+        items: [{ projectItemId: 'item-r' }],
+      });
       expect(readTabFile('queued')).toMatchObject({
         items: [{ projectItemId: 'item-r', status: 'Preparation' }],
       });
