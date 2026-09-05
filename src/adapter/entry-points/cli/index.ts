@@ -78,6 +78,7 @@ import {
 } from '../handlers/ownerCallFileStore';
 import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import {
+  loadErrorReportingRepository,
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
   loadWorkflowImprovementIssueUrl,
@@ -381,10 +382,13 @@ program
       readmeOverrides,
     );
 
-    if (config.errorReportingRepository) {
-      process.env.TDPM_ERROR_REPORT_REPOSITORY =
-        config.errorReportingRepository;
-    }
+    const fleetConfigFilePath = resolveFleetConfigFilePath(
+      options.fleetConfigFilePath ?? null,
+    );
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      loadErrorReportingRepository(fleetConfigFilePath) ??
+      config.errorReportingRepository ??
+      '';
 
     const projectUrl = config.projectUrl;
     const defaultAgentName = config.defaultAgentName;
@@ -430,9 +434,6 @@ program
       `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
     );
 
-    const fleetConfigFilePath = resolveFleetConfigFilePath(
-      options.fleetConfigFilePath ?? null,
-    );
     const preparationWorkerSettings =
       loadPreparationWorkerSettings(fleetConfigFilePath);
     const fleetConfigSource =
@@ -660,10 +661,13 @@ program
       readmeOverrides,
     );
 
-    if (config.errorReportingRepository) {
-      process.env.TDPM_ERROR_REPORT_REPOSITORY =
-        config.errorReportingRepository;
-    }
+    const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
+      options.fleetConfigFilePath ?? null,
+    );
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      loadErrorReportingRepository(notifyFleetConfigFilePath) ??
+      config.errorReportingRepository ??
+      '';
 
     const projectUrl = config.projectUrl;
 
@@ -754,9 +758,6 @@ program
           .filter(Boolean)
       : null;
 
-    const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
-      options.fleetConfigFilePath ?? null,
-    );
     await useCase.run({
       projectUrl,
       issueUrl: options.issueUrl,
@@ -777,7 +778,11 @@ program
       workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
         notifyFleetConfigFilePath,
       ),
-      tdpmReportingRepository: config.errorReportingRepository ?? null,
+      tdpmReportingRepository:
+        loadErrorReportingRepository(notifyFleetConfigFilePath) ??
+        config.errorReportingRepository ??
+        null,
+      projectName: config.projectName ?? null,
     });
   });
 
@@ -822,10 +827,11 @@ program
       readmeOverrides,
     );
 
-    if (config.errorReportingRepository) {
-      process.env.TDPM_ERROR_REPORT_REPOSITORY =
-        config.errorReportingRepository;
-    }
+    const checkIssueReviewFleetConfigFilePath = resolveFleetConfigFilePath(null);
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      loadErrorReportingRepository(checkIssueReviewFleetConfigFilePath) ??
+      config.errorReportingRepository ??
+      '';
 
     const projectName = config.projectName ?? 'default';
     const localStorageRepository = new LocalStorageRepository();

@@ -149,6 +149,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     deferPreparation?: boolean | null;
     workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
     tdpmReportingRepository?: string | null;
+    projectName?: string | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
@@ -220,6 +221,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.sessionErrorLine ?? null,
         params.manager ?? null,
         reportingTarget,
+        params.projectName ?? null,
       );
       return;
     }
@@ -300,6 +302,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption,
         nextStepAgent,
         reportingTarget,
+        params.projectName ?? null,
       );
       return;
     }
@@ -586,6 +589,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     sessionErrorLine: string | null,
     manager: string | null,
     reportingTarget: { owner: string; repo: string } | null,
+    projectName: string | null,
   ): Promise<void> => {
     const taskIssueTitle = `Register missing agent definition: ${missingAgentName}`;
     const targetOwner = reportingTarget?.owner ?? issue.org;
@@ -604,13 +608,17 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (exactMatch) {
       taskIssueUrl = exactMatch.url;
     } else {
-      const body = [
+      const bodyLines = [
         `The preparation worker for ${issue.url} failed because the agent definition \`${missingAgentName}\` was not found.`,
         '',
         `- Missing agent name: \`${missingAgentName}\``,
         `- Failing item: ${issue.url}`,
         `- Error: ${sessionErrorLine ?? '(not captured)'}`,
-      ].join('\n');
+      ];
+      if (projectName !== null) {
+        bodyLines.push(`- TDPM project: ${projectName}`);
+      }
+      const body = bodyLines.join('\n');
       if (!manager) {
         throw new Error(
           `'manager' is not configured: cannot create the missing-agent task issue for '${missingAgentName}' without an assignee. Set the 'manager' configuration key to a GitHub username.`,
@@ -659,6 +667,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     awaitingWorkspaceStatusOption: { id: string },
     nextStepAgent: string,
     reportingTarget: { owner: string; repo: string } | null,
+    projectName: string | null,
   ): Promise<void> => {
     const blockerIssueTitle = `Unregistered agent in workflow configuration: ${nextStepAgent}`;
     const targetOwner = reportingTarget?.owner ?? issue.org;
@@ -677,12 +686,16 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (exactMatch) {
       blockerIssueUrl = exactMatch.url;
     } else {
-      const body = [
+      const bodyLines = [
         `The last agent report on ${issue.url} designated \`nextStepAgent\` as \`${nextStepAgent}\`, which is absent from the configured agents list.`,
         '',
         `- Missing agent name: \`${nextStepAgent}\``,
         `- Declaring task: ${issue.url}`,
-      ].join('\n');
+      ];
+      if (projectName !== null) {
+        bodyLines.push(`- TDPM project: ${projectName}`);
+      }
+      const body = bodyLines.join('\n');
       const issueNumber = await this.issueRepository.createNewIssue(
         targetOwner,
         targetRepo,

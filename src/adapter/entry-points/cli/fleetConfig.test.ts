@@ -6,6 +6,7 @@ import {
   DEFAULT_PREPARATION_WORKER_SETTINGS,
   DEFAULT_START_PREPARATION_FLEET_SETTINGS,
   FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE,
+  loadErrorReportingRepository,
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
   loadSilentNotificationEnabled,
@@ -728,6 +729,66 @@ describe('loadSilentNotificationEnabled', () => {
 
     expect(() => loadSilentNotificationEnabled(fleetConfigFilePath)).toThrow(
       'must be a boolean',
+    );
+  });
+});
+
+describe('loadErrorReportingRepository', () => {
+  let tempDir: string;
+
+  const writeFleetConfig = (content: string): string => {
+    const fleetConfigFilePath = path.join(tempDir, 'fleet.config.yaml');
+    fs.writeFileSync(fleetConfigFilePath, content);
+    return fleetConfigFilePath;
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-config-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('returns null when no fleet config path is given', () => {
+    expect(loadErrorReportingRepository(null)).toBeNull();
+  });
+
+  it('returns the repository string from the fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'errorReportingRepository: owner/repo\n',
+    );
+
+    expect(loadErrorReportingRepository(fleetConfigFilePath)).toBe('owner/repo');
+  });
+
+  it('returns null when the key is absent from the fleet config', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'preparationWorker:\n  normalConcurrentLimit: 5\n',
+    );
+
+    expect(loadErrorReportingRepository(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns null for an empty fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig('');
+
+    expect(loadErrorReportingRepository(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('throws when the fleet config file does not exist', () => {
+    expect(() =>
+      loadErrorReportingRepository(path.join(tempDir, 'missing.yaml')),
+    ).toThrow();
+  });
+
+  it('throws when the errorReportingRepository value is not a string', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'errorReportingRepository: 42\n',
+    );
+
+    expect(() => loadErrorReportingRepository(fleetConfigFilePath)).toThrow(
+      'must be a string',
     );
   });
 });

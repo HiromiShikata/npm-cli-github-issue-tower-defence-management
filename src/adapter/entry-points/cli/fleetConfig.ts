@@ -332,3 +332,27 @@ export const loadWorkflowImprovementIssueUrl = (
   }
   return value;
 };
+
+export const ERROR_REPORTING_REPOSITORY_KEY = 'errorReportingRepository';
+
+export const loadErrorReportingRepository = (
+  fleetConfigFilePath: string | null,
+): string | null => {
+  if (fleetConfigFilePath === null) {
+    return null;
+  }
+  const top = parseFleetConfigTopLevel(fleetConfigFilePath);
+  if (top === null) {
+    return null;
+  }
+  const value = top[ERROR_REPORTING_REPOSITORY_KEY];
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    throw new Error(
+      `${ERROR_REPORTING_REPOSITORY_KEY} in ${fleetConfigFilePath} must be a string.`,
+    );
+  }
+  return value;
+};

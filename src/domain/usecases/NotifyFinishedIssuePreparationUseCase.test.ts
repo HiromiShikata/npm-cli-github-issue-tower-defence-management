@@ -4434,6 +4434,62 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         [],
       );
     });
+
+    it('includes projectName in the missing-agent issue body when provided', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        missingAgentName: 'impl',
+        manager: 'alice',
+        projectName: 'my-tdpm-project',
+      });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        taskIssueTitle,
+        expect.stringContaining('TDPM project: my-tdpm-project'),
+        ['alice'],
+        [],
+      );
+    });
+
+    it('omits the TDPM project line from the missing-agent issue body when projectName is null', async () => {
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        missingAgentName: 'impl',
+        manager: 'alice',
+        projectName: null,
+      });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        taskIssueTitle,
+        expect.not.stringContaining('TDPM project'),
+        ['alice'],
+        [],
+      );
+    });
   });
 
   describe('when deferPreparation is true', () => {
@@ -4966,6 +5022,76 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
 
       consoleWarnSpy.mockRestore();
+    });
+
+    it('includes projectName in the blocker issue body when provided', async () => {
+      const issueUrl = 'https://github.com/user/repo/issues/1';
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
+        }),
+      ]);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(99);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+        projectName: 'my-tdpm-project',
+      });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        expect.stringContaining('TDPM project: my-tdpm-project'),
+        [],
+        [],
+      );
+    });
+
+    it('omits the TDPM project line from the blocker issue body when projectName is null', async () => {
+      const issueUrl = 'https://github.com/user/repo/issues/1';
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
+        }),
+      ]);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+        projectName: null,
+      });
+
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+        expect.not.stringContaining('TDPM project'),
+        [],
+        [],
+      );
     });
 
     it('should dispatch normally when nextStepAgent is in the configured agents list', async () => {
