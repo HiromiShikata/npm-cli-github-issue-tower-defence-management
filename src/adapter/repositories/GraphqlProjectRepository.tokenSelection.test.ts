@@ -239,7 +239,9 @@ describe('GraphqlProjectRepository token selection', () => {
     });
 
     it('logs a warning when write-token fallback response has errors', async () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
       const repository = new GraphqlProjectRepository(
         localStorageRepository,
         'manager-token',
@@ -268,7 +270,9 @@ describe('GraphqlProjectRepository token selection', () => {
       ).rejects.toThrow('Project not found for ID: PVT_test');
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('write-token fallback for GetProjectV2 also failed'),
+        expect.stringContaining(
+          'write-token fallback for GetProjectV2 also failed',
+        ),
       );
 
       consoleSpy.mockRestore();
