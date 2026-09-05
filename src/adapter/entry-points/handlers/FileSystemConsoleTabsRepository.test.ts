@@ -246,6 +246,19 @@ describe('FileSystemConsoleTabsRepository', () => {
       expect(readTabFile('queued')).toMatchObject({ items: [] });
     });
 
+    it('is a no-op when queued/list.json does not exist', () => {
+      const existingItem = makeItem({ projectItemId: 'item-nq' });
+      writeTabFile('todo-by-agent', makeStatusTab(PJCODE, [existingItem]));
+      const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+
+      expect(() =>
+        repo.moveItemToQueuedTab('item-nq', 'Awaiting Workspace'),
+      ).not.toThrow();
+      expect(fs.existsSync(path.join(dir, PJCODE, 'queued', 'list.json'))).toBe(
+        false,
+      );
+    });
+
     it('adds the item to the queued tab without removing it from the source tab', () => {
       const existingItem = makeItem({
         projectItemId: 'item-r',

@@ -549,8 +549,19 @@ export const handleTriage = async (
     }
     recordDoneForStatusChange(context, pjcode, projectItemId);
     const lowerStatus = statusName.toLowerCase();
-    if (lowerStatus === 'awaiting workspace' || lowerStatus === 'preparation') {
-      context.patchItemIntoQueuedTab?.(pjcode, projectItemId, statusName);
+    if (
+      lowerStatus === AWAITING_WORKSPACE_STATUS_NAME ||
+      lowerStatus === 'preparation'
+    ) {
+      const canonicalStatusName =
+        project.status.statuses.find(
+          (o) => o.name.toLowerCase() === lowerStatus,
+        )?.name ?? statusName;
+      context.patchItemIntoQueuedTab?.(
+        pjcode,
+        projectItemId,
+        canonicalStatusName,
+      );
     }
     return ok();
   }
