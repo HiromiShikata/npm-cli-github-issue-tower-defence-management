@@ -1,3 +1,11 @@
+## [2.55.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.55.2...v2.55.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* **ApiV3CheerioRestIssueRepository:** add disk cache and graceful rate-limit degradation for getCommitCiContexts ([#2029](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2029)) ([24f63ae](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/24f63ae90ebf2cd25547043f74e053da055b97c2)), closes [#2023](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2023)
+* re-fetch project before story option mutation to prevent concurrent writes from being overwritten ([#2025](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2025)) ([cbf3c07](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cbf3c07e13ef6d774bd83eeac0b33d46793602e7)), closes [#2021](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2021)
+
 ## [2.55.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.55.1...v2.55.2) (2026-09-05)
 
 
