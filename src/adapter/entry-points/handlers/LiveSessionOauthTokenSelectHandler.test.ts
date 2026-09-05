@@ -167,7 +167,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     );
   });
 
-  it('selects the soonest resetting eligible token even when it already carries a live session', () => {
+  it('selects the token with fewer live sessions when seven day free ratios are equal', () => {
     writeTokenList([
       { name: 'busy', token: 'fake-busy' },
       { name: 'idle', token: 'fake-idle' },
@@ -195,25 +195,25 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
-    expect(output.selectedName).toBe('busy');
-    expect(output.selectedToken).toBe('fake-busy');
+    expect(output.selectedName).toBe('idle');
+    expect(output.selectedToken).toBe('fake-idle');
     expect(output.diagnostics.join('\n')).toContain(
       'busy: 1/10 live session(s)',
     );
   });
 
-  it('breaks an occupancy tie by the soonest 7d reset', () => {
+  it('selects the token with the highest seven day free ratio', () => {
     writeTokenList([
-      { name: 'far', token: 'fake-far' },
-      { name: 'soon', token: 'fake-soon' },
+      { name: 'highUtilization', token: 'fake-high' },
+      { name: 'lowUtilization', token: 'fake-low' },
     ]);
-    writeCache('fake-far', {
+    writeCache('fake-high', {
       fiveHourUtilization: 0.1,
       fiveHourReset: NOW + HOUR,
-      sevenDayUtilization: 0.1,
+      sevenDayUtilization: 0.5,
       sevenDayReset: NOW + 6 * DAY,
     });
-    writeCache('fake-soon', {
+    writeCache('fake-low', {
       fiveHourUtilization: 0.1,
       fiveHourReset: NOW + HOUR,
       sevenDayUtilization: 0.1,
@@ -221,8 +221,8 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     });
 
     const handler = buildHandler([
-      { token: 'fake-far', sessionKey: 'session-a' },
-      { token: 'fake-soon', sessionKey: 'session-b' },
+      { token: 'fake-high', sessionKey: 'session-a' },
+      { token: 'fake-low', sessionKey: 'session-b' },
     ]);
     const output = handler.handle({
       tokenListJsonPath: tokenListPath,
@@ -231,7 +231,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
     });
 
-    expect(output.selectedName).toBe('soon');
+    expect(output.selectedName).toBe('lowUtilization');
   });
 
   it('dedupes child processes that share a session id when counting occupancy', () => {

@@ -64,38 +64,32 @@ const withSelectionWeight = (
 describe('LiveSessionOauthTokenSelectUseCase', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
-  it('selects the token whose seven day window resets soonest even when an idle token has a distant reset', () => {
+  it('selects the token with the highest seven day free ratio even when it has more live sessions', () => {
     const result = useCase.run(
       [
-        candidate(
-          'distantResetIdle',
-          snapshot({ sevenDayReset: NOW + 6 * DAY }),
-        ),
-        candidate('soonResetBusy', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
+        candidate('lowFreeRatioIdle', snapshot({ sevenDayUtilization: 0.5 })),
+        candidate('highFreeRatioBusy', snapshot({ sevenDayUtilization: 0 })),
       ],
-      sessionsFor('soonResetBusy', 5),
+      sessionsFor('highFreeRatioBusy', 5),
       NOW,
       SETTINGS,
     );
 
-    expect(result.selected?.name).toBe('soonResetBusy');
+    expect(result.selected?.name).toBe('highFreeRatioBusy');
   });
 
-  it('keeps filling the soonest resetting token until it reaches its concurrent session limit', () => {
+  it('keeps filling the token with the highest seven day free ratio until it reaches its concurrent session limit', () => {
     const belowLimit = useCase.run(
       [
-        candidate(
-          'distantResetIdle',
-          snapshot({ sevenDayReset: NOW + 6 * DAY }),
-        ),
-        candidate('soonReset', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
+        candidate('lowerFreeRatioIdle', snapshot({ sevenDayUtilization: 0.5 })),
+        candidate('highFreeRatioBusy', snapshot({ sevenDayUtilization: 0 })),
       ],
-      sessionsFor('soonReset', MAX_CONCURRENT_SESSION_COUNT - 1),
+      sessionsFor('highFreeRatioBusy', MAX_CONCURRENT_SESSION_COUNT - 1),
       NOW,
       SETTINGS,
     );
 
-    expect(belowLimit.selected?.name).toBe('soonReset');
+    expect(belowLimit.selected?.name).toBe('highFreeRatioBusy');
   });
 
   it('moves to the next soonest resetting token once the soonest one is at its concurrent session limit', () => {
@@ -173,7 +167,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('allows a token whose seven day window is below the minimum when it resets within 24 hours to drain remaining capacity', () => {
+  it('allows a token whose seven day window is below the minimum when it resets within 24 hours but selects a higher free ratio token when one is available', () => {
     const result = useCase.run(
       [
         candidate(
@@ -197,7 +191,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       (m) => m.name === 'aboutToResetNearlyUsedSevenDay',
     );
     expect(aboutToReset?.eligible).toBe(true);
-    expect(result.selected?.name).toBe('aboutToResetNearlyUsedSevenDay');
+    expect(result.selected?.name).toBe('distantResetIdle');
   });
 
   it('still throttles a seven day window that resets within the hour once its five hour window falls below half free', () => {
@@ -240,8 +234,8 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
           0.5,
         ),
         candidate(
-          'distantResetIdle',
-          snapshot({ sevenDayReset: NOW + 6 * DAY }),
+          'lowerFreeRatioIdle',
+          snapshot({ sevenDayReset: NOW + 6 * DAY, sevenDayUtilization: 0.5 }),
         ),
       ],
       sessionsFor('downWeighted', 5),
@@ -298,27 +292,24 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(tiny?.concurrentSessionLimit).toBe(1);
   });
 
-  it('still selects the soonest resetting token when every eligible token is at its limit', () => {
+  it('selects the token with the highest seven day free ratio when every eligible token is at its concurrent session limit', () => {
     const result = useCase.run(
       [
-        candidate(
-          'distantResetFull',
-          snapshot({ sevenDayReset: NOW + 6 * DAY }),
-        ),
-        candidate('soonResetFull', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
+        candidate('lowFreeRatioFull', snapshot({ sevenDayUtilization: 0.5 })),
+        candidate('highFreeRatioFull', snapshot({ sevenDayUtilization: 0 })),
       ],
       [
-        ...sessionsFor('distantResetFull', MAX_CONCURRENT_SESSION_COUNT),
-        ...sessionsFor('soonResetFull', MAX_CONCURRENT_SESSION_COUNT),
+        ...sessionsFor('lowFreeRatioFull', MAX_CONCURRENT_SESSION_COUNT),
+        ...sessionsFor('highFreeRatioFull', MAX_CONCURRENT_SESSION_COUNT),
       ],
       NOW,
       SETTINGS,
     );
 
-    expect(result.selected?.name).toBe('soonResetFull');
+    expect(result.selected?.name).toBe('highFreeRatioFull');
   });
 
-  it('breaks a seven day reset tie by the fewer live sessions', () => {
+  it('breaks a seven day free ratio tie by the fewer live sessions', () => {
     const result = useCase.run(
       [
         candidate('sameResetBusy', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
@@ -406,7 +397,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const fresh = result.metrics.find((m) => m.name === 'fresh');
     expect(resumedHeavy?.liveSessionCount).toBe(2);
     expect(fresh?.liveSessionCount).toBe(1);
-    expect(result.selected?.name).toBe('resumedHeavy');
+    expect(result.selected?.name).toBe('fresh');
   });
 
   it('returns null selection when no token passes the rate-limit filter', () => {
@@ -713,7 +704,10 @@ describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration
           snapshot({ sevenDayReset: NOW + 6 * DAY }),
         ),
       ],
-      sessionsFor('nearDeadlineDownWeighted', 8),
+      [
+        ...sessionsFor('nearDeadlineDownWeighted', 6),
+        ...sessionsFor('distantResetIdle', 7),
+      ],
       NOW,
       SETTINGS,
     );

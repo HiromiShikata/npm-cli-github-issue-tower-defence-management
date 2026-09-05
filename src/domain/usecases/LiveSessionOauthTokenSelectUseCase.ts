@@ -189,9 +189,11 @@ export class LiveSessionOauthTokenSelectUseCase {
     ) {
       return candidateMetric.hasConcurrencyHeadroom;
     }
-    if (candidateMetric.sevenDayEndEpoch !== incumbentMetric.sevenDayEndEpoch) {
+    if (
+      candidateMetric.sevenDayFreeRatio !== incumbentMetric.sevenDayFreeRatio
+    ) {
       return (
-        candidateMetric.sevenDayEndEpoch < incumbentMetric.sevenDayEndEpoch
+        candidateMetric.sevenDayFreeRatio > incumbentMetric.sevenDayFreeRatio
       );
     }
     return candidateMetric.liveSessionCount < incumbentMetric.liveSessionCount;
