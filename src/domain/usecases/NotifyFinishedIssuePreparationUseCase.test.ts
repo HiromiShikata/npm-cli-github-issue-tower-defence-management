@@ -5607,7 +5607,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it('should keep the missing pull request rejection when the designated next step agent is not the triager', async () => {
-      const issue = createMockIssue({ status: 'Preparation', agent: 'developer' });
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'developer',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([

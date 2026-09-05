@@ -1211,6 +1211,5 @@ describe('IssueRejectionEvaluator', () => {
         ).toBe(true);
       });
     });
-
   });
 });

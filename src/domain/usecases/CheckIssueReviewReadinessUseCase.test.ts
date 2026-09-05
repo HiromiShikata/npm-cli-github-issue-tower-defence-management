@@ -432,6 +432,5 @@ describe('CheckIssueReviewReadinessUseCase', () => {
         detail: 'NO_REPORT_FROM_AGENT_BOT',
       });
     });
-
   });
 });
