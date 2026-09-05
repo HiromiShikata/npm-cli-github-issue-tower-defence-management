@@ -399,7 +399,7 @@ export class GraphqlProjectRepository
     const variables = {
       projectId: projectId,
     };
-    const response = await postGithubGraphqlJson<{
+    type ProjectNodeResponse = {
       data?: {
         node: {
           id: string;
@@ -436,10 +436,12 @@ export class GraphqlProjectRepository
         };
       };
       errors?: { message: string }[];
-    }>({
-      ghToken: isMutationOperation(query)
-        ? this.ghToken
-        : this.selectReadToken(),
+    };
+    const readToken = isMutationOperation(query)
+      ? this.ghToken
+      : this.selectReadToken();
+    const response = await postGithubGraphqlJson<ProjectNodeResponse>({
+      ghToken: readToken,
       query,
       variables,
     });
@@ -451,7 +453,26 @@ export class GraphqlProjectRepository
         `GitHub GraphQL API returned no data for getProject: ${errorMessages}`,
       );
     }
-    const project = response.data.node;
+    let project = response.data.node;
+    if (!project && readToken !== this.ghToken) {
+      const fallbackResponse = await postGithubGraphqlJson<ProjectNodeResponse>(
+        {
+          ghToken: this.ghToken,
+          query,
+          variables,
+        },
+      );
+      if (fallbackResponse.data) {
+        project = fallbackResponse.data.node;
+      } else {
+        const fallbackErrors = fallbackResponse.errors
+          ? fallbackResponse.errors.map((e) => e.message).join('; ')
+          : 'no data field in response';
+        console.warn(
+          `GraphqlProjectRepository: write-token fallback for GetProjectV2 also failed: ${fallbackErrors}`,
+        );
+      }
+    }
     if (!project) {
       return null;
     }
