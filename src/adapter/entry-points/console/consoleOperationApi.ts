@@ -30,6 +30,7 @@ import {
 } from '../cli/projectConfig';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
+export const PREPARATION_STATUS_NAME = 'preparation';
 export const CONFLICT_RETURNED_MESSAGE =
   'Auto Status Check: CONFLICT\nThis pull request has a merge conflict and has been returned to Awaiting Workspace.';
 export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
@@ -551,7 +552,7 @@ export const handleTriage = async (
     const lowerStatus = statusName.toLowerCase();
     if (
       lowerStatus === AWAITING_WORKSPACE_STATUS_NAME ||
-      lowerStatus === 'preparation'
+      lowerStatus === PREPARATION_STATUS_NAME
     ) {
       const canonicalStatusName =
         project.status.statuses.find(
