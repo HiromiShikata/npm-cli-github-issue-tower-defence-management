@@ -1,6 +1,11 @@
 import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
-import { resolveNextStepAgentDispatchRepetition } from './resolveNextStepAgentDispatchRepetition';
+import {
+  resolveNextStepAgentDispatchRepetition,
+  SILENT_CRASH_ESCALATION_PHRASE,
+  REPORTING_LOOP_ESCALATION_PHRASE,
+  DISPATCH_LOOP_ESCALATION_PHRASE,
+} from './resolveNextStepAgentDispatchRepetition';
 
 const trustAll = (): boolean => true;
 
@@ -30,6 +35,44 @@ const repetitionComment = (
   content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
 
 Dispatching it again.`,
+});
+
+const escalationComment = (
+  nextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+
+Failed to receive a report from the dispatched agent for 3 consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
+});
+
+const reportingEscalationComment = (
+  nextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+
+The agent has been reporting every cycle but cannot advance — it has been dispatched 3 times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
+});
+
+const bareLegacyRepetitionComment = (
+  nextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}`,
+});
+
+const dispatchLoopEscalationComment = (
+  nextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+
+This agent has been dispatched 3 times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
 });
 
 const humanComment = (author = 'bot'): TestComment => ({
@@ -277,6 +320,82 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
 
       expect(result.type).toBe('dispatchAgain');
     });
+
+    it('resets the count after a previous silent-failure escalation so the first re-dispatch is not immediately re-escalated', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'chore',
+        nextStepAgent: 'chore',
+        comments: [
+          repetitionComment('chore'),
+          escalationComment('chore'),
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+      expect(result.type === 'dispatchAgain' ? result.comment : '').toContain(
+        '(1/3)',
+      );
+    });
+
+    it('resets the count after a previous reporting-loop escalation so the first re-dispatch is not immediately re-escalated', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'chore',
+        nextStepAgent: 'chore',
+        comments: [
+          repetitionComment('chore'),
+          reportingEscalationComment('chore'),
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+      expect(result.type === 'dispatchAgain' ? result.comment : '').toContain(
+        '(1/3)',
+      );
+    });
+
+    it('still escalates after 3 consecutive failures in the new chain following a previous escalation', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'chore',
+        nextStepAgent: 'chore',
+        comments: [
+          repetitionComment('chore'),
+          escalationComment('chore'),
+          repetitionComment('chore'),
+          repetitionComment('chore'),
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+    });
+
+    it('does not treat bare legacy repetition comments as escalation resets', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'chore',
+        nextStepAgent: 'chore',
+        comments: [
+          bareLegacyRepetitionComment('chore'),
+          bareLegacyRepetitionComment('chore'),
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+    });
   });
 
   describe('dispatch loop bound', () => {
@@ -466,6 +585,25 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           thresholdForDispatchLoop: 3,
         }),
       ).toEqual({ type: 'notRepeated' });
+    });
+
+    it('resets the dispatch loop count after an escalation comment so one new dispatch does not re-trigger the loop', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: null,
+        nextStepAgent: 'chore',
+        comments: [
+          report('chore'),
+          report('chore'),
+          report('chore'),
+          dispatchLoopEscalationComment('chore'),
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(result.type).toBe('notRepeated');
     });
   });
 });
