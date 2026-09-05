@@ -1,3 +1,10 @@
+# [2.48.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.47.2...v2.48.0) (2026-09-05)
+
+
+### Features
+
+* **live-session:** prefer token with most remaining seven day capacity ([#1982](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1982)) ([9272362](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9272362fff686ed46c94aa2379a78bb50ab0ba57)), closes [HiromiShikata/umino-corporait-operation#31332](https://github.com/HiromiShikata/umino-corporait-operation/issues/31332)
+
 ## [2.47.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.47.1...v2.47.2) (2026-09-05)
 
 
