@@ -4,6 +4,7 @@ import {
   DELETE_STORY_OPERATION_PATH,
   fetchProjectReadmeConfig,
   postConsoleAddStory,
+  postConsoleComment,
   postConsoleDeleteStory,
   postConsoleOperation,
   postConsoleRenameStory,
@@ -599,5 +600,82 @@ describe('postProjectMaxPreparingUpdate', () => {
         maximumPreparingIssuesCount: 0,
       }),
     ).rejects.toThrow('maximumPreparingIssuesCount must be a positive integer');
+  });
+});
+
+describe('postConsoleComment', () => {
+  const request = {
+    pjcode: 'acme',
+    url: 'https://github.com/o/r/issues/1',
+    body: 'ok',
+  };
+
+  it('returns posted true with the comment on success', async () => {
+    mockFetchOnce({
+      ok: true,
+      comment: {
+        author: 'bot',
+        body: 'ok',
+        createdAt: '2026-09-05T14:00:00.000Z',
+        url: 'https://github.com/o/r/issues/1#issuecomment-1',
+      },
+    });
+    const result = await postConsoleComment(request);
+    expect(result).toEqual({
+      posted: true,
+      comment: {
+        author: 'bot',
+        body: 'ok',
+        createdAt: '2026-09-05T14:00:00.000Z',
+        url: 'https://github.com/o/r/issues/1#issuecomment-1',
+      },
+    });
+  });
+
+  it('returns posted false with the server error reason when the HTTP response is not ok', async () => {
+    mockFetchFailureOnce(
+      502,
+      JSON.stringify({ error: 'github token is not configured' }),
+    );
+    const result = await postConsoleComment(request);
+    expect(result).toEqual({
+      posted: false,
+      error: 'github token is not configured',
+      rateLimitResetAt: null,
+    });
+  });
+
+  it('returns posted false with the error field when the backend returns ok: false', async () => {
+    mockFetchOnce({ ok: false, error: 'API rate limit exceeded' });
+    const result = await postConsoleComment(request);
+    expect(result).toEqual({
+      posted: false,
+      error: 'API rate limit exceeded',
+      rateLimitResetAt: null,
+    });
+  });
+
+  it('returns posted false with rateLimitResetAt when the backend signals a rate-limit', async () => {
+    mockFetchOnce({
+      ok: false,
+      error: 'HTTP 403 GitHub API rate limit exceeded',
+      rateLimitResetAt: '2026-09-05T15:20:00.000Z',
+    });
+    const result = await postConsoleComment(request);
+    expect(result).toEqual({
+      posted: false,
+      error: 'HTTP 403 GitHub API rate limit exceeded',
+      rateLimitResetAt: '2026-09-05T15:20:00.000Z',
+    });
+  });
+
+  it('returns posted false with a fallback error when the comment field is absent', async () => {
+    mockFetchOnce({ ok: true });
+    const result = await postConsoleComment(request);
+    expect(result).toEqual({
+      posted: false,
+      error: 'comment was not returned',
+      rateLimitResetAt: null,
+    });
   });
 });

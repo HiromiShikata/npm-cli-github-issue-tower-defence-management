@@ -18,6 +18,7 @@ import {
   recordDoneProjectItemIdForTabs,
 } from './consoleDoneStore';
 import { appendCloseEvent } from './consoleCloseEventStore';
+import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { extractProjectOwner } from './consoleGithubTokenResolver';
 import { findConsoleItemUrl } from './consoleItemUrlLookup';
 import {
@@ -706,20 +707,47 @@ export const handleComment = async (
   if (!isNonEmptyString(commentBody)) {
     return badRequest('body is required');
   }
-  const posted = await context
-    .resolveIssueRepository(url)
-    .createCommentByUrl(url, commentBody);
-  return {
-    statusCode: 200,
-    body: {
-      ok: true,
-      comment: {
-        author: posted.author,
-        body: posted.body,
-        createdAt: posted.createdAt.toISOString(),
+  const pjcode = isNonEmptyString(body.pjcode) ? body.pjcode : null;
+  if (pjcode === null) {
+    console.warn('[handleComment] pjcode absent in request body', { url });
+  }
+  try {
+    const posted = await context
+      .resolveIssueRepository(url)
+      .createCommentByUrl(url, commentBody);
+    return {
+      statusCode: 200,
+      body: {
+        ok: true,
+        comment: {
+          author: posted.author,
+          body: posted.body,
+          createdAt: posted.createdAt.toISOString(),
+        },
       },
-    },
-  };
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(
+      '[handleComment] upstream comment post failed:',
+      { pjcode, url },
+      error,
+    );
+    if (error instanceof GitHubRateLimitError) {
+      return {
+        statusCode: 200,
+        body: {
+          ok: false,
+          error: errorMessage,
+          rateLimitResetAt: error.rateLimitResetAt,
+        },
+      };
+    }
+    return {
+      statusCode: 200,
+      body: { ok: false, error: errorMessage },
+    };
+  }
 };
 
 export const handleAttachmentUpload = async (

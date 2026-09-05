@@ -4,6 +4,22 @@ const mockPut = jest.fn();
 const mockPatch = jest.fn();
 const mockDelete = jest.fn();
 
+class MockHTTPError extends Error {
+  response: {
+    status: number;
+    headers: Headers;
+    clone: () => { text: () => Promise<string> };
+  };
+  constructor(response: {
+    status: number;
+    headers: Headers;
+    clone: () => { text: () => Promise<string> };
+  }) {
+    super(`Request failed with status code ${response.status}`);
+    this.response = response;
+  }
+}
+
 jest.mock('ky', () => ({
   default: {
     post: mockPost,
@@ -15,6 +31,7 @@ jest.mock('ky', () => ({
     create: jest.fn(),
     stop: jest.fn(),
   },
+  HTTPError: MockHTTPError,
   __esModule: true,
 }));
 
@@ -142,6 +159,60 @@ describe('RestIssueRepository', () => {
       );
 
       expect(result.author).toBe('');
+    });
+
+    it('throws GitHubRateLimitError with reset time when ky returns 403 with rate-limit headers', async () => {
+      const resetEpoch = 1725547200;
+      const mockHeaders = new Headers({
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': String(resetEpoch),
+      });
+      mockPost.mockImplementation(() => ({
+        json: jest.fn().mockRejectedValue(
+          new MockHTTPError({
+            status: 403,
+            headers: mockHeaders,
+            clone: () => ({
+              text: async () => 'API rate limit exceeded for user ID 6440811',
+            }),
+          }),
+        ),
+      }));
+
+      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
+      let thrownError: unknown;
+      try {
+        await restIssueRepository.createComment(
+          'https://github.com/HiromiShikata/test-repository/issues/40',
+          'test comment',
+        );
+      } catch (e) {
+        thrownError = e;
+      }
+      expect(thrownError).toBeInstanceOf(GitHubRateLimitError);
+      expect(thrownError).toMatchObject({
+        rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
+      });
+    });
+
+    it('rethrows non-rate-limit HTTPError from ky unchanged', async () => {
+      const mockHeaders = new Headers({ 'x-ratelimit-remaining': '100' });
+      mockPost.mockImplementation(() => ({
+        json: jest.fn().mockRejectedValue(
+          new MockHTTPError({
+            status: 403,
+            headers: mockHeaders,
+            clone: () => ({ text: async () => 'Forbidden' }),
+          }),
+        ),
+      }));
+
+      await expect(
+        restIssueRepository.createComment(
+          'https://github.com/HiromiShikata/test-repository/issues/40',
+          'test comment',
+        ),
+      ).rejects.toBeInstanceOf(MockHTTPError);
     });
   });
   describe('createNewIssue', () => {

@@ -376,6 +376,16 @@ describe('consoleReadApi', () => {
       expect(response.statusCode).toBe(502);
       expect(response.body).toEqual({ error: 'Network timeout' });
     });
+
+    it('returns 400 when url is a pull request URL', async () => {
+      const issueRepository = mock<IssueRepository>();
+      const response = await handleRelatedPrs(
+        issueRepository,
+        'https://github.com/o/r/pull/42',
+      );
+      expect(response.statusCode).toBe(400);
+      expect(issueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleIssueTitle with the TTL cache', () => {

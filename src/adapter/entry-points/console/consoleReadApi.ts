@@ -259,12 +259,18 @@ export const handlePrCommits = async (
   }
 };
 
+const isPullRequestUrl = (url: string): boolean =>
+  /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url);
+
 export const handleRelatedPrs = async (
   issueRepository: IssueRepository,
   url: string | null,
 ): Promise<ConsoleReadApiResponse> => {
   if (!url) {
     return badRequest('url query parameter is required');
+  }
+  if (isPullRequestUrl(url)) {
+    return badRequest('url must be an issue URL, not a pull request URL');
   }
   try {
     const relatedPullRequests = await issueRepository.findRelatedOpenPRs(url);

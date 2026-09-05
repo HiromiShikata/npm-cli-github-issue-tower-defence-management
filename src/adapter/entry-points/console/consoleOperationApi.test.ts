@@ -36,6 +36,7 @@ import {
 } from './consoleOperationApi';
 import * as projectConfig from '../cli/projectConfig';
 import { readProjectTimer } from './consoleProjectTimerStore';
+import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 
 describe('consoleOperationApi', () => {
   let baseDir: string;
@@ -1843,6 +1844,72 @@ describe('consoleOperationApi', () => {
       });
       expect(response.statusCode).toBe(400);
       expect(issueRepository.createCommentByUrl).not.toHaveBeenCalled();
+    });
+
+    it('returns 200 with ok false and the error message when upstream comment creation fails', async () => {
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+      issueRepository.createCommentByUrl.mockRejectedValue(
+        new Error('HTTP 403 forbidden'),
+      );
+      const response = await handleComment(context, {
+        pjcode: 'acme',
+        url: 'https://github.com/o/r/issues/1',
+        body: 'ok',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: false, error: 'HTTP 403 forbidden' });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[handleComment] upstream comment post failed:',
+        { pjcode: 'acme', url: 'https://github.com/o/r/issues/1' },
+        expect.any(Error),
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('returns 200 with rateLimitResetAt when upstream throws GitHubRateLimitError', async () => {
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+      issueRepository.createCommentByUrl.mockRejectedValue(
+        new GitHubRateLimitError(
+          'HTTP 403 GitHub API rate limit exceeded',
+          '2026-09-05T15:20:00.000Z',
+        ),
+      );
+      const response = await handleComment(context, {
+        pjcode: 'acme',
+        url: 'https://github.com/o/r/issues/1',
+        body: 'ok',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({
+        ok: false,
+        error: 'HTTP 403 GitHub API rate limit exceeded',
+        rateLimitResetAt: '2026-09-05T15:20:00.000Z',
+      });
+      jest.restoreAllMocks();
+    });
+
+    it('logs a warning and uses null pjcode when pjcode is absent from the request body', async () => {
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+      issueRepository.createCommentByUrl.mockResolvedValue({
+        author: 'bot',
+        body: 'ok',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        url: null,
+      });
+      const response = await handleComment(context, {
+        url: 'https://github.com/o/r/issues/1',
+        body: 'ok',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[handleComment] pjcode absent in request body',
+        { url: 'https://github.com/o/r/issues/1' },
+      );
+      consoleWarnSpy.mockRestore();
     });
   });
 
