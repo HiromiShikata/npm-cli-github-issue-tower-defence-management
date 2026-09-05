@@ -7,9 +7,16 @@ import {
 
 export const PROJECT_ROW_WIDTH_BUDGET = 40;
 
+export type CloseEventCounts = {
+  h1: number;
+  h3: number;
+  h5: number;
+};
+
 export type ComposeDashboardProject = {
   code: string;
   row: DashboardRow | null;
+  closeEventCounts: CloseEventCounts;
 };
 
 export type ComposeDashboardDisk = {
@@ -56,6 +63,19 @@ const STORY_COLOR_COLUMNS: ProjectColumn[] = [
 ];
 
 const STORY_COLOR_COLUMN_VALUE_WIDTH = 2;
+
+type CloseCountColumn = {
+  header: string;
+  key: keyof CloseEventCounts;
+};
+
+const CLOSE_COUNT_COLUMNS: CloseCountColumn[] = [
+  { header: '1h', key: 'h1' },
+  { header: '3h', key: 'h3' },
+  { header: '5h', key: 'h5' },
+];
+
+const CLOSE_COUNT_COLUMN_WIDTH = 2;
 
 export const STATUS_DOT_DISPLAY_WIDTH = 2;
 
@@ -210,7 +230,10 @@ export const formatProjectHeaderLine = (): string => {
   const storyColumns = STORY_COLOR_COLUMNS.map(
     (column) => ' ' + column.header,
   ).join('');
-  return head + columns + storyColumns;
+  const closeCountColumns = CLOSE_COUNT_COLUMNS.map(
+    (column) => ' ' + padStart(column.header, CLOSE_COUNT_COLUMN_WIDTH),
+  ).join('');
+  return head + columns + storyColumns + closeCountColumns;
 };
 
 const severityDot = (row: DashboardRow): string => {
@@ -243,7 +266,11 @@ export const formatProjectRowLine = (
       project.row === null ? '--' : capTwoDigits(project.row[column.key]);
     return ' ' + padStart(cell, STORY_COLOR_COLUMN_VALUE_WIDTH);
   }).join('');
-  return mark + padEnd(project.code, 2, ' ') + cells + storyColorCells;
+  const closeCountCells = CLOSE_COUNT_COLUMNS.map((column) => {
+    const cell = capTwoDigits(project.closeEventCounts[column.key]);
+    return ' ' + padStart(cell, CLOSE_COUNT_COLUMN_WIDTH);
+  }).join('');
+  return mark + padEnd(project.code, 2, ' ') + cells + storyColorCells + closeCountCells;
 };
 
 const formatUtilization = (percent: number | null): string =>

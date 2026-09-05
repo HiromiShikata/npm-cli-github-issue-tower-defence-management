@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  CloseEventCounts,
   ComposeDashboardDisk,
   ComposeDashboardInput,
   ComposeDashboardMachineStatus,
@@ -14,10 +15,26 @@ import {
   TokenStatus,
   TokenStatusColor,
 } from '../../../domain/usecases/dashboard/GenerateTokenStatusUseCase';
+import { countCloseEvents } from './consoleCloseEventStore';
 
 export type DashboardComposeOptions = {
   dashboardDataDir: string;
   projectNames: string[];
+  consoleDataOutputDir?: string | null;
+  nowMs?: number;
+};
+
+const NO_CLOSE_EVENTS: CloseEventCounts = { h1: 0, h3: 0, h5: 0 };
+
+const readCloseEventCounts = (
+  consoleDataOutputDir: string | null | undefined,
+  projectName: string,
+  nowMs: number,
+): CloseEventCounts => {
+  if (consoleDataOutputDir == null) {
+    return NO_CLOSE_EVENTS;
+  }
+  return countCloseEvents(consoleDataOutputDir, projectName, nowMs);
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -222,10 +239,16 @@ const readTokenStatusFile = (
 export const buildComposeDashboardInput = (
   options: DashboardComposeOptions,
 ): ComposeDashboardInput => {
+  const nowMs = options.nowMs ?? Date.now();
   const projects: ComposeDashboardProject[] = options.projectNames.map(
     (projectName) => ({
       code: toDashboardDisplayLabel(projectName),
       row: readProjectRow(options.dashboardDataDir, projectName),
+      closeEventCounts: readCloseEventCounts(
+        options.consoleDataOutputDir,
+        projectName,
+        nowMs,
+      ),
     }),
   );
   const tokenStatusFile = readTokenStatusFile(options.dashboardDataDir);

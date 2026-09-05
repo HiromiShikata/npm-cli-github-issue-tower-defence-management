@@ -17,6 +17,7 @@ import {
   recordDoneProjectItemIdAcrossTabs,
   recordDoneProjectItemIdForTabs,
 } from './consoleDoneStore';
+import { appendCloseEvent } from './consoleCloseEventStore';
 import { extractProjectOwner } from './consoleGithubTokenResolver';
 import { findConsoleItemUrl } from './consoleItemUrlLookup';
 import {
@@ -198,6 +199,16 @@ const recordDoneForStoryChange = (
     projectItemId,
     CONSOLE_DONE_STORY_SELECTED_TAB_NAMES,
   );
+};
+
+const recordTaskClose = (
+  context: ConsoleOperationContext,
+  pjcode: string,
+): void => {
+  if (context.consoleDataOutputDir === null) {
+    return;
+  }
+  appendCloseEvent(context.consoleDataOutputDir, pjcode, Date.now());
 };
 
 const resolveBinding = async (
@@ -516,6 +527,7 @@ export const handleTriage = async (
         );
     }
     recordDone(context, pjcodeResult, projectItemId);
+    recordTaskClose(context, pjcodeResult);
     return ok();
   }
 
