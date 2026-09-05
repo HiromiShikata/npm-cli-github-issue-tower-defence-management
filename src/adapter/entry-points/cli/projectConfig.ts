@@ -31,6 +31,7 @@ export type ConfigFile = {
   consoleDataOutputDir?: string;
   consoleAccessToken?: string;
   consoleProjects?: Record<string, string>;
+  consoleGithubTokens?: Record<string, string>;
   consoleGithubTokenFileDir?: string;
   readOnlyGithubTokens?: string[];
   disks?: DiskConfig[];
@@ -235,6 +236,7 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
       consoleDataOutputDir: getStringValue(parsed, 'consoleDataOutputDir'),
       consoleAccessToken: getStringValue(parsed, 'consoleAccessToken'),
       consoleProjects: getStringRecordValue(parsed, 'consoleProjects'),
+      consoleGithubTokens: getStringRecordValue(parsed, 'consoleGithubTokens'),
       consoleGithubTokenFileDir: getStringValue(
         parsed,
         'consoleGithubTokenFileDir',
@@ -447,6 +449,8 @@ export const mergeConfigs = (
   consoleAccessToken:
     cliOverrides.consoleAccessToken ?? configFile.consoleAccessToken,
   consoleProjects: cliOverrides.consoleProjects ?? configFile.consoleProjects,
+  consoleGithubTokens:
+    cliOverrides.consoleGithubTokens ?? configFile.consoleGithubTokens,
   consoleGithubTokenFileDir:
     cliOverrides.consoleGithubTokenFileDir ??
     configFile.consoleGithubTokenFileDir,

@@ -1,7 +1,5 @@
 export type ConsoleGithubTokenResolver = (repositoryOwner: string) => string;
 
-export type GithubTokenFileReader = (filePath: string) => string;
-
 export const extractRepositoryOwner = (
   issueOrPullRequestUrl: string,
 ): string | null => {
@@ -67,8 +65,7 @@ export const createConsoleGithubTokenResolverByItemUrl = (
 export const createConsoleGithubTokenResolver = (
   defaultToken: string,
   consoleProjectUrls: Record<string, string> | null,
-  githubTokenFileDirPath: string | null,
-  readTokenFile: GithubTokenFileReader,
+  consoleGithubTokens: Record<string, string> | null,
 ): ConsoleGithubTokenResolver => {
   const resolvedTokenByRepositoryOwner = new Map<string, string>();
   return (repositoryOwner: string): string => {
@@ -76,7 +73,7 @@ export const createConsoleGithubTokenResolver = (
     if (alreadyResolved !== undefined) {
       return alreadyResolved;
     }
-    if (consoleProjectUrls === null || githubTokenFileDirPath === null) {
+    if (consoleProjectUrls === null || consoleGithubTokens === null) {
       return defaultToken;
     }
     const normalizedOwner = repositoryOwner.toLowerCase();
@@ -87,27 +84,14 @@ export const createConsoleGithubTokenResolver = (
     if (matchedPjcode === undefined) {
       return defaultToken;
     }
-    const filePath = `${githubTokenFileDirPath}/tdpm-github-token-${matchedPjcode}.txt`;
-    let fileContent: string;
-    try {
-      fileContent = readTokenFile(filePath);
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'ENOENT'
-      ) {
-        return defaultToken;
-      }
-      throw error;
-    }
-    const token = fileContent.trim();
-    if (token.length === 0) {
+    const token = consoleGithubTokens[matchedPjcode];
+    if (token === undefined || token.trim().length === 0) {
       throw new Error(
-        `The GitHub token file for pjcode "${matchedPjcode}" contains no token: ${filePath}`,
+        `The GitHub token for pjcode "${matchedPjcode}" is not configured: set consoleGithubTokens.${matchedPjcode} in the console config file`,
       );
     }
-    resolvedTokenByRepositoryOwner.set(repositoryOwner, token);
-    return token;
+    const trimmedToken = token.trim();
+    resolvedTokenByRepositoryOwner.set(repositoryOwner, trimmedToken);
+    return trimmedToken;
   };
 };

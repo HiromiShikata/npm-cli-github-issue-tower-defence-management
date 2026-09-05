@@ -1006,8 +1006,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   const resolveGithubToken = createConsoleGithubTokenResolver(
     token,
     config.consoleProjects ?? null,
-    config.consoleGithubTokenFileDir ?? null,
-    (filePath: string) => fs.readFileSync(filePath, 'utf8'),
+    config.consoleGithubTokens ?? null,
   );
   const issueRepositoryByToken = new Map<string, IssueRepository>();
   issueRepositoryByToken.set(token, issueRepository);
