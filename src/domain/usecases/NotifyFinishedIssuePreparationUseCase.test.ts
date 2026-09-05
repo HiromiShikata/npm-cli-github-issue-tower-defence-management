@@ -1765,6 +1765,36 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should not reject a missing PR when the last agent report declares pullRequestRequired false', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager (claude-sonnet-4-6)\n\n```json\n{ "pullRequestRequired": false, "waitingForOwnerApproval": true }\n```\n\nThis task needs no pull request.',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+    );
+  });
+
   it('should reject a missing PR when the issue agent matches developerAgentNames', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
