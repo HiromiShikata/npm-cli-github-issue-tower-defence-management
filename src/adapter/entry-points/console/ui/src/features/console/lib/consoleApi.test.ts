@@ -656,6 +656,9 @@ describe('postConsoleComment', () => {
   it('returns posted false with a fallback error when the comment field is absent', async () => {
     mockFetchOnce({ ok: true });
     const result = await postConsoleComment(request);
-    expect(result).toEqual({ posted: false, error: 'comment was not returned' });
+    expect(result).toEqual({
+      posted: false,
+      error: 'comment was not returned',
+    });
   });
 });

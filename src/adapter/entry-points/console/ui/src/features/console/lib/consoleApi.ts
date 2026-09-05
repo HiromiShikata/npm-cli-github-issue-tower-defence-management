@@ -318,8 +318,7 @@ export type ConsoleCommentRequest = {
 };
 
 export type ConsoleCommentResult =
-  | { posted: true; comment: ConsoleComment }
-  | { posted: false; error: string };
+  { posted: true; comment: ConsoleComment } | { posted: false; error: string };
 
 const parseCommentRecord = (
   commentRecord: Record<string, unknown>,
@@ -348,7 +347,8 @@ export const postConsoleComment = async (
   if (payload.ok === false) {
     return {
       posted: false,
-      error: typeof payload.error === 'string' ? payload.error : 'upstream error',
+      error:
+        typeof payload.error === 'string' ? payload.error : 'upstream error',
     };
   }
   if (!isRecord(payload.comment)) {
