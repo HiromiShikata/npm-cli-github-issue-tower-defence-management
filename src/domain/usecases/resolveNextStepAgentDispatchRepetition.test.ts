@@ -555,7 +555,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForDispatchLoop: 3,
       });
 
-      expect(result.type).not.toBe('escalateDispatchLoop');
+      expect(result.type).toBe('notRepeated');
     });
   });
 });

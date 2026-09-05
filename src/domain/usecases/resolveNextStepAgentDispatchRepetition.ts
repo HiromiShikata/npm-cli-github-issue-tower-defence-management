@@ -14,6 +14,8 @@ export const SILENT_CRASH_ESCALATION_PHRASE =
   'The agent may have crashed or stopped silently';
 export const REPORTING_LOOP_ESCALATION_PHRASE =
   'Owner judgment is required to break the loop';
+export const DISPATCH_LOOP_ESCALATION_PHRASE =
+  'the issue is escalated for a decision';
 
 export const DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP = 6;
 
@@ -53,9 +55,9 @@ const isSilentRedispatchCommentForAgent = (
 };
 
 const isEscalationDispatchComment = (content: string): boolean =>
-  content.includes('Owner judgment is required') ||
-  content.includes('Failed to receive a report') ||
-  content.includes('escalated for a decision');
+  content.includes(REPORTING_LOOP_ESCALATION_PHRASE) ||
+  content.includes(SILENT_CRASH_ESCALATION_PHRASE) ||
+  content.includes(DISPATCH_LOOP_ESCALATION_PHRASE);
 
 type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
 
@@ -198,7 +200,7 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
       type: 'escalateDispatchLoop',
       comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so the issue is escalated for a decision instead of being dispatched again.`,
+This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
     };
   }
   if (silentRedispatches !== null && silentRedispatches.count > 1) {
