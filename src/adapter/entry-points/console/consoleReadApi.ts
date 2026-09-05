@@ -138,6 +138,11 @@ const rateLimited = (error: Error): ConsoleReadApiResponse => ({
   body: { error: error.message },
 });
 
+const upstreamError = (error: unknown): ConsoleReadApiResponse => ({
+  statusCode: 502,
+  body: { error: error instanceof Error ? error.message : String(error) },
+});
+
 export type RelatedPullRequestWithSummary = {
   url: string;
   branchName: string | null;
@@ -193,7 +198,7 @@ export const handleItemBody = async (
     if (isGitHubRateLimitError(error)) {
       return rateLimited(error);
     }
-    throw error;
+    return upstreamError(error);
   }
 };
 
@@ -211,7 +216,7 @@ export const handleComments = async (
     if (isGitHubRateLimitError(error)) {
       return rateLimited(error);
     }
-    throw error;
+    return upstreamError(error);
   }
 };
 
@@ -232,7 +237,7 @@ export const handlePrFiles = async (
     if (isGitHubRateLimitError(error)) {
       return rateLimited(error);
     }
-    throw error;
+    return upstreamError(error);
   }
 };
 
@@ -250,7 +255,7 @@ export const handlePrCommits = async (
     if (isGitHubRateLimitError(error)) {
       return rateLimited(error);
     }
-    throw error;
+    return upstreamError(error);
   }
 };
 
@@ -291,7 +296,7 @@ export const handleRelatedPrs = async (
     if (isGitHubRateLimitError(error)) {
       return rateLimited(error);
     }
-    throw error;
+    return upstreamError(error);
   }
 };
 
@@ -320,7 +325,7 @@ export const handleIssueTitle = async (
       }
       return rateLimited(error);
     }
-    throw error;
+    return upstreamError(error);
   }
 };
 
@@ -362,7 +367,7 @@ export const handlePullRequestStatus = async (
       }
       return rateLimited(error);
     }
-    throw error;
+    return upstreamError(error);
   }
 };
 

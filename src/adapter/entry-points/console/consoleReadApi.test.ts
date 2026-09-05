@@ -57,14 +57,17 @@ describe('consoleReadApi', () => {
       expect(response.body).toEqual({ error: RATE_LIMIT_ERROR_MESSAGE });
     });
 
-    it('re-throws non-rate-limit errors from the repository', async () => {
+    it('returns 502 with the error message when the repository throws a non-rate-limit error', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
         new Error('Network timeout'),
       );
-      await expect(
-        handleItemBody(issueRepository, 'https://github.com/o/r/issues/1'),
-      ).rejects.toThrow('Network timeout');
+      const response = await handleItemBody(
+        issueRepository,
+        'https://github.com/o/r/issues/1',
+      );
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -117,14 +120,17 @@ describe('consoleReadApi', () => {
       expect(response.body).toEqual({ error: rateLimitMessage });
     });
 
-    it('re-throws non-rate-limit errors from the repository', async () => {
+    it('returns 502 with the error message when the repository throws a non-rate-limit error', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getIssueOrPullRequestComments.mockRejectedValue(
         new Error('Network timeout'),
       );
-      await expect(
-        handleComments(issueRepository, 'https://github.com/o/r/issues/1'),
-      ).rejects.toThrow('Network timeout');
+      const response = await handleComments(
+        issueRepository,
+        'https://github.com/o/r/issues/1',
+      );
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -204,14 +210,17 @@ describe('consoleReadApi', () => {
       expect(response.body).toEqual({ error: rateLimitMessage });
     });
 
-    it('re-throws non-rate-limit errors from the repository', async () => {
+    it('returns 502 with the error message when the repository throws a non-rate-limit error', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getPullRequestDetail.mockRejectedValue(
         new Error('Network timeout'),
       );
-      await expect(
-        handlePrFiles(issueRepository, 'https://github.com/o/r/pull/1'),
-      ).rejects.toThrow('Network timeout');
+      const response = await handlePrFiles(
+        issueRepository,
+        'https://github.com/o/r/pull/1',
+      );
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -264,14 +273,17 @@ describe('consoleReadApi', () => {
       expect(response.body).toEqual({ error: rateLimitMessage });
     });
 
-    it('re-throws non-rate-limit errors from the repository', async () => {
+    it('returns 502 with the error message when the repository throws a non-rate-limit error', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getPullRequestCommits.mockRejectedValue(
         new Error('Network timeout'),
       );
-      await expect(
-        handlePrCommits(issueRepository, 'https://github.com/o/r/pull/1'),
-      ).rejects.toThrow('Network timeout');
+      const response = await handlePrCommits(
+        issueRepository,
+        'https://github.com/o/r/pull/1',
+      );
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -352,14 +364,17 @@ describe('consoleReadApi', () => {
       expect(response.body).toEqual({ error: rateLimitMessage });
     });
 
-    it('re-throws non-rate-limit errors from the repository', async () => {
+    it('returns 502 with the error message when the repository throws a non-rate-limit error', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.findRelatedOpenPRs.mockRejectedValue(
         new Error('Network timeout'),
       );
-      await expect(
-        handleRelatedPrs(issueRepository, 'https://github.com/o/r/issues/1'),
-      ).rejects.toThrow('Network timeout');
+      const response = await handleRelatedPrs(
+        issueRepository,
+        'https://github.com/o/r/issues/1',
+      );
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -524,19 +539,19 @@ describe('consoleReadApi', () => {
       expect(response.body).toEqual(staleState);
     });
 
-    it('re-throws non-rate-limit errors from the repository', async () => {
+    it('returns 502 with the error message when the repository throws a non-rate-limit error', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getIssueOrPullRequestState.mockRejectedValue(
         new Error('Network timeout'),
       );
       const cache = new IssueTitleStateCache(() => 0);
-      await expect(
-        handleIssueTitle(
-          issueRepository,
-          cache,
-          'https://github.com/o/r/issues/1',
-        ),
-      ).rejects.toThrow('Network timeout');
+      const response = await handleIssueTitle(
+        issueRepository,
+        cache,
+        'https://github.com/o/r/issues/1',
+      );
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
@@ -708,19 +723,19 @@ describe('consoleReadApi', () => {
       });
     });
 
-    it('re-throws non-rate-limit errors from the repository', async () => {
+    it('returns 502 with the error message when the repository throws a non-rate-limit error', async () => {
       const issueRepository = mock<IssueRepository>();
       issueRepository.getOpenPullRequestCiStatus.mockRejectedValue(
         new Error('Network timeout'),
       );
       const cache = new PullRequestStatusCache(() => 0);
-      await expect(
-        handlePullRequestStatus(
-          issueRepository,
-          cache,
-          'https://github.com/o/r/pull/1',
-        ),
-      ).rejects.toThrow('Network timeout');
+      const response = await handlePullRequestStatus(
+        issueRepository,
+        cache,
+        'https://github.com/o/r/pull/1',
+      );
+      expect(response.statusCode).toBe(502);
+      expect(response.body).toEqual({ error: 'Network timeout' });
     });
   });
 
