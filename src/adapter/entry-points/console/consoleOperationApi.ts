@@ -582,7 +582,12 @@ export const handleTriage = async (
       const tomorrow = new Date(now);
       tomorrow.setUTCHours(0, 0, 0, 0);
       tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-      await issueRepo.updateNextActionDate(issueUrl, project, tomorrow, projectItemId);
+      await issueRepo.updateNextActionDate(
+        issueUrl,
+        project,
+        tomorrow,
+        projectItemId,
+      );
     }
     recordDone(context, pjcode, projectItemId);
     return ok();
