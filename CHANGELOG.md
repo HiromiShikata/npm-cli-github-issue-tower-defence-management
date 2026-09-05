@@ -1,3 +1,10 @@
+## [2.56.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.56.2...v2.56.3) (2026-09-05)
+
+
+### Bug Fixes
+
+* recognize waitingForOwnerApproval flag to prevent infinite triager dispatch loop ([#2041](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2041)) ([3c3ea1d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3c3ea1dc8d5b29291a87eaf26f4f694b37c84a1d))
+
 ## [2.56.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.56.1...v2.56.2) (2026-09-05)
 
 
