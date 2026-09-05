@@ -542,7 +542,7 @@ const operationErrorMessage = (error: unknown): string => {
 
 const dispatchOperation = (
   context: ConsoleOperationContext,
-  githubToken: string | null,
+  resolveGithubToken: ((owner: string) => string) | null,
   requestPath: string,
   body: Record<string, unknown>,
 ): Promise<{ statusCode: number; body: unknown }> | null => {
@@ -578,7 +578,7 @@ const dispatchOperation = (
     case '/api/timer':
       return Promise.resolve(handleTimer(context, body));
     case '/api/projectsettings':
-      return handleProjectMaxPreparingUpdate(context, githubToken, body);
+      return handleProjectMaxPreparingUpdate(context, resolveGithubToken, body);
     default:
       return null;
   }
@@ -621,9 +621,12 @@ const handleOperationApi = async (
           }
         : null,
   };
-  const githubToken =
-    options.resolveGithubToken != null ? options.resolveGithubToken('') : null;
-  const dispatched = dispatchOperation(context, githubToken, requestPath, body);
+  const dispatched = dispatchOperation(
+    context,
+    options.resolveGithubToken ?? null,
+    requestPath,
+    body,
+  );
   if (dispatched === null) {
     return null;
   }
@@ -744,13 +747,9 @@ const handleTokenedRequest = async (
         return;
       }
       if (requestPath === '/api/projectreadmeconfig') {
-        const githubTokenForReadme =
-          options.resolveGithubToken != null
-            ? options.resolveGithubToken('')
-            : null;
         const projectReadmeResult = await handleProjectReadmeConfig(
           options.resolveProject ?? null,
-          githubTokenForReadme,
+          options.resolveGithubToken ?? null,
           searchParams.get('pjcode'),
         );
         sendJson(
