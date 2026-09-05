@@ -1,3 +1,15 @@
+# [2.61.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.60.1...v2.61.0) (2026-09-05)
+
+
+### Bug Fixes
+
+* **RestIssueRepository:** handle body-already-consumed error from ky 2.x in rate-limit detection ([#2067](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2067)) ([8c7fc0b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8c7fc0b1c42f418438293b67bf4c8e372ff8c489))
+
+
+### Features
+
+* **config:** replace token values with GitHub App private key paths for read-only access ([#2066](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2066)) ([b1d5f22](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b1d5f226b21bde723faee4f1f65d560c22aba626)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#2065](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2065)
+
 ## [2.60.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.60.0...v2.60.1) (2026-09-05)
 
 
