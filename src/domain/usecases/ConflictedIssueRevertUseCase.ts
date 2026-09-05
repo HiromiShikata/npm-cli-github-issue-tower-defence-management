@@ -126,7 +126,7 @@ export class ConflictedIssueRevertUseCase {
         await this.issueCommentRepository.createComment(issue, 'conflict');
       } catch (error) {
         console.error(
-          `Failed to post conflict comment on ${issue.url}: ${error}`,
+          `Failed to post conflict comment on ${issue.url}: ${String(error)}`,
         );
       }
     }

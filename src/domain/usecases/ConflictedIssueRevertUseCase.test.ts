@@ -985,9 +985,9 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       await useCase.run({ projectUrl });
 
-      expect(mockIssueCommentRepository.getCommentsFromIssue).toHaveBeenCalledWith(
-        issue,
-      );
+      expect(
+        mockIssueCommentRepository.getCommentsFromIssue,
+      ).toHaveBeenCalledWith(issue);
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
@@ -995,7 +995,11 @@ describe('ConflictedIssueRevertUseCase', () => {
       const issue = buildConflictedScenario();
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         { author: 'bot', content: 'conflict', createdAt: new Date(0) },
-        { author: 'developer', content: 'I will fix this', createdAt: new Date() },
+        {
+          author: 'developer',
+          content: 'I will fix this',
+          createdAt: new Date(),
+        },
       ]);
 
       await useCase.run({ projectUrl });
