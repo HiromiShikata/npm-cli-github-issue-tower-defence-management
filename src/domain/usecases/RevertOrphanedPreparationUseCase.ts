@@ -339,50 +339,51 @@ export class RevertOrphanedPreparationUseCase {
     }
   };
 
-  private isStillInPreparation = async (
+  private isStillInPreparation = (
     issue: Issue,
     project: Project,
-  ): Promise<boolean> => {
-    let liveIssue: Issue | null;
-    try {
-      liveIssue = await this.issueRepository.get(issue.url, project);
-    } catch (error) {
-      console.error(
-        `Failed to re-read the live status before reverting orphaned preparation. issueUrl: ${issue.url}`,
-        error,
-      );
-      return false;
-    }
-    if (liveIssue === null) {
-      console.error(
-        `Issue not found while re-reading its live status before reverting orphaned preparation. issueUrl: ${issue.url}`,
-      );
-      return false;
-    }
-    return liveIssue.status === PREPARATION_STATUS_NAME;
-  };
+  ): Promise<boolean> =>
+    this.isStillInStatus(
+      issue,
+      project,
+      PREPARATION_STATUS_NAME,
+      'orphaned preparation',
+    );
 
-  private isStillTodoByAgent = async (
+  private isStillTodoByAgent = (
     issue: Issue,
     project: Project,
+  ): Promise<boolean> =>
+    this.isStillInStatus(
+      issue,
+      project,
+      TODO_BY_AGENT_STATUS_NAME,
+      'stray Todo by agent issue',
+    );
+
+  private isStillInStatus = async (
+    issue: Issue,
+    project: Project,
+    statusName: string,
+    context: string,
   ): Promise<boolean> => {
     let liveIssue: Issue | null;
     try {
       liveIssue = await this.issueRepository.get(issue.url, project);
     } catch (error) {
       console.error(
-        `Failed to re-read the live status before reverting stray Todo by agent issue. issueUrl: ${issue.url}`,
+        `Failed to re-read the live status before reverting ${context}. issueUrl: ${issue.url}`,
         error,
       );
       return false;
     }
     if (liveIssue === null) {
       console.error(
-        `Issue not found while re-reading its live status before reverting stray Todo by agent issue. issueUrl: ${issue.url}`,
+        `Issue not found while re-reading its live status before reverting ${context}. issueUrl: ${issue.url}`,
       );
       return false;
     }
-    return liveIssue.status === TODO_BY_AGENT_STATUS_NAME;
+    return liveIssue.status === statusName;
   };
 
   private evaluateOutcome = async (
