@@ -516,7 +516,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('NotifyFinishedIssuePreparation: NO_REPORT_FROM_AGENT_BOT developer'),
+      expect.stringContaining(
+        'NotifyFinishedIssuePreparation: NO_REPORT_FROM_AGENT_BOT developer',
+      ),
     );
   });
 

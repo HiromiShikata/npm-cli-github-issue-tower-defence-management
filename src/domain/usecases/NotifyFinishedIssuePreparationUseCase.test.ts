@@ -1183,7 +1183,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('NotifyFinishedIssuePreparation: DISPATCH_AGAIN accounting'),
+      expect.stringContaining(
+        'NotifyFinishedIssuePreparation: DISPATCH_AGAIN accounting',
+      ),
     );
   });
 
