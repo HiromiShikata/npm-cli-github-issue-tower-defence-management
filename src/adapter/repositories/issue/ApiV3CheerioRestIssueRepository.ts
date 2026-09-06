@@ -141,6 +141,7 @@ type CiContextNode =
 type PrStatusComputationData = {
   isDraft?: boolean;
   mergeable?: string;
+  reviewDecision?: string | null;
   requiredCheckNames: string[];
   ciContexts: CiContextNode[];
   reviewThreads: Array<{
@@ -186,6 +187,7 @@ type SlimPullRequestNodeResponse = {
   baseRefName?: string;
   mergeable?: string;
   headRefOid?: string;
+  reviewDecision?: string;
   reviewThreads?: {
     pageInfo: {
       endCursor: string | null;
@@ -220,6 +222,7 @@ type SlimPullRequestResponse = {
         baseRefName?: string;
         mergeable?: string;
         headRefOid?: string;
+        reviewDecision?: string;
         reviewThreads?: {
           pageInfo: {
             endCursor: string | null;
@@ -246,6 +249,7 @@ type SlimPullRequest = {
   reviewThreads: Array<{
     isResolved: boolean;
   }>;
+  reviewDecision?: string;
 };
 
 type BranchRulesResponseItem = {
@@ -1462,6 +1466,7 @@ export class ApiV3CheerioRestIssueRepository
       isResolvedAllReviewComments,
       isBranchOutOfDate: false,
       missingRequiredCheckNames,
+      reviewDecision: data.reviewDecision ?? null,
     };
   };
 
@@ -2015,6 +2020,7 @@ export class ApiV3CheerioRestIssueRepository
             baseRefName
             mergeable
             headRefOid
+            reviewDecision
             reviewThreads(first: 100, after: $reviewThreadsAfter) {
               pageInfo {
                 endCursor
@@ -2073,6 +2079,7 @@ export class ApiV3CheerioRestIssueRepository
           baseRefName: pr.baseRefName,
           mergeable: pr.mergeable,
           headRefOid: pr.headRefOid,
+          reviewDecision: pr.reviewDecision,
           reviewThreads: [],
         };
       }
@@ -2108,6 +2115,7 @@ export class ApiV3CheerioRestIssueRepository
       {
         isDraft: slimPullRequest.isDraft,
         mergeable: slimPullRequest.mergeable,
+        reviewDecision: slimPullRequest.reviewDecision,
         requiredCheckNames,
         ciContexts,
         reviewThreads: slimPullRequest.reviewThreads,
@@ -2860,6 +2868,7 @@ export class ApiV3CheerioRestIssueRepository
       baseRefName
       mergeable
       headRefOid
+      reviewDecision
       reviewThreads(first: ${SLIM_PULL_REQUEST_REVIEW_THREADS_PAGE_SIZE}) {
         pageInfo {
           endCursor
@@ -2938,6 +2947,7 @@ export class ApiV3CheerioRestIssueRepository
         baseRefName: node.baseRefName,
         mergeable: node.mergeable,
         headRefOid: node.headRefOid,
+        reviewDecision: node.reviewDecision,
         reviewThreads: (node.reviewThreads?.nodes || []).map((thread) => ({
           isResolved: thread.isResolved,
         })),

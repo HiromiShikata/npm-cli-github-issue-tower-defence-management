@@ -54,6 +54,7 @@ const createReadyPr = (
   isResolvedAllReviewComments: true,
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
+  reviewDecision: null,
   ...overrides,
 });
 

@@ -767,6 +767,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     };
     const relatedPrIssue = createMockIssue({
       url: existingPR.url,
@@ -838,6 +839,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     });
     mockLocalCommandRunner.runCommand.mockResolvedValue({
       stdout: '',
@@ -940,6 +942,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     });
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')
@@ -990,6 +993,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     });
     const consoleErrorSpy = jest
       .spyOn(console, 'error')
@@ -1036,6 +1040,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     };
     const newerPR: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/43',
@@ -1049,6 +1054,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     };
     const olderPrIssue = createMockIssue({
       url: olderPR.url,
@@ -1148,6 +1154,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     };
     const crossRepoPR: RelatedPullRequest = {
       url: 'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/1813',
@@ -1161,6 +1168,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     };
     const sameRepoPrIssue = createMockIssue({
       url: sameRepoPR.url,
@@ -1242,6 +1250,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     };
     const newerPR: RelatedPullRequest = {
       url: 'https://github.com/user/repo/pull/43',
@@ -1255,6 +1264,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     };
     const olderPrIssueNullBranch = createMockIssue({
       url: olderPRNullBranch.url,
@@ -1339,6 +1349,7 @@ describe('StartPreparationUseCase', () => {
       isResolvedAllReviewComments: false,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     };
     const prIssueWithNullBranch = createMockIssue({
       url: prWithNullBranch.url,
@@ -8050,6 +8061,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
     isResolvedAllReviewComments: true,
     isBranchOutOfDate: false,
     missingRequiredCheckNames: [],
+    reviewDecision: null,
   });
 
   const buildUseCase = (

@@ -66,6 +66,7 @@ describe('consoleOperationApi', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
       title: 'Test PR',
@@ -611,6 +612,7 @@ describe('consoleOperationApi', () => {
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
+        reviewDecision: null,
       });
       const response = await handleReview(context, {
         pjcode: 'acme',
@@ -651,6 +653,7 @@ describe('consoleOperationApi', () => {
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: ['test', 'lint'],
+        reviewDecision: null,
       });
       const response = await handleReview(context, {
         pjcode: 'acme',

@@ -83,6 +83,7 @@ const createMockRelatedPullRequest = (
   isResolvedAllReviewComments: true,
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
+  reviewDecision: null,
   ...overrides,
 });
 

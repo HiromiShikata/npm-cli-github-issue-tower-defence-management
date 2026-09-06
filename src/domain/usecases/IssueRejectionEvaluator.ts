@@ -11,6 +11,7 @@ export type PrRejectedReasonType =
   | 'ANY_CI_JOB_FAILED_OR_IN_PROGRESS'
   | 'REQUIRED_CI_JOB_NEVER_STARTED'
   | 'ANY_REVIEW_COMMENT_NOT_RESOLVED'
+  | 'REVIEW_DECISION_CHANGES_REQUESTED'
   | 'CHANGE_TARGET_MUST_PATH_NOT_CHANGED';
 
 export type PrRejectionResult = {
@@ -148,6 +149,12 @@ export class IssueRejectionEvaluator {
             detail: `ANY_REVIEW_COMMENT_NOT_RESOLVED: ${pr.url}`,
           });
         }
+        if (pr.reviewDecision === 'CHANGES_REQUESTED') {
+          rejections.push({
+            type: 'REVIEW_DECISION_CHANGES_REQUESTED',
+            detail: `REVIEW_DECISION_CHANGES_REQUESTED: ${pr.url}`,
+          });
+        }
 
         const mustPaths = this.extractChangeTargetMustPaths(issue.labels);
         if (mustPaths.length > 0) {
@@ -179,6 +186,7 @@ export class IssueRejectionEvaluator {
           !pr.isConflicted &&
           pr.isPassedAllCiJob &&
           pr.isResolvedAllReviewComments &&
+          pr.reviewDecision !== 'CHANGES_REQUESTED' &&
           rejections.filter(
             (r) => r.type === 'CHANGE_TARGET_MUST_PATH_NOT_CHANGED',
           ).length === 0
