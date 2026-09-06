@@ -1,3 +1,10 @@
+## [2.70.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.1...v2.70.2) (2026-09-06)
+
+
+### Reverts
+
+* Revert "feat(dispatch): add global self-nomination counter to stop infinite loops across human-comment cycle resets ([#2123](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2123))" ([#2160](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2160)) ([6b520e9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6b520e93c99cf1dba050379eae8a6914bc4223e9))
+
 ## [2.70.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.0...v2.70.1) (2026-09-06)
 
 
