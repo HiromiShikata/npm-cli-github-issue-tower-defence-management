@@ -43,9 +43,7 @@ describe('githubRestClient', () => {
 
     it('returns the full path when there is no query string', () => {
       expect(
-        sanitizeRestPath(
-          'https://api.github.com/repos/owner/repo/pulls/123',
-        ),
+        sanitizeRestPath('https://api.github.com/repos/owner/repo/pulls/123'),
       ).toBe('/repos/owner/repo/pulls/123');
     });
 
@@ -65,9 +63,9 @@ describe('githubRestClient', () => {
     });
 
     it('strips query string from a relative path', () => {
-      expect(
-        sanitizeRestPath('/repos/owner/repo/issues?per_page=100'),
-      ).toBe('/repos/owner/repo/issues');
+      expect(sanitizeRestPath('/repos/owner/repo/issues?per_page=100')).toBe(
+        '/repos/owner/repo/issues',
+      );
     });
   });
 
@@ -104,9 +102,7 @@ describe('githubRestClient', () => {
 
       const result = extractRestCallSite(stack);
 
-      expect(result).toBe(
-        'ApiV3CheerioRestIssueRepository<-SomeUseCase',
-      );
+      expect(result).toBe('ApiV3CheerioRestIssueRepository<-SomeUseCase');
     });
   });
 
