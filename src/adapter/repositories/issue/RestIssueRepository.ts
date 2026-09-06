@@ -322,7 +322,6 @@ export class RestIssueRepository
         try {
           bodyText = await e.response.clone().text();
         } catch {
-          // ky 2.x may have already consumed the body
         }
         if (
           hasRateLimitSignals(e.response.status, e.response.headers, bodyText)
