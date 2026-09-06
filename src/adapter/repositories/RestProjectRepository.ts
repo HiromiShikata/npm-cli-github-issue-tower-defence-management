@@ -8,6 +8,8 @@ import {
 } from './projectFieldDefinition';
 import { Project } from '../../domain/entities/Project';
 
+export const GITHUB_REST_REQUEST_TIMEOUT_MS = 120_000;
+
 export type ProjectLocation = {
   owner: string;
   ownerType: 'users' | 'orgs';
@@ -81,6 +83,7 @@ export class RestProjectRepository extends BaseGitHubRepository {
       .get(`${this.projectApiUrl(location)}/fields`, {
         searchParams: { per_page: 100 },
         headers: this.requestHeaders(),
+        timeout: GITHUB_REST_REQUEST_TIMEOUT_MS,
       })
       .json<RestProjectFieldResponse[]>();
     return fields.map((field) => ({
@@ -107,7 +110,10 @@ export class RestProjectRepository extends BaseGitHubRepository {
     try {
       [project, fields] = await Promise.all([
         ky
-          .get(this.projectApiUrl(location), { headers: this.requestHeaders() })
+          .get(this.projectApiUrl(location), {
+            headers: this.requestHeaders(),
+            timeout: GITHUB_REST_REQUEST_TIMEOUT_MS,
+          })
           .json<RestProjectResponse>(),
         this.listFieldDefinitions(location),
       ]);
