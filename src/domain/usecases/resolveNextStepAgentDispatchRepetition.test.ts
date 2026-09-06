@@ -615,11 +615,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'liaison',
         nextStepAgent: 'liaison',
-        comments: [
-          report('liaison'),
-          humanComment(),
-          report('liaison'),
-        ],
+        comments: [report('liaison'), humanComment(), report('liaison')],
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 99,
@@ -647,11 +643,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'liaison',
         nextStepAgent: 'liaison',
-        comments: [
-          report('triager'),
-          humanComment(),
-          report('liaison'),
-        ],
+        comments: [report('triager'), humanComment(), report('liaison')],
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 99,
@@ -668,7 +660,11 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         comments: [
           report('liaison'),
           humanComment(),
-          { author: 'bot', content: 'From: :robot: liaison (model)\n\n```json\n{ "nextStepAgent": "triager" }\n```\n\nReport.' },
+          {
+            author: 'bot',
+            content:
+              'From: :robot: liaison (model)\n\n```json\n{ "nextStepAgent": "triager" }\n```\n\nReport.',
+          },
         ],
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
@@ -683,11 +679,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'liaison',
         nextStepAgent: 'liaison',
-        comments: [
-          report('liaison'),
-          humanComment(),
-          report('liaison'),
-        ],
+        comments: [report('liaison'), humanComment(), report('liaison')],
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 99,

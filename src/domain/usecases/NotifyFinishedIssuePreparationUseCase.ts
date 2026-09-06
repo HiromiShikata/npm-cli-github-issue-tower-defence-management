@@ -438,8 +438,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         thresholdForDispatchLoop:
           params.thresholdForDispatchLoop ??
           DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-        thresholdForSelfNominationTotal:
-          params.thresholdForSelfNominationTotal,
+        thresholdForSelfNominationTotal: params.thresholdForSelfNominationTotal,
       });
       if (
         repetition.type === 'escalateSilentRedispatch' ||

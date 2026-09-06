@@ -478,7 +478,8 @@ ${JSON.stringify(e)}
             input.startPreparation.preparationProcessCheckCommand,
           thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
           thresholdForDispatchLoop: input.thresholdForDispatchLoop,
-          thresholdForSelfNominationTotal: input.thresholdForSelfNominationTotal,
+          thresholdForSelfNominationTotal:
+            input.thresholdForSelfNominationTotal,
           awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
           awLogStaleThresholdMinutes:
             input.startPreparation.awLogStaleThresholdMinutes,
