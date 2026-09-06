@@ -1,3 +1,18 @@
+const mockCheckSecondaryRateLimitBreaker = jest.fn(
+  (): { isBlocked: boolean; resetTimeMs: number | null } => ({
+    isBlocked: false,
+    resetTimeMs: null,
+  }),
+);
+const mockWriteSecondaryRateLimitState = jest.fn();
+
+jest.mock('./issue/githubSecondaryRateLimitBreaker', () => ({
+  checkSecondaryRateLimitBreaker: mockCheckSecondaryRateLimitBreaker,
+  writeSecondaryRateLimitState: mockWriteSecondaryRateLimitState,
+  secondaryRateLimitStateFilePath: () =>
+    '/tmp/test-comment-repo-breaker-state.json',
+}));
+
 import { GitHubIssueCommentRepository } from './GitHubIssueCommentRepository';
 import { Issue } from '../../domain/entities/Issue';
 
@@ -44,6 +59,14 @@ describe('GitHubIssueCommentRepository', () => {
 
   beforeEach(() => {
     jest.restoreAllMocks();
+    mockCheckSecondaryRateLimitBreaker.mockReset();
+    mockCheckSecondaryRateLimitBreaker.mockImplementation(
+      (): { isBlocked: boolean; resetTimeMs: number | null } => ({
+        isBlocked: false,
+        resetTimeMs: null,
+      }),
+    );
+    mockWriteSecondaryRateLimitState.mockReset();
     repository = new GitHubIssueCommentRepository('test-token');
   });
 
@@ -208,14 +231,19 @@ describe('GitHubIssueCommentRepository', () => {
       expect(cache.setSingle).toHaveBeenCalledWith(
         'comments/HiromiShikata/test-repo/123',
         {
-          etag: '"etag-abc"',
-          comments: [
-            {
-              author: 'testuser',
-              content: 'Cached comment',
-              createdAt: '2024-01-01T00:00:00.000Z',
+          pages: {
+            '1': {
+              etag: '"etag-abc"',
+              comments: [
+                {
+                  author: 'testuser',
+                  content: 'Cached comment',
+                  createdAt: '2024-01-01T00:00:00.000Z',
+                },
+              ],
+              hasNextPage: false,
             },
-          ],
+          },
         },
       );
       expect(firstResult).toEqual([
@@ -227,14 +255,19 @@ describe('GitHubIssueCommentRepository', () => {
       ]);
 
       cache.getSingle.mockResolvedValue({
-        etag: '"etag-abc"',
-        comments: [
-          {
-            author: 'testuser',
-            content: 'Cached comment',
-            createdAt: '2024-01-01T00:00:00.000Z',
+        pages: {
+          '1': {
+            etag: '"etag-abc"',
+            comments: [
+              {
+                author: 'testuser',
+                content: 'Cached comment',
+                createdAt: '2024-01-01T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: false,
           },
-        ],
+        },
       });
       const fetchSpy = jest
         .spyOn(global, 'fetch')
@@ -260,7 +293,7 @@ describe('GitHubIssueCommentRepository', () => {
       ]);
     });
 
-    it('updates cache when server returns 200 with a changed ETag', async () => {
+    it('treats old cache format (without pages) as a cache miss and fetches fresh', async () => {
       const newCommentPayloads = [
         {
           user: { login: 'user-new' },
@@ -305,12 +338,81 @@ describe('GitHubIssueCommentRepository', () => {
       ]);
       expect(cache.setSingle).toHaveBeenCalledWith(
         'comments/HiromiShikata/test-repo/123',
-        expect.objectContaining({ etag: '"etag-new"' }),
+        {
+          pages: {
+            '1': {
+              etag: '"etag-new"',
+              comments: [
+                {
+                  author: 'user-new',
+                  content: 'New comment',
+                  createdAt: '2024-02-01T00:00:00.000Z',
+                },
+              ],
+              hasNextPage: false,
+            },
+          },
+        },
       );
-      expect(cache.setSingle).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ etag: '"etag-old"' }),
+    });
+
+    it('fetches page 2 when page 1 returns 304 (per-page ETag cache regression)', async () => {
+      const page2Comments = [
+        {
+          user: { login: 'user2' },
+          body: 'New comment on page 2',
+          created_at: '2024-01-02T00:00:00Z',
+        },
+      ];
+
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-page1"',
+            comments: [
+              {
+                author: 'user1',
+                content: 'Page 1 comment',
+                createdAt: '2024-01-01T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: true,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
       );
+
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 304 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(page2Comments), {
+            status: 200,
+            headers: { ETag: '"etag-page2"' },
+          }),
+        );
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(result).toEqual([
+        {
+          author: 'user1',
+          content: 'Page 1 comment',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+        {
+          author: 'user2',
+          content: 'New comment on page 2',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+        },
+      ]);
     });
 
     it('leaves behaviour unchanged when commentCacheRepository is null', async () => {
@@ -404,21 +506,171 @@ describe('GitHubIssueCommentRepository', () => {
       expect(cache.setSingle).toHaveBeenCalledWith(
         'comments/HiromiShikata/test-repo/123',
         {
-          etag: '"etag-page1"',
-          comments: [
-            {
-              author: 'user1',
-              content: 'Page 1 comment',
-              createdAt: '2024-01-01T00:00:00.000Z',
+          pages: {
+            '1': {
+              etag: '"etag-page1"',
+              comments: [
+                {
+                  author: 'user1',
+                  content: 'Page 1 comment',
+                  createdAt: '2024-01-01T00:00:00.000Z',
+                },
+              ],
+              hasNextPage: true,
             },
-            {
-              author: 'user2',
-              content: 'Page 2 comment',
-              createdAt: '2024-01-02T00:00:00.000Z',
-            },
-          ],
+          },
         },
       );
+    });
+
+    it('all pages returning 304 yields full cached comments without calling setSingle', async () => {
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-p1"',
+            comments: [
+              {
+                author: 'user1',
+                content: 'Page 1 comment',
+                createdAt: '2024-01-01T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: true,
+          },
+          '2': {
+            etag: '"etag-p2"',
+            comments: [
+              {
+                author: 'user2',
+                content: 'Page 2 comment',
+                createdAt: '2024-01-02T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: false,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 304 }))
+        .mockResolvedValueOnce(new Response(null, { status: 304 }));
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(result).toEqual([
+        {
+          author: 'user1',
+          content: 'Page 1 comment',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+        {
+          author: 'user2',
+          content: 'Page 2 comment',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+        },
+      ]);
+      expect(cache.setSingle).not.toHaveBeenCalled();
+    });
+
+    it('fetches next page when cached page has exactly 100 comments and hasNextPage is false but 304 received (full-page boundary regression)', async () => {
+      const cachedComments = Array.from({ length: 100 }, (_, i) => ({
+        author: `user${i}`,
+        content: `Cached comment ${i}`,
+        createdAt: `2024-01-01T00:00:00.000Z`,
+      }));
+      const newCommentPayload = [
+        {
+          user: { login: 'user-new' },
+          body: 'New comment on page 2',
+          created_at: '2024-02-01T00:00:00Z',
+        },
+      ];
+
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-full-page"',
+            comments: cachedComments,
+            hasNextPage: false,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 304 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(newCommentPayload), {
+            status: 200,
+            headers: { ETag: '"etag-page2"' },
+          }),
+        );
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(result).toHaveLength(101);
+      expect(result[0]).toEqual({
+        author: 'user0',
+        content: 'Cached comment 0',
+        createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      });
+      expect(result[100]).toEqual({
+        author: 'user-new',
+        content: 'New comment on page 2',
+        createdAt: new Date('2024-02-01T00:00:00Z'),
+      });
+    });
+
+    it('does not fetch next page when cached page has fewer than 100 comments and hasNextPage is false and 304 received', async () => {
+      const cachedComments = Array.from({ length: 50 }, (_, i) => ({
+        author: `user${i}`,
+        content: `Cached comment ${i}`,
+        createdAt: `2024-01-01T00:00:00.000Z`,
+      }));
+
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-partial-page"',
+            comments: cachedComments,
+            hasNextPage: false,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 304 }));
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(50);
     });
   });
 
@@ -710,6 +962,83 @@ describe('GitHubIssueCommentRepository', () => {
         expect.stringContaining('/comments'),
         expect.objectContaining({ method: 'POST' }),
       );
+    });
+
+    describe('circuit breaker', () => {
+      it('issues the POST when the circuit breaker is not blocked', async () => {
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify([]), { status: 200 }),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ id: 200 }), { status: 201 }),
+          );
+
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/200',
+        );
+        await repository.createComment(issue, 'hello from open breaker');
+
+        expect(fetchSpy).toHaveBeenCalledWith(
+          expect.stringContaining('/comments'),
+          expect.objectContaining({ method: 'POST' }),
+        );
+      });
+
+      it('throws GitHubRateLimitError and does not issue the POST when the circuit breaker is open', async () => {
+        const resetTimeMs = Date.now() + 90_000;
+        mockCheckSecondaryRateLimitBreaker.mockReturnValue({
+          isBlocked: true,
+          resetTimeMs,
+        });
+
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify([]), { status: 200 }),
+          );
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/201',
+        );
+        await expect(
+          repository.createComment(issue, 'blocked by breaker'),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        // Only the dedup check GET was issued; the POST was not
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('writes to the breaker state file and throws GitHubRateLimitError when the POST returns a secondary rate limit response', async () => {
+        jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify([]), { status: 200 }),
+          )
+          .mockResolvedValueOnce(
+            new Response(
+              'You have exceeded a secondary rate limit and have been temporarily blocked from content creation.',
+              {
+                status: 403,
+                headers: { 'retry-after': '60' },
+              },
+            ),
+          );
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/202',
+        );
+        await expect(
+          repository.createComment(issue, 'will be rate limited'),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        expect(mockWriteSecondaryRateLimitState).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });

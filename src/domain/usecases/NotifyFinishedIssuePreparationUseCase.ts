@@ -206,11 +206,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Done`,
       );
       return;
-    } else if (issue.status === IN_TMUX_BY_AGENT_STATUS_NAME) {
-      console.log(
-        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already In Tmux by agent`,
-      );
-      return;
     } else if (issue.status === AWAITING_WORKSPACE_STATUS_NAME) {
       console.log(
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Awaiting Workspace`,

@@ -4,6 +4,20 @@ const mockPut = jest.fn();
 const mockPatch = jest.fn();
 const mockDelete = jest.fn();
 
+const mockCheckSecondaryRateLimitBreaker = jest.fn(
+  (): { isBlocked: boolean; resetTimeMs: number | null } => ({
+    isBlocked: false,
+    resetTimeMs: null,
+  }),
+);
+const mockWriteSecondaryRateLimitState = jest.fn();
+
+jest.mock('./githubSecondaryRateLimitBreaker', () => ({
+  checkSecondaryRateLimitBreaker: mockCheckSecondaryRateLimitBreaker,
+  writeSecondaryRateLimitState: mockWriteSecondaryRateLimitState,
+  secondaryRateLimitStateFilePath: () => '/tmp/test-breaker-state.json',
+}));
+
 class MockHTTPError extends Error {
   response: {
     status: number;
@@ -107,6 +121,14 @@ describe('RestIssueRepository', () => {
     mockPut.mockReset();
     mockPatch.mockReset();
     mockDelete.mockReset();
+    mockCheckSecondaryRateLimitBreaker.mockReset();
+    mockCheckSecondaryRateLimitBreaker.mockImplementation(
+      (): { isBlocked: boolean; resetTimeMs: number | null } => ({
+        isBlocked: false,
+        resetTimeMs: null,
+      }),
+    );
+    mockWriteSecondaryRateLimitState.mockReset();
     jest.restoreAllMocks();
   });
 
@@ -439,6 +461,71 @@ describe('RestIssueRepository', () => {
         }),
       );
     });
+
+    describe('circuit breaker', () => {
+      it('issues the POST when the circuit breaker is not blocked', async () => {
+        mockPost.mockReturnValue(
+          mockJsonResponse({
+            user: { login: 'bot' },
+            body: 'hello',
+            created_at: '2026-09-06T00:00:00Z',
+            html_url:
+              'https://github.com/HiromiShikata/test-repository/issues/40#issuecomment-1',
+          }),
+        );
+
+        await restIssueRepository.createComment(
+          'https://github.com/HiromiShikata/test-repository/issues/40',
+          'hello',
+        );
+
+        expect(mockPost).toHaveBeenCalledTimes(1);
+      });
+
+      it('throws GitHubRateLimitError and does not issue the POST when the circuit breaker is open', async () => {
+        const resetTimeMs = Date.now() + 90_000;
+        mockCheckSecondaryRateLimitBreaker.mockReturnValue({
+          isBlocked: true,
+          resetTimeMs,
+        });
+
+        const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
+        await expect(
+          restIssueRepository.createComment(
+            'https://github.com/HiromiShikata/test-repository/issues/40',
+            'hello',
+          ),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        expect(mockPost).not.toHaveBeenCalled();
+      });
+
+      it('writes to the breaker state file and throws GitHubRateLimitError when ky returns a secondary rate limit response', async () => {
+        const mockHeaders = new Headers({ 'retry-after': '60' });
+        mockPost.mockImplementation(() => ({
+          json: jest.fn().mockRejectedValue(
+            new MockHTTPError({
+              status: 403,
+              headers: mockHeaders,
+              clone: () => ({
+                text: async () =>
+                  'You have exceeded a secondary rate limit and have been temporarily blocked from content creation.',
+              }),
+            }),
+          ),
+        }));
+
+        const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
+        await expect(
+          restIssueRepository.createComment(
+            'https://github.com/HiromiShikata/test-repository/issues/40',
+            'hello',
+          ),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        expect(mockWriteSecondaryRateLimitState).toHaveBeenCalledTimes(1);
+      });
+    });
   });
   describe('createNewIssue', () => {
     it('should create a new issue', async () => {
@@ -721,7 +808,7 @@ describe('RestIssueRepository', () => {
   });
 
   describe('updateIssue', () => {
-    it('throws GitHubRateLimitError with reset time when ky returns 403 with rate-limit headers', async () => {
+    it('throws GitHubRateLimitError with reset time when ky returns 403 with primary rate-limit headers', async () => {
       const resetEpoch = 1725547200;
       const mockHeaders = new Headers({
         'x-ratelimit-remaining': '0',
@@ -732,8 +819,8 @@ describe('RestIssueRepository', () => {
           status: 403,
           headers: mockHeaders,
           clone: () => ({
-            text: async () =>
-              'You have exceeded a secondary rate limit and have been temporarily blocked from content creation.',
+            // Non-secondary body: exercises the primary-rate-limit path
+            text: async () => 'API rate limit exceeded',
           }),
         }),
       );
