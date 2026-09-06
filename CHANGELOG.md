@@ -1,3 +1,10 @@
+# [2.66.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.65.1...v2.66.0) (2026-09-06)
+
+
+### Features
+
+* **dispatch:** add global self-nomination counter to stop infinite loops across human-comment cycle resets ([#2123](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2123)) ([756e8a4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/756e8a43eec18a230c57efc85d751ee068f4b72e)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#2120](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2120)
+
 ## [2.65.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.65.0...v2.65.1) (2026-09-06)
 
 
