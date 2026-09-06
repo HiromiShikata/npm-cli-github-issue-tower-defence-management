@@ -18,7 +18,7 @@ import {
 } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isTriagerAgentName, TRIAGER_AGENT_NAME } from './triagerAgentName';
+import { isTriagerAgentName } from './triagerAgentName';
 import {
   ConsoleListItem,
   ConsoleTabName,
@@ -384,6 +384,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       resolveLabelsNotRequiringPullRequest(params),
       nextStepAgent,
       params.developerAgentNames,
+      params.agents,
     );
 
     const rejectionStatusMessage =
@@ -777,6 +778,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     labelsNotRequiringPullRequest: string[],
     nextStepAgent: string | null,
     developerAgentNames?: string[] | null,
+    agents?: string[] | null,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -807,11 +809,22 @@ export class NotifyFinishedIssuePreparationUseCase {
         { developerAgentNames },
       );
     const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
-    const lastReportIsFromTriager =
+    const effectiveDeveloperAgentNames = developerAgentNames?.length
+      ? developerAgentNames
+      : ['developer'];
+    const lastReportIsFromKnownNonDeveloperAgent =
       lastAgentReport !== null &&
-      isAgentReportBodyFromAgent(lastAgentReport.content, TRIAGER_AGENT_NAME);
+      agents != null &&
+      agents.length > 0 &&
+      agents.some((name) =>
+        isAgentReportBodyFromAgent(lastAgentReport.content, name),
+      ) &&
+      ![...effectiveDeveloperAgentNames, 'pr-reviewer'].some((name) =>
+        isAgentReportBodyFromAgent(lastAgentReport.content, name),
+      );
     const requiredPrRejections =
-      isTriagerAgentName(nextStepAgent) || lastReportIsFromTriager
+      isTriagerAgentName(nextStepAgent) ||
+      lastReportIsFromKnownNonDeveloperAgent
         ? prRejections.filter(
             (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
           )
