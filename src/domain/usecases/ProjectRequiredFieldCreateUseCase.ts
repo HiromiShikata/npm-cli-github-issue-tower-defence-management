@@ -5,6 +5,7 @@ import {
   REQUIRED_PROJECT_FIELDS,
   STORY_FIELD_NAME,
 } from '../entities/RequiredProjectField';
+import { AgentDefaultRepository } from './adapter-interfaces/AgentDefaultRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 
 type OptionToSubmit = Omit<FieldOption, 'id'> & {
@@ -21,11 +22,16 @@ export class ProjectRequiredFieldCreateUseCase {
       | 'updateStoryList'
       | 'updateAgentList'
     >,
+    private readonly agentDefaultRepository: Pick<
+      AgentDefaultRepository,
+      'setAgentFieldDefault'
+    > | null = null,
   ) {}
 
   run = async (params: {
     projectUrl: string;
     agents?: string[] | null;
+    defaultAgentName?: string | null;
   }): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
     await this.createMissingFields(project);
@@ -33,7 +39,11 @@ export class ProjectRequiredFieldCreateUseCase {
       params.projectUrl,
     );
     await this.reconcileStoryOptions(updatedProject);
-    await this.reconcileAgentOptions(updatedProject, params.agents ?? null);
+    await this.reconcileAgentOptions(
+      updatedProject,
+      params.agents ?? null,
+      params.defaultAgentName ?? null,
+    );
   };
 
   private createMissingFields = async (project: Project): Promise<void> => {
@@ -116,10 +126,29 @@ export class ProjectRequiredFieldCreateUseCase {
   reconcileAgentOptions = async (
     project: Project,
     agentNames: string[] | null,
+    defaultAgentName?: string | null,
   ): Promise<void> => {
     if (!agentNames || agentNames.length === 0) {
       return;
     }
+    await this.reconcileAgentList(project, agentNames);
+    if (
+      defaultAgentName &&
+      this.agentDefaultRepository &&
+      agentNames.includes(defaultAgentName)
+    ) {
+      const latestProject = await this.projectRepository.getByUrl(project.url);
+      await this.agentDefaultRepository.setAgentFieldDefault(
+        latestProject,
+        defaultAgentName,
+      );
+    }
+  };
+
+  private reconcileAgentList = async (
+    project: Project,
+    agentNames: string[],
+  ): Promise<void> => {
     if (!project.agent) {
       await this.projectRepository.createField(project, {
         name: AGENT_FIELD_NAME,
