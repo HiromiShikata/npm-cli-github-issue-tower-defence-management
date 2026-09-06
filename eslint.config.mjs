@@ -61,6 +61,7 @@ export default tseslint.config(
           ],
         },
       ],
+      'no-empty': ['error', { allowEmptyCatch: true }],
       'unused-imports/no-unused-imports': 'error',
       'no-restricted-syntax': [
         'error',
