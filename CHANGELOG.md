@@ -1,3 +1,10 @@
+# [2.70.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.6...v2.70.0) (2026-09-06)
+
+
+### Features
+
+* **tdpm-cli:** add Awaiting Owner status and waitingForOwner routing ([#2158](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2158)) ([d67157d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d67157dc2db822e684005f99e71f37a47f55cd3f)), closes [HiromiShikata/secretary#5580](https://github.com/HiromiShikata/secretary/issues/5580)
+
 ## [2.69.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.5...v2.69.6) (2026-09-06)
 
 
