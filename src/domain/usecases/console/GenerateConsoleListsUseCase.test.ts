@@ -932,7 +932,12 @@ describe('GenerateConsoleListsUseCase', () => {
     it('excludes Awaiting Workspace issues with a future next action date', () => {
       const now = new Date('2026-06-14T10:00:00Z');
       const result = run(
-        [makeIssue({ status: 'Awaiting Workspace', nextActionDate: new Date('2026-06-15T00:00:00Z') })],
+        [
+          makeIssue({
+            status: 'Awaiting Workspace',
+            nextActionDate: new Date('2026-06-15T00:00:00Z'),
+          }),
+        ],
         undefined,
         undefined,
         undefined,
@@ -944,7 +949,12 @@ describe('GenerateConsoleListsUseCase', () => {
     it('excludes Preparation issues with a future next action date', () => {
       const now = new Date('2026-06-14T10:00:00Z');
       const result = run(
-        [makeIssue({ status: 'Preparation', nextActionDate: new Date('2026-06-15T00:00:00Z') })],
+        [
+          makeIssue({
+            status: 'Preparation',
+            nextActionDate: new Date('2026-06-15T00:00:00Z'),
+          }),
+        ],
         undefined,
         undefined,
         undefined,
@@ -968,7 +978,12 @@ describe('GenerateConsoleListsUseCase', () => {
     it('includes issues with a next action date set to today (trigger no longer pending)', () => {
       const now = new Date('2026-06-14T10:00:00Z');
       const result = run(
-        [makeIssue({ status: 'Awaiting Workspace', nextActionDate: new Date('2026-06-14T00:00:00Z') })],
+        [
+          makeIssue({
+            status: 'Awaiting Workspace',
+            nextActionDate: new Date('2026-06-14T00:00:00Z'),
+          }),
+        ],
         undefined,
         undefined,
         undefined,
