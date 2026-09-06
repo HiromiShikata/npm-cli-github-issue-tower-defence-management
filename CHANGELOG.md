@@ -1,3 +1,10 @@
+# [2.74.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.7...v2.74.0) (2026-09-06)
+
+
+### Features
+
+* merge Awaiting Owner and Awaiting Quality Check into single GREEN status ([#2194](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2194)) ([ff999ba](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ff999bab29f51fddd8a7d04bea42f2b1be35c145)), closes [#5692](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/5692)
+
 ## [2.73.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.6...v2.73.7) (2026-09-06)
 
 
