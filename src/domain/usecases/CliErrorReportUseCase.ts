@@ -13,7 +13,7 @@ const isGitHubRateLimitError = (error: unknown): boolean => {
     return true;
   }
   return (
-    /\b(403|429)\b/.test(error.message) ||
+    /:\s*(403|429)\b/.test(error.message) ||
     /rate limit|secondary rate limit|abuse/i.test(error.message)
   );
 };

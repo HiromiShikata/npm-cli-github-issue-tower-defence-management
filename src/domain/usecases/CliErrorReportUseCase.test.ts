@@ -195,8 +195,37 @@ describe('CliErrorReportUseCase', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should make no repository calls when the error message contains HTTP 429 status', async () => {
-      const error = new Error('Request failed with status 429');
+    it('should make no repository calls when the error message has HTTP 429 after a colon', async () => {
+      const error = new Error(
+        'Failed to fetch comments from GitHub REST API: 429 Too Many Requests',
+      );
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should report errors where 403 appears as an issue number, not an HTTP status', async () => {
+      const error = new Error('Failed to update issue 403 in repository foo');
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(7);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.searchIssue).toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalled();
+    });
+
+    it('should make no repository calls when the error message contains "secondary rate limit"', async () => {
+      const error = new Error(
+        'You have exceeded a secondary rate limit. Please wait a few minutes before you try again.',
+      );
       const consoleSpy = jest
         .spyOn(console, 'warn')
         .mockImplementation(() => undefined);
