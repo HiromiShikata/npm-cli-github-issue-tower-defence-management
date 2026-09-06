@@ -1,3 +1,10 @@
+## [2.69.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.5...v2.69.6) (2026-09-06)
+
+
+### Bug Fixes
+
+* **reportSilentRedispatchWorkflowIssue:** use project item id from addIssueToProject to avoid empty itemId race condition ([#2157](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2157)) ([311a01a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/311a01a107c0b0a5eaad514908bf34a5bf2efe88))
+
 ## [2.69.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.4...v2.69.5) (2026-09-06)
 
 
