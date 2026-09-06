@@ -5028,7 +5028,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         projectWithStory,
         blockerIssueUrl,
       );
-      expect(mockIssueRepository.updateStoryByProjectItemId).toHaveBeenCalledWith(
+      expect(
+        mockIssueRepository.updateStoryByProjectItemId,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({ story: projectWithStory.story }),
         blockerProjectItemId,
         blockerStoryId,
@@ -5088,7 +5090,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         agents: ['developer', 'triager'],
       });
 
-      expect(mockIssueRepository.updateStoryByProjectItemId).toHaveBeenCalledWith(
+      expect(
+        mockIssueRepository.updateStoryByProjectItemId,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({ story: projectWithStory.story }),
         returnedProjectItemId,
         blockerStoryId,
