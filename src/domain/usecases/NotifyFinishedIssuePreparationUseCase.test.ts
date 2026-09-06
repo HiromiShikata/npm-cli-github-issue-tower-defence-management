@@ -296,41 +296,47 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should throw IssueNotFoundError when issue does not exist', async () => {
+  it('should warn and skip when issue is not found on the project', async () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(null);
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-    await expect(
-      useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/999',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      }),
-    ).rejects.toThrow(
-      'Issue not found: https://github.com/user/repo/issues/999',
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/999',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'notifyFinishedIssuePreparation skipped: issue https://github.com/user/repo/issues/999 not found on project https://github.com/users/user/projects/1',
     );
-  });
-
-  it('should throw IssueNotFoundError when a pull request URL has no backing project item (no silent skip)', async () => {
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(null);
-
-    await expect(
-      useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/pull/999',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      }),
-    ).rejects.toThrow('Issue not found: https://github.com/user/repo/pull/999');
     expect(mockIssueRepository.update).not.toHaveBeenCalled();
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('should read the issue scoped to the project it was given and throw IssueNotFoundError when the issue has no item on that project', async () => {
+  it('should warn and skip when a pull request URL has no backing project item', async () => {
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(null);
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/pull/999',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      'notifyFinishedIssuePreparation skipped: issue https://github.com/user/repo/pull/999 not found on project https://github.com/users/user/projects/1',
+    );
+    expect(mockIssueRepository.update).not.toHaveBeenCalled();
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it('should warn and skip when the issue has no item on the project', async () => {
     const issueUrlOnAnotherProjectOnly =
       'https://github.com/user/repo/issues/7';
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -340,16 +346,19 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           ? null
           : createMockIssue({ url: issueUrl, status: 'Preparation' }),
     );
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-    await expect(
-      useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: issueUrlOnAnotherProjectOnly,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      }),
-    ).rejects.toThrow(`Issue not found: ${issueUrlOnAnotherProjectOnly}`);
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: issueUrlOnAnotherProjectOnly,
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      `notifyFinishedIssuePreparation skipped: issue ${issueUrlOnAnotherProjectOnly} not found on project https://github.com/users/user/projects/1`,
+    );
     expect(mockIssueRepository.get.mock.calls).toEqual([
       [issueUrlOnAnotherProjectOnly, mockProject],
     ]);
