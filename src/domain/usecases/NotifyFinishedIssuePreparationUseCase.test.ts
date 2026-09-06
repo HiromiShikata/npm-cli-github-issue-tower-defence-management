@@ -5941,4 +5941,113 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
   });
+
+  describe('waitingForOwner handling', () => {
+    it('moves issue to Awaiting Owner status and posts comment when last report has waitingForOwner true and project has Awaiting Owner status', async () => {
+      const projectWithAwaitingOwner = createMockProject({
+        status: {
+          name: 'Status',
+          fieldId: 'field-1',
+          statuses: [
+            {
+              id: 'preparation-id',
+              name: 'Preparation',
+              color: 'YELLOW',
+              description: '',
+            },
+            {
+              id: 'awaiting-workspace-id',
+              name: 'Awaiting Workspace',
+              color: 'GRAY',
+              description: '',
+            },
+            {
+              id: 'failed-preparation-id',
+              name: 'Failed Preparation',
+              color: 'RED',
+              description: '',
+            },
+            {
+              id: 'awaiting-quality-check-id',
+              name: 'Awaiting Quality Check',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'awaiting-owner-id',
+              name: 'Awaiting Owner',
+              color: 'ORANGE',
+              description: '',
+            },
+          ],
+        },
+      });
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        projectWithAwaitingOwner,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithAwaitingOwner,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        'Auto Status Check: AWAITING_OWNER',
+      );
+    });
+
+    it('falls back to Awaiting Quality Check with console.warn when last report has waitingForOwner true but Awaiting Owner status is absent', async () => {
+      const consoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(consoleWarn).toHaveBeenCalledWith(
+        expect.stringContaining('Awaiting Owner'),
+      );
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        mockProject,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        'awaiting-quality-check-id',
+      );
+      consoleWarn.mockRestore();
+    });
+  });
 });

@@ -4,6 +4,7 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
 import { ConsoleTabsRepository } from './adapter-interfaces/ConsoleTabsRepository';
 import {
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -24,6 +25,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
+import { extractWaitingForOwner } from './extractWaitingForOwner';
 import { findLastAgentReport } from './findLastAgentReport';
 import { extractPullRequestRequired } from './extractPullRequestRequired';
 import { isAgentReportBody } from './isAgentReportBody';
@@ -299,6 +301,37 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption,
         nextStepAgent,
         reportingTarget,
+      );
+      return;
+    }
+
+    const waitingForOwner = lastAgentReport
+      ? extractWaitingForOwner(lastAgentReport.content)
+      : false;
+    if (waitingForOwner) {
+      const awaitingOwnerStatusOption = project.status.statuses.find(
+        (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+      );
+      if (!awaitingOwnerStatusOption) {
+        console.warn(
+          `Awaiting owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project; falling back to '${AWAITING_QUALITY_CHECK_STATUS_NAME}'`,
+        );
+      }
+      const targetStatusOption =
+        awaitingOwnerStatusOption ?? awaitingQualityCheckStatusOption;
+      issue.status = awaitingOwnerStatusOption
+        ? AWAITING_OWNER_STATUS_NAME
+        : AWAITING_QUALITY_CHECK_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        targetStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.issueCommentRepository.createComment(
+        issue,
+        'Auto Status Check: AWAITING_OWNER',
       );
       return;
     }

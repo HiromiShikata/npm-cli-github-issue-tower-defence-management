@@ -9,6 +9,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import {
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -17,6 +18,7 @@ import {
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { extractNextStepAgent } from './extractNextStepAgent';
+import { extractWaitingForOwner } from './extractWaitingForOwner';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
@@ -230,6 +232,34 @@ export class RevertOrphanedPreparationUseCase {
         }
         continue;
       }
+      const waitingForOwner = lastAgentReport
+        ? extractWaitingForOwner(lastAgentReport.content)
+        : false;
+      if (waitingForOwner) {
+        const awaitingOwnerStatusOption = project.status.statuses.find(
+          (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+        );
+        if (awaitingOwnerStatusOption) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingOwnerStatusOption.id,
+          );
+        } else {
+          console.warn(
+            `Awaiting owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project`,
+          );
+          if (awaitingQualityCheckStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              awaitingQualityCheckStatusOption.id,
+            );
+          }
+        }
+        continue;
+      }
+
       if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
         const effectiveDeveloperAgentName =
           params.developerAgentName ?? 'developer';
