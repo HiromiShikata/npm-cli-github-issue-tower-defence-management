@@ -814,17 +814,15 @@ describe('GitHubIssueCommentRepository', () => {
 
     it('throws GitHubRateLimitError and does not attempt POST when dedup preflight returns 403 with rate-limit signals', async () => {
       const resetEpoch = 1725547200;
-      const fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response('API rate limit exceeded for user ID 42', {
-            status: 403,
-            headers: {
-              'x-ratelimit-remaining': '0',
-              'x-ratelimit-reset': String(resetEpoch),
-            },
-          }),
-        );
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('API rate limit exceeded for user ID 42', {
+          status: 403,
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(resetEpoch),
+          },
+        }),
+      );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/901',
@@ -870,14 +868,12 @@ describe('GitHubIssueCommentRepository', () => {
     });
 
     it('throws GitHubRateLimitError and does not attempt POST when dedup preflight returns 429 with retry-after', async () => {
-      const fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response('secondary rate limit', {
-            status: 429,
-            headers: { 'retry-after': '60' },
-          }),
-        );
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('secondary rate limit', {
+          status: 429,
+          headers: { 'retry-after': '60' },
+        }),
+      );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/903',
@@ -896,9 +892,7 @@ describe('GitHubIssueCommentRepository', () => {
     it('posts the comment when dedup preflight returns a non-rate-limit HTTP error (fail open)', async () => {
       const fetchSpy = jest
         .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response('Not Found', { status: 404 }),
-        )
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ id: 200 }), { status: 201 }),
         );
