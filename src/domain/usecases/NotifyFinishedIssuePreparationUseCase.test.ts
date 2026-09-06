@@ -6711,7 +6711,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         expect.anything(),
-        'Auto Status Check: AWAITING_OWNER',
+        'Auto Status Check: WAITING_FOR_OWNER',
       );
     });
   });

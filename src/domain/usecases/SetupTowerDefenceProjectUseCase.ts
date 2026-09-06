@@ -75,6 +75,11 @@ export class SetupTowerDefenceProjectUseCase {
     const awaitingOwnerStatus = existing.find(
       (s) => s.name === AWAITING_OWNER_STATUS_NAME,
     );
+    if (awaitingOwnerStatus && !awaitingWorkspaceStatus) {
+      console.warn(
+        `'${AWAITING_OWNER_STATUS_NAME}' status found but '${AWAITING_WORKSPACE_STATUS_NAME}' is absent; cannot migrate issues — they will be left without a valid status`,
+      );
+    }
     if (awaitingOwnerStatus && awaitingWorkspaceStatus) {
       const { issues } = await fetchIssues();
       const awaitingOwnerIssues = issues.filter(

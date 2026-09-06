@@ -356,7 +356,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.patchConsoleTab(issue);
       await this.issueCommentRepository.createComment(
         issue,
-        'Auto Status Check: AWAITING_OWNER',
+        'Auto Status Check: WAITING_FOR_OWNER',
       );
       return;
     }
