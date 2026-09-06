@@ -22,6 +22,7 @@ jest.mock('./githubGraphqlClient', () => ({
 
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
+import { GITHUB_REST_REQUEST_TIMEOUT_MS } from './RestProjectRepository';
 
 const mockJsonResponse = <T>(data: T) => ({
   json: jest.fn().mockResolvedValue(data),
@@ -199,6 +200,7 @@ describe('GraphqlProjectRepository project location', () => {
           Authorization: 'token dummy-token',
           Accept: 'application/vnd.github+json',
         },
+        timeout: GITHUB_REST_REQUEST_TIMEOUT_MS,
       },
     );
     expect(names).toEqual(['Status']);
