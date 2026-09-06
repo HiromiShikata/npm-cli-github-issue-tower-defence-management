@@ -1,6 +1,9 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { isAgentReportBody, stripLeadingFencedBlocks } from './isAgentReportBody';
+import {
+  isAgentReportBody,
+  stripLeadingFencedBlocks,
+} from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
 import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
