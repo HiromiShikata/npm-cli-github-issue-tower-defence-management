@@ -59,6 +59,7 @@ type CachedRelatedOpenPrs = {
 
 type CiContextDiskCache = {
   etag: string | null;
+  combinedStatusEtag?: string | null;
   contexts: CiContextNode[];
   fetchedAt: string;
 };
@@ -72,6 +73,24 @@ function isCiContextDiskCache(value: unknown): value is CiContextDiskCache {
     Array.isArray(value.contexts) &&
     'fetchedAt' in value &&
     typeof value.fetchedAt === 'string'
+  );
+}
+
+type RequiredCheckNamesDiskCache = {
+  fetchedAtMs: number;
+  names: string[];
+};
+
+function isRequiredCheckNamesDiskCache(
+  value: unknown,
+): value is RequiredCheckNamesDiskCache {
+  if (typeof value !== 'object' || value === null) return false;
+  return (
+    'fetchedAtMs' in value &&
+    typeof value.fetchedAtMs === 'number' &&
+    'names' in value &&
+    Array.isArray(value.names) &&
+    value.names.every((n: unknown) => typeof n === 'string')
   );
 }
 
@@ -1506,16 +1525,43 @@ export class ApiV3CheerioRestIssueRepository
     { fetchedAtMs: number; names: string[] }
   >();
 
+  private requiredCheckNamesDiskCacheKey = (
+    owner: string,
+    repo: string,
+    branch: string,
+  ): string => `requiredCheckNames/${owner}/${repo}/${branch}`;
+
   private getRequiredCheckNames = async (
     owner: string,
     repo: string,
     branch: string,
   ): Promise<string[]> => {
-    const cacheKey = `${owner}/${repo}/${branch}`;
+    const inMemoryCacheKey = `${owner}/${repo}/${branch}`;
     const nowMs = (await this.dateRepository.now()).getTime();
-    const cached = this.requiredCheckNamesCache.get(cacheKey);
-    if (cached && nowMs - cached.fetchedAtMs < REQUIRED_CHECKS_CACHE_TTL_MS) {
-      return cached.names;
+
+    const inMemoryCached = this.requiredCheckNamesCache.get(inMemoryCacheKey);
+    if (
+      inMemoryCached &&
+      nowMs - inMemoryCached.fetchedAtMs < REQUIRED_CHECKS_CACHE_TTL_MS
+    ) {
+      return inMemoryCached.names;
+    }
+
+    const diskCacheKey = this.requiredCheckNamesDiskCacheKey(
+      owner,
+      repo,
+      branch,
+    );
+    const diskCacheRaw =
+      await this.localStorageCacheRepository.getSingle(diskCacheKey);
+    if (isRequiredCheckNamesDiskCache(diskCacheRaw)) {
+      if (nowMs - diskCacheRaw.fetchedAtMs < REQUIRED_CHECKS_CACHE_TTL_MS) {
+        this.requiredCheckNamesCache.set(inMemoryCacheKey, {
+          fetchedAtMs: diskCacheRaw.fetchedAtMs,
+          names: diskCacheRaw.names,
+        });
+        return diskCacheRaw.names;
+      }
     }
 
     const ownerSegment = encodeURIComponent(owner);
@@ -1596,7 +1642,11 @@ export class ApiV3CheerioRestIssueRepository
     }
 
     const names = Array.from(requiredCheckNamesSet);
-    this.requiredCheckNamesCache.set(cacheKey, {
+    await this.localStorageCacheRepository.setSingle(diskCacheKey, {
+      fetchedAtMs: nowMs,
+      names,
+    });
+    this.requiredCheckNamesCache.set(inMemoryCacheKey, {
       fetchedAtMs: nowMs,
       names,
     });
@@ -1627,10 +1677,16 @@ export class ApiV3CheerioRestIssueRepository
     sha: string,
     etag: string | null,
     contexts: CiContextNode[],
+    combinedStatusEtag: string | null = null,
   ): Promise<void> => {
     await this.localStorageCacheRepository.setSingle(
       this.ciContextDiskCacheKey(owner, repo, sha),
-      { etag, contexts, fetchedAt: new Date().toISOString() },
+      {
+        etag,
+        combinedStatusEtag,
+        contexts,
+        fetchedAt: new Date().toISOString(),
+      },
     );
   };
 
@@ -1939,15 +1995,20 @@ export class ApiV3CheerioRestIssueRepository
       }
     }
 
+    const combinedStatusHeaders: Record<string, string> = {
+      Authorization: `Bearer ${this.ghToken}`,
+      Accept: 'application/vnd.github+json',
+    };
+    if (diskCache?.combinedStatusEtag) {
+      combinedStatusHeaders['If-None-Match'] = diskCache.combinedStatusEtag;
+    }
+
     const combinedStatusResponse = await this.fetchWithRateLimitRetry(() =>
       fetch(
         `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/status?per_page=100`,
         {
           method: 'GET',
-          headers: {
-            Authorization: `Bearer ${this.ghToken}`,
-            Accept: 'application/vnd.github+json',
-          },
+          headers: combinedStatusHeaders,
         },
       ),
     );
@@ -1981,6 +2042,27 @@ export class ApiV3CheerioRestIssueRepository
       );
     }
 
+    const newCombinedStatusEtag = combinedStatusResponse.headers.get('etag');
+
+    if (combinedStatusResponse.status === 304 && diskCache) {
+      const cachedStatusContexts = diskCache.contexts.filter(
+        (ctx) => ctx.__typename === 'StatusContext',
+      );
+      for (const ctx of cachedStatusContexts) {
+        contexts.push(ctx);
+      }
+      await this.writeCiContextDiskCache(
+        owner,
+        repo,
+        commitSha,
+        newEtag,
+        contexts,
+        diskCache.combinedStatusEtag ?? null,
+      );
+      this.commitCiContextsInMemoryCache.set(inMemoryCacheKey, contexts);
+      return contexts;
+    }
+
     if (!combinedStatusResponse.ok) {
       const reason = await this.formatGitHubErrorWithStatus(
         combinedStatusResponse,
@@ -2010,6 +2092,7 @@ export class ApiV3CheerioRestIssueRepository
       commitSha,
       newEtag,
       contexts,
+      newCombinedStatusEtag,
     );
     this.commitCiContextsInMemoryCache.set(inMemoryCacheKey, contexts);
     return contexts;
