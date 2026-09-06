@@ -39,6 +39,12 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
         description: '',
       },
       {
+        id: 'awaiting-owner-id',
+        name: 'Awaiting Owner',
+        color: 'ORANGE',
+        description: '',
+      },
+      {
         id: 'todo-by-human-id',
         name: 'Todo by human',
         color: 'GREEN',
@@ -6735,7 +6741,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   describe('waitingForOwner handling', () => {
-    it('moves issue to Awaiting Quality Check without posting comment when last report has waitingForOwner true', async () => {
+    it('moves issue to Awaiting Owner without posting comment when last report has waitingForOwner true', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -6755,13 +6761,13 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Owner' }),
         mockProject,
       );
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
-        'awaiting-quality-check-id',
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });

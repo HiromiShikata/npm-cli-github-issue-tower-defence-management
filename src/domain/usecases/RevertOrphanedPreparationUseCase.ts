@@ -9,6 +9,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import {
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -119,6 +120,10 @@ export class RevertOrphanedPreparationUseCase {
       (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
     );
 
+    const awaitingOwnerStatusOption = project.status.statuses.find(
+      (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+    );
+
     for (const issue of preparationIssues) {
       const isOrphaned = await this.isOrphanedIssue(issue, params);
       if (!isOrphaned) {
@@ -149,11 +154,13 @@ export class RevertOrphanedPreparationUseCase {
         ? extractWaitingForOwner(lastAgentReport.content)
         : false;
       if (waitingForOwner) {
-        if (awaitingQualityCheckStatusOption) {
+        const targetStatusOption =
+          awaitingOwnerStatusOption ?? awaitingQualityCheckStatusOption;
+        if (targetStatusOption) {
           await this.issueRepository.updateStatus(
             project,
             issue,
-            awaitingQualityCheckStatusOption.id,
+            targetStatusOption.id,
           );
         }
         continue;

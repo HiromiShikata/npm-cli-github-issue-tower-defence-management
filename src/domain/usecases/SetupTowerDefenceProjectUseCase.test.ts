@@ -2,7 +2,6 @@ import { mock } from 'jest-mock-extended';
 import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { StatusDefaultRepository } from './adapter-interfaces/StatusDefaultRepository';
 import { FieldOption, Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
@@ -83,18 +82,13 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
 });
 
 describe('SetupTowerDefenceProjectUseCase', () => {
-  const mockIssueCommentRepository =
-    mock<Pick<IssueCommentRepository, 'createComment'>>();
-  beforeEach(() => {
-    mockIssueCommentRepository.createComment.mockClear();
-  });
-
-  it('should define exactly the 10 required statuses in the documented order with the documented colors and no descriptions', () => {
+  it('should define exactly the 11 required statuses in the documented order with the documented colors and no descriptions', () => {
     expect(REQUIRED_WORKFLOW_STATUSES).toEqual([
       { name: AWAITING_WORKSPACE_STATUS_NAME, color: 'BLUE' },
       { name: PREPARATION_STATUS_NAME, color: 'YELLOW' },
       { name: FAILED_PREPARATION_STATUS_NAME, color: 'RED' },
       { name: AWAITING_QUALITY_CHECK_STATUS_NAME, color: 'GREEN' },
+      { name: AWAITING_OWNER_STATUS_NAME, color: 'ORANGE' },
       { name: TODO_STATUS_NAME, color: 'PINK' },
       { name: TODO_BY_AGENT_STATUS_NAME, color: 'BLUE' },
       { name: IN_TMUX_STATUS_NAME, color: 'RED' },
@@ -126,7 +120,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -161,7 +154,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -190,7 +182,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -237,7 +228,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -267,6 +257,12 @@ describe('SetupTowerDefenceProjectUseCase', () => {
           id: null,
           name: AWAITING_QUALITY_CHECK_STATUS_NAME,
           color: 'GREEN',
+          description: '',
+        },
+        {
+          id: null,
+          name: AWAITING_OWNER_STATUS_NAME,
+          color: 'ORANGE',
           description: '',
         },
         {
@@ -343,7 +339,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -354,6 +349,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
       AWAITING_QUALITY_CHECK_STATUS_NAME,
+      AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
@@ -385,7 +381,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -434,7 +429,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -480,7 +474,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -488,7 +481,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
     const inTmuxEntry = payload.find((s) => s.name === IN_TMUX_STATUS_NAME);
     expect(inTmuxEntry).toBeDefined();
-    expect(inTmuxEntry?.id).toBe('id-6');
+    expect(inTmuxEntry?.id).toBe('id-7');
     expect(payload.some((s) => s.name === LEGACY_IN_TMUX_STATUS_NAME)).toBe(
       false,
     );
@@ -517,7 +510,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -564,7 +556,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -603,7 +594,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -650,7 +640,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -695,7 +684,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -765,7 +753,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -777,6 +764,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
       AWAITING_QUALITY_CHECK_STATUS_NAME,
+      AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
@@ -883,7 +871,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -912,6 +899,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
       AWAITING_QUALITY_CHECK_STATUS_NAME,
+      AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
@@ -940,7 +928,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -978,7 +965,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1059,7 +1045,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1071,6 +1056,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
       AWAITING_QUALITY_CHECK_STATUS_NAME,
+      AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
@@ -1124,7 +1110,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1166,7 +1151,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1206,7 +1190,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1241,7 +1224,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1302,7 +1284,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1339,7 +1320,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1381,7 +1361,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
@@ -1394,101 +1373,16 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     ).toHaveBeenCalledWith(project, awaitingWorkspaceId);
   });
 
-  it('should migrate issues from Awaiting Owner to Awaiting Workspace with a comment when that status exists', async () => {
+  it('should include Awaiting Owner in the status list when updating', async () => {
     const mockProjectRepository =
       mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
     const mockIssueRepository =
       mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
-    const awsId = 'aws-status-id';
     const statuses: FieldOption[] = [
       {
-        id: 'awaiting-owner-id',
-        name: AWAITING_OWNER_STATUS_NAME,
-        color: 'ORANGE',
-        description: '',
-      },
-      {
-        id: awsId,
+        id: 'awaiting-workspace-id',
         name: AWAITING_WORKSPACE_STATUS_NAME,
         color: 'BLUE',
-        description: '',
-      },
-      ...buildCanonicalStatuses().filter(
-        (s) => s.name !== AWAITING_WORKSPACE_STATUS_NAME,
-      ),
-    ];
-    const project = buildProject(statuses);
-    mockProjectRepository.getByUrl.mockResolvedValue(project);
-    mockProjectRepository.updateStatusList.mockResolvedValue([]);
-
-    const awaitingOwnerIssue1 = buildIssue({
-      number: 1,
-      url: 'https://github.com/test-org/test-repo/issues/1',
-      itemId: 'item-1',
-      status: AWAITING_OWNER_STATUS_NAME,
-    });
-    const awaitingOwnerIssue2 = buildIssue({
-      number: 2,
-      url: 'https://github.com/test-org/test-repo/issues/2',
-      itemId: 'item-2',
-      status: AWAITING_OWNER_STATUS_NAME,
-    });
-    const otherIssue = buildIssue({
-      number: 3,
-      url: 'https://github.com/test-org/test-repo/issues/3',
-      itemId: 'item-3',
-      status: AWAITING_WORKSPACE_STATUS_NAME,
-    });
-    mockIssueRepository.getAllIssues.mockResolvedValue({
-      project: mock<Project>(),
-      issues: [awaitingOwnerIssue1, awaitingOwnerIssue2, otherIssue],
-      cacheUsed: false,
-    });
-    mockIssueRepository.updateStatus.mockResolvedValue(undefined);
-    mockIssueCommentRepository.createComment.mockResolvedValue(undefined);
-
-    const mockStatusDefaultRepository =
-      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
-    const useCase = new SetupTowerDefenceProjectUseCase(
-      mockProjectRepository,
-      mockIssueRepository,
-      mockStatusDefaultRepository,
-      mockIssueCommentRepository,
-    );
-    await useCase.run({ projectUrl: project.url });
-
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(2);
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      awaitingOwnerIssue1,
-      'Auto Status Check: AWAITING_OWNER_REVERTED\nThe "Awaiting Owner" status was added to this project by an agent without authorization and has been removed. This issue has been moved to Awaiting Workspace for agent reprocessing.',
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      awaitingOwnerIssue2,
-      'Auto Status Check: AWAITING_OWNER_REVERTED\nThe "Awaiting Owner" status was added to this project by an agent without authorization and has been removed. This issue has been moved to Awaiting Workspace for agent reprocessing.',
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      project,
-      awaitingOwnerIssue1,
-      awsId,
-    );
-    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-      project,
-      awaitingOwnerIssue2,
-      awsId,
-    );
-  });
-
-  it('should remove Awaiting Owner from the status list when it exists', async () => {
-    const mockProjectRepository =
-      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
-    const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
-    const statuses: FieldOption[] = [
-      ...buildCanonicalStatuses(),
-      {
-        id: 'awaiting-owner-id',
-        name: AWAITING_OWNER_STATUS_NAME,
-        color: 'ORANGE',
         description: '',
       },
     ];
@@ -1508,59 +1402,14 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockProjectRepository,
       mockIssueRepository,
       mockStatusDefaultRepository,
-      mockIssueCommentRepository,
     );
     await useCase.run({ projectUrl: project.url });
 
     expect(mockProjectRepository.updateStatusList).toHaveBeenCalledTimes(1);
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
     expect(payload.some((s) => s.name === AWAITING_OWNER_STATUS_NAME)).toBe(
-      false,
+      true,
     );
   });
 
-  it('should warn when Awaiting Owner status exists but Awaiting Workspace is absent', async () => {
-    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation();
-    const statuses: FieldOption[] = [
-      {
-        id: 'awaiting-owner-id',
-        name: AWAITING_OWNER_STATUS_NAME,
-        color: 'ORANGE',
-        description: '',
-      },
-      {
-        id: 'prep-id',
-        name: PREPARATION_STATUS_NAME,
-        color: 'YELLOW',
-        description: '',
-      },
-    ];
-    const project = buildProject(statuses);
-    const mockProjectRepository =
-      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
-    const mockIssueRepository =
-      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
-    mockProjectRepository.getByUrl.mockResolvedValue(project);
-    mockProjectRepository.updateStatusList.mockResolvedValue([]);
-    mockIssueRepository.getAllIssues.mockResolvedValue({
-      project: mock<Project>(),
-      issues: [],
-      cacheUsed: false,
-    });
-
-    const mockStatusDefaultRepository =
-      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
-    const useCase = new SetupTowerDefenceProjectUseCase(
-      mockProjectRepository,
-      mockIssueRepository,
-      mockStatusDefaultRepository,
-      mockIssueCommentRepository,
-    );
-    await useCase.run({ projectUrl: project.url });
-
-    expect(consoleWarn).toHaveBeenCalledWith(
-      expect.stringContaining(AWAITING_OWNER_STATUS_NAME),
-    );
-    consoleWarn.mockRestore();
-  });
 });

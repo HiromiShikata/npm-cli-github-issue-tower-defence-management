@@ -41,6 +41,10 @@ export const REQUIRED_WORKFLOW_STATUSES: WorkflowStatusDefinition[] = [
     color: 'GREEN',
   },
   {
+    name: AWAITING_OWNER_STATUS_NAME,
+    color: 'ORANGE',
+  },
+  {
     name: TODO_STATUS_NAME,
     color: 'PINK',
   },

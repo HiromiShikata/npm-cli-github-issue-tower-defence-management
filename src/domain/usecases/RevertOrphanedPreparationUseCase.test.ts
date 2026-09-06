@@ -68,6 +68,12 @@ const createMockProject = (): Project => ({
         color: 'GREEN',
         description: '',
       },
+      {
+        id: '7',
+        name: 'Awaiting Owner',
+        color: 'ORANGE',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -2932,7 +2938,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       return issue;
     };
 
-    it('moves issue to Awaiting Quality Check when last report has waitingForOwner true', async () => {
+    it('moves issue to Awaiting Owner when last report has waitingForOwner true', async () => {
       setupWaitingForOwnerIssue();
 
       await useCase.run({
@@ -2945,11 +2951,11 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        '4',
+        '7',
       );
     });
 
-    it('takes precedence over nextStepAgent when both waitingForOwner true and nextStepAgent are present', async () => {
+    it('takes precedence over nextStepAgent when both waitingForOwner true and nextStepAgent are present and routes to Awaiting Owner', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -2989,7 +2995,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        '4',
+        '7',
       );
     });
   });
