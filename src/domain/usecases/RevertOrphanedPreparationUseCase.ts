@@ -145,6 +145,33 @@ export class RevertOrphanedPreparationUseCase {
           params.allowedIssueAuthors,
         ),
       );
+      const waitingForOwner = lastAgentReport
+        ? extractWaitingForOwner(lastAgentReport.content)
+        : false;
+      if (waitingForOwner) {
+        const awaitingOwnerStatusOption = project.status.statuses.find(
+          (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+        );
+        if (awaitingOwnerStatusOption) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingOwnerStatusOption.id,
+          );
+        } else {
+          console.warn(
+            `Awaiting owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project`,
+          );
+          if (awaitingQualityCheckStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              awaitingQualityCheckStatusOption.id,
+            );
+          }
+        }
+        continue;
+      }
       const nextStepAgent = lastAgentReport
         ? extractNextStepAgent(lastAgentReport.content)
         : null;
@@ -231,33 +258,6 @@ export class RevertOrphanedPreparationUseCase {
             issue,
             repetition.comment,
           );
-        }
-        continue;
-      }
-      const waitingForOwner = lastAgentReport
-        ? extractWaitingForOwner(lastAgentReport.content)
-        : false;
-      if (waitingForOwner) {
-        const awaitingOwnerStatusOption = project.status.statuses.find(
-          (s) => s.name === AWAITING_OWNER_STATUS_NAME,
-        );
-        if (awaitingOwnerStatusOption) {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            awaitingOwnerStatusOption.id,
-          );
-        } else {
-          console.warn(
-            `Awaiting owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project`,
-          );
-          if (awaitingQualityCheckStatusOption) {
-            await this.issueRepository.updateStatus(
-              project,
-              issue,
-              awaitingQualityCheckStatusOption.id,
-            );
-          }
         }
         continue;
       }
