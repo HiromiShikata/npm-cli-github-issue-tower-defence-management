@@ -1,5 +1,21 @@
 import { logGithubRestRateLimit } from './githubRestClient';
 
+const getFirstConsoleLogArg = (spy: jest.SpyInstance): string => {
+  const calls: unknown = spy.mock.calls;
+  if (!Array.isArray(calls) || calls.length === 0) {
+    throw new Error('Expected at least one console.log call');
+  }
+  const firstCall: unknown = calls[0];
+  if (!Array.isArray(firstCall) || firstCall.length === 0) {
+    throw new Error('Expected first call to have arguments');
+  }
+  const arg: unknown = firstCall[0];
+  if (typeof arg !== 'string') {
+    throw new Error(`Expected string argument, got ${typeof arg}`);
+  }
+  return arg;
+};
+
 describe('githubRestClient', () => {
   let consoleLogSpy: jest.SpyInstance;
 
@@ -74,7 +90,7 @@ describe('githubRestClient', () => {
       logGithubRestRateLimit({ headers, now: () => fixedNow });
 
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      const logLine: string = consoleLogSpy.mock.calls[0][0] as string;
+      const logLine = getFirstConsoleLogArg(consoleLogSpy);
       expect(logLine).not.toContain('ghp_super_secret_token');
       expect(logLine).not.toContain('Bearer');
       expect(logLine).not.toContain('Authorization');
@@ -88,10 +104,13 @@ describe('githubRestClient', () => {
 
       const after = Date.now();
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      const logLine: string = consoleLogSpy.mock.calls[0][0] as string;
+      const logLine = getFirstConsoleLogArg(consoleLogSpy);
       const timestampMatch = logLine.match(/^(\S+) githubRestClient:/);
       expect(timestampMatch).not.toBeNull();
-      const loggedMs = new Date(timestampMatch![1]).getTime();
+      if (timestampMatch === null) {
+        throw new Error('Expected timestampMatch to not be null');
+      }
+      const loggedMs = new Date(timestampMatch[1]).getTime();
       expect(loggedMs).toBeGreaterThanOrEqual(before);
       expect(loggedMs).toBeLessThanOrEqual(after);
     });

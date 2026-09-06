@@ -1,3 +1,13 @@
+## [2.63.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.4...v2.63.5) (2026-09-06)
+
+
+### Bug Fixes
+
+* **CliErrorReportUseCase:** narrow rate-limit regex from word-boundary to colon-prefix to prevent suppressing crash reports with issue numbers 403 or 429 ([#2103](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2103)) ([893bff9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/893bff9ceb598c69c4fb18f55617ca97c20d6aaa))
+* **NotifyFinishedIssuePreparationUseCase:** accept In Tmux by agent status ([#2096](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2096)) ([#2101](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2101)) ([3452750](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3452750f7289ff7660a31139b9757015e85f7965))
+* **NotifyFinishedIssuePreparationUseCase:** remove stale early-return for In Tmux by agent status ([#2110](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2110)) ([6bd9b87](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6bd9b8724d7382e447696343cafa5ff951a0c8c9)), closes [#2101](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2101) [#2099](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2099)
+* **rate-limit:** fail-fast on secondary rate limit with shared cross-process circuit breaker ([#2092](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2092)) ([0560d6e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0560d6ea561eddcfe05396dd27ca3a3648bcb7fa))
+
 ## [2.63.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.3...v2.63.4) (2026-09-06)
 
 

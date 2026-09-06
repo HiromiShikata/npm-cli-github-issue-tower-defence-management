@@ -692,6 +692,17 @@ export class ApiV3CheerioRestIssueRepository
     request: () => Promise<Response>,
   ): Promise<Response> => fetchWithGitHubRateLimitRetry(request, this.sleep);
 
+  /**
+   * Variant for content-creating requests (POST / PUT / PATCH / DELETE).
+   * Checks the shared secondary rate limit circuit breaker before issuing
+   * the request so that a block discovered by one process immediately
+   * silences all other processes on the host.
+   */
+  private fetchWithRateLimitRetryForWrite = (
+    request: () => Promise<Response>,
+  ): Promise<Response> =>
+    fetchWithGitHubRateLimitRetry(request, this.sleep, Date.now, false, true);
+
   private throwGitHubError = async (
     prefix: string,
     response: Response,
@@ -2958,7 +2969,7 @@ export class ApiV3CheerioRestIssueRepository
 
   closePullRequest = async (prUrl: string): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await this.fetchWithRateLimitRetry(() =>
+    const response = await this.fetchWithRateLimitRetryForWrite(() =>
       fetch(
         `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
         {
@@ -2984,7 +2995,7 @@ export class ApiV3CheerioRestIssueRepository
     const { owner, repo, issueNumber } = this.parseIssueUrl(issueUrl);
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await this.fetchWithRateLimitRetry(() =>
+    const response = await this.fetchWithRateLimitRetryForWrite(() =>
       fetch(
         `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}`,
         {
@@ -3071,7 +3082,7 @@ export class ApiV3CheerioRestIssueRepository
 
   approvePullRequest = async (prUrl: string): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await this.fetchWithRateLimitRetry(() =>
+    const response = await this.fetchWithRateLimitRetryForWrite(() =>
       fetch(
         `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
         {
@@ -3100,7 +3111,7 @@ export class ApiV3CheerioRestIssueRepository
       Accept: 'application/vnd.github+json',
     };
     const mergeWith = (mergeMethod?: 'squash' | 'rebase') =>
-      this.fetchWithRateLimitRetry(() =>
+      this.fetchWithRateLimitRetryForWrite(() =>
         fetch(mergeUrl, {
           method: 'PUT',
           headers,
@@ -3185,7 +3196,7 @@ export class ApiV3CheerioRestIssueRepository
       body: commentBody,
       comments: [inlineComment],
     };
-    const response = await this.fetchWithRateLimitRetry(() =>
+    const response = await this.fetchWithRateLimitRetryForWrite(() =>
       fetch(
         `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
         {
@@ -3289,7 +3300,7 @@ export class ApiV3CheerioRestIssueRepository
     );
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await this.fetchWithRateLimitRetry(() =>
+    const response = await this.fetchWithRateLimitRetryForWrite(() =>
       fetch(
         `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}/comments`,
         {
@@ -3372,7 +3383,7 @@ export class ApiV3CheerioRestIssueRepository
 
   updateBranch = async (prUrl: string): Promise<boolean> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await this.fetchWithRateLimitRetry(() =>
+    const response = await this.fetchWithRateLimitRetryForWrite(() =>
       fetch(
         `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/update-branch`,
         {
@@ -3399,7 +3410,7 @@ export class ApiV3CheerioRestIssueRepository
     branchName: string,
   ): Promise<void> => {
     const { owner, repo } = this.parseIssueUrl(prUrl);
-    const response = await this.fetchWithRateLimitRetry(() =>
+    const response = await this.fetchWithRateLimitRetryForWrite(() =>
       fetch(
         `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/refs/heads/${encodeURIComponent(branchName)}`,
         {
@@ -3844,7 +3855,7 @@ export class ApiV3CheerioRestIssueRepository
         );
       }
       for (const comment of body) {
-        const deleteResponse = await this.fetchWithRateLimitRetry(() =>
+        const deleteResponse = await this.fetchWithRateLimitRetryForWrite(() =>
           fetch(
             `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/comments/${comment.id}`,
             {
