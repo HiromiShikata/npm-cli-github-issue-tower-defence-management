@@ -1411,5 +1411,4 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       true,
     );
   });
-
 });
