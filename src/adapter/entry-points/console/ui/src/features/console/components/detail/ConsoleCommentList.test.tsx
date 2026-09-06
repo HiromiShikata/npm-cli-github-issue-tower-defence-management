@@ -341,7 +341,7 @@ describe('ConsoleCommentList', () => {
     expect(queryByText('Second paragraph detail.')).toBeNull();
   });
 
-  it('sets data-expanded on the article to drive wrap layout that prevents the body from being indented by author and time widths', () => {
+  it('reflects expanded state with is-expanded class to drive wrap layout preventing body from being indented by author and time widths', () => {
     const comment = {
       author: 'agent',
       body: 'First line\nSecond line\nThird line',
@@ -359,10 +359,10 @@ describe('ConsoleCommentList', () => {
     const article = container.querySelector('.console-comment');
     expect(article).not.toBeNull();
     if (!article) throw new Error('article not found');
-    expect(article.getAttribute('data-expanded')).toBe('false');
+    expect(article.classList.contains('is-expanded')).toBe(true);
     fireEvent.click(article);
-    expect(article.getAttribute('data-expanded')).toBe('true');
+    expect(article.classList.contains('is-expanded')).toBe(false);
     fireEvent.click(article);
-    expect(article.getAttribute('data-expanded')).toBe('false');
+    expect(article.classList.contains('is-expanded')).toBe(true);
   });
 });
