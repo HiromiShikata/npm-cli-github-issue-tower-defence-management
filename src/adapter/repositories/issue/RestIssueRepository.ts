@@ -139,7 +139,7 @@ export class RestIssueRepository
       // ky 2.x may have already consumed the body
     }
     const nowMs = Date.now();
-    if (!isSecondaryRateLimit(e.response.headers, bodyText, nowMs)) return;
+    if (!isSecondaryRateLimit(e.response.headers, bodyText)) return;
     const backoffMs = computeSecondaryRateLimitBackoffMs(
       e.response.headers,
       nowMs,

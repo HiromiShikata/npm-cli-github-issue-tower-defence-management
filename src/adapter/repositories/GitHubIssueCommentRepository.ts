@@ -294,7 +294,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     if (!response.ok) {
       const bodyText = await response.text().catch(() => '');
       const nowMs = Date.now();
-      if (isSecondaryRateLimit(response.headers, bodyText, nowMs)) {
+      if (isSecondaryRateLimit(response.headers, bodyText)) {
         const backoffMs = computeSecondaryRateLimitBackoffMs(
           response.headers,
           nowMs,

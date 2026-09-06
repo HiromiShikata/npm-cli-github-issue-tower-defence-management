@@ -71,9 +71,6 @@ describe('githubRateLimitRetry', () => {
   });
 
   describe('isSecondaryRateLimit', () => {
-    const futureResetEpoch = Math.floor(Date.now() / 1000) + 3600;
-    const nowMs = Date.now();
-
     it('detects signal 1: body containing "secondary rate limit"', () => {
       const headers = new Headers();
       expect(
@@ -82,7 +79,6 @@ describe('githubRateLimitRetry', () => {
           JSON.stringify({
             message: 'You have exceeded a secondary rate limit',
           }),
-          nowMs,
         ),
       ).toBe(true);
     });
@@ -90,47 +86,37 @@ describe('githubRateLimitRetry', () => {
     it('detects signal 1 case-insensitively', () => {
       const headers = new Headers();
       expect(
-        isSecondaryRateLimit(headers, 'Secondary Rate Limit triggered', nowMs),
+        isSecondaryRateLimit(headers, 'Secondary Rate Limit triggered'),
       ).toBe(true);
     });
 
     it('detects signal 2: retry-after header present', () => {
       const headers = new Headers({ 'retry-after': '60' });
-      expect(isSecondaryRateLimit(headers, '', nowMs)).toBe(true);
+      expect(isSecondaryRateLimit(headers, '')).toBe(true);
     });
 
     it('detects signal 2 even when retry-after is zero', () => {
       const headers = new Headers({ 'retry-after': '0' });
-      expect(isSecondaryRateLimit(headers, '', nowMs)).toBe(true);
+      expect(isSecondaryRateLimit(headers, '')).toBe(true);
     });
 
-    it('detects signal 3: x-ratelimit-remaining 0 with x-ratelimit-reset in the future', () => {
+    it('returns false for primary quota exhaustion: remaining=0, future reset, no retry-after, no secondary body', () => {
+      const futureResetEpoch = Math.floor(Date.now() / 1000) + 3600;
       const headers = new Headers({
         'x-ratelimit-remaining': '0',
         'x-ratelimit-reset': String(futureResetEpoch),
       });
-      expect(isSecondaryRateLimit(headers, '', nowMs)).toBe(true);
+      expect(isSecondaryRateLimit(headers, '')).toBe(false);
     });
 
-    it('does not trigger signal 3 when x-ratelimit-reset is absent', () => {
-      // Primary rate limit pattern: remaining 0 but no reset header
+    it('returns false for primary quota exhaustion when x-ratelimit-reset is absent', () => {
       const headers = new Headers({ 'x-ratelimit-remaining': '0' });
       expect(
         isSecondaryRateLimit(
           headers,
           JSON.stringify({ message: 'API rate limit exceeded' }),
-          nowMs,
         ),
       ).toBe(false);
-    });
-
-    it('does not trigger signal 3 when x-ratelimit-reset is in the past', () => {
-      const pastResetEpoch = Math.floor(nowMs / 1000) - 1;
-      const headers = new Headers({
-        'x-ratelimit-remaining': '0',
-        'x-ratelimit-reset': String(pastResetEpoch),
-      });
-      expect(isSecondaryRateLimit(headers, '', nowMs)).toBe(false);
     });
 
     it('does not flag a generic permission 403 with no rate-limit signals', () => {
@@ -139,7 +125,6 @@ describe('githubRateLimitRetry', () => {
         isSecondaryRateLimit(
           headers,
           JSON.stringify({ message: 'Resource not accessible by integration' }),
-          nowMs,
         ),
       ).toBe(false);
     });
@@ -270,17 +255,6 @@ describe('githubRateLimitRetry', () => {
         headers: { 'retry-after': '60' },
       });
 
-    // Secondary rate limit: signal 3 (x-ratelimit-remaining:0 + future reset).
-    const futureResetEpoch = Math.floor(Date.now() / 1000) + 3600;
-    const secondaryRateLimitResetResponse = (): Response =>
-      new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
-        status: 403,
-        headers: {
-          'x-ratelimit-remaining': '0',
-          'x-ratelimit-reset': String(futureResetEpoch),
-        },
-      });
-
     // Secondary rate limit detection is scoped to content-creating operations
     // (isContentCreating: true).  Passing true here mirrors the real call path
     // that approvePullRequest, mergePullRequest, etc. exercise.
@@ -310,26 +284,6 @@ describe('githubRateLimitRetry', () => {
       const request = jest
         .fn<Promise<Response>, []>()
         .mockResolvedValue(secondaryRateLimitRetryAfterResponse());
-
-      const response = await fetchWithGitHubRateLimitRetry(
-        request,
-        sleep,
-        Date.now,
-        false,
-        true, // isContentCreating
-        tmpStateFile,
-      );
-
-      expect(response.status).toBe(403);
-      expect(request).toHaveBeenCalledTimes(1);
-      expect(sleep).not.toHaveBeenCalled();
-    });
-
-    it('returns immediately on a secondary rate limit x-ratelimit-reset signal without retrying', async () => {
-      const sleep = jest.fn().mockResolvedValue(undefined);
-      const request = jest
-        .fn<Promise<Response>, []>()
-        .mockResolvedValue(secondaryRateLimitResetResponse());
 
       const response = await fetchWithGitHubRateLimitRetry(
         request,
@@ -440,6 +394,89 @@ describe('githubRateLimitRetry', () => {
       expect(response.status).toBe(200);
       expect(request).toHaveBeenCalledTimes(2);
       expect(sleep).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not write the breaker state file on primary exhaustion even when isContentCreating is true', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const futureReset = Math.floor(Date.now() / 1000) + 3600;
+      const stateFile = path.join(tmpDir, 'no-write-primary-exhaustion.json');
+      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
+          status: 403,
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(futureReset),
+          },
+        }),
+      );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        true, // isContentCreating: primary exhaustion must NOT be treated as secondary
+        stateFile,
+      );
+
+      expect(response.status).toBe(403);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+      expect(fs.existsSync(stateFile)).toBe(false);
+    });
+
+    it('writes the breaker state file when body signals secondary rate limit and isContentCreating is true', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const stateFile = path.join(tmpDir, 'write-secondary-body.json');
+      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+        new Response(
+          JSON.stringify({ message: 'You have exceeded a secondary rate limit' }),
+          { status: 403 },
+        ),
+      );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        true, // isContentCreating
+        stateFile,
+      );
+
+      expect(response.status).toBe(403);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+      expect(fs.existsSync(stateFile)).toBe(true);
+      const raw: unknown = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+      expect(typeof (raw as Record<string, unknown>).resetTimeMs).toBe('number');
+    });
+
+    it('writes the breaker state file when retry-after signals secondary rate limit and isContentCreating is true', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const stateFile = path.join(tmpDir, 'write-secondary-retry-after.json');
+      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'rate limit' }), {
+          status: 403,
+          headers: { 'retry-after': '60' },
+        }),
+      );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        true, // isContentCreating
+        stateFile,
+      );
+
+      expect(response.status).toBe(403);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+      expect(fs.existsSync(stateFile)).toBe(true);
+      const raw: unknown = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+      expect(typeof (raw as Record<string, unknown>).resetTimeMs).toBe('number');
     });
 
     // --- Primary rate limit unchanged paths ---

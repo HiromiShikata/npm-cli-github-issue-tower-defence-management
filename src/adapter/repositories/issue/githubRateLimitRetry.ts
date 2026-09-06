@@ -60,18 +60,22 @@ export const hasRateLimitSignals = (
 
 /**
  * Returns true when the response indicates a secondary (content-creation)
- * rate limit, detected by any of three signals documented by GitHub:
+ * rate limit, detected by two signals documented by GitHub:
  *   1. Response body contains "secondary rate limit".
  *   2. A retry-after header is present.
- *   3. x-ratelimit-remaining is 0 and x-ratelimit-reset is in the future.
  *
  * Secondary rate limits require a minimum 60-second wait before any retry,
  * which is incompatible with the 5-second primary-limit budget cap.
+ *
+ * Note: x-ratelimit-remaining=0 with a future x-ratelimit-reset and no
+ * retry-after is the primary hourly-quota exhaustion signature, NOT a
+ * secondary rate limit.  That case is handled separately in
+ * fetchWithGitHubRateLimitRetry to avoid contaminating the shared circuit
+ * breaker state file with a primary-quota event.
  */
 export const isSecondaryRateLimit = (
   headers: Headers,
   bodyText: string,
-  nowMs: number,
 ): boolean => {
   // Signal 1: body explicitly names the secondary rate limit
   if (SECONDARY_RATE_LIMIT_BODY_PATTERN.test(bodyText)) {
@@ -80,17 +84,6 @@ export const isSecondaryRateLimit = (
   // Signal 2: retry-after header is present
   if (headers.get('retry-after') !== null) {
     return true;
-  }
-  // Signal 3: quota exhausted with a future reset timestamp
-  if (
-    parseNonNegativeIntegerHeader(headers.get('x-ratelimit-remaining')) === 0
-  ) {
-    const resetEpochSeconds = parseNonNegativeIntegerHeader(
-      headers.get('x-ratelimit-reset'),
-    );
-    if (resetEpochSeconds !== null && resetEpochSeconds * 1000 > nowMs) {
-      return true;
-    }
   }
   return false;
 };
@@ -231,7 +224,7 @@ export const fetchWithGitHubRateLimitRetry = async (
     // false positives and contaminate the shared state file.
     if (
       isContentCreating &&
-      isSecondaryRateLimit(response.headers, bodyText, nowMs)
+      isSecondaryRateLimit(response.headers, bodyText)
     ) {
       // Record the block in the shared state file so other processes on this
       // host can skip their pending content-creating requests immediately.
