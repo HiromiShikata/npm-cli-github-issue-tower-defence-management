@@ -4848,6 +4848,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         isResolvedAllReviewComments: true,
         isBranchOutOfDate: false,
         missingRequiredCheckNames: [],
+        reviewDecision: null,
       });
       expect(
         countCallsMatching(
