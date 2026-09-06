@@ -506,9 +506,9 @@ describe('formatProjectTotalLine', () => {
   });
 
   it('returns zeros for all columns when all rows are null', () => {
-    expect(
-      formatProjectTotalLine([{ code: 'in', row: null }]),
-    ).toBe('      0  0  0  0  0  0  0  0  0');
+    expect(formatProjectTotalLine([{ code: 'in', row: null }])).toBe(
+      '      0  0  0  0  0  0  0  0  0',
+    );
   });
 
   it('caps column totals at 99', () => {

@@ -280,9 +280,7 @@ export const formatProjectRowLine = (
 export const formatProjectTotalLine = (
   projects: ComposeDashboardProject[],
 ): string => {
-  const presentRows = projects.flatMap((p) =>
-    p.row !== null ? [p.row] : [],
-  );
+  const presentRows = projects.flatMap((p) => (p.row !== null ? [p.row] : []));
 
   const sumColumn = (key: keyof DashboardRow): number =>
     presentRows.reduce((sum, r) => sum + r[key], 0);
