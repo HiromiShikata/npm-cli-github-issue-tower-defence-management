@@ -1364,3 +1364,47 @@ test('shows and hides task rows when Show tasks and Hide tasks are clicked on a 
 
   await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
 });
+
+test.describe('expanded comment body renders github images through the image proxy', () => {
+  let commentHarness: ConsoleE2eHarness;
+
+  test.beforeAll(async () => {
+    commentHarness = await startConsoleE2eHarness({
+      getIssueOrPullRequestComments: async () => [
+        {
+          author: 'HiromiShikata',
+          body: '![Screenshot](https://github.com/user-attachments/assets/test-e2e-proxy-fixture)',
+          createdAt: new Date('2026-09-06T12:00:00.000Z'),
+          url: null,
+        },
+      ],
+    });
+  });
+
+  test.afterAll(async () => {
+    if (commentHarness !== undefined) {
+      await commentHarness.stop();
+    }
+  });
+
+  test('clicking a comment expands console-comment-body-expanded and rewrites github image src through the api/img proxy', async ({
+    page,
+  }) => {
+    await page.goto(commentHarness.appRootUrl);
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    await expect(page.locator('.console-comment')).toBeVisible();
+    await page.locator('.console-comment').click();
+    await expect(page.locator('.console-comment-body-expanded')).toBeVisible();
+    const img = page.locator('.console-comment-body-expanded img');
+    const src = await img.getAttribute('src');
+    expect(src).toMatch(/^\/api\/img\?url=/);
+    expect(src).toContain(
+      encodeURIComponent(
+        'https://github.com/user-attachments/assets/test-e2e-proxy-fixture',
+      ),
+    );
+  });
+});

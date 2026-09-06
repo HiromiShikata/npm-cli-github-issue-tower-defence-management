@@ -315,4 +315,92 @@ describe('ConsoleCommentList', () => {
     fireEvent.click(article);
     expect(article.getAttribute('data-expanded')).toBe('false');
   });
+
+  it('renders a github image via proxy url when the comment is expanded with buildImageProxyUrl', () => {
+    const imageUrl =
+      'https://github.com/user-attachments/assets/1f363cda-b9e6-4e59-b3d6-6343a7fa4554';
+    const comment = {
+      author: 'HiromiShikata',
+      body: `Screenshot attached:\n![Image](${imageUrl})`,
+      createdAt: '2026-09-06T12:00:00.000Z',
+      url: null,
+    };
+    const buildProxyUrl = (src: string) =>
+      `/api/img?url=${encodeURIComponent(src)}`;
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        buildImageProxyUrl={buildProxyUrl}
+      />,
+    );
+    expect(container.querySelector('img')).toBeNull();
+    const article = container.querySelector('.console-comment');
+    expect(article).not.toBeNull();
+    if (!article) throw new Error('article not found');
+    fireEvent.click(article);
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute('src')).toBe(
+      `/api/img?url=${encodeURIComponent(imageUrl)}`,
+    );
+  });
+
+  it('resolves same-repo issue references as links when expanded with repoContext', () => {
+    const comment = {
+      author: 'agent',
+      body: 'See #42 for details.',
+      createdAt: '2026-09-06T12:00:00.000Z',
+      url: null,
+    };
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        repoContext={{ owner: 'HiromiShikata', repo: 'secretary' }}
+      />,
+    );
+    const article = container.querySelector('.console-comment');
+    expect(article).not.toBeNull();
+    if (!article) throw new Error('article not found');
+    fireEvent.click(article);
+    const link = container.querySelector(
+      'a[href="https://github.com/HiromiShikata/secretary/issues/42"]',
+    );
+    expect(link).not.toBeNull();
+  });
+
+  it('uses renderReferenceLink to render custom React nodes for issue references when expanded', () => {
+    const comment = {
+      author: 'agent',
+      body: '[secretary #42](https://github.com/HiromiShikata/secretary/issues/42)',
+      createdAt: '2026-09-06T12:00:00.000Z',
+      url: null,
+    };
+    const mockRenderer = (href: string) => (
+      <span data-testid="custom-reference" data-href={href} />
+    );
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        renderReferenceLink={mockRenderer}
+      />,
+    );
+    const article = container.querySelector('.console-comment');
+    expect(article).not.toBeNull();
+    if (!article) throw new Error('article not found');
+    fireEvent.click(article);
+    const ref = container.querySelector('[data-testid="custom-reference"]');
+    expect(ref).not.toBeNull();
+    expect(ref?.getAttribute('data-href')).toBe(
+      'https://github.com/HiromiShikata/secretary/issues/42',
+    );
+  });
 });
