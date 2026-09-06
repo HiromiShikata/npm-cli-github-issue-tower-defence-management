@@ -458,7 +458,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
-  it('should throw IllegalIssueStatusError when issue status is not Preparation, not Done, and not Awaiting Workspace', async () => {
+  it('should throw IllegalIssueStatusError when issue status is not Preparation, not In Tmux by agent, not Done, and not Awaiting Workspace', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'In Progress',
@@ -476,7 +476,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       }),
     ).rejects.toThrow(
-      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation, but got In Progress',
+      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation or In Tmux by agent, but got In Progress',
     );
   });
 
