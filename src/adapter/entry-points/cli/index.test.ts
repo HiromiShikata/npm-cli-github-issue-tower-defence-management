@@ -3007,7 +3007,11 @@ mysteryKey: 'value'
         issueUrl,
       ]);
 
-      expect(mockRunCommand.mock.calls).toHaveLength(0);
+      expect(mockRunCommand.mock.calls).toHaveLength(1);
+      expect(mockRunCommand.mock.calls[0]).toEqual([
+        'ps',
+        ['-eo', 'pid,ppid,args='],
+      ]);
       expect(mockSpawnInteractive).toHaveBeenCalledWith('tmux', [
         'new-session',
         '-A',
