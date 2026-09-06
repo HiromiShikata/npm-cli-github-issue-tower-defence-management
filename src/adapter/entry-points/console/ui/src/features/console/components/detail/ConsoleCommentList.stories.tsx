@@ -56,3 +56,20 @@ export const WithMultilineComment: Story = {
     error: null,
   },
 };
+
+export const WithImageComment: Story = {
+  args: {
+    comments: [
+      {
+        author: 'HiromiShikata',
+        body: 'Screenshot attached:\n![Image](https://github.com/user-attachments/assets/1f363cda-b9e6-4e59-b3d6-6343a7fa4554)',
+        createdAt: '2026-09-06T12:00:00.000Z',
+        url: null,
+      },
+    ],
+    isLoading: false,
+    error: null,
+    buildImageProxyUrl: (src: string) =>
+      `/api/img?url=${encodeURIComponent(src)}`,
+  },
+};
