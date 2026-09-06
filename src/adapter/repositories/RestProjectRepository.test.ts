@@ -281,7 +281,6 @@ describe('RestProjectRepository', () => {
       );
     });
   });
-
 });
 
 describe('projectLocationFromUrl', () => {
