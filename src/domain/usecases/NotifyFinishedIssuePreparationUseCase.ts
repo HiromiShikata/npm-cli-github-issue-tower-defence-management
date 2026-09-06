@@ -457,9 +457,9 @@ export class NotifyFinishedIssuePreparationUseCase {
 
     if (nextStepAgent !== null) {
       const isNoStory =
-        issue.story !== null && issue.story.startsWith(NO_STORY_STORY_NAME);
+        issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
       const repetition = resolveNextStepAgentDispatchRepetition({
-        agentFieldValue: isNoStory ? null : issue.agent,
+        agentFieldValue: issue.agent,
         nextStepAgent,
         comments,
         isTrustedAuthor,
@@ -467,6 +467,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         thresholdForDispatchLoop:
           params.thresholdForDispatchLoop ??
           DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+        isNoStory,
       });
       if (
         repetition.type === 'escalateSilentRedispatch' ||
@@ -545,7 +546,10 @@ export class NotifyFinishedIssuePreparationUseCase {
           rejectionStatusMessage,
         );
       }
-      if (repetition.type === 'dispatchAgain') {
+      if (
+        repetition.type === 'dispatchAgain' ||
+        repetition.type === 'storyUnset'
+      ) {
         await this.issueCommentRepository.createComment(
           issue,
           repetition.comment,

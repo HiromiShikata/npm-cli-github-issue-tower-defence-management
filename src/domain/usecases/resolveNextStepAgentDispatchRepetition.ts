@@ -23,7 +23,8 @@ export type NextStepAgentDispatchRepetition =
   | { type: 'notRepeated' }
   | { type: 'dispatchAgain'; comment: string }
   | { type: 'escalateSilentRedispatch'; comment: string }
-  | { type: 'escalateDispatchLoop'; comment: string };
+  | { type: 'escalateDispatchLoop'; comment: string }
+  | { type: 'storyUnset'; comment: string };
 
 const findLastHumanCommentIndex = <
   CommentLike extends { author: string; content: string },
@@ -179,8 +180,18 @@ export const resolveNextStepAgentDispatchRepetition = <
   isTrustedAuthor: (author: string) => boolean;
   thresholdForAutoReject: number;
   thresholdForDispatchLoop: number;
+  isNoStory: boolean;
 }): NextStepAgentDispatchRepetition => {
   const silentRedispatches = countSilentRedispatches(params);
+  if (params.isNoStory) {
+    if (silentRedispatches !== null) {
+      return {
+        type: 'storyUnset',
+        comment: `The story field is not set on this issue. The designated agent "${params.nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead.`,
+      };
+    }
+    return { type: 'notRepeated' };
+  }
   if (
     silentRedispatches !== null &&
     silentRedispatches.count >= params.thresholdForAutoReject
