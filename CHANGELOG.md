@@ -1,3 +1,10 @@
+## [2.69.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.2...v2.69.3) (2026-09-06)
+
+
+### Reverts
+
+* **NotifyFinishedIssuePreparationUseCase:** stop setting next action date on Failed Preparation paths ([#2148](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2148)) ([e5f8d1b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e5f8d1bc6164e4ea52be1646dad767c14fabb5ed)), closes [#2093](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2093) [#5563](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/5563)
+
 ## [2.69.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.1...v2.69.2) (2026-09-06)
 
 
