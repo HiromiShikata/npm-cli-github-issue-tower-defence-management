@@ -216,7 +216,10 @@ export class NotifyFinishedIssuePreparationUseCase {
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Awaiting Workspace`,
       );
       return;
-    } else if (issue.status !== PREPARATION_STATUS_NAME) {
+    } else if (
+      issue.status !== PREPARATION_STATUS_NAME &&
+      issue.status !== IN_TMUX_BY_AGENT_STATUS_NAME
+    ) {
       throw new IllegalIssueStatusError(
         params.issueUrl,
         issue.status,
