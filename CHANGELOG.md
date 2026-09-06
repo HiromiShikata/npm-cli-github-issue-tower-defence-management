@@ -1,3 +1,10 @@
+# [2.65.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.64.0...v2.65.0) (2026-09-06)
+
+
+### Features
+
+* **preparation:** revert orphaned Todo by agent issues to Awaiting Workspace ([#2116](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2116)) ([ff4f900](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ff4f900e65a6d243347ebcc51cd3a43a22d3edba)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#2115](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2115)
+
 # [2.64.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.7...v2.64.0) (2026-09-06)
 
 
