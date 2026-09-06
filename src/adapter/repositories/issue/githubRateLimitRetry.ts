@@ -20,7 +20,8 @@ export const RATE_LIMIT_BASE_BACKOFF_MS = 250;
 export const SECONDARY_RATE_LIMIT_FLOOR_MS = 60_000;
 
 const RATE_LIMIT_MESSAGE_PATTERN = /rate limit|secondary rate limit|abuse/i;
-const SECONDARY_RATE_LIMIT_BODY_PATTERN = /secondary rate limit|abuse detection/i;
+const SECONDARY_RATE_LIMIT_BODY_PATTERN =
+  /secondary rate limit|abuse detection/i;
 
 export type Sleep = (milliseconds: number) => Promise<void>;
 
