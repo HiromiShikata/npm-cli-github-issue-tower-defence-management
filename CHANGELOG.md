@@ -1,3 +1,10 @@
+## [2.73.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.4...v2.73.5) (2026-09-06)
+
+
+### Bug Fixes
+
+* **IssueRejectionEvaluator:** exclude developer-agent labels from pull request exemption ([#2193](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2193)) ([627808c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/627808c1956940f7ead5da978ea0ea3caddd9c70)), closes [HiromiShikata/umino-corporait-operation#31467](https://github.com/HiromiShikata/umino-corporait-operation/issues/31467)
+
 ## [2.73.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.3...v2.73.4) (2026-09-06)
 
 
