@@ -1,3 +1,10 @@
+## [2.73.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.2...v2.73.3) (2026-09-06)
+
+
+### Bug Fixes
+
+* **console-ui:** prevent comment body clicks from collapsing expanded comments ([#2188](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2188)) ([7f0a556](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7f0a556bbd5448a54f0daa37e769402008bf966c)), closes [#31459](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31459)
+
 ## [2.73.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.1...v2.73.2) (2026-09-06)
 
 
