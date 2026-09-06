@@ -57,6 +57,33 @@ const clearProjectItemIdFromDoneJson = (
   });
 };
 
+export const removeItemFromConsoleLists = (
+  consoleDataOutputDir: string,
+  pjcode: string,
+  projectItemId: string,
+): void => {
+  for (const tabName of CONSOLE_LIST_TAB_NAMES) {
+    const filePath = path.join(
+      consoleDataOutputDir,
+      pjcode,
+      tabName,
+      'list.json',
+    );
+    const existing = readTabListJson(filePath);
+    if (existing === null) {
+      continue;
+    }
+    const rawItems = existing.items;
+    const items: unknown[] = Array.isArray(rawItems) ? rawItems : [];
+    const withoutThisItem = items.filter(
+      (i) => !(isRecord(i) && i.projectItemId === projectItemId),
+    );
+    if (withoutThisItem.length !== items.length) {
+      writeJsonAtomic(filePath, { ...existing, items: withoutThisItem });
+    }
+  }
+};
+
 export class FileSystemConsoleTabsRepository implements ConsoleTabsRepository {
   constructor(
     private readonly consoleDataOutputDir: string,

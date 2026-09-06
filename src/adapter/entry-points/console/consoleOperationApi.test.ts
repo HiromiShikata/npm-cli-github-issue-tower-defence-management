@@ -3358,6 +3358,127 @@ describe('consoleOperationApi', () => {
         expect.arrayContaining([expect.objectContaining({ id: 'opt_remove' })]),
       );
     });
+
+    it('removes closed tasks from all tab list.json files', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const taskItemId = 'PVTI_task_for_list_removal';
+      const openTask: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/100',
+        itemId: taskItemId,
+        isClosed: false,
+        isPr: false,
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.name,
+          { story: storyToRemove, storyIssue: null, issues: [openTask] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const tabsWithItem = ['todo-by-human', 'queued'];
+      for (const tab of tabsWithItem) {
+        const tabDir = path.join(baseDir, 'acme', tab);
+        fs.mkdirSync(tabDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(tabDir, 'list.json'),
+          JSON.stringify({ items: [{ projectItemId: taskItemId }] }),
+        );
+      }
+
+      await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      for (const tab of tabsWithItem) {
+        const filePath = path.join(baseDir, 'acme', tab, 'list.json');
+        const data: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        expect(data).toMatchObject({ items: [] });
+      }
+    });
+
+    it('removes the story issue from all tab list.json files', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const storyItemId = 'PVTI_story_for_list_removal';
+      const storyIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/42',
+        itemId: storyItemId,
+        title: 'Remove this story',
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const tabsWithItem = ['stories', 'workflow-blocker'];
+      for (const tab of tabsWithItem) {
+        const tabDir = path.join(baseDir, 'acme', tab);
+        fs.mkdirSync(tabDir, { recursive: true });
+        fs.writeFileSync(
+          path.join(tabDir, 'list.json'),
+          JSON.stringify({ items: [{ projectItemId: storyItemId }] }),
+        );
+      }
+
+      await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      for (const tab of tabsWithItem) {
+        const filePath = path.join(baseDir, 'acme', tab, 'list.json');
+        const data: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        expect(data).toMatchObject({ items: [] });
+      }
+    });
+
+    it('does not fail when consoleDataOutputDir is null', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const openTask: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/100',
+        itemId: 'PVTI_task_null_dir',
+        isClosed: false,
+        isPr: false,
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [
+          storyToRemove.name,
+          { story: storyToRemove, storyIssue: null, issues: [openTask] },
+        ],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+
+      const ctx: ConsoleOperationContext = {
+        ...deleteStoryContext(p),
+        consoleDataOutputDir: null,
+      };
+
+      const response = await handleDeleteStory(ctx, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      expect(response.statusCode).toBe(200);
+    });
   });
 
   describe('handleStoryRename', () => {
