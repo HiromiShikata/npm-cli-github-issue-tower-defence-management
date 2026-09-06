@@ -340,7 +340,17 @@ describe('GitHubIssueCommentRepository', () => {
         'comments/HiromiShikata/test-repo/123',
         {
           pages: {
-            '1': expect.objectContaining({ etag: '"etag-new"' }),
+            '1': {
+              etag: '"etag-new"',
+              comments: [
+                {
+                  author: 'user-new',
+                  content: 'New comment',
+                  createdAt: '2024-02-01T00:00:00.000Z',
+                },
+              ],
+              hasNextPage: false,
+            },
           },
         },
       );
