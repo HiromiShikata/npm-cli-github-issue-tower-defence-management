@@ -318,10 +318,12 @@ export class RestIssueRepository
     } catch (e) {
       await this.detectAndRecordSecondaryRateLimit(e);
       if (e instanceof HTTPError) {
-        const bodyText = await e.response
-          .clone()
-          .text()
-          .catch(() => '');
+        let bodyText = '';
+        try {
+          bodyText = await e.response.clone().text();
+        } catch {
+          // ky 2.x may have already consumed the body
+        }
         if (
           hasRateLimitSignals(e.response.status, e.response.headers, bodyText)
         ) {
