@@ -809,6 +809,92 @@ describe('GenerateConsoleListsUseCase', () => {
         'https://github.com/orgs/demo/projects/1/views/1?sliceBy%5Bvalue%5D=Story%20%231%20%26%20More',
       );
     });
+
+    it('populates items with all open issues belonging to each story', () => {
+      const result = run([
+        makeIssue({ story: 'Story Alpha', isClosed: false }),
+        makeIssue({ story: 'Story Alpha', isClosed: false }),
+        makeIssue({ story: 'Story Beta', isClosed: false }),
+        makeIssue({ story: 'Story Alpha', isClosed: true }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      const beta = result.stories.stories.find(
+        (s) => s.storyName === 'Story Beta',
+      );
+      expect(alpha?.items).toHaveLength(2);
+      expect(beta?.items).toHaveLength(1);
+    });
+
+    it('excludes closed issues from story items', () => {
+      const result = run([
+        makeIssue({ story: 'Story Alpha', isClosed: true }),
+        makeIssue({ story: 'Story Alpha', isClosed: false }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      expect(alpha?.items).toHaveLength(1);
+    });
+
+    it('includes issues in story items regardless of assignee or actionability', () => {
+      const result = run([
+        makeIssue({
+          story: 'Story Alpha',
+          assignees: ['other-person'],
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
+          isClosed: false,
+        }),
+        makeIssue({
+          story: 'Story Alpha',
+          dependedIssueUrls: ['https://github.com/demo/repo/issues/99'],
+          isClosed: false,
+        }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      expect(alpha?.items).toHaveLength(3);
+    });
+
+    it('story items carry agent, nextActionDate, nextActionHour and dependedIssueUrls', () => {
+      const result = run([
+        makeIssue({
+          story: 'Story Alpha',
+          isClosed: false,
+          agent: 'developer',
+          nextActionDate: new Date('2026-07-10T00:00:00.000Z'),
+          nextActionHour: 9,
+          dependedIssueUrls: [
+            'https://github.com/demo/repo/issues/10',
+            'https://github.com/demo/repo/issues/11',
+          ],
+        }),
+      ]);
+      const alpha = result.stories.stories.find(
+        (s) => s.storyName === 'Story Alpha',
+      );
+      const item = alpha?.items[0];
+      expect(item?.agent).toBe('developer');
+      expect(item?.nextActionDate).toBe('2026-07-10T00:00:00.000Z');
+      expect(item?.nextActionHour).toBe(9);
+      expect(item?.dependedIssueUrls).toEqual([
+        'https://github.com/demo/repo/issues/10',
+        'https://github.com/demo/repo/issues/11',
+      ]);
+    });
+
+    it('produces an empty items array for a story with no open issues', () => {
+      const result = run([]);
+      for (const entry of result.stories.stories) {
+        expect(entry.items).toEqual([]);
+      }
+    });
   });
 
   describe('agent field propagation', () => {

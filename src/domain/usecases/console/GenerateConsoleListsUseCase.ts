@@ -77,6 +77,7 @@ export type ConsoleStoryEntry = {
   color: ConsoleColor;
   openItemCount: number;
   storyViewUrl: string | null;
+  items: ConsoleListItem[];
 };
 
 export type ConsoleStoriesTab = {
@@ -179,12 +180,21 @@ export class GenerateConsoleListsUseCase {
       buildStatusTabFromSource(actionableIssues, selector, excludedStatusNames);
 
     const openItemCountByStory = new Map<string, number>();
+    const itemsByStory = new Map<string, ConsoleListItem[]>();
     for (const issue of issues) {
       if (!issue.isClosed && issue.story !== null) {
         openItemCountByStory.set(
           issue.story,
           (openItemCountByStory.get(issue.story) ?? 0) + 1,
         );
+        const storyItems = itemsByStory.get(issue.story) ?? [];
+        storyItems.push(
+          this.projectItem(
+            issue,
+            relatedOpenPullRequestUrlsByIssueUrl.get(issue.url) ?? [],
+          ),
+        );
+        itemsByStory.set(issue.story, storyItems);
       }
     }
 
@@ -199,6 +209,7 @@ export class GenerateConsoleListsUseCase {
       storyViewUrl: urlOfStoryView
         ? `${urlOfStoryView}?sliceBy%5Bvalue%5D=${encodeForURI(option.name)}`
         : null,
+      items: itemsByStory.get(option.name) ?? [],
     }));
 
     return {

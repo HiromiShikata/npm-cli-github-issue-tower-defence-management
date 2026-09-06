@@ -2,6 +2,29 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleColor, ConsoleStoryEntry } from '../../logic/types';
 import { ConsoleStoryList } from './ConsoleStoryList';
 
+const makeItem = (
+  overrides: Partial<ConsoleStoryEntry['items'][0]> = {},
+): ConsoleStoryEntry['items'][0] => ({
+  number: 1,
+  title: 'Sample task',
+  url: 'https://github.com/demo/repo/issues/1',
+  repo: 'demo/repo',
+  nameWithOwner: 'demo/repo',
+  projectItemId: 'item-1',
+  itemId: 'item-1',
+  isPr: false,
+  story: 'TDPM Console port',
+  status: 'Todo by human',
+  agent: null,
+  nextActionDate: null,
+  nextActionHour: null,
+  dependedIssueUrls: [],
+  labels: [],
+  createdAt: '2026-06-13T08:18:45.000Z',
+  relatedOpenPullRequestUrls: [],
+  ...overrides,
+});
+
 const storyEntries: ConsoleStoryEntry[] = [
   {
     storyName: 'TDPM Console port',
@@ -9,6 +32,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     color: 'BLUE',
     openItemCount: 12,
     storyViewUrl: null,
+    items: [],
   },
   {
     storyName: 'Move to Okinawa',
@@ -16,6 +40,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     color: 'PURPLE',
     openItemCount: 0,
     storyViewUrl: null,
+    items: [],
   },
 ];
 
@@ -25,6 +50,7 @@ const grayStoryEntry: ConsoleStoryEntry = {
   color: 'GRAY',
   openItemCount: 3,
   storyViewUrl: null,
+  items: [],
 };
 
 const entriesWithGray: ConsoleStoryEntry[] = [...storyEntries, grayStoryEntry];
@@ -801,6 +827,152 @@ describe('ConsoleStoryList', () => {
       await act(async () => {
         resolveDelete?.();
       });
+    });
+  });
+
+  describe('story task expansion', () => {
+    const storyWithItems: ConsoleStoryEntry[] = [
+      {
+        storyName: 'TDPM Console port',
+        storyOptionId: '1491051e',
+        color: 'BLUE',
+        openItemCount: 2,
+        storyViewUrl: null,
+        items: [
+          makeItem({
+            number: 10,
+            title: 'Fix login bug',
+            url: 'https://github.com/demo/repo/issues/10',
+            agent: 'developer',
+            nextActionDate: '2026-07-10T00:00:00.000Z',
+            nextActionHour: 9,
+            dependedIssueUrls: [
+              'https://github.com/demo/repo/issues/5',
+              'https://github.com/demo/repo/issues/6',
+            ],
+          }),
+          makeItem({
+            number: 11,
+            title: 'Add analytics',
+            url: 'https://github.com/demo/repo/issues/11',
+            agent: null,
+            nextActionDate: null,
+            nextActionHour: null,
+            dependedIssueUrls: [],
+          }),
+        ],
+      },
+      {
+        storyName: 'Move to Okinawa',
+        storyOptionId: '564803ee',
+        color: 'PURPLE',
+        openItemCount: 0,
+        storyViewUrl: null,
+        items: [],
+      },
+    ];
+
+    it('renders a Show tasks button for each story row', () => {
+      const { getAllByRole } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      const buttons = getAllByRole('button', { name: 'Show tasks' });
+      expect(buttons).toHaveLength(storyWithItems.length);
+    });
+
+    it('does not show task rows before Show tasks is clicked', () => {
+      const { queryByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      expect(queryByText('Fix login bug')).toBeNull();
+      expect(queryByText('Add analytics')).toBeNull();
+    });
+
+    it('shows task titles when Show tasks is clicked', () => {
+      const { getAllByRole, getByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      const [firstShowButton] = getAllByRole('button', { name: 'Show tasks' });
+      fireEvent.click(firstShowButton);
+      expect(getByText('Fix login bug')).toBeInTheDocument();
+      expect(getByText('Add analytics')).toBeInTheDocument();
+    });
+
+    it('renders task title as a link to the issue URL', () => {
+      const { getAllByRole, getByRole } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      const link = getByRole('link', { name: 'Fix login bug' });
+      expect(link).toHaveAttribute(
+        'href',
+        'https://github.com/demo/repo/issues/10',
+      );
+    });
+
+    it('shows agent value when set', () => {
+      const { getAllByRole, getByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(getByText('developer')).toBeInTheDocument();
+    });
+
+    it('shows nextActionDate when set', () => {
+      const { getAllByRole, getByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(getByText('2026-07-10')).toBeInTheDocument();
+    });
+
+    it('shows nextActionHour when set', () => {
+      const { getAllByRole, getByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(getByText('9')).toBeInTheDocument();
+    });
+
+    it('shows dependedIssueUrls comma-separated when set', () => {
+      const { getAllByRole, getByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(
+        getByText(
+          'https://github.com/demo/repo/issues/5, https://github.com/demo/repo/issues/6',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('changes button label to Hide tasks after clicking Show tasks', () => {
+      const { getAllByRole } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      const [firstShowButton] = getAllByRole('button', { name: 'Show tasks' });
+      fireEvent.click(firstShowButton);
+      expect(
+        getAllByRole('button', { name: 'Hide tasks' })[0],
+      ).toBeInTheDocument();
+    });
+
+    it('hides tasks when Hide tasks is clicked', () => {
+      const { getAllByRole, queryByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      fireEvent.click(getAllByRole('button', { name: 'Hide tasks' })[0]);
+      expect(queryByText('Fix login bug')).toBeNull();
+    });
+
+    it('only expands the clicked story row not others', () => {
+      const { getAllByRole, getByText, queryByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(getByText('TDPM Console port')).toBeInTheDocument();
+      expect(queryByText('Move to Okinawa tasks')).toBeNull();
     });
   });
 });

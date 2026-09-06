@@ -1305,3 +1305,56 @@ test('shows all comments as first-line summaries when not expanded and expands a
     await multiCommentHarness.stop();
   }
 });
+
+test('shows and hides task rows when Show tasks and Hide tasks are clicked on a story row', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Stories').click();
+  await expect(activeTabLabel(page)).toHaveText('Stories');
+
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+
+  await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
+
+  await tdpmRow
+    .locator('.console-op-button', { hasText: 'Show tasks' })
+    .click();
+
+  await expect(
+    tdpmRow.locator('.console-story-task-title', {
+      hasText: 'Serve the committed console UI bundle from serveConsole',
+    }),
+  ).toBeVisible();
+  await expect(
+    tdpmRow.locator('.console-story-task-title', {
+      hasText:
+        'Auto-advance to the next non-empty console tab when one empties',
+    }),
+  ).toBeVisible();
+
+  const pr867Row = tdpmRow.locator('.console-story-task-row').first();
+  await expect(pr867Row.locator('.console-story-task-agent')).toContainText(
+    'developer',
+  );
+  await expect(
+    pr867Row.locator('.console-story-task-next-action-date'),
+  ).toContainText('2026-06-20');
+  await expect(
+    pr867Row.locator('.console-story-task-next-action-hour'),
+  ).toContainText('9');
+  await expect(
+    pr867Row.locator('.console-story-task-depended-urls'),
+  ).toContainText(
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845',
+  );
+
+  await tdpmRow
+    .locator('.console-op-button', { hasText: 'Hide tasks' })
+    .click();
+
+  await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
+});

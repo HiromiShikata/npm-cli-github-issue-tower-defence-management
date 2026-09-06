@@ -152,6 +152,7 @@ export type ConsoleStoryEntry = {
   color: ConsoleColor;
   openItemCount: number;
   storyViewUrl: string | null;
+  items: ConsoleListItem[];
 };
 
 export type ConsoleTab = {

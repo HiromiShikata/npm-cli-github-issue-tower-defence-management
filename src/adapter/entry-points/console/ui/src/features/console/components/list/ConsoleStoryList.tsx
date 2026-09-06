@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { CONSOLE_COLOR_PALETTE, colorFromEnum } from '../../logic/colors';
-import type { ConsoleColor, ConsoleStoryEntry } from '../../logic/types';
+import type {
+  ConsoleColor,
+  ConsoleListItem,
+  ConsoleStoryEntry,
+} from '../../logic/types';
 import { ConsoleCopyStoryNameButton } from './ConsoleCopyStoryNameButton';
 
 type RowReorderState = {
@@ -216,6 +220,41 @@ const StoryDeleteConfirmDialog = ({
   </div>
 );
 
+type StoryTaskListProps = {
+  items: ConsoleListItem[];
+};
+
+const StoryTaskList = ({ items }: StoryTaskListProps) => (
+  <ul className="console-story-task-list">
+    {items.map((item) => (
+      <li key={item.url} className="console-story-task-row">
+        <a
+          href={item.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="console-story-task-title"
+        >
+          {item.title}
+        </a>
+        <span className="console-story-task-agent">{item.agent ?? '—'}</span>
+        <span className="console-story-task-depended-urls">
+          {item.dependedIssueUrls.length > 0
+            ? item.dependedIssueUrls.join(', ')
+            : '—'}
+        </span>
+        <span className="console-story-task-next-action-date">
+          {item.nextActionDate !== null
+            ? item.nextActionDate.slice(0, 10)
+            : '—'}
+        </span>
+        <span className="console-story-task-next-action-hour">
+          {item.nextActionHour !== null ? String(item.nextActionHour) : '—'}
+        </span>
+      </li>
+    ))}
+  </ul>
+);
+
 export type ConsoleStoryListProps = {
   stories: ConsoleStoryEntry[];
   isLoading: boolean;
@@ -258,6 +297,9 @@ export const ConsoleStoryList = ({
   colorErrors,
 }: ConsoleStoryListProps) => {
   const [expandedOptionId, setExpandedOptionId] = useState<string | null>(null);
+  const [expandedTasksOptionId, setExpandedTasksOptionId] = useState<
+    string | null
+  >(null);
   const [addStoryExpanded, setAddStoryExpanded] = useState(false);
   const [colorPickerOptionId, setColorPickerOptionId] = useState<string | null>(
     null,
@@ -415,6 +457,8 @@ export const ConsoleStoryList = ({
               error: null,
             };
             const isRenameOpen = renameOptionId === entry.storyOptionId;
+            const isTasksExpanded =
+              expandedTasksOptionId === entry.storyOptionId;
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
                 <div className="console-story-list-row-main">
@@ -501,7 +545,19 @@ export const ConsoleStoryList = ({
                   >
                     Rename
                   </button>
+                  <button
+                    type="button"
+                    className="console-op-button"
+                    onClick={() =>
+                      setExpandedTasksOptionId(
+                        isTasksExpanded ? null : entry.storyOptionId,
+                      )
+                    }
+                  >
+                    {isTasksExpanded ? 'Hide tasks' : 'Show tasks'}
+                  </button>
                 </div>
+                {isTasksExpanded && <StoryTaskList items={entry.items} />}
                 {reorderError !== null && (
                   <p role="alert" className="console-list-error">
                     {reorderError}

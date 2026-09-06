@@ -39,11 +39,11 @@ const parseStringArray = (value: unknown): string[] =>
     ? value.filter((entry): entry is string => typeof entry === 'string')
     : [];
 
-const parseItems = (payload: unknown): ConsoleListItem[] => {
-  if (!isRecord(payload) || !Array.isArray(payload.items)) {
+const parseItemsArray = (value: unknown): ConsoleListItem[] => {
+  if (!Array.isArray(value)) {
     return [];
   }
-  return payload.items.filter(isRecord).map(
+  return value.filter(isRecord).map(
     (item) =>
       ({
         ...item,
@@ -52,6 +52,13 @@ const parseItems = (payload: unknown): ConsoleListItem[] => {
         ),
       }) as unknown as ConsoleListItem,
   );
+};
+
+const parseItems = (payload: unknown): ConsoleListItem[] => {
+  if (!isRecord(payload) || !Array.isArray(payload.items)) {
+    return [];
+  }
+  return parseItemsArray(payload.items);
 };
 
 const parseOptions = (value: unknown): ConsoleFieldOption[] => {
@@ -65,7 +72,13 @@ const parseStoryEntries = (value: unknown): ConsoleStoryEntry[] => {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.filter(isRecord) as unknown as ConsoleStoryEntry[];
+  return value.filter(isRecord).map(
+    (entry) =>
+      ({
+        ...entry,
+        items: parseItemsArray(entry.items),
+      }) as unknown as ConsoleStoryEntry,
+  );
 };
 
 const parseSnapshotData = (
