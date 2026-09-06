@@ -1,3 +1,10 @@
+## [2.70.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.3...v2.70.4) (2026-09-06)
+
+
+### Bug Fixes
+
+* **console:** make individual comments clickable in summary mode to expand full text ([#2164](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2164)) ([f1aad01](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f1aad015bfa36c67aa82b5df3bb9033b55c97028)), closes [HiromiShikata/umino-corporait-operation#31444](https://github.com/HiromiShikata/umino-corporait-operation/issues/31444)
+
 ## [2.70.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.2...v2.70.3) (2026-09-06)
 
 
