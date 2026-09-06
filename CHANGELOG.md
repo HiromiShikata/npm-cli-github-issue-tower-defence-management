@@ -1,3 +1,10 @@
+## [2.68.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.68.2...v2.68.3) (2026-09-06)
+
+
+### Bug Fixes
+
+* **resolveNextStepAgentDispatchRepetition:** use REPORTING_LOOP_ESCALATION_PHRASE consistently so isEscalationDispatchComment detects all escalation paths ([#2143](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2143)) ([5acfe00](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5acfe00680404f6053f395f88a243705703e565c))
+
 ## [2.68.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.68.1...v2.68.2) (2026-09-06)
 
 
