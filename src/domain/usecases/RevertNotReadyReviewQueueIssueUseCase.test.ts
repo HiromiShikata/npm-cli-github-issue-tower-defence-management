@@ -2064,6 +2064,75 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         'awaiting-workspace-id',
       );
     });
+
+    it('includes a PR item directly in Awaiting Quality Check in the pre-cycle batch and makes no single-PR call', async () => {
+      const prItem = createMockPullRequest({
+        number: 50,
+        url: 'https://github.com/user/repo/pull/50',
+        status: 'Awaiting Quality Check',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [prItem],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[prItem.url, createReadyPr(prItem.url)]]),
+      );
+
+      await useCase.run({
+        projectUrl,
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledWith(
+        expect.arrayContaining([prItem.url]),
+      );
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('fetches a PR URL exactly once when it appears for both an AQC PR item and an AQC non-PR issue that references it', async () => {
+      const sharedPrUrl = 'https://github.com/user/repo/pull/99';
+      const referencedIssueUrl = 'https://github.com/user/repo/issues/88';
+      const nonPrIssue = createMockIssue({
+        number: 88,
+        url: referencedIssueUrl,
+        status: 'Awaiting Quality Check',
+      });
+      const prItem = createMockPullRequest({
+        number: 99,
+        url: sharedPrUrl,
+        status: 'Awaiting Quality Check',
+        closingIssueReferenceUrls: [referencedIssueUrl],
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [nonPrIssue, prItem],
+        cacheUsed: false,
+      });
+      let capturedBatchUrls: string[] = [];
+      mockIssueRepository.getOpenPullRequests.mockImplementation(
+        async (urls: string[]) => {
+          capturedBatchUrls = urls;
+          return new Map([[sharedPrUrl, createReadyPr(sharedPrUrl)]]);
+        },
+      );
+
+      await useCase.run({
+        projectUrl,
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      const occurrences = capturedBatchUrls.filter(
+        (url) => url === sharedPrUrl,
+      ).length;
+      expect(occurrences).toBe(1);
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
   });
 
   describe('reviewDecision gate', () => {

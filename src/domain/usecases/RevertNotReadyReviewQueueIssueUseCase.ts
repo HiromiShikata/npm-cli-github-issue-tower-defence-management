@@ -111,13 +111,14 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     const resolvedOpenPrByUrl = await this.issueRepository.getOpenPullRequests(
       Array.from(
         new Set([
-          ...awaitingQualityCheckIssues.flatMap(
-            (issue) =>
-              this.resolveRelatedOpenPrUrls(
-                issue,
-                relatedOpenPrUrlsByIssueUrl,
-                batchedRelatedOpenPrUrlsByIssueUrl,
-              ) ?? [],
+          ...awaitingQualityCheckIssues.flatMap((issue) =>
+            issue.isPr
+              ? [issue.url]
+              : (this.resolveRelatedOpenPrUrls(
+                  issue,
+                  relatedOpenPrUrlsByIssueUrl,
+                  batchedRelatedOpenPrUrlsByIssueUrl,
+                ) ?? []),
           ),
         ]),
       ),
