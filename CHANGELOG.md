@@ -1,3 +1,10 @@
+## [2.63.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.1...v2.63.2) (2026-09-06)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** set reactivation trigger on Failed Preparation paths ([#2093](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2093)) ([3ef9a1c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3ef9a1c4c0b6564ae46d1ef93d5ad52e3d8f428e))
+
 ## [2.63.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.0...v2.63.1) (2026-09-06)
 
 
