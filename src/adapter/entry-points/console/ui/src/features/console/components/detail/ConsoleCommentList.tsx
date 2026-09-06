@@ -22,6 +22,19 @@ export const ConsoleCommentList = ({
   workflowImprovementIssueUrl = null,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (key: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
 
   if (error !== null) {
     return <p className="console-comment-notloaded">Not loaded.</p>;
@@ -51,34 +64,51 @@ export const ConsoleCommentList = ({
           Show all {comments.length}
         </button>
       )}
-      {visibleComments.map((comment) => (
-        <article
-          key={`${comment.author}:${comment.createdAt}:${comment.body}`}
-          className="console-comment"
-        >
-          <span className="console-comment-author">{comment.author}</span>
-          <span className="console-comment-time">
-            {formatRelativeTime(comment.createdAt, now)}
-          </span>
-          {workflowImprovementIssueUrl !== null && comment.url !== null && (
-            <a
-              href={buildWorkflowIncidentReportUrl(
-                workflowImprovementIssueUrl,
-                comment.url,
-              )}
-              target="_blank"
-              rel="noreferrer"
-              className="console-comment-report-link"
-              aria-label="Create workflow incident report for this comment"
-            >
-              ⚡
-            </a>
-          )}
-          <span className="console-comment-body-preview">
-            {extractFirstLine(comment.body)}
-          </span>
-        </article>
-      ))}
+      {visibleComments.map((comment) => {
+        const key = `${comment.author}:${comment.createdAt}:${comment.body}`;
+        const isExpanded = expandedKeys.has(key);
+        return (
+          <article
+            key={key}
+            className="console-comment"
+            onClick={() => toggleExpanded(key)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                toggleExpanded(key);
+              }
+            }}
+          >
+            <span className="console-comment-author">{comment.author}</span>
+            <span className="console-comment-time">
+              {formatRelativeTime(comment.createdAt, now)}
+            </span>
+            {workflowImprovementIssueUrl !== null && comment.url !== null && (
+              <a
+                href={buildWorkflowIncidentReportUrl(
+                  workflowImprovementIssueUrl,
+                  comment.url,
+                )}
+                target="_blank"
+                rel="noreferrer"
+                className="console-comment-report-link"
+                aria-label="Create workflow incident report for this comment"
+              >
+                ⚡
+              </a>
+            )}
+            {!isExpanded && (
+              <span className="console-comment-body-preview">
+                {extractFirstLine(comment.body)}
+              </span>
+            )}
+            {isExpanded && (
+              <span className="console-comment-body-expanded">
+                {comment.body}
+              </span>
+            )}
+          </article>
+        );
+      })}
     </div>
   );
 };

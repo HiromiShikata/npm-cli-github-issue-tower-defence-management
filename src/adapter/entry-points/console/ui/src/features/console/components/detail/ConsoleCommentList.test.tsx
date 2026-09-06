@@ -174,4 +174,38 @@ describe('ConsoleCommentList', () => {
       }),
     ).toBeNull();
   });
+
+  it('shows full comment body when the comment article is clicked', () => {
+    const comment = {
+      author: 'agent',
+      body: 'First line of body\nSecond line of body\nThird line',
+      createdAt: '2026-09-01T10:00:00.000Z',
+      url: null,
+    };
+    const { container, getByText } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    expect(getByText('First line of body')).toBeInTheDocument();
+    expect(
+      container.querySelector('.console-comment-body-expanded'),
+    ).toBeNull();
+    const article = container.querySelector('.console-comment');
+    expect(article).not.toBeNull();
+    if (!article) throw new Error('article not found');
+    fireEvent.click(article);
+    expect(
+      container.querySelector('.console-comment-body-expanded'),
+    ).not.toBeNull();
+    const expanded = container.querySelector('.console-comment-body-expanded');
+    expect(expanded?.textContent).toContain('Second line of body');
+    fireEvent.click(article);
+    expect(
+      container.querySelector('.console-comment-body-expanded'),
+    ).toBeNull();
+  });
 });
