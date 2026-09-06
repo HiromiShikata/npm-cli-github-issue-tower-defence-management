@@ -17,8 +17,7 @@ export const reportSilentRedispatchWorkflowIssue = async (
     | 'createNewIssue'
     | 'createCommentByUrl'
     | 'addIssueToProject'
-    | 'getIssueByUrl'
-    | 'updateStory'
+    | 'updateStoryByProjectItemId'
   >,
   projectRepository: Pick<ProjectRepository, 'getByUrl'>,
 ): Promise<void> => {
@@ -61,20 +60,20 @@ export const reportSilentRedispatchWorkflowIssue = async (
           const reporterProject = await projectRepository.getByUrl(
             settings.projectUrl,
           );
-          await issueRepository.addIssueToProject(reporterProject, newIssueUrl);
+          const projectItemId = await issueRepository.addIssueToProject(
+            reporterProject,
+            newIssueUrl,
+          );
           if (reporterProject.story) {
             const workflowBlockerStory = reporterProject.story.stories.find(
               (s) => s.name.toLowerCase().includes('workflow blocker'),
             );
             if (workflowBlockerStory) {
-              const newIssue = await issueRepository.getIssueByUrl(newIssueUrl);
-              if (newIssue) {
-                await issueRepository.updateStory(
-                  { ...reporterProject, story: reporterProject.story },
-                  newIssue,
-                  workflowBlockerStory.id,
-                );
-              }
+              await issueRepository.updateStoryByProjectItemId(
+                { ...reporterProject, story: reporterProject.story },
+                projectItemId,
+                workflowBlockerStory.id,
+              );
             }
           }
         } catch (projectError) {
