@@ -83,6 +83,13 @@ export class RestIssueRepository
       }
 
       if (!response.ok) {
+        const bodyText = await response.text().catch(() => '');
+        if (hasRateLimitSignals(response.status, response.headers, bodyText)) {
+          throw new GitHubRateLimitError(
+            `GitHub API rate limit during dedup preflight: HTTP ${response.status}`,
+            computeRateLimitResetIso(response.headers),
+          );
+        }
         return null;
       }
 

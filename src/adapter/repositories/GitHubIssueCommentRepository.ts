@@ -12,8 +12,10 @@ import {
   writeSecondaryRateLimitState,
 } from './issue/githubSecondaryRateLimitBreaker';
 import {
+  computeRateLimitResetIso,
   computeSecondaryRateLimitBackoffMs,
   GitHubRateLimitError,
+  hasRateLimitSignals,
   isSecondaryRateLimit,
 } from './issue/githubRateLimitRetry';
 
@@ -260,6 +262,15 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         const response: Response = await fetch(url, { headers });
 
         if (!response.ok) {
+          const bodyText = await response.text().catch(() => '');
+          if (
+            hasRateLimitSignals(response.status, response.headers, bodyText)
+          ) {
+            throw new GitHubRateLimitError(
+              `GitHub API rate limit during dedup preflight: HTTP ${response.status}`,
+              computeRateLimitResetIso(response.headers),
+            );
+          }
           return null;
         }
 
@@ -281,7 +292,10 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         );
         url = nextMatch?.[1] ?? null;
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof GitHubRateLimitError) {
+        throw e;
+      }
       return null;
     }
 

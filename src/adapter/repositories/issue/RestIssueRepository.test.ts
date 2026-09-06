@@ -526,6 +526,169 @@ describe('RestIssueRepository', () => {
         expect(mockWriteSecondaryRateLimitState).toHaveBeenCalledTimes(1);
       });
     });
+
+    it('throws GitHubRateLimitError and does not call ky.post when dedup preflight returns 403 with rate-limit signals', async () => {
+      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
+      const resetEpoch = 1725547200;
+      fetchSpy.mockResolvedValueOnce(
+        new Response('API rate limit exceeded for user ID 42', {
+          status: 403,
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(resetEpoch),
+          },
+        }),
+      );
+
+      await expect(
+        restIssueRepository.createComment(
+          'https://github.com/HiromiShikata/test-repository/issues/901',
+          'completion comment',
+        ),
+      ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+      expect(mockPost).not.toHaveBeenCalled();
+    });
+
+    it('includes rate-limit reset time in thrown error when dedup preflight returns 403', async () => {
+      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
+      const resetEpoch = 1725547200;
+      fetchSpy.mockResolvedValueOnce(
+        new Response('API rate limit exceeded', {
+          status: 403,
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(resetEpoch),
+          },
+        }),
+      );
+
+      let thrownError: unknown;
+      try {
+        await restIssueRepository.createComment(
+          'https://github.com/HiromiShikata/test-repository/issues/902',
+          'completion comment',
+        );
+      } catch (e) {
+        thrownError = e;
+      }
+
+      expect(thrownError).toBeInstanceOf(GitHubRateLimitError);
+      expect(thrownError).toMatchObject({
+        rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
+      });
+    });
+
+    it('throws GitHubRateLimitError and does not call ky.post when dedup preflight returns 429 with retry-after', async () => {
+      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
+      fetchSpy.mockResolvedValueOnce(
+        new Response('secondary rate limit', {
+          status: 429,
+          headers: { 'retry-after': '60' },
+        }),
+      );
+
+      await expect(
+        restIssueRepository.createComment(
+          'https://github.com/HiromiShikata/test-repository/issues/903',
+          'completion comment',
+        ),
+      ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+      expect(mockPost).not.toHaveBeenCalled();
+    });
+
+    it('calls ky.post when dedup preflight returns a non-rate-limit HTTP error (fail open)', async () => {
+      fetchSpy.mockResolvedValueOnce(
+        new Response('Not Found', { status: 404 }),
+      );
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          user: { login: 'bot' },
+          body: 'completion comment',
+          created_at: new Date().toISOString(),
+          html_url:
+            'https://github.com/HiromiShikata/test-repository/issues/904#issuecomment-1',
+        }),
+      );
+
+      await restIssueRepository.createComment(
+        'https://github.com/HiromiShikata/test-repository/issues/904',
+        'completion comment',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('calls ky.post when dedup preflight returns a response with an unexpected shape (fail open)', async () => {
+      fetchSpy.mockResolvedValueOnce(
+        new Response(JSON.stringify({ unexpected: true }), { status: 200 }),
+      );
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          user: { login: 'bot' },
+          body: 'completion comment',
+          created_at: new Date().toISOString(),
+          html_url:
+            'https://github.com/HiromiShikata/test-repository/issues/905#issuecomment-2',
+        }),
+      );
+
+      await restIssueRepository.createComment(
+        'https://github.com/HiromiShikata/test-repository/issues/905',
+        'completion comment',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips ky.post when successful dedup preflight finds an identical recent comment', async () => {
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            { body: 'completion comment', created_at: recentTs },
+          ]),
+          { status: 200 },
+        ),
+      );
+
+      const result = await restIssueRepository.createComment(
+        'https://github.com/HiromiShikata/test-repository/issues/906',
+        'completion comment',
+      );
+
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(result.url).toBeNull();
+    });
+
+    it('calls ky.post when successful dedup preflight finds no matching recent comment', async () => {
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            { body: 'a different comment', created_at: recentTs },
+          ]),
+          { status: 200 },
+        ),
+      );
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          user: { login: 'bot' },
+          body: 'completion comment',
+          created_at: new Date().toISOString(),
+          html_url:
+            'https://github.com/HiromiShikata/test-repository/issues/907#issuecomment-3',
+        }),
+      );
+
+      await restIssueRepository.createComment(
+        'https://github.com/HiromiShikata/test-repository/issues/907',
+        'completion comment',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
   });
   describe('createNewIssue', () => {
     it('should create a new issue', async () => {

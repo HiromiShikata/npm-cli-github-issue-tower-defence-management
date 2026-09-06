@@ -15,6 +15,7 @@ jest.mock('./issue/githubSecondaryRateLimitBreaker', () => ({
 
 import { GitHubIssueCommentRepository } from './GitHubIssueCommentRepository';
 import { Issue } from '../../domain/entities/Issue';
+import { GitHubRateLimitError } from './issue/githubRateLimitRetry';
 
 const buildIssue = (url: string): Issue => ({
   url,
@@ -1008,7 +1009,6 @@ describe('GitHubIssueCommentRepository', () => {
           repository.createComment(issue, 'blocked by breaker'),
         ).rejects.toBeInstanceOf(GitHubRateLimitError);
 
-        // Only the dedup check GET was issued; the POST was not
         expect(fetchSpy).toHaveBeenCalledTimes(1);
       });
 
@@ -1039,6 +1039,181 @@ describe('GitHubIssueCommentRepository', () => {
 
         expect(mockWriteSecondaryRateLimitState).toHaveBeenCalledTimes(1);
       });
+    });
+
+    it('throws GitHubRateLimitError and does not attempt POST when dedup preflight returns 403 with rate-limit signals', async () => {
+      const resetEpoch = 1725547200;
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('API rate limit exceeded for user ID 42', {
+          status: 403,
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(resetEpoch),
+          },
+        }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/901',
+      );
+
+      await expect(
+        repository.createComment(issue, 'completion comment'),
+      ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('includes the rate-limit reset time in the thrown error when dedup preflight returns 403', async () => {
+      const resetEpoch = 1725547200;
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('API rate limit exceeded', {
+          status: 403,
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(resetEpoch),
+          },
+        }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/902',
+      );
+
+      let thrownError: unknown;
+      try {
+        await repository.createComment(issue, 'completion comment');
+      } catch (e) {
+        thrownError = e;
+      }
+
+      expect(thrownError).toBeInstanceOf(GitHubRateLimitError);
+      expect(thrownError).toMatchObject({
+        rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
+      });
+    });
+
+    it('throws GitHubRateLimitError and does not attempt POST when dedup preflight returns 429 with retry-after', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('secondary rate limit', {
+          status: 429,
+          headers: { 'retry-after': '60' },
+        }),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/903',
+      );
+
+      await expect(
+        repository.createComment(issue, 'completion comment'),
+      ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('posts the comment when dedup preflight returns a non-rate-limit HTTP error (fail open)', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response('Not Found', { status: 404 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 200 }), { status: 201 }),
+        );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/904',
+      );
+      await repository.createComment(issue, 'completion comment');
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('posts the comment when dedup preflight returns a response with an unexpected shape (fail open)', async () => {
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ unexpected: true }), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 201 }), { status: 201 }),
+        );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/905',
+      );
+      await repository.createComment(issue, 'completion comment');
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('skips posting when successful dedup preflight finds an identical recent comment', async () => {
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              user: { login: 'bot' },
+              body: 'completion comment',
+              created_at: recentTs,
+            },
+          ]),
+          { status: 200 },
+        ),
+      );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/906',
+      );
+      await repository.createComment(issue, 'completion comment');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('posts when successful dedup preflight finds no matching recent comment', async () => {
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                user: { login: 'bot' },
+                body: 'a different comment',
+                created_at: recentTs,
+              },
+            ]),
+            { status: 200 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ id: 202 }), { status: 201 }),
+        );
+
+      const issue = buildIssue(
+        'https://github.com/HiromiShikata/test-repository/issues/907',
+      );
+      await repository.createComment(issue, 'completion comment');
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/comments'),
+        expect.objectContaining({ method: 'POST' }),
+      );
     });
   });
 });
