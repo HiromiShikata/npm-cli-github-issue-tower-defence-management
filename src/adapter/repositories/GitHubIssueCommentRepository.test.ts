@@ -231,14 +231,19 @@ describe('GitHubIssueCommentRepository', () => {
       expect(cache.setSingle).toHaveBeenCalledWith(
         'comments/HiromiShikata/test-repo/123',
         {
-          etag: '"etag-abc"',
-          comments: [
-            {
-              author: 'testuser',
-              content: 'Cached comment',
-              createdAt: '2024-01-01T00:00:00.000Z',
+          pages: {
+            '1': {
+              etag: '"etag-abc"',
+              comments: [
+                {
+                  author: 'testuser',
+                  content: 'Cached comment',
+                  createdAt: '2024-01-01T00:00:00.000Z',
+                },
+              ],
+              hasNextPage: false,
             },
-          ],
+          },
         },
       );
       expect(firstResult).toEqual([
@@ -250,14 +255,19 @@ describe('GitHubIssueCommentRepository', () => {
       ]);
 
       cache.getSingle.mockResolvedValue({
-        etag: '"etag-abc"',
-        comments: [
-          {
-            author: 'testuser',
-            content: 'Cached comment',
-            createdAt: '2024-01-01T00:00:00.000Z',
+        pages: {
+          '1': {
+            etag: '"etag-abc"',
+            comments: [
+              {
+                author: 'testuser',
+                content: 'Cached comment',
+                createdAt: '2024-01-01T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: false,
           },
-        ],
+        },
       });
       const fetchSpy = jest
         .spyOn(global, 'fetch')
@@ -283,7 +293,7 @@ describe('GitHubIssueCommentRepository', () => {
       ]);
     });
 
-    it('updates cache when server returns 200 with a changed ETag', async () => {
+    it('treats old cache format (without pages) as a cache miss and fetches fresh', async () => {
       const newCommentPayloads = [
         {
           user: { login: 'user-new' },
@@ -328,11 +338,11 @@ describe('GitHubIssueCommentRepository', () => {
       ]);
       expect(cache.setSingle).toHaveBeenCalledWith(
         'comments/HiromiShikata/test-repo/123',
-        expect.objectContaining({ etag: '"etag-new"' }),
-      );
-      expect(cache.setSingle).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ etag: '"etag-old"' }),
+        {
+          pages: {
+            '1': expect.objectContaining({ etag: '"etag-new"' }),
+          },
+        },
       );
     });
 
@@ -486,21 +496,79 @@ describe('GitHubIssueCommentRepository', () => {
       expect(cache.setSingle).toHaveBeenCalledWith(
         'comments/HiromiShikata/test-repo/123',
         {
-          etag: '"etag-page1"',
-          comments: [
-            {
-              author: 'user1',
-              content: 'Page 1 comment',
-              createdAt: '2024-01-01T00:00:00.000Z',
+          pages: {
+            '1': {
+              etag: '"etag-page1"',
+              comments: [
+                {
+                  author: 'user1',
+                  content: 'Page 1 comment',
+                  createdAt: '2024-01-01T00:00:00.000Z',
+                },
+              ],
+              hasNextPage: true,
             },
-            {
-              author: 'user2',
-              content: 'Page 2 comment',
-              createdAt: '2024-01-02T00:00:00.000Z',
-            },
-          ],
+          },
         },
       );
+    });
+
+    it('all pages returning 304 yields full cached comments without calling setSingle', async () => {
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-p1"',
+            comments: [
+              {
+                author: 'user1',
+                content: 'Page 1 comment',
+                createdAt: '2024-01-01T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: true,
+          },
+          '2': {
+            etag: '"etag-p2"',
+            comments: [
+              {
+                author: 'user2',
+                content: 'Page 2 comment',
+                createdAt: '2024-01-02T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: false,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 304 }))
+        .mockResolvedValueOnce(new Response(null, { status: 304 }));
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(result).toEqual([
+        {
+          author: 'user1',
+          content: 'Page 1 comment',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+        {
+          author: 'user2',
+          content: 'Page 2 comment',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+        },
+      ]);
+      expect(cache.setSingle).not.toHaveBeenCalled();
     });
   });
 
