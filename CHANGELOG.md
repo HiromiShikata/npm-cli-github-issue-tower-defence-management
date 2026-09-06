@@ -1,3 +1,10 @@
+## [2.63.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.0...v2.63.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **reviewDecision:** revert issue when PR reviewDecision is CHANGES_REQUESTED ([#2090](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2090)) ([6d073eb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6d073ebbcd7aad7ce4def6c0a91f7fa6c72b0dee)), closes [HiromiShikata/secretary#5510](https://github.com/HiromiShikata/secretary/issues/5510)
+
 # [2.63.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.8...v2.63.0) (2026-09-06)
 
 
