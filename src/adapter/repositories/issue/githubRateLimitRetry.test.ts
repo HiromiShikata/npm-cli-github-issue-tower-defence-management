@@ -129,6 +129,28 @@ describe('githubRateLimitRetry', () => {
         ),
       ).toBe(false);
     });
+
+    it('detects signal 1 from abuse detection mechanism body phrase without retry-after header', () => {
+      const headers = new Headers();
+      expect(
+        isSecondaryRateLimit(
+          headers,
+          JSON.stringify({
+            message: 'You have triggered an abuse detection mechanism',
+          }),
+        ),
+      ).toBe(true);
+    });
+
+    it('does not flag body containing bare "abuse" without "detection"', () => {
+      const headers = new Headers();
+      expect(
+        isSecondaryRateLimit(
+          headers,
+          JSON.stringify({ message: 'This is considered abuse of the API' }),
+        ),
+      ).toBe(false);
+    });
   });
 
   describe('computeSecondaryRateLimitBackoffMs', () => {
@@ -464,6 +486,36 @@ describe('githubRateLimitRetry', () => {
           status: 403,
           headers: { 'retry-after': '60' },
         }),
+      );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        true, // isContentCreating
+        stateFile,
+      );
+
+      expect(response.status).toBe(403);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+      expect(fs.existsSync(stateFile)).toBe(true);
+      const state = readSecondaryRateLimitState(stateFile);
+      expect(state).not.toBeNull();
+      expect(typeof state?.resetTimeMs).toBe('number');
+    });
+
+    it('writes the breaker state file when abuse detection body signals secondary rate limit and isContentCreating is true', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const stateFile = path.join(tmpDir, 'write-abuse-detection-body.json');
+      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: 'You have triggered an abuse detection mechanism',
+          }),
+          { status: 403 },
+        ),
       );
 
       const response = await fetchWithGitHubRateLimitRetry(
