@@ -1,3 +1,10 @@
+## [2.68.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.68.1...v2.68.2) (2026-09-06)
+
+
+### Bug Fixes
+
+* **attach-session:** use pid=,ppid=,args= format and cover null-scopeLibPath attach path ([9b4254d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9b4254dc9dc74cc09961b8c8bfe8f4e39c93d200))
+
 ## [2.68.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.68.0...v2.68.1) (2026-09-06)
 
 
