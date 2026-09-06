@@ -199,7 +199,7 @@ export const formatMachineStatusLines = (
     machineStatus !== null && machineStatus.cycleMinutes !== null
       ? `cy${machineStatus.cycleMinutes}`
       : 'cy-';
-  const loadLine = `${loadPrefix}LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`;
+  const loadSegment = `${loadPrefix}LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`;
   const disks =
     machineStatus !== null && machineStatus.disks ? machineStatus.disks : null;
   if (disks !== null && disks.length > 0) {
@@ -208,14 +208,12 @@ export const formatMachineStatusLines = (
     );
     const diskLines = packTokensWithinBudget(diskTokens);
     return [
-      `${memDot}M${memText} ${cpuDot}C${cpuText} ${cycle}`,
+      `${memDot}M${memText} ${cpuDot}C${cpuText} ${cycle} ${loadSegment}`,
       ...diskLines,
-      loadLine,
     ];
   }
   return [
-    `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskDot}D${diskText} ${cycle}`,
-    loadLine,
+    `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskDot}D${diskText} ${cycle} ${loadSegment}`,
   ];
 };
 
@@ -277,6 +275,33 @@ export const formatProjectRowLine = (
     storyColorCells +
     closeCountCells
   );
+};
+
+export const formatProjectTotalLine = (
+  projects: ComposeDashboardProject[],
+): string => {
+  const presentRows = projects.flatMap((p) =>
+    p.row !== null ? [p.row] : [],
+  );
+
+  const sumColumn = (key: keyof DashboardRow): number =>
+    presentRows.reduce((sum, r) => sum + r[key], 0);
+
+  const cells = PROJECT_COLUMNS.map(
+    (column) =>
+      ' ' + padStart(capTwoDigits(sumColumn(column.key)), PROJECT_COLUMN_WIDTH),
+  ).join('');
+
+  const storyColorCells = STORY_COLOR_COLUMNS.map(
+    (column) =>
+      ' ' +
+      padStart(
+        capTwoDigits(sumColumn(column.key)),
+        STORY_COLOR_COLUMN_VALUE_WIDTH,
+      ),
+  ).join('');
+
+  return SEVERITY_BLANK + padEnd('', 2, ' ') + cells + storyColorCells;
 };
 
 const formatUtilization = (percent: number | null): string =>
@@ -397,6 +422,7 @@ export class ComposeDashboardUseCase {
   run = (input: ComposeDashboardInput): string => {
     const statsLines = formatMachineStatusLines(input.machineStatus);
     const projectLines = [
+      formatProjectTotalLine(input.projects),
       formatProjectHeaderLine(),
       ...input.projects.map((project) => formatProjectRowLine(project)),
     ];

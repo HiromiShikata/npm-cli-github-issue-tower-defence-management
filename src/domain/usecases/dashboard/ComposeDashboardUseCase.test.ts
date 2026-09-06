@@ -9,6 +9,7 @@ import {
   formatMachineStatusLines,
   formatProjectHeaderLine,
   formatProjectRowLine,
+  formatProjectTotalLine,
   formatResetCountdown,
   formatSevenDayWindowAggregateLine,
   formatTokenRowLine,
@@ -75,7 +76,7 @@ describe('formatResetCountdown', () => {
 });
 
 describe('formatMachineStatusLines', () => {
-  it('renders the host metrics as two lines from a machine status', () => {
+  it('renders host metrics and load average on a single line', () => {
     expect(
       formatMachineStatusLines({
         memPct: 55,
@@ -84,7 +85,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% 🔴D93% cy13', '🔴LA 16 23 40']);
+    ).toEqual(['M55% C62% 🔴D93% cy13 🔴LA 16 23 40']);
   });
 
   it('rounds loads with half-to-even and renders integers', () => {
@@ -96,13 +97,12 @@ describe('formatMachineStatusLines', () => {
         load: [1.2, 0.98, 0.75],
         cycleMinutes: 14,
       }),
-    ).toEqual(['M62% C31% D7% cy14', 'LA 1 1 1']);
+    ).toEqual(['M62% C31% D7% cy14 LA 1 1 1']);
   });
 
   it('falls back to placeholders when the machine status is absent', () => {
     expect(formatMachineStatusLines(null)).toEqual([
-      'M?% C?% D?% cy-',
-      'LA ? ? ?',
+      'M?% C?% D?% cy- LA ? ? ?',
     ]);
   });
 
@@ -115,7 +115,7 @@ describe('formatMachineStatusLines', () => {
         load: [0, 0, 0],
         cycleMinutes: null,
       }),
-    ).toEqual(['M1% C2% D3% cy-', 'LA 0 0 0']);
+    ).toEqual(['M1% C2% D3% cy- LA 0 0 0']);
   });
 
   it('renders D?% when only the disk percent is unavailable', () => {
@@ -127,7 +127,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% D?% cy13', '🔴LA 16 23 40']);
+    ).toEqual(['M55% C62% D?% cy13 🔴LA 16 23 40']);
   });
 
   it('renders each configured partition as title and percent on a disk line', () => {
@@ -143,7 +143,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% cy13', '🟡D89% S41%', '🔴LA 16 23 40']);
+    ).toEqual(['M55% C62% cy13 🔴LA 16 23 40', '🟡D89% S41%']);
   });
 
   it('wraps partitions onto a second disk line when they exceed the width budget', () => {
@@ -163,10 +163,9 @@ describe('formatMachineStatusLines', () => {
       load: [16, 23, 40],
       cycleMinutes: 13,
     });
-    expect(lines[0]).toBe('M55% C62% cy13');
-    expect(lines[lines.length - 1]).toBe('🔴LA 16 23 40');
-    expect(lines.length).toBeGreaterThan(3);
-    for (const line of lines) {
+    expect(lines[0]).toBe('M55% C62% cy13 🔴LA 16 23 40');
+    expect(lines.length).toBeGreaterThan(2);
+    for (const line of lines.slice(1)) {
       expect(codePointLength(line)).toBeLessThanOrEqual(
         PROJECT_ROW_WIDTH_BUDGET,
       );
@@ -182,7 +181,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% 🟡D89% cy13', '🔴LA 16 23 40']);
+    ).toEqual(['M55% C62% 🟡D89% cy13 🔴LA 16 23 40']);
   });
 
   it('prefixes memory with yellow dot at 80% and red dot at 90%', () => {
@@ -275,7 +274,7 @@ describe('formatMachineStatusLines', () => {
     ).toContain('🔴D90%');
   });
 
-  it('prefixes load line with yellow dot at 1-min load 5 and red dot at 10', () => {
+  it('prefixes load average with yellow dot at 1-min load 5 and red dot at 10', () => {
     const below = formatMachineStatusLines({
       memPct: 0,
       cpuPct: 0,
@@ -283,7 +282,9 @@ describe('formatMachineStatusLines', () => {
       load: [4.9, 0, 0],
       cycleMinutes: null,
     });
-    expect(below[below.length - 1]).toMatch(/^LA/);
+    expect(below[0]).toContain('LA');
+    expect(below[0]).not.toContain('🟡LA');
+    expect(below[0]).not.toContain('🔴LA');
 
     const warning = formatMachineStatusLines({
       memPct: 0,
@@ -292,7 +293,7 @@ describe('formatMachineStatusLines', () => {
       load: [5, 0, 0],
       cycleMinutes: null,
     });
-    expect(warning[warning.length - 1]).toMatch(/^🟡LA/);
+    expect(warning[0]).toContain('🟡LA');
 
     const danger = formatMachineStatusLines({
       memPct: 0,
@@ -301,10 +302,10 @@ describe('formatMachineStatusLines', () => {
       load: [10, 0, 0],
       cycleMinutes: null,
     });
-    expect(danger[danger.length - 1]).toMatch(/^🔴LA/);
+    expect(danger[0]).toContain('🔴LA');
   });
 
-  it('keeps both lines within the 32 character width budget at worst case', () => {
+  it('keeps the combined stats line within the code point width budget at worst case', () => {
     const lines = formatMachineStatusLines({
       memPct: 100,
       cpuPct: 100,
@@ -312,12 +313,8 @@ describe('formatMachineStatusLines', () => {
       load: [108.5, 120.25, 95.1],
       cycleMinutes: 999,
     });
-    expect(lines).toEqual(['🔴M100% 🔴C100% 🔴D100% cy999', '🔴LA 108 120 95']);
-    for (const line of lines) {
-      expect(codePointLength(line)).toBeLessThanOrEqual(
-        PROJECT_ROW_WIDTH_BUDGET,
-      );
-    }
+    expect(lines).toEqual(['🔴M100% 🔴C100% 🔴D100% cy999 🔴LA 108 120 95']);
+    expect(codePointLength(lines[0])).toBeLessThanOrEqual(45);
   });
 });
 
@@ -488,6 +485,52 @@ describe('formatProjectRowLine', () => {
   });
 });
 
+describe('formatProjectTotalLine', () => {
+  it('sums each column across all projects with present rows', () => {
+    expect(
+      formatProjectTotalLine([
+        { code: 'ac', row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }) },
+        { code: 'gl', row: projectRow({ qc: 16, fail: 6, pr: 1 }) },
+        { code: 'um', row: projectRow({ blocker: 1 }) },
+      ]),
+    ).toBe('      1 18  6  1  4  1  0  0  0');
+  });
+
+  it('skips null rows in the totals', () => {
+    expect(
+      formatProjectTotalLine([
+        { code: 'ac', row: projectRow({ todo: 5 }) },
+        { code: 'in', row: null },
+      ]),
+    ).toBe('      5  0  0  0  0  0  0  0  0');
+  });
+
+  it('returns zeros for all columns when all rows are null', () => {
+    expect(
+      formatProjectTotalLine([{ code: 'in', row: null }]),
+    ).toBe('      0  0  0  0  0  0  0  0  0');
+  });
+
+  it('caps column totals at 99', () => {
+    expect(
+      formatProjectTotalLine([
+        { code: 'a1', row: projectRow({ todo: 60 }) },
+        { code: 'a2', row: projectRow({ todo: 60 }) },
+      ]),
+    ).toContain(' 99');
+  });
+
+  it('aligns with the project header and row line format', () => {
+    const totalLine = formatProjectTotalLine([
+      { code: 'ac', row: projectRow({ todo: 1 }) },
+    ]);
+    expect(totalLine.length).toBeGreaterThan(0);
+    expect(codePointLength(totalLine)).toBeLessThanOrEqual(
+      PROJECT_ROW_WIDTH_BUDGET,
+    );
+  });
+});
+
 describe('formatTokenRowLine', () => {
   it('renders a token row with the last two name chars, utilization without percent, reset countdown, prep and hum', () => {
     expect(
@@ -635,8 +678,8 @@ describe('ComposeDashboardUseCase', () => {
   };
 
   const expectedBody =
-    '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14</tt><br>\n' +
-    '<tt>🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
+    '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14&nbsp;🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;18&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>pj&nbsp;&nbsp;&nbsp;td&nbsp;qc&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵&nbsp;/1h&nbsp;/3h&nbsp;/5h</tt><br>\n' +
     '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
@@ -686,8 +729,7 @@ describe('ComposeDashboardUseCase', () => {
     });
     expect(
       output.startsWith(
-        '<tt>M?%&nbsp;C?%&nbsp;D?%&nbsp;cy-</tt><br>\n' +
-          '<tt>LA&nbsp;?&nbsp;?&nbsp;?</tt><br>\n',
+        '<tt>M?%&nbsp;C?%&nbsp;D?%&nbsp;cy-&nbsp;LA&nbsp;?&nbsp;?&nbsp;?</tt><br>\n',
       ),
     ).toBe(true);
   });
@@ -730,10 +772,9 @@ describe('ComposeDashboardUseCase', () => {
           .replace(/<\/tt><br>$/, '')
           .replace(/&nbsp;/g, ' '),
       );
-    for (const line of unwrappedLines) {
-      expect(codePointLength(line)).toBeLessThanOrEqual(
-        PROJECT_ROW_WIDTH_BUDGET,
-      );
+    for (const [i, line] of unwrappedLines.entries()) {
+      const budget = i === 0 ? 45 : PROJECT_ROW_WIDTH_BUDGET;
+      expect(codePointLength(line)).toBeLessThanOrEqual(budget);
     }
   });
 });
