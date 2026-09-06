@@ -313,4 +313,34 @@ describe('ConsoleCommentList', () => {
     );
     expect(link).not.toBeNull();
   });
+
+  it('uses renderReferenceLink to render custom React nodes for issue references when expanded', () => {
+    const comment = {
+      author: 'agent',
+      body: '[secretary #42](https://github.com/HiromiShikata/secretary/issues/42)',
+      createdAt: '2026-09-06T12:00:00.000Z',
+      url: null,
+    };
+    const mockRenderer = (href: string) => (
+      <span data-testid="custom-reference" data-href={href} />
+    );
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        renderReferenceLink={mockRenderer}
+      />,
+    );
+    const article = container.querySelector('.console-comment');
+    expect(article).not.toBeNull();
+    if (!article) throw new Error('article not found');
+    fireEvent.click(article);
+    const ref = container.querySelector('[data-testid="custom-reference"]');
+    expect(ref).not.toBeNull();
+    expect(ref?.getAttribute('data-href')).toBe(
+      'https://github.com/HiromiShikata/secretary/issues/42',
+    );
+  });
 });
