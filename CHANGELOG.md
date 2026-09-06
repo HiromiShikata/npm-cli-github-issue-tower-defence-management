@@ -1,3 +1,10 @@
+## [2.71.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.71.0...v2.71.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **rest-issue-repository:** guard clone() sync throw in updateIssue rate-limit handler ([#2165](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2165)) ([3621ac1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3621ac188db4f4e2fe015cff29e70ba0dbeae45b)), closes [HiromiShikata/secretary#5604](https://github.com/HiromiShikata/secretary/issues/5604)
+
 # [2.71.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.4...v2.71.0) (2026-09-06)
 
 
