@@ -4,40 +4,34 @@ import { ConsoleCommentList } from './ConsoleCommentList';
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 
 describe('ConsoleCommentList', () => {
-  it('shows only the latest comment until expanded', () => {
+  it('shows first line of every comment in summary mode with a show-all button to exit', () => {
     const firstComment = {
       author: 'reviewer',
-      body: 'First comment body.',
+      body: 'First line\nFirst detail',
       createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
-    };
-    const secondComment = {
-      author: 'developer',
-      body: 'Second comment body.',
-      createdAt: '2026-06-17T09:00:00.000Z',
       url: null,
     };
     const latestComment = {
       author: 'HiromiShikata',
-      body: 'Latest comment body.',
+      body: 'Latest line\nLatest detail',
       createdAt: '2026-06-17T10:00:00.000Z',
       url: null,
     };
     const { getByText, queryByText } = render(
       <ConsoleCommentList
-        comments={[firstComment, secondComment, latestComment]}
+        comments={[firstComment, latestComment]}
         isLoading={false}
         error={null}
         now={now}
       />,
     );
-    expect(queryByText('First comment body.')).toBeNull();
-    expect(queryByText('Second comment body.')).toBeNull();
-    expect(getByText('Latest comment body.')).toBeInTheDocument();
-    fireEvent.click(getByText('Show all 3'));
-    expect(getByText('First comment body.')).toBeInTheDocument();
-    expect(getByText('Second comment body.')).toBeInTheDocument();
-    expect(getByText('Latest comment body.')).toBeInTheDocument();
+    expect(getByText('First line')).toBeInTheDocument();
+    expect(queryByText('First detail')).toBeNull();
+    expect(getByText('Latest line')).toBeInTheDocument();
+    expect(queryByText('Latest detail')).toBeNull();
+    fireEvent.click(getByText('Show all 2'));
+    expect(getByText('First line')).toBeInTheDocument();
+    expect(getByText('Latest line')).toBeInTheDocument();
   });
 
   it('renders each comment as a single inline line without a separate header block', () => {
@@ -65,6 +59,34 @@ describe('ConsoleCommentList', () => {
     expect(bodyEl).not.toBeNull();
     expect(article?.contains(authorEl ?? null)).toBe(true);
     expect(article?.contains(bodyEl ?? null)).toBe(true);
+  });
+
+  it('expands an individual comment when clicked in summary mode', () => {
+    const multiLineComment = {
+      author: 'reviewer',
+      body: 'First line summary.\n\nSecond paragraph detail.',
+      createdAt: '2026-06-17T08:00:00.000Z',
+      url: null,
+    };
+    const secondComment = {
+      author: 'HiromiShikata',
+      body: 'Acknowledged.',
+      createdAt: '2026-06-17T09:00:00.000Z',
+      url: null,
+    };
+    const { getAllByRole, getByText, queryByText } = render(
+      <ConsoleCommentList
+        comments={[multiLineComment, secondComment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    expect(queryByText('Second paragraph detail.')).toBeNull();
+    const articles = getAllByRole('article');
+    fireEvent.click(articles[0]);
+    expect(getByText('Second paragraph detail.')).toBeInTheDocument();
+    expect(getByText('Acknowledged.')).toBeInTheDocument();
   });
 
   it('shows the loading state', () => {

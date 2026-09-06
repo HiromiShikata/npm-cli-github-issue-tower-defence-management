@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { formatRelativeTime } from '../../logic/relativeTime';
 import type { ConsoleComment } from '../../logic/types';
 import { buildWorkflowIncidentReportUrl } from '../../logic/workflowIncidentReport';
+import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 
 const extractFirstLine = (body: string): string =>
   body.split('\n').find((line) => line.trim() !== '') ?? '';
@@ -23,6 +24,9 @@ export const ConsoleCommentList = ({
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [expandedCommentKeys, setExpandedCommentKeys] = useState<Set<string>>(
+    new Set(),
+  );
 
   const toggleExpanded = (key: string) => {
     setExpandedKeys((prev) => {
@@ -48,14 +52,11 @@ export const ConsoleCommentList = ({
     return <p className="console-comment-empty">No comments.</p>;
   }
 
-  const visibleComments =
-    !showAll && comments.length > 1
-      ? [comments[comments.length - 1]]
-      : comments;
+  const isSummaryMode = !showAll && comments.length > 1;
 
   return (
     <div className="console-comment-list">
-      {!showAll && comments.length > 1 && (
+      {isSummaryMode && (
         <button
           type="button"
           className="console-comment-show-all"
@@ -64,17 +65,36 @@ export const ConsoleCommentList = ({
           Show all {comments.length}
         </button>
       )}
-      {visibleComments.map((comment) => {
-        const key = `${comment.author}:${comment.createdAt}:${comment.body}`;
-        const isExpanded = expandedKeys.has(key);
+      {comments.map((comment) => {
+        const commentKey = `${comment.author}:${comment.createdAt}`;
+        const longKey = `${comment.author}:${comment.createdAt}:${comment.body}`;
+        const showSummary =
+          isSummaryMode && !expandedCommentKeys.has(commentKey);
+        const isExpanded = expandedKeys.has(longKey);
+        const showFullBody = isSummaryMode
+          ? expandedCommentKeys.has(commentKey)
+          : isExpanded;
         return (
           <article
-            key={key}
-            className="console-comment"
-            onClick={() => toggleExpanded(key)}
+            key={commentKey}
+            className={`console-comment${showSummary ? ' console-comment--expandable' : ''}`}
+            onClick={
+              showSummary
+                ? () =>
+                    setExpandedCommentKeys(
+                      (prev) => new Set([...prev, commentKey]),
+                    )
+                : () => toggleExpanded(longKey)
+            }
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
-                toggleExpanded(key);
+                if (showSummary) {
+                  setExpandedCommentKeys(
+                    (prev) => new Set([...prev, commentKey]),
+                  );
+                } else {
+                  toggleExpanded(longKey);
+                }
               }
             }}
           >
@@ -96,15 +116,15 @@ export const ConsoleCommentList = ({
                 ⚡
               </a>
             )}
-            {!isExpanded && (
+            {!showFullBody && (
               <span className="console-comment-body-preview">
                 {extractFirstLine(comment.body)}
               </span>
             )}
-            {isExpanded && (
-              <span className="console-comment-body-expanded">
-                {comment.body}
-              </span>
+            {showFullBody && (
+              <div className="console-comment-body-expanded">
+                <ConsoleMarkdownContent body={comment.body} />
+              </div>
             )}
           </article>
         );

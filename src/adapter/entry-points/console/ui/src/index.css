@@ -1183,6 +1183,14 @@ body {
   background-color: #262c34;
 }
 
+.console-comment--expandable {
+  cursor: pointer;
+}
+
+.console-comment--expandable:hover {
+  border-color: #484f58;
+}
+
 .console-comment-author {
   font-weight: 600;
   color: #e6edf3;
