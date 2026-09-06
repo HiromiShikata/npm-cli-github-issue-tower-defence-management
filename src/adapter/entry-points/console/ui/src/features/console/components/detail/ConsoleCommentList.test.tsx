@@ -191,15 +191,21 @@ describe('ConsoleCommentList', () => {
       />,
     );
     expect(getByText('First line of body')).toBeInTheDocument();
-    expect(container.querySelector('.console-comment-body-expanded')).toBeNull();
+    expect(
+      container.querySelector('.console-comment-body-expanded'),
+    ).toBeNull();
     const article = container.querySelector('.console-comment');
     expect(article).not.toBeNull();
     if (!article) throw new Error('article not found');
     fireEvent.click(article);
-    expect(container.querySelector('.console-comment-body-expanded')).not.toBeNull();
+    expect(
+      container.querySelector('.console-comment-body-expanded'),
+    ).not.toBeNull();
     const expanded = container.querySelector('.console-comment-body-expanded');
     expect(expanded?.textContent).toContain('Second line of body');
     fireEvent.click(article);
-    expect(container.querySelector('.console-comment-body-expanded')).toBeNull();
+    expect(
+      container.querySelector('.console-comment-body-expanded'),
+    ).toBeNull();
   });
 });
