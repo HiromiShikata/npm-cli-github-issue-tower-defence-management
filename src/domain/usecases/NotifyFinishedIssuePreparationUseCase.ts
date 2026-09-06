@@ -4,6 +4,7 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
 import { ConsoleTabsRepository } from './adapter-interfaces/ConsoleTabsRepository';
 import {
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
@@ -469,10 +470,7 @@ export class NotifyFinishedIssuePreparationUseCase {
           DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
         isNoStory,
       });
-      if (
-        repetition.type === 'escalateSilentRedispatch' ||
-        repetition.type === 'escalateDispatchLoop'
-      ) {
+      if (repetition.type === 'escalateSilentRedispatch') {
         issue.status = FAILED_PREPARATION_STATUS_NAME;
         await this.issueRepository.update(issue, project);
         await this.issueRepository.updateStatus(
@@ -490,10 +488,7 @@ export class NotifyFinishedIssuePreparationUseCase {
           params.workflowBlockerResolvedWebhookUrl,
           project,
         );
-        if (
-          repetition.type === 'escalateSilentRedispatch' &&
-          params.workflowIssueReporterSettings
-        ) {
+        if (params.workflowIssueReporterSettings) {
           await reportSilentRedispatchWorkflowIssue(
             nextStepAgent,
             params.issueUrl,
@@ -502,6 +497,31 @@ export class NotifyFinishedIssuePreparationUseCase {
             this.projectRepository,
           );
         }
+        return;
+      }
+      if (
+        repetition.type === 'escalateReportingLoop' ||
+        repetition.type === 'escalateDispatchLoop'
+      ) {
+        const awaitingOwnerStatusOption = project.status.statuses.find(
+          (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+        );
+        const targetStatusOption =
+          awaitingOwnerStatusOption ?? awaitingQualityCheckStatusOption;
+        issue.status = awaitingOwnerStatusOption
+          ? AWAITING_OWNER_STATUS_NAME
+          : AWAITING_QUALITY_CHECK_STATUS_NAME;
+        await this.issueRepository.update(issue, project);
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          targetStatusOption.id,
+        );
+        await this.patchConsoleTab(issue);
+        await this.issueCommentRepository.createComment(
+          issue,
+          repetition.comment,
+        );
         return;
       }
       const agentOptionId = await this.ensureAgentOptionAndGetId(

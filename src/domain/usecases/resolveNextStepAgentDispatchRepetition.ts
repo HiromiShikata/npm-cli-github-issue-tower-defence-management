@@ -1,12 +1,9 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
-import {
-  isAgentReportBody,
-  stripLeadingFencedBlocks,
-} from './isAgentReportBody';
+import { isAgentReportBody, stripLeadingFencedBlocks } from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
+import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
 
 export { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD };
 
@@ -23,8 +20,11 @@ export type NextStepAgentDispatchRepetition =
   | { type: 'notRepeated' }
   | { type: 'dispatchAgain'; comment: string }
   | { type: 'escalateSilentRedispatch'; comment: string }
+  | { type: 'escalateReportingLoop'; comment: string }
   | { type: 'escalateDispatchLoop'; comment: string }
   | { type: 'storyUnset'; comment: string };
+
+type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
 
 const findLastHumanCommentIndex = <
   CommentLike extends { author: string; content: string },
@@ -59,8 +59,6 @@ const isEscalationDispatchComment = (content: string): boolean =>
   content.includes(REPORTING_LOOP_ESCALATION_PHRASE) ||
   content.includes(SILENT_CRASH_ESCALATION_PHRASE) ||
   content.includes(DISPATCH_LOOP_ESCALATION_PHRASE);
-
-type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
 
 const countSilentRedispatches = <
   CommentLike extends { author: string; content: string },
@@ -196,14 +194,20 @@ export const resolveNextStepAgentDispatchRepetition = <
     silentRedispatches !== null &&
     silentRedispatches.count >= params.thresholdForAutoReject
   ) {
-    const comment = silentRedispatches.hasReportsInCycle
-      ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+    if (silentRedispatches.hasReportsInCycle) {
+      return {
+        type: 'escalateReportingLoop',
+        comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-The agent has been reporting every cycle but cannot advance — it has been dispatched ${params.thresholdForAutoReject} times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`
-      : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+The agent has been reporting every cycle but cannot advance — it has been dispatched ${params.thresholdForAutoReject} times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
+      };
+    }
+    return {
+      type: 'escalateSilentRedispatch',
+      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`;
-    return { type: 'escalateSilentRedispatch', comment };
+Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
+    };
   }
   const dispatchesInCycle = countDispatchesInCurrentCycle(params);
   if (dispatchesInCycle >= params.thresholdForDispatchLoop) {
@@ -220,7 +224,7 @@ This agent has been dispatched ${params.thresholdForDispatchLoop} times since th
     silentRedispatches.hasReportsInCycle
   ) {
     return {
-      type: 'escalateSilentRedispatch',
+      type: 'escalateReportingLoop',
       comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
 The agent has been reporting every cycle but cannot advance — it has been dispatched again after its report without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,

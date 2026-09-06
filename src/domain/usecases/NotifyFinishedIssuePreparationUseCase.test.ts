@@ -33,6 +33,12 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
         description: '',
       },
       {
+        id: 'awaiting-owner-id',
+        name: 'Awaiting Owner',
+        color: 'PINK',
+        description: '',
+      },
+      {
         id: 'awaiting-quality-check-id',
         name: 'Awaiting Quality Check',
         color: 'BLUE',
@@ -1353,7 +1359,48 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should escalate to Failed Preparation when two agents keep naming each other and each one reports every round', async () => {
+  it('should set Awaiting Owner when the dispatched agent has been reporting but cannot advance', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      agent: 'accounting',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: accounting\n```json\n{"nextStepAgent": "accounting"}\n```',
+      }),
+      createMockComment({
+        content: 'Next step agent dispatch repeated: accounting',
+      }),
+      createMockComment({
+        content: 'Next step agent dispatch repeated: accounting',
+      }),
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'awaiting-owner-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.stringContaining('reporting every cycle but cannot advance'),
+    );
+  });
+
+  it('should escalate to Awaiting Owner when two agents keep naming each other and each one reports every round', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1391,7 +1438,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
       expect.anything(),
-      'failed-preparation-id',
+      'awaiting-owner-id',
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
@@ -6584,7 +6631,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        'failed-preparation-id',
+        'awaiting-owner-id',
       );
       expect(mockIssueRepository.searchIssue).not.toHaveBeenCalledWith(
         expect.objectContaining({ owner: 'workflow-owner' }),

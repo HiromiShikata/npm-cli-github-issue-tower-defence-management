@@ -9,6 +9,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import {
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -198,8 +199,7 @@ export class RevertOrphanedPreparationUseCase {
           isNoStory,
         });
         if (
-          (repetition.type === 'escalateSilentRedispatch' ||
-            repetition.type === 'escalateDispatchLoop') &&
+          repetition.type === 'escalateSilentRedispatch' &&
           failedPreparationStatusOption
         ) {
           await this.issueRepository.updateStatus(
@@ -211,10 +211,7 @@ export class RevertOrphanedPreparationUseCase {
             issue,
             repetition.comment,
           );
-          if (
-            repetition.type === 'escalateSilentRedispatch' &&
-            params.workflowIssueReporterSettings
-          ) {
+          if (params.workflowIssueReporterSettings) {
             await reportSilentRedispatchWorkflowIssue(
               nextStepAgent,
               issue.url,
@@ -223,6 +220,28 @@ export class RevertOrphanedPreparationUseCase {
               this.projectRepository,
             );
           }
+          continue;
+        }
+        if (
+          repetition.type === 'escalateReportingLoop' ||
+          repetition.type === 'escalateDispatchLoop'
+        ) {
+          const awaitingOwnerStatusOption = project.status.statuses.find(
+            (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+          );
+          const targetStatusOption =
+            awaitingOwnerStatusOption ?? awaitingQualityCheckStatusOption;
+          if (targetStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              targetStatusOption.id,
+            );
+          }
+          await this.issueCommentRepository.createComment(
+            issue,
+            repetition.comment,
+          );
           continue;
         }
         const agentOptionId = await ensureAgentOptionAndGetId(
