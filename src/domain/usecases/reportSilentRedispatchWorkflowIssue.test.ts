@@ -1,7 +1,6 @@
 import { reportSilentRedispatchWorkflowIssue } from './reportSilentRedispatchWorkflowIssue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 
 type MockIssueRepository = jest.Mocked<
@@ -11,42 +10,11 @@ type MockIssueRepository = jest.Mocked<
     | 'createNewIssue'
     | 'createCommentByUrl'
     | 'addIssueToProject'
-    | 'getIssueByUrl'
-    | 'updateStory'
+    | 'updateStoryByProjectItemId'
   >
 >;
 
 type MockProjectRepository = jest.Mocked<Pick<ProjectRepository, 'getByUrl'>>;
-
-const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
-  nameWithOwner: 'owner/repo',
-  number: 1,
-  title: 'Test Issue',
-  state: 'OPEN',
-  status: 'Preparation',
-  story: null,
-  nextActionDate: null,
-  nextActionHour: null,
-  estimationMinutes: null,
-  dependedIssueUrls: [],
-  completionDate50PercentConfidence: null,
-  url: 'https://github.com/owner/repo/issues/1',
-  assignees: [],
-  labels: [],
-  org: 'owner',
-  repo: 'repo',
-  body: '',
-  itemId: 'item-1',
-  isPr: false,
-  isInProgress: false,
-  isClosed: false,
-  createdAt: new Date('2024-01-01T00:00:00Z'),
-  author: 'test-author',
-  closingIssueReferenceUrls: [],
-  agent: null,
-  stateReason: null,
-  ...overrides,
-});
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -81,8 +49,7 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
       createNewIssue: jest.fn().mockResolvedValue(99),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
       addIssueToProject: jest.fn().mockResolvedValue(''),
-      getIssueByUrl: jest.fn().mockResolvedValue(null),
-      updateStory: jest.fn().mockResolvedValue(undefined),
+      updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
     };
     mockProjectRepository = {
       getByUrl: jest.fn().mockResolvedValue(createMockProject()),
@@ -144,9 +111,7 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
   });
 
   it('adds the new issue to the project and sets workflow blocker story when projectUrl is set', async () => {
-    const createdIssue = createMockIssue({
-      url: 'https://github.com/wf-owner/wf-repo/issues/99',
-    });
+    const projectItemId = 'returned-project-item-id';
     const reporterProject = createMockProject({
       story: {
         name: 'Story',
@@ -166,7 +131,7 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
 
     mockIssueRepository.searchIssue.mockResolvedValue([]);
     mockIssueRepository.createNewIssue.mockResolvedValue(99);
-    mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
+    mockIssueRepository.addIssueToProject.mockResolvedValue(projectItemId);
     mockProjectRepository.getByUrl.mockResolvedValue(reporterProject);
 
     await reportSilentRedispatchWorkflowIssue(
@@ -188,9 +153,9 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
       reporterProject,
       'https://github.com/wf-owner/wf-repo/issues/99',
     );
-    expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+    expect(mockIssueRepository.updateStoryByProjectItemId).toHaveBeenCalledWith(
       { ...reporterProject, story: reporterProject.story },
-      createdIssue,
+      projectItemId,
       'workflow-blocker-id',
     );
   });
@@ -208,7 +173,9 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
     );
 
     expect(mockIssueRepository.addIssueToProject).not.toHaveBeenCalled();
-    expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    expect(
+      mockIssueRepository.updateStoryByProjectItemId,
+    ).not.toHaveBeenCalled();
   });
 
   it('does NOT call addIssueToProject when projectUrl is null', async () => {
@@ -245,7 +212,9 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
     );
 
     expect(mockIssueRepository.addIssueToProject).toHaveBeenCalled();
-    expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    expect(
+      mockIssueRepository.updateStoryByProjectItemId,
+    ).not.toHaveBeenCalled();
   });
 
   it('skips story assignment when the project has no workflow blocker story option', async () => {
@@ -277,10 +246,13 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
     );
 
     expect(mockIssueRepository.addIssueToProject).toHaveBeenCalled();
-    expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    expect(
+      mockIssueRepository.updateStoryByProjectItemId,
+    ).not.toHaveBeenCalled();
   });
 
-  it('skips story assignment when getIssueByUrl returns null', async () => {
+  it('sets workflow blocker story via project item id returned by addIssueToProject', async () => {
+    const returnedProjectItemId = 'returned-item-id';
     const reporterProject = createMockProject({
       story: {
         name: 'Story',
@@ -299,7 +271,9 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
     });
     mockIssueRepository.searchIssue.mockResolvedValue([]);
     mockIssueRepository.createNewIssue.mockResolvedValue(99);
-    mockIssueRepository.getIssueByUrl.mockResolvedValue(null);
+    mockIssueRepository.addIssueToProject.mockResolvedValue(
+      returnedProjectItemId,
+    );
     mockProjectRepository.getByUrl.mockResolvedValue(reporterProject);
 
     await reportSilentRedispatchWorkflowIssue(
@@ -315,7 +289,13 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
     );
 
     expect(mockIssueRepository.addIssueToProject).toHaveBeenCalled();
-    expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    expect(
+      mockIssueRepository.updateStoryByProjectItemId,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ story: reporterProject.story }),
+      returnedProjectItemId,
+      'wb-id',
+    );
   });
 
   it('does not throw when project assignment fails; logs a warning instead', async () => {
