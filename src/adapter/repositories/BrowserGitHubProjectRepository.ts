@@ -37,7 +37,9 @@ const generateTotp = (secret: string): string => {
 };
 
 const loginWithBrowser = async (
-  page: Awaited<ReturnType<Awaited<ReturnType<typeof chromium.launch>>['newPage']>>,
+  page: Awaited<
+    ReturnType<Awaited<ReturnType<typeof chromium.launch>>['newPage']>
+  >,
   username: string,
   password: string,
   totpSecret: string | undefined,
@@ -57,7 +59,9 @@ const loginWithBrowser = async (
 };
 
 const selectDefaultFieldOption = async (
-  page: Awaited<ReturnType<Awaited<ReturnType<typeof chromium.launch>>['newPage']>>,
+  page: Awaited<
+    ReturnType<Awaited<ReturnType<typeof chromium.launch>>['newPage']>
+  >,
   settingsUrl: string,
   optionName: string,
 ): Promise<void> => {
@@ -126,7 +130,12 @@ export class BrowserGitHubProjectRepository
     const browser = await chromium.launch({ headless: true });
     try {
       const page = await browser.newPage();
-      await loginWithBrowser(page, this.username, this.password, this.totpSecret);
+      await loginWithBrowser(
+        page,
+        this.username,
+        this.password,
+        this.totpSecret,
+      );
       await selectDefaultFieldOption(page, settingsUrl, optionName);
     } finally {
       await browser.close();
@@ -162,7 +171,12 @@ export class BrowserGitHubProjectRepository
     const browser = await chromium.launch({ headless: true });
     try {
       const page = await browser.newPage();
-      await loginWithBrowser(page, this.username, this.password, this.totpSecret);
+      await loginWithBrowser(
+        page,
+        this.username,
+        this.password,
+        this.totpSecret,
+      );
       await selectDefaultFieldOption(page, settingsUrl, agentName);
     } finally {
       await browser.close();

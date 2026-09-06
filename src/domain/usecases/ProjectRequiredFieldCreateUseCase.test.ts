@@ -778,10 +778,11 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
           { id: 'opt-dev', name: 'developer' },
           { id: 'opt-chore', name: 'chore' },
         ]);
-        const agentDefaultRepository = mock<
-          Pick<AgentDefaultRepository, 'setAgentFieldDefault'>
-        >();
-        agentDefaultRepository.setAgentFieldDefault.mockResolvedValue(undefined);
+        const agentDefaultRepository =
+          mock<Pick<AgentDefaultRepository, 'setAgentFieldDefault'>>();
+        agentDefaultRepository.setAgentFieldDefault.mockResolvedValue(
+          undefined,
+        );
         const { projectRepository, useCase } = createUseCase(
           [],
           project,
@@ -793,12 +794,15 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         ]);
         projectRepository.getByUrl.mockResolvedValue(latestProject);
 
-        await useCase.reconcileAgentOptions(project, ['developer', 'chore'], 'developer');
-
-        expect(agentDefaultRepository.setAgentFieldDefault).toHaveBeenCalledWith(
-          latestProject,
+        await useCase.reconcileAgentOptions(
+          project,
+          ['developer', 'chore'],
           'developer',
         );
+
+        expect(
+          agentDefaultRepository.setAgentFieldDefault,
+        ).toHaveBeenCalledWith(latestProject, 'developer');
       });
 
       it('does not call setAgentFieldDefault when defaultAgentName is not in the agent list', async () => {
@@ -806,9 +810,8 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
           { id: 'opt-dev', name: 'developer' },
           { id: 'opt-chore', name: 'chore' },
         ]);
-        const agentDefaultRepository = mock<
-          Pick<AgentDefaultRepository, 'setAgentFieldDefault'>
-        >();
+        const agentDefaultRepository =
+          mock<Pick<AgentDefaultRepository, 'setAgentFieldDefault'>>();
         const { useCase } = createUseCase([], project, agentDefaultRepository);
 
         await useCase.reconcileAgentOptions(
@@ -817,7 +820,9 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
           'unknown-agent',
         );
 
-        expect(agentDefaultRepository.setAgentFieldDefault).not.toHaveBeenCalled();
+        expect(
+          agentDefaultRepository.setAgentFieldDefault,
+        ).not.toHaveBeenCalled();
       });
 
       it('does not call setAgentFieldDefault when agentDefaultRepository is null', async () => {
@@ -825,14 +830,19 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
           { id: 'opt-dev', name: 'developer' },
           { id: 'opt-chore', name: 'chore' },
         ]);
-        const agentDefaultRepository = mock<
-          Pick<AgentDefaultRepository, 'setAgentFieldDefault'>
-        >();
+        const agentDefaultRepository =
+          mock<Pick<AgentDefaultRepository, 'setAgentFieldDefault'>>();
         const { useCase } = createUseCase([], project, null);
 
-        await useCase.reconcileAgentOptions(project, ['developer', 'chore'], 'developer');
+        await useCase.reconcileAgentOptions(
+          project,
+          ['developer', 'chore'],
+          'developer',
+        );
 
-        expect(agentDefaultRepository.setAgentFieldDefault).not.toHaveBeenCalled();
+        expect(
+          agentDefaultRepository.setAgentFieldDefault,
+        ).not.toHaveBeenCalled();
       });
 
       it('calls setAgentFieldDefault even when no list update was needed', async () => {
@@ -840,10 +850,11 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
           { id: 'opt-dev', name: 'developer' },
           { id: 'opt-chore', name: 'chore' },
         ]);
-        const agentDefaultRepository = mock<
-          Pick<AgentDefaultRepository, 'setAgentFieldDefault'>
-        >();
-        agentDefaultRepository.setAgentFieldDefault.mockResolvedValue(undefined);
+        const agentDefaultRepository =
+          mock<Pick<AgentDefaultRepository, 'setAgentFieldDefault'>>();
+        agentDefaultRepository.setAgentFieldDefault.mockResolvedValue(
+          undefined,
+        );
         const { projectRepository, useCase } = createUseCase(
           [],
           project,
@@ -851,13 +862,16 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         );
         projectRepository.getByUrl.mockResolvedValue(project);
 
-        await useCase.reconcileAgentOptions(project, ['developer', 'chore'], 'developer');
-
-        expect(projectRepository.updateAgentList).not.toHaveBeenCalled();
-        expect(agentDefaultRepository.setAgentFieldDefault).toHaveBeenCalledWith(
+        await useCase.reconcileAgentOptions(
           project,
+          ['developer', 'chore'],
           'developer',
         );
+
+        expect(projectRepository.updateAgentList).not.toHaveBeenCalled();
+        expect(
+          agentDefaultRepository.setAgentFieldDefault,
+        ).toHaveBeenCalledWith(project, 'developer');
       });
     });
   });
