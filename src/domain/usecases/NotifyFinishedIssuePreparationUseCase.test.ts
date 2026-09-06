@@ -1144,6 +1144,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
       agent: 'accounting',
+      story: 'regular / some story',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -1229,6 +1230,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
       agent: 'accounting',
+      story: 'regular / some story',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -1312,6 +1314,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
       agent: 'systems-analyst',
+      story: 'regular / some story',
     });
     const namesReviewer = createMockComment({
       content:
@@ -1359,6 +1362,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
       agent: 'systems-analyst',
+      story: 'regular / some story',
     });
     const namesReviewer = createMockComment({
       content:
@@ -6413,6 +6417,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
         agent: 'accounting',
+        story: 'regular / some story',
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -6458,6 +6463,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
         agent: 'accounting',
+        story: 'regular / some story',
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -6497,6 +6503,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
         agent: 'systems-analyst',
+        story: 'regular / some story',
       });
       const namesReviewer = createMockComment({
         content:
@@ -6553,6 +6560,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
         agent: 'accounting',
+        story: 'regular / some story',
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -6583,6 +6591,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
         agent: 'accounting',
+        story: 'regular / some story',
       });
       const workflowProjectItemId = 'workflow-project-item-id';
       const reporterProject = createMockProject({
@@ -6649,6 +6658,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
         agent: 'accounting',
+        story: 'regular / some story',
       });
 
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
