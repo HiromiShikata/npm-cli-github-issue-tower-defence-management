@@ -1,4 +1,10 @@
 import ky from 'ky';
+import {
+  extractCallSite,
+  CALL_SITE_FRAME_COUNT,
+  CALL_SITE_SEPARATOR,
+  UNKNOWN_CALL_SITE,
+} from './stackFrameUtils';
 
 export const GITHUB_GRAPHQL_ENDPOINT = 'https://api.github.com/graphql';
 
@@ -62,103 +68,21 @@ const extractRateLimit = (
   return { cost, remaining };
 };
 
-export const GRAPHQL_CALL_SITE_FRAME_COUNT = 3;
-
-export const GRAPHQL_CALL_SITE_SEPARATOR = '<-';
-
-export const UNKNOWN_GRAPHQL_CALL_SITE = 'unknown';
+export const GRAPHQL_CALL_SITE_FRAME_COUNT = CALL_SITE_FRAME_COUNT;
+export const GRAPHQL_CALL_SITE_SEPARATOR = CALL_SITE_SEPARATOR;
+export const UNKNOWN_GRAPHQL_CALL_SITE = UNKNOWN_CALL_SITE;
 
 const GRAPHQL_CLIENT_MODULE_NAME = 'githubGraphqlClient';
-
-const FRAME_LOCATION_PATTERN = /\(?([^()\s]+):\d+:\d+\)?$/;
-
-const MODULE_FILE_EXTENSION_PATTERN = /\.(?:[cm]?[jt]sx?)$/;
-
-const TEST_MODULE_SUFFIX_PATTERN = /\.(?:test|spec)$/;
-
-const NODE_MODULES_SEGMENT = '/node_modules/';
-
-const ownPackagePathPrefix = (modulePath: string): string | null => {
-  const segmentIndex = modulePath.lastIndexOf(NODE_MODULES_SEGMENT);
-  if (segmentIndex === -1) {
-    return null;
-  }
-  const packageRootIndex = segmentIndex + NODE_MODULES_SEGMENT.length;
-  const segments = modulePath.slice(packageRootIndex).split('/');
-  const nameSegmentCount = segments[0].startsWith('@') ? 2 : 1;
-  if (segments.length <= nameSegmentCount) {
-    return null;
-  }
-  return modulePath.slice(
-    0,
-    packageRootIndex + segments.slice(0, nameSegmentCount).join('/').length + 1,
-  );
-};
-
-const isInsideOwnPackage = (
-  location: string,
-  ownPackagePrefix: string | null,
-): boolean => {
-  if (ownPackagePrefix === null || !location.startsWith(ownPackagePrefix)) {
-    return false;
-  }
-  const pathBelowPackageRoot = `/${location.slice(ownPackagePrefix.length)}`;
-  return !pathBelowPackageRoot.includes(NODE_MODULES_SEGMENT);
-};
-
-const frameModuleName = (
-  frame: string,
-  ownPackagePrefix: string | null,
-): string | null => {
-  const match = frame.match(FRAME_LOCATION_PATTERN);
-  if (!match) {
-    return null;
-  }
-  const location = match[1];
-  if (location.startsWith('node:')) {
-    return null;
-  }
-  if (
-    location.includes(NODE_MODULES_SEGMENT) &&
-    !isInsideOwnPackage(location, ownPackagePrefix)
-  ) {
-    return null;
-  }
-  const fileName = location.split('/').slice(-1)[0];
-  const moduleName = fileName
-    .replace(MODULE_FILE_EXTENSION_PATTERN, '')
-    .replace(TEST_MODULE_SUFFIX_PATTERN, '');
-  if (moduleName.length === 0 || moduleName === GRAPHQL_CLIENT_MODULE_NAME) {
-    return null;
-  }
-  return moduleName;
-};
 
 export const extractGraphqlCallSite = (
   stack: string | undefined,
   modulePath: string = __filename,
-): string => {
-  if (!stack) {
-    return UNKNOWN_GRAPHQL_CALL_SITE;
-  }
-  const ownPackagePrefix = ownPackagePathPrefix(modulePath);
-  const moduleNames = stack
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith('at '))
-    .map((frame) => frameModuleName(frame, ownPackagePrefix))
-    .filter((moduleName): moduleName is string => moduleName !== null)
-    .filter(
-      (moduleName, index, allModuleNames) =>
-        allModuleNames[index - 1] !== moduleName,
-    );
-  if (moduleNames.length === 0) {
-    return UNKNOWN_GRAPHQL_CALL_SITE;
-  }
-  return moduleNames
-    .slice(0, GRAPHQL_CALL_SITE_FRAME_COUNT)
-    .join(GRAPHQL_CALL_SITE_SEPARATOR);
-};
+): string =>
+  extractCallSite(
+    stack,
+    (name) => name === GRAPHQL_CLIENT_MODULE_NAME,
+    modulePath,
+  );
 
 export const captureGraphqlCallSite = (): string =>
   extractGraphqlCallSite(new Error().stack);
