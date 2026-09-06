@@ -20,7 +20,7 @@ export const RATE_LIMIT_BASE_BACKOFF_MS = 250;
 export const SECONDARY_RATE_LIMIT_FLOOR_MS = 60_000;
 
 const RATE_LIMIT_MESSAGE_PATTERN = /rate limit|secondary rate limit|abuse/i;
-const SECONDARY_RATE_LIMIT_BODY_PATTERN = /secondary rate limit/i;
+const SECONDARY_RATE_LIMIT_BODY_PATTERN = /secondary rate limit|abuse detection/i;
 
 export type Sleep = (milliseconds: number) => Promise<void>;
 
@@ -60,8 +60,12 @@ export const hasRateLimitSignals = (
 
 /**
  * Returns true when the response indicates a secondary (content-creation)
- * rate limit, detected by two signals documented by GitHub:
- *   1. Response body contains "secondary rate limit".
+ * rate limit, detected by two signals:
+ *   1. Response body matches SECONDARY_RATE_LIMIT_BODY_PATTERN — covers both
+ *      the current "secondary rate limit" phrasing and the historical
+ *      "abuse detection mechanism" phrasing GitHub used before standardising
+ *      its error messages.  GitHub's REST API documentation does not guarantee
+ *      exact response body wording.
  *   2. A retry-after header is present.
  *
  * Secondary rate limits require a minimum 60-second wait before any retry,
