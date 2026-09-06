@@ -171,6 +171,17 @@ describe('RestProjectRepository', () => {
         expect.anything(),
       );
     });
+
+    it('should pass the request timeout to ky', async () => {
+      mockGet.mockReturnValueOnce(mockJsonResponse([]));
+
+      await repository.listFieldDefinitions(location);
+
+      expect(mockGet).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ timeout: GITHUB_REST_REQUEST_TIMEOUT_MS }),
+      );
+    });
   });
 
   describe('listFieldNames', () => {
@@ -247,7 +258,24 @@ describe('RestProjectRepository', () => {
         'Bad Gateway',
       );
     });
+
+    it('should pass the request timeout to every ky call', async () => {
+      mockGet.mockImplementation((url: string) =>
+        url.endsWith('/fields')
+          ? mockJsonResponse(fieldsResponse)
+          : mockJsonResponse(projectResponse),
+      );
+
+      await repository.getProject(location);
+
+      for (const call of mockGet.mock.calls) {
+        expect(call[1]).toMatchObject({
+          timeout: GITHUB_REST_REQUEST_TIMEOUT_MS,
+        });
+      }
+    });
   });
+
 });
 
 describe('projectLocationFromUrl', () => {
