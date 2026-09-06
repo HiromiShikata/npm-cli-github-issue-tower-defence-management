@@ -16,6 +16,7 @@ export type ConfigFile = {
   autoAssignManagerAuthors?: string;
   thresholdForAutoReject?: number;
   thresholdForDispatchLoop?: number;
+  thresholdForSelfNominationTotal?: number;
   workflowBlockerResolvedWebhookUrl?: string;
   projectName?: string;
   preparationProcessCheckCommand?: string;
@@ -401,6 +402,9 @@ export const mergeConfigs = (
     readmeOverrides.thresholdForAutoReject ??
     cliOverrides.thresholdForAutoReject ??
     configFile.thresholdForAutoReject,
+  thresholdForSelfNominationTotal:
+    cliOverrides.thresholdForSelfNominationTotal ??
+    configFile.thresholdForSelfNominationTotal,
   workflowBlockerResolvedWebhookUrl:
     readmeOverrides.workflowBlockerResolvedWebhookUrl ??
     cliOverrides.workflowBlockerResolvedWebhookUrl ??

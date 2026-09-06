@@ -39,6 +39,7 @@ import {
 import { normalizeReportBody } from './normalizeReportBody';
 import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+  DEFAULT_THRESHOLD_FOR_SELF_NOMINATION_TOTAL,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
@@ -140,6 +141,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     issueUrl: string;
     thresholdForAutoReject: number;
     thresholdForDispatchLoop?: number;
+    thresholdForSelfNominationTotal?: number;
     workflowBlockerResolvedWebhookUrl: string | null;
     allowedIssueAuthors?: string[] | null;
     labelsAsLlmAgentName?: string[] | null;
@@ -437,6 +439,9 @@ export class NotifyFinishedIssuePreparationUseCase {
         thresholdForDispatchLoop:
           params.thresholdForDispatchLoop ??
           DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+        thresholdForSelfNominationTotal:
+          params.thresholdForSelfNominationTotal ??
+          DEFAULT_THRESHOLD_FOR_SELF_NOMINATION_TOTAL,
       });
       if (
         repetition.type === 'escalateSilentRedispatch' ||
