@@ -361,6 +361,9 @@ export const ConsoleItemDetail = ({
             error={commentsError}
             now={now}
             workflowImprovementIssueUrl={workflowImprovementIssueUrl}
+            buildImageProxyUrl={buildImageProxyUrl}
+            renderReferenceLink={renderReferenceLink}
+            repoContext={repoContext}
           />
         </ConsolePanel>
 

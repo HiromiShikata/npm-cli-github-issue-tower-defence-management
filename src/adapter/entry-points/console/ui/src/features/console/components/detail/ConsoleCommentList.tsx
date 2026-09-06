@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
+import type { ConsoleRepoContext } from '../../lib/markdown';
 import { formatRelativeTime } from '../../logic/relativeTime';
 import type { ConsoleComment } from '../../logic/types';
 import { buildWorkflowIncidentReportUrl } from '../../logic/workflowIncidentReport';
+import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 
 const extractFirstLine = (body: string): string =>
@@ -13,6 +16,9 @@ export type ConsoleCommentListProps = {
   error: string | null;
   now: number;
   workflowImprovementIssueUrl?: string | null;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
+  renderReferenceLink?: ConsoleReferenceLinkRenderer;
+  repoContext?: ConsoleRepoContext;
 };
 
 export const ConsoleCommentList = ({
@@ -21,6 +27,9 @@ export const ConsoleCommentList = ({
   error,
   now,
   workflowImprovementIssueUrl = null,
+  buildImageProxyUrl,
+  renderReferenceLink,
+  repoContext,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
@@ -124,7 +133,12 @@ export const ConsoleCommentList = ({
             )}
             {showFullBody && (
               <div className="console-comment-body-expanded">
-                <ConsoleMarkdownContent body={comment.body} />
+                <ConsoleMarkdownContent
+                  body={comment.body}
+                  buildImageProxyUrl={buildImageProxyUrl}
+                  renderReferenceLink={renderReferenceLink}
+                  repoContext={repoContext}
+                />
               </div>
             )}
           </article>
