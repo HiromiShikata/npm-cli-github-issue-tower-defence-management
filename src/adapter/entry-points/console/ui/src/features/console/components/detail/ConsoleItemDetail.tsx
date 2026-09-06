@@ -354,19 +354,12 @@ export const ConsoleItemDetail = ({
           </ConsolePanel>
         )}
 
-        <ConsolePanel
-          title="Comments"
-          count={commentsCount}
-          defaultCollapsed={item.isPr}
-        >
+        <ConsolePanel title="Comments" count={commentsCount}>
           <ConsoleCommentList
             comments={comments}
             isLoading={commentsAreLoading}
             error={commentsError}
             now={now}
-            buildImageProxyUrl={buildImageProxyUrl}
-            renderReferenceLink={renderReferenceLink}
-            repoContext={repoContext}
             workflowImprovementIssueUrl={workflowImprovementIssueUrl}
           />
         </ConsolePanel>

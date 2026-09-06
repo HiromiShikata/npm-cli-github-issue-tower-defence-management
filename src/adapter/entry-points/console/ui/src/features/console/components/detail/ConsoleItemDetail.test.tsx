@@ -801,6 +801,20 @@ describe('ConsoleItemDetail', () => {
     expect(container.querySelector('.console-detail-pill')).toBeNull();
   });
 
+  it('expands the comments panel for a PR item by default', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={prItem}
+        {...baseProps}
+        comments={consoleCommentsFixture}
+        commentsAreLoading={false}
+        commentsError={null}
+      />,
+    );
+    const commentsButton = getByRole('button', { name: /comments/i });
+    expect(commentsButton).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('expands the description panel when there are no comments', () => {
     const { getByRole } = render(
       <ConsoleItemDetail
