@@ -84,6 +84,21 @@ describe('consoleCloseEventStore', () => {
       expect(countCloseEvents(baseDir, 'acme', nowMs).h1).toBe(1);
       expect(countCloseEvents(baseDir, 'initech', nowMs).h1).toBe(0);
     });
+
+    it('returns per-hour rates comparable across windows so h1 exceeds h3 when recent activity is higher', () => {
+      const nowMs = 1_000_000_000_000;
+      appendCloseEvent(baseDir, 'acme', nowMs - 20 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 20 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 20 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 2 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 2 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 2 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
+      expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({ h1: 3, h3: 2, h5: 2 });
+    });
   });
 
   describe('appendCloseEvent', () => {
