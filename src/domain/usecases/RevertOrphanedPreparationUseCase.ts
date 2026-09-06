@@ -129,9 +129,11 @@ export class RevertOrphanedPreparationUseCase {
         params.allowedIssueAuthors,
         params.developerAgentName,
       );
-      const isStillInPreparation = await this.isStillInPreparation(
+      const isStillInPreparation = await this.isStillInStatus(
         issue,
         project,
+        PREPARATION_STATUS_NAME,
+        'orphaned preparation',
       );
       if (!isStillInPreparation) {
         continue;
@@ -323,7 +325,12 @@ export class RevertOrphanedPreparationUseCase {
       if (!isOrphaned) {
         continue;
       }
-      const isStillTodoByAgent = await this.isStillTodoByAgent(issue, project);
+      const isStillTodoByAgent = await this.isStillInStatus(
+        issue,
+        project,
+        TODO_BY_AGENT_STATUS_NAME,
+        'stray Todo by agent issue',
+      );
       if (!isStillTodoByAgent) {
         continue;
       }
@@ -338,28 +345,6 @@ export class RevertOrphanedPreparationUseCase {
       );
     }
   };
-
-  private isStillInPreparation = (
-    issue: Issue,
-    project: Project,
-  ): Promise<boolean> =>
-    this.isStillInStatus(
-      issue,
-      project,
-      PREPARATION_STATUS_NAME,
-      'orphaned preparation',
-    );
-
-  private isStillTodoByAgent = (
-    issue: Issue,
-    project: Project,
-  ): Promise<boolean> =>
-    this.isStillInStatus(
-      issue,
-      project,
-      TODO_BY_AGENT_STATUS_NAME,
-      'stray Todo by agent issue',
-    );
 
   private isStillInStatus = async (
     issue: Issue,
