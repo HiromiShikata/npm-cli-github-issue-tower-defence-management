@@ -8,6 +8,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
+  IN_TMUX_BY_AGENT_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import {
@@ -207,7 +208,10 @@ export class NotifyFinishedIssuePreparationUseCase {
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Awaiting Workspace`,
       );
       return;
-    } else if (issue.status !== PREPARATION_STATUS_NAME) {
+    } else if (
+      issue.status !== PREPARATION_STATUS_NAME &&
+      issue.status !== IN_TMUX_BY_AGENT_STATUS_NAME
+    ) {
       throw new IllegalIssueStatusError(
         params.issueUrl,
         issue.status,
