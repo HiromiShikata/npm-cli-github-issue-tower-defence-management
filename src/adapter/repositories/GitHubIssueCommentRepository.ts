@@ -5,6 +5,16 @@ import {
   isDuplicateWithinWindow,
   DUPLICATE_COMMENT_WINDOW_MS,
 } from './commentDeduplication';
+import {
+  checkSecondaryRateLimitBreaker,
+  secondaryRateLimitStateFilePath,
+  writeSecondaryRateLimitState,
+} from './issue/githubSecondaryRateLimitBreaker';
+import {
+  computeSecondaryRateLimitBackoffMs,
+  GitHubRateLimitError,
+  isSecondaryRateLimit,
+} from './issue/githubRateLimitRetry';
 
 type RestCommentPayload = {
   user: { login: string } | null;
@@ -255,6 +265,19 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
       }
     }
 
+    const stateFilePath = secondaryRateLimitStateFilePath();
+    const nowMsBeforePost = Date.now();
+    const breaker = checkSecondaryRateLimitBreaker(
+      nowMsBeforePost,
+      stateFilePath,
+    );
+    if (breaker.isBlocked && breaker.resetTimeMs !== null) {
+      throw new GitHubRateLimitError(
+        `GitHub secondary rate limit is active until ${new Date(breaker.resetTimeMs).toISOString()}`,
+        new Date(breaker.resetTimeMs).toISOString(),
+      );
+    }
+
     const response = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
       {
@@ -269,6 +292,19 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     );
 
     if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      const nowMs = Date.now();
+      if (isSecondaryRateLimit(response.headers, bodyText)) {
+        const backoffMs = computeSecondaryRateLimitBackoffMs(
+          response.headers,
+          nowMs,
+        );
+        writeSecondaryRateLimitState(nowMs + backoffMs, nowMs, stateFilePath);
+        throw new GitHubRateLimitError(
+          `HTTP ${response.status} GitHub API secondary rate limit exceeded`,
+          new Date(nowMs + backoffMs).toISOString(),
+        );
+      }
       throw new Error(
         `Failed to create comment via GitHub REST API: ${response.status} ${response.statusText}`,
       );

@@ -1,3 +1,18 @@
+const mockCheckSecondaryRateLimitBreaker = jest.fn(
+  (): { isBlocked: boolean; resetTimeMs: number | null } => ({
+    isBlocked: false,
+    resetTimeMs: null,
+  }),
+);
+const mockWriteSecondaryRateLimitState = jest.fn();
+
+jest.mock('./issue/githubSecondaryRateLimitBreaker', () => ({
+  checkSecondaryRateLimitBreaker: mockCheckSecondaryRateLimitBreaker,
+  writeSecondaryRateLimitState: mockWriteSecondaryRateLimitState,
+  secondaryRateLimitStateFilePath: () =>
+    '/tmp/test-comment-repo-breaker-state.json',
+}));
+
 import { GitHubIssueCommentRepository } from './GitHubIssueCommentRepository';
 import { Issue } from '../../domain/entities/Issue';
 
@@ -44,6 +59,14 @@ describe('GitHubIssueCommentRepository', () => {
 
   beforeEach(() => {
     jest.restoreAllMocks();
+    mockCheckSecondaryRateLimitBreaker.mockReset();
+    mockCheckSecondaryRateLimitBreaker.mockImplementation(
+      (): { isBlocked: boolean; resetTimeMs: number | null } => ({
+        isBlocked: false,
+        resetTimeMs: null,
+      }),
+    );
+    mockWriteSecondaryRateLimitState.mockReset();
     repository = new GitHubIssueCommentRepository('test-token');
   });
 
@@ -710,6 +733,83 @@ describe('GitHubIssueCommentRepository', () => {
         expect.stringContaining('/comments'),
         expect.objectContaining({ method: 'POST' }),
       );
+    });
+
+    describe('circuit breaker', () => {
+      it('issues the POST when the circuit breaker is not blocked', async () => {
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify([]), { status: 200 }),
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ id: 200 }), { status: 201 }),
+          );
+
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/200',
+        );
+        await repository.createComment(issue, 'hello from open breaker');
+
+        expect(fetchSpy).toHaveBeenCalledWith(
+          expect.stringContaining('/comments'),
+          expect.objectContaining({ method: 'POST' }),
+        );
+      });
+
+      it('throws GitHubRateLimitError and does not issue the POST when the circuit breaker is open', async () => {
+        const resetTimeMs = Date.now() + 90_000;
+        mockCheckSecondaryRateLimitBreaker.mockReturnValue({
+          isBlocked: true,
+          resetTimeMs,
+        });
+
+        const fetchSpy = jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify([]), { status: 200 }),
+          );
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/201',
+        );
+        await expect(
+          repository.createComment(issue, 'blocked by breaker'),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        // Only the dedup check GET was issued; the POST was not
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('writes to the breaker state file and throws GitHubRateLimitError when the POST returns a secondary rate limit response', async () => {
+        jest
+          .spyOn(global, 'fetch')
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify([]), { status: 200 }),
+          )
+          .mockResolvedValueOnce(
+            new Response(
+              'You have exceeded a secondary rate limit and have been temporarily blocked from content creation.',
+              {
+                status: 403,
+                headers: { 'retry-after': '60' },
+              },
+            ),
+          );
+
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
+        const issue = buildIssue(
+          'https://github.com/HiromiShikata/test-repository/issues/202',
+        );
+        await expect(
+          repository.createComment(issue, 'will be rate limited'),
+        ).rejects.toBeInstanceOf(GitHubRateLimitError);
+
+        expect(mockWriteSecondaryRateLimitState).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });
