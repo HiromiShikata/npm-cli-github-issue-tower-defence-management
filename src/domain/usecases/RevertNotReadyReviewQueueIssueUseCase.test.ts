@@ -2175,12 +2175,12 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     });
 
     it('splits getOpenPullRequests into separate calls when there are more than 100 PR item URLs', async () => {
-      const pullRequestItems = Array.from({ length: 101 }, (_, i) =>
+      const pullRequestItems = Array.from({ length: 101 }, (_, index) =>
         createMockPullRequest({
           status: 'Awaiting Quality Check',
-          url: `https://github.com/user/repo/pull/${1000 + i}`,
-          number: 1000 + i,
-          itemId: `item-pr-${i}`,
+          url: `https://github.com/user/repo/pull/${1000 + index}`,
+          number: 1000 + index,
+          itemId: `item-pr-${index}`,
           assignees: ['manager-user'],
         }),
       );
