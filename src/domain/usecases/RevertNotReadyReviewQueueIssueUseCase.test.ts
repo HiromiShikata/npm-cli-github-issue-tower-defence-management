@@ -2208,6 +2208,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(calls[0]).toHaveLength(100);
       expect(calls[1]).toHaveLength(1);
       expect(calls[0].length + calls[1].length).toBe(101);
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
     });
   });
 
