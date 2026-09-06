@@ -212,7 +212,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       const comment =
         result.type === 'escalateSilentRedispatch' ? result.comment : '';
       expect(comment).not.toContain('Failed to receive a report');
-      expect(comment.toLowerCase()).toContain('owner');
+      expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
 
     it('escalates once the repetition count reaches the auto reject threshold', () => {
@@ -252,7 +252,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       const comment =
         result.type === 'escalateSilentRedispatch' ? result.comment : '';
       expect(comment).not.toContain('Failed to receive a report');
-      expect(comment.toLowerCase()).toContain('owner');
+      expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
 
     it('emits a no-report message when no reports are present at escalation', () => {
@@ -471,6 +471,23 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('dispatchAgain');
+    });
+
+    it('uses REPORTING_LOOP_ESCALATION_PHRASE in the emitted comment so isEscalationDispatchComment recognizes it', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'liaison',
+        nextStepAgent: 'liaison',
+        comments: [report('liaison'), humanComment(), report('liaison')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 99,
+        thresholdForSelfNominationTotal: 2,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+      const comment =
+        result.type === 'escalateSilentRedispatch' ? result.comment : '';
+      expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
   });
 
