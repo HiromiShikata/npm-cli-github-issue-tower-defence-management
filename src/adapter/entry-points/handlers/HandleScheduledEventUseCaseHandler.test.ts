@@ -217,8 +217,10 @@ const mockLocalStorageCacheGetSingle = jest
 const mockLocalStorageCacheSetSingle = jest
   .fn<Promise<void>, [string, unknown]>()
   .mockResolvedValue(undefined);
-LocalStorageCacheRepository.prototype.getSingle = mockLocalStorageCacheGetSingle;
-LocalStorageCacheRepository.prototype.setSingle = mockLocalStorageCacheSetSingle;
+LocalStorageCacheRepository.prototype.getSingle =
+  mockLocalStorageCacheGetSingle;
+LocalStorageCacheRepository.prototype.setSingle =
+  mockLocalStorageCacheSetSingle;
 
 const validConfig = {
   projectName: 'test-project',
