@@ -8,6 +8,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
+  IN_TMUX_BY_AGENT_STATUS_NAME,
   PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import {
@@ -205,6 +206,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     } else if (issue.status === AWAITING_WORKSPACE_STATUS_NAME) {
       console.log(
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Awaiting Workspace`,
+      );
+      return;
+    } else if (issue.status === IN_TMUX_BY_AGENT_STATUS_NAME) {
+      console.log(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already In Tmux by agent`,
       );
       return;
     } else if (issue.status !== PREPARATION_STATUS_NAME) {
