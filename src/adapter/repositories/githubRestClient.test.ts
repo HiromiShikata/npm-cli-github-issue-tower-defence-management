@@ -234,7 +234,9 @@ describe('logGithubRestRateLimit', () => {
       state,
     });
     const loggedStrings = getAllConsoleLogStrings(consoleLogSpy);
-    expect(loggedStrings.some((s) => s.includes('ghp_super_secret_token'))).toBe(false);
+    expect(
+      loggedStrings.some((s) => s.includes('ghp_super_secret_token')),
+    ).toBe(false);
     expect(loggedStrings.some((s) => s.includes('Bearer'))).toBe(false);
   });
 
