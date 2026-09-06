@@ -6783,7 +6783,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         },
       });
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutAwaitingOwner);
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithoutAwaitingOwner,
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
