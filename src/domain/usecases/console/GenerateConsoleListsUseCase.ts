@@ -1,6 +1,7 @@
 import type { Issue } from '../../entities/Issue';
 import type { FieldOption, Project } from '../../entities/Project';
 import {
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   IN_TMUX_BY_AGENT_STATUS_NAME,
@@ -273,6 +274,7 @@ export class GenerateConsoleListsUseCase {
               (issue) =>
                 !issue.isClosed &&
                 (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
+                  issue.status === AWAITING_OWNER_STATUS_NAME ||
                   issue.status === PREPARATION_STATUS_NAME) &&
                 issue.dependedIssueUrls.length === 0 &&
                 !issueReactivationTriggerIsPending(issue, now),
