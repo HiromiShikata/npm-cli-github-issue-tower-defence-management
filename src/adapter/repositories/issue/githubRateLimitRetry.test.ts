@@ -12,6 +12,7 @@ import {
   RATE_LIMIT_TOTAL_BACKOFF_CAP_MS,
   SECONDARY_RATE_LIMIT_FLOOR_MS,
 } from './githubRateLimitRetry';
+import { readSecondaryRateLimitState } from './githubSecondaryRateLimitBreaker';
 
 // Isolated temp directory for any state-file side-effects produced by the
 // functions under test.  Using an isolated path prevents writes from leaking
@@ -430,7 +431,9 @@ describe('githubRateLimitRetry', () => {
       const stateFile = path.join(tmpDir, 'write-secondary-body.json');
       const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
         new Response(
-          JSON.stringify({ message: 'You have exceeded a secondary rate limit' }),
+          JSON.stringify({
+            message: 'You have exceeded a secondary rate limit',
+          }),
           { status: 403 },
         ),
       );
@@ -448,8 +451,9 @@ describe('githubRateLimitRetry', () => {
       expect(request).toHaveBeenCalledTimes(1);
       expect(sleep).not.toHaveBeenCalled();
       expect(fs.existsSync(stateFile)).toBe(true);
-      const raw: unknown = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-      expect(typeof (raw as Record<string, unknown>).resetTimeMs).toBe('number');
+      const state = readSecondaryRateLimitState(stateFile);
+      expect(state).not.toBeNull();
+      expect(typeof state?.resetTimeMs).toBe('number');
     });
 
     it('writes the breaker state file when retry-after signals secondary rate limit and isContentCreating is true', async () => {
@@ -475,8 +479,9 @@ describe('githubRateLimitRetry', () => {
       expect(request).toHaveBeenCalledTimes(1);
       expect(sleep).not.toHaveBeenCalled();
       expect(fs.existsSync(stateFile)).toBe(true);
-      const raw: unknown = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-      expect(typeof (raw as Record<string, unknown>).resetTimeMs).toBe('number');
+      const state = readSecondaryRateLimitState(stateFile);
+      expect(state).not.toBeNull();
+      expect(typeof state?.resetTimeMs).toBe('number');
     });
 
     // --- Primary rate limit unchanged paths ---
