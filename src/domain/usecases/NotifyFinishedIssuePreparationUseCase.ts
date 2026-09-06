@@ -191,7 +191,10 @@ export class NotifyFinishedIssuePreparationUseCase {
     const issue = await this.issueRepository.get(params.issueUrl, project);
 
     if (!issue) {
-      throw new IssueNotFoundError(params.issueUrl);
+      console.warn(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} not found on project ${params.projectUrl}`,
+      );
+      return;
     }
 
     if (params.deferPreparation) {
