@@ -28,9 +28,14 @@ type SerializedComment = {
   createdAt: string;
 };
 
-type CommentCacheEntry = {
+type PageCacheEntry = {
   etag: string;
   comments: SerializedComment[];
+  hasNextPage: boolean;
+};
+
+type CommentPageCache = {
+  pages: Record<string, PageCacheEntry>;
 };
 
 type CommentCacheRepository = {
@@ -45,10 +50,12 @@ function isRestCommentPayloadArray(
   return true;
 }
 
-function isCommentCacheEntry(value: unknown): value is CommentCacheEntry {
+function isPageCacheEntry(value: unknown): value is PageCacheEntry {
   if (typeof value !== 'object' || value === null) return false;
   if (!('etag' in value) || typeof value.etag !== 'string') return false;
   if (!('comments' in value) || !Array.isArray(value.comments)) return false;
+  if (!('hasNextPage' in value) || typeof value.hasNextPage !== 'boolean')
+    return false;
   return value.comments.every(
     (c: unknown) =>
       typeof c === 'object' &&
@@ -60,6 +67,17 @@ function isCommentCacheEntry(value: unknown): value is CommentCacheEntry {
       'createdAt' in c &&
       typeof c.createdAt === 'string',
   );
+}
+
+function isCommentPageCache(value: unknown): value is CommentPageCache {
+  if (typeof value !== 'object' || value === null) return false;
+  if (
+    !('pages' in value) ||
+    typeof value.pages !== 'object' ||
+    value.pages === null
+  )
+    return false;
+  return Object.values(value.pages).every(isPageCacheEntry);
 }
 
 export class GitHubIssueCommentRepository implements IssueCommentRepository {
@@ -96,77 +114,83 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     return `comments/${owner}/${repo}/${issueNumber}`;
   }
 
-  private async readCommentCache(
+  private async readCommentPageCache(
     owner: string,
     repo: string,
     issueNumber: number,
-  ): Promise<CommentCacheEntry | null> {
+  ): Promise<CommentPageCache | null> {
     if (!this.commentCacheRepository) return null;
     const raw = await this.commentCacheRepository.getSingle(
       this.commentCacheKey(owner, repo, issueNumber),
     );
-    return isCommentCacheEntry(raw) ? raw : null;
+    return isCommentPageCache(raw) ? raw : null;
   }
 
-  private async writeCommentCache(
+  private async writeCommentPageCache(
     owner: string,
     repo: string,
     issueNumber: number,
-    etag: string,
-    comments: Comment[],
+    pages: Record<string, PageCacheEntry>,
   ): Promise<void> {
     if (!this.commentCacheRepository) return;
     await this.commentCacheRepository.setSingle(
       this.commentCacheKey(owner, repo, issueNumber),
-      {
-        etag,
-        comments: comments.map((c) => ({
-          author: c.author,
-          content: c.content,
-          createdAt: c.createdAt.toISOString(),
-        })),
-      },
+      { pages },
     );
   }
 
   async getCommentsFromIssue(issue: Issue): Promise<Comment[]> {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
 
-    const cachedEntry = await this.readCommentCache(owner, repo, issueNumber);
+    const existingCache = await this.readCommentPageCache(
+      owner,
+      repo,
+      issueNumber,
+    );
+    const cachedPages: Record<string, PageCacheEntry> = existingCache
+      ? { ...existingCache.pages }
+      : {};
 
+    const PER_PAGE = 100;
     const comments: Comment[] = [];
+    const updatedPages: Record<string, PageCacheEntry> = { ...cachedPages };
+    let cacheWasUpdated = false;
     let page = 1;
     let hasNextPage = true;
-    let newEtag: string | null = null;
 
     while (hasNextPage) {
-      const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&page=${page}`;
+      const pageKey = String(page);
+      const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=${PER_PAGE}&page=${page}`;
       const headers: Record<string, string> = {
         Authorization: `Bearer ${this.token}`,
         Accept: 'application/vnd.github+json',
       };
-      if (page === 1 && cachedEntry) {
-        headers['If-None-Match'] = cachedEntry.etag;
+
+      const cachedPage = cachedPages[pageKey];
+      if (cachedPage) {
+        headers['If-None-Match'] = cachedPage.etag;
       }
 
       const response = await fetch(url, { headers });
 
-      if (response.status === 304 && cachedEntry) {
-        return cachedEntry.comments.map((c) => ({
-          author: c.author,
-          content: c.content,
-          createdAt: new Date(c.createdAt),
-        }));
+      if (response.status === 304 && cachedPage) {
+        for (const c of cachedPage.comments) {
+          comments.push({
+            author: c.author,
+            content: c.content,
+            createdAt: new Date(c.createdAt),
+          });
+        }
+        hasNextPage =
+          cachedPage.hasNextPage || cachedPage.comments.length >= PER_PAGE;
+        page++;
+        continue;
       }
 
       if (!response.ok) {
         throw new Error(
           `Failed to fetch comments from GitHub REST API: ${response.status} ${response.statusText}`,
         );
-      }
-
-      if (page === 1) {
-        newEtag = response.headers.get('ETag');
       }
 
       const responseData: unknown = await response.json();
@@ -176,22 +200,38 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         );
       }
 
-      for (const payload of responseData) {
-        comments.push({
-          author: payload.user?.login ?? '',
-          content: payload.body,
-          createdAt: new Date(payload.created_at),
-        });
+      const pageComments: Comment[] = responseData.map((payload) => ({
+        author: payload.user?.login ?? '',
+        content: payload.body,
+        createdAt: new Date(payload.created_at),
+      }));
+
+      for (const c of pageComments) {
+        comments.push(c);
       }
 
       const linkHeader = response.headers.get('Link') ?? '';
       hasNextPage = linkHeader.includes('rel="next"');
 
+      const etag = response.headers.get('ETag');
+      if (etag) {
+        updatedPages[pageKey] = {
+          etag,
+          comments: pageComments.map((c) => ({
+            author: c.author,
+            content: c.content,
+            createdAt: c.createdAt.toISOString(),
+          })),
+          hasNextPage,
+        };
+        cacheWasUpdated = true;
+      }
+
       page++;
     }
 
-    if (newEtag) {
-      await this.writeCommentCache(owner, repo, issueNumber, newEtag, comments);
+    if (cacheWasUpdated) {
+      await this.writeCommentPageCache(owner, repo, issueNumber, updatedPages);
     }
 
     return comments;
