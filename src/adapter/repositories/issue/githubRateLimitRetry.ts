@@ -1,3 +1,5 @@
+import { logGithubRestRateLimit } from '../githubRestClient';
+
 export class GitHubRateLimitError extends Error {
   readonly name = 'GitHubRateLimitError';
   readonly rateLimitResetAt: string | null;
@@ -88,6 +90,7 @@ export const fetchWithGitHubRateLimitRetry = async (
   for (;;) {
     const response = await request();
     if (response.ok) {
+      logGithubRestRateLimit({ url: response.url, headers: response.headers });
       return response;
     }
     const bodyText = await response.clone().text();

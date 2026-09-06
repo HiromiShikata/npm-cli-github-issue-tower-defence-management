@@ -22,6 +22,7 @@ import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/
 import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
 import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 
+import { sanitizeErrorForLogging } from '../../repositories/githubRestClient';
 import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
@@ -1658,7 +1659,7 @@ program
   });
 
 export const reportFatalErrorAndExit = (error: unknown): void => {
-  console.error(error);
+  console.error(sanitizeErrorForLogging(error));
   process.exit(1);
 };
 
