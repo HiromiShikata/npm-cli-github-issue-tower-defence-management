@@ -513,4 +513,34 @@ describe('ConsoleCommentList', () => {
     );
     expect(localStorage.length).toBe(0);
   });
+
+  it('does not propagate click events from the expanded body to ancestor elements', () => {
+    const comment = {
+      author: 'agent',
+      body: 'First line\nSecond line visible only when expanded',
+      createdAt: '2026-09-01T10:00:00.000Z',
+      url: null,
+    };
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    const body = container.querySelector('.console-comment-body-expanded');
+    if (!body) throw new Error('body not found');
+    let clickReachedDocument = false;
+    const handler = () => {
+      clickReachedDocument = true;
+    };
+    document.addEventListener('click', handler);
+    try {
+      fireEvent.click(body);
+      expect(clickReachedDocument).toBe(false);
+    } finally {
+      document.removeEventListener('click', handler);
+    }
+  });
 });
