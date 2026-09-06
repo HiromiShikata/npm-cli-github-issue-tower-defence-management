@@ -1,3 +1,11 @@
+## [2.73.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.1...v2.73.2) (2026-09-06)
+
+
+### Bug Fixes
+
+* route owner-blocked tasks to Awaiting Owner instead of Failed Preparation ([#2176](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2176)) ([ebe1b6e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ebe1b6ebce59e41205e74a8a92b832e6f502fe31)), closes [HiromiShikata/secretary#5626](https://github.com/HiromiShikata/secretary/issues/5626)
+* **test:** correct Awaiting Owner status assertion in RevertOrphanedPreparationUseCase ([#2191](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2191)) ([5a0653a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5a0653a78ab29d6f7fb99b4b937486551f45d1c1)), closes [#2176](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2176) [HiromiShikata/npm-cli-github-issue-tower-defence-management#2190](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2190)
+
 ## [2.73.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.0...v2.73.1) (2026-09-06)
 
 
