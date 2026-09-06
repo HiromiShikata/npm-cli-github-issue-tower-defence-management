@@ -455,7 +455,7 @@ describe('NodeTmuxSessionRepository', () => {
 
       expect(runner.runCommand.mock.calls[1]).toEqual([
         'ps',
-        ['-eo', 'pid,ppid,args='],
+        ['-eo', 'pid=,ppid=,args='],
       ]);
       expect(runner.spawnInteractive.mock.calls).toEqual([
         ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
@@ -506,7 +506,7 @@ describe('NodeTmuxSessionRepository', () => {
 
       expect(runner.runCommand.mock.calls[1]).toEqual([
         'ps',
-        ['-eo', 'pid,ppid,args='],
+        ['-eo', 'pid=,ppid=,args='],
       ]);
       expect(runner.spawnInteractive.mock.calls).toEqual([
         ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
@@ -527,10 +527,36 @@ describe('NodeTmuxSessionRepository', () => {
       expect(runner.runCommand.mock.calls).toHaveLength(1);
       expect(runner.runCommand.mock.calls[0]).toEqual([
         'ps',
-        ['-eo', 'pid,ppid,args='],
+        ['-eo', 'pid=,ppid=,args='],
       ]);
       expect(runner.spawnInteractive.mock.calls).toEqual([
         ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
+      ]);
+    });
+
+    it('attaches to an existing session found via process tree when no scope lib path is provided but a live process exists', async () => {
+      const runner = createMockRunner();
+      runner.runCommand
+        .mockResolvedValueOnce({
+          stdout: '1100 1050 /usr/bin/bash\n' + `1234 1100 cl ${issueUrl}\n`,
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '1100 abc123def456ab12\n',
+          stderr: '',
+          exitCode: 0,
+        });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await repository.attachOrCreateInteractiveSession(issueUrl, null);
+
+      expect(runner.runCommand.mock.calls[0]).toEqual([
+        'ps',
+        ['-eo', 'pid=,ppid=,args='],
+      ]);
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['attach-session', '-t', '=abc123def456ab12']],
       ]);
     });
 
@@ -560,7 +586,7 @@ describe('NodeTmuxSessionRepository', () => {
 
       expect(runner.runCommand.mock.calls[1]).toEqual([
         'ps',
-        ['-eo', 'pid,ppid,args='],
+        ['-eo', 'pid=,ppid=,args='],
       ]);
       expect(runner.runCommand.mock.calls[2]).toEqual([
         'tmux',
