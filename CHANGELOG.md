@@ -1,3 +1,11 @@
+## [2.62.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.7...v2.62.8) (2026-09-06)
+
+
+### Bug Fixes
+
+* **dispatch-repetition:** reset silent-redispatch count after an escalation comment ([#2063](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2063)) ([1d12132](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1d1213219170eca5c9a744ae0b6612d6677b7e7c)), closes [HiromiShikata/umino-corporait-operation#31425](https://github.com/HiromiShikata/umino-corporait-operation/issues/31425)
+* **notifyFinishedIssuePreparation:** handle GitHub secondary rate limit 403 in updateIssue ([#2084](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2084)) ([6defd91](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6defd9148e5345bbff7d08e44b5520b5e7f24c11)), closes [HiromiShikata/secretary#5502](https://github.com/HiromiShikata/secretary/issues/5502)
+
 ## [2.62.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.6...v2.62.7) (2026-09-05)
 
 
