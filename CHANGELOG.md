@@ -1,3 +1,11 @@
+## [2.72.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.3...v2.72.4) (2026-09-06)
+
+
+### Bug Fixes
+
+* **notify:** stop posting Auto Status Check: AWAITING_OWNER comment ([#2182](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2182)) ([3571083](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/357108382dbc0ba86c5b4fc7be197ba863c16f9a))
+* **preparation:** do not escalate to Failed Preparation when story is unset ([#2174](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2174)) ([25253de](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/25253deb135a94b95ce0a16322b174be3f1a7e13)), closes [HiromiShikata/secretary#5623](https://github.com/HiromiShikata/secretary/issues/5623)
+
 ## [2.72.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.2...v2.72.3) (2026-09-06)
 
 
