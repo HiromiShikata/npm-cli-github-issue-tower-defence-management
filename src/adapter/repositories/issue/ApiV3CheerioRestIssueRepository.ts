@@ -701,13 +701,7 @@ export class ApiV3CheerioRestIssueRepository
   private fetchWithRateLimitRetryForWrite = (
     request: () => Promise<Response>,
   ): Promise<Response> =>
-    fetchWithGitHubRateLimitRetry(
-      request,
-      this.sleep,
-      Date.now,
-      false,
-      true,
-    );
+    fetchWithGitHubRateLimitRetry(request, this.sleep, Date.now, false, true);
 
   private throwGitHubError = async (
     prefix: string,

@@ -369,8 +369,8 @@ describe('githubRateLimitRetry', () => {
         request,
         sleep,
         Date.now,
-        true,  // retryOnSecondaryRateLimit
-        true,  // isContentCreating
+        true, // retryOnSecondaryRateLimit
+        true, // isContentCreating
         tmpStateFile,
       );
 
@@ -480,9 +480,11 @@ describe('githubRateLimitRetry', () => {
     it('preserves the response body when returning immediately on a secondary rate limit', async () => {
       const sleep = jest.fn().mockResolvedValue(undefined);
       const payload = { message: 'You have exceeded a secondary rate limit' };
-      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
-        new Response(JSON.stringify(payload), { status: 403 }),
-      );
+      const request = jest
+        .fn<Promise<Response>, []>()
+        .mockResolvedValue(
+          new Response(JSON.stringify(payload), { status: 403 }),
+        );
 
       const response = await fetchWithGitHubRateLimitRetry(
         request,

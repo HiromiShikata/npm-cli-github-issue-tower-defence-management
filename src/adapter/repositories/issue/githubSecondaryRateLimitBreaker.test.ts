@@ -16,7 +16,8 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const makeTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-breaker-test-'));
+const makeTmpDir = (): string =>
+  fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-breaker-test-'));
 
 const stateFile = (dir: string): string =>
   path.join(dir, 'gh-secondary-rate-limit.json');
@@ -256,12 +257,16 @@ describe('fetchWithGitHubRateLimitRetry — circuit breaker', () => {
     const nowMs = Date.now();
 
     const sleep = jest.fn().mockResolvedValue(undefined);
-    const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
-      new Response(
-        JSON.stringify({ message: 'You have exceeded a secondary rate limit' }),
-        { status: 403 },
-      ),
-    );
+    const request = jest
+      .fn<Promise<Response>, []>()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            message: 'You have exceeded a secondary rate limit',
+          }),
+          { status: 403 },
+        ),
+      );
 
     await fetchWithGitHubRateLimitRetry(
       request,
