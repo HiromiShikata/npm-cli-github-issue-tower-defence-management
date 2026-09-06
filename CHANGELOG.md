@@ -1,3 +1,10 @@
+## [2.63.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.5...v2.63.6) (2026-09-06)
+
+
+### Bug Fixes
+
+* **GitHubIssueCommentRepository:** migrate to per-page ETag caching to prevent missed comments on 304 ([#2109](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2109)) ([5ea8570](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5ea8570629ad3e9ecdad3ec997889caa78ec4a9d)), closes [HiromiShikata/secretary#5525](https://github.com/HiromiShikata/secretary/issues/5525)
+
 ## [2.63.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.4...v2.63.5) (2026-09-06)
 
 
