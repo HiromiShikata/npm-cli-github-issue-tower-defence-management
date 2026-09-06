@@ -13,6 +13,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
+  TODO_BY_AGENT_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
@@ -313,6 +314,29 @@ export class RevertOrphanedPreparationUseCase {
         rejectionStatusMessage,
       );
     }
+
+    const todoByAgentIssues = issues.filter(
+      (issue) => issue.status === TODO_BY_AGENT_STATUS_NAME && !issue.isClosed,
+    );
+    for (const issue of todoByAgentIssues) {
+      const isOrphaned = await this.isOrphanedIssue(issue, params);
+      if (!isOrphaned) {
+        continue;
+      }
+      const isStillTodoByAgent = await this.isStillTodoByAgent(issue, project);
+      if (!isStillTodoByAgent) {
+        continue;
+      }
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingWorkspaceStatusOption.id,
+      );
+      await this.issueCommentRepository.createComment(
+        issue,
+        'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
+      );
+    }
   };
 
   private isStillInPreparation = async (
@@ -336,6 +360,29 @@ export class RevertOrphanedPreparationUseCase {
       return false;
     }
     return liveIssue.status === PREPARATION_STATUS_NAME;
+  };
+
+  private isStillTodoByAgent = async (
+    issue: Issue,
+    project: Project,
+  ): Promise<boolean> => {
+    let liveIssue: Issue | null;
+    try {
+      liveIssue = await this.issueRepository.get(issue.url, project);
+    } catch (error) {
+      console.error(
+        `Failed to re-read the live status before reverting stray Todo by agent issue. issueUrl: ${issue.url}`,
+        error,
+      );
+      return false;
+    }
+    if (liveIssue === null) {
+      console.error(
+        `Issue not found while re-reading its live status before reverting stray Todo by agent issue. issueUrl: ${issue.url}`,
+      );
+      return false;
+    }
+    return liveIssue.status === TODO_BY_AGENT_STATUS_NAME;
   };
 
   private evaluateOutcome = async (
