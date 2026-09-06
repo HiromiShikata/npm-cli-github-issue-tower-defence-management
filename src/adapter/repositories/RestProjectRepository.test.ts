@@ -269,11 +269,16 @@ describe('RestProjectRepository', () => {
       await repository.getProject(location);
 
       expect(mockGet).toHaveBeenCalledTimes(2);
-      const expectedOptions = expect.objectContaining({
-        timeout: GITHUB_REST_REQUEST_TIMEOUT_MS,
-      });
-      expect(mockGet).toHaveBeenNthCalledWith(1, expect.anything(), expectedOptions);
-      expect(mockGet).toHaveBeenNthCalledWith(2, expect.anything(), expectedOptions);
+      expect(mockGet).toHaveBeenNthCalledWith(
+        1,
+        expect.anything(),
+        expect.objectContaining({ timeout: GITHUB_REST_REQUEST_TIMEOUT_MS }),
+      );
+      expect(mockGet).toHaveBeenNthCalledWith(
+        2,
+        expect.anything(),
+        expect.objectContaining({ timeout: GITHUB_REST_REQUEST_TIMEOUT_MS }),
+      );
     });
   });
 
