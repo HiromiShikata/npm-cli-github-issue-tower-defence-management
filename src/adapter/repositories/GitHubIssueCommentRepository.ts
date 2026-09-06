@@ -204,33 +204,33 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     let url: string | null =
       `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&since=${encodeURIComponent(since)}`;
 
-    while (url !== null) {
-      let response: Response;
-      try {
-        response = await fetch(url, { headers });
-      } catch {
-        return null;
-      }
+    try {
+      while (url !== null) {
+        const response: Response = await fetch(url, { headers });
 
-      if (!response.ok) {
-        return null;
-      }
+        if (!response.ok) {
+          return null;
+        }
 
-      const body: unknown = await response.json();
-      if (!isRestCommentPayloadArray(body)) {
-        return null;
-      }
+        const body: unknown = await response.json();
+        if (!isRestCommentPayloadArray(body)) {
+          return null;
+        }
 
-      for (const item of body) {
-        comments.push({
-          text: item.body,
-          createdAt: new Date(item.created_at),
-        });
-      }
+        for (const item of body) {
+          comments.push({
+            text: item.body,
+            createdAt: new Date(item.created_at),
+          });
+        }
 
-      const linkHeader = response.headers.get('Link') ?? '';
-      const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-      url = nextMatch?.[1] ?? null;
+        const linkHeader: string = response.headers.get('Link') ?? '';
+        const nextMatch: RegExpMatchArray | null =
+          linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+        url = nextMatch?.[1] ?? null;
+      }
+    } catch {
+      return null;
     }
 
     return comments;
@@ -239,23 +239,19 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
   async createComment(issue: Issue, commentContent: string): Promise<void> {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
 
-    try {
-      const existingComments = await this.fetchCommentsForDedupCheck(
-        owner,
-        repo,
-        issueNumber,
-      );
-      if (existingComments !== null) {
-        const now = new Date();
-        if (isDuplicateWithinWindow(commentContent, existingComments, now)) {
-          console.warn(
-            `GitHubIssueCommentRepository: skipping duplicate comment within ${DUPLICATE_COMMENT_WINDOW_MS / 60000} minutes on ${issue.url}`,
-          );
-          return;
-        }
+    const existingComments = await this.fetchCommentsForDedupCheck(
+      owner,
+      repo,
+      issueNumber,
+    );
+    if (existingComments !== null) {
+      const now = new Date();
+      if (isDuplicateWithinWindow(commentContent, existingComments, now)) {
+        console.warn(
+          `GitHubIssueCommentRepository: skipping duplicate comment within ${DUPLICATE_COMMENT_WINDOW_MS / 60000} minutes on ${issue.url}`,
+        );
+        return;
       }
-    } catch {
-      // Fail open: preflight fetch failed, proceed to post the comment
     }
 
     const response = await fetch(
