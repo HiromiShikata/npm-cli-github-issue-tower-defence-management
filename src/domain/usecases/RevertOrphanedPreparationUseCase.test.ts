@@ -2724,4 +2724,177 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
   });
+
+  describe('Todo by agent orphan handling', () => {
+    it('should revert orphaned Todo by agent issue to Awaiting Workspace when no process is running', async () => {
+      const todoByAgentIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/30',
+        status: 'Todo by agent',
+        isClosed: false,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [todoByAgentIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: todoByAgentIssue.url,
+          status: 'Todo by agent',
+        }),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
+        mockProject,
+      );
+      expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(
+        todoByAgentIssue,
+      );
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        todoByAgentIssue,
+        'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
+      );
+    });
+
+    it('should not revert Todo by agent issue when a process is running', async () => {
+      const todoByAgentIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/30',
+        status: 'Todo by agent',
+        isClosed: false,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [todoByAgentIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: 'process found',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+        0,
+      );
+    });
+
+    it('should skip Todo by agent issue when the live re-read returns a different status', async () => {
+      const todoByAgentIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/30',
+        status: 'Todo by agent',
+        isClosed: false,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [todoByAgentIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: todoByAgentIssue.url,
+          status: 'Awaiting Workspace',
+        }),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+        0,
+      );
+    });
+
+    it('should skip Todo by agent issue and log when the live re-read throws', async () => {
+      const todoByAgentIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/30',
+        status: 'Todo by agent',
+        isClosed: false,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [todoByAgentIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      const liveReadError = new Error('network error');
+      mockIssueRepository.get.mockRejectedValue(liveReadError);
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        await useCase.run({
+          projectUrl: 'https://github.com/user/repo',
+          preparationProcessCheckCommand: 'pgrep -fa "claude.*{URL}"',
+          thresholdForAutoReject: 3,
+        });
+
+        expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+        expect(
+          consoleErrorSpy.mock.calls.filter(
+            (call) =>
+              typeof call[0] === 'string' &&
+              call[0].includes(todoByAgentIssue.url),
+          ),
+        ).toHaveLength(1);
+      } finally {
+        consoleErrorSpy.mockRestore();
+      }
+    });
+
+    it('should skip closed Todo by agent issues', async () => {
+      const closedTodoByAgentIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/30',
+        status: 'Todo by agent',
+        isClosed: true,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [closedTodoByAgentIssue],
+        cacheUsed: false,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    });
+  });
 });
