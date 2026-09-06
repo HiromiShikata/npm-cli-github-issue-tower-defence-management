@@ -17,7 +17,7 @@ const makeItem = (
   itemId: 'item-1',
   isPr: false,
   story: 'Story A',
-  status: 'Awaiting Quality Check',
+  status: 'Awaiting Owner',
   agent: null,
   nextActionDate: null,
   nextActionHour: null,
@@ -67,10 +67,10 @@ describe('FileSystemConsoleTabsRepository', () => {
     return data;
   };
 
-  it('inserts the item into the prs tab when transitioning to Awaiting Quality Check', () => {
+  it('inserts the item into the prs tab when transitioning to Awaiting Owner', () => {
     writeTabFile('prs', makeStatusTab(PJCODE, []));
     const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
-    const item = makeItem({ status: 'Awaiting Quality Check' });
+    const item = makeItem({ status: 'Awaiting Owner' });
 
     repo.patchIssueTabTransition({
       projectItemId: item.projectItemId,
@@ -105,7 +105,7 @@ describe('FileSystemConsoleTabsRepository', () => {
     writeTabFile('todo-by-human', makeStatusTab(PJCODE, [existingItem]));
     writeTabFile('prs', makeStatusTab(PJCODE, []));
     const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
-    const item = makeItem({ status: 'Awaiting Quality Check' });
+    const item = makeItem({ status: 'Awaiting Owner' });
 
     repo.patchIssueTabTransition({
       projectItemId: 'item-1',
@@ -181,7 +181,7 @@ describe('FileSystemConsoleTabsRepository', () => {
     const item = makeItem({
       projectItemId: 'item-1',
       story: 'Story A',
-      status: 'Awaiting Quality Check',
+      status: 'Awaiting Owner',
     });
 
     repo.patchIssueTabTransition({

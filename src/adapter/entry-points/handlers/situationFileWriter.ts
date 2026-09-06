@@ -7,7 +7,7 @@ export type SituationFileParams = {
   projectId: string;
   issues: Issue[];
   statusNames: {
-    awaitingQualityCheckStatus: string | null;
+    awaitingOwnerStatus: string | null;
     preparationStatus: string | null;
     awaitingWorkspaceStatus: string | null;
     failedPreparationStatus: string | null;
@@ -86,11 +86,11 @@ export const writeSituationFile = async (
     localCommandRunner,
   } = params;
 
-  const awaitingQualityCheckImmediatelyActionable =
-    statusNames.awaitingQualityCheckStatus !== null
+  const awaitingOwnerImmediatelyActionable =
+    statusNames.awaitingOwnerStatus !== null
       ? issues.filter(
           (i) =>
-            i.status === statusNames.awaitingQualityCheckStatus &&
+            i.status === statusNames.awaitingOwnerStatus &&
             isImmediatelyActionable(i),
         ).length
       : 0;
@@ -145,7 +145,7 @@ export const writeSituationFile = async (
     capturedAt: new Date().toISOString(),
     config,
     status: {
-      awaitingQualityCheckImmediatelyActionable,
+      awaitingOwnerImmediatelyActionable,
       preparation: preparationIssues.length,
       awaitingWorkspaceImmediatelyActionable,
       awaitingWorkspaceBlockedByDependency,

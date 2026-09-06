@@ -162,7 +162,7 @@ export type ConsoleTab = {
 
 export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'workflow-blocker', label: 'Workflow Blocker' },
-  { name: 'prs', label: 'Awaiting Quality Check' },
+  { name: 'prs', label: 'Awaiting Owner' },
   { name: 'failed-preparation', label: 'Failed Preparation' },
   { name: 'todo-by-human', label: 'Todo by human' },
   { name: 'todo-by-agent', label: 'Todo by agent' },

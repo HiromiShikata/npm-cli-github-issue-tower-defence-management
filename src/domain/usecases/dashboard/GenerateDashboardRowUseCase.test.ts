@@ -65,10 +65,10 @@ describe('GenerateDashboardRowUseCase', () => {
     });
   });
 
-  it('counts actionable Todo, Awaiting Quality Check and Awaiting Workspace issues', () => {
+  it('counts actionable Todo, Awaiting Owner and Awaiting Workspace issues', () => {
     const issues = [
       makeIssue({ status: 'Todo by human' }),
-      makeIssue({ status: 'Awaiting Quality Check' }),
+      makeIssue({ status: 'Awaiting Owner' }),
       makeIssue({ status: 'Awaiting Workspace' }),
     ];
 
@@ -95,7 +95,7 @@ describe('GenerateDashboardRowUseCase', () => {
   it('excludes non-actionable issues from actionable status columns', () => {
     const issues = [
       makeIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         dependedIssueUrls: ['https://github.com/demo/repo/issues/999'],
       }),
       makeIssue({ status: 'Todo by human', assignees: ['someone-else'] }),
@@ -211,18 +211,18 @@ describe('GenerateDashboardRowUseCase', () => {
       ['green-story', 'GREEN'],
     ]);
     const issues = [
-      makeIssue({ status: 'Awaiting Quality Check', story: 'red-story' }),
+      makeIssue({ status: 'Awaiting Owner', story: 'red-story' }),
       makeIssue({ status: 'Todo by human', story: 'red-story' }),
-      makeIssue({ status: 'Awaiting Quality Check', story: 'yellow-story' }),
+      makeIssue({ status: 'Awaiting Owner', story: 'yellow-story' }),
       makeIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         story: 'blue-story',
         assignees: ['someone-else'],
       }),
-      makeIssue({ status: 'Awaiting Quality Check', story: 'green-story' }),
+      makeIssue({ status: 'Awaiting Owner', story: 'green-story' }),
       makeIssue({ status: 'Preparation', story: 'red-story' }),
       makeIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         story: 'red-story',
         isClosed: true,
       }),
@@ -240,7 +240,7 @@ describe('GenerateDashboardRowUseCase', () => {
 
   it('returns zero for story color counts when story color map is empty', () => {
     const issues = [
-      makeIssue({ status: 'Awaiting Quality Check', story: 'some-story' }),
+      makeIssue({ status: 'Awaiting Owner', story: 'some-story' }),
       makeIssue({ status: 'Todo by human', story: 'other-story' }),
     ];
 
@@ -258,7 +258,7 @@ describe('GenerateDashboardRowUseCase', () => {
     const storyColorMap = new Map([['red-story', 'RED']]);
     const issues = [
       makeIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         story: 'red-story',
         isClosed: true,
       }),
@@ -274,7 +274,7 @@ describe('GenerateDashboardRowUseCase', () => {
     const storyColorMap = new Map([['red-story', 'RED']]);
     const issues = [
       makeIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         story: 'red-story',
         assignees: ['other-user'],
       }),

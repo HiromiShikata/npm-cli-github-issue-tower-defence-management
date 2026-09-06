@@ -182,7 +182,7 @@ export class HandleScheduledEventUseCase {
       codexHomeCandidates?: string[] | null;
       awLogDirectoryPath?: string;
       awLogStaleThresholdMinutes?: number;
-      awaitingQualityCheckStatus?: string | null;
+      awaitingOwnerStatus?: string | null;
       autoAdvanceQualityCheckEnabled?: boolean;
       autoRevertReopenedDoneEnabled?: boolean;
       labelsAsLlmAgentName?: string[] | null;
@@ -481,8 +481,8 @@ ${JSON.stringify(e)}
           awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
           awLogStaleThresholdMinutes:
             input.startPreparation.awLogStaleThresholdMinutes,
-          awaitingQualityCheckStatus:
-            input.startPreparation.awaitingQualityCheckStatus ?? undefined,
+          awaitingOwnerStatus:
+            input.startPreparation.awaitingOwnerStatus ?? undefined,
           labelsAsLlmAgentName,
           labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
           allowedIssueAuthors,
@@ -506,8 +506,8 @@ ${JSON.stringify(e)}
           await this.qualityCheckAdvanceUseCase.run({
             project,
             issues,
-            awaitingQualityCheckStatusName:
-              input.startPreparation.awaitingQualityCheckStatus ?? undefined,
+            awaitingOwnerStatusName:
+              input.startPreparation.awaitingOwnerStatus ?? undefined,
             evaluatedAt: now,
           });
         } catch (advanceError) {

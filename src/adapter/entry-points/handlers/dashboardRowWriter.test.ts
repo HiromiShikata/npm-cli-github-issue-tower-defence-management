@@ -62,7 +62,7 @@ describe('writeDashboardRow', () => {
       assigneeLogin: ASSIGNEE,
       issues: [
         makeIssue({ status: 'Awaiting Workspace' }),
-        makeIssue({ status: 'Awaiting Quality Check' }),
+        makeIssue({ status: 'Awaiting Owner' }),
       ],
       generatedAt: '2026-06-26T12:00:00.000Z',
     });

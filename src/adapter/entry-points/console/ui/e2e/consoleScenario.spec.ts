@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test';
 import {
-  CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
+  CONSOLE_E2E_AWAITING_OWNER_PR_URL,
   CONSOLE_E2E_COMMENT_URL,
   CONSOLE_E2E_PJCODE,
   CONSOLE_E2E_REFERENCE_LINK_URL,
@@ -37,7 +37,7 @@ test('shows CI and conflict badges in the directly opened PR detail header', asy
 }) => {
   await page.goto(harness.appRootUrl);
 
-  await tabByLabel(page, 'Awaiting Quality Check').click();
+  await tabByLabel(page, 'Awaiting Owner').click();
   await itemRowByText(
     page,
     'Serve the committed console UI bundle from serveConsole',
@@ -66,8 +66,8 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
 }) => {
   await page.goto(harness.appUrl);
 
-  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
-  await expect(tabBadge(page, 'Awaiting Quality Check')).toHaveText('2');
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
+  await expect(tabBadge(page, 'Awaiting Owner')).toHaveText('2');
   await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
   await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
@@ -81,25 +81,25 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await expect(approveButton).toBeVisible();
   await approveButton.click();
 
-  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
   await expect(approveButton).toBeVisible({ timeout: 8000 });
   await approveButton.click();
 
   await expect(activeTabLabel(page)).toHaveText('Failed Preparation', {
     timeout: 8000,
   });
-  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0, {
+  await expect(tabByLabel(page, 'Awaiting Owner')).toHaveCount(0, {
     timeout: 8000,
   });
 
   await tabByLabel(page, 'Todo by human').click();
   await expect(activeTabLabel(page)).toHaveText('Todo by human');
-  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0);
+  await expect(tabByLabel(page, 'Awaiting Owner')).toHaveCount(0);
   await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
   await tabByLabel(page, 'Failed Preparation').click();
   await expect(activeTabLabel(page)).toHaveText('Failed Preparation');
-  await expect(tabByLabel(page, 'Awaiting Quality Check')).toHaveCount(0);
+  await expect(tabByLabel(page, 'Awaiting Owner')).toHaveCount(0);
   await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
 });
 
@@ -602,7 +602,7 @@ test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaitin
 }) => {
   await page.goto(harness.appUrl);
 
-  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
 
   const listLevelButton = page
     .locator('.console-list .console-op-button', {
@@ -620,7 +620,7 @@ test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaitin
       () =>
         harness.commentCalls.some(
           (c) =>
-            c.url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL &&
+            c.url === CONSOLE_E2E_AWAITING_OWNER_PR_URL &&
             c.body === 'ok',
         ),
       { timeout: 10000 },
@@ -1010,7 +1010,7 @@ test('prs agent filter shows counts, hides zero-task agents, narrows the list, a
   page,
 }) => {
   await page.goto(harness.appUrl);
-  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
 
   const select = page.getByRole('combobox', { name: 'Filter by agent' });
   await expect(select).toBeVisible();
@@ -1051,7 +1051,7 @@ test('prs agent filter shows counts, hides zero-task agents, narrows the list, a
   await expect(approveButton).toBeVisible();
   await approveButton.click();
 
-  await expect(activeTabLabel(page)).toHaveText('Awaiting Quality Check');
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
   await expect(
     itemRowByText(page, 'Clean up stale console UI test fixtures'),
   ).toBeVisible({ timeout: 8000 });
@@ -1108,7 +1108,7 @@ test('error toast renders with background styling when a merge operation fails',
   try {
     await page.goto(failHarness.appUrl);
 
-    await tabByLabel(page, 'Awaiting Quality Check').click();
+    await tabByLabel(page, 'Awaiting Owner').click();
     await itemRowByText(
       page,
       'Serve the committed console UI bundle from serveConsole',
@@ -1156,7 +1156,7 @@ test('immediately shows item in Queued tab after moving to Awaiting Workspace wi
           {
             number: 867,
             title: 'Serve the committed console UI bundle from serveConsole',
-            url: CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
+            url: CONSOLE_E2E_AWAITING_OWNER_PR_URL,
             repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
             nameWithOwner:
               'HiromiShikata/npm-cli-github-issue-tower-defence-management',
@@ -1216,7 +1216,7 @@ test('offline pending actions panel renders with correct styling when a network 
   await page.clock.install();
   await page.goto(harness.appUrl);
 
-  await tabByLabel(page, 'Awaiting Quality Check').click();
+  await tabByLabel(page, 'Awaiting Owner').click();
   await itemRowByText(
     page,
     'Serve the committed console UI bundle from serveConsole',

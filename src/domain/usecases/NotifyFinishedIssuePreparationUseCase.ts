@@ -5,7 +5,6 @@ import { WebhookRepository } from './adapter-interfaces/WebhookRepository';
 import { ConsoleTabsRepository } from './adapter-interfaces/ConsoleTabsRepository';
 import {
   AWAITING_OWNER_STATUS_NAME,
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -172,12 +171,12 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
       return;
     }
-    const awaitingQualityCheckStatusOption = project.status.statuses.find(
-      (s) => s.name === AWAITING_QUALITY_CHECK_STATUS_NAME,
+    const awaitingOwnerStatusOption = project.status.statuses.find(
+      (s) => s.name === AWAITING_OWNER_STATUS_NAME,
     );
-    if (!awaitingQualityCheckStatusOption) {
+    if (!awaitingOwnerStatusOption) {
       console.error(
-        `Awaiting quality check status option '${AWAITING_QUALITY_CHECK_STATUS_NAME}' not found in project.`,
+        `Awaiting owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project.`,
       );
       return;
     }
@@ -347,24 +346,12 @@ export class NotifyFinishedIssuePreparationUseCase {
       ? extractWaitingForOwner(lastAgentReport.content)
       : false;
     if (waitingForOwner) {
-      const awaitingOwnerStatusOption = project.status.statuses.find(
-        (s) => s.name === AWAITING_OWNER_STATUS_NAME,
-      );
-      if (!awaitingOwnerStatusOption) {
-        console.warn(
-          `Awaiting owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project; falling back to '${AWAITING_QUALITY_CHECK_STATUS_NAME}'`,
-        );
-      }
-      const targetStatusOption =
-        awaitingOwnerStatusOption ?? awaitingQualityCheckStatusOption;
-      issue.status = awaitingOwnerStatusOption
-        ? AWAITING_OWNER_STATUS_NAME
-        : AWAITING_QUALITY_CHECK_STATUS_NAME;
+      issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
         issue,
-        targetStatusOption.id,
+        awaitingOwnerStatusOption.id,
       );
       await this.patchConsoleTab(issue);
       console.log('Auto Status Check: AWAITING_OWNER');
@@ -515,19 +502,12 @@ export class NotifyFinishedIssuePreparationUseCase {
         repetition.type === 'escalateReportingLoop' ||
         repetition.type === 'escalateDispatchLoop'
       ) {
-        const awaitingOwnerStatusOption = project.status.statuses.find(
-          (s) => s.name === AWAITING_OWNER_STATUS_NAME,
-        );
-        const targetStatusOption =
-          awaitingOwnerStatusOption ?? awaitingQualityCheckStatusOption;
-        issue.status = awaitingOwnerStatusOption
-          ? AWAITING_OWNER_STATUS_NAME
-          : AWAITING_QUALITY_CHECK_STATUS_NAME;
+        issue.status = AWAITING_OWNER_STATUS_NAME;
         await this.issueRepository.update(issue, project);
         await this.issueRepository.updateStatus(
           project,
           issue,
-          targetStatusOption.id,
+          awaitingOwnerStatusOption.id,
         );
         await this.patchConsoleTab(issue);
         await this.issueCommentRepository.createComment(
@@ -596,12 +576,12 @@ export class NotifyFinishedIssuePreparationUseCase {
         approvedPrUrl,
         params.changeTargetPathAliases,
       );
-      issue.status = AWAITING_QUALITY_CHECK_STATUS_NAME;
+      issue.status = AWAITING_OWNER_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
         issue,
-        awaitingQualityCheckStatusOption.id,
+        awaitingOwnerStatusOption.id,
       );
       await this.patchConsoleTab(issue);
       await this.setDependedIssueUrlForAllOpenPRs(
@@ -1025,7 +1005,7 @@ export class NotifyFinishedIssuePreparationUseCase {
 
   private resolveConsoleTargetTab = (status: string): ConsoleTabName | null => {
     const lower = status.toLowerCase();
-    if (lower === AWAITING_QUALITY_CHECK_STATUS_NAME.toLowerCase())
+    if (lower === AWAITING_OWNER_STATUS_NAME.toLowerCase())
       return 'prs';
     if (lower === FAILED_PREPARATION_STATUS_NAME.toLowerCase())
       return 'failed-preparation';

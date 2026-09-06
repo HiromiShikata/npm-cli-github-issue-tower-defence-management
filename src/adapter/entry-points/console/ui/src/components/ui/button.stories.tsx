@@ -5,7 +5,7 @@ const meta: Meta<typeof Button> = {
   title: 'UI/Button',
   component: Button,
   args: {
-    children: 'Awaiting Quality Check',
+    children: 'Awaiting Owner',
   },
 };
 

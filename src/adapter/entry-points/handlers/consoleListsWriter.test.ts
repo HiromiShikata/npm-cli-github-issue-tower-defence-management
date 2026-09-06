@@ -40,7 +40,7 @@ const project: Project = {
     fieldId: 'status-field',
     statuses: [
       option('st-aw', 'Awaiting Workspace', 'BLUE'),
-      option('st-aqc', 'Awaiting Quality Check', 'GREEN'),
+      option('st-aqc', 'Awaiting Owner', 'GREEN'),
     ],
   },
   story: {
@@ -117,7 +117,7 @@ describe('writeConsoleLists', () => {
       issues: [
         makeIssue({
           story: 'regular / WORKFLOW BLOCKER',
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           nextActionHour: 9,
         }),
         makeIssue({ story: 'Story Alpha', status: 'Unread' }),

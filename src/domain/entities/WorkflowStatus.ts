@@ -4,7 +4,6 @@ export const AWAITING_WORKSPACE_STATUS_NAME = 'Awaiting Workspace';
 export const AWAITING_OWNER_STATUS_NAME = 'Awaiting Owner';
 export const PREPARATION_STATUS_NAME = 'Preparation';
 export const FAILED_PREPARATION_STATUS_NAME = 'Failed Preparation';
-export const AWAITING_QUALITY_CHECK_STATUS_NAME = 'Awaiting Quality Check';
 export const TODO_STATUS_NAME = 'Todo by human';
 export const TODO_BY_AGENT_STATUS_NAME = 'Todo by agent';
 export const PC_TODO_STATUS_NAME = 'PC Todo';
@@ -29,10 +28,6 @@ export const REQUIRED_WORKFLOW_STATUSES: WorkflowStatusDefinition[] = [
     color: 'BLUE',
   },
   {
-    name: AWAITING_OWNER_STATUS_NAME,
-    color: 'ORANGE',
-  },
-  {
     name: PREPARATION_STATUS_NAME,
     color: 'YELLOW',
   },
@@ -41,7 +36,7 @@ export const REQUIRED_WORKFLOW_STATUSES: WorkflowStatusDefinition[] = [
     color: 'RED',
   },
   {
-    name: AWAITING_QUALITY_CHECK_STATUS_NAME,
+    name: AWAITING_OWNER_STATUS_NAME,
     color: 'GREEN',
   },
   {

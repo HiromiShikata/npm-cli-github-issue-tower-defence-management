@@ -330,7 +330,7 @@ describe('useConsoleTabData', () => {
                 itemId: 'PVTI_1',
                 isPr: true,
                 story: 'regular',
-                status: 'Awaiting Quality Check',
+                status: 'Awaiting Owner',
                 nextActionDate: null,
                 nextActionHour: null,
                 dependedIssueUrls: [],

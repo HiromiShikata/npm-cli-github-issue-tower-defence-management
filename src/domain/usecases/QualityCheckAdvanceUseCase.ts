@@ -2,7 +2,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import {
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_OWNER_STATUS_NAME,
   DONE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
@@ -15,12 +15,12 @@ export class QualityCheckAdvanceUseCase {
   run = async (params: {
     project: Project;
     issues: Issue[];
-    awaitingQualityCheckStatusName?: string;
+    awaitingOwnerStatusName?: string;
     evaluatedAt?: Date;
   }): Promise<number> => {
     const qualityCheckStatusName =
-      params.awaitingQualityCheckStatusName ??
-      AWAITING_QUALITY_CHECK_STATUS_NAME;
+      params.awaitingOwnerStatusName ??
+      AWAITING_OWNER_STATUS_NAME;
     const evaluatedAt = params.evaluatedAt ?? new Date();
     const doneStatusOption = params.project.status.statuses.find(
       (s) => s.name === DONE_STATUS_NAME,

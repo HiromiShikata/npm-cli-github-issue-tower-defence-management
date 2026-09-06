@@ -10,7 +10,6 @@ import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import {
   AWAITING_OWNER_STATUS_NAME,
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
@@ -77,7 +76,7 @@ export class RevertOrphanedPreparationUseCase {
     thresholdForDispatchLoop?: number;
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
-    awaitingQualityCheckStatus?: string | null;
+    awaitingOwnerStatus?: string | null;
     labelsAsLlmAgentName?: string[] | null;
     labelsNotRequiringPullRequest?: string[] | null;
     allowedIssueAuthors?: string[] | null;
@@ -110,10 +109,10 @@ export class RevertOrphanedPreparationUseCase {
       return;
     }
 
-    const resolvedQualityCheckStatusName =
-      params.awaitingQualityCheckStatus ?? AWAITING_QUALITY_CHECK_STATUS_NAME;
-    const awaitingQualityCheckStatusOption = project.status.statuses.find(
-      (s) => s.name === resolvedQualityCheckStatusName,
+    const resolvedOwnerStatusName =
+      params.awaitingOwnerStatus ?? AWAITING_OWNER_STATUS_NAME;
+    const awaitingOwnerStatusOption = project.status.statuses.find(
+      (s) => s.name === resolvedOwnerStatusName,
     );
 
     const failedPreparationStatusOption = project.status.statuses.find(
@@ -150,9 +149,6 @@ export class RevertOrphanedPreparationUseCase {
         ? extractWaitingForOwner(lastAgentReport.content)
         : false;
       if (waitingForOwner) {
-        const awaitingOwnerStatusOption = project.status.statuses.find(
-          (s) => s.name === AWAITING_OWNER_STATUS_NAME,
-        );
         if (awaitingOwnerStatusOption) {
           await this.issueRepository.updateStatus(
             project,
@@ -163,13 +159,6 @@ export class RevertOrphanedPreparationUseCase {
           console.warn(
             `Awaiting owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project`,
           );
-          if (awaitingQualityCheckStatusOption) {
-            await this.issueRepository.updateStatus(
-              project,
-              issue,
-              awaitingQualityCheckStatusOption.id,
-            );
-          }
         }
         continue;
       }
@@ -240,16 +229,11 @@ export class RevertOrphanedPreparationUseCase {
           repetition.type === 'escalateReportingLoop' ||
           repetition.type === 'escalateDispatchLoop'
         ) {
-          const awaitingOwnerStatusOption = project.status.statuses.find(
-            (s) => s.name === AWAITING_OWNER_STATUS_NAME,
-          );
-          const targetStatusOption =
-            awaitingOwnerStatusOption ?? awaitingQualityCheckStatusOption;
-          if (targetStatusOption) {
+          if (awaitingOwnerStatusOption) {
             await this.issueRepository.updateStatus(
               project,
               issue,
-              targetStatusOption.id,
+              awaitingOwnerStatusOption.id,
             );
           }
           await this.issueCommentRepository.createComment(
@@ -311,11 +295,11 @@ export class RevertOrphanedPreparationUseCase {
         continue;
       }
       if (outcome === 'advanceToQualityCheck') {
-        if (awaitingQualityCheckStatusOption) {
+        if (awaitingOwnerStatusOption) {
           await this.issueRepository.updateStatus(
             project,
             issue,
-            awaitingQualityCheckStatusOption.id,
+            awaitingOwnerStatusOption.id,
           );
         } else {
           await this.issueRepository.updateStatus(

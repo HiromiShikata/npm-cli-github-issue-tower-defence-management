@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { Issue } from '../../../domain/entities/Issue';
 import {
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_OWNER_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
 } from '../../../domain/entities/WorkflowStatus';
 import {
@@ -83,7 +83,7 @@ describe('InTmuxByHumanSessionTokenCountHandler', () => {
       tokenListJsonPath: tokenListPath,
       issues: [
         issue(issueUrlA, IN_TMUX_STATUS_NAME),
-        issue(issueUrlB, AWAITING_QUALITY_CHECK_STATUS_NAME),
+        issue(issueUrlB, AWAITING_OWNER_STATUS_NAME),
       ],
     });
 
