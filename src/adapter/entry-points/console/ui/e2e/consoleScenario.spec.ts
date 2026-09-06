@@ -1269,7 +1269,7 @@ test('story select in task detail shows current story pre-selected and fires set
     .toBe(1);
 });
 
-test('shows all comments as first-line summaries when not expanded and expands all on Show all click', async ({
+test('shows only the latest comment until Show all is clicked, each as a single-line preview', async ({
   page,
 }) => {
   const multiCommentHarness = await startConsoleE2eHarness({
@@ -1294,13 +1294,16 @@ test('shows all comments as first-line summaries when not expanded and expands a
       page,
       'Resolve the shared GitHub token rate-limit exhaustion blocker',
     ).click();
-    await expect(page.locator('.console-comment-summary')).toHaveCount(2);
+    await expect(page.locator('.console-comment-body-preview')).toHaveCount(1);
     await expect(
-      page.locator('.console-comment-summary').first(),
-    ).toContainText('First review comment.');
+      page.locator('.console-comment-body-preview').first(),
+    ).toContainText('Acknowledged.');
+    await expect(page.getByText('First review comment.')).not.toBeVisible();
     await page.getByRole('button', { name: 'Show all 2' }).click();
-    await expect(page.locator('.console-comment-summary')).toHaveCount(0);
-    await expect(page.getByText('Second paragraph detail.')).toBeVisible();
+    await expect(page.locator('.console-comment-body-preview')).toHaveCount(2);
+    await expect(page.getByText('First review comment.')).toBeVisible();
+    await expect(page.getByText('Acknowledged.')).toBeVisible();
+    await expect(page.getByText('Second paragraph detail.')).not.toBeVisible();
   } finally {
     await multiCommentHarness.stop();
   }

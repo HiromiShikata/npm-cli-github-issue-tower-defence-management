@@ -207,7 +207,7 @@ describe('ConsoleItemDetailContainer', () => {
     ).toBe(0);
   });
 
-  it('leaves the collapsed comments panel of a pull request item collapsed after a comment is posted', async () => {
+  it('expands the comments panel of a pull request item by default and shows a posted comment', async () => {
     const operations = buildOperations();
     operations.addComment = jest.fn(async (_item, body) => ({
       author: 'HiromiShikata',
@@ -239,7 +239,7 @@ describe('ConsoleItemDetailContainer', () => {
     });
     expect(
       findCommentsPanelToggle(container).getAttribute('aria-expanded'),
-    ).toBe('false');
+    ).toBe('true');
 
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {
       target: { value: 'Posted from the pull request item.' },
@@ -253,8 +253,8 @@ describe('ConsoleItemDetailContainer', () => {
     });
     expect(
       findCommentsPanelToggle(container).getAttribute('aria-expanded'),
-    ).toBe('false');
-    expect(container.querySelector('.console-comment-list')).toBeNull();
+    ).toBe('true');
+    expect(container.querySelector('.console-comment-list')).not.toBeNull();
   });
 
   it('keeps a reader-collapsed comments panel collapsed after a comment is posted on an issue item', async () => {
