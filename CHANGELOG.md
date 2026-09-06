@@ -1,3 +1,16 @@
+# [2.72.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.71.3...v2.72.0) (2026-09-06)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** suppress dispatch repeat counter when story is unset ([#2172](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2172)) ([4bf9fdf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4bf9fdf23ba1f9d8d533988609f71873e376cc3c))
+* **workflow:** remove unauthorized Awaiting Owner status and migrate affected issues ([#2173](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2173)) ([72b100c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/72b100c37c3af7b6d43e89488daf1c41449fc271))
+
+
+### Features
+
+* **console:** render markdown images in expanded comments ([#2166](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2166)) ([e8ee96c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e8ee96c68deff450cb4bf706597d88202d2503fb)), closes [HiromiShikata/umino-corporait-operation#31448](https://github.com/HiromiShikata/umino-corporait-operation/issues/31448)
+
 ## [2.71.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.71.2...v2.71.3) (2026-09-06)
 
 
