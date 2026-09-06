@@ -1,3 +1,11 @@
+## [2.72.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.4...v2.72.5) (2026-09-06)
+
+
+### Bug Fixes
+
+* **console:** remove duplicate proxy image test superseded by existing coverage ([#2181](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2181)) ([bd1e57e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bd1e57edf11bb09482b86bff7c2a16eaed1a4f4b))
+* **rest-project-repository:** set 120-second timeout on ky REST calls ([#2180](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2180)) ([16358b8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/16358b863c12daf4179abf62355ae5462cdd90f1))
+
 ## [2.72.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.3...v2.72.4) (2026-09-06)
 
 
