@@ -1,3 +1,10 @@
+## [2.67.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.67.0...v2.67.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **projectConfig:** wire thresholdForSelfNominationTotal through loadConfigFile and parseProjectReadmeConfig ([#2134](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2134)) ([e898882](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e89888298ca8835f6773d2df4739de3bf5386013)), closes [#2132](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2132)
+
 # [2.67.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.66.0...v2.67.0) (2026-09-06)
 
 
