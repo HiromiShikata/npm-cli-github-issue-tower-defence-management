@@ -219,6 +219,25 @@ describe('FileSystemConsoleTabsRepository', () => {
     expect(mtimeAfter).toBe(mtimeBefore);
   });
 
+  it('does not overwrite a .tmp file left by a concurrent process', () => {
+    const existingItem = makeItem({ projectItemId: 'item-1' });
+    writeTabFile('queued', makeStatusTab(PJCODE, [existingItem]));
+
+    const concurrentTmpPath = path.join(dir, PJCODE, 'queued', 'list.json.tmp');
+    const sentinelContent = '{"sentinel": true}';
+    fs.writeFileSync(concurrentTmpPath, sentinelContent);
+
+    const repo = new FileSystemConsoleTabsRepository(dir, PJCODE);
+    repo.patchIssueTabTransition({
+      projectItemId: 'item-1',
+      item: makeItem({ projectItemId: 'item-1' }),
+      targetTabName: null,
+    });
+
+    expect(fs.existsSync(concurrentTmpPath)).toBe(true);
+    expect(fs.readFileSync(concurrentTmpPath, 'utf-8')).toBe(sentinelContent);
+  });
+
   describe('moveItemToQueuedTab', () => {
     it('adds the item to the queued tab with the updated status without modifying the source tab', () => {
       const existingItem = makeItem({
