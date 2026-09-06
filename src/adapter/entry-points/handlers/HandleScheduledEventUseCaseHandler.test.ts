@@ -342,9 +342,7 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     expect(firstCallArg.config.maximumPreparingIssuesCount).toBe(10);
     expect(firstCallArg.config.utilizationPercentageThreshold).toBe(97);
     expect(firstCallArg.config.thresholdForAutoReject).toBe(3);
-    expect(firstCallArg.statusNames.awaitingOwnerStatus).toBe(
-      'Awaiting Owner',
-    );
+    expect(firstCallArg.statusNames.awaitingOwnerStatus).toBe('Awaiting Owner');
     expect(firstCallArg.statusNames.preparationStatus).toBe('Preparation');
     expect(firstCallArg.statusNames.awaitingWorkspaceStatus).toBe(
       'Awaiting Workspace',

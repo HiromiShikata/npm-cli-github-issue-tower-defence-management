@@ -6807,7 +6807,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
-
   });
 
   describe('story field update from routing JSON', () => {

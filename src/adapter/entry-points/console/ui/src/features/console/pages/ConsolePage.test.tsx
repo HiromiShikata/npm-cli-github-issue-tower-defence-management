@@ -128,9 +128,7 @@ describe('ConsolePage', () => {
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
-    expect(
-      within(tabBar()).getByText('Awaiting Owner'),
-    ).toBeInTheDocument();
+    expect(within(tabBar()).getByText('Awaiting Owner')).toBeInTheDocument();
     expect(
       document.querySelector('.console-group-header')?.textContent,
     ).toContain('TDPM Console port');
@@ -476,9 +474,7 @@ describe('ConsolePage', () => {
       });
 
       await waitFor(() => {
-        expect(
-          within(tabBar()).queryByText('Awaiting Owner'),
-        ).toBeNull();
+        expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
       });
     } finally {
       jest.useRealTimers();

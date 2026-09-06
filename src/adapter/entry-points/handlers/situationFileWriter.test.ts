@@ -117,9 +117,7 @@ describe('writeSituationFile', () => {
 
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining(
-          '"awaitingOwnerImmediatelyActionable":1',
-        ),
+        expect.stringContaining('"awaitingOwnerImmediatelyActionable":1'),
       );
     });
 
@@ -149,9 +147,7 @@ describe('writeSituationFile', () => {
 
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining(
-          '"awaitingOwnerImmediatelyActionable":1',
-        ),
+        expect.stringContaining('"awaitingOwnerImmediatelyActionable":1'),
       );
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
@@ -231,9 +227,7 @@ describe('writeSituationFile', () => {
 
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining(
-          '"awaitingOwnerImmediatelyActionable":0',
-        ),
+        expect.stringContaining('"awaitingOwnerImmediatelyActionable":0'),
       );
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),

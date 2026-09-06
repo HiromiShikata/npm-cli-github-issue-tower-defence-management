@@ -619,9 +619,7 @@ test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaitin
     .poll(
       () =>
         harness.commentCalls.some(
-          (c) =>
-            c.url === CONSOLE_E2E_AWAITING_OWNER_PR_URL &&
-            c.body === 'ok',
+          (c) => c.url === CONSOLE_E2E_AWAITING_OWNER_PR_URL && c.body === 'ok',
         ),
       { timeout: 10000 },
     )

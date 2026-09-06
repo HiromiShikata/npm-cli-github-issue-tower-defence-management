@@ -19,8 +19,7 @@ export class QualityCheckAdvanceUseCase {
     evaluatedAt?: Date;
   }): Promise<number> => {
     const qualityCheckStatusName =
-      params.awaitingOwnerStatusName ??
-      AWAITING_OWNER_STATUS_NAME;
+      params.awaitingOwnerStatusName ?? AWAITING_OWNER_STATUS_NAME;
     const evaluatedAt = params.evaluatedAt ?? new Date();
     const doneStatusOption = params.project.status.statuses.find(
       (s) => s.name === DONE_STATUS_NAME,
