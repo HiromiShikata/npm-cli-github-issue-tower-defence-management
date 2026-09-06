@@ -659,4 +659,55 @@ describe('fetchProjectReadmeWithCache', () => {
       readme: null,
     });
   });
+
+  it('fetches fresh and updates cache when disk cache entry is present but beyond TTL', async () => {
+    const staleFetchedAt = baseNowMs - PROJECT_README_CACHE_TTL_MS - 1;
+    const freshReadme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 7</details>';
+    mockCacheRepo.getSingle.mockImplementation(async (key: string) => {
+      if (key.startsWith('projectReadme/')) {
+        return { fetchedAtMs: staleFetchedAt, readme: 'stale content' };
+      }
+      return null;
+    });
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(makeReadmeResponse(freshReadme));
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+
+    expect(result).toBe(freshReadme);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const diskWriteCall = mockCacheRepo.setSingle.mock.calls.find(([key]) =>
+      key.startsWith('projectReadme/'),
+    );
+    expect(diskWriteCall).toBeDefined();
+    expect(diskWriteCall?.[1]).toEqual({
+      fetchedAtMs: baseNowMs,
+      readme: freshReadme,
+    });
+  });
+
+  it('returns the fetched readme even when the cache write throws', async () => {
+    const readme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 2</details>';
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(makeReadmeResponse(readme));
+    mockCacheRepo.setSingle.mockRejectedValueOnce(new Error('disk full'));
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+
+    expect(result).toBe(readme);
+  });
 });
