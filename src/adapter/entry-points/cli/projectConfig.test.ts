@@ -654,6 +654,9 @@ describe('fetchProjectReadmeWithCache', () => {
       key.startsWith('projectReadme/'),
     );
     expect(diskWriteCall).toBeDefined();
-    expect(diskWriteCall?.[1]).toEqual({ fetchedAtMs: baseNowMs, readme: null });
+    expect(diskWriteCall?.[1]).toEqual({
+      fetchedAtMs: baseNowMs,
+      readme: null,
+    });
   });
 });
