@@ -144,11 +144,7 @@ export class RestIssueRepository
       e.response.headers,
       nowMs,
     );
-    writeSecondaryRateLimitState(
-      nowMs + backoffMs,
-      nowMs,
-      this.stateFilePath,
-    );
+    writeSecondaryRateLimitState(nowMs + backoffMs, nowMs, this.stateFilePath);
     throw new GitHubRateLimitError(
       `HTTP ${e.response.status} GitHub API secondary rate limit exceeded`,
       new Date(nowMs + backoffMs).toISOString(),
@@ -414,16 +410,13 @@ export class RestIssueRepository
       if (e instanceof HTTPError && e.response.status === 404) {
         this.checkBreakerOrThrow();
         try {
-          await ky.post(
-            `https://api.github.com/repos/${org}/${repo}/labels`,
-            {
-              json: { name: labelName, color: 'ededed' },
-              headers: {
-                Authorization: `token ${this.ghToken}`,
-                Accept: 'application/vnd.github.v3+json',
-              },
+          await ky.post(`https://api.github.com/repos/${org}/${repo}/labels`, {
+            json: { name: labelName, color: 'ededed' },
+            headers: {
+              Authorization: `token ${this.ghToken}`,
+              Accept: 'application/vnd.github.v3+json',
             },
-          );
+          });
         } catch (postErr) {
           await this.detectAndRecordSecondaryRateLimit(postErr);
           throw postErr;

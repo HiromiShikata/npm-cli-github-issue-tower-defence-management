@@ -770,9 +770,8 @@ describe('GitHubIssueCommentRepository', () => {
             new Response(JSON.stringify([]), { status: 200 }),
           );
 
-        const { GitHubRateLimitError } = await import(
-          './issue/githubRateLimitRetry'
-        );
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
         const issue = buildIssue(
           'https://github.com/HiromiShikata/test-repository/issues/201',
         );
@@ -800,9 +799,8 @@ describe('GitHubIssueCommentRepository', () => {
             ),
           );
 
-        const { GitHubRateLimitError } = await import(
-          './issue/githubRateLimitRetry'
-        );
+        const { GitHubRateLimitError } =
+          await import('./issue/githubRateLimitRetry');
         const issue = buildIssue(
           'https://github.com/HiromiShikata/test-repository/issues/202',
         );

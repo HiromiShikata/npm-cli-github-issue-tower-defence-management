@@ -267,7 +267,10 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
 
     const stateFilePath = secondaryRateLimitStateFilePath();
     const nowMsBeforePost = Date.now();
-    const breaker = checkSecondaryRateLimitBreaker(nowMsBeforePost, stateFilePath);
+    const breaker = checkSecondaryRateLimitBreaker(
+      nowMsBeforePost,
+      stateFilePath,
+    );
     if (breaker.isBlocked && breaker.resetTimeMs !== null) {
       throw new GitHubRateLimitError(
         `GitHub secondary rate limit is active until ${new Date(breaker.resetTimeMs).toISOString()}`,
