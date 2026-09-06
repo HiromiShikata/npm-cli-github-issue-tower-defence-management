@@ -212,7 +212,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       const comment =
         result.type === 'escalateSilentRedispatch' ? result.comment : '';
       expect(comment).not.toContain('Failed to receive a report');
-      expect(comment.toLowerCase()).toContain('owner');
+      expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
 
     it('escalates once the repetition count reaches the auto reject threshold', () => {

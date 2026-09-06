@@ -253,7 +253,7 @@ This agent has been dispatched ${params.thresholdForDispatchLoop} times since th
       type: 'escalateSilentRedispatch',
       comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-The agent has been reporting every cycle but cannot advance — it has been dispatched again after its report without resolving the underlying blocker. Owner judgment is required to break the loop.`,
+The agent has been reporting every cycle but cannot advance — it has been dispatched again after its report without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
     };
   }
   if (silentRedispatches !== null && silentRedispatches.count > 1) {
