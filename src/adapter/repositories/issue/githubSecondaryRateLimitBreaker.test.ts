@@ -257,16 +257,14 @@ describe('fetchWithGitHubRateLimitRetry — circuit breaker', () => {
     const nowMs = Date.now();
 
     const sleep = jest.fn().mockResolvedValue(undefined);
-    const request = jest
-      .fn<Promise<Response>, []>()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            message: 'You have exceeded a secondary rate limit',
-          }),
-          { status: 403 },
-        ),
-      );
+    const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: 'You have exceeded a secondary rate limit',
+        }),
+        { status: 403 },
+      ),
+    );
 
     await fetchWithGitHubRateLimitRetry(
       request,
