@@ -140,6 +140,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     issueUrl: string;
     thresholdForAutoReject: number;
     thresholdForDispatchLoop?: number;
+    thresholdForSelfNominationTotal?: number;
     workflowBlockerResolvedWebhookUrl: string | null;
     allowedIssueAuthors?: string[] | null;
     labelsAsLlmAgentName?: string[] | null;
@@ -437,6 +438,8 @@ export class NotifyFinishedIssuePreparationUseCase {
         thresholdForDispatchLoop:
           params.thresholdForDispatchLoop ??
           DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+        thresholdForSelfNominationTotal:
+          params.thresholdForSelfNominationTotal,
       });
       if (
         repetition.type === 'escalateSilentRedispatch' ||

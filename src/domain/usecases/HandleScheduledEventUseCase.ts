@@ -189,6 +189,7 @@ export class HandleScheduledEventUseCase {
     } | null;
     thresholdForAutoReject?: number;
     thresholdForDispatchLoop?: number;
+    thresholdForSelfNominationTotal?: number;
     queryToAddProjectEnabled?: boolean;
     queryToAddProject?: string | null;
     storyProgressCommentEnabled?: boolean;
@@ -477,6 +478,7 @@ ${JSON.stringify(e)}
             input.startPreparation.preparationProcessCheckCommand,
           thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
           thresholdForDispatchLoop: input.thresholdForDispatchLoop,
+          thresholdForSelfNominationTotal: input.thresholdForSelfNominationTotal,
           awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
           awLogStaleThresholdMinutes:
             input.startPreparation.awLogStaleThresholdMinutes,

@@ -73,6 +73,7 @@ export class RevertOrphanedPreparationUseCase {
     preparationProcessCheckCommand: string;
     thresholdForAutoReject: number;
     thresholdForDispatchLoop?: number;
+    thresholdForSelfNominationTotal?: number;
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
     awaitingQualityCheckStatus?: string | null;
@@ -179,6 +180,8 @@ export class RevertOrphanedPreparationUseCase {
           thresholdForDispatchLoop:
             params.thresholdForDispatchLoop ??
             DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+          thresholdForSelfNominationTotal:
+            params.thresholdForSelfNominationTotal,
         });
         if (
           (repetition.type === 'escalateSilentRedispatch' ||

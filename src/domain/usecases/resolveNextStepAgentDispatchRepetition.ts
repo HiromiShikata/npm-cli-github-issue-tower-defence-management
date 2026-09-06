@@ -18,6 +18,7 @@ export const DISPATCH_LOOP_ESCALATION_PHRASE =
   'the issue is escalated for a decision';
 
 export const DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP = 6;
+export const DEFAULT_THRESHOLD_FOR_SELF_NOMINATION_TOTAL = 2;
 
 export type NextStepAgentDispatchRepetition =
   | { type: 'notRepeated' }
@@ -60,6 +61,45 @@ const isEscalationDispatchComment = (content: string): boolean =>
   content.includes(DISPATCH_LOOP_ESCALATION_PHRASE);
 
 type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
+
+const countTotalSelfNominations = <
+  CommentLike extends { author: string; content: string },
+>(params: {
+  agentFieldValue: string | null;
+  nextStepAgent: string;
+  comments: CommentLike[];
+  isTrustedAuthor: (author: string) => boolean;
+}): number => {
+  if (
+    params.agentFieldValue === null ||
+    normalizeProjectFieldName(params.agentFieldValue) !==
+      normalizeProjectFieldName(params.nextStepAgent)
+  ) {
+    return 0;
+  }
+  return params.comments.filter((comment) => {
+    if (!params.isTrustedAuthor(comment.author)) return false;
+    const cleaned = stripLeadingFencedBlocks(comment.content);
+    if (!cleaned.startsWith(AGENT_REPORT_PREFIX)) return false;
+    const reportingAgent = cleaned
+      .slice(AGENT_REPORT_PREFIX.length)
+      .trimStart()
+      .split(/[\n(]/)[0]
+      .trim();
+    if (
+      normalizeProjectFieldName(reportingAgent) !==
+      normalizeProjectFieldName(params.nextStepAgent)
+    ) {
+      return false;
+    }
+    const declaredNextStep = extractNextStepAgent(comment.content);
+    return (
+      declaredNextStep !== null &&
+      normalizeProjectFieldName(declaredNextStep) ===
+        normalizeProjectFieldName(params.nextStepAgent)
+    );
+  }).length;
+};
 
 const countSilentRedispatches = <
   CommentLike extends { author: string; content: string },
@@ -179,7 +219,20 @@ export const resolveNextStepAgentDispatchRepetition = <
   isTrustedAuthor: (author: string) => boolean;
   thresholdForAutoReject: number;
   thresholdForDispatchLoop: number;
+  thresholdForSelfNominationTotal?: number;
 }): NextStepAgentDispatchRepetition => {
+  const thresholdForSelfNominationTotal =
+    params.thresholdForSelfNominationTotal ??
+    DEFAULT_THRESHOLD_FOR_SELF_NOMINATION_TOTAL;
+  const totalSelfNominations = countTotalSelfNominations(params);
+  if (totalSelfNominations >= thresholdForSelfNominationTotal) {
+    return {
+      type: 'escalateSilentRedispatch',
+      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+
+This agent has self-nominated ${totalSelfNominations} times across the full issue history. Human comments between dispatch cycles did not resolve the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
+    };
+  }
   const silentRedispatches = countSilentRedispatches(params);
   if (
     silentRedispatches !== null &&

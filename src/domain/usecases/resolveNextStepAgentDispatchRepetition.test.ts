@@ -162,6 +162,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        thresholdForSelfNominationTotal: 3,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -316,6 +317,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        thresholdForSelfNominationTotal: 3,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -429,6 +431,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
+        thresholdForSelfNominationTotal: 99,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -604,6 +607,96 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('notRepeated');
+    });
+  });
+
+  describe('global self-nomination counter', () => {
+    it('escalates when an agent self-nominates across a human-comment cycle boundary reaching the threshold', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'liaison',
+        nextStepAgent: 'liaison',
+        comments: [
+          report('liaison'),
+          humanComment(),
+          report('liaison'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 99,
+        thresholdForSelfNominationTotal: 2,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+    });
+
+    it('does not escalate when total self-nominations is below the threshold', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'liaison',
+        nextStepAgent: 'liaison',
+        comments: [report('liaison')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 99,
+        thresholdForSelfNominationTotal: 2,
+      });
+
+      expect(result.type).not.toBe('escalateSilentRedispatch');
+    });
+
+    it('does not count reports where the reporting agent differs from nextStepAgent', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'liaison',
+        nextStepAgent: 'liaison',
+        comments: [
+          report('triager'),
+          humanComment(),
+          report('liaison'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 99,
+        thresholdForSelfNominationTotal: 2,
+      });
+
+      expect(result.type).not.toBe('escalateSilentRedispatch');
+    });
+
+    it('does not count reports where nextStepAgent in JSON differs from the reporting agent', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'liaison',
+        nextStepAgent: 'liaison',
+        comments: [
+          report('liaison'),
+          humanComment(),
+          { author: 'bot', content: 'From: :robot: liaison (model)\n\n```json\n{ "nextStepAgent": "triager" }\n```\n\nReport.' },
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 99,
+        thresholdForSelfNominationTotal: 2,
+      });
+
+      expect(result.type).not.toBe('escalateSilentRedispatch');
+    });
+
+    it('uses the owner judgment escalation phrase in the emitted comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'liaison',
+        nextStepAgent: 'liaison',
+        comments: [
+          report('liaison'),
+          humanComment(),
+          report('liaison'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 99,
+        thresholdForSelfNominationTotal: 2,
+      });
+
+      const comment =
+        result.type === 'escalateSilentRedispatch' ? result.comment : '';
+      expect(comment.toLowerCase()).toContain('owner');
     });
   });
 });

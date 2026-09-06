@@ -45,7 +45,10 @@ import { ProjectDoraConfig } from '../../../domain/entities/DoraMetrics';
 type ProjectDoraAdapterConfig = ProjectDoraConfig & {
   ghTokenEnvVar: string | null;
 };
-import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
+import {
+  DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+  DEFAULT_THRESHOLD_FOR_SELF_NOMINATION_TOTAL,
+} from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { SystemDateRepository } from '../../repositories/SystemDateRepository';
 import * as os from 'os';
@@ -133,6 +136,7 @@ type NotifyFinishedOptions = {
   projectUrl?: string;
   thresholdForAutoReject?: string;
   thresholdForDispatchLoop?: string;
+  thresholdForSelfNominationTotal?: string;
   workflowBlockerResolvedWebhookUrl?: string;
   configFilePath: string;
   fleetConfigFilePath?: string;
@@ -612,6 +616,10 @@ program
     'Threshold for auto-escalation after one agent is dispatched this many times since the last human comment, whether it names itself or two agents name each other in turn (default: 6)',
   )
   .option(
+    '--thresholdForSelfNominationTotal <count>',
+    'Threshold for auto-escalation when an agent self-nominates this many times across the full issue history, ignoring human-comment cycle resets (default: 2)',
+  )
+  .option(
     '--workflowBlockerResolvedWebhookUrl <url>',
     'Webhook URL to notify when a workflow blocker issue status changes to awaiting quality check. Supports {URL} and {MESSAGE} placeholders.',
   )
@@ -647,6 +655,9 @@ program
         : undefined,
       thresholdForDispatchLoop: options.thresholdForDispatchLoop
         ? Number(options.thresholdForDispatchLoop)
+        : undefined,
+      thresholdForSelfNominationTotal: options.thresholdForSelfNominationTotal
+        ? Number(options.thresholdForSelfNominationTotal)
         : undefined,
       workflowBlockerResolvedWebhookUrl:
         options.workflowBlockerResolvedWebhookUrl,
@@ -699,6 +710,11 @@ program
       config.thresholdForDispatchLoop,
       'thresholdForDispatchLoop',
       DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+    );
+    const thresholdForSelfNominationTotal = resolvePositiveIntegerOption(
+      config.thresholdForSelfNominationTotal,
+      'thresholdForSelfNominationTotal',
+      DEFAULT_THRESHOLD_FOR_SELF_NOMINATION_TOTAL,
     );
 
     const workflowBlockerResolvedWebhookUrl: string | null =
@@ -776,6 +792,7 @@ program
         issueUrl: options.issueUrl,
         thresholdForAutoReject,
         thresholdForDispatchLoop,
+        thresholdForSelfNominationTotal,
         workflowBlockerResolvedWebhookUrl,
         allowedIssueAuthors,
         labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
