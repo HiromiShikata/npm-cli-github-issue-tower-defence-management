@@ -164,6 +164,8 @@ import { RestIssueRepository } from '../../repositories/issue/RestIssueRepositor
 import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
 import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
+import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
+import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
 import {
   loadSilentNotificationEnabled,
   loadWorkflowImprovementIssueUrl,
@@ -199,6 +201,9 @@ const MockedApiV3CheerioRestIssueRepository = jest.mocked(
 );
 const MockedProxyClaudeTokenUsageRepository = jest.mocked(
   ProxyClaudeTokenUsageRepository,
+);
+const MockedGitHubIssueCommentRepository = jest.mocked(
+  GitHubIssueCommentRepository,
 );
 const MockedWriteInTmuxByHumanData = jest.mocked(writeInTmuxByHumanData);
 const mockGetLastIssuesFetchedAt = jest.fn<string | null, [string]>();
@@ -973,5 +978,15 @@ defaultAgentName: readme-agent
         allowedDependencyRepoNameWithOwner: 'allowed-owner/allowed-repo',
       });
     });
+  });
+
+  it('constructs GitHubIssueCommentRepository with a LocalStorageCacheRepository to enable conditional ETag requests', async () => {
+    const handler = new HandleScheduledEventUseCaseHandler();
+    await handler.handle('config.yml', false);
+
+    expect(MockedGitHubIssueCommentRepository).toHaveBeenCalledWith(
+      'test-token',
+      expect.any(LocalStorageCacheRepository),
+    );
   });
 });

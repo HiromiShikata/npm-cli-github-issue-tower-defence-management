@@ -494,6 +494,7 @@ export class HandleScheduledEventUseCaseHandler {
       : null;
     const issueCommentRepository = new GitHubIssueCommentRepository(
       input.credentials.bot.github.token,
+      localStorageCacheRepository,
     );
     const revertOrphanedPreparationUseCase =
       new RevertOrphanedPreparationUseCase(
