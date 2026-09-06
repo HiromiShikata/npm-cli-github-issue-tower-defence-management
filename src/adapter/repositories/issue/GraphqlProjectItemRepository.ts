@@ -1371,7 +1371,7 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         );
         return null;
       }
-      return buildProjectItem('', []);
+      return null;
     }
     return buildProjectItem(
       item.id,

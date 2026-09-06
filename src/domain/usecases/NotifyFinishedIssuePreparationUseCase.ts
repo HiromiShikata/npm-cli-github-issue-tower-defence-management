@@ -120,6 +120,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'updateStory'
       | 'addIssueToProject'
       | 'getIssueByUrl'
+      | 'updateStoryByProjectItemId'
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,

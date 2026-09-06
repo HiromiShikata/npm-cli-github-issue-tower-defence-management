@@ -1172,10 +1172,22 @@ export class ApiV3CheerioRestIssueRepository
   addIssueToProject = async (
     project: Project,
     issueUrl: string,
-  ): Promise<void> => {
-    await this.graphqlProjectItemRepository.addIssueToProject(
+  ): Promise<string> => {
+    return this.graphqlProjectItemRepository.addIssueToProject(
       project.id,
       issueUrl,
+    );
+  };
+  updateStoryByProjectItemId = async (
+    project: Project & { story: NonNullable<Project['story']> },
+    projectItemId: string,
+    storyOptionId: string,
+  ): Promise<void> => {
+    await this.graphqlProjectItemRepository.updateProjectField(
+      project.id,
+      project.story.fieldId,
+      projectItemId,
+      { singleSelectOptionId: storyOptionId },
     );
   };
   setDependedIssueUrl = async (
