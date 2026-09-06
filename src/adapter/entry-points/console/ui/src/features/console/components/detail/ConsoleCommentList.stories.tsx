@@ -41,3 +41,18 @@ export const WithWorkflowLink: Story = {
       'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata',
   },
 };
+
+export const WithMultilineComment: Story = {
+  args: {
+    comments: [
+      {
+        author: 'HiromiShikata',
+        body: 'First summary line.\n\n## Details\n\nSecond paragraph with more context about the decision that was made here.\n\nThird paragraph explaining the rationale.',
+        createdAt: '2026-06-17T09:03:27.000Z',
+        url: null,
+      },
+    ],
+    isLoading: false,
+    error: null,
+  },
+};
