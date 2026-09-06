@@ -89,17 +89,23 @@ export const ConsoleCommentList = ({
           <article
             key={key}
             className={`console-comment${isExpanded ? ' is-expanded' : isSummaryMode ? ' console-comment--expandable' : ''}`}
-            onClick={() => toggleExpanded(key)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                toggleExpanded(key);
-              }
-            }}
           >
-            <span className="console-comment-author">{comment.author}</span>
-            <span className="console-comment-time">
-              {formatRelativeTime(comment.createdAt, now)}
-            </span>
+            <button
+              type="button"
+              className="console-comment-toggle"
+              onClick={() => toggleExpanded(key)}
+              aria-expanded={isExpanded}
+            >
+              <span className="console-comment-author">{comment.author}</span>
+              <span className="console-comment-time">
+                {formatRelativeTime(comment.createdAt, now)}
+              </span>
+              {!isExpanded && (
+                <span className="console-comment-body-preview">
+                  {extractFirstLine(comment.body)}
+                </span>
+              )}
+            </button>
             {workflowImprovementIssueUrl !== null && comment.url !== null && (
               <a
                 href={buildWorkflowIncidentReportUrl(
@@ -113,11 +119,6 @@ export const ConsoleCommentList = ({
               >
                 ⚡
               </a>
-            )}
-            {!isExpanded && (
-              <span className="console-comment-body-preview">
-                {extractFirstLine(comment.body)}
-              </span>
             )}
             {isExpanded && (
               <div className="console-comment-body-expanded">

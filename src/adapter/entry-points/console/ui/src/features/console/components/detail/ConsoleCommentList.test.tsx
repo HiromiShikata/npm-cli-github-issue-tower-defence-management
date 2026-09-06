@@ -96,7 +96,9 @@ describe('ConsoleCommentList', () => {
     );
     const article = container.querySelector('.console-comment');
     if (!article) throw new Error('article not found');
-    fireEvent.click(article);
+    const toggleBtn = article.querySelector('.console-comment-toggle');
+    if (!toggleBtn) throw new Error('toggle button not found');
+    fireEvent.click(toggleBtn);
     expect(container.querySelector('.console-markdown')).toBeNull();
     expect(container.querySelector('.console-comment-header')).toBeNull();
     const authorEl = article.querySelector('.console-comment-author');
@@ -120,7 +122,7 @@ describe('ConsoleCommentList', () => {
       createdAt: '2026-06-17T09:00:00.000Z',
       url: null,
     };
-    const { getAllByRole, getByText, queryByText } = render(
+    const { container, getByText, queryByText } = render(
       <ConsoleCommentList
         comments={[multiLineComment, secondComment]}
         isLoading={false}
@@ -129,8 +131,8 @@ describe('ConsoleCommentList', () => {
       />,
     );
     expect(queryByText('Second paragraph detail.')).toBeNull();
-    const articles = getAllByRole('article');
-    fireEvent.click(articles[0]);
+    const toggleBtns = container.querySelectorAll('.console-comment-toggle');
+    fireEvent.click(toggleBtns[0]);
     expect(getByText('Second paragraph detail.')).toBeInTheDocument();
     expect(getByText('Acknowledged.')).toBeInTheDocument();
   });
@@ -263,19 +265,18 @@ describe('ConsoleCommentList', () => {
         buildImageProxyUrl={buildProxyUrl}
       />,
     );
-    expect(container.querySelector('img')).toBeNull();
-    const article = container.querySelector('.console-comment');
-    expect(article).not.toBeNull();
-    if (!article) throw new Error('article not found');
-    fireEvent.click(article);
     const img = container.querySelector('img');
     expect(img).not.toBeNull();
     expect(img?.getAttribute('src')).toBe(
       `/api/img?url=${encodeURIComponent(imageUrl)}`,
     );
+    const toggleBtn = container.querySelector('.console-comment-toggle');
+    if (!toggleBtn) throw new Error('toggle button not found');
+    fireEvent.click(toggleBtn);
+    expect(container.querySelector('img')).toBeNull();
   });
 
-  it('shows full comment body when the comment article is clicked', () => {
+  it('shows full comment body when the comment toggle is clicked', () => {
     const comment = {
       author: 'agent',
       body: 'First line of body\nSecond line of body\nThird line',
@@ -294,9 +295,9 @@ describe('ConsoleCommentList', () => {
       container.querySelector('.console-comment-body-expanded'),
     ).not.toBeNull();
     expect(container.querySelector('.console-comment-body-preview')).toBeNull();
-    const article = container.querySelector('.console-comment');
-    if (!article) throw new Error('article not found');
-    fireEvent.click(article);
+    const toggleBtn = container.querySelector('.console-comment-toggle');
+    if (!toggleBtn) throw new Error('toggle button not found');
+    fireEvent.click(toggleBtn);
     expect(
       container.querySelector('.console-comment-body-expanded'),
     ).toBeNull();
@@ -306,7 +307,7 @@ describe('ConsoleCommentList', () => {
     expect(
       container.querySelector('.console-comment-body-preview')?.textContent,
     ).toBe('First line of body');
-    fireEvent.click(article);
+    fireEvent.click(toggleBtn);
     expect(
       container.querySelector('.console-comment-body-expanded'),
     ).not.toBeNull();
@@ -326,7 +327,7 @@ describe('ConsoleCommentList', () => {
       createdAt: '2026-06-17T09:00:00.000Z',
       url: null,
     };
-    const { getAllByRole, queryByText } = render(
+    const { container, queryByText } = render(
       <ConsoleCommentList
         comments={[multiLineComment, secondComment]}
         isLoading={false}
@@ -334,10 +335,10 @@ describe('ConsoleCommentList', () => {
         now={now}
       />,
     );
-    const articles = getAllByRole('article');
-    fireEvent.click(articles[0]);
+    const toggleBtns = container.querySelectorAll('.console-comment-toggle');
+    fireEvent.click(toggleBtns[0]);
     expect(queryByText('Second paragraph detail.')).toBeInTheDocument();
-    fireEvent.click(articles[0]);
+    fireEvent.click(toggleBtns[0]);
     expect(queryByText('Second paragraph detail.')).toBeNull();
   });
 
@@ -360,9 +361,11 @@ describe('ConsoleCommentList', () => {
     expect(article).not.toBeNull();
     if (!article) throw new Error('article not found');
     expect(article.classList.contains('is-expanded')).toBe(true);
-    fireEvent.click(article);
+    const toggleBtn = article.querySelector('.console-comment-toggle');
+    if (!toggleBtn) throw new Error('toggle button not found');
+    fireEvent.click(toggleBtn);
     expect(article.classList.contains('is-expanded')).toBe(false);
-    fireEvent.click(article);
+    fireEvent.click(toggleBtn);
     expect(article.classList.contains('is-expanded')).toBe(true);
   });
 });

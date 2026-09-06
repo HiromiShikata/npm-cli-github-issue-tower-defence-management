@@ -1167,6 +1167,21 @@ body {
   cursor: pointer;
 }
 
+.console-comment-toggle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
 .console-comment-show-all {
   padding: 6px 12px;
   margin-bottom: 10px;
