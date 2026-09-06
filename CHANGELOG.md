@@ -1,3 +1,10 @@
+# [2.68.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.67.1...v2.68.0) (2026-09-06)
+
+
+### Features
+
+* **stories-tab:** show tasks with agent and reactivation trigger fields when story is expanded ([#2121](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2121)) ([7dfa48d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7dfa48dd21b478419646583497df414e47511b71)), closes [#2118](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2118)
+
 ## [2.67.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.67.0...v2.67.1) (2026-09-06)
 
 
