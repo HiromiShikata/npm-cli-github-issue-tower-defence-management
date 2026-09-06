@@ -5039,7 +5039,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('sets workflow blocker story via project item id returned by addIssueToProject, not via getIssueByUrl', async () => {
       const issueUrl = 'https://github.com/user/repo/issues/1';
-      const blockerIssueUrl = 'https://github.com/user/repo/issues/42';
       const blockerStoryId = 'blocker-story-id';
       const returnedProjectItemId = 'returned-project-item-id';
       const projectWithStory = createMockProject({
