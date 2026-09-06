@@ -274,6 +274,6 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         `Failed to create comment via GitHub REST API: ${response.status} ${response.statusText}`,
       );
     }
-    logGithubRestRateLimit({ url: response.url, headers: response.headers });
+    logGithubRestRateLimit({ headers: response.headers });
   }
 }

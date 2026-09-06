@@ -90,7 +90,7 @@ export const fetchWithGitHubRateLimitRetry = async (
   for (;;) {
     const response = await request();
     if (response.ok) {
-      logGithubRestRateLimit({ url: response.url, headers: response.headers });
+      logGithubRestRateLimit({ headers: response.headers });
       return response;
     }
     const bodyText = await response.clone().text();
