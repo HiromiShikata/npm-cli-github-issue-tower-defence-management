@@ -105,6 +105,7 @@ export type GenerateConsoleListsInput = {
   generatedAt: string;
   workflowBlockerStoryName: string | null;
   urlOfStoryView: string | null;
+  now: Date;
 };
 
 const UNKNOWN_STORY_SORT_INDEX = 999999;
@@ -119,6 +120,7 @@ export class GenerateConsoleListsUseCase {
       generatedAt,
       workflowBlockerStoryName,
       urlOfStoryView,
+      now,
     } = input;
 
     const storyOptions = project.story ? project.story.stories : [];
