@@ -444,8 +444,8 @@ describe('NodeTmuxSessionRepository', () => {
     it('creates a new session when no session is registered and no live process exists', async () => {
       const runner = createMockRunner();
       runner.runCommand
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 }) // registry: empty
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 }); // ps: no matching process
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
       const repository = new NodeTmuxSessionRepository(runner);
 
       await repository.attachOrCreateInteractiveSession(
@@ -471,7 +471,7 @@ describe('NodeTmuxSessionRepository', () => {
           stderr: "can't find session",
           exitCode: 1,
         })
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 }); // ps: no matching process
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
       const repository = new NodeTmuxSessionRepository(runner);
 
       await repository.attachOrCreateInteractiveSession(
@@ -496,7 +496,7 @@ describe('NodeTmuxSessionRepository', () => {
           stderr: 'registry error',
           exitCode: 1,
         })
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 }); // ps: no matching process
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 });
       const repository = new NodeTmuxSessionRepository(runner);
 
       await repository.attachOrCreateInteractiveSession(
@@ -519,7 +519,7 @@ describe('NodeTmuxSessionRepository', () => {
         stdout: '',
         stderr: '',
         exitCode: 0,
-      }); // ps: no matching process
+      });
       const repository = new NodeTmuxSessionRepository(runner);
 
       await repository.attachOrCreateInteractiveSession(issueUrl, null);
@@ -537,9 +537,8 @@ describe('NodeTmuxSessionRepository', () => {
     it('attaches to an existing session found via process tree when the registry is empty but a live process exists', async () => {
       const runner = createMockRunner();
       runner.runCommand
-        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 }) // registry: empty
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
         .mockResolvedValueOnce({
-          // ps: cl process is a child of the pane shell
           stdout:
             '1050 1000 /usr/bin/tmux\n' +
             '1100 1050 /usr/bin/bash\n' +
@@ -548,7 +547,6 @@ describe('NodeTmuxSessionRepository', () => {
           exitCode: 0,
         })
         .mockResolvedValueOnce({
-          // tmux list-panes
           stdout: '1100 abc123def456ab12\n5678 other_session\n',
           stderr: '',
           exitCode: 0,
@@ -576,20 +574,18 @@ describe('NodeTmuxSessionRepository', () => {
     it('attaches to an existing session found via process tree when the registered session is stale but a live process exists', async () => {
       const runner = createMockRunner();
       runner.runCommand
-        .mockResolvedValueOnce({ stdout: 'wq7x3mk\n', stderr: '', exitCode: 0 }) // registry: stale name
+        .mockResolvedValueOnce({ stdout: 'wq7x3mk\n', stderr: '', exitCode: 0 })
         .mockResolvedValueOnce({
           stdout: '',
           stderr: "can't find session",
           exitCode: 1,
-        }) // has-session: gone
+        })
         .mockResolvedValueOnce({
-          // ps: cl process is a child of the pane shell
           stdout: '1100 1050 /usr/bin/bash\n' + `1234 1100 cl ${issueUrl}\n`,
           stderr: '',
           exitCode: 0,
         })
         .mockResolvedValueOnce({
-          // tmux list-panes
           stdout: '1100 abc123def456ab12\n',
           stderr: '',
           exitCode: 0,
@@ -603,6 +599,75 @@ describe('NodeTmuxSessionRepository', () => {
 
       expect(runner.spawnInteractive.mock.calls).toEqual([
         ['tmux', ['attach-session', '-t', '=abc123def456ab12']],
+      ]);
+    });
+
+    it('creates a new session when ps command fails to run', async () => {
+      const runner = createMockRunner();
+      runner.runCommand
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: '', stderr: 'ps error', exitCode: 1 });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await repository.attachOrCreateInteractiveSession(
+        issueUrl,
+        '/path/to/cl-scope-lib.sh',
+      );
+
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
+      ]);
+    });
+
+    it('creates a new session when tmux list-panes fails after a matching process is found', async () => {
+      const runner = createMockRunner();
+      runner.runCommand
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+        .mockResolvedValueOnce({
+          stdout: `1234 1100 cl ${issueUrl}\n`,
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '',
+          stderr: 'no server running',
+          exitCode: 1,
+        });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await repository.attachOrCreateInteractiveSession(
+        issueUrl,
+        '/path/to/cl-scope-lib.sh',
+      );
+
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
+      ]);
+    });
+
+    it('creates a new session when no pane PID in the list-panes output matches the process ancestor chain', async () => {
+      const runner = createMockRunner();
+      runner.runCommand
+        .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 })
+        .mockResolvedValueOnce({
+          stdout: `1234 1100 cl ${issueUrl}\n`,
+          stderr: '',
+          exitCode: 0,
+        })
+        .mockResolvedValueOnce({
+          stdout: '9999 unrelated_session\n',
+          stderr: '',
+          exitCode: 0,
+        });
+      const repository = new NodeTmuxSessionRepository(runner);
+
+      await repository.attachOrCreateInteractiveSession(
+        issueUrl,
+        '/path/to/cl-scope-lib.sh',
+      );
+
+      expect(runner.spawnInteractive.mock.calls).toEqual([
+        ['tmux', ['new-session', '-A', '-s', issueUrl, 'cl', issueUrl]],
       ]);
     });
 
