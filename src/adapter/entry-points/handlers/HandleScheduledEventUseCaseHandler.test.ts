@@ -166,6 +166,7 @@ import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3C
 import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
 import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
 import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { resetProjectReadmeInMemoryCacheForTesting } from '../cli/projectConfig';
 import {
   loadSilentNotificationEnabled,
   loadWorkflowImprovementIssueUrl,
@@ -209,6 +210,17 @@ const MockedWriteInTmuxByHumanData = jest.mocked(writeInTmuxByHumanData);
 const mockGetLastIssuesFetchedAt = jest.fn<string | null, [string]>();
 ApiV3CheerioRestIssueRepository.prototype.getLastIssuesFetchedAt =
   mockGetLastIssuesFetchedAt;
+
+const mockLocalStorageCacheGetSingle = jest
+  .fn<Promise<unknown>, [string]>()
+  .mockResolvedValue(null);
+const mockLocalStorageCacheSetSingle = jest
+  .fn<Promise<void>, [string, unknown]>()
+  .mockResolvedValue(undefined);
+LocalStorageCacheRepository.prototype.getSingle =
+  mockLocalStorageCacheGetSingle;
+LocalStorageCacheRepository.prototype.setSingle =
+  mockLocalStorageCacheSetSingle;
 
 const validConfig = {
   projectName: 'test-project',
@@ -255,6 +267,9 @@ describe('HandleScheduledEventUseCaseHandler', () => {
     capturedRunInputs.length = 0;
     jest.mocked(fs.readFileSync).mockReturnValue(YAML.stringify(validConfig));
     mockGetLastIssuesFetchedAt.mockReturnValue('2026-08-09T02:00:00.000Z');
+    mockLocalStorageCacheGetSingle.mockResolvedValue(null);
+    mockLocalStorageCacheSetSingle.mockResolvedValue(undefined);
+    resetProjectReadmeInMemoryCacheForTesting();
     mockFetchReturningReadme(null);
     mockResolveFleetConfigFilePath.mockReturnValue(null);
     mockLoadSilentNotificationEnabled.mockReturnValue(null);

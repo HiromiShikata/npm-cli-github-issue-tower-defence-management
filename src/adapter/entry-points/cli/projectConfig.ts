@@ -623,3 +623,84 @@ export const updateProjectV2Readme = async (
     }
   }
 };
+
+export const PROJECT_README_CACHE_TTL_MS = 10 * 60 * 1000;
+
+type ProjectReadmeDiskCache = {
+  fetchedAtMs: number;
+  readme: string | null;
+};
+
+const isProjectReadmeDiskCache = (
+  value: unknown,
+): value is ProjectReadmeDiskCache => {
+  if (!isRecord(value)) return false;
+  return (
+    'fetchedAtMs' in value &&
+    typeof value['fetchedAtMs'] === 'number' &&
+    'readme' in value &&
+    (typeof value['readme'] === 'string' || value['readme'] === null)
+  );
+};
+
+type ReadmeCacheRepository = {
+  getSingle: (key: string) => Promise<unknown>;
+  setSingle: <T>(key: string, value: T) => Promise<void>;
+};
+
+const projectReadmeInMemoryCache = new Map<
+  string,
+  { fetchedAtMs: number; readme: string | null }
+>();
+
+export const resetProjectReadmeInMemoryCacheForTesting = (): void => {
+  projectReadmeInMemoryCache.clear();
+};
+
+const projectReadmeDiskCacheKey = (projectUrl: string): string => {
+  const urlParts = projectUrl.split('/');
+  const projectNumber = urlParts[urlParts.length - 1];
+  const owner = urlParts[urlParts.length - 3];
+  return `projectReadme/${owner}/${projectNumber}`;
+};
+
+export const fetchProjectReadmeWithCache = async (
+  projectUrl: string,
+  token: string,
+  cacheRepository: ReadmeCacheRepository,
+  nowMs: number = Date.now(),
+): Promise<string | null> => {
+  const inMemoryCached = projectReadmeInMemoryCache.get(projectUrl);
+  if (
+    inMemoryCached !== undefined &&
+    nowMs - inMemoryCached.fetchedAtMs < PROJECT_README_CACHE_TTL_MS
+  ) {
+    return inMemoryCached.readme;
+  }
+
+  const diskCacheKey = projectReadmeDiskCacheKey(projectUrl);
+  const diskCacheRaw = await cacheRepository.getSingle(diskCacheKey);
+  if (isProjectReadmeDiskCache(diskCacheRaw)) {
+    if (nowMs - diskCacheRaw.fetchedAtMs < PROJECT_README_CACHE_TTL_MS) {
+      projectReadmeInMemoryCache.set(projectUrl, {
+        fetchedAtMs: diskCacheRaw.fetchedAtMs,
+        readme: diskCacheRaw.readme,
+      });
+      return diskCacheRaw.readme;
+    }
+  }
+
+  const readme = await fetchProjectReadme(projectUrl, token);
+  const cacheEntry = { fetchedAtMs: nowMs, readme };
+
+  try {
+    await cacheRepository.setSingle(diskCacheKey, cacheEntry);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`Failed to write project README disk cache: ${message}`);
+  }
+
+  projectReadmeInMemoryCache.set(projectUrl, cacheEntry);
+
+  return readme;
+};

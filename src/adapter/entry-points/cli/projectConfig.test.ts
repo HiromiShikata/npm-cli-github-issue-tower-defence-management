@@ -6,6 +6,9 @@ import {
   mergeConfigs,
   parseProjectReadmeConfig,
   setProjectReadmeMaxPreparingIssuesCount,
+  fetchProjectReadmeWithCache,
+  PROJECT_README_CACHE_TTL_MS,
+  resetProjectReadmeInMemoryCacheForTesting,
 } from './projectConfig';
 
 describe('loadConfigFile disks', () => {
@@ -512,5 +515,209 @@ describe('mergeConfigs githubAppPrivateKeyPaths', () => {
 
   it('yields undefined when neither source provides the array', () => {
     expect(mergeConfigs({}, {}, {}).githubAppPrivateKeyPaths).toBeUndefined();
+  });
+});
+
+describe('fetchProjectReadmeWithCache', () => {
+  const mockCacheRepo = {
+    getSingle: jest.fn<Promise<unknown>, [string]>(),
+    setSingle: jest.fn<Promise<void>, [string, unknown]>(),
+  };
+  const projectUrl = 'https://github.com/users/TestOrg/projects/1';
+  const token = 'test-token';
+  const baseNowMs = new Date('2026-01-01T00:00:00.000Z').getTime();
+
+  const makeReadmeResponse = (readme: string | null): Response =>
+    new Response(
+      JSON.stringify(
+        readme === null
+          ? { data: {} }
+          : { data: { organization: { projectV2: { readme } } } },
+      ),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetProjectReadmeInMemoryCacheForTesting();
+    mockCacheRepo.getSingle.mockResolvedValue(null);
+    mockCacheRepo.setSingle.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('fetches from API and writes to both caches on the first call', async () => {
+    const readme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 5</details>';
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(makeReadmeResponse(readme));
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+
+    expect(result).toBe(readme);
+    const diskWriteCall = mockCacheRepo.setSingle.mock.calls.find(([key]) =>
+      key.startsWith('projectReadme/'),
+    );
+    expect(diskWriteCall).toBeDefined();
+    expect(diskWriteCall?.[1]).toEqual({ fetchedAtMs: baseNowMs, readme });
+  });
+
+  it('does not call the API for a second call within the TTL (in-memory cache hit)', async () => {
+    const readme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 5</details>';
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(makeReadmeResponse(readme));
+
+    await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+    await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs + PROJECT_README_CACHE_TTL_MS - 1,
+    );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls the API again after the TTL has expired', async () => {
+    const readme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 5</details>';
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(makeReadmeResponse(readme));
+
+    await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+    await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs + PROJECT_README_CACHE_TTL_MS + 1,
+    );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('serves from disk cache without API call when disk cache is within TTL', async () => {
+    const diskReadme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 3</details>';
+    const diskFetchedAtMs = baseNowMs - (PROJECT_README_CACHE_TTL_MS - 60000);
+    mockCacheRepo.getSingle.mockImplementation(async (key: string) => {
+      if (key.startsWith('projectReadme/')) {
+        return { fetchedAtMs: diskFetchedAtMs, readme: diskReadme };
+      }
+      return null;
+    });
+    const fetchSpy = jest.spyOn(global, 'fetch');
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+
+    expect(result).toBe(diskReadme);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns null without error for a project that has no README override', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(makeReadmeResponse(null));
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+
+    expect(result).toBeNull();
+    const diskWriteCall = mockCacheRepo.setSingle.mock.calls.find(([key]) =>
+      key.startsWith('projectReadme/'),
+    );
+    expect(diskWriteCall).toBeDefined();
+    expect(diskWriteCall?.[1]).toEqual({
+      fetchedAtMs: baseNowMs,
+      readme: null,
+    });
+  });
+
+  it('fetches fresh and updates cache when disk cache entry is present but beyond TTL', async () => {
+    const staleFetchedAt = baseNowMs - PROJECT_README_CACHE_TTL_MS - 1;
+    const freshReadme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 7</details>';
+    mockCacheRepo.getSingle.mockImplementation(async (key: string) => {
+      if (key.startsWith('projectReadme/')) {
+        return { fetchedAtMs: staleFetchedAt, readme: 'stale content' };
+      }
+      return null;
+    });
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(makeReadmeResponse(freshReadme));
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+
+    expect(result).toBe(freshReadme);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const diskWriteCall = mockCacheRepo.setSingle.mock.calls.find(([key]) =>
+      key.startsWith('projectReadme/'),
+    );
+    expect(diskWriteCall).toBeDefined();
+    expect(diskWriteCall?.[1]).toEqual({
+      fetchedAtMs: baseNowMs,
+      readme: freshReadme,
+    });
+  });
+
+  it('returns the fetched readme even when the cache write throws', async () => {
+    const readme =
+      '<details><summary>config</summary>maximumPreparingIssuesCount: 2</details>';
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(makeReadmeResponse(readme));
+    mockCacheRepo.setSingle.mockRejectedValueOnce(new Error('disk full'));
+
+    const result = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs,
+    );
+
+    expect(result).toBe(readme);
+
+    const result2 = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs + 1,
+    );
+
+    expect(result2).toBe(readme);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });
