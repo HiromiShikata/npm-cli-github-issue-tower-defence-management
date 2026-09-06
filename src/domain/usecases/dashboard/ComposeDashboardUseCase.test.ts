@@ -537,6 +537,40 @@ describe('formatTokenRowLine', () => {
       ),
     ).toBe('🟡xx  ? ?  ? ? 1 0');
   });
+
+  it('caps prep at 99 when above 99', () => {
+    expect(
+      formatTokenRowLine(
+        tokenStatus({
+          name: 'alice',
+          fiveHourUtilizationPercent: 10,
+          fiveHourResetSeconds: 3600,
+          sevenDayUtilizationPercent: 12,
+          sevenDayResetSeconds: 86400,
+          color: 'G',
+          prep: 100,
+          hum: 0,
+        }),
+      ),
+    ).toBe('🟢ce 10 0d01h00 12 1d00h00 99 0');
+  });
+
+  it('caps hum at 99 when above 99', () => {
+    expect(
+      formatTokenRowLine(
+        tokenStatus({
+          name: 'alice',
+          fiveHourUtilizationPercent: 10,
+          fiveHourResetSeconds: 3600,
+          sevenDayUtilizationPercent: 12,
+          sevenDayResetSeconds: 86400,
+          color: 'G',
+          prep: 0,
+          hum: 100,
+        }),
+      ),
+    ).toBe('🟢ce 10 0d01h00 12 1d00h00 0 99');
+  });
 });
 
 describe('ComposeDashboardUseCase', () => {
@@ -934,5 +968,21 @@ describe('formatTokenSessionTotalLine', () => {
       tokenStatus({ name: 'bob', prep: 0, hum: 0 }),
     ]);
     expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 0');
+  });
+
+  it('caps total prep at 99 when the sum exceeds 99', () => {
+    const result = formatTokenSessionTotalLine([
+      tokenStatus({ name: 'alice', prep: 50, hum: 0 }),
+      tokenStatus({ name: 'bob', prep: 51, hum: 0 }),
+    ]);
+    expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '99 0');
+  });
+
+  it('caps total hum at 99 when the sum exceeds 99', () => {
+    const result = formatTokenSessionTotalLine([
+      tokenStatus({ name: 'alice', prep: 0, hum: 60 }),
+      tokenStatus({ name: 'bob', prep: 0, hum: 60 }),
+    ]);
+    expect(result).toBe(' '.repeat(TOKEN_SESSION_COLUMN_START) + '0 99');
   });
 });
