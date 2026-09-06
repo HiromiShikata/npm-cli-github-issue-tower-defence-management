@@ -97,7 +97,11 @@ describe('consoleCloseEventStore', () => {
       appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
       appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
       appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
-      expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({ h1: 3, h3: 2, h5: 2 });
+      expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({
+        h1: 3,
+        h3: 2,
+        h5: 2,
+      });
     });
   });
 
