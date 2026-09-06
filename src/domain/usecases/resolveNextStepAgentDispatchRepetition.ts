@@ -218,7 +218,7 @@ export const resolveNextStepAgentDispatchRepetition = <
       type: 'escalateSilentRedispatch',
       comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
 
-The agent has self-nominated ${totalSelfNominations} times across this issue's history. Owner judgment is required to resolve the underlying blocker.`,
+The agent has self-nominated ${totalSelfNominations} times across this issue's history. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
     };
   }
   const silentRedispatches = countSilentRedispatches(params);
