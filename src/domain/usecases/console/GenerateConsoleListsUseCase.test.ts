@@ -930,37 +930,46 @@ describe('GenerateConsoleListsUseCase', () => {
     });
 
     it('excludes Awaiting Workspace issues with a future next action date', () => {
-      const result = run(
-        [makeIssue({ status: 'Awaiting Workspace', nextActionDate: new Date('2026-06-15T00:00:00Z') })],
-      );
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Workspace',
+          nextActionDate: new Date('2026-06-15T00:00:00Z'),
+        }),
+      ]);
       expect(result.queued.items).toHaveLength(0);
     });
 
     it('excludes Preparation issues with a future next action date', () => {
-      const result = run(
-        [makeIssue({ status: 'Preparation', nextActionDate: new Date('2026-06-15T00:00:00Z') })],
-      );
+      const result = run([
+        makeIssue({
+          status: 'Preparation',
+          nextActionDate: new Date('2026-06-15T00:00:00Z'),
+        }),
+      ]);
       expect(result.queued.items).toHaveLength(0);
     });
 
     it('excludes issues with an unreached next action hour', () => {
-      const result = run(
-        [makeIssue({ status: 'Awaiting Workspace', nextActionHour: 15 })],
-      );
+      const result = run([
+        makeIssue({ status: 'Awaiting Workspace', nextActionHour: 15 }),
+      ]);
       expect(result.queued.items).toHaveLength(0);
     });
 
     it('includes issues with a next action date set to today (trigger no longer pending)', () => {
-      const result = run(
-        [makeIssue({ status: 'Awaiting Workspace', nextActionDate: new Date('2026-06-14T00:00:00Z') })],
-      );
+      const result = run([
+        makeIssue({
+          status: 'Awaiting Workspace',
+          nextActionDate: new Date('2026-06-14T00:00:00Z'),
+        }),
+      ]);
       expect(result.queued.items).toHaveLength(1);
     });
 
     it('includes issues with a next action hour already reached', () => {
-      const result = run(
-        [makeIssue({ status: 'Awaiting Workspace', nextActionHour: 5 })],
-      );
+      const result = run([
+        makeIssue({ status: 'Awaiting Workspace', nextActionHour: 5 }),
+      ]);
       expect(result.queued.items).toHaveLength(1);
     });
   });
