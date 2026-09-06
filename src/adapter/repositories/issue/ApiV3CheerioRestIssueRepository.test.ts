@@ -6530,11 +6530,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(1);
       const cacheKey = localStorageCacheRepository.setSingle.mock.calls[0][0];
-      const cacheValue = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      const cacheValue = localStorageCacheRepository.setSingle.mock.calls[0][1] as {
+        issues: { url: string; story: string | null }[];
+      };
       expect(cacheKey).toContain('PVT_story_test');
-      const cacheJson = JSON.stringify(cacheValue);
-      expect(cacheJson).toContain(testIssue.url);
-      expect(cacheJson).toContain('regular / workflow improvement');
+      const updatedIssue = cacheValue.issues.find(
+        (i) => i.url === testIssue.url,
+      );
+      expect(updatedIssue?.story).toBe('regular / workflow improvement');
     });
 
     it('skips the cache update when the issue url is not in the cache', async () => {
