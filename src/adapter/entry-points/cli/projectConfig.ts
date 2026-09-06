@@ -681,20 +681,16 @@ export const fetchProjectReadmeWithCache = async (
   }
 
   const readme = await fetchProjectReadme(projectUrl, token);
+  const cacheEntry = { fetchedAtMs: nowMs, readme };
 
   try {
-    await cacheRepository.setSingle(diskCacheKey, {
-      fetchedAtMs: nowMs,
-      readme,
-    });
-    projectReadmeInMemoryCache.set(projectUrl, {
-      fetchedAtMs: nowMs,
-      readme,
-    });
+    await cacheRepository.setSingle(diskCacheKey, cacheEntry);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.warn(`Failed to write project README cache: ${message}`);
+    console.warn(`Failed to write project README disk cache: ${message}`);
   }
+
+  projectReadmeInMemoryCache.set(projectUrl, cacheEntry);
 
   return readme;
 };

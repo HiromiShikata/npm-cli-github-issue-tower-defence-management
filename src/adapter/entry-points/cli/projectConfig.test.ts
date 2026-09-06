@@ -696,7 +696,7 @@ describe('fetchProjectReadmeWithCache', () => {
   it('returns the fetched readme even when the cache write throws', async () => {
     const readme =
       '<details><summary>config</summary>maximumPreparingIssuesCount: 2</details>';
-    jest
+    const fetchSpy = jest
       .spyOn(global, 'fetch')
       .mockResolvedValueOnce(makeReadmeResponse(readme));
     mockCacheRepo.setSingle.mockRejectedValueOnce(new Error('disk full'));
@@ -709,5 +709,15 @@ describe('fetchProjectReadmeWithCache', () => {
     );
 
     expect(result).toBe(readme);
+
+    const result2 = await fetchProjectReadmeWithCache(
+      projectUrl,
+      token,
+      mockCacheRepo,
+      baseNowMs + 1,
+    );
+
+    expect(result2).toBe(readme);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });
