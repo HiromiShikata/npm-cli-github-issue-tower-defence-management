@@ -248,9 +248,9 @@ export class RevertNotReadyReviewQueueIssueUseCase {
   ): Promise<Map<string, RelatedPullRequest | null>> => {
     const BATCH_SIZE = 100;
     const result = new Map<string, RelatedPullRequest | null>();
-    for (let i = 0; i < prUrls.length; i += BATCH_SIZE) {
+    for (let offset = 0; offset < prUrls.length; offset += BATCH_SIZE) {
       const batch = await this.issueRepository.getOpenPullRequests(
-        prUrls.slice(i, i + BATCH_SIZE),
+        prUrls.slice(offset, offset + BATCH_SIZE),
       );
       for (const [url, pr] of batch) {
         result.set(url, pr);

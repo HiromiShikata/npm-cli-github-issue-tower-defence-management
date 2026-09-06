@@ -2210,6 +2210,39 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(calls[0].length + calls[1].length).toBe(101);
       expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
     });
+
+    it('fetches exactly 100 PR item URLs in a single getOpenPullRequests call', async () => {
+      const pullRequestItems = Array.from({ length: 100 }, (_, index) =>
+        createMockPullRequest({
+          status: 'Awaiting Quality Check',
+          url: `https://github.com/user/repo/pull/${2000 + index}`,
+          number: 2000 + index,
+          itemId: `item-pr-boundary-${index}`,
+          assignees: ['manager-user'],
+        }),
+      );
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: pullRequestItems,
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockImplementation(
+        (prUrls: string[]) =>
+          Promise.resolve(new Map(prUrls.map((url) => [url, null]))),
+      );
+
+      await useCase.run({
+        projectUrl,
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(1);
+      const [firstCallUrls] =
+        mockIssueRepository.getOpenPullRequests.mock.calls[0];
+      expect(firstCallUrls).toHaveLength(100);
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+    });
   });
 
   describe('reviewDecision gate', () => {
