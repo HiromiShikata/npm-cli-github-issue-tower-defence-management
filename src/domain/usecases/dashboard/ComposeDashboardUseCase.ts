@@ -338,9 +338,9 @@ export const formatTokenSessionTotalLine = (
   const totalHum = tokens.reduce((sum, t) => sum + t.hum, 0);
   return (
     padEnd('', TOKEN_SESSION_COLUMN_START, ' ') +
-    String(totalPrep) +
+    capTwoDigits(totalPrep) +
     ' ' +
-    String(totalHum)
+    capTwoDigits(totalHum)
   );
 };
 
@@ -377,8 +377,8 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
     token.sevenDayUtilizationPercent,
   );
   const sevenDayReset = formatReset(token.sevenDayResetSeconds);
-  const prep = String(token.prep);
-  const hum = String(token.hum);
+  const prep = capTwoDigits(token.prep);
+  const hum = capTwoDigits(token.hum);
   return joinTokenRowSegments([
     `${dot}${name}`,
     fiveHourUtilization,
