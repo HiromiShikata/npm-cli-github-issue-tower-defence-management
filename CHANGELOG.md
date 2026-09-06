@@ -1,3 +1,10 @@
+## [2.70.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.2...v2.70.3) (2026-09-06)
+
+
+### Bug Fixes
+
+* **tdpm-cli:** check waitingForOwner before nextStepAgent and add to queued tab ([#2163](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2163)) ([1b0980a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1b0980a411a3d21ab71e8a08d1fcb0b645804f65))
+
 ## [2.70.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.1...v2.70.2) (2026-09-06)
 
 
