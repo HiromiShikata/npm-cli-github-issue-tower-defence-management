@@ -470,7 +470,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForSelfNominationTotal: 2,
       });
 
-      expect(result.type).not.toBe('escalateSilentRedispatch');
+      expect(result.type).toBe('dispatchAgain');
     });
   });
 
