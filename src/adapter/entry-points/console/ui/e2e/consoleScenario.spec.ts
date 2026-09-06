@@ -1406,4 +1406,17 @@ test.describe('expanded comment body renders github images through the image pro
       ),
     );
   });
+
+  test('clicking inside expanded comment body does not collapse the comment', async ({
+    page,
+  }) => {
+    await page.goto(commentHarness.appRootUrl);
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    await expect(page.locator('.console-comment-body-expanded')).toBeVisible();
+    await page.locator('.console-comment-body-expanded').click();
+    await expect(page.locator('.console-comment-body-expanded')).toBeVisible();
+  });
 });
