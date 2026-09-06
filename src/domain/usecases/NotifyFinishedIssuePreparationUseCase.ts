@@ -10,6 +10,7 @@ import {
   FAILED_PREPARATION_STATUS_NAME,
   IN_TMUX_BY_AGENT_STATUS_NAME,
   PREPARATION_STATUS_NAME,
+  TODO_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import {
   IssueRejectionEvaluator,
@@ -211,6 +212,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     } else if (issue.status === AWAITING_WORKSPACE_STATUS_NAME) {
       console.log(
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Awaiting Workspace`,
+      );
+      return;
+    } else if (issue.status === TODO_STATUS_NAME) {
+      console.log(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is in Todo by human`,
       );
       return;
     } else if (
