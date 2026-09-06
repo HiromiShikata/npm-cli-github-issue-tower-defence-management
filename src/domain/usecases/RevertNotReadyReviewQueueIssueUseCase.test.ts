@@ -100,6 +100,7 @@ type RelatedPrLike = {
   isBranchOutOfDate: boolean;
   missingRequiredCheckNames: string[];
   isDraft?: boolean;
+  reviewDecision?: string | null;
 };
 
 const createReadyPr = (
@@ -112,6 +113,7 @@ const createReadyPr = (
   isResolvedAllReviewComments: true,
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
+  reviewDecision: null,
 });
 
 // Builds the in-memory linkage the production code now relies on instead of the
@@ -912,6 +914,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           isResolvedAllReviewComments: true,
           isBranchOutOfDate: false,
           missingRequiredCheckNames: [],
+          reviewDecision: null,
         };
         mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([readyPr]);
 
@@ -2059,6 +2062,31 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         mockProject,
         expect.objectContaining({ url: boardIssues[0].url }),
         'awaiting-workspace-id',
+      );
+    });
+  });
+
+  describe('reviewDecision gate', () => {
+    it('should revert issue when linked PR has reviewDecision CHANGES_REQUESTED', async () => {
+      const issue = createMockIssue({ status: 'Awaiting Quality Check' });
+      linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
+        { ...createReadyPr(), reviewDecision: 'CHANGES_REQUESTED' },
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('REVIEW_DECISION_CHANGES_REQUESTED'),
       );
     });
   });

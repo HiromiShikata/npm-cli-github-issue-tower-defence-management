@@ -16,6 +16,7 @@ export type RelatedPullRequest = {
   isResolvedAllReviewComments: boolean;
   isBranchOutOfDate: boolean;
   missingRequiredCheckNames: string[];
+  reviewDecision: string | null;
 };
 
 export type OpenPullRequestCiStatus = {

@@ -107,6 +107,7 @@ const createPassingPr = () => ({
   isResolvedAllReviewComments: true,
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
+  reviewDecision: null,
 });
 
 describe('RevertOrphanedPreparationUseCase', () => {

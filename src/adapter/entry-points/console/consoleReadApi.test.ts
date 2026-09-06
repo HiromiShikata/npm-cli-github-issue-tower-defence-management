@@ -303,6 +303,7 @@ describe('consoleReadApi', () => {
           isResolvedAllReviewComments: true,
           isBranchOutOfDate: false,
           missingRequiredCheckNames: [],
+          reviewDecision: null,
         },
       ]);
       issueRepository.getPullRequestSummary.mockResolvedValue({

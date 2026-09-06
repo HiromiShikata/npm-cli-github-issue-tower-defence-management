@@ -841,6 +841,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
       title: 'Test PR',
@@ -919,6 +920,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue(null);
     issueRepository.getAuthenticatedUserLogin.mockResolvedValue(
@@ -984,6 +986,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
       title: 'Test PR',
@@ -1059,6 +1062,7 @@ describe('webServer new routes integration', () => {
       isResolvedAllReviewComments: true,
       isBranchOutOfDate: false,
       missingRequiredCheckNames: [],
+      reviewDecision: null,
     });
     issueRepository.getPullRequestDetail.mockResolvedValue({
       title: 'Test PR',

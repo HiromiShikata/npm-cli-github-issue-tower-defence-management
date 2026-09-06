@@ -500,6 +500,7 @@ const inlineCommentRelatedPullRequest: RelatedPullRequest = {
   isResolvedAllReviewComments: false,
   isBranchOutOfDate: true,
   missingRequiredCheckNames: ['build', 'test'],
+  reviewDecision: null,
 };
 
 const awaitingQualityCheckPullRequest: RelatedPullRequest = {
@@ -514,6 +515,7 @@ const awaitingQualityCheckPullRequest: RelatedPullRequest = {
   isResolvedAllReviewComments: false,
   isBranchOutOfDate: true,
   missingRequiredCheckNames: ['build', 'test'],
+  reviewDecision: null,
 };
 
 const awaitingQualityCheckPullRequestMergeReady: RelatedPullRequest = {

@@ -16,6 +16,7 @@ const createReadyPr = (
   isResolvedAllReviewComments: true,
   isBranchOutOfDate: false,
   missingRequiredCheckNames: [],
+  reviewDecision: null,
   ...overrides,
 });
 
@@ -1209,6 +1210,71 @@ describe('IssueRejectionEvaluator', () => {
         expect(
           result.rejections.some((r) => r.type === 'PULL_REQUEST_NOT_FOUND'),
         ).toBe(true);
+      });
+    });
+
+    describe('reviewDecision gate', () => {
+      it('should reject with REVIEW_DECISION_CHANGES_REQUESTED when PR reviewDecision is CHANGES_REQUESTED', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr('https://github.com/user/repo/pull/1', {
+            reviewDecision: 'CHANGES_REQUESTED',
+          }),
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        });
+
+        expect(result.rejections).toHaveLength(1);
+        expect(result.rejections[0].type).toBe(
+          'REVIEW_DECISION_CHANGES_REQUESTED',
+        );
+        expect(result.rejections[0].detail).toContain(
+          'REVIEW_DECISION_CHANGES_REQUESTED',
+        );
+        expect(result.rejections[0].detail).toContain(
+          'https://github.com/user/repo/pull/1',
+        );
+        expect(result.approvedPrUrl).toBeNull();
+      });
+
+      it('should not reject when PR reviewDecision is APPROVED', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr('https://github.com/user/repo/pull/1', {
+            reviewDecision: 'APPROVED',
+          }),
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        });
+
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBe('https://github.com/user/repo/pull/1');
+      });
+
+      it('should not reject when PR reviewDecision is null (no review yet)', async () => {
+        mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+          createReadyPr('https://github.com/user/repo/pull/1', {
+            reviewDecision: null,
+          }),
+        ]);
+
+        const result = await evaluator.evaluate({
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        });
+
+        expect(result.rejections).toHaveLength(0);
+        expect(result.approvedPrUrl).toBe('https://github.com/user/repo/pull/1');
       });
     });
   });
