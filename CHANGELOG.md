@@ -1,3 +1,12 @@
+## [2.63.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.6...v2.63.7) (2026-09-06)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCaseHandler:** pass cache repository to GitHubIssueCommentRepository ([#2107](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2107)) ([59f78f0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/59f78f060508cc4f3960c820ad001ec125cd7671))
+* **NotifyFinishedIssuePreparationUseCase:** remove conflicting skip for In Tmux by agent and correct error message ([#2108](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2108)) ([5d3aa0a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5d3aa0aec479d6685ed5832d271bda1830599a8d)), closes [#2105](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2105)
+* **rest-quota:** add disk cache to getRequiredCheckNames and If-None-Match to combined status ([#2106](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2106)) ([3e511e4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3e511e495b9f3d9230ca097902a71d6860f8fe38)), closes [HiromiShikata/secretary#5523](https://github.com/HiromiShikata/secretary/issues/5523)
+
 ## [2.63.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.5...v2.63.6) (2026-09-06)
 
 
