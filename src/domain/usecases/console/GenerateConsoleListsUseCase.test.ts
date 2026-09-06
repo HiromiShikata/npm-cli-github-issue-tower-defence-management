@@ -849,7 +849,14 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.queued.items).toHaveLength(1);
     });
 
-    it('excludes issues with statuses other than Awaiting Workspace and Preparation', () => {
+    it('includes Awaiting Owner issues', () => {
+      const result = run([
+        makeIssue({ status: 'Awaiting Owner', assignees: ['other-person'] }),
+      ]);
+      expect(result.queued.items).toHaveLength(1);
+    });
+
+    it('excludes issues with statuses other than Awaiting Workspace, Awaiting Owner, and Preparation', () => {
       const result = run([
         makeIssue({ status: 'Todo by human' }),
         makeIssue({ status: 'In Tmux by agent' }),

@@ -2676,6 +2676,56 @@ describe('RevertOrphanedPreparationUseCase', () => {
       );
     });
 
+    it('takes precedence over nextStepAgent when both waitingForOwner true and nextStepAgent are present', async () => {
+      mockProject.status.statuses.push({
+        id: 'awaiting-owner-id',
+        name: 'Awaiting Owner',
+        color: 'ORANGE',
+        description: '',
+      });
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: 'https://github.com/user/repo/issues/10',
+          status: 'Preparation',
+        }),
+      );
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n\n```json\n{ "nextStepAgent": "developer" }\n```\n\n## section\n\n```json\n{ "waitingForOwner": true }\n```\n',
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['bot'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.anything(),
+        'awaiting-owner-id',
+      );
+    });
+
     it('falls back to Awaiting Quality Check when last report has waitingForOwner true but Awaiting Owner status is absent', async () => {
       const consoleWarn = jest.spyOn(console, 'warn').mockImplementation();
       setupWaitingForOwnerIssue();
