@@ -1006,7 +1006,11 @@ const removeFromConsoleLists = (
   if (context.consoleDataOutputDir === null || !projectItemId) {
     return;
   }
-  removeItemFromConsoleLists(context.consoleDataOutputDir, pjcode, projectItemId);
+  removeItemFromConsoleLists(
+    context.consoleDataOutputDir,
+    pjcode,
+    projectItemId,
+  );
 };
 
 export const handleDeleteStory = async (

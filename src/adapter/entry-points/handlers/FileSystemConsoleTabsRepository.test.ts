@@ -225,9 +225,7 @@ describe('removeItemFromConsoleLists', () => {
   const PJCODE = 'test-project';
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'console-tabs-remove-test-'),
-    );
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-tabs-remove-test-'));
   });
 
   afterEach(() => {
