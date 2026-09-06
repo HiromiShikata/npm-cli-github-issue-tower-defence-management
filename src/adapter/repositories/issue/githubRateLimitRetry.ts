@@ -222,10 +222,7 @@ export const fetchWithGitHubRateLimitRetry = async (
     // silently dropped.  Secondary rate limits are caused exclusively by
     // content-creation activity, so detecting them on reads would produce
     // false positives and contaminate the shared state file.
-    if (
-      isContentCreating &&
-      isSecondaryRateLimit(response.headers, bodyText)
-    ) {
+    if (isContentCreating && isSecondaryRateLimit(response.headers, bodyText)) {
       // Record the block in the shared state file so other processes on this
       // host can skip their pending content-creating requests immediately.
       const backoffMs = computeSecondaryRateLimitBackoffMs(
