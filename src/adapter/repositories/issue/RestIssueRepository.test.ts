@@ -107,9 +107,20 @@ describe('RestIssueRepository', () => {
     mockPut.mockReset();
     mockPatch.mockReset();
     mockDelete.mockReset();
+    jest.restoreAllMocks();
   });
 
   describe('createComment', () => {
+    let fetchSpy: jest.SpyInstance<
+      ReturnType<typeof global.fetch>,
+      Parameters<typeof global.fetch>
+    >;
+    beforeEach(() => {
+      fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+    });
+
     it('should create a comment and return the created comment data', async () => {
       mockPost.mockReturnValue(
         mockJsonResponse({
@@ -251,6 +262,184 @@ describe('RestIssueRepository', () => {
       expect(thrownError).toMatchObject({
         rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
       });
+    });
+
+    it('skips posting when a comment with the same body was posted within 2 hours', async () => {
+      const dedupIssueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/501';
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            { body: 'Auto Status Check: REJECTED', created_at: recentTs },
+          ]),
+          { status: 200, headers: { ETag: '"etag-1"' } },
+        ),
+      );
+
+      const result = await restIssueRepository.createComment(
+        dedupIssueUrl,
+        'Auto Status Check: REJECTED',
+      );
+
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(result.url).toBeNull();
+    });
+
+    it('still posts when the identical comment was posted more than 2 hours ago', async () => {
+      const dedupIssueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/502';
+      const oldTs = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            { body: 'Auto Status Check: REJECTED', created_at: oldTs },
+          ]),
+          { status: 200, headers: { ETag: '"etag-2"' } },
+        ),
+      );
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          user: { login: 'bot' },
+          body: 'Auto Status Check: REJECTED',
+          created_at: new Date().toISOString(),
+          html_url: `${dedupIssueUrl}#issuecomment-1`,
+        }),
+      );
+
+      await restIssueRepository.createComment(
+        dedupIssueUrl,
+        'Auto Status Check: REJECTED',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('still posts when recent comment body differs', async () => {
+      const dedupIssueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/503';
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              body: 'Auto Status Check: AWAITING_OWNER_APPROVAL',
+              created_at: recentTs,
+            },
+          ]),
+          { status: 200, headers: { ETag: '"etag-3"' } },
+        ),
+      );
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          user: { login: 'bot' },
+          body: 'Auto Status Check: REJECTED',
+          created_at: new Date().toISOString(),
+          html_url: `${dedupIssueUrl}#issuecomment-2`,
+        }),
+      );
+
+      await restIssueRepository.createComment(
+        dedupIssueUrl,
+        'Auto Status Check: REJECTED',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats bodies differing only in timestamps as duplicates after normalisation', async () => {
+      const dedupIssueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/504';
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              body: 'CLI error recurrence at 2026-09-05T10:00:00Z: some error',
+              created_at: recentTs,
+            },
+          ]),
+          { status: 200, headers: { ETag: '"etag-4"' } },
+        ),
+      );
+
+      const result = await restIssueRepository.createComment(
+        dedupIssueUrl,
+        'CLI error recurrence at 2026-09-05T11:30:00Z: some error',
+      );
+
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(result.url).toBeNull();
+    });
+
+    it('detects a duplicate that lies beyond the first page of comments by following Link rel="next" pagination', async () => {
+      const dedupIssueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/505';
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+      fetchSpy
+        // First page: non-matching comment, with Link rel="next"
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              { body: 'Some other comment', created_at: recentTs },
+            ]),
+            {
+              status: 200,
+              headers: {
+                Link: '<https://api.github.com/repos/HiromiShikata/test-repository/issues/505/comments?page=2>; rel="next"',
+              },
+            },
+          ),
+        )
+        // Second page: the duplicate comment
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify([
+              {
+                body: 'Auto Status Check: REJECTED',
+                created_at: recentTs,
+              },
+            ]),
+            { status: 200 },
+          ),
+        );
+
+      const result = await restIssueRepository.createComment(
+        dedupIssueUrl,
+        'Auto Status Check: REJECTED',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(result.url).toBeNull();
+    });
+
+    it('skips comment but does not prevent other operations from running', async () => {
+      const dedupIssueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/506';
+      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            { body: 'Auto Status Check: REJECTED', created_at: recentTs },
+          ]),
+          { status: 200, headers: { ETag: '"etag-6"' } },
+        ),
+      );
+
+      const result = await restIssueRepository.createComment(
+        dedupIssueUrl,
+        'Auto Status Check: REJECTED',
+      );
+
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(result).toEqual(
+        expect.objectContaining({
+          body: 'Auto Status Check: REJECTED',
+          url: null,
+        }),
+      );
     });
   });
   describe('createNewIssue', () => {
