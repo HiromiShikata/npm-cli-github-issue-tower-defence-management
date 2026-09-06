@@ -85,6 +85,9 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
 describe('SetupTowerDefenceProjectUseCase', () => {
   const mockIssueCommentRepository =
     mock<Pick<IssueCommentRepository, 'createComment'>>();
+  beforeEach(() => {
+    mockIssueCommentRepository.createComment.mockClear();
+  });
 
   it('should define exactly the 10 required statuses in the documented order with the documented colors and no descriptions', () => {
     expect(REQUIRED_WORKFLOW_STATUSES).toEqual([
@@ -1514,5 +1517,50 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     expect(payload.some((s) => s.name === AWAITING_OWNER_STATUS_NAME)).toBe(
       false,
     );
+  });
+
+  it('should warn when Awaiting Owner status exists but Awaiting Workspace is absent', async () => {
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation();
+    const statuses: FieldOption[] = [
+      {
+        id: 'awaiting-owner-id',
+        name: AWAITING_OWNER_STATUS_NAME,
+        color: 'ORANGE',
+        description: '',
+      },
+      {
+        id: 'prep-id',
+        name: PREPARATION_STATUS_NAME,
+        color: 'YELLOW',
+        description: '',
+      },
+    ];
+    const project = buildProject(statuses);
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    mockProjectRepository.updateStatusList.mockResolvedValue([]);
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [],
+      cacheUsed: false,
+    });
+
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockStatusDefaultRepository,
+      mockIssueCommentRepository,
+    );
+    await useCase.run({ projectUrl: project.url });
+
+    expect(consoleWarn).toHaveBeenCalledWith(
+      expect.stringContaining(AWAITING_OWNER_STATUS_NAME),
+    );
+    consoleWarn.mockRestore();
   });
 });
