@@ -1,3 +1,10 @@
+## [2.73.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.3...v2.73.4) (2026-09-06)
+
+
+### Bug Fixes
+
+* **dashboard:** cap token prep and hum counts at 99 to prevent layout overflow ([#2189](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2189)) ([e5ab2d9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e5ab2d97c808ab3dc88dd157066bc4c8605c74b8)), closes [HiromiShikata/umino-corporait-operation#31463](https://github.com/HiromiShikata/umino-corporait-operation/issues/31463)
+
 ## [2.73.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.2...v2.73.3) (2026-09-06)
 
 
