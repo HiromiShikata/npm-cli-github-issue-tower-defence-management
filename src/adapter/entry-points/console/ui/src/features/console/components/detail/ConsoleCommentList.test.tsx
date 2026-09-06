@@ -197,6 +197,38 @@ describe('ConsoleCommentList', () => {
     ).toBeNull();
   });
 
+  it('renders an image from markdown in the comment body when the comment is expanded', () => {
+    const imageUrl =
+      'https://github.com/user-attachments/assets/1f363cda-b9e6-4e59-b3d6-6343a7fa4554';
+    const comment = {
+      author: 'HiromiShikata',
+      body: `Screenshot attached:\n![Image](${imageUrl})`,
+      createdAt: '2026-09-06T12:00:00.000Z',
+      url: null,
+    };
+    const buildProxyUrl = (src: string) =>
+      `/api/img?url=${encodeURIComponent(src)}`;
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        buildImageProxyUrl={buildProxyUrl}
+      />,
+    );
+    expect(container.querySelector('img')).toBeNull();
+    const article = container.querySelector('.console-comment');
+    expect(article).not.toBeNull();
+    if (!article) throw new Error('article not found');
+    fireEvent.click(article);
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+    expect(img?.getAttribute('src')).toBe(
+      `/api/img?url=${encodeURIComponent(imageUrl)}`,
+    );
+  });
+
   it('shows full comment body when the comment article is clicked', () => {
     const comment = {
       author: 'agent',
