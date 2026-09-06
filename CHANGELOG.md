@@ -1,3 +1,10 @@
+# [2.71.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.4...v2.71.0) (2026-09-06)
+
+
+### Features
+
+* **npm-cli:** receive story from routing JSON and update TDPM cache in NotifyFinishedIssuePreparationUseCase ([#2161](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2161)) ([d95b984](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d95b9840036d9d7285465156a7ef814dcbf6880c))
+
 ## [2.70.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.3...v2.70.4) (2026-09-06)
 
 
