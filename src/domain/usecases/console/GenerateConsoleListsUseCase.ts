@@ -9,6 +9,7 @@ import {
   TODO_BY_AGENT_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
+import { issueReactivationTriggerIsPending } from '../issueReactivationTriggerIsPending';
 import { encodeForURI } from '../utils';
 
 export type ConsoleColor = FieldOption['color'];
@@ -262,7 +263,8 @@ export class GenerateConsoleListsUseCase {
                 !issue.isClosed &&
                 (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
                   issue.status === PREPARATION_STATUS_NAME) &&
-                issue.dependedIssueUrls.length === 0,
+                issue.dependedIssueUrls.length === 0 &&
+                !issueReactivationTriggerIsPending(issue, now),
             )
             .map((issue) =>
               this.projectItem(
