@@ -1,5 +1,8 @@
 import { Issue } from '../entities/Issue';
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import {
+  IssueRepository,
+  RelatedPullRequest,
+} from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
@@ -108,21 +111,21 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         relatedOpenPrUrlsByIssueUrl,
       );
 
-    const resolvedOpenPrByUrl = await this.issueRepository.getOpenPullRequests(
-      Array.from(
-        new Set([
-          ...awaitingQualityCheckIssues.flatMap((issue) =>
-            issue.isPr
-              ? [issue.url]
-              : (this.resolveRelatedOpenPrUrls(
-                  issue,
-                  relatedOpenPrUrlsByIssueUrl,
-                  batchedRelatedOpenPrUrlsByIssueUrl,
-                ) ?? []),
-          ),
-        ]),
-      ),
+    const prUrlsToBatch = Array.from(
+      new Set([
+        ...awaitingQualityCheckIssues.flatMap((issue) =>
+          issue.isPr
+            ? [issue.url]
+            : (this.resolveRelatedOpenPrUrls(
+                issue,
+                relatedOpenPrUrlsByIssueUrl,
+                batchedRelatedOpenPrUrlsByIssueUrl,
+              ) ?? []),
+        ),
+      ]),
     );
+    const resolvedOpenPrByUrl =
+      await this.fetchOpenPullRequestsInBatches(prUrlsToBatch);
 
     for (const issue of awaitingQualityCheckIssues) {
       if (
@@ -239,6 +242,22 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     relatedOpenPrUrlsByIssueUrl.get(issue.url) ??
     batchedRelatedOpenPrUrlsByIssueUrl.get(issue.url) ??
     null;
+
+  private fetchOpenPullRequestsInBatches = async (
+    prUrls: string[],
+  ): Promise<Map<string, RelatedPullRequest | null>> => {
+    const BATCH_SIZE = 100;
+    const result = new Map<string, RelatedPullRequest | null>();
+    for (let offset = 0; offset < prUrls.length; offset += BATCH_SIZE) {
+      const batch = await this.issueRepository.getOpenPullRequests(
+        prUrls.slice(offset, offset + BATCH_SIZE),
+      );
+      for (const [url, pr] of batch) {
+        result.set(url, pr);
+      }
+    }
+    return result;
+  };
 
   // Derives, for each issue, the set of open pull request URLs that reference it
   // via a closing keyword. The linkage is taken from each open PR item's

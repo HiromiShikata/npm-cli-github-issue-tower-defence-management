@@ -311,10 +311,17 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           'findRelatedOpenPRs only supports issue URLs, not pull request URLs',
         ),
       );
-      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-        ...createReadyPr('https://github.com/user/repo/pull/9'),
-        isConflicted: true,
-      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([
+          [
+            'https://github.com/user/repo/pull/9',
+            {
+              ...createReadyPr('https://github.com/user/repo/pull/9'),
+              isConflicted: true,
+            },
+          ],
+        ]),
+      );
 
       await useCase.run({
         manager: 'manager-user',
@@ -323,6 +330,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         pullRequestItem,
@@ -1434,12 +1442,16 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [archivedPullRequest, normalPullRequest],
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequest.mockImplementation(
-        (prUrl: string) =>
-          Promise.resolve({
-            ...createReadyPr(prUrl),
-            isConflicted: true,
-          }),
+      mockIssueRepository.getOpenPullRequests.mockImplementation(
+        (prUrls: string[]) =>
+          Promise.resolve(
+            new Map(
+              prUrls.map((prUrl) => [
+                prUrl,
+                { ...createReadyPr(prUrl), isConflicted: true },
+              ]),
+            ),
+          ),
       );
       mockIssueRepository.updateStatus.mockImplementation(
         (_project: Project, issue: Issue) =>
@@ -1493,10 +1505,17 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [pullRequest],
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-        ...createReadyPr(),
-        isConflicted: true,
-      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([
+          [
+            'https://github.com/user/repo/pull/1',
+            {
+              ...createReadyPr('https://github.com/user/repo/pull/1'),
+              isConflicted: true,
+            },
+          ],
+        ]),
+      );
       mockIssueRepository.updateStatus.mockRejectedValue(
         new Error('Something went wrong'),
       );
@@ -1645,12 +1664,16 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [timedOutPullRequest, normalPullRequest],
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequest.mockImplementation(
-        (prUrl: string) =>
-          Promise.resolve({
-            ...createReadyPr(prUrl),
-            isConflicted: true,
-          }),
+      mockIssueRepository.getOpenPullRequests.mockImplementation(
+        (prUrls: string[]) =>
+          Promise.resolve(
+            new Map(
+              prUrls.map((prUrl) => [
+                prUrl,
+                { ...createReadyPr(prUrl), isConflicted: true },
+              ]),
+            ),
+          ),
       );
       mockIssueRepository.updateStatus.mockImplementation(
         (_project: Project, issue: Issue) =>
@@ -1776,10 +1799,17 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [pullRequest],
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-        ...createReadyPr(),
-        isConflicted: true,
-      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([
+          [
+            'https://github.com/user/repo/pull/1',
+            {
+              ...createReadyPr('https://github.com/user/repo/pull/1'),
+              isConflicted: true,
+            },
+          ],
+        ]),
+      );
 
       await useCase.run({
         manager: 'manager-user',
@@ -1802,10 +1832,17 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [pullRequest],
         cacheUsed: false,
       });
-      mockIssueRepository.getOpenPullRequest.mockResolvedValue({
-        ...createReadyPr(),
-        isConflicted: true,
-      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([
+          [
+            'https://github.com/user/repo/pull/1',
+            {
+              ...createReadyPr('https://github.com/user/repo/pull/1'),
+              isConflicted: true,
+            },
+          ],
+        ]),
+      );
 
       await useCase.run({
         manager: 'manager-user',
@@ -2065,19 +2102,21 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('includes a PR item directly in Awaiting Quality Check in the pre-cycle batch and makes no single-PR call', async () => {
-      const prItem = createMockPullRequest({
-        number: 50,
-        url: 'https://github.com/user/repo/pull/50',
+    it('includes a PR item own URL in the pre-cycle batch and never calls getOpenPullRequest for it', async () => {
+      const prUrl = 'https://github.com/user/repo/pull/42';
+      const pullRequestItem = createMockPullRequest({
         status: 'Awaiting Quality Check',
+        url: prUrl,
+        number: 42,
+        assignees: ['manager-user'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
-        issues: [prItem],
+        issues: [pullRequestItem],
         cacheUsed: false,
       });
       mockIssueRepository.getOpenPullRequests.mockResolvedValue(
-        new Map([[prItem.url, createReadyPr(prItem.url)]]),
+        new Map([[prUrl, createReadyPr(prUrl)]]),
       );
 
       await useCase.run({
@@ -2087,37 +2126,35 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       });
 
       expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledWith(
-        expect.arrayContaining([prItem.url]),
+        expect.arrayContaining([prUrl]),
       );
       expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
 
-    it('fetches a PR URL exactly once when it appears for both an AQC PR item and an AQC non-PR issue that references it', async () => {
-      const sharedPrUrl = 'https://github.com/user/repo/pull/99';
-      const referencedIssueUrl = 'https://github.com/user/repo/issues/88';
-      const nonPrIssue = createMockIssue({
-        number: 88,
-        url: referencedIssueUrl,
+    it('fetches a PR URL exactly once via batch when it appears as both a PR item in AQC and a related PR for a non-PR issue in AQC', async () => {
+      const prUrl = 'https://github.com/user/repo/pull/42';
+      const issueUrl = 'https://github.com/user/repo/issues/10';
+      const pullRequestItem = createMockPullRequest({
         status: 'Awaiting Quality Check',
+        url: prUrl,
+        number: 42,
+        closingIssueReferenceUrls: [issueUrl],
+        assignees: ['manager-user'],
       });
-      const prItem = createMockPullRequest({
-        number: 99,
-        url: sharedPrUrl,
+      const nonPrIssue = createMockIssue({
         status: 'Awaiting Quality Check',
-        closingIssueReferenceUrls: [referencedIssueUrl],
+        url: issueUrl,
+        number: 10,
+        assignees: ['manager-user'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
-        issues: [nonPrIssue, prItem],
+        issues: [pullRequestItem, nonPrIssue],
         cacheUsed: false,
       });
-      let capturedBatchUrls: string[] = [];
-      mockIssueRepository.getOpenPullRequests.mockImplementation(
-        async (urls: string[]) => {
-          capturedBatchUrls = urls;
-          return new Map([[sharedPrUrl, createReadyPr(sharedPrUrl)]]);
-        },
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(
+        new Map([[prUrl, createReadyPr(prUrl)]]),
       );
 
       await useCase.run({
@@ -2126,12 +2163,87 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         allowedIssueAuthors: ['owner'],
       });
 
-      const occurrences = capturedBatchUrls.filter(
-        (url) => url === sharedPrUrl,
-      ).length;
-      expect(occurrences).toBe(1);
+      const allPassedUrls =
+        mockIssueRepository.getOpenPullRequests.mock.calls.flatMap(
+          (call: string[][]) => call[0],
+        );
+      expect(allPassedUrls.filter((url: string) => url === prUrl)).toHaveLength(
+        1,
+      );
       expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('splits getOpenPullRequests into separate calls when there are more than 100 PR item URLs', async () => {
+      const pullRequestItems = Array.from({ length: 101 }, (_, index) =>
+        createMockPullRequest({
+          status: 'Awaiting Quality Check',
+          url: `https://github.com/user/repo/pull/${1000 + index}`,
+          number: 1000 + index,
+          itemId: `item-pr-${index}`,
+          assignees: ['manager-user'],
+        }),
+      );
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: pullRequestItems,
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockImplementation(
+        (prUrls: string[]) =>
+          Promise.resolve(new Map(prUrls.map((url) => [url, null]))),
+      );
+
+      await useCase.run({
+        projectUrl,
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(2);
+      const calls: string[][] =
+        mockIssueRepository.getOpenPullRequests.mock.calls.map(
+          (call: string[][]) => call[0],
+        );
+      expect(calls[0]).toHaveLength(100);
+      expect(calls[1]).toHaveLength(1);
+      expect(calls[0].length + calls[1].length).toBe(101);
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
+    });
+
+    it('fetches exactly 100 PR item URLs in a single getOpenPullRequests call', async () => {
+      const pullRequestItems = Array.from({ length: 100 }, (_, index) =>
+        createMockPullRequest({
+          status: 'Awaiting Quality Check',
+          url: `https://github.com/user/repo/pull/${2000 + index}`,
+          number: 2000 + index,
+          itemId: `item-pr-boundary-${index}`,
+          assignees: ['manager-user'],
+        }),
+      );
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: pullRequestItems,
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockImplementation(
+        (prUrls: string[]) =>
+          Promise.resolve(new Map(prUrls.map((url) => [url, null]))),
+      );
+
+      await useCase.run({
+        projectUrl,
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(1);
+      const [firstCallUrls] =
+        mockIssueRepository.getOpenPullRequests.mock.calls.map(
+          (call: string[][]) => call[0],
+        );
+      expect(firstCallUrls).toHaveLength(100);
+      expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
     });
   });
 
