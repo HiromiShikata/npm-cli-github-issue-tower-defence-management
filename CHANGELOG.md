@@ -1,3 +1,10 @@
+# [2.73.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.5...v2.73.0) (2026-09-06)
+
+
+### Features
+
+* **console:** persist comment expanded state across task navigation ([#2184](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2184)) ([30b7471](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/30b7471af98fd28b18da9697bf4e3d0c64fe15fd)), closes [HiromiShikata/umino-corporait-operation#31460](https://github.com/HiromiShikata/umino-corporait-operation/issues/31460)
+
 ## [2.72.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.4...v2.72.5) (2026-09-06)
 
 
