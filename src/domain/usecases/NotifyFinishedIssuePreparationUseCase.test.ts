@@ -6681,7 +6681,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   describe('waitingForOwner handling', () => {
-    it('moves issue to Awaiting Quality Check and posts comment when last report has waitingForOwner true', async () => {
+    it('moves issue to Awaiting Quality Check without posting comment when last report has waitingForOwner true', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -6709,10 +6709,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.objectContaining({ status: 'Awaiting Quality Check' }),
         'awaiting-quality-check-id',
       );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.anything(),
-        'Auto Status Check: WAITING_FOR_OWNER',
-      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
   });
 
