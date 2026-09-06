@@ -27,7 +27,10 @@ import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
 
-import { isAgentReportBody, isAgentReportBodyFromAgent } from './isAgentReportBody';
+import {
+  isAgentReportBody,
+  isAgentReportBodyFromAgent,
+} from './isAgentReportBody';
 import {
   issueReactivationTriggerIsPending,
   issueReactivationTriggerStartOfTomorrow,
