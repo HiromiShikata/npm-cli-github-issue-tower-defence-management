@@ -1,3 +1,10 @@
+## [2.73.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.6...v2.73.7) (2026-09-06)
+
+
+### Bug Fixes
+
+* **FileSystemConsoleTabsRepository:** use process.pid in tmp filename to prevent concurrent ENOENT ([#2196](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2196)) ([49257af](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/49257af74bccd7cd49f9fe3154ef34ea0f2f30cb))
+
 ## [2.73.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.5...v2.73.6) (2026-09-06)
 
 
