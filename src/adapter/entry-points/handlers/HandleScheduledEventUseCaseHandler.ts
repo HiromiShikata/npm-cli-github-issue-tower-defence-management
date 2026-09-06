@@ -440,7 +440,6 @@ export class HandleScheduledEventUseCaseHandler {
       projectRepository,
       issueRepository,
       browserGitHubProjectRepository,
-      issueCommentRepository,
     );
     const actionAnnouncement = new ActionAnnouncementUseCase(issueRepository);
     const setWorkflowManagementIssueToStoryUseCase =

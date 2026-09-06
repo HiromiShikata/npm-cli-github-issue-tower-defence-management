@@ -9,6 +9,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import {
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -149,12 +150,26 @@ export class RevertOrphanedPreparationUseCase {
         ? extractWaitingForOwner(lastAgentReport.content)
         : false;
       if (waitingForOwner) {
-        if (awaitingQualityCheckStatusOption) {
+        const awaitingOwnerStatusOption = project.status.statuses.find(
+          (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+        );
+        if (awaitingOwnerStatusOption) {
           await this.issueRepository.updateStatus(
             project,
             issue,
-            awaitingQualityCheckStatusOption.id,
+            awaitingOwnerStatusOption.id,
           );
+        } else {
+          console.warn(
+            `Awaiting owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project`,
+          );
+          if (awaitingQualityCheckStatusOption) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              awaitingQualityCheckStatusOption.id,
+            );
+          }
         }
         continue;
       }
