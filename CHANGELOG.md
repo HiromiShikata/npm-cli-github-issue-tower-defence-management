@@ -1,3 +1,10 @@
+## [2.72.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.0...v2.72.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **console:** restore buildImageProxyUrl, renderReferenceLink, repoContext in ConsoleCommentList ([#2170](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2170)) ([8f74817](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8f74817a18475efa11d5e80a28b2caa2860cd585)), closes [#2164](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2164) [#N](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/N) [#31450](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31450)
+
 # [2.72.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.71.3...v2.72.0) (2026-09-06)
 
 
