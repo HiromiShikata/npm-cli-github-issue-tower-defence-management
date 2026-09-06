@@ -166,9 +166,9 @@ describe('GenerateConsoleListsUseCase', () => {
   });
 
   describe('per-tab selectors', () => {
-    it('selects awaiting quality check items case-insensitively for prs', () => {
+    it('selects awaiting owner items case-insensitively for prs', () => {
       const result = run([
-        makeIssue({ status: 'awaiting quality check' }),
+        makeIssue({ status: 'awaiting owner' }),
         makeIssue({ status: 'Awaiting Owner' }),
         makeIssue({ status: 'Awaiting Workspace' }),
       ]);
@@ -949,7 +949,6 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([
         makeIssue({ status: 'Todo by human' }),
         makeIssue({ status: 'In Tmux by agent' }),
-        makeIssue({ status: 'Awaiting Owner' }),
         makeIssue({ status: 'Done' }),
         makeIssue({ status: 'Failed Preparation' }),
       ]);

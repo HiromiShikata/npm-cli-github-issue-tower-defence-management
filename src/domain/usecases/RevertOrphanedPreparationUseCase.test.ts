@@ -53,7 +53,7 @@ const createMockProject = (): Project => ({
       {
         id: '4',
         name: 'Awaiting Owner',
-        color: 'BLUE',
+        color: 'GREEN',
         description: '',
       },
       {
@@ -66,12 +66,6 @@ const createMockProject = (): Project => ({
         id: '6',
         name: 'Todo by human',
         color: 'GREEN',
-        description: '',
-      },
-      {
-        id: '7',
-        name: 'Awaiting Owner',
-        color: 'ORANGE',
         description: '',
       },
     ],
@@ -450,7 +444,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('7');
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
       expect.stringContaining('reporting every cycle but cannot advance'),
@@ -3013,7 +3007,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        '7',
+        '4',
       );
     });
 
@@ -3057,11 +3051,11 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        '7',
+        '4',
       );
     });
 
-    it('falls back to Awaiting Owner when Awaiting Owner is absent from project', async () => {
+    it('does not update status when Awaiting Owner is absent from project', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -3106,11 +3100,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         allowedIssueAuthors: ['bot'],
       });
 
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithoutAwaitingOwner,
-        expect.anything(),
-        '4',
-      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
   });
 });
