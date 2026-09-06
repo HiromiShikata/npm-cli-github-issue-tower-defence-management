@@ -1364,6 +1364,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
       agent: 'accounting',
+      story: 'regular / some story',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);

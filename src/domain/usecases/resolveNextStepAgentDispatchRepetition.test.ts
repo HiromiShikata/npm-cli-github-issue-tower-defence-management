@@ -244,6 +244,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -730,7 +731,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(comment).not.toContain('silently');
     });
 
-    it('still escalates to escalateSilentRedispatch when story is set and the cycle count reaches the threshold', () => {
+    it('still escalates (not storyUnset) when story is set and the cycle count reaches the threshold with reports', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
@@ -745,7 +746,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateSilentRedispatch');
+      expect(result.type).toBe('escalateReportingLoop');
     });
   });
 });
