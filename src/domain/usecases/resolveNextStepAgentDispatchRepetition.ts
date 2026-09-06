@@ -18,7 +18,6 @@ export const DISPATCH_LOOP_ESCALATION_PHRASE =
   'the issue is escalated for a decision';
 
 export const DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP = 6;
-export const DEFAULT_THRESHOLD_FOR_SELF_NOMINATION_TOTAL = 2;
 
 export type NextStepAgentDispatchRepetition =
   | { type: 'notRepeated' }
@@ -126,36 +125,6 @@ const countSilentRedispatches = <
   return { count, hasReportsInCycle };
 };
 
-const countTotalSelfNominations = <
-  CommentLike extends { author: string; content: string },
->(params: {
-  nextStepAgent: string;
-  comments: CommentLike[];
-  isTrustedAuthor: (author: string) => boolean;
-}): number =>
-  params.comments.filter((comment) => {
-    if (!params.isTrustedAuthor(comment.author)) return false;
-    const cleaned = stripLeadingFencedBlocks(comment.content);
-    if (!cleaned.startsWith(AGENT_REPORT_PREFIX)) return false;
-    const reportingAgent = cleaned
-      .slice(AGENT_REPORT_PREFIX.length)
-      .trimStart()
-      .split(/[\n(]/)[0]
-      .trim();
-    if (
-      normalizeProjectFieldName(reportingAgent) !==
-      normalizeProjectFieldName(params.nextStepAgent)
-    ) {
-      return false;
-    }
-    const declared = extractNextStepAgent(comment.content);
-    return (
-      declared !== null &&
-      normalizeProjectFieldName(declared) ===
-        normalizeProjectFieldName(params.nextStepAgent)
-    );
-  }).length;
-
 const countDispatchesInCurrentCycle = <
   CommentLike extends { author: string; content: string },
 >(params: {
@@ -210,17 +179,7 @@ export const resolveNextStepAgentDispatchRepetition = <
   isTrustedAuthor: (author: string) => boolean;
   thresholdForAutoReject: number;
   thresholdForDispatchLoop: number;
-  thresholdForSelfNominationTotal: number;
 }): NextStepAgentDispatchRepetition => {
-  const totalSelfNominations = countTotalSelfNominations(params);
-  if (totalSelfNominations >= params.thresholdForSelfNominationTotal) {
-    return {
-      type: 'escalateSilentRedispatch',
-      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
-
-The agent has self-nominated ${totalSelfNominations} times across this issue's history. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
-    };
-  }
   const silentRedispatches = countSilentRedispatches(params);
   if (
     silentRedispatches !== null &&

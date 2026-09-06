@@ -26,7 +26,6 @@ import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { normalizeReportBody } from './normalizeReportBody';
 import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-  DEFAULT_THRESHOLD_FOR_SELF_NOMINATION_TOTAL,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
 import {
@@ -75,7 +74,6 @@ export class RevertOrphanedPreparationUseCase {
     preparationProcessCheckCommand: string;
     thresholdForAutoReject: number;
     thresholdForDispatchLoop?: number;
-    thresholdForSelfNominationTotal?: number;
     awLogDirectoryPath?: string;
     awLogStaleThresholdMinutes?: number;
     awaitingQualityCheckStatus?: string | null;
@@ -182,9 +180,6 @@ export class RevertOrphanedPreparationUseCase {
           thresholdForDispatchLoop:
             params.thresholdForDispatchLoop ??
             DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-          thresholdForSelfNominationTotal:
-            params.thresholdForSelfNominationTotal ??
-            DEFAULT_THRESHOLD_FOR_SELF_NOMINATION_TOTAL,
         });
         if (
           (repetition.type === 'escalateSilentRedispatch' ||
