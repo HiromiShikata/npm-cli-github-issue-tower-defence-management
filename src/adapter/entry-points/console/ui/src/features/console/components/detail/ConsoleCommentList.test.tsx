@@ -455,4 +455,93 @@ describe('ConsoleCommentList', () => {
       'https://github.com/HiromiShikata/secretary/issues/42',
     );
   });
+
+  it('restores expanded state from localStorage when persistenceKey is provided', () => {
+    const persistenceKey = 'https://github.com/owner/repo/issues/1';
+    const firstComment = {
+      author: 'reviewer',
+      body: 'First line\nSecond line',
+      createdAt: '2026-06-17T08:00:00.000Z',
+      url: null,
+    };
+    const latestComment = {
+      author: 'HiromiShikata',
+      body: 'Latest comment',
+      createdAt: '2026-06-17T10:00:00.000Z',
+      url: null,
+    };
+    const firstKey = `${firstComment.author}:${firstComment.createdAt}:${firstComment.body}`;
+    localStorage.setItem(
+      `console-comment-expanded:${persistenceKey}`,
+      JSON.stringify([firstKey]),
+    );
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[firstComment, latestComment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        persistenceKey={persistenceKey}
+      />,
+    );
+    const articles = container.querySelectorAll('.console-comment');
+    expect(articles[0].classList.contains('is-expanded')).toBe(true);
+    expect(
+      articles[0].querySelector('.console-comment-body-expanded'),
+    ).not.toBeNull();
+  });
+
+  it('saves expanded state to localStorage when persistenceKey is provided', () => {
+    const persistenceKey = 'https://github.com/owner/repo/issues/2';
+    const comment = {
+      author: 'reviewer',
+      body: 'A comment body',
+      createdAt: '2026-06-17T08:00:00.000Z',
+      url: null,
+    };
+    const latestComment = {
+      author: 'HiromiShikata',
+      body: 'Latest',
+      createdAt: '2026-06-17T10:00:00.000Z',
+      url: null,
+    };
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment, latestComment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        persistenceKey={persistenceKey}
+      />,
+    );
+    const toggleBtns = container.querySelectorAll('.console-comment-toggle');
+    fireEvent.click(toggleBtns[0]);
+    const stored = localStorage.getItem(
+      `console-comment-expanded:${persistenceKey}`,
+    );
+    expect(stored).not.toBeNull();
+    if (stored === null) throw new Error('stored should not be null');
+    const parsed = JSON.parse(stored);
+    const commentKey = `${comment.author}:${comment.createdAt}:${comment.body}`;
+    expect(parsed).toContain(commentKey);
+  });
+
+  it('does not touch localStorage when persistenceKey is not provided', () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'Content',
+      createdAt: '2026-09-01T10:00:00.000Z',
+      url: null,
+    };
+    localStorage.clear();
+    render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    expect(localStorage.length).toBe(0);
+  });
 });

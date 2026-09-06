@@ -364,6 +364,7 @@ export const ConsoleItemDetail = ({
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
+            persistenceKey={item.url}
           />
         </ConsolePanel>
 

@@ -13,6 +13,32 @@ const extractFirstLine = (body: string): string =>
 const buildCommentKey = (comment: ConsoleComment): string =>
   `${comment.author}:${comment.createdAt}:${comment.body}`;
 
+const STORAGE_KEY_PREFIX = 'console-comment-expanded:';
+
+const loadExpandedKeys = (persistenceKey: string): Set<string> => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_PREFIX + persistenceKey);
+    if (stored === null) return new Set();
+    const parsed: unknown = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((k): k is string => typeof k === 'string'));
+  } catch (e) {
+    console.error('Failed to load comment expanded state from storage:', e);
+    return new Set();
+  }
+};
+
+const saveExpandedKeys = (persistenceKey: string, keys: Set<string>): void => {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY_PREFIX + persistenceKey,
+      JSON.stringify([...keys]),
+    );
+  } catch (e) {
+    console.error('Failed to save comment expanded state to storage:', e);
+  }
+};
+
 export type ConsoleCommentListProps = {
   comments: ConsoleComment[];
   isLoading: boolean;
@@ -22,6 +48,7 @@ export type ConsoleCommentListProps = {
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
+  persistenceKey?: string | null;
 };
 
 export const ConsoleCommentList = ({
@@ -33,9 +60,12 @@ export const ConsoleCommentList = ({
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
+  persistenceKey = null,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
+    persistenceKey != null ? loadExpandedKeys(persistenceKey) : new Set(),
+  );
 
   const latestKey =
     comments.length > 0 ? buildCommentKey(comments[comments.length - 1]) : null;
@@ -44,6 +74,11 @@ export const ConsoleCommentList = ({
     if (latestKey === null) return;
     setExpandedKeys((prev) => new Set([...prev, latestKey]));
   }, [latestKey]);
+
+  useEffect(() => {
+    if (persistenceKey == null) return;
+    saveExpandedKeys(persistenceKey, expandedKeys);
+  }, [persistenceKey, expandedKeys]);
 
   const toggleExpanded = (key: string) => {
     setExpandedKeys((prev) => {
