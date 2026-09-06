@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { FileSystemConsoleTabsRepository } from './FileSystemConsoleTabsRepository';
+import {
+  FileSystemConsoleTabsRepository,
+  removeItemFromConsoleLists,
+} from './FileSystemConsoleTabsRepository';
 import { readDoneProjectItemIds } from '../console/consoleDoneStore';
 import type { ConsoleListItem } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 
@@ -277,5 +280,66 @@ describe('FileSystemConsoleTabsRepository', () => {
         items: [{ projectItemId: 'item-r', status: 'Preparation' }],
       });
     });
+  });
+});
+
+describe('removeItemFromConsoleLists', () => {
+  let dir: string;
+  const PJCODE = 'test-project';
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-tabs-remove-test-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const writeTabFile = (tab: string, data: unknown): void => {
+    const tabDir = path.join(dir, PJCODE, tab);
+    fs.mkdirSync(tabDir, { recursive: true });
+    fs.writeFileSync(path.join(tabDir, 'list.json'), JSON.stringify(data));
+  };
+
+  const readTabFile = (tab: string): unknown => {
+    const filePath = path.join(dir, PJCODE, tab, 'list.json');
+    const data: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    return data;
+  };
+
+  it('removes the item with the given projectItemId from all tab list.json files that contain it', () => {
+    writeTabFile('todo-by-human', {
+      items: [{ projectItemId: 'item-to-remove' }],
+    });
+    writeTabFile('queued', { items: [{ projectItemId: 'item-to-remove' }] });
+    writeTabFile('prs', { items: [{ projectItemId: 'item-to-keep' }] });
+
+    removeItemFromConsoleLists(dir, PJCODE, 'item-to-remove');
+
+    expect(readTabFile('todo-by-human')).toMatchObject({ items: [] });
+    expect(readTabFile('queued')).toMatchObject({ items: [] });
+    expect(readTabFile('prs')).toMatchObject({
+      items: [{ projectItemId: 'item-to-keep' }],
+    });
+  });
+
+  it('is a no-op when no tab files exist', () => {
+    expect(() =>
+      removeItemFromConsoleLists(dir, PJCODE, 'item-1'),
+    ).not.toThrow();
+  });
+
+  it('does not modify tab files that do not contain the item', () => {
+    writeTabFile('prs', { items: [{ projectItemId: 'item-other' }] });
+    const mtimeBefore = fs.statSync(
+      path.join(dir, PJCODE, 'prs', 'list.json'),
+    ).mtimeMs;
+
+    removeItemFromConsoleLists(dir, PJCODE, 'item-to-remove');
+
+    const mtimeAfter = fs.statSync(
+      path.join(dir, PJCODE, 'prs', 'list.json'),
+    ).mtimeMs;
+    expect(mtimeAfter).toBe(mtimeBefore);
   });
 });

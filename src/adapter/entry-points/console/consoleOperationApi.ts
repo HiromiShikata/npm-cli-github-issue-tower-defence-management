@@ -30,6 +30,7 @@ import {
   setProjectReadmeMaxPreparingIssuesCount,
   updateProjectV2Readme,
 } from '../cli/projectConfig';
+import { removeItemFromConsoleLists } from '../handlers/FileSystemConsoleTabsRepository';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
@@ -1126,6 +1127,21 @@ export const handleDeleteAllComments = async (
   return ok();
 };
 
+const removeFromConsoleLists = (
+  context: ConsoleOperationContext,
+  pjcode: string,
+  projectItemId: string,
+): void => {
+  if (context.consoleDataOutputDir === null || !projectItemId) {
+    return;
+  }
+  removeItemFromConsoleLists(
+    context.consoleDataOutputDir,
+    pjcode,
+    projectItemId,
+  );
+};
+
 export const handleDeleteStory = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
@@ -1172,6 +1188,7 @@ export const handleDeleteStory = async (
     } catch (e) {
       console.error('Failed to close story issue after story deletion:', e);
     }
+    removeFromConsoleLists(context, pjcode, storyIssue.itemId);
   }
   const storyTasks = storyObjectMap.get(storyOption.name)?.issues ?? [];
   for (const task of storyTasks) {
@@ -1184,6 +1201,7 @@ export const handleDeleteStory = async (
           e,
         );
       }
+      removeFromConsoleLists(context, pjcode, task.itemId);
     }
   }
   return ok();
