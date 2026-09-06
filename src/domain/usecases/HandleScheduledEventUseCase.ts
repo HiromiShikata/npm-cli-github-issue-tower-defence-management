@@ -212,6 +212,7 @@ export class HandleScheduledEventUseCase {
     await this.projectRequiredFieldCreateUseCase.run({
       projectUrl: input.projectUrl,
       agents: input.agents ?? null,
+      defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
     });
     await this.setupTowerDefenceProjectUseCase.run({
       projectUrl: input.projectUrl,

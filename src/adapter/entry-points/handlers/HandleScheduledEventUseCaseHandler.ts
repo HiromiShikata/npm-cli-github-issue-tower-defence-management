@@ -422,13 +422,16 @@ export class HandleScheduledEventUseCaseHandler {
       systemDateRepository,
       ...githubRepositoryParams,
     );
-    const projectRequiredFieldCreateUseCase =
-      new ProjectRequiredFieldCreateUseCase(projectRepository);
     const browserGitHubProjectRepository = new BrowserGitHubProjectRepository(
       process.env.GITHUB_USERNAME,
       process.env.GITHUB_PASSWORD,
       process.env.GITHUB_TOTP_SECRET,
     );
+    const projectRequiredFieldCreateUseCase =
+      new ProjectRequiredFieldCreateUseCase(
+        projectRepository,
+        browserGitHubProjectRepository,
+      );
     const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase(
       projectRepository,
       issueRepository,

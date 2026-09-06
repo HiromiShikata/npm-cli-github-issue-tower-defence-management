@@ -1,6 +1,7 @@
 import { createHmac } from 'crypto';
 import { chromium } from 'playwright';
 import { Project } from '../../domain/entities/Project';
+import { AgentDefaultRepository } from '../../domain/usecases/adapter-interfaces/AgentDefaultRepository';
 import { StatusDefaultRepository } from '../../domain/usecases/adapter-interfaces/StatusDefaultRepository';
 import { projectLocationFromUrl } from './RestProjectRepository';
 
@@ -35,10 +36,58 @@ const generateTotp = (secret: string): string => {
   return String(code % 1_000_000).padStart(6, '0');
 };
 
-export class BrowserGitHubProjectRepository implements Pick<
-  StatusDefaultRepository,
-  'setStatusFieldDefault'
-> {
+const loginWithBrowser = async (
+  page: Awaited<ReturnType<Awaited<ReturnType<typeof chromium.launch>>['newPage']>>,
+  username: string,
+  password: string,
+  totpSecret: string | undefined,
+): Promise<void> => {
+  await page.goto('https://github.com/login');
+  await page.fill('#login_field', username);
+  await page.fill('#password', password);
+  await page.click('[name="commit"]');
+
+  const otpInput = page.locator('#app_totp');
+  const isOtpVisible = await otpInput.isVisible().catch(() => false);
+  if (isOtpVisible && totpSecret) {
+    const totp = generateTotp(totpSecret);
+    await otpInput.fill(totp);
+    await page.click('[type="submit"]');
+  }
+};
+
+const selectDefaultFieldOption = async (
+  page: Awaited<ReturnType<Awaited<ReturnType<typeof chromium.launch>>['newPage']>>,
+  settingsUrl: string,
+  optionName: string,
+): Promise<void> => {
+  await page.goto(settingsUrl);
+
+  const defaultSelect = page
+    .locator('select[aria-label="Default value"]')
+    .first();
+  await defaultSelect.waitFor({ state: 'visible' });
+  const options = await defaultSelect.locator('option').allTextContents();
+  const matchingOption = options.find((o) => o.trim() === optionName);
+  if (!matchingOption) {
+    throw new Error(
+      `BrowserGitHubProjectRepository: option "${optionName}" not found in Default dropdown. Available: ${options.join(', ')}`,
+    );
+  }
+  await defaultSelect.selectOption({ label: optionName });
+
+  const saveButton = page
+    .locator('button[type="submit"]')
+    .filter({ hasText: /save/i })
+    .first();
+  await saveButton.click();
+};
+
+export class BrowserGitHubProjectRepository
+  implements
+    Pick<StatusDefaultRepository, 'setStatusFieldDefault'>,
+    Pick<AgentDefaultRepository, 'setAgentFieldDefault'>
+{
   constructor(
     private readonly username: string | undefined,
     private readonly password: string | undefined,
@@ -77,40 +126,44 @@ export class BrowserGitHubProjectRepository implements Pick<
     const browser = await chromium.launch({ headless: true });
     try {
       const page = await browser.newPage();
+      await loginWithBrowser(page, this.username, this.password, this.totpSecret);
+      await selectDefaultFieldOption(page, settingsUrl, optionName);
+    } finally {
+      await browser.close();
+    }
+  };
 
-      await page.goto('https://github.com/login');
-      await page.fill('#login_field', this.username);
-      await page.fill('#password', this.password);
-      await page.click('[name="commit"]');
+  setAgentFieldDefault = async (
+    project: Project,
+    agentName: string,
+  ): Promise<void> => {
+    const location = projectLocationFromUrl(project.url);
+    if (!location) {
+      throw new Error(
+        `BrowserGitHubProjectRepository: cannot parse project URL: ${project.url}`,
+      );
+    }
 
-      const otpInput = page.locator('#app_totp');
-      const isOtpVisible = await otpInput.isVisible().catch(() => false);
-      if (isOtpVisible && this.totpSecret) {
-        const totp = generateTotp(this.totpSecret);
-        await otpInput.fill(totp);
-        await page.click('[type="submit"]');
-      }
+    const settingsUrl = `https://github.com/${location.ownerType}/${location.owner}/projects/${location.projectNumber}/settings/fields/Agent`;
 
-      await page.goto(settingsUrl);
+    if (!this.username || !this.password) {
+      console.warn(
+        `BrowserGitHubProjectRepository: GITHUB_USERNAME or GITHUB_PASSWORD is unset; skipping setAgentFieldDefault. Settings URL: ${settingsUrl}`,
+      );
+      return;
+    }
 
-      const defaultSelect = page
-        .locator('select[aria-label="Default value"]')
-        .first();
-      await defaultSelect.waitFor({ state: 'visible' });
-      const options = await defaultSelect.locator('option').allTextContents();
-      const matchingOption = options.find((o) => o.trim() === optionName);
-      if (!matchingOption) {
-        throw new Error(
-          `BrowserGitHubProjectRepository: option "${optionName}" not found in Default dropdown. Available: ${options.join(', ')}`,
-        );
-      }
-      await defaultSelect.selectOption({ label: optionName });
+    if (!project.agent?.options.some((o) => o.name === agentName)) {
+      throw new Error(
+        `BrowserGitHubProjectRepository: agent "${agentName}" not found in project agent options`,
+      );
+    }
 
-      const saveButton = page
-        .locator('button[type="submit"]')
-        .filter({ hasText: /save/i })
-        .first();
-      await saveButton.click();
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      await loginWithBrowser(page, this.username, this.password, this.totpSecret);
+      await selectDefaultFieldOption(page, settingsUrl, agentName);
     } finally {
       await browser.close();
     }
