@@ -223,6 +223,25 @@ describe('writeConsoleLists', () => {
     expect(fs.existsSync(`${tabFile('prs')}.tmp`)).toBe(false);
   });
 
+  it('does not overwrite a .tmp file left by a concurrent process', () => {
+    const concurrentTmpPath = `${tabFile('prs')}.tmp`;
+    const sentinelContent = '{"sentinel": true}';
+    fs.mkdirSync(path.dirname(concurrentTmpPath), { recursive: true });
+    fs.writeFileSync(concurrentTmpPath, sentinelContent);
+
+    writeConsoleLists({
+      consoleDataOutputDir: outDir,
+      pjcode: 'demo',
+      assigneeLogin: ASSIGNEE,
+      project,
+      issues: [],
+      generatedAt: '2026-06-14T07:22:33Z',
+    });
+
+    expect(fs.existsSync(concurrentTmpPath)).toBe(true);
+    expect(fs.readFileSync(concurrentTmpPath, 'utf-8')).toBe(sentinelContent);
+  });
+
   it('is a no-op when consoleDataOutputDir is unset', () => {
     writeConsoleLists({
       consoleDataOutputDir: undefined,
