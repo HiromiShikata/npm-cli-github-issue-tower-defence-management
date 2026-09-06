@@ -38,9 +38,7 @@ export const ConsoleCommentList = ({
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
   const latestKey =
-    comments.length > 0
-      ? buildCommentKey(comments[comments.length - 1])
-      : null;
+    comments.length > 0 ? buildCommentKey(comments[comments.length - 1]) : null;
 
   useEffect(() => {
     if (latestKey === null) return;
