@@ -380,6 +380,68 @@ describe('githubRateLimitRetry', () => {
       expect(sleeps[0]).toBeGreaterThanOrEqual(SECONDARY_RATE_LIMIT_FLOOR_MS);
     });
 
+    // --- Primary hourly-quota exhaustion ---
+
+    it('returns immediately without retrying when x-ratelimit-remaining is 0, x-ratelimit-reset is in the future, and no retry-after is present (primary exhaustion)', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const futureReset = Math.floor(Date.now() / 1000) + 3600;
+      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+        new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
+          status: 403,
+          headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': String(futureReset),
+          },
+        }),
+      );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false,
+        tmpStateFile,
+      );
+
+      expect(response.status).toBe(403);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it('still retries when retry-after is present alongside x-ratelimit-remaining 0 (secondary, not primary exhaustion)', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const request = jest
+        .fn<Promise<Response>, []>()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ message: 'rate limit' }), {
+            status: 403,
+            headers: {
+              'x-ratelimit-remaining': '0',
+              'retry-after': '60',
+            },
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false,
+        tmpStateFile,
+      );
+
+      // retry-after signals the secondary case; primary-exhaustion guard must
+      // not fire, leaving the normal retry path to recover on the second attempt
+      expect(response.status).toBe(200);
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(sleep).toHaveBeenCalledTimes(1);
+    });
+
     // --- Primary rate limit unchanged paths ---
 
     it('retries a primary rate-limit response and resolves with the eventual success', async () => {

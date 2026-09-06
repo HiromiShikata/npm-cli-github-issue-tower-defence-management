@@ -258,6 +258,32 @@ export const fetchWithGitHubRateLimitRetry = async (
       continue;
     }
 
+    // Primary hourly-quota exhaustion: x-ratelimit-remaining is 0 with a
+    // future x-ratelimit-reset and no retry-after means the hourly quota is
+    // fully spent.  The reset is up to 3,600 s away, making the 250/500/1000 ms
+    // sub-second backoff useless — four identical blocked requests are spent for
+    // no gain.  Return immediately so the caller surfaces the reset time.
+    //
+    // Discriminator from the secondary case: secondary rate limits carry
+    // retry-after (signal 2) or an explicit secondary-rate-limit body phrase
+    // (signal 1) and are already handled above when isContentCreating is true.
+    // A response with neither — only remaining=0 and a future reset — is a
+    // primary exhaustion.
+    const quotaRemaining = parseNonNegativeIntegerHeader(
+      response.headers.get('x-ratelimit-remaining'),
+    );
+    const resetEpoch = parseNonNegativeIntegerHeader(
+      response.headers.get('x-ratelimit-reset'),
+    );
+    if (
+      quotaRemaining === 0 &&
+      response.headers.get('retry-after') === null &&
+      resetEpoch !== null &&
+      resetEpoch * 1000 > nowMs
+    ) {
+      return response;
+    }
+
     // Primary rate limit or other transient error: existing sub-second
     // exponential schedule bounded by RATE_LIMIT_TOTAL_BACKOFF_CAP_MS.
     if (
