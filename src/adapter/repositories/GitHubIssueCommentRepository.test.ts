@@ -336,6 +336,65 @@ describe('GitHubIssueCommentRepository', () => {
       );
     });
 
+    it('fetches page 2 when page 1 returns 304 (per-page ETag cache regression)', async () => {
+      const page2Comments = [
+        {
+          user: { login: 'user2' },
+          body: 'New comment on page 2',
+          created_at: '2024-01-02T00:00:00Z',
+        },
+      ];
+
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-page1"',
+            comments: [
+              {
+                author: 'user1',
+                content: 'Page 1 comment',
+                createdAt: '2024-01-01T00:00:00.000Z',
+              },
+            ],
+            hasNextPage: true,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 304 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(page2Comments), {
+            status: 200,
+            headers: { ETag: '"etag-page2"' },
+          }),
+        );
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(result).toEqual([
+        {
+          author: 'user1',
+          content: 'Page 1 comment',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+        {
+          author: 'user2',
+          content: 'New comment on page 2',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+        },
+      ]);
+    });
+
     it('leaves behaviour unchanged when commentCacheRepository is null', async () => {
       const commentPayloads = [
         {
