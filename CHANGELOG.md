@@ -1,3 +1,10 @@
+## [2.69.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.4...v2.69.5) (2026-09-06)
+
+
+### Bug Fixes
+
+* **ProjectRequiredFieldCreateUseCase:** set agent field default to configured defaultAgentName ([1167b09](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1167b09f97f7e891dfdd07885a4905cbf873c7a2))
+
 ## [2.69.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.3...v2.69.4) (2026-09-06)
 
 
