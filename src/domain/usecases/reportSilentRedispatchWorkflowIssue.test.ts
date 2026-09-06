@@ -289,9 +289,7 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
     );
 
     expect(mockIssueRepository.addIssueToProject).toHaveBeenCalled();
-    expect(
-      mockIssueRepository.updateStoryByProjectItemId,
-    ).toHaveBeenCalledWith(
+    expect(mockIssueRepository.updateStoryByProjectItemId).toHaveBeenCalledWith(
       expect.objectContaining({ story: reporterProject.story }),
       returnedProjectItemId,
       'wb-id',
