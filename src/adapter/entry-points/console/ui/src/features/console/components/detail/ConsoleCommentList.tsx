@@ -40,6 +40,18 @@ export const ConsoleCommentList = ({
     });
   };
 
+  const toggleExpandedCommentKey = (key: string) => {
+    setExpandedCommentKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
   if (error !== null) {
     return <p className="console-comment-notloaded">Not loaded.</p>;
   }
@@ -80,21 +92,16 @@ export const ConsoleCommentList = ({
             data-expanded={showFullBody}
             className={`console-comment${showSummary ? ' console-comment--expandable' : ''}`}
             onClick={
-              showSummary
-                ? () =>
-                    setExpandedCommentKeys(
-                      (prev) => new Set([...prev, commentKey]),
-                    )
-                : () => toggleExpanded(longKey)
+              !isSummaryMode
+                ? () => toggleExpanded(longKey)
+                : () => toggleExpandedCommentKey(commentKey)
             }
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
-                if (showSummary) {
-                  setExpandedCommentKeys(
-                    (prev) => new Set([...prev, commentKey]),
-                  );
-                } else {
+                if (!isSummaryMode) {
                   toggleExpanded(longKey);
+                } else {
+                  toggleExpandedCommentKey(commentKey);
                 }
               }
             }}
