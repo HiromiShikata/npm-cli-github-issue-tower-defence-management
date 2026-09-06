@@ -16,9 +16,7 @@ const sampleItems = [
     agent: 'developer',
     nextActionDate: '2026-09-10T00:00:00.000Z',
     nextActionHour: 10,
-    dependedIssueUrls: [
-      'https://github.com/HiromiShikata/secretary/issues/55',
-    ],
+    dependedIssueUrls: ['https://github.com/HiromiShikata/secretary/issues/55'],
     labels: [],
     createdAt: '2026-08-01T08:00:00.000Z',
     relatedOpenPullRequestUrls: [],
