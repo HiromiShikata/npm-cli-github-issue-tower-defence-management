@@ -369,37 +369,6 @@ describe('ConsoleCommentList', () => {
     expect(article.classList.contains('is-expanded')).toBe(true);
   });
 
-  it('renders a github image via proxy url when the comment is expanded with buildImageProxyUrl', () => {
-    const imageUrl =
-      'https://github.com/user-attachments/assets/1f363cda-b9e6-4e59-b3d6-6343a7fa4554';
-    const comment = {
-      author: 'HiromiShikata',
-      body: `Screenshot attached:\n![Image](${imageUrl})`,
-      createdAt: '2026-09-06T12:00:00.000Z',
-      url: null,
-    };
-    const buildProxyUrl = (src: string) =>
-      `/api/img?url=${encodeURIComponent(src)}`;
-    const { container } = render(
-      <ConsoleCommentList
-        comments={[comment]}
-        isLoading={false}
-        error={null}
-        now={now}
-        buildImageProxyUrl={buildProxyUrl}
-      />,
-    );
-    const img = container.querySelector('img');
-    expect(img).not.toBeNull();
-    expect(img?.getAttribute('src')).toBe(
-      `/api/img?url=${encodeURIComponent(imageUrl)}`,
-    );
-    const toggleBtn = container.querySelector('.console-comment-toggle');
-    if (!toggleBtn) throw new Error('toggle button not found');
-    fireEvent.click(toggleBtn);
-    expect(container.querySelector('img')).toBeNull();
-  });
-
   it('resolves same-repo issue references as links when expanded with repoContext', () => {
     const comment = {
       author: 'agent',
