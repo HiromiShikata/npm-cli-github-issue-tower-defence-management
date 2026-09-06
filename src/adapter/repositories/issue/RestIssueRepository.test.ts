@@ -378,7 +378,6 @@ describe('RestIssueRepository', () => {
       const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 
       fetchSpy
-        // First page: non-matching comment, with Link rel="next"
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify([
@@ -392,7 +391,6 @@ describe('RestIssueRepository', () => {
             },
           ),
         )
-        // Second page: the duplicate comment
         .mockResolvedValueOnce(
           new Response(
             JSON.stringify([

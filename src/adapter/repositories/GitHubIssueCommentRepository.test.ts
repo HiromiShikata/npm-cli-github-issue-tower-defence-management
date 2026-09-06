@@ -573,7 +573,6 @@ describe('GitHubIssueCommentRepository', () => {
       );
       await repoWithCache.createComment(issue, 'Auto Status Check: REJECTED');
 
-      // The preflight used the since-scoped URL, not the page-based getCommentsFromIssue URL
       expect(fetchSpy).toHaveBeenCalledWith(
         expect.stringContaining('since='),
         expect.anything(),
@@ -582,12 +581,10 @@ describe('GitHubIssueCommentRepository', () => {
         expect.stringContaining('&page='),
         expect.anything(),
       );
-      // POST was skipped
       expect(fetchSpy).not.toHaveBeenCalledWith(
         expect.stringContaining('/comments'),
         expect.objectContaining({ method: 'POST' }),
       );
-      // The ETag cache was never read (getCommentsFromIssue was not called)
       expect(cacheRepo.getSingle).not.toHaveBeenCalled();
     });
 
