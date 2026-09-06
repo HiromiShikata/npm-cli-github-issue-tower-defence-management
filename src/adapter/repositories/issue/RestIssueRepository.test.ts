@@ -1060,7 +1060,9 @@ describe('RestIssueRepository', () => {
           status: 403,
           headers: mockHeaders,
           clone: (): { text: () => Promise<string> } => {
-            throw new TypeError('Response.clone: Body has already been consumed.');
+            throw new TypeError(
+              'Response.clone: Body has already been consumed.',
+            );
           },
         }),
       );
