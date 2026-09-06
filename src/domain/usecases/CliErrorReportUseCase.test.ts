@@ -163,5 +163,75 @@ describe('CliErrorReportUseCase', () => {
         [],
       );
     });
+
+    it('should make no repository calls when the error has name GitHubRateLimitError', async () => {
+      const error = new Error('rate limit exceeded');
+      error.name = 'GitHubRateLimitError';
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should make no repository calls when the error message contains HTTP 403 status', async () => {
+      const error = new Error(
+        'Failed to fetch comments from GitHub REST API: 403',
+      );
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should make no repository calls when the error message contains HTTP 429 status', async () => {
+      const error = new Error('Request failed with status 429');
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should make no repository calls when the error message contains a rate-limit phrase', async () => {
+      const error = new Error('API rate limit exceeded for user ID 123456789');
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should still report ordinary errors that are not rate-limit related', async () => {
+      const error = new Error('unexpected null pointer');
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(99);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.searchIssue).toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalled();
+    });
   });
 });

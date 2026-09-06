@@ -5,6 +5,19 @@ type CliErrorReportRepository = Pick<
   'searchIssue' | 'createNewIssue' | 'createCommentByUrl'
 >;
 
+const isGitHubRateLimitError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  if (error.name === 'GitHubRateLimitError') {
+    return true;
+  }
+  return (
+    /\b(403|429)\b/.test(error.message) ||
+    /rate limit|secondary rate limit|abuse/i.test(error.message)
+  );
+};
+
 export class CliErrorReportUseCase {
   constructor(private readonly issueRepository: CliErrorReportRepository) {}
 
@@ -15,6 +28,15 @@ export class CliErrorReportUseCase {
     commandLine: string;
   }): Promise<void> => {
     const { error, owner, repo, commandLine } = params;
+
+    if (isGitHubRateLimitError(error)) {
+      console.warn(
+        'CliErrorReportUseCase: suppressing rate-limit error to prevent write amplification:',
+        error instanceof Error ? error.message : String(error),
+      );
+      return;
+    }
+
     const errorName =
       error instanceof Error ? (error.name ?? 'Error') : 'Error';
     const message = error instanceof Error ? error.message : String(error);
