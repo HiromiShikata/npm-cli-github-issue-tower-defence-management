@@ -580,6 +580,98 @@ describe('GitHubIssueCommentRepository', () => {
       ]);
       expect(cache.setSingle).not.toHaveBeenCalled();
     });
+
+    it('fetches next page when cached page has exactly 100 comments and hasNextPage is false but 304 received (full-page boundary regression)', async () => {
+      const cachedComments = Array.from({ length: 100 }, (_, i) => ({
+        author: `user${i}`,
+        content: `Cached comment ${i}`,
+        createdAt: `2024-01-01T00:00:00.000Z`,
+      }));
+      const newCommentPayload = [
+        {
+          user: { login: 'user-new' },
+          body: 'New comment on page 2',
+          created_at: '2024-02-01T00:00:00Z',
+        },
+      ];
+
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-full-page"',
+            comments: cachedComments,
+            hasNextPage: false,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 304 }))
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(newCommentPayload), {
+            status: 200,
+            headers: { ETag: '"etag-page2"' },
+          }),
+        );
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(result).toHaveLength(101);
+      expect(result[0]).toEqual({
+        author: 'user0',
+        content: 'Cached comment 0',
+        createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      });
+      expect(result[100]).toEqual({
+        author: 'user-new',
+        content: 'New comment on page 2',
+        createdAt: new Date('2024-02-01T00:00:00Z'),
+      });
+    });
+
+    it('does not fetch next page when cached page has fewer than 100 comments and hasNextPage is false and 304 received', async () => {
+      const cachedComments = Array.from({ length: 50 }, (_, i) => ({
+        author: `user${i}`,
+        content: `Cached comment ${i}`,
+        createdAt: `2024-01-01T00:00:00.000Z`,
+      }));
+
+      const cache = buildCommentCacheRepository();
+      cache.getSingle.mockResolvedValue({
+        pages: {
+          '1': {
+            etag: '"etag-partial-page"',
+            comments: cachedComments,
+            hasNextPage: false,
+          },
+        },
+      });
+      cache.setSingle.mockResolvedValue(undefined);
+      const repositoryWithCache = new GitHubIssueCommentRepository(
+        'test-token',
+        cache,
+      );
+
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 304 }));
+
+      const result = await repositoryWithCache.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(50);
+    });
   });
 
   describe('createComment', () => {

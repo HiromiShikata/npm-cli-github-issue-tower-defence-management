@@ -151,6 +151,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
       ? { ...existingCache.pages }
       : {};
 
+    const PER_PAGE = 100;
     const comments: Comment[] = [];
     const updatedPages: Record<string, PageCacheEntry> = { ...cachedPages };
     let cacheWasUpdated = false;
@@ -159,7 +160,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
 
     while (hasNextPage) {
       const pageKey = String(page);
-      const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&page=${page}`;
+      const url = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=${PER_PAGE}&page=${page}`;
       const headers: Record<string, string> = {
         Authorization: `Bearer ${this.token}`,
         Accept: 'application/vnd.github+json',
@@ -180,7 +181,8 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
             createdAt: new Date(c.createdAt),
           });
         }
-        hasNextPage = cachedPage.hasNextPage;
+        hasNextPage =
+          cachedPage.hasNextPage || cachedPage.comments.length >= PER_PAGE;
         page++;
         continue;
       }
