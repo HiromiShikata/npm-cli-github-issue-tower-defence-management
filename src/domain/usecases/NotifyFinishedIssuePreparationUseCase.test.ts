@@ -1268,6 +1268,45 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should not escalate to Failed Preparation when story is unset and triager keeps dispatching the same agent', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'Preparation',
+      story: 'regular / NO STORY',
+      agent: 'developer',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      createMockComment({
+        content:
+          'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
+      }),
+      createMockComment({
+        content: 'Next step agent dispatch repeated: developer',
+      }),
+      createMockComment({
+        content: 'Next step agent dispatch repeated: developer',
+      }),
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+      mockProject,
+      expect.anything(),
+      'failed-preparation-id',
+    );
+  });
+
   it('should escalate to Failed Preparation when two agents keep naming each other and each one reports every round', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
