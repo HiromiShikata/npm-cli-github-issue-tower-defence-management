@@ -21,7 +21,7 @@ import {
 } from './resetDegeneratedTmuxSessions';
 import { writeRotationOrderFile } from './rotationOrderFileWriter';
 import {
-  fetchProjectReadme,
+  fetchProjectReadmeWithCache,
   parseProjectReadmeConfig,
 } from '../cli/projectConfig';
 import {
@@ -243,8 +243,19 @@ export class HandleScheduledEventUseCaseHandler {
       return null;
     }
 
+    const localStorageRepository = new LocalStorageRepository();
+    const cachePath = projectCacheDirectory(input.projectName);
+    const localStorageCacheRepository = new LocalStorageCacheRepository(
+      localStorageRepository,
+      cachePath,
+    );
+
     const managerToken = input.credentials.manager.github.token;
-    const readme = await fetchProjectReadme(input.projectUrl, managerToken);
+    const readme = await fetchProjectReadmeWithCache(
+      input.projectUrl,
+      managerToken,
+      localStorageCacheRepository,
+    );
     const readmeConfig = readme
       ? parseProjectReadmeConfig(readme, input.projectUrl)
       : {};
@@ -381,15 +392,9 @@ export class HandleScheduledEventUseCaseHandler {
     );
 
     const systemDateRepository = new SystemDateRepository();
-    const localStorageRepository = new LocalStorageRepository();
     const googleSpreadsheetRepository = new GoogleSpreadsheetRepository(
       localStorageRepository,
       input.credentials.manager.googleServiceAccount.serviceAccountKey,
-    );
-    const cachePath = projectCacheDirectory(input.projectName);
-    const localStorageCacheRepository = new LocalStorageCacheRepository(
-      localStorageRepository,
-      cachePath,
     );
     const githubRepositoryParams: readonly [LocalStorageRepository, string] = [
       localStorageRepository,
