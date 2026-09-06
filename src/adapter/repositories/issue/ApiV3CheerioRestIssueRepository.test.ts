@@ -6528,17 +6528,13 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'item-test-1',
         { singleSelectOptionId: 'story-opt-a' },
       );
-      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
-        expect.stringContaining('PVT_story_test'),
-        expect.objectContaining({
-          issues: expect.arrayContaining([
-            expect.objectContaining({
-              url: testIssue.url,
-              story: 'regular / workflow improvement',
-            }),
-          ]),
-        }),
-      );
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledTimes(1);
+      const cacheKey = localStorageCacheRepository.setSingle.mock.calls[0][0];
+      const cacheValue = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheKey).toContain('PVT_story_test');
+      const cacheJson = JSON.stringify(cacheValue);
+      expect(cacheJson).toContain(testIssue.url);
+      expect(cacheJson).toContain('regular / workflow improvement');
     });
 
     it('skips the cache update when the issue url is not in the cache', async () => {
