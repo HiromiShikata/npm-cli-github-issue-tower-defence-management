@@ -5572,6 +5572,36 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
+    it('rejects with PULL_REQUEST_NOT_FOUND when agents is not configured, triager posted nextStep:null, and no PR exists', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        agent: 'developer',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nWaiting for owner.',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+      );
+    });
+
     it('does not reject with PULL_REQUEST_NOT_FOUND when triager posted waitingForOwnerApproval:true with nextStep:null and no PR', async () => {
       const issue = createMockIssue({
         url: issueUrl,

@@ -18,7 +18,7 @@ import {
 } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isTriagerAgentName } from './triagerAgentName';
+import { isTriagerAgentName, PR_REVIEWER_AGENT_NAME } from './triagerAgentName';
 import {
   ConsoleListItem,
   ConsoleTabName,
@@ -819,7 +819,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       agents.some((name) =>
         isAgentReportBodyFromAgent(lastAgentReport.content, name),
       ) &&
-      ![...effectiveDeveloperAgentNames, 'pr-reviewer'].some((name) =>
+      ![...effectiveDeveloperAgentNames, PR_REVIEWER_AGENT_NAME].some((name) =>
         isAgentReportBodyFromAgent(lastAgentReport.content, name),
       );
     const requiredPrRejections =
