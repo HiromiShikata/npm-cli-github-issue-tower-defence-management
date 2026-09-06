@@ -1,3 +1,11 @@
+## [2.63.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.2...v2.63.3) (2026-09-06)
+
+
+### Bug Fixes
+
+* **CliErrorReportUseCase:** suppress rate-limit errors to stop write-amplification loop ([#2098](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2098)) ([a60da6f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a60da6f9963a03fb2490ee61b96a838bfcd6eb5a))
+* **preparation:** skip notifyFinishedIssuePreparation when issue is already In Tmux by agent ([#2099](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2099)) ([cd80dd7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cd80dd77b148f5460fa5cfaab91aa601b78fb1ab))
+
 ## [2.63.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.1...v2.63.2) (2026-09-06)
 
 
