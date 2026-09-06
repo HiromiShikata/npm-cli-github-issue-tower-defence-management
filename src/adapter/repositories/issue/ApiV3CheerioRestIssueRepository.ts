@@ -1313,6 +1313,22 @@ export class ApiV3CheerioRestIssueRepository
       issue.itemId,
       { singleSelectOptionId: storyOptionId },
     );
+    const storyName = project.story.stories.find(
+      (s) => s.id === storyOptionId,
+    )?.name;
+    if (storyName === undefined) {
+      return;
+    }
+    const cached = await this.projectIssuesCacheRepository.read(project.id);
+    if (cached === null) {
+      return;
+    }
+    const cachedIssue = cached.issues.find((i) => i.url === issue.url);
+    if (cachedIssue === undefined) {
+      return;
+    }
+    cachedIssue.story = storyName;
+    await this.projectIssuesCacheRepository.write(project.id, cached);
   };
   updateStoryOptionColor = async (
     project: Project & { story: NonNullable<Project['story']> },

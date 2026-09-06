@@ -6751,4 +6751,145 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       consoleWarn.mockRestore();
     });
   });
+
+  describe('story field update from routing JSON', () => {
+    const projectWithStoryAndAgent = () =>
+      createMockProject({
+        agent: {
+          name: AGENT_FIELD_NAME,
+          fieldId: 'agent-field-id',
+          options: [
+            {
+              id: 'opt-tdpm',
+              name: 'tdpm-workflow-improver',
+              color: 'GRAY',
+              description: '',
+            },
+          ],
+        },
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'story-opt-wf',
+              name: 'regular / workflow improvement',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'story-opt-other',
+              name: 'regular / other',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
+        },
+      });
+
+    it('calls updateStory with the resolved storyOptionId when the routing JSON contains a story key matching a project story', async () => {
+      const project = projectWithStoryAndAgent();
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "tdpm-workflow-improver", "story": "regular / workflow improvement"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: project.story }),
+        issue,
+        'story-opt-wf',
+      );
+    });
+
+    it('does not call updateStory when the routing JSON has no story key', async () => {
+      const project = projectWithStoryAndAgent();
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "tdpm-workflow-improver"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    it('does not call updateStory when the project has no story field', async () => {
+      const project = createMockProject({ story: null });
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / workflow improvement"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    it('does not call updateStory when the story name does not match any project story option', async () => {
+      const project = projectWithStoryAndAgent();
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "tdpm-workflow-improver", "story": "nonexistent story"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+  });
 });
