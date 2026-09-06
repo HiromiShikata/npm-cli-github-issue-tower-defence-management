@@ -77,8 +77,8 @@ function isCiContextDiskCache(value: unknown): value is CiContextDiskCache {
 }
 
 type RequiredCheckNamesDiskCache = {
+  fetchedAtMs: number;
   names: string[];
-  fetchedAt: string;
 };
 
 function isRequiredCheckNamesDiskCache(
@@ -86,11 +86,11 @@ function isRequiredCheckNamesDiskCache(
 ): value is RequiredCheckNamesDiskCache {
   if (typeof value !== 'object' || value === null) return false;
   return (
+    'fetchedAtMs' in value &&
+    typeof value.fetchedAtMs === 'number' &&
     'names' in value &&
     Array.isArray(value.names) &&
-    (value.names as unknown[]).every((n) => typeof n === 'string') &&
-    'fetchedAt' in value &&
-    typeof value.fetchedAt === 'string'
+    value.names.every((n: unknown) => typeof n === 'string')
   );
 }
 
@@ -1555,10 +1555,9 @@ export class ApiV3CheerioRestIssueRepository
     const diskCacheRaw =
       await this.localStorageCacheRepository.getSingle(diskCacheKey);
     if (isRequiredCheckNamesDiskCache(diskCacheRaw)) {
-      const diskFetchedAtMs = new Date(diskCacheRaw.fetchedAt).getTime();
-      if (nowMs - diskFetchedAtMs < REQUIRED_CHECKS_CACHE_TTL_MS) {
+      if (nowMs - diskCacheRaw.fetchedAtMs < REQUIRED_CHECKS_CACHE_TTL_MS) {
         this.requiredCheckNamesCache.set(inMemoryCacheKey, {
-          fetchedAtMs: diskFetchedAtMs,
+          fetchedAtMs: diskCacheRaw.fetchedAtMs,
           names: diskCacheRaw.names,
         });
         return diskCacheRaw.names;
@@ -1644,8 +1643,8 @@ export class ApiV3CheerioRestIssueRepository
 
     const names = Array.from(requiredCheckNamesSet);
     await this.localStorageCacheRepository.setSingle(diskCacheKey, {
+      fetchedAtMs: nowMs,
       names,
-      fetchedAt: new Date(nowMs).toISOString(),
     });
     this.requiredCheckNamesCache.set(inMemoryCacheKey, {
       fetchedAtMs: nowMs,

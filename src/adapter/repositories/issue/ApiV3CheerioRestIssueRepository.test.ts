@@ -4109,6 +4109,83 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         ),
       ).rejects.toThrow(/Failed to fetch branch rules/);
     });
+
+    it('reads required check names from disk cache when in-memory cache is empty and does not call the branch rules API', async () => {
+      const fetchSpy = mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [
+            { id: 1, name: 'cached-required-check', conclusion: 'success' },
+          ],
+        }),
+      });
+
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockImplementation(async (key) => {
+        if (key.startsWith('requiredCheckNames/')) {
+          return {
+            fetchedAtMs: new Date('2026-01-01T00:00:00.000Z').getTime(),
+            names: ['cached-required-check'],
+          };
+        }
+        return null;
+      });
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      const result = await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      expect(result?.missingRequiredCheckNames).toEqual([]);
+      expect(
+        countCallsMatching(fetchSpy, (url) => url.includes('/rules/branches/')),
+      ).toBe(0);
+    });
+
+    it('writes required check names to disk cache after fetching from the API', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        branchRules: () => [
+          {
+            type: 'required_status_checks',
+            parameters: {
+              required_status_checks: [{ context: 'ci-check' }],
+            },
+          },
+        ],
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'ci-check', conclusion: 'success' }],
+        }),
+      });
+
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      const requiredCheckCall =
+        localStorageCacheRepository.setSingle.mock.calls.find(([key]) =>
+          key.startsWith('requiredCheckNames/'),
+        );
+      expect(requiredCheckCall).toBeDefined();
+      const writtenRequiredCheckValue = requiredCheckCall?.[1];
+      expect(
+        typeof writtenRequiredCheckValue === 'object' &&
+          writtenRequiredCheckValue !== null &&
+          'fetchedAtMs' in writtenRequiredCheckValue &&
+          typeof writtenRequiredCheckValue.fetchedAtMs === 'number' &&
+          'names' in writtenRequiredCheckValue &&
+          Array.isArray(writtenRequiredCheckValue.names) &&
+          writtenRequiredCheckValue.names[0] === 'ci-check',
+      ).toBe(true);
+    });
   });
 
   describe('required check names TTL cache', () => {
@@ -4218,8 +4295,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         async (key: string) => {
           if (key.startsWith('requiredCheckNames/')) {
             return {
+              fetchedAtMs: new Date('2026-01-01T00:00:00.000Z').getTime(),
               names: ['required-check'],
-              fetchedAt: '2026-01-01T00:00:00.000Z',
             };
           }
           return null;
@@ -4237,9 +4314,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         countCallsMatching(fetchSpy, (url) => url.includes('/rules/branches/')),
       ).toBe(0);
       expect(
-        countCallsMatching(fetchSpy, (url) =>
-          /\/branches\/[^/?]+$/.test(url),
-        ),
+        countCallsMatching(fetchSpy, (url) => /\/branches\/[^/?]+$/.test(url)),
       ).toBe(0);
     });
 
@@ -4284,8 +4359,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           writtenValue !== null &&
           'names' in writtenValue &&
           Array.isArray(writtenValue.names) &&
-          'fetchedAt' in writtenValue &&
-          typeof writtenValue.fetchedAt === 'string',
+          'fetchedAtMs' in writtenValue &&
+          typeof writtenValue.fetchedAtMs === 'number',
       ).toBe(true);
     });
 
@@ -4307,7 +4382,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       localStorageCacheRepository.getSingle.mockImplementation(
         async (key: string) => {
           if (key.startsWith('requiredCheckNames/')) {
-            return { names: ['stale-check'], fetchedAt: expiredFetchedAt };
+            return {
+              fetchedAtMs: new Date(expiredFetchedAt).getTime(),
+              names: ['stale-check'],
+            };
           }
           return null;
         },
@@ -4353,12 +4431,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
             ([key]) =>
               typeof key === 'string' && key.startsWith('requiredCheckNames/'),
           )
-          .map(([key]) => key as string);
+          .map(([key]) => key);
       expect(requiredCheckCacheKeys).toHaveLength(2);
       expect(requiredCheckCacheKeys[0]).not.toBe(requiredCheckCacheKeys[1]);
-      expect(requiredCheckCacheKeys.some((k) => k.includes('main'))).toBe(
-        true,
-      );
+      expect(requiredCheckCacheKeys.some((k) => k.includes('main'))).toBe(true);
       expect(requiredCheckCacheKeys.some((k) => k.includes('develop'))).toBe(
         true,
       );
@@ -4397,8 +4473,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
       const ciContextsCacheWrite =
         localStorageCacheRepository.setSingle.mock.calls.find(
-          ([key]) =>
-            typeof key === 'string' && key.startsWith('ciContexts/'),
+          ([key]) => typeof key === 'string' && key.startsWith('ciContexts/'),
         )?.[1];
       expect(
         typeof ciContextsCacheWrite === 'object' &&
@@ -4632,9 +4707,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
               etag: '"check-runs-etag"',
               combinedStatusEtag: '"combined-status-etag-42"',
               contexts: cachedContexts,
-              fetchedAt: new Date(
-                Date.now() - 60_000,
-              ).toISOString(),
+              fetchedAt: new Date(Date.now() - 60_000).toISOString(),
             };
           }
           return null;
@@ -4710,12 +4783,18 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const ciContextsCacheWrite =
         localStorageCacheRepository.setSingle.mock.calls.find(
-          ([key]) =>
-            typeof key === 'string' && key.startsWith('ciContexts/'),
+          ([key]) => typeof key === 'string' && key.startsWith('ciContexts/'),
         );
       expect(ciContextsCacheWrite).toBeDefined();
-      const writtenContexts = (ciContextsCacheWrite?.[1] as { contexts?: unknown[] })?.contexts;
-      expect(Array.isArray(writtenContexts)).toBe(true);
+      const writtenCacheValue = ciContextsCacheWrite?.[1];
+      const writtenContexts =
+        typeof writtenCacheValue === 'object' &&
+        writtenCacheValue !== null &&
+        'contexts' in writtenCacheValue &&
+        Array.isArray(writtenCacheValue.contexts)
+          ? writtenCacheValue.contexts
+          : undefined;
+      expect(writtenContexts).toBeDefined();
       expect(
         writtenContexts?.some(
           (ctx: unknown) =>
@@ -4788,6 +4867,46 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           ? String(rawHeaders['If-None-Match'])
           : undefined;
       expect(ifNoneMatch).toBeUndefined();
+    });
+
+    it('stores combinedStatusEtag from 200 combined status response in the disk cache', async () => {
+      mockFetchRoutes({
+        slimPullRequest: () => buildSlimPullRequestResponse(),
+        checkRuns: () => ({
+          total_count: 1,
+          check_runs: [{ id: 1, name: 'ci', conclusion: null }],
+        }),
+        combinedStatus: () =>
+          new Response(
+            JSON.stringify({
+              statuses: [{ context: 'legacy', state: 'success' }],
+            }),
+            {
+              status: 200,
+              headers: {
+                'Content-Type': 'application/json',
+                etag: '"new-cs-etag-123"',
+              },
+            },
+          ),
+      });
+
+      const { repository, localStorageCacheRepository } =
+        createApiV3CheerioRestIssueRepository();
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.getOpenPullRequest(
+        'https://github.com/HiromiShikata/test-repository/pull/31',
+      );
+
+      const ciContextsWrite =
+        localStorageCacheRepository.setSingle.mock.calls.find(([key]) =>
+          key.startsWith('ciContexts/'),
+        );
+      expect(ciContextsWrite?.[1]).toMatchObject({
+        combinedStatusEtag: '"new-cs-etag-123"',
+      });
     });
   });
 
