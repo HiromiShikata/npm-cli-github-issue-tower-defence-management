@@ -42,10 +42,13 @@ import {
   Sleep,
   realSleep,
   fetchWithGitHubRateLimitRetry,
+  GithubRestRequestInfo,
   computeRateLimitResetIso,
   hasRateLimitSignals,
   GitHubRateLimitError,
 } from './githubRateLimitRetry';
+import { sanitizeRestPath } from '../githubRestClient';
+import { secondaryRateLimitStateFilePath } from './githubSecondaryRateLimitBreaker';
 
 export const FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
@@ -709,7 +712,17 @@ export class ApiV3CheerioRestIssueRepository
 
   private fetchWithRateLimitRetry = (
     request: () => Promise<Response>,
-  ): Promise<Response> => fetchWithGitHubRateLimitRetry(request, this.sleep);
+    requestInfo: GithubRestRequestInfo = {},
+  ): Promise<Response> =>
+    fetchWithGitHubRateLimitRetry(
+      request,
+      this.sleep,
+      Date.now,
+      false,
+      false,
+      secondaryRateLimitStateFilePath(),
+      requestInfo,
+    );
 
   /**
    * Variant for content-creating requests (POST / PUT / PATCH / DELETE).
@@ -719,8 +732,17 @@ export class ApiV3CheerioRestIssueRepository
    */
   private fetchWithRateLimitRetryForWrite = (
     request: () => Promise<Response>,
+    requestInfo: GithubRestRequestInfo = {},
   ): Promise<Response> =>
-    fetchWithGitHubRateLimitRetry(request, this.sleep, Date.now, false, true);
+    fetchWithGitHubRateLimitRetry(
+      request,
+      this.sleep,
+      Date.now,
+      false,
+      true,
+      secondaryRateLimitStateFilePath(),
+      requestInfo,
+    );
 
   private throwGitHubError = async (
     prefix: string,
@@ -1569,17 +1591,17 @@ export class ApiV3CheerioRestIssueRepository
     const branchSegment = encodeURIComponent(branch);
     const requiredCheckNamesSet = new Set<string>();
 
-    const rulesResponse = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/rules/branches/${branchSegment}?per_page=100`,
-        {
+    const rulesUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/rules/branches/${branchSegment}?per_page=100`;
+    const rulesResponse = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch(rulesUrl, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(rulesUrl) },
     );
     if (rulesResponse.ok) {
       const rulesBody: unknown = await rulesResponse.json();
@@ -1606,17 +1628,17 @@ export class ApiV3CheerioRestIssueRepository
       );
     }
 
-    const branchResponse = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/branches/${branchSegment}`,
-        {
+    const branchUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/branches/${branchSegment}`;
+    const branchResponse = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch(branchUrl, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(branchUrl) },
     );
     if (branchResponse.ok) {
       const branchBody: unknown = await branchResponse.json();
@@ -1699,17 +1721,17 @@ export class ApiV3CheerioRestIssueRepository
     const repoSegment = encodeURIComponent(repo);
     const shaSegment = encodeURIComponent(commitSha);
 
-    const checkSuitesResponse = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-suites`,
-        {
+    const checkSuitesUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-suites`;
+    const checkSuitesResponse = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch(checkSuitesUrl, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(checkSuitesUrl) },
     );
 
     if (!checkSuitesResponse.ok) {
@@ -1739,17 +1761,17 @@ export class ApiV3CheerioRestIssueRepository
       let page = 1;
       let hasMore = true;
       while (hasMore) {
-        const runsResponse = await this.fetchWithRateLimitRetry(() =>
-          fetch(
-            `https://api.github.com/repos/${ownerSegment}/${repoSegment}/check-suites/${suite.id}/check-runs?per_page=${perPage}&page=${page}`,
-            {
+        const runsUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/check-suites/${suite.id}/check-runs?per_page=${perPage}&page=${page}`;
+        const runsResponse = await this.fetchWithRateLimitRetry(
+          () =>
+            fetch(runsUrl, {
               method: 'GET',
               headers: {
                 Authorization: `Bearer ${this.ghToken}`,
                 Accept: 'application/vnd.github+json',
               },
-            },
-          ),
+            }),
+          { method: 'GET', path: sanitizeRestPath(runsUrl) },
         );
         if (!runsResponse.ok) {
           const reason = await this.formatGitHubErrorWithStatus(runsResponse);
@@ -1826,11 +1848,10 @@ export class ApiV3CheerioRestIssueRepository
       page1Headers['If-None-Match'] = diskCache.etag;
     }
 
-    const page1Response = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-runs?per_page=100&page=1`,
-        { method: 'GET', headers: page1Headers },
-      ),
+    const page1Url = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-runs?per_page=100&page=1`;
+    const page1Response = await this.fetchWithRateLimitRetry(
+      () => fetch(page1Url, { method: 'GET', headers: page1Headers }),
+      { method: 'GET', path: sanitizeRestPath(page1Url) },
     );
 
     if (
@@ -1922,17 +1943,17 @@ export class ApiV3CheerioRestIssueRepository
       page1Body.check_runs.length >= perPage && perPage < page1Body.total_count;
 
     while (hasMore) {
-      const pageResponse = await this.fetchWithRateLimitRetry(() =>
-        fetch(
-          `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-runs?per_page=${perPage}&page=${page}`,
-          {
+      const pageUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/check-runs?per_page=${perPage}&page=${page}`;
+      const pageResponse = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(pageUrl, {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${this.ghToken}`,
               Accept: 'application/vnd.github+json',
             },
-          },
-        ),
+          }),
+        { method: 'GET', path: sanitizeRestPath(pageUrl) },
       );
 
       if (
@@ -2003,14 +2024,14 @@ export class ApiV3CheerioRestIssueRepository
       combinedStatusHeaders['If-None-Match'] = diskCache.combinedStatusEtag;
     }
 
-    const combinedStatusResponse = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/status?per_page=100`,
-        {
+    const combinedStatusUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/commits/${shaSegment}/status?per_page=100`;
+    const combinedStatusResponse = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch(combinedStatusUrl, {
           method: 'GET',
           headers: combinedStatusHeaders,
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(combinedStatusUrl) },
     );
 
     if (
@@ -2751,17 +2772,17 @@ export class ApiV3CheerioRestIssueRepository
       if (attempt > 0) {
         await this.sleep(retryDelayMilliseconds);
       }
-      const response = await this.fetchWithRateLimitRetry(() =>
-        fetch(
-          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
-          {
+      const prStatusUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`;
+      const response = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(prStatusUrl, {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${this.ghToken}`,
               Accept: 'application/vnd.github+json',
             },
-          },
-        ),
+          }),
+        { method: 'GET', path: sanitizeRestPath(prStatusUrl) },
       );
       if (response.status === 404) {
         return null;
@@ -3052,18 +3073,18 @@ export class ApiV3CheerioRestIssueRepository
 
   closePullRequest = async (prUrl: string): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await this.fetchWithRateLimitRetryForWrite(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
-        {
+    const closePrUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`;
+    const response = await this.fetchWithRateLimitRetryForWrite(
+      () =>
+        fetch(closePrUrl, {
           method: 'PATCH',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ state: 'closed' }),
-        },
-      ),
+        }),
+      { method: 'PATCH', path: sanitizeRestPath(closePrUrl) },
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3078,18 +3099,18 @@ export class ApiV3CheerioRestIssueRepository
     const { owner, repo, issueNumber } = this.parseIssueUrl(issueUrl);
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await this.fetchWithRateLimitRetryForWrite(() =>
-      fetch(
-        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}`,
-        {
+    const closeIssueUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/issues/${issueNumber}`;
+    const response = await this.fetchWithRateLimitRetryForWrite(
+      () =>
+        fetch(closeIssueUrl, {
           method: 'PATCH',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ state: 'closed', state_reason: stateReason }),
-        },
-      ),
+        }),
+      { method: 'PATCH', path: sanitizeRestPath(closeIssueUrl) },
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3104,17 +3125,17 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await this.fetchWithRateLimitRetry(() =>
-        fetch(
-          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
-          {
+      const prFilesUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`;
+      const response = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(prFilesUrl, {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${this.ghToken}`,
               Accept: 'application/vnd.github+json',
             },
-          },
-        ),
+          }),
+        { method: 'GET', path: sanitizeRestPath(prFilesUrl) },
       );
       if (!response.ok) {
         const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3141,14 +3162,16 @@ export class ApiV3CheerioRestIssueRepository
   };
 
   getAuthenticatedUserLogin = async (): Promise<string> => {
-    const response = await this.fetchWithRateLimitRetry(() =>
-      fetch('https://api.github.com/user', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.ghToken}`,
-          Accept: 'application/vnd.github+json',
-        },
-      }),
+    const response = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch('https://api.github.com/user', {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.ghToken}`,
+            Accept: 'application/vnd.github+json',
+          },
+        }),
+      { method: 'GET', path: '/user' },
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3165,10 +3188,10 @@ export class ApiV3CheerioRestIssueRepository
 
   approvePullRequest = async (prUrl: string): Promise<void> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await this.fetchWithRateLimitRetryForWrite(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
-        {
+    const approveUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`;
+    const response = await this.fetchWithRateLimitRetryForWrite(
+      () =>
+        fetch(approveUrl, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
@@ -3176,8 +3199,8 @@ export class ApiV3CheerioRestIssueRepository
             Accept: 'application/vnd.github+json',
           },
           body: JSON.stringify({ event: 'APPROVE' }),
-        },
-      ),
+        }),
+      { method: 'POST', path: sanitizeRestPath(approveUrl) },
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3194,14 +3217,16 @@ export class ApiV3CheerioRestIssueRepository
       Accept: 'application/vnd.github+json',
     };
     const mergeWith = (mergeMethod?: 'squash' | 'rebase') =>
-      this.fetchWithRateLimitRetryForWrite(() =>
-        fetch(mergeUrl, {
-          method: 'PUT',
-          headers,
-          body: JSON.stringify(
-            mergeMethod ? { merge_method: mergeMethod } : {},
-          ),
-        }),
+      this.fetchWithRateLimitRetryForWrite(
+        () =>
+          fetch(mergeUrl, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify(
+              mergeMethod ? { merge_method: mergeMethod } : {},
+            ),
+          }),
+        { method: 'PUT', path: sanitizeRestPath(mergeUrl) },
       );
     const response = await mergeWith();
     if (response.ok) {
@@ -3227,16 +3252,16 @@ export class ApiV3CheerioRestIssueRepository
     owner: string,
     repo: string,
   ): Promise<'squash' | 'rebase' | null> => {
-    const response = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
-        {
+    const repoUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+    const response = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch(repoUrl, {
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(repoUrl) },
     );
     if (!response.ok) {
       return null;
@@ -3279,10 +3304,10 @@ export class ApiV3CheerioRestIssueRepository
       body: commentBody,
       comments: [inlineComment],
     };
-    const response = await this.fetchWithRateLimitRetryForWrite(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`,
-        {
+    const reviewUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/reviews`;
+    const response = await this.fetchWithRateLimitRetryForWrite(
+      () =>
+        fetch(reviewUrl, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
@@ -3290,8 +3315,8 @@ export class ApiV3CheerioRestIssueRepository
             Accept: 'application/vnd.github+json',
           },
           body: JSON.stringify(reviewBody),
-        },
-      ),
+        }),
+      { method: 'POST', path: sanitizeRestPath(reviewUrl) },
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3338,17 +3363,17 @@ export class ApiV3CheerioRestIssueRepository
   ): Promise<string> => {
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}`,
-        {
+    const headShaUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}`;
+    const response = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch(headShaUrl, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(headShaUrl) },
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3383,10 +3408,10 @@ export class ApiV3CheerioRestIssueRepository
     );
     const ownerSegment = encodeURIComponent(owner);
     const repoSegment = encodeURIComponent(repo);
-    const response = await this.fetchWithRateLimitRetryForWrite(() =>
-      fetch(
-        `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}/comments`,
-        {
+    const reviewCommentUrl = `https://api.github.com/repos/${ownerSegment}/${repoSegment}/pulls/${prNumber}/comments`;
+    const response = await this.fetchWithRateLimitRetryForWrite(
+      () =>
+        fetch(reviewCommentUrl, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
@@ -3400,8 +3425,8 @@ export class ApiV3CheerioRestIssueRepository
             line,
             side,
           }),
-        },
-      ),
+        }),
+      { method: 'POST', path: sanitizeRestPath(reviewCommentUrl) },
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3466,17 +3491,17 @@ export class ApiV3CheerioRestIssueRepository
 
   updateBranch = async (prUrl: string): Promise<boolean> => {
     const { owner, repo, issueNumber: prNumber } = this.parseIssueUrl(prUrl);
-    const response = await this.fetchWithRateLimitRetryForWrite(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/update-branch`,
-        {
+    const updateBranchUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/update-branch`;
+    const response = await this.fetchWithRateLimitRetryForWrite(
+      () =>
+        fetch(updateBranchUrl, {
           method: 'PUT',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'PUT', path: sanitizeRestPath(updateBranchUrl) },
     );
     if (response.ok) {
       return true;
@@ -3493,16 +3518,16 @@ export class ApiV3CheerioRestIssueRepository
     branchName: string,
   ): Promise<void> => {
     const { owner, repo } = this.parseIssueUrl(prUrl);
-    const response = await this.fetchWithRateLimitRetryForWrite(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/refs/heads/${encodeURIComponent(branchName)}`,
-        {
+    const deleteBranchUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/refs/heads/${encodeURIComponent(branchName)}`;
+    const response = await this.fetchWithRateLimitRetryForWrite(
+      () =>
+        fetch(deleteBranchUrl, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
           },
-        },
-      ),
+        }),
+      { method: 'DELETE', path: sanitizeRestPath(deleteBranchUrl) },
     );
     if (!response.ok && response.status !== 422) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3521,17 +3546,17 @@ export class ApiV3CheerioRestIssueRepository
 
   private fetchIssueBodyResponse = (url: string): Promise<Response> => {
     const { owner, repo, issueNumber } = this.parseIssueUrl(url);
-    return this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
-        {
+    const issueBodyUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`;
+    return this.fetchWithRateLimitRetry(
+      () =>
+        fetch(issueBodyUrl, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(issueBodyUrl) },
     );
   };
 
@@ -3577,17 +3602,17 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await this.fetchWithRateLimitRetry(() =>
-        fetch(
-          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`,
-          {
+      const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`;
+      const response = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(commentsUrl, {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${this.ghToken}`,
               Accept: 'application/vnd.github+json',
             },
-          },
-        ),
+          }),
+        { method: 'GET', path: sanitizeRestPath(commentsUrl) },
       );
       if (!response.ok) {
         await this.throwGitHubError(
@@ -3630,17 +3655,17 @@ export class ApiV3CheerioRestIssueRepository
     if (!isPr) {
       return null;
     }
-    const detailResponse = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
-        {
+    const prDetailUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`;
+    const detailResponse = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch(prDetailUrl, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(prDetailUrl) },
     );
     if (!detailResponse.ok) {
       await this.throwGitHubError(
@@ -3686,17 +3711,17 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await this.fetchWithRateLimitRetry(() =>
-        fetch(
-          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`,
-          {
+      const prDetailFilesUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files?per_page=${perPage}&page=${page}`;
+      const response = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(prDetailFilesUrl, {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${this.ghToken}`,
               Accept: 'application/vnd.github+json',
             },
-          },
-        ),
+          }),
+        { method: 'GET', path: sanitizeRestPath(prDetailFilesUrl) },
       );
       if (!response.ok) {
         await this.throwGitHubError(
@@ -3749,17 +3774,17 @@ export class ApiV3CheerioRestIssueRepository
     let page = 1;
     let hasMore = true;
     while (hasMore) {
-      const response = await this.fetchWithRateLimitRetry(() =>
-        fetch(
-          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/commits?per_page=${perPage}&page=${page}`,
-          {
+      const prCommitsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/commits?per_page=${perPage}&page=${page}`;
+      const response = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(prCommitsUrl, {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${this.ghToken}`,
               Accept: 'application/vnd.github+json',
             },
-          },
-        ),
+          }),
+        { method: 'GET', path: sanitizeRestPath(prCommitsUrl) },
       );
       if (!response.ok) {
         await this.throwGitHubError(
@@ -3800,17 +3825,17 @@ export class ApiV3CheerioRestIssueRepository
   }> => {
     const { owner, repo, issueNumber, isPr } = this.parseIssueUrl(url);
     if (isPr) {
-      const response = await this.fetchWithRateLimitRetry(() =>
-        fetch(
-          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${issueNumber}`,
-          {
+      const prStateUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${issueNumber}`;
+      const response = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(prStateUrl, {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${this.ghToken}`,
               Accept: 'application/vnd.github+json',
             },
-          },
-        ),
+          }),
+        { method: 'GET', path: sanitizeRestPath(prStateUrl) },
       );
       if (!response.ok) {
         await this.throwGitHubError(
@@ -3831,17 +3856,17 @@ export class ApiV3CheerioRestIssueRepository
         title: body.title,
       };
     }
-    const response = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`,
-        {
+    const issueStateUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}`;
+    const response = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch(issueStateUrl, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(issueStateUrl) },
     );
     if (!response.ok) {
       await this.throwGitHubError(`Failed to fetch state for ${url}`, response);
@@ -3878,17 +3903,17 @@ export class ApiV3CheerioRestIssueRepository
     if (!isPr) {
       return null;
     }
-    const response = await this.fetchWithRateLimitRetry(() =>
-      fetch(
-        `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
-        {
+    const prSummaryUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`;
+    const response = await this.fetchWithRateLimitRetry(
+      () =>
+        fetch(prSummaryUrl, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${this.ghToken}`,
             Accept: 'application/vnd.github+json',
           },
-        },
-      ),
+        }),
+      { method: 'GET', path: sanitizeRestPath(prSummaryUrl) },
     );
     if (!response.ok) {
       const reason = await this.formatGitHubErrorWithStatus(response);
@@ -3913,17 +3938,17 @@ export class ApiV3CheerioRestIssueRepository
     const { owner, repo, issueNumber } = this.parseIssueUrl(issueOrPrUrl);
     const perPage = 100;
     while (true) {
-      const response = await this.fetchWithRateLimitRetry(() =>
-        fetch(
-          `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=1`,
-          {
+      const listCommentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=1`;
+      const response = await this.fetchWithRateLimitRetry(
+        () =>
+          fetch(listCommentsUrl, {
             method: 'GET',
             headers: {
               Authorization: `Bearer ${this.ghToken}`,
               Accept: 'application/vnd.github+json',
             },
-          },
-        ),
+          }),
+        { method: 'GET', path: sanitizeRestPath(listCommentsUrl) },
       );
       if (!response.ok) {
         await this.throwGitHubError(
@@ -3938,17 +3963,17 @@ export class ApiV3CheerioRestIssueRepository
         );
       }
       for (const comment of body) {
-        const deleteResponse = await this.fetchWithRateLimitRetryForWrite(() =>
-          fetch(
-            `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/comments/${comment.id}`,
-            {
+        const deleteCommentUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/comments/${comment.id}`;
+        const deleteResponse = await this.fetchWithRateLimitRetryForWrite(
+          () =>
+            fetch(deleteCommentUrl, {
               method: 'DELETE',
               headers: {
                 Authorization: `Bearer ${this.ghToken}`,
                 Accept: 'application/vnd.github+json',
               },
-            },
-          ),
+            }),
+          { method: 'DELETE', path: sanitizeRestPath(deleteCommentUrl) },
         );
         if (!deleteResponse.ok) {
           await this.throwGitHubError(

@@ -1,4 +1,8 @@
-import { logGithubRestRateLimit } from './githubRestClient';
+import {
+  captureRestCallSite,
+  logGithubRestRateLimit,
+  sanitizeRestPath,
+} from './githubRestClient';
 import { IssueCommentRepository } from '../../domain/usecases/adapter-interfaces/IssueCommentRepository';
 import { Issue } from '../../domain/entities/Issue';
 import { Comment } from '../../domain/entities/Comment';
@@ -320,6 +324,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
       }
     }
 
+    const caller = captureRestCallSite();
     const stateFilePath = secondaryRateLimitStateFilePath();
     const nowMsBeforePost = Date.now();
     const breaker = checkSecondaryRateLimitBreaker(
@@ -333,18 +338,16 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
       );
     }
 
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          Accept: 'application/vnd.github+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ body: commentContent }),
+    const commentUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`;
+    const response = await fetch(commentUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({ body: commentContent }),
+    });
 
     if (!response.ok) {
       const bodyText = await response.text().catch(() => '');
@@ -364,6 +367,11 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         `Failed to create comment via GitHub REST API: ${response.status} ${response.statusText}`,
       );
     }
-    logGithubRestRateLimit({ headers: response.headers });
+    logGithubRestRateLimit({
+      headers: response.headers,
+      method: 'POST',
+      path: sanitizeRestPath(commentUrl),
+      caller,
+    });
   }
 }
