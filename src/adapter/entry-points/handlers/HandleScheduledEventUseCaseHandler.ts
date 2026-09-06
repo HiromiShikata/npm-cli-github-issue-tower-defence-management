@@ -432,10 +432,15 @@ export class HandleScheduledEventUseCaseHandler {
         projectRepository,
         browserGitHubProjectRepository,
       );
+    const issueCommentRepository = new GitHubIssueCommentRepository(
+      input.credentials.bot.github.token,
+      localStorageCacheRepository,
+    );
     const setupTowerDefenceProjectUseCase = new SetupTowerDefenceProjectUseCase(
       projectRepository,
       issueRepository,
       browserGitHubProjectRepository,
+      issueCommentRepository,
     );
     const actionAnnouncement = new ActionAnnouncementUseCase(issueRepository);
     const setWorkflowManagementIssueToStoryUseCase =
@@ -500,10 +505,6 @@ export class HandleScheduledEventUseCaseHandler {
     const updateRateLimitCacheUseCase = mergedInput.startPreparation
       ? new UpdateRateLimitCacheUseCase(proxyRateLimitCacheRepository)
       : null;
-    const issueCommentRepository = new GitHubIssueCommentRepository(
-      input.credentials.bot.github.token,
-      localStorageCacheRepository,
-    );
     const revertOrphanedPreparationUseCase =
       new RevertOrphanedPreparationUseCase(
         projectRepository,

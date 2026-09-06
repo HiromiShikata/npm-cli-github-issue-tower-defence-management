@@ -2932,13 +2932,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       return issue;
     };
 
-    it('moves issue to Awaiting Owner status when last report has waitingForOwner true and project has Awaiting Owner status', async () => {
-      mockProject.status.statuses.push({
-        id: 'awaiting-owner-id',
-        name: 'Awaiting Owner',
-        color: 'ORANGE',
-        description: '',
-      });
+    it('moves issue to Awaiting Quality Check when last report has waitingForOwner true', async () => {
       setupWaitingForOwnerIssue();
 
       await useCase.run({
@@ -2951,17 +2945,11 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        'awaiting-owner-id',
+        '4',
       );
     });
 
     it('takes precedence over nextStepAgent when both waitingForOwner true and nextStepAgent are present', async () => {
-      mockProject.status.statuses.push({
-        id: 'awaiting-owner-id',
-        name: 'Awaiting Owner',
-        color: 'ORANGE',
-        description: '',
-      });
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -3001,30 +2989,8 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        'awaiting-owner-id',
-      );
-    });
-
-    it('falls back to Awaiting Quality Check when last report has waitingForOwner true but Awaiting Owner status is absent', async () => {
-      const consoleWarn = jest.spyOn(console, 'warn').mockImplementation();
-      setupWaitingForOwnerIssue();
-
-      await useCase.run({
-        projectUrl: 'https://github.com/user/repo',
-        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
-        thresholdForAutoReject: 3,
-        allowedIssueAuthors: ['bot'],
-      });
-
-      expect(consoleWarn).toHaveBeenCalledWith(
-        expect.stringContaining('Awaiting Owner'),
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        expect.anything(),
         '4',
       );
-      consoleWarn.mockRestore();
     });
   });
 });
