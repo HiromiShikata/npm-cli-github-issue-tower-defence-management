@@ -1,4 +1,7 @@
-import { logGithubRestRateLimit } from '../githubRestClient';
+import {
+  captureRestCallSite,
+  logGithubRestRateLimit,
+} from '../githubRestClient';
 import {
   checkSecondaryRateLimitBreaker,
   secondaryRateLimitStateFilePath,
@@ -25,6 +28,11 @@ const SECONDARY_RATE_LIMIT_BODY_PATTERN =
   /secondary rate limit|abuse detection/i;
 
 export type Sleep = (milliseconds: number) => Promise<void>;
+
+export type GithubRestRequestInfo = {
+  method?: string;
+  path?: string;
+};
 
 export const realSleep: Sleep = (milliseconds) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -186,7 +194,9 @@ export const fetchWithGitHubRateLimitRetry = async (
   retryOnSecondaryRateLimit: boolean = false,
   isContentCreating: boolean = false,
   stateFilePath: string = secondaryRateLimitStateFilePath(),
+  requestInfo: GithubRestRequestInfo = {},
 ): Promise<Response> => {
+  const caller = captureRestCallSite();
   const startMs = now();
   let attempt = 0;
   for (;;) {
@@ -216,7 +226,12 @@ export const fetchWithGitHubRateLimitRetry = async (
 
     const response = await request();
     if (response.ok) {
-      logGithubRestRateLimit({ headers: response.headers });
+      logGithubRestRateLimit({
+        headers: response.headers,
+        method: requestInfo.method ?? 'UNKNOWN',
+        path: requestInfo.path ?? 'UNKNOWN',
+        caller,
+      });
       return response;
     }
     const bodyText = await response.clone().text();
