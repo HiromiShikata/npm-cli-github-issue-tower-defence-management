@@ -354,10 +354,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingQualityCheckStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
-        issue,
-        'Auto Status Check: WAITING_FOR_OWNER',
-      );
+      console.log('Auto Status Check: WAITING_FOR_OWNER');
       return;
     }
 
