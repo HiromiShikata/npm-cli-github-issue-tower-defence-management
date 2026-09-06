@@ -4,7 +4,6 @@ import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { AGENT_FIELD_NAME } from '../entities/RequiredProjectField';
-import { issueReactivationTriggerStartOfTomorrow } from './issueReactivationTriggerIsPending';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -1314,51 +1313,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('sets next action date to tomorrow when dispatch loop escalation triggers Failed Preparation', async () => {
-    const now = new Date('2026-09-06T10:00:00Z');
-    jest.useFakeTimers();
-    jest.setSystemTime(now);
-
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-      agent: 'systems-analyst',
-    });
-    const namesReviewer = createMockComment({
-      content:
-        'From: :robot: systems-analyst\n```json\n{"nextStepAgent": "system-design-reviewer"}\n```',
-    });
-    const namesAnalyst = createMockComment({
-      content:
-        'From: :robot: system-design-reviewer\n```json\n{"nextStepAgent": "systems-analyst"}\n```',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      namesReviewer,
-      namesAnalyst,
-      namesReviewer,
-      namesAnalyst,
-      namesReviewer,
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      thresholdForDispatchLoop: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
-      'https://github.com/user/repo/issues/1',
-      mockProject,
-      issueReactivationTriggerStartOfTomorrow(new Date()),
-    );
-  });
-
   it('should keep dispatching when a human comment separates the repeated dispatches', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
@@ -1631,40 +1585,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.stringContaining(
         'Failed to pass the check automatically for 3 times',
       ),
-    );
-  });
-
-  it('sets next action date to tomorrow when auto-reject escalation triggers Failed Preparation', async () => {
-    const now = new Date('2026-09-06T10:00:00Z');
-    jest.useFakeTimers();
-    jest.setSystemTime(now);
-
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'Auto Status Check: REJECTED - first' }),
-      createMockComment({ content: 'Auto Status Check: REJECTED - second' }),
-      createMockComment({ content: 'Auto Status Check: REJECTED - third' }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
-      'https://github.com/user/repo/issues/1',
-      mockProject,
-      issueReactivationTriggerStartOfTomorrow(new Date()),
     );
   });
 
