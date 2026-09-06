@@ -1214,6 +1214,16 @@ body {
   font-size: 0.75rem;
 }
 
+.console-comment[data-expanded='true'] {
+  flex-wrap: wrap;
+  white-space: normal;
+}
+
+.console-comment-body-expanded {
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
 .console-files,
 .console-commits {
   list-style: none;

@@ -77,6 +77,7 @@ export const ConsoleCommentList = ({
         return (
           <article
             key={commentKey}
+            data-expanded={showFullBody}
             className={`console-comment${showSummary ? ' console-comment--expandable' : ''}`}
             onClick={
               showSummary
