@@ -16,7 +16,7 @@ import {
 } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isTriagerAgentName } from './triagerAgentName';
+import { isTriagerAgentName, TRIAGER_AGENT_NAME } from './triagerAgentName';
 import {
   ConsoleListItem,
   ConsoleTabName,
@@ -27,7 +27,7 @@ import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
 
-import { isAgentReportBody } from './isAgentReportBody';
+import { isAgentReportBody, isAgentReportBodyFromAgent } from './isAgentReportBody';
 import {
   issueReactivationTriggerIsPending,
   issueReactivationTriggerStartOfTomorrow,
@@ -785,11 +785,16 @@ export class NotifyFinishedIssuePreparationUseCase {
         labelsNotRequiringPullRequest,
         { developerAgentNames },
       );
-    const requiredPrRejections = isTriagerAgentName(nextStepAgent)
-      ? prRejections.filter(
-          (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
-        )
-      : prRejections;
+    const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
+    const lastReportIsFromTriager =
+      lastAgentReport !== null &&
+      isAgentReportBodyFromAgent(lastAgentReport.content, TRIAGER_AGENT_NAME);
+    const requiredPrRejections =
+      isTriagerAgentName(nextStepAgent) || lastReportIsFromTriager
+        ? prRejections.filter(
+            (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
+          )
+        : prRejections;
     return {
       rejections: [...rejections, ...requiredPrRejections],
       approvedPrUrl,
