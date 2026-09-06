@@ -491,7 +491,11 @@ describe('NodeTmuxSessionRepository', () => {
     it('creates a new session when the registry lookup fails and no live process exists', async () => {
       const runner = createMockRunner();
       runner.runCommand
-        .mockResolvedValueOnce({ stdout: '', stderr: 'registry error', exitCode: 1 })
+        .mockResolvedValueOnce({
+          stdout: '',
+          stderr: 'registry error',
+          exitCode: 1,
+        })
         .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 }); // ps: no matching process
       const repository = new NodeTmuxSessionRepository(runner);
 
@@ -534,7 +538,8 @@ describe('NodeTmuxSessionRepository', () => {
       const runner = createMockRunner();
       runner.runCommand
         .mockResolvedValueOnce({ stdout: '', stderr: '', exitCode: 0 }) // registry: empty
-        .mockResolvedValueOnce({ // ps: cl process is a child of the pane shell
+        .mockResolvedValueOnce({
+          // ps: cl process is a child of the pane shell
           stdout:
             '1050 1000 /usr/bin/tmux\n' +
             '1100 1050 /usr/bin/bash\n' +
@@ -542,7 +547,8 @@ describe('NodeTmuxSessionRepository', () => {
           stderr: '',
           exitCode: 0,
         })
-        .mockResolvedValueOnce({ // tmux list-panes
+        .mockResolvedValueOnce({
+          // tmux list-panes
           stdout: '1100 abc123def456ab12\n5678 other_session\n',
           stderr: '',
           exitCode: 0,
@@ -571,15 +577,19 @@ describe('NodeTmuxSessionRepository', () => {
       const runner = createMockRunner();
       runner.runCommand
         .mockResolvedValueOnce({ stdout: 'wq7x3mk\n', stderr: '', exitCode: 0 }) // registry: stale name
-        .mockResolvedValueOnce({ stdout: '', stderr: "can't find session", exitCode: 1 }) // has-session: gone
-        .mockResolvedValueOnce({ // ps: cl process is a child of the pane shell
-          stdout:
-            '1100 1050 /usr/bin/bash\n' +
-            `1234 1100 cl ${issueUrl}\n`,
+        .mockResolvedValueOnce({
+          stdout: '',
+          stderr: "can't find session",
+          exitCode: 1,
+        }) // has-session: gone
+        .mockResolvedValueOnce({
+          // ps: cl process is a child of the pane shell
+          stdout: '1100 1050 /usr/bin/bash\n' + `1234 1100 cl ${issueUrl}\n`,
           stderr: '',
           exitCode: 0,
         })
-        .mockResolvedValueOnce({ // tmux list-panes
+        .mockResolvedValueOnce({
+          // tmux list-panes
           stdout: '1100 abc123def456ab12\n',
           stderr: '',
           exitCode: 0,
