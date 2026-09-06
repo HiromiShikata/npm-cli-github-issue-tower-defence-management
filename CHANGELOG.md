@@ -1,3 +1,10 @@
+## [2.73.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.5...v2.73.6) (2026-09-06)
+
+
+### Bug Fixes
+
+* **handleDeleteStory:** remove closed story tasks from console list.json files immediately ([#2195](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2195)) ([15f03e7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/15f03e79c9829b545a46d093b8ae2c5a4b7173fa)), closes [HiromiShikata/umino-corporait-operation#31466](https://github.com/HiromiShikata/umino-corporait-operation/issues/31466)
+
 ## [2.73.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.4...v2.73.5) (2026-09-06)
 
 
