@@ -104,6 +104,9 @@ export const logGithubGraphqlCost = (params: {
   );
 };
 
+export const GRAPHQL_RETRY_LIMIT = 2;
+export const GRAPHQL_RETRY_STATUS_CODES: number[] = [500, 502, 503, 504];
+
 export const postGithubGraphqlJson = async <T>(params: {
   ghToken: string;
   query: string;
@@ -122,6 +125,11 @@ export const postGithubGraphqlJson = async <T>(params: {
         Authorization: `Bearer ${params.ghToken}`,
       },
       timeout: GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
+      retry: {
+        limit: GRAPHQL_RETRY_LIMIT,
+        methods: ['post'],
+        statusCodes: GRAPHQL_RETRY_STATUS_CODES,
+      },
     })
     .json<T>();
   logGithubGraphqlCost({

@@ -18,6 +18,8 @@ import net from 'node:net';
 import {
   GITHUB_GRAPHQL_ENDPOINT,
   GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
+  GRAPHQL_RETRY_LIMIT,
+  GRAPHQL_RETRY_STATUS_CODES,
   RATE_LIMIT_SELECTION,
   extractGraphqlCallSite,
   extractGraphqlOperationName,
@@ -375,6 +377,33 @@ describe('githubGraphqlClient', () => {
       const call = getMockCallArguments(mockPost, 0);
       const options = expectRecord(call[1]);
       expect(options.timeout).toBe(GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS);
+    });
+
+    it('configures retry for POST requests on transient 5xx errors so a 504 is retried automatically', async () => {
+      mockPost.mockReturnValue({
+        json: jest.fn().mockResolvedValue({
+          data: { node: { id: 'x' }, rateLimit: { cost: 1, remaining: 4999 } },
+        }),
+      });
+      await postGithubGraphqlJson({
+        ghToken: 'token-a',
+        query: 'query GetItem($id: ID!) { node(id: $id) { id } }',
+      });
+      const call = getMockCallArguments(mockPost, 0);
+      const options = expectRecord(call[1]);
+      const retry = expectRecord(options.retry);
+      expect(retry.limit).toBe(GRAPHQL_RETRY_LIMIT);
+      const methods = retry.methods;
+      if (!Array.isArray(methods)) {
+        throw new Error('Expected retry.methods to be an array');
+      }
+      expect(methods).toContain('post');
+      const statusCodes = retry.statusCodes;
+      if (!Array.isArray(statusCodes)) {
+        throw new Error('Expected retry.statusCodes to be an array');
+      }
+      expect(statusCodes).toContain(504);
+      expect(statusCodes).toContain(GRAPHQL_RETRY_STATUS_CODES[0]);
     });
   });
 
