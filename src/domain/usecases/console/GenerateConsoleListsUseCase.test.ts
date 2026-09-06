@@ -930,61 +930,36 @@ describe('GenerateConsoleListsUseCase', () => {
     });
 
     it('excludes Awaiting Workspace issues with a future next action date', () => {
-      const now = new Date('2026-06-14T10:00:00Z');
       const result = run(
         [makeIssue({ status: 'Awaiting Workspace', nextActionDate: new Date('2026-06-15T00:00:00Z') })],
-        undefined,
-        undefined,
-        undefined,
-        now,
       );
       expect(result.queued.items).toHaveLength(0);
     });
 
     it('excludes Preparation issues with a future next action date', () => {
-      const now = new Date('2026-06-14T10:00:00Z');
       const result = run(
         [makeIssue({ status: 'Preparation', nextActionDate: new Date('2026-06-15T00:00:00Z') })],
-        undefined,
-        undefined,
-        undefined,
-        now,
       );
       expect(result.queued.items).toHaveLength(0);
     });
 
     it('excludes issues with an unreached next action hour', () => {
-      const now = new Date('2026-06-14T10:00:00Z');
       const result = run(
         [makeIssue({ status: 'Awaiting Workspace', nextActionHour: 15 })],
-        undefined,
-        undefined,
-        undefined,
-        now,
       );
       expect(result.queued.items).toHaveLength(0);
     });
 
     it('includes issues with a next action date set to today (trigger no longer pending)', () => {
-      const now = new Date('2026-06-14T10:00:00Z');
       const result = run(
         [makeIssue({ status: 'Awaiting Workspace', nextActionDate: new Date('2026-06-14T00:00:00Z') })],
-        undefined,
-        undefined,
-        undefined,
-        now,
       );
       expect(result.queued.items).toHaveLength(1);
     });
 
     it('includes issues with a next action hour already reached', () => {
-      const now = new Date('2026-06-14T10:00:00Z');
       const result = run(
         [makeIssue({ status: 'Awaiting Workspace', nextActionHour: 5 })],
-        undefined,
-        undefined,
-        undefined,
-        now,
       );
       expect(result.queued.items).toHaveLength(1);
     });
