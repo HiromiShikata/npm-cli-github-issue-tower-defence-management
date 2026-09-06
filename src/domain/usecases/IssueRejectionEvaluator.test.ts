@@ -447,6 +447,46 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
     });
 
+    it('should reject with PULL_REQUEST_NOT_FOUND when issue label matches a developer agent name even if that label is in labelsNotRequiringPullRequest', async () => {
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['developer'],
+          isPr: false,
+          agent: 'developer',
+        },
+        ['developer'],
+        { developerAgentNames: ['developer'] },
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
+        'https://github.com/user/repo/issues/1',
+      );
+      expect(
+        result.rejections.some((r) => r.type === 'PULL_REQUEST_NOT_FOUND'),
+      ).toBe(true);
+    });
+
+    it('should not reject with PULL_REQUEST_NOT_FOUND when issue label is a non-developer-agent name that is in labelsNotRequiringPullRequest', async () => {
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['accounting'],
+          isPr: false,
+          agent: 'developer',
+        },
+        ['accounting'],
+        { developerAgentNames: ['developer'] },
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(
+        result.rejections.some((r) => r.type === 'PULL_REQUEST_NOT_FOUND'),
+      ).toBe(false);
+    });
+
     describe('prebuilt relatedOpenPrUrls (in-memory derivation path)', () => {
       it('should resolve PR status via getOpenPullRequest and not call findRelatedOpenPRs when relatedOpenPrUrls is provided', async () => {
         mockIssueRepository.getOpenPullRequest.mockResolvedValue(

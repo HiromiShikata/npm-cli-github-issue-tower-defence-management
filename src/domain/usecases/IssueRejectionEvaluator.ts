@@ -246,8 +246,10 @@ export class IssueRejectionEvaluator {
       issue.agent != null &&
       (effectiveDeveloperAgentNames.includes(issue.agent) ||
         issue.agent === 'pr-reviewer');
-    const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
-      labelsNotRequiringPullRequest.includes(label),
+    const hasLabelNotRequiringPullRequest = issue.labels.some(
+      (label) =>
+        labelsNotRequiringPullRequest.includes(label) &&
+        !effectiveDeveloperAgentNames.includes(label),
     );
     return (
       isDeveloperAgent &&
