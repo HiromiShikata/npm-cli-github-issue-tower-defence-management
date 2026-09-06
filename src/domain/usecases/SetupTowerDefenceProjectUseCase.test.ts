@@ -7,7 +7,6 @@ import { FieldOption, Project } from '../entities/Project';
 import { Issue } from '../entities/Issue';
 import {
   AWAITING_OWNER_STATUS_NAME,
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -82,13 +81,12 @@ const buildIssue = (overrides: Partial<Issue>): Issue => ({
 });
 
 describe('SetupTowerDefenceProjectUseCase', () => {
-  it('should define exactly the 11 required statuses in the documented order with the documented colors and no descriptions', () => {
+  it('should define exactly the 10 required statuses in the documented order with the documented colors and no descriptions', () => {
     expect(REQUIRED_WORKFLOW_STATUSES).toEqual([
       { name: AWAITING_WORKSPACE_STATUS_NAME, color: 'BLUE' },
-      { name: AWAITING_OWNER_STATUS_NAME, color: 'ORANGE' },
       { name: PREPARATION_STATUS_NAME, color: 'YELLOW' },
       { name: FAILED_PREPARATION_STATUS_NAME, color: 'RED' },
-      { name: AWAITING_QUALITY_CHECK_STATUS_NAME, color: 'GREEN' },
+      { name: AWAITING_OWNER_STATUS_NAME, color: 'GREEN' },
       { name: TODO_STATUS_NAME, color: 'PINK' },
       { name: TODO_BY_AGENT_STATUS_NAME, color: 'BLUE' },
       { name: IN_TMUX_STATUS_NAME, color: 'RED' },
@@ -243,12 +241,6 @@ describe('SetupTowerDefenceProjectUseCase', () => {
         },
         {
           id: null,
-          name: AWAITING_OWNER_STATUS_NAME,
-          color: 'ORANGE',
-          description: '',
-        },
-        {
-          id: null,
           name: PREPARATION_STATUS_NAME,
           color: 'YELLOW',
           description: '',
@@ -261,7 +253,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
         },
         {
           id: null,
-          name: AWAITING_QUALITY_CHECK_STATUS_NAME,
+          name: AWAITING_OWNER_STATUS_NAME,
           color: 'GREEN',
           description: '',
         },
@@ -346,10 +338,9 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
     expect(payload.map((status) => status.name)).toEqual([
       AWAITING_WORKSPACE_STATUS_NAME,
-      AWAITING_OWNER_STATUS_NAME,
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
-      AWAITING_QUALITY_CHECK_STATUS_NAME,
+      AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
@@ -481,7 +472,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     const [, payload] = mockProjectRepository.updateStatusList.mock.calls[0];
     const inTmuxEntry = payload.find((s) => s.name === IN_TMUX_STATUS_NAME);
     expect(inTmuxEntry).toBeDefined();
-    expect(inTmuxEntry?.id).toBe('id-7');
+    expect(inTmuxEntry?.id).toBe('id-6');
     expect(payload.some((s) => s.name === LEGACY_IN_TMUX_STATUS_NAME)).toBe(
       false,
     );
@@ -718,7 +709,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       },
       {
         id: 'id-3',
-        name: AWAITING_QUALITY_CHECK_STATUS_NAME,
+        name: AWAITING_OWNER_STATUS_NAME,
         color: 'GREEN',
         description: '',
       },
@@ -761,10 +752,9 @@ describe('SetupTowerDefenceProjectUseCase', () => {
 
     expect(payload.map((s) => s.name)).toEqual([
       AWAITING_WORKSPACE_STATUS_NAME,
-      AWAITING_OWNER_STATUS_NAME,
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
-      AWAITING_QUALITY_CHECK_STATUS_NAME,
+      AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
@@ -817,7 +807,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       },
       {
         id: 'id-4',
-        name: AWAITING_QUALITY_CHECK_STATUS_NAME,
+        name: AWAITING_OWNER_STATUS_NAME,
         color: 'GREEN',
         description: '',
       },
@@ -896,10 +886,9 @@ describe('SetupTowerDefenceProjectUseCase', () => {
     ).toBe(false);
     expect(payload.map((s) => s.name)).toEqual([
       AWAITING_WORKSPACE_STATUS_NAME,
-      AWAITING_OWNER_STATUS_NAME,
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
-      AWAITING_QUALITY_CHECK_STATUS_NAME,
+      AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
@@ -1009,7 +998,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       },
       {
         id: 'id-5',
-        name: AWAITING_QUALITY_CHECK_STATUS_NAME,
+        name: AWAITING_OWNER_STATUS_NAME,
         color: 'GREEN',
         description: '',
       },
@@ -1053,10 +1042,9 @@ describe('SetupTowerDefenceProjectUseCase', () => {
 
     expect(payload.map((s) => s.name)).toEqual([
       AWAITING_WORKSPACE_STATUS_NAME,
-      AWAITING_OWNER_STATUS_NAME,
       PREPARATION_STATUS_NAME,
       FAILED_PREPARATION_STATUS_NAME,
-      AWAITING_QUALITY_CHECK_STATUS_NAME,
+      AWAITING_OWNER_STATUS_NAME,
       TODO_STATUS_NAME,
       TODO_BY_AGENT_STATUS_NAME,
       IN_TMUX_STATUS_NAME,
@@ -1444,11 +1432,11 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       (s) => s.name === AWAITING_OWNER_STATUS_NAME,
     );
     expect(awaitingOwnerEntry).toBeDefined();
-    expect(awaitingOwnerEntry?.color).toBe('ORANGE');
+    expect(awaitingOwnerEntry?.color).toBe('GREEN');
     expect(awaitingOwnerEntry?.id).toBeNull();
     const names = payload.map((s) => s.name);
     expect(names.indexOf(AWAITING_OWNER_STATUS_NAME)).toBe(
-      names.indexOf(AWAITING_WORKSPACE_STATUS_NAME) + 1,
+      names.indexOf(FAILED_PREPARATION_STATUS_NAME) + 1,
     );
   });
 });

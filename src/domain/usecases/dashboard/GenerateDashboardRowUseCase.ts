@@ -1,6 +1,6 @@
 import { Issue } from '../../entities/Issue';
 import {
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
@@ -53,7 +53,7 @@ export class GenerateDashboardRowUseCase {
       issues.filter(
         (issue) =>
           issue.isClosed === false &&
-          (issue.status === AWAITING_QUALITY_CHECK_STATUS_NAME ||
+          (issue.status === AWAITING_OWNER_STATUS_NAME ||
             issue.status === TODO_STATUS_NAME) &&
           issue.story !== null &&
           storyColorMap.get(issue.story) === color,
@@ -61,7 +61,7 @@ export class GenerateDashboardRowUseCase {
 
     return {
       todo: countActionableWithStatus(TODO_STATUS_NAME),
-      qc: countActionableWithStatus(AWAITING_QUALITY_CHECK_STATUS_NAME),
+      qc: countActionableWithStatus(AWAITING_OWNER_STATUS_NAME),
       fail: countMineWithStatus(FAILED_PREPARATION_STATUS_NAME),
       pr: countMineWithStatus(PREPARATION_STATUS_NAME),
       ws: countActionableWithStatus(AWAITING_WORKSPACE_STATUS_NAME),

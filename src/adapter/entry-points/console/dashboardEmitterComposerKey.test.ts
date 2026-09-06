@@ -124,7 +124,7 @@ describe('dashboard emitter filename matches composer lookup key', () => {
         makeIssue({ status: 'Failed Preparation' }),
         makeIssue({ status: 'Failed Preparation' }),
       ],
-      globex: [makeIssue({ status: 'Awaiting Quality Check' })],
+      globex: [makeIssue({ status: 'Awaiting Owner' })],
       initech: [makeIssue({ status: 'Awaiting Workspace' })],
       umbrella: [makeIssue({ status: 'Todo by human' })],
       soylent: [makeIssue({ status: 'Preparation' })],

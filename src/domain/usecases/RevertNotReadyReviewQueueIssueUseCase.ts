@@ -11,7 +11,7 @@ import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequirin
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import {
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
@@ -95,8 +95,8 @@ export class RevertNotReadyReviewQueueIssueUseCase {
 
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
-    const awaitingQualityCheckIssues = issues.filter(
-      (issue) => issue.status === AWAITING_QUALITY_CHECK_STATUS_NAME,
+    const awaitingOwnerIssues = issues.filter(
+      (issue) => issue.status === AWAITING_OWNER_STATUS_NAME,
     );
 
     const relatedOpenPrUrlsByIssueUrl =
@@ -107,13 +107,13 @@ export class RevertNotReadyReviewQueueIssueUseCase {
 
     const batchedRelatedOpenPrUrlsByIssueUrl =
       await this.resolveRelatedOpenPrUrlsForUncoveredIssues(
-        awaitingQualityCheckIssues,
+        awaitingOwnerIssues,
         relatedOpenPrUrlsByIssueUrl,
       );
 
     const prUrlsToBatch = Array.from(
       new Set([
-        ...awaitingQualityCheckIssues.flatMap((issue) =>
+        ...awaitingOwnerIssues.flatMap((issue) =>
           issue.isPr
             ? [issue.url]
             : (this.resolveRelatedOpenPrUrls(
@@ -127,7 +127,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     const resolvedOpenPrByUrl =
       await this.fetchOpenPullRequestsInBatches(prUrlsToBatch);
 
-    for (const issue of awaitingQualityCheckIssues) {
+    for (const issue of awaitingOwnerIssues) {
       if (
         !isAuthorAuthorizedForAutoStatusCheck(issue.author, allowedIssueAuthors)
       ) {
@@ -220,10 +220,10 @@ export class RevertNotReadyReviewQueueIssueUseCase {
   };
 
   private resolveRelatedOpenPrUrlsForUncoveredIssues = async (
-    awaitingQualityCheckIssues: Issue[],
+    awaitingOwnerIssues: Issue[],
     relatedOpenPrUrlsByIssueUrl: Map<string, string[]>,
   ): Promise<Map<string, string[]>> => {
-    const uncoveredIssueUrls = awaitingQualityCheckIssues
+    const uncoveredIssueUrls = awaitingOwnerIssues
       .filter(
         (issue) => !issue.isPr && !relatedOpenPrUrlsByIssueUrl.has(issue.url),
       )

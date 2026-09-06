@@ -106,7 +106,7 @@ type ConsoleFixtureSnapshot = {
 const REPO_NAME_WITH_OWNER =
   'HiromiShikata/npm-cli-github-issue-tower-defence-management';
 
-export const CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/867`;
+export const CONSOLE_E2E_AWAITING_OWNER_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/867`;
 const CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/868`;
 export const CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/911`;
 export const CONSOLE_E2E_INLINE_COMMENT_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/912`;
@@ -549,8 +549,8 @@ const inlineCommentRelatedPullRequest: RelatedPullRequest = {
   reviewDecision: null,
 };
 
-const awaitingQualityCheckPullRequest: RelatedPullRequest = {
-  url: CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL,
+const awaitingOwnerPullRequest: RelatedPullRequest = {
+  url: CONSOLE_E2E_AWAITING_OWNER_PR_URL,
   branchName: 'i867-serve-committed-console-ui-bundle',
   createdAt: new Date('2026-06-17T23:41:08.000Z'),
   isDraft: false,
@@ -564,8 +564,8 @@ const awaitingQualityCheckPullRequest: RelatedPullRequest = {
   reviewDecision: null,
 };
 
-const awaitingQualityCheckPullRequestMergeReady: RelatedPullRequest = {
-  ...awaitingQualityCheckPullRequest,
+const awaitingOwnerPullRequestMergeReady: RelatedPullRequest = {
+  ...awaitingOwnerPullRequest,
   isConflicted: false,
   mergeable: 'MERGEABLE',
   isPassedAllCiJob: true,
@@ -639,26 +639,26 @@ const createStubIssueRepository = (
   getOpenPullRequest: async (
     url: string,
   ): Promise<RelatedPullRequest | null> =>
-    url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL ||
+    url === CONSOLE_E2E_AWAITING_OWNER_PR_URL ||
     url === CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL
-      ? awaitingQualityCheckPullRequestMergeReady
+      ? awaitingOwnerPullRequestMergeReady
       : null,
   getOpenPullRequestCiStatus: async (
     url: string,
   ): Promise<OpenPullRequestCiStatus | null> =>
-    url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL
+    url === CONSOLE_E2E_AWAITING_OWNER_PR_URL
       ? {
-          url: awaitingQualityCheckPullRequest.url,
-          branchName: awaitingQualityCheckPullRequest.branchName,
-          createdAt: awaitingQualityCheckPullRequest.createdAt.toISOString(),
-          isDraft: awaitingQualityCheckPullRequest.isDraft,
-          isConflicted: awaitingQualityCheckPullRequest.isConflicted,
-          mergeable: awaitingQualityCheckPullRequest.mergeable,
-          isPassedAllCiJob: awaitingQualityCheckPullRequest.isPassedAllCiJob,
-          isCiStateSuccess: awaitingQualityCheckPullRequest.isCiStateSuccess,
-          isBranchOutOfDate: awaitingQualityCheckPullRequest.isBranchOutOfDate,
+          url: awaitingOwnerPullRequest.url,
+          branchName: awaitingOwnerPullRequest.branchName,
+          createdAt: awaitingOwnerPullRequest.createdAt.toISOString(),
+          isDraft: awaitingOwnerPullRequest.isDraft,
+          isConflicted: awaitingOwnerPullRequest.isConflicted,
+          mergeable: awaitingOwnerPullRequest.mergeable,
+          isPassedAllCiJob: awaitingOwnerPullRequest.isPassedAllCiJob,
+          isCiStateSuccess: awaitingOwnerPullRequest.isCiStateSuccess,
+          isBranchOutOfDate: awaitingOwnerPullRequest.isBranchOutOfDate,
           missingRequiredCheckNames:
-            awaitingQualityCheckPullRequest.missingRequiredCheckNames,
+            awaitingOwnerPullRequest.missingRequiredCheckNames,
         }
       : null,
   getOpenPullRequests: async (
@@ -667,9 +667,9 @@ const createStubIssueRepository = (
     new Map(
       urls.map((url) => [
         url,
-        url === CONSOLE_E2E_AWAITING_QUALITY_CHECK_PR_URL ||
+        url === CONSOLE_E2E_AWAITING_OWNER_PR_URL ||
         url === CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL
-          ? awaitingQualityCheckPullRequest
+          ? awaitingOwnerPullRequest
           : null,
       ]),
     ),

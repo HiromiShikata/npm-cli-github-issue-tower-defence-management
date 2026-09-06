@@ -25,7 +25,7 @@ https://github.com/HiromiShikata/npm-cli/pull/123
 - 🟢 このソースコードが本番環境に反映されることで本番環境を破壊する可能性がある
 
 ## エグゼクティブサマリ / Executive Summary
-タスクのゴール: Awaiting Quality Check 一覧にボタンと要約を表示する
+タスクのゴール: Awaiting Owner 一覧にボタンと要約を表示する
 実施内容: ConsoleItemList と ConsoleItemSummary を拡張した
 残りの作業と判断: レビュー待ち
 From: :robot: tdpm-workflow-improver (claude-sonnet-4-6)`;
@@ -40,7 +40,7 @@ describe('extractExecutiveSummary', () => {
   it('extracts content between the heading and the From line', () => {
     const result = extractExecutiveSummary(AGENT_COMMENT);
     expect(result).toBe(
-      'タスクのゴール: Awaiting Quality Check 一覧にボタンと要約を表示する\n実施内容: ConsoleItemList と ConsoleItemSummary を拡張した\n残りの作業と判断: レビュー待ち',
+      'タスクのゴール: Awaiting Owner 一覧にボタンと要約を表示する\n実施内容: ConsoleItemList と ConsoleItemSummary を拡張した\n残りの作業と判断: レビュー待ち',
     );
   });
 

@@ -194,7 +194,7 @@ export const PullRequestItemFailingCiWithConflict: Story = {
     item: consoleListItemsFixture[0],
     storyName: 'TDPM Console port',
     storyColorEnum: 'BLUE',
-    overlayStatus: { name: 'Awaiting Quality Check', color: 'YELLOW' },
+    overlayStatus: { name: 'Awaiting Owner', color: 'YELLOW' },
     state: {
       state: 'open',
       merged: false,

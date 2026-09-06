@@ -3,7 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import {
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_OWNER_STATUS_NAME,
   DONE_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 
@@ -14,7 +14,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   number: 1,
   title: 'Test Issue',
   state: 'OPEN',
-  status: AWAITING_QUALITY_CHECK_STATUS_NAME,
+  status: AWAITING_OWNER_STATUS_NAME,
   story: 'Default Story',
   nextActionDate: null,
   nextActionHour: null,
@@ -95,7 +95,7 @@ const createMockProject = (): Project => ({
       },
       {
         id: 'awaiting-quality-check-id',
-        name: AWAITING_QUALITY_CHECK_STATUS_NAME,
+        name: AWAITING_OWNER_STATUS_NAME,
         color: 'GREEN',
         description: '',
       },
@@ -129,7 +129,7 @@ describe('QualityCheckAdvanceUseCase', () => {
     useCase = new QualityCheckAdvanceUseCase(mockIssueRepository);
   });
 
-  it('moves an issue in Awaiting Quality Check status to Done when its linked PR is merged', async () => {
+  it('moves an issue in Awaiting Owner status to Done when its linked PR is merged', async () => {
     const issue = createMockIssue();
     const mergedPr = createMergedPr(issue.url);
     const project = createMockProject();
@@ -147,7 +147,7 @@ describe('QualityCheckAdvanceUseCase', () => {
     );
   });
 
-  it('moves multiple issues in Awaiting Quality Check status to Done when each has a merged linked PR', async () => {
+  it('moves multiple issues in Awaiting Owner status to Done when each has a merged linked PR', async () => {
     const issue1 = createMockIssue({
       number: 1,
       url: 'https://github.com/user/repo/issues/1',
@@ -187,7 +187,7 @@ describe('QualityCheckAdvanceUseCase', () => {
     );
   });
 
-  it('does not move issues that are not in Awaiting Quality Check status', async () => {
+  it('does not move issues that are not in Awaiting Owner status', async () => {
     const awaitingWorkspaceIssue = createMockIssue({
       status: 'Awaiting Workspace',
     });
@@ -217,7 +217,7 @@ describe('QualityCheckAdvanceUseCase', () => {
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
   });
 
-  it('respects a custom awaiting quality check status name', async () => {
+  it('respects a custom awaiting owner status name', async () => {
     const customStatusName = 'Custom Review Status';
     const issue = createMockIssue({ status: customStatusName });
     const mergedPr = createMergedPr(issue.url);
@@ -232,7 +232,7 @@ describe('QualityCheckAdvanceUseCase', () => {
     await useCase.run({
       project,
       issues: [issue, mergedPr],
-      awaitingQualityCheckStatusName: customStatusName,
+      awaitingOwnerStatusName: customStatusName,
       evaluatedAt: FIXED_NOW,
     });
 

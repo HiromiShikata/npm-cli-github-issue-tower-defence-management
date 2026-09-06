@@ -72,7 +72,7 @@ export const consoleListItemsFixture: ConsoleListItem[] = [
     isPr: true,
     relatedOpenPullRequestUrls: [],
     story: 'TDPM Console port',
-    status: 'Awaiting Quality Check',
+    status: 'Awaiting Owner',
     agent: null,
     nextActionDate: null,
     nextActionHour: null,

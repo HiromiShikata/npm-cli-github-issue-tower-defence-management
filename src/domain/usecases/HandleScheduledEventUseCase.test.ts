@@ -419,7 +419,7 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
-    it('should pass awaitingQualityCheckStatus to revertOrphanedPreparationUseCase when startPreparation is configured', async () => {
+    it('should pass awaitingOwnerStatus to revertOrphanedPreparationUseCase when startPreparation is configured', async () => {
       const input = {
         projectName: 'test-project',
         org: 'test-org',
@@ -437,7 +437,7 @@ describe('HandleScheduledEventUseCase', () => {
         startPreparation: {
           awaitingWorkspaceStatus: 'Awaiting Workspace',
           preparationStatus: 'Preparation',
-          awaitingQualityCheckStatus: 'Awaiting Quality Check',
+          awaitingOwnerStatus: 'Awaiting Owner',
           defaultAgentName: 'aw',
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,
@@ -450,7 +450,7 @@ describe('HandleScheduledEventUseCase', () => {
 
       expect(mockRevertOrphanedPreparationUseCase.run).toHaveBeenCalledWith(
         expect.objectContaining({
-          awaitingQualityCheckStatus: 'Awaiting Quality Check',
+          awaitingOwnerStatus: 'Awaiting Owner',
         }),
       );
     });
@@ -1720,7 +1720,7 @@ describe('HandleScheduledEventUseCase', () => {
         );
       });
 
-      it('passes awaitingQualityCheckStatus to advanceQualityCheckUseCase when configured', async () => {
+      it('passes awaitingOwnerStatus to advanceQualityCheckUseCase when configured', async () => {
         const mockProject = mock<Project>();
         mockIssueRepository.getAllIssues.mockResolvedValue({
           issues: [],
@@ -1735,13 +1735,13 @@ describe('HandleScheduledEventUseCase', () => {
             configFilePath: '/path/to/config.yml',
             maximumPreparingIssuesCount: null,
             autoAdvanceQualityCheckEnabled: true,
-            awaitingQualityCheckStatus: 'Custom Review Status',
+            awaitingOwnerStatus: 'Custom Review Status',
           },
         });
 
         expect(mockAdvanceQualityCheckUseCase.run).toHaveBeenCalledWith(
           expect.objectContaining({
-            awaitingQualityCheckStatusName: 'Custom Review Status',
+            awaitingOwnerStatusName: 'Custom Review Status',
           }),
         );
       });
@@ -1750,7 +1750,7 @@ describe('HandleScheduledEventUseCase', () => {
         mockAdvanceQualityCheckUseCase.run.mockRejectedValue(
           new AggregateError(
             [new Error('GitHub API rate limit')],
-            'Failed to advance 1 issue(s) from Awaiting Quality Check to Done',
+            'Failed to advance 1 issue(s) from Awaiting Owner to Done',
           ),
         );
 

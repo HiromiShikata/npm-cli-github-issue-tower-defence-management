@@ -17,7 +17,7 @@ const makeItem = (
   itemId: projectItemId,
   isPr: false,
   story: '',
-  status: 'Awaiting Quality Check',
+  status: 'Awaiting Owner',
   agent: null,
   nextActionDate: null,
   nextActionHour: null,

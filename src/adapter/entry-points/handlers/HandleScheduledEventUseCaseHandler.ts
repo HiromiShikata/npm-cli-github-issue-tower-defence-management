@@ -81,7 +81,7 @@ import { ConflictedIssueRevertUseCase } from '../../../domain/usecases/Conflicte
 import { KyHttpRepository } from '../../repositories/KyHttpRepository';
 import { FileSystemKevReportWatermarkRepository } from '../../repositories/FileSystemKevReportWatermarkRepository';
 import {
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
@@ -648,7 +648,7 @@ export class HandleScheduledEventUseCaseHandler {
         projectId: result.project.id,
         issues: result.issues,
         statusNames: {
-          awaitingQualityCheckStatus: AWAITING_QUALITY_CHECK_STATUS_NAME,
+          awaitingOwnerStatus: AWAITING_OWNER_STATUS_NAME,
           preparationStatus: PREPARATION_STATUS_NAME,
           awaitingWorkspaceStatus: AWAITING_WORKSPACE_STATUS_NAME,
           failedPreparationStatus: FAILED_PREPARATION_STATUS_NAME,

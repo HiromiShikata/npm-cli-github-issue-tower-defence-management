@@ -61,7 +61,7 @@ const listPayload = (tab: string) => ({
             isPr: true,
             relatedOpenPullRequestUrls: [],
             story: 'TDPM Console port',
-            status: 'Awaiting Quality Check',
+            status: 'Awaiting Owner',
             agent: 'developer',
             nextActionDate: null,
             nextActionHour: null,
@@ -128,9 +128,7 @@ describe('ConsolePage', () => {
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
-    expect(
-      within(tabBar()).getByText('Awaiting Quality Check'),
-    ).toBeInTheDocument();
+    expect(within(tabBar()).getByText('Awaiting Owner')).toBeInTheDocument();
     expect(
       document.querySelector('.console-group-header')?.textContent,
     ).toContain('TDPM Console port');
@@ -186,7 +184,7 @@ describe('ConsolePage', () => {
                       isPr: true,
                       relatedOpenPullRequestUrls: [],
                       story: 'TDPM Console port',
-                      status: 'Awaiting Quality Check',
+                      status: 'Awaiting Owner',
                       agent: 'pr-reviewer',
                       nextActionDate: null,
                       nextActionHour: null,
@@ -293,7 +291,7 @@ describe('ConsolePage', () => {
                         isPr: true,
                         relatedOpenPullRequestUrls: [],
                         story: 'TDPM Console port',
-                        status: 'Awaiting Quality Check',
+                        status: 'Awaiting Owner',
                         agent: 'developer',
                         nextActionDate: null,
                         nextActionHour: null,
@@ -314,7 +312,7 @@ describe('ConsolePage', () => {
                   isPr: true,
                   relatedOpenPullRequestUrls: [],
                   story: 'TDPM Console port',
-                  status: 'Awaiting Quality Check',
+                  status: 'Awaiting Owner',
                   agent: 'pr-reviewer',
                   nextActionDate: null,
                   nextActionHour: null,
@@ -400,7 +398,7 @@ describe('ConsolePage', () => {
     expect(await findByText('Approve & Merge')).toBeInTheDocument();
     expect(queryByText('In Tmux by human')).toBeNull();
     const chip = container.querySelector('.console-detail-status-chip');
-    expect(chip?.textContent).toBe('Awaiting Quality Check');
+    expect(chip?.textContent).toBe('Awaiting Owner');
   });
 
   it('shows a status the owner set after the snapshot was generated in the detail header', async () => {
@@ -453,7 +451,7 @@ describe('ConsolePage', () => {
       });
       expect(
         within(tabBar())
-          .getByText('Awaiting Quality Check')
+          .getByText('Awaiting Owner')
           .closest('a')
           ?.querySelector('.console-tab-badge')?.textContent,
       ).toBe('1');
@@ -466,7 +464,7 @@ describe('ConsolePage', () => {
       expect(getByText('Undo')).toBeInTheDocument();
       expect(
         within(tabBar())
-          .getByText('Awaiting Quality Check')
+          .getByText('Awaiting Owner')
           .closest('a')
           ?.querySelector('.console-tab-badge')?.textContent,
       ).toBe('1');
@@ -476,9 +474,7 @@ describe('ConsolePage', () => {
       });
 
       await waitFor(() => {
-        expect(
-          within(tabBar()).queryByText('Awaiting Quality Check'),
-        ).toBeNull();
+        expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
       });
     } finally {
       jest.useRealTimers();
@@ -529,7 +525,7 @@ describe('ConsolePage', () => {
       expect(postCalls.length).toBe(0);
       expect(
         within(tabBar())
-          .getByText('Awaiting Quality Check')
+          .getByText('Awaiting Owner')
           .closest('a')
           ?.querySelector('.console-tab-badge')?.textContent,
       ).toBe('1');
@@ -560,7 +556,7 @@ describe('ConsolePage', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     const tabs = within(tabBar());
-    expect(tabs.queryByText('Awaiting Quality Check')).not.toBeNull();
+    expect(tabs.queryByText('Awaiting Owner')).not.toBeNull();
     expect(tabs.queryByText('Todo by human')).not.toBeNull();
     expect(tabs.queryByText('Triage')).toBeNull();
     expect(tabs.queryByText('Failed Preparation')).toBeNull();
@@ -821,7 +817,7 @@ const twoItemPrPayload = () => ({
       isPr: true,
       relatedOpenPullRequestUrls: [],
       story: 'TDPM Console port',
-      status: 'Awaiting Quality Check',
+      status: 'Awaiting Owner',
       nextActionDate: null,
       nextActionHour: null,
       dependedIssueUrls: [],
@@ -839,7 +835,7 @@ const twoItemPrPayload = () => ({
       isPr: true,
       relatedOpenPullRequestUrls: [],
       story: 'TDPM Console port',
-      status: 'Awaiting Quality Check',
+      status: 'Awaiting Owner',
       nextActionDate: null,
       nextActionHour: null,
       dependedIssueUrls: [],
@@ -1682,7 +1678,7 @@ describe('ConsolePage airplane mode write guard', () => {
     isPr: true,
     relatedOpenPullRequestUrls: [],
     story: 'TDPM Console port',
-    status: 'Awaiting Quality Check',
+    status: 'Awaiting Owner',
     nextActionDate: null,
     nextActionHour: null,
     dependedIssueUrls: [],

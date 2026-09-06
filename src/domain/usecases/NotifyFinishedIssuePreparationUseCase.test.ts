@@ -23,13 +23,7 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
       {
         id: 'awaiting-workspace-id',
         name: 'Awaiting Workspace',
-        color: 'GRAY',
-        description: '',
-      },
-      {
-        id: 'awaiting-owner-id',
-        name: 'Awaiting Owner',
-        color: 'ORANGE',
+        color: 'BLUE',
         description: '',
       },
       {
@@ -41,19 +35,13 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
       {
         id: 'awaiting-owner-id',
         name: 'Awaiting Owner',
-        color: 'PINK',
-        description: '',
-      },
-      {
-        id: 'awaiting-quality-check-id',
-        name: 'Awaiting Quality Check',
-        color: 'BLUE',
+        color: 'GREEN',
         description: '',
       },
       {
         id: 'todo-by-human-id',
         name: 'Todo by human',
-        color: 'GREEN',
+        color: 'PINK',
         description: '',
       },
     ],
@@ -215,7 +203,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should update issue status from Preparation to Awaiting Quality Check when last comment starts with From:', async () => {
+  it('should update issue status from Preparation to Awaiting Owner when last comment starts with From:', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -250,7 +238,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
       mockProject,
     );
@@ -259,9 +247,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProject,
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
-      'awaiting-quality-check-id',
+      'awaiting-owner-id',
     );
     expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
       'https://github.com/user/repo/pull/1',
@@ -418,7 +406,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/pull/77',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
       mockProject,
     );
@@ -426,9 +414,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProject,
       expect.objectContaining({
         url: 'https://github.com/user/repo/pull/77',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
-      'awaiting-quality-check-id',
+      'awaiting-owner-id',
     );
   });
 
@@ -560,14 +548,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
       mockProject,
     );
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      'awaiting-quality-check-id',
+      expect.objectContaining({ status: 'Awaiting Owner' }),
+      'awaiting-owner-id',
     );
   });
 
@@ -794,8 +782,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      'awaiting-quality-check-id',
+      expect.objectContaining({ status: 'Awaiting Owner' }),
+      'awaiting-owner-id',
     );
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
       mockProject,
@@ -839,8 +827,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
-      'awaiting-quality-check-id',
+      expect.objectContaining({ status: 'Awaiting Owner' }),
+      'awaiting-owner-id',
     );
     expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
       mockProject,
@@ -1111,7 +1099,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -1266,7 +1254,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
       mockProject,
     );
@@ -1574,7 +1562,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
     expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -1676,7 +1664,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.getOrCreateLabel).not.toHaveBeenCalled();
     expect(mockIssueRepository.updateLabels).not.toHaveBeenCalled();
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -1731,7 +1719,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should advance to Awaiting Quality Check and skip escalation when current check passes even if prior rejection threshold is met', async () => {
+  it('should advance to Awaiting Owner and skip escalation when current check passes even if prior rejection threshold is met', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1767,7 +1755,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
     expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
@@ -1866,7 +1854,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
       mockProject,
     );
@@ -1913,7 +1901,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
       mockProject,
     );
@@ -1957,7 +1945,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -2486,7 +2474,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should skip PR checks and update to Awaiting Quality Check when issue has category label', async () => {
+  it('should skip PR checks and update to Awaiting Owner when issue has category label', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -2510,7 +2498,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
       mockProject,
     );
@@ -2551,7 +2539,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       }),
       mockProject,
     );
@@ -2595,7 +2583,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should skip PR checks and update to Awaiting Quality Check when issue has non-developer agent field', async () => {
+  it('should skip PR checks and update to Awaiting Owner when issue has non-developer agent field', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -2619,7 +2607,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -2648,7 +2636,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -2722,7 +2710,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -3022,7 +3010,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       return map;
     };
 
-    it('should send webhook when workflow blocker issue status changes to awaitingQualityCheckStatus on checks pass', async () => {
+    it('should send webhook when workflow blocker issue status changes to awaitingOwnerStatus on checks pass', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -3225,7 +3213,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
         }),
         mockProject,
       );
@@ -3327,7 +3315,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.any(Error),
     );
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
 
@@ -3404,7 +3392,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -3443,7 +3431,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -3483,7 +3471,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -3522,7 +3510,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Quality Check' }),
+      expect.objectContaining({ status: 'Awaiting Owner' }),
       mockProject,
     );
   });
@@ -3569,7 +3557,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should accept From: comment from trusted author and route to Awaiting Quality Check', async () => {
+    it('should accept From: comment from trusted author and route to Awaiting Owner', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -3604,13 +3592,13 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Owner' }),
         mockProject,
       );
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
-        'awaiting-quality-check-id',
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
       );
     });
 
@@ -3859,7 +3847,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       ).not.toHaveBeenCalled();
       expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Owner' }),
         mockProject,
       );
     });
@@ -3886,7 +3874,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'https://github.com/user/repo/pull/1',
       );
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Owner' }),
         mockProject,
       );
     });
@@ -3911,7 +3899,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       ).toHaveBeenCalledWith('https://github.com/user/repo/pull/1');
       expect(mockIssueRepository.approvePullRequest).not.toHaveBeenCalled();
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Owner' }),
         mockProject,
       );
     });
@@ -4317,7 +4305,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('calls patchIssueTabTransition with prs tab when issue transitions to Awaiting Quality Check', async () => {
+    it('calls patchIssueTabTransition with prs tab when issue transitions to Awaiting Owner', async () => {
       const issue = createMockIssue({
         status: 'Preparation',
         itemId: 'item-1',
@@ -5673,9 +5661,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
         }),
-        'awaiting-quality-check-id',
+        'awaiting-owner-id',
       );
     });
 
@@ -5837,9 +5825,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
         }),
-        'awaiting-quality-check-id',
+        'awaiting-owner-id',
       );
     });
 
@@ -5876,9 +5864,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
         }),
-        'awaiting-quality-check-id',
+        'awaiting-owner-id',
       );
     });
 
@@ -5957,7 +5945,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('advances issue to Awaiting Quality Check when report has waitingForOwnerApproval: true and no rejection', async () => {
+    it('advances issue to Awaiting Owner when report has waitingForOwnerApproval: true and no rejection', async () => {
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -5991,9 +5979,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         mockProject,
         expect.objectContaining({
           url: issueUrl,
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
         }),
-        'awaiting-quality-check-id',
+        'awaiting-owner-id',
       );
     });
   });
@@ -6074,7 +6062,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should advance to Awaiting Quality Check when chore agent has exactly one linked PR where all CI passes', async () => {
+    it('should advance to Awaiting Owner when chore agent has exactly one linked PR where all CI passes', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -6107,7 +6095,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Owner' }),
         projectWithDeveloper,
       );
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -6137,7 +6125,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Owner' }),
         projectWithDeveloper,
       );
     });
@@ -6355,7 +6343,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         },
       });
 
-    it('should move the issue to Awaiting Quality Check without touching the agent field when no next step agent is designated', async () => {
+    it('should move the issue to Awaiting Owner without touching the agent field when no next step agent is designated', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -6383,7 +6371,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Owner' }),
         expect.anything(),
       );
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
@@ -6818,47 +6806,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'awaiting-owner-id',
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
-    });
-
-    it('falls back to Awaiting Quality Check when Awaiting Owner status is absent from project', async () => {
-      const projectWithoutAwaitingOwner = createMockProject({
-        status: {
-          name: 'Status',
-          fieldId: 'field-1',
-          statuses: mockProject.status.statuses.filter(
-            (s) => s.name !== 'Awaiting Owner',
-          ),
-        },
-      });
-      const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(
-        projectWithoutAwaitingOwner,
-      );
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
-        }),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
-        projectWithoutAwaitingOwner,
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithoutAwaitingOwner,
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
-        'awaiting-quality-check-id',
-      );
     });
   });
 

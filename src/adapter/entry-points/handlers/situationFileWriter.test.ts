@@ -50,7 +50,7 @@ const baseParams = {
   projectId: 'PVT_kwHOtest999',
   issues: [],
   statusNames: {
-    awaitingQualityCheckStatus: 'Awaiting quality check',
+    awaitingOwnerStatus: 'Awaiting quality check',
     preparationStatus: 'Preparation',
     awaitingWorkspaceStatus: 'Awaiting workspace',
     failedPreparationStatus: 'Failed Preparation',
@@ -89,7 +89,7 @@ describe('parseMeminfo', () => {
 
 describe('writeSituationFile', () => {
   describe('status counts from issue fixtures', () => {
-    it('counts awaitingQualityCheckImmediatelyActionable correctly', async () => {
+    it('counts awaitingOwnerImmediatelyActionable correctly', async () => {
       const issues = [
         createIssue({
           status: 'Awaiting quality check',
@@ -117,9 +117,7 @@ describe('writeSituationFile', () => {
 
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining(
-          '"awaitingQualityCheckImmediatelyActionable":1',
-        ),
+        expect.stringContaining('"awaitingOwnerImmediatelyActionable":1'),
       );
     });
 
@@ -149,9 +147,7 @@ describe('writeSituationFile', () => {
 
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining(
-          '"awaitingQualityCheckImmediatelyActionable":1',
-        ),
+        expect.stringContaining('"awaitingOwnerImmediatelyActionable":1'),
       );
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
@@ -219,7 +215,7 @@ describe('writeSituationFile', () => {
       const params = {
         ...baseParams,
         statusNames: {
-          awaitingQualityCheckStatus: null,
+          awaitingOwnerStatus: null,
           preparationStatus: null,
           awaitingWorkspaceStatus: null,
           failedPreparationStatus: null,
@@ -231,9 +227,7 @@ describe('writeSituationFile', () => {
 
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),
-        expect.stringContaining(
-          '"awaitingQualityCheckImmediatelyActionable":0',
-        ),
+        expect.stringContaining('"awaitingOwnerImmediatelyActionable":0'),
       );
       expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
         expect.any(String),

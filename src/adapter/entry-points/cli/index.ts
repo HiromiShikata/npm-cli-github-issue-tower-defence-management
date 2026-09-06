@@ -613,7 +613,7 @@ program
   )
   .option(
     '--workflowBlockerResolvedWebhookUrl <url>',
-    'Webhook URL to notify when a workflow blocker issue status changes to awaiting quality check. Supports {URL} and {MESSAGE} placeholders.',
+    'Webhook URL to notify when a workflow blocker issue status changes to awaiting owner. Supports {URL} and {MESSAGE} placeholders.',
   )
   .option(
     '--missingAgentName <name>',

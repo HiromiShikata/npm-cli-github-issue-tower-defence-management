@@ -20,7 +20,7 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
       },
       {
         id: 'awaiting-quality-check-id',
-        name: 'Awaiting Quality Check',
+        name: 'Awaiting Owner',
         color: 'BLUE',
         description: '',
       },
@@ -57,7 +57,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
   number: 1,
   title: 'Test Issue',
   state: 'OPEN',
-  status: 'Awaiting Quality Check',
+  status: 'Awaiting Owner',
   story: null,
   nextActionDate: null,
   nextActionHour: null,
@@ -209,8 +209,8 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     );
   });
 
-  describe('Awaiting Quality Check processing', () => {
-    it('should do nothing when there are no Awaiting Quality Check issues', async () => {
+  describe('Awaiting Owner processing', () => {
+    it('should do nothing when there are no Awaiting Owner issues', async () => {
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
         issues: [
@@ -230,9 +230,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should skip Awaiting Quality Check issue with non-developer agent field', async () => {
+    it('should skip Awaiting Owner issue with non-developer agent field', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         labels: [],
         agent: 'chore',
       });
@@ -254,7 +254,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should revert chore agent issue to Awaiting Workspace when its linked PR is conflicted', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         agent: 'chore',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
@@ -280,7 +280,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should not revert chore agent issue when its linked PR is not conflicted', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         agent: 'chore',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
@@ -295,9 +295,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should keep sweeping without calling findRelatedOpenPRs when an Awaiting Quality Check item is itself a pull request', async () => {
+    it('should keep sweeping without calling findRelatedOpenPRs when an Awaiting Owner item is itself a pull request', async () => {
       const pullRequestItem = createMockPullRequest({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         url: 'https://github.com/user/repo/pull/9',
         agent: 'chore',
       });
@@ -338,9 +338,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should revert Awaiting Quality Check issue with developer agent field and no linked PR', async () => {
+    it('should revert Awaiting Owner issue with developer agent field and no linked PR', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         labels: ['llm-agent:developer'],
         agent: 'developer',
       });
@@ -369,7 +369,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should revert issue when no linked PR is found', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -400,7 +400,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should revert an issue whose linked PR is conflicted and agent field is null', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         agent: null,
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
@@ -426,7 +426,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should not revert an issue whose linked PR is ready', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
 
@@ -441,7 +441,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should not revert a story-labeled issue with no linked PR when story is in labelsAsLlmAgentName', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -463,7 +463,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should not revert a story-labeled issue with no linked PR when story is only in labelsNotRequiringPullRequest', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -486,7 +486,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should not revert a chore-labeled issue with no linked PR when chore is in labelsAsLlmAgentName', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         labels: ['chore'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -508,7 +508,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should still revert a story-labeled issue with no linked PR when labelsAsLlmAgentName is not provided', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -536,7 +536,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should not revert a story-labeled issue with no linked PR when labelsAsLlmAgentName is null', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         labels: ['story'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -561,7 +561,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should not revert issue when PR is ready', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
 
@@ -577,7 +577,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should revert issue when PR is conflicted', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         { ...createReadyPr(), isConflicted: true },
@@ -606,7 +606,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should revert issue when CI is failing', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         {
@@ -639,7 +639,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should revert issue when review comments are not resolved', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         { ...createReadyPr(), isResolvedAllReviewComments: false },
@@ -668,7 +668,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should revert issue when linked PR is in draft state', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         { ...createReadyPr(), isDraft: true },
@@ -697,7 +697,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should revert issue when multiple linked open PRs are found', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         createReadyPr('https://github.com/user/repo/pull/1'),
@@ -727,7 +727,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should revert issue when CI is SUCCESS but required check never started', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         {
@@ -760,13 +760,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     });
 
     describe('in-memory related-PR derivation (no per-issue timeline call)', () => {
-      it('should never call findRelatedOpenPRs while sweeping Awaiting Quality Check issues', async () => {
+      it('should never call findRelatedOpenPRs while sweeping Awaiting Owner issues', async () => {
         const readyIssue = createMockIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           url: 'https://github.com/user/repo/issues/1',
         });
         const notReadyIssue = createMockIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           number: 2,
           url: 'https://github.com/user/repo/issues/2',
         });
@@ -829,7 +829,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       it('should match a PR to its issue via closingIssueReferenceUrls even when the PR item is listed before the issue', async () => {
         const issue = createMockIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           url: 'https://github.com/user/repo/issues/42',
           number: 42,
         });
@@ -863,7 +863,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       it('should not match a closed PR even when its closingIssueReferenceUrls points at the issue', async () => {
         const issue = createMockIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           url: 'https://github.com/user/repo/issues/9',
           number: 9,
         });
@@ -901,7 +901,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       it('should fall back to findRelatedOpenPRs when the linked PR is absent from the allIssues cache', async () => {
         const issue = createMockIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           url: 'https://github.com/user/repo/issues/99',
           number: 99,
         });
@@ -951,7 +951,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       ): Issue[] => {
         const issues = issueNumbers.map((issueNumber) =>
           createMockIssue({
-            status: 'Awaiting Quality Check',
+            status: 'Awaiting Owner',
             number: issueNumber,
             url: issueUrlOf(issueNumber),
           }),
@@ -1065,9 +1065,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         );
       });
 
-      it('should exclude an Awaiting Quality Check pull request item from the batched lookup', async () => {
+      it('should exclude an Awaiting Owner pull request item from the batched lookup', async () => {
         const pullRequestItem = createMockPullRequest({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           url: prUrlOf(9),
           number: 9,
         });
@@ -1088,7 +1088,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     describe('change-target label auto-approve', () => {
       const setupReadyIssue = (labels: string[]) => {
         const issue = createMockIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           labels,
         });
         linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
@@ -1221,7 +1221,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       it('should not approve when there is no ready PR even if change-target label is present', async () => {
         const issue = createMockIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           labels: ['change-target:src/domain'],
         });
         linkRelatedOpenPrsToIssue(mockIssueRepository, issue, []);
@@ -1241,7 +1241,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       it('should not approve when PR has unresolved rejections even with change-target label', async () => {
         const issue = createMockIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           labels: ['change-target:src/domain'],
         });
         linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
@@ -1263,7 +1263,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       it('should skip change-target auto-approve for issue with non-developer agent field', async () => {
         const issue = createMockIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           labels: ['change-target:src/domain'],
           agent: 'chore',
         });
@@ -1349,13 +1349,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         number: 1,
         url: 'https://github.com/user/repo/issues/1',
         itemId: 'archived-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       const normalIssue = createMockIssue({
         number: 2,
         url: 'https://github.com/user/repo/issues/2',
         itemId: 'normal-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1402,7 +1402,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should propagate a non-archived updateStatus error for issues unchanged', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1424,18 +1424,18 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should skip an archived Awaiting Quality Check pull request on updateStatus failure and continue with remaining pull requests', async () => {
+    it('should skip an archived Awaiting Owner pull request on updateStatus failure and continue with remaining pull requests', async () => {
       const archivedPullRequest = createMockPullRequest({
         number: 1,
         url: 'https://github.com/user/repo/pull/1',
         itemId: 'archived-pr-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       const normalPullRequest = createMockPullRequest({
         number: 2,
         url: 'https://github.com/user/repo/pull/2',
         itemId: 'normal-pr-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1496,9 +1496,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should propagate a non-archived updateStatus error for Awaiting Quality Check pull requests unchanged', async () => {
+    it('should propagate a non-archived updateStatus error for Awaiting Owner pull requests unchanged', async () => {
       const pullRequest = createMockPullRequest({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1557,13 +1557,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         number: 1,
         url: 'https://github.com/user/repo/issues/1',
         itemId: 'timed-out-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       const normalIssue = createMockIssue({
         number: 2,
         url: 'https://github.com/user/repo/issues/2',
         itemId: 'normal-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1611,13 +1611,13 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         number: 1,
         url: 'https://github.com/user/repo/issues/1',
         itemId: 'timed-out-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       const normalIssue = createMockIssue({
         number: 2,
         url: 'https://github.com/user/repo/issues/2',
         itemId: 'normal-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1646,18 +1646,18 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should skip an Awaiting Quality Check pull request whose updateStatus times out and continue with remaining pull requests', async () => {
+    it('should skip an Awaiting Owner pull request whose updateStatus times out and continue with remaining pull requests', async () => {
       const timedOutPullRequest = createMockPullRequest({
         number: 1,
         url: 'https://github.com/user/repo/pull/1',
         itemId: 'timed-out-pr-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       const normalPullRequest = createMockPullRequest({
         number: 2,
         url: 'https://github.com/user/repo/pull/2',
         itemId: 'normal-pr-item',
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1718,7 +1718,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     it('should propagate a non-timeout non-archived error from createComment unchanged', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
         project: mockProject,
@@ -1740,9 +1740,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   });
 
   describe('manager-assignee gating', () => {
-    it('should not revert a rejected Awaiting Quality Check issue that is not assigned to the manager', async () => {
+    it('should not revert a rejected Awaiting Owner issue that is not assigned to the manager', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         assignees: ['other-user'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -1761,9 +1761,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should revert a rejected Awaiting Quality Check issue that is assigned to the manager', async () => {
+    it('should revert a rejected Awaiting Owner issue that is assigned to the manager', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         assignees: ['manager-user'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -1789,9 +1789,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should not revert a rejected Awaiting Quality Check pull request that is not assigned to the manager', async () => {
+    it('should not revert a rejected Awaiting Owner pull request that is not assigned to the manager', async () => {
       const pullRequest = createMockPullRequest({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         assignees: ['other-user'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -1822,9 +1822,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
 
-    it('should revert a rejected Awaiting Quality Check pull request that is assigned to the manager', async () => {
+    it('should revert a rejected Awaiting Owner pull request that is assigned to the manager', async () => {
       const pullRequest = createMockPullRequest({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         assignees: ['manager-user'],
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -1861,10 +1861,10 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should revert Awaiting Quality Check issue with pending nextActionDate to Awaiting Workspace', async () => {
+    it('should revert Awaiting Owner issue with pending nextActionDate to Awaiting Workspace', async () => {
       const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         nextActionDate: new Date(Date.UTC(2026, 0, 16)),
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -1891,10 +1891,10 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should revert Awaiting Quality Check issue with pending nextActionHour to Awaiting Workspace', async () => {
+    it('should revert Awaiting Owner issue with pending nextActionHour to Awaiting Workspace', async () => {
       const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         nextActionHour: 11,
       });
       mockIssueRepository.getAllIssues.mockResolvedValue({
@@ -1921,10 +1921,10 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should not revert Awaiting Quality Check issue when reactivation trigger has been reached', async () => {
+    it('should not revert Awaiting Owner issue when reactivation trigger has been reached', async () => {
       const evaluatedAt = new Date(Date.UTC(2026, 0, 15, 10, 0, 0));
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         nextActionDate: new Date(Date.UTC(2026, 0, 15)),
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
@@ -1941,9 +1941,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   });
 
   describe('dependent issue URL gating', () => {
-    it('should revert Awaiting Quality Check issue with depended issue URLs to Awaiting Workspace even when PR is ready', async () => {
+    it('should revert Awaiting Owner issue with depended issue URLs to Awaiting Workspace even when PR is ready', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         dependedIssueUrls: ['https://github.com/user/repo/issues/99'],
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
@@ -1965,9 +1965,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('should not revert Awaiting Quality Check issue when depended issue URLs are empty', async () => {
+    it('should not revert Awaiting Owner issue when depended issue URLs are empty', async () => {
       const issue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         dependedIssueUrls: [],
       });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [createReadyPr()]);
@@ -2105,7 +2105,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     it('includes a PR item own URL in the pre-cycle batch and never calls getOpenPullRequest for it', async () => {
       const prUrl = 'https://github.com/user/repo/pull/42';
       const pullRequestItem = createMockPullRequest({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         url: prUrl,
         number: 42,
         assignees: ['manager-user'],
@@ -2136,14 +2136,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       const prUrl = 'https://github.com/user/repo/pull/42';
       const issueUrl = 'https://github.com/user/repo/issues/10';
       const pullRequestItem = createMockPullRequest({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         url: prUrl,
         number: 42,
         closingIssueReferenceUrls: [issueUrl],
         assignees: ['manager-user'],
       });
       const nonPrIssue = createMockIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         url: issueUrl,
         number: 10,
         assignees: ['manager-user'],
@@ -2177,7 +2177,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     it('splits getOpenPullRequests into separate calls when there are more than 100 PR item URLs', async () => {
       const pullRequestItems = Array.from({ length: 101 }, (_, index) =>
         createMockPullRequest({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           url: `https://github.com/user/repo/pull/${1000 + index}`,
           number: 1000 + index,
           itemId: `item-pr-${index}`,
@@ -2214,7 +2214,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     it('fetches exactly 100 PR item URLs in a single getOpenPullRequests call', async () => {
       const pullRequestItems = Array.from({ length: 100 }, (_, index) =>
         createMockPullRequest({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           url: `https://github.com/user/repo/pull/${2000 + index}`,
           number: 2000 + index,
           itemId: `item-pr-boundary-${index}`,
@@ -2249,7 +2249,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
   describe('reviewDecision gate', () => {
     it('should revert issue when linked PR has reviewDecision CHANGES_REQUESTED', async () => {
-      const issue = createMockIssue({ status: 'Awaiting Quality Check' });
+      const issue = createMockIssue({ status: 'Awaiting Owner' });
       linkRelatedOpenPrsToIssue(mockIssueRepository, issue, [
         { ...createReadyPr(), reviewDecision: 'CHANGES_REQUESTED' },
       ]);

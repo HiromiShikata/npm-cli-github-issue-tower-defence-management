@@ -52,8 +52,8 @@ const createMockProject = (): Project => ({
       { id: '3', name: 'Done', color: 'GREEN', description: '' },
       {
         id: '4',
-        name: 'Awaiting Quality Check',
-        color: 'BLUE',
+        name: 'Awaiting Owner',
+        color: 'GREEN',
         description: '',
       },
       {
@@ -66,12 +66,6 @@ const createMockProject = (): Project => ({
         id: '6',
         name: 'Todo by human',
         color: 'GREEN',
-        description: '',
-      },
-      {
-        id: '7',
-        name: 'Awaiting Owner',
-        color: 'ORANGE',
         description: '',
       },
     ],
@@ -450,7 +444,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('7');
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
       expect.stringContaining('reporting every cycle but cannot advance'),
@@ -567,7 +561,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([]);
   });
 
-  it('should advance orphaned issue to Awaiting Quality Check when agent report and passing PR are present', async () => {
+  it('should advance orphaned issue to Awaiting Owner when agent report and passing PR are present', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -720,7 +714,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should advance orphaned issue with non-developer agent field to Awaiting Quality Check when no linked PRs exist', async () => {
+  it('should advance orphaned issue with non-developer agent field to Awaiting Owner when no linked PRs exist', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -834,7 +828,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
-  it('should advance orphaned issue with a labelsAsLlmAgentName label (story) to Awaiting Quality Check when no conflicting PR exists', async () => {
+  it('should advance orphaned issue with a labelsAsLlmAgentName label (story) to Awaiting Owner when no conflicting PR exists', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -870,7 +864,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
   });
 
-  it('should advance an orphaned issue whose label is only in labelsNotRequiringPullRequest to Awaiting Quality Check when no conflicting PR exists', async () => {
+  it('should advance an orphaned issue whose label is only in labelsNotRequiringPullRequest to Awaiting Owner when no conflicting PR exists', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -950,7 +944,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should advance orphaned issue with non-e2e category label to Awaiting Quality Check when no conflicting PR exists', async () => {
+  it('should advance orphaned issue with non-e2e category label to Awaiting Owner when no conflicting PR exists', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -1577,7 +1571,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     ]);
   });
 
-  it('should advance closed orphaned issue to Awaiting Quality Check without checking comments or PRs', async () => {
+  it('should advance closed orphaned issue to Awaiting Owner without checking comments or PRs', async () => {
     const closedIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -1740,7 +1734,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should not post a rejection comment when orphaned issue advances to Awaiting Quality Check', async () => {
+  it('should not post a rejection comment when orphaned issue advances to Awaiting Owner', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -1903,7 +1897,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.get.mock.calls[0][1]).toBe(mockProject);
     });
 
-    it('does not write Awaiting Quality Check when the live status has already moved to Awaiting Workspace', async () => {
+    it('does not write Awaiting Owner when the live status has already moved to Awaiting Workspace', async () => {
       arrangeSnapshotSaysPreparation('Awaiting Workspace', [
         {
           author: 'bot',
@@ -2121,7 +2115,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       ).toContain('https://github.com/user/repo/pull/99');
     });
 
-    it('should advance to Awaiting Quality Check when chore agent has exactly one linked PR where all CI passes', async () => {
+    it('should advance to Awaiting Owner when chore agent has exactly one linked PR where all CI passes', async () => {
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -2160,7 +2154,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
     });
 
-    it('should advance to Awaiting Quality Check when chore agent has no linked PRs', async () => {
+    it('should advance to Awaiting Owner when chore agent has no linked PRs', async () => {
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -2731,7 +2725,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       );
     });
 
-    it('advances orphaned issue to Awaiting Quality Check when report has waitingForOwnerApproval: true and no rejection', async () => {
+    it('advances orphaned issue to Awaiting Owner when report has waitingForOwnerApproval: true and no rejection', async () => {
       const stuckIssue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -3013,7 +3007,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        '7',
+        '4',
       );
     });
 
@@ -3057,11 +3051,11 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        '7',
+        '4',
       );
     });
 
-    it('falls back to Awaiting Quality Check when Awaiting Owner is absent from project', async () => {
+    it('does not update status when Awaiting Owner is absent from project', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/10',
         status: 'Preparation',
@@ -3106,11 +3100,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         allowedIssueAuthors: ['bot'],
       });
 
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithoutAwaitingOwner,
-        expect.anything(),
-        '4',
-      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
   });
 });

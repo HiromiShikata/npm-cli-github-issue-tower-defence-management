@@ -34,7 +34,7 @@ describe('ConsoleTabList', () => {
     const { queryByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
-    expect(queryByText('Awaiting Quality Check')).not.toBeNull();
+    expect(queryByText('Awaiting Owner')).not.toBeNull();
     expect(queryByText('Todo by human')).not.toBeNull();
     expect(queryByText('Todo by agent')).not.toBeNull();
     expect(queryByText('Triage')).toBeNull();
@@ -65,7 +65,7 @@ describe('ConsoleTabList', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
-    expect(getByText('Awaiting Quality Check').closest('a')).toHaveAttribute(
+    expect(getByText('Awaiting Owner').closest('a')).toHaveAttribute(
       'aria-current',
       'page',
     );
@@ -94,7 +94,7 @@ describe('ConsoleTabList', () => {
     expect(firstTabIndex).toBeGreaterThan(pjnameIndex);
   });
 
-  it('renders the Workflow Blocker tab immediately left of Awaiting Quality Check', () => {
+  it('renders the Workflow Blocker tab immediately left of Awaiting Owner', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
@@ -103,7 +103,7 @@ describe('ConsoleTabList', () => {
       tabBar?.querySelectorAll('.console-tab-label') ?? [],
     ).map((node) => node.textContent);
     const blockerIndex = labels.indexOf('Workflow Blocker');
-    const prsIndex = labels.indexOf('Awaiting Quality Check');
+    const prsIndex = labels.indexOf('Awaiting Owner');
     expect(blockerIndex).toBeGreaterThanOrEqual(0);
     expect(prsIndex).toBe(blockerIndex + 1);
   });

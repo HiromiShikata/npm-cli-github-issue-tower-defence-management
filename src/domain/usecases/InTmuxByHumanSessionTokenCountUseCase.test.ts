@@ -1,6 +1,6 @@
 import { Issue } from '../entities/Issue';
 import {
-  AWAITING_QUALITY_CHECK_STATUS_NAME,
+  AWAITING_OWNER_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { ClaudeInteractiveSession } from './adapter-interfaces/ClaudeInteractiveSessionRepository';
@@ -75,7 +75,7 @@ describe('InTmuxByHumanSessionTokenCountUseCase', () => {
     const result = useCase.run(
       [candidate('alpha')],
       [session('alpha', 'session-a', issueUrlA)],
-      [issue(issueUrlA, AWAITING_QUALITY_CHECK_STATUS_NAME)],
+      [issue(issueUrlA, AWAITING_OWNER_STATUS_NAME)],
     );
 
     const alpha = result.counts.find((entry) => entry.name === 'alpha');
@@ -138,7 +138,7 @@ describe('InTmuxByHumanSessionTokenCountUseCase', () => {
       ],
       [
         issue(issueUrlA, IN_TMUX_STATUS_NAME),
-        issue(issueUrlB, AWAITING_QUALITY_CHECK_STATUS_NAME),
+        issue(issueUrlB, AWAITING_OWNER_STATUS_NAME),
       ],
     );
 

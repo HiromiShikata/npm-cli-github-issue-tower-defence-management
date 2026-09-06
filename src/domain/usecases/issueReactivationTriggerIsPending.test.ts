@@ -106,7 +106,7 @@ const createNotifyMockProject = (): Project => ({
       },
       {
         id: 'awaiting-qc-id',
-        name: 'Awaiting Quality Check',
+        name: 'Awaiting Owner',
         color: 'BLUE',
         description: '',
       },

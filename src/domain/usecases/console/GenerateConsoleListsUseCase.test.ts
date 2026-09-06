@@ -20,7 +20,7 @@ const STATUS_OPTIONS: FieldOption[] = [
   storyOption('st-aw', 'Awaiting Workspace', 'BLUE'),
   storyOption('st-prep', 'Preparation', 'YELLOW'),
   storyOption('st-failed', 'Failed Preparation', 'RED'),
-  storyOption('st-aqc', 'Awaiting Quality Check', 'GREEN'),
+  storyOption('st-aqc', 'Awaiting Owner', 'GREEN'),
   storyOption('st-todo', 'Todo by human', 'PINK'),
   storyOption('st-todo-agent', 'Todo by agent', 'BLUE'),
   storyOption('st-tmux', 'In Tmux by human', 'RED'),
@@ -166,10 +166,10 @@ describe('GenerateConsoleListsUseCase', () => {
   });
 
   describe('per-tab selectors', () => {
-    it('selects awaiting quality check items case-insensitively for prs', () => {
+    it('selects awaiting owner items case-insensitively for prs', () => {
       const result = run([
-        makeIssue({ status: 'awaiting quality check' }),
-        makeIssue({ status: 'Awaiting Quality Check' }),
+        makeIssue({ status: 'awaiting owner' }),
+        makeIssue({ status: 'Awaiting Owner' }),
         makeIssue({ status: 'Awaiting Workspace' }),
       ]);
       expect(result.prs.items).toHaveLength(2);
@@ -178,7 +178,7 @@ describe('GenerateConsoleListsUseCase', () => {
     it('shows prs items with nextActionDate set', () => {
       const result = run([
         makeIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           nextActionDate: new Date('2026-07-01T00:00:00.000Z'),
         }),
       ]);
@@ -188,7 +188,7 @@ describe('GenerateConsoleListsUseCase', () => {
     it('shows prs items with nextActionHour set', () => {
       const result = run([
         makeIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           nextActionHour: 9,
         }),
       ]);
@@ -270,7 +270,7 @@ describe('GenerateConsoleListsUseCase', () => {
         makeIssue({ story: 'regular / WORKFLOW BLOCKER', status: 'Unread' }),
         makeIssue({
           story: 'regular / WORKFLOW BLOCKER',
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
         }),
         makeIssue({ story: 'regular / WORKFLOW BLOCKER', status: null }),
       ]);
@@ -386,7 +386,7 @@ describe('GenerateConsoleListsUseCase', () => {
     it('projects the expected keys and never includes a body field', () => {
       const result = run([
         makeIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           story: 'Story Alpha',
           labels: ['bug', 'p1'],
           isPr: true,
@@ -449,14 +449,14 @@ describe('GenerateConsoleListsUseCase', () => {
     it('emits null reactivation-trigger fields and an empty depended url array when absent', () => {
       const result = run([
         makeIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           nextActionDate: null,
           nextActionHour: null,
           dependedIssueUrls: [],
         }),
       ]);
       const item = result.prs.items[0];
-      expect(item.status).toBe('Awaiting Quality Check');
+      expect(item.status).toBe('Awaiting Owner');
       expect(item.nextActionDate).toBeNull();
       expect(item.nextActionHour).toBeNull();
       expect(item.dependedIssueUrls).toEqual([]);
@@ -464,7 +464,7 @@ describe('GenerateConsoleListsUseCase', () => {
 
     it('maps a null story to an empty string', () => {
       const result = run([
-        makeIssue({ status: 'Awaiting Quality Check', story: null }),
+        makeIssue({ status: 'Awaiting Owner', story: null }),
       ]);
       expect(result.prs.items[0].story).toBe('');
     });
@@ -472,7 +472,7 @@ describe('GenerateConsoleListsUseCase', () => {
     it('serializes createdAt as an ISO string keeping milliseconds', () => {
       const result = run([
         makeIssue({
-          status: 'Awaiting Quality Check',
+          status: 'Awaiting Owner',
           createdAt: new Date('2026-06-13T08:18:45.000Z'),
         }),
       ]);
@@ -532,7 +532,7 @@ describe('GenerateConsoleListsUseCase', () => {
   describe('options construction', () => {
     it('excludes awaiting quality check and done from prs status options', () => {
       const names = run([]).prs.statusOptions.map((o) => o.name);
-      expect(names).not.toContain('Awaiting Quality Check');
+      expect(names).not.toContain('Awaiting Owner');
       expect(names).not.toContain('Done');
       expect(names).toContain('Awaiting Workspace');
     });
@@ -604,13 +604,13 @@ describe('GenerateConsoleListsUseCase', () => {
   });
 
   describe('related open pull requests', () => {
-    const awaitingQualityCheckIssue = (): Issue =>
-      makeIssue({ status: 'Awaiting Quality Check' });
+    const awaitingOwnerIssue = (): Issue =>
+      makeIssue({ status: 'Awaiting Owner' });
 
     it('projects the open pull request that closes the issue', () => {
-      const issue = awaitingQualityCheckIssue();
+      const issue = awaitingOwnerIssue();
       const pullRequest = makeIssue({
-        status: 'Awaiting Quality Check',
+        status: 'Awaiting Owner',
         isPr: true,
         url: 'https://github.com/demo/repo/pull/501',
         closingIssueReferenceUrls: [issue.url],
@@ -623,7 +623,7 @@ describe('GenerateConsoleListsUseCase', () => {
     });
 
     it('ignores a closed pull request that closes the issue', () => {
-      const issue = awaitingQualityCheckIssue();
+      const issue = awaitingOwnerIssue();
       const pullRequest = makeIssue({
         isPr: true,
         isClosed: true,
@@ -636,7 +636,7 @@ describe('GenerateConsoleListsUseCase', () => {
     });
 
     it('collects the linkage from a pull request that no tab shows', () => {
-      const issue = awaitingQualityCheckIssue();
+      const issue = awaitingOwnerIssue();
       const pullRequest = makeIssue({
         status: 'In Tmux by agent',
         assignees: ['another-person'],
@@ -652,7 +652,7 @@ describe('GenerateConsoleListsUseCase', () => {
     });
 
     it('leaves the list empty when no open pull request closes the issue', () => {
-      const issue = awaitingQualityCheckIssue();
+      const issue = awaitingOwnerIssue();
       const unrelatedPullRequest = makeIssue({
         isPr: true,
         url: 'https://github.com/demo/repo/pull/504',
@@ -900,21 +900,21 @@ describe('GenerateConsoleListsUseCase', () => {
   describe('agent field propagation', () => {
     it('copies the agent value from the issue into the list item', () => {
       const result = run([
-        makeIssue({ status: 'Awaiting Quality Check', agent: 'developer' }),
+        makeIssue({ status: 'Awaiting Owner', agent: 'developer' }),
       ]);
       expect(result.prs.items[0].agent).toBe('developer');
     });
 
     it('preserves null when the issue has no agent set', () => {
       const result = run([
-        makeIssue({ status: 'Awaiting Quality Check', agent: null }),
+        makeIssue({ status: 'Awaiting Owner', agent: null }),
       ]);
       expect(result.prs.items[0].agent).toBeNull();
     });
 
     it('copies the agent into every tab that shows the issue', () => {
       const result = run([
-        makeIssue({ status: 'Awaiting Quality Check', agent: 'chore' }),
+        makeIssue({ status: 'Awaiting Owner', agent: 'chore' }),
       ]);
       expect(result.prs.items[0].agent).toBe('chore');
     });
@@ -949,7 +949,6 @@ describe('GenerateConsoleListsUseCase', () => {
       const result = run([
         makeIssue({ status: 'Todo by human' }),
         makeIssue({ status: 'In Tmux by agent' }),
-        makeIssue({ status: 'Awaiting Quality Check' }),
         makeIssue({ status: 'Done' }),
         makeIssue({ status: 'Failed Preparation' }),
       ]);
