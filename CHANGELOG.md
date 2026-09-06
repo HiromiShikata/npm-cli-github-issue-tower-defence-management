@@ -1,3 +1,10 @@
+## [2.70.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.70.0...v2.70.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** suppress PULL_REQUEST_NOT_FOUND for known non-developer agents ([#2159](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2159)) ([85408b3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/85408b34a1968130cde504ed59ddf7bddaaebf93)), closes [#2095](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2095) [HiromiShikata/secretary#5576](https://github.com/HiromiShikata/secretary/issues/5576)
+
 # [2.70.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.6...v2.70.0) (2026-09-06)
 
 
