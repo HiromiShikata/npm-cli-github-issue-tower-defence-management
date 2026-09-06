@@ -191,7 +191,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateSilentRedispatch');
+      expect(result.type).toBe('escalateReportingLoop');
     });
 
     it('emits an owner-judgment message when escalating due to repeated self-nomination with reports', () => {
@@ -210,17 +210,34 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       const comment =
-        result.type === 'escalateSilentRedispatch' ? result.comment : '';
+        result.type === 'escalateReportingLoop' ? result.comment : '';
       expect(comment).not.toContain('Failed to receive a report');
       expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
 
-    it('escalates once the repetition count reaches the auto reject threshold', () => {
+    it('escalates to escalateReportingLoop when the agent has reported in the cycle', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [
           report('accounting'),
+          repetitionComment('accounting'),
+          repetitionComment('accounting'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('escalateReportingLoop');
+    });
+
+    it('escalates to escalateSilentRedispatch when the agent never reported in the cycle', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'accounting',
+        nextStepAgent: 'accounting',
+        comments: [
           repetitionComment('accounting'),
           repetitionComment('accounting'),
         ],
@@ -248,9 +265,9 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateSilentRedispatch');
+      expect(result.type).toBe('escalateReportingLoop');
       const comment =
-        result.type === 'escalateSilentRedispatch' ? result.comment : '';
+        result.type === 'escalateReportingLoop' ? result.comment : '';
       expect(comment).not.toContain('Failed to receive a report');
       expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
@@ -275,7 +292,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(comment).toContain('Failed to receive a report');
     });
 
-    it('counts silent redispatches even when agent name casing in prior comments differs from nextStepAgent', () => {
+    it('escalates to escalateReportingLoop when agent name casing in prior comments differs from nextStepAgent', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'pr-reviewer',
         nextStepAgent: 'pr-reviewer',
@@ -291,7 +308,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateSilentRedispatch');
+      expect(result.type).toBe('escalateReportingLoop');
     });
 
     it('does not reset the silent dispatch count when a routing comment is posted after escalation without a human comment', () => {
@@ -311,7 +328,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateSilentRedispatch');
+      expect(result.type).toBe('escalateReportingLoop');
     });
 
     it('resets the silent dispatch count after a human comment even if a routing comment follows', () => {
@@ -394,7 +411,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateSilentRedispatch');
+      expect(result.type).toBe('escalateReportingLoop');
     });
 
     it('does not treat bare legacy repetition comments as escalation resets', () => {
@@ -412,7 +429,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateSilentRedispatch');
+      expect(result.type).toBe('escalateReportingLoop');
     });
   });
 
@@ -714,7 +731,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(comment).not.toContain('silently');
     });
 
-    it('still escalates to escalateSilentRedispatch when story is set and the cycle count reaches the threshold', () => {
+    it('still escalates (not storyUnset) when story is set and the cycle count reaches the threshold with reports', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
@@ -729,7 +746,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateSilentRedispatch');
+      expect(result.type).toBe('escalateReportingLoop');
     });
   });
 });
