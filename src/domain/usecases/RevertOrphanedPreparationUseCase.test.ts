@@ -68,6 +68,12 @@ const createMockProject = (): Project => ({
         color: 'GREEN',
         description: '',
       },
+      {
+        id: '7',
+        name: 'Awaiting Owner',
+        color: 'ORANGE',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -2932,7 +2938,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       return issue;
     };
 
-    it('moves issue to Awaiting Quality Check when last report has waitingForOwner true', async () => {
+    it('moves issue to Awaiting Owner when last report has waitingForOwner true', async () => {
       setupWaitingForOwnerIssue();
 
       await useCase.run({
@@ -2945,7 +2951,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        '4',
+        '7',
       );
     });
 
@@ -2988,6 +2994,58 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
+        expect.anything(),
+        '7',
+      );
+    });
+
+    it('falls back to Awaiting Quality Check when Awaiting Owner is absent from project', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+      });
+      const projectWithoutAwaitingOwner = createMockProject();
+      projectWithoutAwaitingOwner.status.statuses =
+        projectWithoutAwaitingOwner.status.statuses.filter(
+          (s) => s.name !== 'Awaiting Owner',
+        );
+      mockProjectRepository.getProject.mockResolvedValue(
+        projectWithoutAwaitingOwner,
+      );
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithoutAwaitingOwner,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: 'https://github.com/user/repo/issues/10',
+          status: 'Preparation',
+        }),
+      );
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        allowedIssueAuthors: ['bot'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithoutAwaitingOwner,
         expect.anything(),
         '4',
       );

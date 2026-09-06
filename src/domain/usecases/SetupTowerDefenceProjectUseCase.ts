@@ -1,10 +1,8 @@
 import { FieldOption } from '../entities/Project';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { StatusDefaultRepository } from './adapter-interfaces/StatusDefaultRepository';
 import {
-  AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
@@ -31,10 +29,6 @@ export class SetupTowerDefenceProjectUseCase {
       StatusDefaultRepository,
       'setStatusFieldDefault'
     >,
-    private readonly issueCommentRepository: Pick<
-      IssueCommentRepository,
-      'createComment'
-    >,
   ) {}
 
   private static readonly LEGACY_STATUS_NAMES: Readonly<
@@ -53,7 +47,6 @@ export class SetupTowerDefenceProjectUseCase {
     PC_TODO_STATUS_NAME,
     LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
     SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
-    AWAITING_OWNER_STATUS_NAME,
   ]);
 
   run = async (params: { projectUrl: string }): Promise<void> => {
@@ -71,32 +64,6 @@ export class SetupTowerDefenceProjectUseCase {
       }
       return issuesPromise;
     };
-
-    const awaitingOwnerStatus = existing.find(
-      (s) => s.name === AWAITING_OWNER_STATUS_NAME,
-    );
-    if (awaitingOwnerStatus && !awaitingWorkspaceStatus) {
-      console.warn(
-        `'${AWAITING_OWNER_STATUS_NAME}' status found but '${AWAITING_WORKSPACE_STATUS_NAME}' is absent; cannot migrate issues — they will be left without a valid status`,
-      );
-    }
-    if (awaitingOwnerStatus && awaitingWorkspaceStatus) {
-      const { issues } = await fetchIssues();
-      const awaitingOwnerIssues = issues.filter(
-        (issue) => issue.status === AWAITING_OWNER_STATUS_NAME,
-      );
-      for (const issue of awaitingOwnerIssues) {
-        await this.issueCommentRepository.createComment(
-          issue,
-          'Auto Status Check: AWAITING_OWNER_REVERTED\nThe "Awaiting Owner" status was added to this project by an agent without authorization and has been removed. This issue has been moved to Awaiting Workspace for agent reprocessing.',
-        );
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatus.id,
-        );
-      }
-    }
 
     const unreadStatus = existing.find(
       (s) =>

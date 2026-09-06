@@ -27,6 +27,12 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
         description: '',
       },
       {
+        id: 'awaiting-owner-id',
+        name: 'Awaiting Owner',
+        color: 'ORANGE',
+        description: '',
+      },
+      {
         id: 'failed-preparation-id',
         name: 'Failed Preparation',
         color: 'RED',
@@ -6735,7 +6741,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
   });
 
   describe('waitingForOwner handling', () => {
-    it('moves issue to Awaiting Quality Check without posting comment when last report has waitingForOwner true', async () => {
+    it('moves issue to Awaiting Owner without posting comment when last report has waitingForOwner true', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -6755,15 +6761,54 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        expect.objectContaining({ status: 'Awaiting Owner' }),
         mockProject,
       );
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('falls back to Awaiting Quality Check when Awaiting Owner status is absent from project', async () => {
+      const projectWithoutAwaitingOwner = createMockProject({
+        status: {
+          name: 'Status',
+          fieldId: 'field-1',
+          statuses: mockProject.status.statuses.filter(
+            (s) => s.name !== 'Awaiting Owner',
+          ),
+        },
+      });
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutAwaitingOwner);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
+        }),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Quality Check' }),
+        projectWithoutAwaitingOwner,
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithoutAwaitingOwner,
         expect.objectContaining({ status: 'Awaiting Quality Check' }),
         'awaiting-quality-check-id',
       );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
   });
 
