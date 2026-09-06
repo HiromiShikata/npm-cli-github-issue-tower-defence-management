@@ -430,11 +430,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.workflowBlockerResolvedWebhookUrl,
         project,
       );
-      await this.issueRepository.updateNextActionDate(
-        issue.url,
-        project,
-        issueReactivationTriggerStartOfTomorrow(new Date()),
-      );
       return;
     }
 
@@ -485,11 +480,6 @@ export class NotifyFinishedIssuePreparationUseCase {
             this.projectRepository,
           );
         }
-        await this.issueRepository.updateNextActionDate(
-          issue.url,
-          project,
-          issueReactivationTriggerStartOfTomorrow(new Date()),
-        );
         return;
       }
       const agentOptionId = await this.ensureAgentOptionAndGetId(
