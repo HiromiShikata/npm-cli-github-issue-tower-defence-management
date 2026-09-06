@@ -386,18 +386,6 @@ describe('CLI', () => {
       expect(result.thresholdForAutoReject).toBeUndefined();
     });
 
-    it('should load thresholdForSelfNominationTotal from config file', () => {
-      const config = {
-        ...defaultConfig,
-        thresholdForSelfNominationTotal: 5,
-      };
-      writeConfig(config);
-
-      const result = loadConfigFile(configFilePath);
-
-      expect(result.thresholdForSelfNominationTotal).toBe(5);
-    });
-
     it('should return empty config for array YAML', () => {
       fs.writeFileSync(configFilePath, '- item1\n- item2\n');
 
@@ -1658,7 +1646,6 @@ mysteryKey: 'value'
         issueUrl: 'https://github.com/test/repo/issues/1',
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
-        thresholdForSelfNominationTotal: 2,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
@@ -1706,7 +1693,6 @@ mysteryKey: 'value'
         issueUrl: 'https://github.com/test/repo/issues/1',
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
-        thresholdForSelfNominationTotal: 2,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
         labelsAsLlmAgentName: null,
@@ -1791,42 +1777,6 @@ mysteryKey: 'value'
       expect(mockRun).toHaveBeenCalledWith(
         expect.objectContaining({
           thresholdForAutoReject: 5,
-        }),
-      );
-    });
-
-    it('should pass custom thresholdForSelfNominationTotal from config file', async () => {
-      const configWithThreshold = {
-        ...defaultConfig,
-        thresholdForSelfNominationTotal: 5,
-      };
-      writeConfig(configWithThreshold);
-
-      const mockRun = jest.fn().mockResolvedValue({ rotationOrder: null });
-      const MockedNotifyFinishedUseCase = jest.mocked(
-        NotifyFinishedIssuePreparationUseCase,
-      );
-
-      MockedNotifyFinishedUseCase.mockImplementation(function (
-        this: NotifyFinishedIssuePreparationUseCase,
-      ) {
-        this.run = mockRun;
-        return this;
-      });
-
-      await program.parseAsync([
-        'node',
-        'test',
-        'notifyFinishedIssuePreparation',
-        '--configFilePath',
-        configFilePath,
-        '--issueUrl',
-        'https://github.com/test/repo/issues/1',
-      ]);
-
-      expect(mockRun).toHaveBeenCalledWith(
-        expect.objectContaining({
-          thresholdForSelfNominationTotal: 5,
         }),
       );
     });
