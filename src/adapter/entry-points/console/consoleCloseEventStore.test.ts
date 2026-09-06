@@ -28,33 +28,33 @@ describe('consoleCloseEventStore', () => {
       });
     });
 
-    it('counts an event within 1h in all three windows', () => {
+    it('counts an event within 1h as rate 1 and rounds down in wider windows', () => {
       const nowMs = 1_000_000_000_000;
       appendCloseEvent(baseDir, 'acme', nowMs - 30 * 60 * 1000);
       expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({
         h1: 1,
-        h3: 1,
-        h5: 1,
+        h3: 0,
+        h5: 0,
       });
     });
 
-    it('counts an event older than 1h but within 3h only in the 3h and 5h windows', () => {
+    it('counts an event between 1h and 3h as rate 0 in all windows', () => {
       const nowMs = 1_000_000_000_000;
       appendCloseEvent(baseDir, 'acme', nowMs - 90 * 60 * 1000);
       expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({
         h1: 0,
-        h3: 1,
-        h5: 1,
+        h3: 0,
+        h5: 0,
       });
     });
 
-    it('counts an event older than 3h but within 5h only in the 5h window', () => {
+    it('counts an event between 3h and 5h as rate 0 in all windows', () => {
       const nowMs = 1_000_000_000_000;
       appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
       expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({
         h1: 0,
         h3: 0,
-        h5: 1,
+        h5: 0,
       });
     });
 
@@ -66,15 +66,15 @@ describe('consoleCloseEventStore', () => {
       expect(counts.h1).toBe(1);
     });
 
-    it('counts events from multiple appends correctly across windows', () => {
+    it('returns per-hour rates across multiple windows', () => {
       const nowMs = 1_000_000_000_000;
       appendCloseEvent(baseDir, 'acme', nowMs - 20 * 60 * 1000);
       appendCloseEvent(baseDir, 'acme', nowMs - 90 * 60 * 1000);
       appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
       expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({
         h1: 1,
-        h3: 2,
-        h5: 3,
+        h3: 1,
+        h5: 1,
       });
     });
 
@@ -83,6 +83,25 @@ describe('consoleCloseEventStore', () => {
       appendCloseEvent(baseDir, 'acme', nowMs - 10 * 60 * 1000);
       expect(countCloseEvents(baseDir, 'acme', nowMs).h1).toBe(1);
       expect(countCloseEvents(baseDir, 'initech', nowMs).h1).toBe(0);
+    });
+
+    it('returns per-hour rates comparable across windows so h1 exceeds h3 when recent activity is higher', () => {
+      const nowMs = 1_000_000_000_000;
+      appendCloseEvent(baseDir, 'acme', nowMs - 20 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 20 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 20 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 2 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 2 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 2 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
+      appendCloseEvent(baseDir, 'acme', nowMs - 4 * 60 * 60 * 1000);
+      expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({
+        h1: 3,
+        h3: 2,
+        h5: 2,
+      });
     });
   });
 
@@ -98,7 +117,7 @@ describe('consoleCloseEventStore', () => {
       const fiveHoursMs = 5 * 60 * 60 * 1000;
       appendCloseEvent(baseDir, 'acme', baseMs - fiveHoursMs - 1);
       appendCloseEvent(baseDir, 'acme', baseMs);
-      expect(countCloseEvents(baseDir, 'acme', baseMs).h5).toBe(1);
+      expect(countCloseEvents(baseDir, 'acme', baseMs).h1).toBe(1);
     });
 
     it('does not leave a tmp file behind after writing', () => {
@@ -124,8 +143,8 @@ describe('consoleCloseEventStore', () => {
       appendCloseEventCount(baseDir, 'acme', 3, nowMs);
       expect(countCloseEvents(baseDir, 'acme', nowMs)).toEqual({
         h1: 3,
-        h3: 3,
-        h5: 3,
+        h3: 1,
+        h5: 1,
       });
     });
 
@@ -144,7 +163,7 @@ describe('consoleCloseEventStore', () => {
       const fiveHoursMs = 5 * 60 * 60 * 1000;
       appendCloseEvent(baseDir, 'acme', baseMs - fiveHoursMs - 1);
       appendCloseEventCount(baseDir, 'acme', 2, baseMs);
-      expect(countCloseEvents(baseDir, 'acme', baseMs).h5).toBe(2);
+      expect(countCloseEvents(baseDir, 'acme', baseMs).h1).toBe(2);
     });
 
     it('accumulates with existing events', () => {
@@ -152,7 +171,7 @@ describe('consoleCloseEventStore', () => {
       appendCloseEvent(baseDir, 'acme', nowMs - 90 * 60 * 1000);
       appendCloseEventCount(baseDir, 'acme', 2, nowMs);
       expect(countCloseEvents(baseDir, 'acme', nowMs).h1).toBe(2);
-      expect(countCloseEvents(baseDir, 'acme', nowMs).h3).toBe(3);
+      expect(countCloseEvents(baseDir, 'acme', nowMs).h3).toBe(1);
     });
   });
 });
