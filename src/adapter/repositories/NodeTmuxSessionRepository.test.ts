@@ -551,9 +551,14 @@ describe('NodeTmuxSessionRepository', () => {
 
       await repository.attachOrCreateInteractiveSession(issueUrl, null);
 
+      expect(runner.runCommand.mock.calls).toHaveLength(2);
       expect(runner.runCommand.mock.calls[0]).toEqual([
         'ps',
         ['-eo', 'pid=,ppid=,args='],
+      ]);
+      expect(runner.runCommand.mock.calls[1]).toEqual([
+        'tmux',
+        ['list-panes', '-a', '-F', '#{pane_pid} #{session_name}'],
       ]);
       expect(runner.spawnInteractive.mock.calls).toEqual([
         ['tmux', ['attach-session', '-t', '=abc123def456ab12']],
