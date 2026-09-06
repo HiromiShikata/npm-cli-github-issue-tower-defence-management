@@ -68,7 +68,8 @@ export const ConsoleCommentList = ({
       {comments.map((comment) => {
         const commentKey = `${comment.author}:${comment.createdAt}`;
         const longKey = `${comment.author}:${comment.createdAt}:${comment.body}`;
-        const showSummary = isSummaryMode && !expandedCommentKeys.has(commentKey);
+        const showSummary =
+          isSummaryMode && !expandedCommentKeys.has(commentKey);
         const isExpanded = expandedKeys.has(longKey);
         const showFullBody = isSummaryMode
           ? expandedCommentKeys.has(commentKey)
