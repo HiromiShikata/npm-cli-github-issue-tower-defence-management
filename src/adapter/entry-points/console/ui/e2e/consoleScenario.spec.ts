@@ -1336,6 +1336,22 @@ test('shows and hides task rows when Show tasks and Hide tasks are clicked on a 
     }),
   ).toBeVisible();
 
+  const pr867Row = tdpmRow.locator('.console-story-task-row').first();
+  await expect(pr867Row.locator('.console-story-task-agent')).toContainText(
+    'developer',
+  );
+  await expect(
+    pr867Row.locator('.console-story-task-next-action-date'),
+  ).toContainText('2026-06-20');
+  await expect(
+    pr867Row.locator('.console-story-task-next-action-hour'),
+  ).toContainText('9');
+  await expect(
+    pr867Row.locator('.console-story-task-depended-urls'),
+  ).toContainText(
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845',
+  );
+
   await tdpmRow
     .locator('.console-op-button', { hasText: 'Hide tasks' })
     .click();
