@@ -88,7 +88,5 @@ export const extractCallSite = (
   if (moduleNames.length === 0) {
     return UNKNOWN_CALL_SITE;
   }
-  return moduleNames
-    .slice(0, CALL_SITE_FRAME_COUNT)
-    .join(CALL_SITE_SEPARATOR);
+  return moduleNames.slice(0, CALL_SITE_FRAME_COUNT).join(CALL_SITE_SEPARATOR);
 };
