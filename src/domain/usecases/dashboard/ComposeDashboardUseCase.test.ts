@@ -489,9 +489,9 @@ describe('formatProjectTotalLine', () => {
   it('sums each column across all projects with present rows', () => {
     expect(
       formatProjectTotalLine([
-        { code: 'ac', row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }) },
-        { code: 'gl', row: projectRow({ qc: 16, fail: 6, pr: 1 }) },
-        { code: 'um', row: projectRow({ blocker: 1 }) },
+        { code: 'ac', row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }), closeEventCounts: noCloseEvents },
+        { code: 'gl', row: projectRow({ qc: 16, fail: 6, pr: 1 }), closeEventCounts: noCloseEvents },
+        { code: 'um', row: projectRow({ blocker: 1 }), closeEventCounts: noCloseEvents },
       ]),
     ).toBe('      1 18  6  1  4  1  0  0  0');
   });
@@ -499,14 +499,14 @@ describe('formatProjectTotalLine', () => {
   it('skips null rows in the totals', () => {
     expect(
       formatProjectTotalLine([
-        { code: 'ac', row: projectRow({ todo: 5 }) },
-        { code: 'in', row: null },
+        { code: 'ac', row: projectRow({ todo: 5 }), closeEventCounts: noCloseEvents },
+        { code: 'in', row: null, closeEventCounts: noCloseEvents },
       ]),
     ).toBe('      5  0  0  0  0  0  0  0  0');
   });
 
   it('returns zeros for all columns when all rows are null', () => {
-    expect(formatProjectTotalLine([{ code: 'in', row: null }])).toBe(
+    expect(formatProjectTotalLine([{ code: 'in', row: null, closeEventCounts: noCloseEvents }])).toBe(
       '      0  0  0  0  0  0  0  0  0',
     );
   });
@@ -514,15 +514,15 @@ describe('formatProjectTotalLine', () => {
   it('caps column totals at 99', () => {
     expect(
       formatProjectTotalLine([
-        { code: 'a1', row: projectRow({ todo: 60 }) },
-        { code: 'a2', row: projectRow({ todo: 60 }) },
+        { code: 'a1', row: projectRow({ todo: 60 }), closeEventCounts: noCloseEvents },
+        { code: 'a2', row: projectRow({ todo: 60 }), closeEventCounts: noCloseEvents },
       ]),
     ).toContain(' 99');
   });
 
   it('aligns with the project header and row line format', () => {
     const totalLine = formatProjectTotalLine([
-      { code: 'ac', row: projectRow({ todo: 1 }) },
+      { code: 'ac', row: projectRow({ todo: 1 }), closeEventCounts: noCloseEvents },
     ]);
     expect(totalLine.length).toBeGreaterThan(0);
     expect(codePointLength(totalLine)).toBeLessThanOrEqual(
