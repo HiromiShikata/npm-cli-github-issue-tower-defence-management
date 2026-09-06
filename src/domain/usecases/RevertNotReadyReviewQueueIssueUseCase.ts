@@ -116,11 +116,11 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         ...awaitingQualityCheckIssues.flatMap((issue) =>
           issue.isPr
             ? [issue.url]
-            : this.resolveRelatedOpenPrUrls(
+            : (this.resolveRelatedOpenPrUrls(
                 issue,
                 relatedOpenPrUrlsByIssueUrl,
                 batchedRelatedOpenPrUrlsByIssueUrl,
-              ) ?? [],
+              ) ?? []),
         ),
       ]),
     );

@@ -1509,7 +1509,10 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         new Map([
           [
             'https://github.com/user/repo/pull/1',
-            { ...createReadyPr('https://github.com/user/repo/pull/1'), isConflicted: true },
+            {
+              ...createReadyPr('https://github.com/user/repo/pull/1'),
+              isConflicted: true,
+            },
           ],
         ]),
       );
@@ -1800,7 +1803,10 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         new Map([
           [
             'https://github.com/user/repo/pull/1',
-            { ...createReadyPr('https://github.com/user/repo/pull/1'), isConflicted: true },
+            {
+              ...createReadyPr('https://github.com/user/repo/pull/1'),
+              isConflicted: true,
+            },
           ],
         ]),
       );
@@ -1830,7 +1836,10 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         new Map([
           [
             'https://github.com/user/repo/pull/1',
-            { ...createReadyPr('https://github.com/user/repo/pull/1'), isConflicted: true },
+            {
+              ...createReadyPr('https://github.com/user/repo/pull/1'),
+              isConflicted: true,
+            },
           ],
         ]),
       );
