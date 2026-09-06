@@ -1,3 +1,10 @@
+## [2.63.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.3...v2.63.4) (2026-09-06)
+
+
+### Bug Fixes
+
+* **preparation:** skip PULL_REQUEST_NOT_FOUND when triager is latest reporter ([#2095](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2095)) ([43f47f8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/43f47f8f41047c3a92a5843e439021cf1e3e4260))
+
 ## [2.63.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.2...v2.63.3) (2026-09-06)
 
 
