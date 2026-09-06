@@ -225,8 +225,9 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         }
 
         const linkHeader: string = response.headers.get('Link') ?? '';
-        const nextMatch: RegExpMatchArray | null =
-          linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+        const nextMatch: RegExpMatchArray | null = linkHeader.match(
+          /<([^>]+)>;\s*rel="next"/,
+        );
         url = nextMatch?.[1] ?? null;
       }
     } catch {
