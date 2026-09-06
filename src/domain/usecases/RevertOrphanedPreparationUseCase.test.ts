@@ -2793,9 +2793,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-      expect(
-        mockIssueCommentRepository.createComment.mock.calls,
-      ).toHaveLength(0);
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+        0,
+      );
     });
 
     it('should skip Todo by agent issue when the live re-read returns a different status', async () => {
@@ -2828,9 +2828,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
-      expect(
-        mockIssueCommentRepository.createComment.mock.calls,
-      ).toHaveLength(0);
+      expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(
+        0,
+      );
     });
 
     it('should skip Todo by agent issue and log when the live re-read throws', async () => {
