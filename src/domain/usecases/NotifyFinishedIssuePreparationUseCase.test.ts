@@ -458,7 +458,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
-  it('should throw IllegalIssueStatusError when issue status is not Preparation, not Done, not Awaiting Workspace, and not In Tmux by agent', async () => {
+  it('should throw IllegalIssueStatusError when issue status is not Preparation, not In Tmux by agent, not Done, and not Awaiting Workspace', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'In Progress',
