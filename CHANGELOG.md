@@ -1,3 +1,15 @@
+# [2.69.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.68.3...v2.69.0) (2026-09-06)
+
+
+### Bug Fixes
+
+* **notifyFinishedIssuePreparation:** skip gracefully when issue status is Todo by human ([#2145](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2145)) ([5061a86](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5061a8620e361909b6842d90aecdcb1518b5e23d)), closes [HiromiShikata/secretary#5559](https://github.com/HiromiShikata/secretary/issues/5559)
+
+
+### Features
+
+* **projectConfig:** add TTL cache for fetchProjectReadme to reduce GraphQL load ([#2131](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2131)) ([6b271e4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6b271e48acc3224b1d0ceb1c9b560b28e24de1e1)), closes [HiromiShikata/secretary#5550](https://github.com/HiromiShikata/secretary/issues/5550)
+
 ## [2.68.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.68.2...v2.68.3) (2026-09-06)
 
 
