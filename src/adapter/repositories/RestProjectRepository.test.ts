@@ -15,6 +15,7 @@ jest.mock('ky', () => ({
 }));
 
 import {
+  GITHUB_REST_REQUEST_TIMEOUT_MS,
   RestProjectRepository,
   projectLocationFromUrl,
   projectUrlFromLocation,
@@ -74,6 +75,12 @@ const fieldsResponse = [
   },
 ];
 
+describe('GITHUB_REST_REQUEST_TIMEOUT_MS', () => {
+  it('has a default request timeout bound of 120 seconds', () => {
+    expect(GITHUB_REST_REQUEST_TIMEOUT_MS).toBe(120_000);
+  });
+});
+
 describe('RestProjectRepository', () => {
   const localStorageRepository = new LocalStorageRepository();
   const repository = new RestProjectRepository(
@@ -105,6 +112,7 @@ describe('RestProjectRepository', () => {
             Authorization: 'token dummy-token',
             Accept: 'application/vnd.github+json',
           },
+          timeout: GITHUB_REST_REQUEST_TIMEOUT_MS,
         },
       );
       expect(fields).toEqual([
