@@ -79,9 +79,16 @@ export const countCloseEvents = (
   nowMs: number,
 ): CloseEventCounts => {
   const timestamps = readCloseEventTimestamps(consoleDataOutputDir, pjcode);
+  const h1Count = timestamps.filter((t) => nowMs - t <= 60 * 60 * 1000).length;
+  const h3Count = timestamps.filter(
+    (t) => nowMs - t <= 3 * 60 * 60 * 1000,
+  ).length;
+  const h5Count = timestamps.filter(
+    (t) => nowMs - t <= 5 * 60 * 60 * 1000,
+  ).length;
   return {
-    h1: timestamps.filter((t) => nowMs - t <= 60 * 60 * 1000).length,
-    h3: timestamps.filter((t) => nowMs - t <= 3 * 60 * 60 * 1000).length,
-    h5: timestamps.filter((t) => nowMs - t <= 5 * 60 * 60 * 1000).length,
+    h1: h1Count,
+    h3: Math.round(h3Count / 3),
+    h5: Math.round(h5Count / 5),
   };
 };

@@ -5,7 +5,7 @@ import {
   TokenStatusColor,
 } from './GenerateTokenStatusUseCase';
 
-export const PROJECT_ROW_WIDTH_BUDGET = 40;
+export const PROJECT_ROW_WIDTH_BUDGET = 43;
 
 export type CloseEventCounts = {
   h1: number;
@@ -70,12 +70,12 @@ type CloseCountColumn = {
 };
 
 const CLOSE_COUNT_COLUMNS: CloseCountColumn[] = [
-  { header: '1h', key: 'h1' },
-  { header: '3h', key: 'h3' },
-  { header: '5h', key: 'h5' },
+  { header: '/1h', key: 'h1' },
+  { header: '/3h', key: 'h3' },
+  { header: '/5h', key: 'h5' },
 ];
 
-const CLOSE_COUNT_COLUMN_WIDTH = 2;
+const CLOSE_COUNT_COLUMN_WIDTH = 3;
 
 export const STATUS_DOT_DISPLAY_WIDTH = 2;
 
