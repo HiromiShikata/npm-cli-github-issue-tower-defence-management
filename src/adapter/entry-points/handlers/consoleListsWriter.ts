@@ -28,7 +28,7 @@ export const formatConsoleGeneratedAt = (date: Date): string =>
 const writeJsonAtomic = (filePath: string, data: unknown): void => {
   const dir = path.dirname(filePath);
   fs.mkdirSync(dir, { recursive: true });
-  const tmpPath = `${filePath}.tmp`;
+  const tmpPath = `${filePath}.tmp.${process.pid}`;
   fs.writeFileSync(tmpPath, JSON.stringify(data));
   fs.renameSync(tmpPath, filePath);
 };
