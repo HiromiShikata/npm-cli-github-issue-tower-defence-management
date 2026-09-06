@@ -6,9 +6,16 @@ import { Member } from '../../../domain/entities/Member';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import {
   computeRateLimitResetIso,
+  computeSecondaryRateLimitBackoffMs,
   GitHubRateLimitError,
   hasRateLimitSignals,
+  isSecondaryRateLimit,
 } from './githubRateLimitRetry';
+import {
+  checkSecondaryRateLimitBreaker,
+  secondaryRateLimitStateFilePath,
+  writeSecondaryRateLimitState,
+} from './githubSecondaryRateLimitBreaker';
 import {
   isDuplicateWithinWindow,
   DUPLICATE_COMMENT_WINDOW_MS,
@@ -99,6 +106,55 @@ export class RestIssueRepository
     return comments;
   }
 
+  private get stateFilePath(): string {
+    return secondaryRateLimitStateFilePath();
+  }
+
+  /**
+   * Throws GitHubRateLimitError when the shared secondary rate-limit circuit
+   * breaker is open.  Call before every content-creating request.
+   */
+  private checkBreakerOrThrow(): void {
+    const nowMs = Date.now();
+    const breaker = checkSecondaryRateLimitBreaker(nowMs, this.stateFilePath);
+    if (breaker.isBlocked && breaker.resetTimeMs !== null) {
+      throw new GitHubRateLimitError(
+        `GitHub secondary rate limit is active until ${new Date(breaker.resetTimeMs).toISOString()}`,
+        new Date(breaker.resetTimeMs).toISOString(),
+      );
+    }
+  }
+
+  /**
+   * If `e` is an HTTPError caused by a secondary rate limit, records the block
+   * to the shared state file and re-throws as GitHubRateLimitError.
+   * Returns without throwing when `e` is not a secondary rate limit.
+   */
+  private async detectAndRecordSecondaryRateLimit(e: unknown): Promise<void> {
+    if (!(e instanceof HTTPError)) return;
+    let bodyText = '';
+    try {
+      bodyText = await e.response.clone().text();
+    } catch {
+      // ky 2.x may have already consumed the body
+    }
+    const nowMs = Date.now();
+    if (!isSecondaryRateLimit(e.response.headers, bodyText, nowMs)) return;
+    const backoffMs = computeSecondaryRateLimitBackoffMs(
+      e.response.headers,
+      nowMs,
+    );
+    writeSecondaryRateLimitState(
+      nowMs + backoffMs,
+      nowMs,
+      this.stateFilePath,
+    );
+    throw new GitHubRateLimitError(
+      `HTTP ${e.response.status} GitHub API secondary rate limit exceeded`,
+      new Date(nowMs + backoffMs).toISOString(),
+    );
+  }
+
   createComment = async (
     issueUrl: string,
     comment: string,
@@ -125,6 +181,8 @@ export class RestIssueRepository
       }
     }
 
+    this.checkBreakerOrThrow();
+
     let result: {
       user: { login: string } | null;
       body: string;
@@ -147,6 +205,7 @@ export class RestIssueRepository
           html_url: string;
         }>();
     } catch (e) {
+      await this.detectAndRecordSecondaryRateLimit(e);
       if (e instanceof HTTPError) {
         let bodyText = '';
         try {
@@ -182,13 +241,19 @@ export class RestIssueRepository
     assignees: string[],
     labels: string[],
   ): Promise<number> => {
-    const response = await ky
-      .post(`https://api.github.com/repos/${owner}/${repo}/issues`, {
-        json: { title, body, assignees, labels },
-        headers: { Authorization: `token ${this.ghToken}` },
-      })
-      .json<{ number: number }>();
-    return response.number;
+    this.checkBreakerOrThrow();
+    try {
+      const response = await ky
+        .post(`https://api.github.com/repos/${owner}/${repo}/issues`, {
+          json: { title, body, assignees, labels },
+          headers: { Authorization: `token ${this.ghToken}` },
+        })
+        .json<{ number: number }>();
+      return response.number;
+    } catch (e) {
+      await this.detectAndRecordSecondaryRateLimit(e);
+      throw e;
+    }
   };
   getIssue = async (
     issueUrl: string,
@@ -232,6 +297,7 @@ export class RestIssueRepository
     };
   };
   updateIssue = async (issue: Issue) => {
+    this.checkBreakerOrThrow();
     try {
       await ky.patch(
         `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
@@ -247,6 +313,7 @@ export class RestIssueRepository
         },
       );
     } catch (e) {
+      await this.detectAndRecordSecondaryRateLimit(e);
       if (e instanceof HTTPError) {
         const bodyText = await e.response
           .clone()
@@ -269,33 +336,46 @@ export class RestIssueRepository
     issue: Pick<Issue, 'org' | 'repo' | 'number'>,
     body: string,
   ): Promise<void> => {
-    await ky.patch(
-      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
-      {
-        json: { body },
-        headers: { Authorization: `token ${this.ghToken}` },
-      },
-    );
+    this.checkBreakerOrThrow();
+    try {
+      await ky.patch(
+        `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
+        {
+          json: { body },
+          headers: { Authorization: `token ${this.ghToken}` },
+        },
+      );
+    } catch (e) {
+      await this.detectAndRecordSecondaryRateLimit(e);
+      throw e;
+    }
   };
 
   updateLabels = async (
     issue: Issue,
     labels: Issue['labels'],
   ): Promise<void> => {
-    await ky.put(
-      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels`,
-      {
-        json: { labels },
-        headers: {
-          Authorization: `token ${this.ghToken}`,
-          Accept: 'application/vnd.github.v3+json',
+    this.checkBreakerOrThrow();
+    try {
+      await ky.put(
+        `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels`,
+        {
+          json: { labels },
+          headers: {
+            Authorization: `token ${this.ghToken}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
         },
-      },
-    );
+      );
+    } catch (e) {
+      await this.detectAndRecordSecondaryRateLimit(e);
+      throw e;
+    }
     return;
   };
 
   removeLabel = async (issue: Issue, label: string): Promise<void> => {
+    this.checkBreakerOrThrow();
     try {
       await ky.delete(
         `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}/labels/${encodeURIComponent(label)}`,
@@ -307,6 +387,7 @@ export class RestIssueRepository
         },
       );
     } catch (e) {
+      await this.detectAndRecordSecondaryRateLimit(e);
       if (e instanceof HTTPError && e.response.status === 404) {
         return;
       }
@@ -331,13 +412,22 @@ export class RestIssueRepository
       );
     } catch (e) {
       if (e instanceof HTTPError && e.response.status === 404) {
-        await ky.post(`https://api.github.com/repos/${org}/${repo}/labels`, {
-          json: { name: labelName, color: 'ededed' },
-          headers: {
-            Authorization: `token ${this.ghToken}`,
-            Accept: 'application/vnd.github.v3+json',
-          },
-        });
+        this.checkBreakerOrThrow();
+        try {
+          await ky.post(
+            `https://api.github.com/repos/${org}/${repo}/labels`,
+            {
+              json: { name: labelName, color: 'ededed' },
+              headers: {
+                Authorization: `token ${this.ghToken}`,
+                Accept: 'application/vnd.github.v3+json',
+              },
+            },
+          );
+        } catch (postErr) {
+          await this.detectAndRecordSecondaryRateLimit(postErr);
+          throw postErr;
+        }
       } else {
         throw e;
       }
@@ -348,13 +438,19 @@ export class RestIssueRepository
     issue: Pick<Issue, 'org' | 'repo' | 'number'>,
     assigneeList: Member['name'][],
   ): Promise<void> => {
-    await ky.patch(
-      `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
-      {
-        json: { assignees: assigneeList },
-        headers: { Authorization: `token ${this.ghToken}` },
-      },
-    );
+    this.checkBreakerOrThrow();
+    try {
+      await ky.patch(
+        `https://api.github.com/repos/${issue.org}/${issue.repo}/issues/${issue.number}`,
+        {
+          json: { assignees: assigneeList },
+          headers: { Authorization: `token ${this.ghToken}` },
+        },
+      );
+    } catch (e) {
+      await this.detectAndRecordSecondaryRateLimit(e);
+      throw e;
+    }
   };
 
   searchIssues = async (query: string): Promise<SearchedIssue[]> => {
