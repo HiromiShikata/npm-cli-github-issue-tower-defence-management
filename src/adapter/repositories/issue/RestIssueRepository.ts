@@ -321,8 +321,7 @@ export class RestIssueRepository
         let bodyText = '';
         try {
           bodyText = await e.response.clone().text();
-        } catch {
-        }
+        } catch {}
         if (
           hasRateLimitSignals(e.response.status, e.response.headers, bodyText)
         ) {
