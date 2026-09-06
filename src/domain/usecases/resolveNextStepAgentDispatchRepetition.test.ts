@@ -252,7 +252,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       const comment =
         result.type === 'escalateSilentRedispatch' ? result.comment : '';
       expect(comment).not.toContain('Failed to receive a report');
-      expect(comment.toLowerCase()).toContain('owner');
+      expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
 
     it('emits a no-report message when no reports are present at escalation', () => {
