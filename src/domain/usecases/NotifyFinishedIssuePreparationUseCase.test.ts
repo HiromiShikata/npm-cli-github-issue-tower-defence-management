@@ -4969,6 +4969,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       const issueUrl = 'https://github.com/user/repo/issues/1';
       const blockerIssueUrl = 'https://github.com/user/repo/issues/42';
       const blockerStoryId = 'blocker-story-id';
+      const blockerProjectItemId = 'blocker-project-item-id';
       const projectWithStory = createMockProject({
         dependedIssueUrlSeparatedByComma: {
           name: 'Depended Issue URL',
@@ -4998,10 +4999,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           },
         },
       });
-      const blockerIssueObject = createMockIssue({
-        url: blockerIssueUrl,
-        itemId: 'blocker-item-id',
-      });
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
 
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithStory);
@@ -5014,7 +5011,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       ]);
       mockIssueRepository.searchIssue.mockResolvedValue([]);
       mockIssueRepository.createNewIssue.mockResolvedValue(42);
-      mockIssueRepository.getIssueByUrl.mockResolvedValue(blockerIssueObject);
+      mockIssueRepository.addIssueToProject.mockResolvedValue(
+        blockerProjectItemId,
+      );
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -5029,9 +5028,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         projectWithStory,
         blockerIssueUrl,
       );
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+      expect(mockIssueRepository.updateStoryByProjectItemId).toHaveBeenCalledWith(
         expect.objectContaining({ story: projectWithStory.story }),
-        blockerIssueObject,
+        blockerProjectItemId,
         blockerStoryId,
       );
     });

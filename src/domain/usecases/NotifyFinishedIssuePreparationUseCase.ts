@@ -734,16 +734,15 @@ export class NotifyFinishedIssuePreparationUseCase {
         s.name.toLowerCase().includes('workflow blocker'),
       );
       if (workflowBlockerStory) {
-        await this.issueRepository.addIssueToProject(project, blockerIssueUrl);
-        const blockerIssue =
-          await this.issueRepository.getIssueByUrl(blockerIssueUrl);
-        if (blockerIssue) {
-          await this.issueRepository.updateStory(
-            { ...project, story: project.story },
-            blockerIssue,
-            workflowBlockerStory.id,
-          );
-        }
+        const projectItemId = await this.issueRepository.addIssueToProject(
+          project,
+          blockerIssueUrl,
+        );
+        await this.issueRepository.updateStoryByProjectItemId(
+          { ...project, story: project.story },
+          projectItemId,
+          workflowBlockerStory.id,
+        );
       }
     }
 

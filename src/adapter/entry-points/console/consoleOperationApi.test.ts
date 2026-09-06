@@ -2189,7 +2189,7 @@ describe('consoleOperationApi', () => {
 
     beforeEach(() => {
       issueRepository.createNewIssue.mockResolvedValue(42);
-      issueRepository.addIssueToProject.mockResolvedValue(undefined);
+      issueRepository.addIssueToProject.mockResolvedValue('');
     });
 
     it('creates the issue, adds it to the project, and sets the story', async () => {

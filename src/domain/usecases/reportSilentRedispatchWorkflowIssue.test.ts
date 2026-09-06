@@ -80,7 +80,7 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
       searchIssue: jest.fn().mockResolvedValue([]),
       createNewIssue: jest.fn().mockResolvedValue(99),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
-      addIssueToProject: jest.fn().mockResolvedValue(undefined),
+      addIssueToProject: jest.fn().mockResolvedValue(''),
       getIssueByUrl: jest.fn().mockResolvedValue(null),
       updateStory: jest.fn().mockResolvedValue(undefined),
     };
