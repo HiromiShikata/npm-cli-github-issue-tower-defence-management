@@ -1,3 +1,10 @@
+## [2.68.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.68.0...v2.68.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **console:** expand comments panel for PR items and show last comment as compact inline line ([#2127](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2127)) ([aec1659](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/aec165923c9136bfd7e435c6be5baf0d816b87a6)), closes [HiromiShikata/umino-corporait-operation#31439](https://github.com/HiromiShikata/umino-corporait-operation/issues/31439)
+
 # [2.68.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.67.1...v2.68.0) (2026-09-06)
 
 
