@@ -457,6 +457,25 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
   });
 
+  it('should proceed normally when issue status is In Tmux by agent', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'In Tmux by agent',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+    await expect(
+      useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      }),
+    ).resolves.not.toThrow();
+  });
+
   it('should throw IllegalIssueStatusError when issue status is not Preparation, not Done, and not Awaiting Workspace', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
