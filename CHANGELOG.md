@@ -1,3 +1,10 @@
+## [2.71.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.71.1...v2.71.2) (2026-09-06)
+
+
+### Bug Fixes
+
+* **console-comment-list:** wrap expanded body to full-width row to remove left-margin indentation ([#2167](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2167)) ([ae1444d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ae1444dba0ae963f9e672ce5cf8fb615ff49ad7b)), closes [HiromiShikata/umino-corporait-operation#31447](https://github.com/HiromiShikata/umino-corporait-operation/issues/31447)
+
 ## [2.71.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.71.0...v2.71.1) (2026-09-06)
 
 
