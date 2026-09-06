@@ -1,6 +1,7 @@
 import { FieldOption } from './Project';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'Awaiting Workspace';
+export const AWAITING_OWNER_STATUS_NAME = 'Awaiting Owner';
 export const PREPARATION_STATUS_NAME = 'Preparation';
 export const FAILED_PREPARATION_STATUS_NAME = 'Failed Preparation';
 export const AWAITING_QUALITY_CHECK_STATUS_NAME = 'Awaiting Quality Check';
@@ -26,6 +27,10 @@ export const REQUIRED_WORKFLOW_STATUSES: WorkflowStatusDefinition[] = [
   {
     name: AWAITING_WORKSPACE_STATUS_NAME,
     color: 'BLUE',
+  },
+  {
+    name: AWAITING_OWNER_STATUS_NAME,
+    color: 'ORANGE',
   },
   {
     name: PREPARATION_STATUS_NAME,
