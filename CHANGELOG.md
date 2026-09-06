@@ -1,3 +1,16 @@
+# [2.67.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.66.0...v2.67.0) (2026-09-06)
+
+
+### Bug Fixes
+
+* **attach-session:** fall back to process-tree scan when cl session registry is stale ([#2125](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2125)) ([0e59892](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0e5989269204bd32f644ef59fcbbcb089b0e9114))
+* **RevertNotReadyReviewQueueIssueUseCase:** include AQC PR items in pre-cycle getOpenPullRequests batch ([#2133](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2133)) ([61beacc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/61beacce54d59425bb92f16b0ba2c23e6089735b)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#2129](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2129)
+
+
+### Features
+
+* **rest-client-log:** add method, path, and caller to REST rate-limit log line ([#2130](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2130)) ([882d2bf](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/882d2bfcbefc6e050f1587fd95dbeaa2078777d8)), closes [#2124](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2124)
+
 # [2.66.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.65.1...v2.66.0) (2026-09-06)
 
 
