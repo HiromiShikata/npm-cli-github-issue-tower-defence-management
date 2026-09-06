@@ -1164,6 +1164,22 @@ body {
   border: 1px solid #30363d;
   border-radius: 8px;
   margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.console-comment-toggle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
 }
 
 .console-comment-show-all {
@@ -1214,13 +1230,14 @@ body {
   font-size: 0.75rem;
 }
 
-.console-comment[data-expanded='true'] {
+.console-comment.is-expanded {
   flex-wrap: wrap;
+  overflow: visible;
   white-space: normal;
 }
 
 .console-comment-body-expanded {
-  flex: 0 0 100%;
+  flex-basis: 100%;
   min-width: 0;
 }
 
