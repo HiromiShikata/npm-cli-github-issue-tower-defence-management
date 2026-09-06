@@ -360,7 +360,7 @@ const CONSOLE_E2E_STORIES_SNAPSHOT = {
           story: 'TDPM Console port',
           status: null,
           agent: 'developer',
-          nextActionDate: '2026-06-20',
+          nextActionDate: '2026-06-20T00:00:00.000Z',
           nextActionHour: 9,
           dependedIssueUrls: [
             `https://github.com/${REPO_NAME_WITH_OWNER}/issues/845`,

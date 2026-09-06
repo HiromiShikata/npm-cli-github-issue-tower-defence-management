@@ -923,7 +923,7 @@ describe('ConsoleStoryList', () => {
         <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
       );
       fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
-      expect(getByText('2026-07-10T00:00:00.000Z')).toBeInTheDocument();
+      expect(getByText('2026-07-10')).toBeInTheDocument();
     });
 
     it('shows nextActionHour when set', () => {

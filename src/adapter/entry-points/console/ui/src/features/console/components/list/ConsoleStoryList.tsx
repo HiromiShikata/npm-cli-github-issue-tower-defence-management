@@ -243,7 +243,9 @@ const StoryTaskList = ({ items }: StoryTaskListProps) => (
             : '—'}
         </span>
         <span className="console-story-task-next-action-date">
-          {item.nextActionDate ?? '—'}
+          {item.nextActionDate !== null
+            ? item.nextActionDate.slice(0, 10)
+            : '—'}
         </span>
         <span className="console-story-task-next-action-hour">
           {item.nextActionHour !== null ? String(item.nextActionHour) : '—'}
