@@ -4,7 +4,6 @@ import { Project } from '../entities/Project';
 import { Comment } from '../entities/Comment';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { AGENT_FIELD_NAME } from '../entities/RequiredProjectField';
-import { issueReactivationTriggerStartOfTomorrow } from './issueReactivationTriggerIsPending';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -1314,11 +1313,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('sets next action date to tomorrow when dispatch loop escalation triggers Failed Preparation', async () => {
-    const now = new Date('2026-09-06T10:00:00Z');
-    jest.useFakeTimers();
-    jest.setSystemTime(now);
-
+  it('does not set next action date when dispatch loop escalation triggers Failed Preparation', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1352,11 +1347,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       allowedIssueAuthors: ['test-user'],
     });
 
-    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
-      'https://github.com/user/repo/issues/1',
-      mockProject,
-      issueReactivationTriggerStartOfTomorrow(new Date()),
-    );
+    expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
   });
 
   it('should keep dispatching when a human comment separates the repeated dispatches', async () => {
@@ -1634,11 +1625,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('sets next action date to tomorrow when auto-reject escalation triggers Failed Preparation', async () => {
-    const now = new Date('2026-09-06T10:00:00Z');
-    jest.useFakeTimers();
-    jest.setSystemTime(now);
-
+  it('does not set next action date when auto-reject escalation triggers Failed Preparation', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1661,11 +1648,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       allowedIssueAuthors: ['test-user'],
     });
 
-    expect(mockIssueRepository.updateNextActionDate).toHaveBeenCalledWith(
-      'https://github.com/user/repo/issues/1',
-      mockProject,
-      issueReactivationTriggerStartOfTomorrow(new Date()),
-    );
+    expect(mockIssueRepository.updateNextActionDate).not.toHaveBeenCalled();
   });
 
   it('should advance to Awaiting Quality Check and skip escalation when current check passes even if prior rejection threshold is met', async () => {
