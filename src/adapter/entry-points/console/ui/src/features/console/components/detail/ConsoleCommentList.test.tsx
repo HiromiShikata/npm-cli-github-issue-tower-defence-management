@@ -231,6 +231,34 @@ describe('ConsoleCommentList', () => {
     ).toBeNull();
   });
 
+  it('collapses an expanded comment in summary mode when clicked again', () => {
+    const multiLineComment = {
+      author: 'reviewer',
+      body: 'First line summary.\n\nSecond paragraph detail.',
+      createdAt: '2026-06-17T08:00:00.000Z',
+      url: null,
+    };
+    const secondComment = {
+      author: 'HiromiShikata',
+      body: 'Acknowledged.',
+      createdAt: '2026-06-17T09:00:00.000Z',
+      url: null,
+    };
+    const { getAllByRole, queryByText } = render(
+      <ConsoleCommentList
+        comments={[multiLineComment, secondComment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    const articles = getAllByRole('article');
+    fireEvent.click(articles[0]);
+    expect(queryByText('Second paragraph detail.')).toBeInTheDocument();
+    fireEvent.click(articles[0]);
+    expect(queryByText('Second paragraph detail.')).toBeNull();
+  });
+
   it('sets data-expanded on the article to drive wrap layout that prevents the body from being indented by author and time widths', () => {
     const comment = {
       author: 'agent',
