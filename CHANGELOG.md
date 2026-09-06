@@ -1,3 +1,11 @@
+## [2.69.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.0...v2.69.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **githubGraphqlClient:** retry POST requests on transient 5xx from GitHub GraphQL API ([cf345ea](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cf345ea3303fcc4aa500b2b0ed4bacd180a4f9fe))
+* **RevertNotReadyReviewQueueIssueUseCase:** include PR items in pre-cycle getOpenPullRequests batch ([#2136](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2136)) ([b5fd696](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b5fd696fabeaba98b4b3cea02f42227b13136258))
+
 # [2.69.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.68.3...v2.69.0) (2026-09-06)
 
 
