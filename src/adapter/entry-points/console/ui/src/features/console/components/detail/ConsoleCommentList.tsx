@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import type { ConsoleRepoContext } from '../../lib/markdown';
 import { formatRelativeTime } from '../../logic/relativeTime';
@@ -9,6 +9,9 @@ import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 
 const extractFirstLine = (body: string): string =>
   body.split('\n').find((line) => line.trim() !== '') ?? '';
+
+const buildCommentKey = (comment: ConsoleComment): string =>
+  `${comment.author}:${comment.createdAt}:${comment.body}`;
 
 export type ConsoleCommentListProps = {
   comments: ConsoleComment[];
@@ -33,24 +36,19 @@ export const ConsoleCommentList = ({
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
-  const [expandedCommentKeys, setExpandedCommentKeys] = useState<Set<string>>(
-    new Set(),
-  );
+
+  const latestKey =
+    comments.length > 0
+      ? buildCommentKey(comments[comments.length - 1])
+      : null;
+
+  useEffect(() => {
+    if (latestKey === null) return;
+    setExpandedKeys((prev) => new Set([...prev, latestKey]));
+  }, [latestKey]);
 
   const toggleExpanded = (key: string) => {
     setExpandedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  };
-
-  const toggleExpandedCommentKey = (key: string) => {
-    setExpandedCommentKeys((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
@@ -87,31 +85,16 @@ export const ConsoleCommentList = ({
         </button>
       )}
       {comments.map((comment) => {
-        const commentKey = `${comment.author}:${comment.createdAt}`;
-        const longKey = `${comment.author}:${comment.createdAt}:${comment.body}`;
-        const showSummary =
-          isSummaryMode && !expandedCommentKeys.has(commentKey);
-        const isExpanded = expandedKeys.has(longKey);
-        const showFullBody = isSummaryMode
-          ? expandedCommentKeys.has(commentKey)
-          : isExpanded;
+        const key = buildCommentKey(comment);
+        const isExpanded = expandedKeys.has(key);
         return (
           <article
-            key={commentKey}
-            data-expanded={showFullBody}
-            className={`console-comment${showSummary ? ' console-comment--expandable' : ''}`}
-            onClick={
-              !isSummaryMode
-                ? () => toggleExpanded(longKey)
-                : () => toggleExpandedCommentKey(commentKey)
-            }
+            key={key}
+            className={`console-comment${isExpanded ? ' is-expanded' : isSummaryMode ? ' console-comment--expandable' : ''}`}
+            onClick={() => toggleExpanded(key)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
-                if (!isSummaryMode) {
-                  toggleExpanded(longKey);
-                } else {
-                  toggleExpandedCommentKey(commentKey);
-                }
+                toggleExpanded(key);
               }
             }}
           >
@@ -133,12 +116,12 @@ export const ConsoleCommentList = ({
                 ⚡
               </a>
             )}
-            {!showFullBody && (
+            {!isExpanded && (
               <span className="console-comment-body-preview">
                 {extractFirstLine(comment.body)}
               </span>
             )}
-            {showFullBody && (
+            {isExpanded && (
               <div className="console-comment-body-expanded">
                 <ConsoleMarkdownContent
                   body={comment.body}

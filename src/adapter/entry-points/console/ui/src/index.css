@@ -1164,6 +1164,7 @@ body {
   border: 1px solid #30363d;
   border-radius: 8px;
   margin-bottom: 4px;
+  cursor: pointer;
 }
 
 .console-comment-show-all {
@@ -1214,13 +1215,14 @@ body {
   font-size: 0.75rem;
 }
 
-.console-comment[data-expanded='true'] {
+.console-comment.is-expanded {
   flex-wrap: wrap;
+  overflow: visible;
   white-space: normal;
 }
 
 .console-comment-body-expanded {
-  flex: 0 0 100%;
+  flex-basis: 100%;
   min-width: 0;
 }
 

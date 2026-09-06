@@ -4,7 +4,47 @@ import { ConsoleCommentList } from './ConsoleCommentList';
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 
 describe('ConsoleCommentList', () => {
-  it('shows first line of every comment in summary mode with a show-all button to exit', () => {
+  it('auto-expands the latest comment on initial render', () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'Latest comment\nSecond line',
+      createdAt: '2026-06-17T10:00:00.000Z',
+      url: null,
+    };
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    expect(
+      container.querySelector('.console-comment-body-expanded'),
+    ).not.toBeNull();
+    expect(container.querySelector('.console-comment-body-preview')).toBeNull();
+  });
+
+  it('adds is-expanded class to the latest comment article on initial render', () => {
+    const comment = {
+      author: 'agent',
+      body: 'Content',
+      createdAt: '2026-09-01T10:00:00.000Z',
+      url: null,
+    };
+    const { container } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    const article = container.querySelector('.console-comment');
+    expect(article?.classList.contains('is-expanded')).toBe(true);
+  });
+
+  it('shows first line of non-latest comments and full body of latest in summary mode', () => {
     const firstComment = {
       author: 'reviewer',
       body: 'First line\nFirst detail',
@@ -17,7 +57,7 @@ describe('ConsoleCommentList', () => {
       createdAt: '2026-06-17T10:00:00.000Z',
       url: null,
     };
-    const { getByText, queryByText } = render(
+    const { getByText, queryByText, container } = render(
       <ConsoleCommentList
         comments={[firstComment, latestComment]}
         isLoading={false}
@@ -27,11 +67,16 @@ describe('ConsoleCommentList', () => {
     );
     expect(getByText('First line')).toBeInTheDocument();
     expect(queryByText('First detail')).toBeNull();
-    expect(getByText('Latest line')).toBeInTheDocument();
-    expect(queryByText('Latest detail')).toBeNull();
+    const articles = container.querySelectorAll('.console-comment');
+    const latestArticle = articles[articles.length - 1];
+    expect(
+      latestArticle.querySelector('.console-comment-body-expanded'),
+    ).not.toBeNull();
+    expect(
+      latestArticle.querySelector('.console-comment-body-preview'),
+    ).toBeNull();
     fireEvent.click(getByText('Show all 2'));
     expect(getByText('First line')).toBeInTheDocument();
-    expect(getByText('Latest line')).toBeInTheDocument();
   });
 
   it('renders each comment as a single inline line without a separate header block', () => {
@@ -41,7 +86,7 @@ describe('ConsoleCommentList', () => {
       createdAt: '2026-06-17T08:00:00.000Z',
       url: null,
     };
-    const { getByText, container } = render(
+    const { container } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
@@ -49,16 +94,17 @@ describe('ConsoleCommentList', () => {
         now={now}
       />,
     );
-    expect(getByText('Hello from agent')).toBeInTheDocument();
+    const article = container.querySelector('.console-comment');
+    if (!article) throw new Error('article not found');
+    fireEvent.click(article);
     expect(container.querySelector('.console-markdown')).toBeNull();
     expect(container.querySelector('.console-comment-header')).toBeNull();
-    const article = container.querySelector('.console-comment');
-    const authorEl = article?.querySelector('.console-comment-author');
-    const bodyEl = article?.querySelector('.console-comment-body-preview');
+    const authorEl = article.querySelector('.console-comment-author');
+    const bodyEl = article.querySelector('.console-comment-body-preview');
     expect(authorEl).not.toBeNull();
     expect(bodyEl).not.toBeNull();
-    expect(article?.contains(authorEl ?? null)).toBe(true);
-    expect(article?.contains(bodyEl ?? null)).toBe(true);
+    expect(article.contains(authorEl ?? null)).toBe(true);
+    expect(article.contains(bodyEl ?? null)).toBe(true);
   });
 
   it('expands an individual comment when clicked in summary mode', () => {
@@ -236,7 +282,7 @@ describe('ConsoleCommentList', () => {
       createdAt: '2026-09-01T10:00:00.000Z',
       url: null,
     };
-    const { container, getByText } = render(
+    const { container } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
@@ -244,23 +290,27 @@ describe('ConsoleCommentList', () => {
         now={now}
       />,
     );
-    expect(getByText('First line of body')).toBeInTheDocument();
     expect(
       container.querySelector('.console-comment-body-expanded'),
-    ).toBeNull();
+    ).not.toBeNull();
+    expect(container.querySelector('.console-comment-body-preview')).toBeNull();
     const article = container.querySelector('.console-comment');
-    expect(article).not.toBeNull();
     if (!article) throw new Error('article not found');
     fireEvent.click(article);
     expect(
       container.querySelector('.console-comment-body-expanded'),
+    ).toBeNull();
+    expect(
+      container.querySelector('.console-comment-body-preview'),
     ).not.toBeNull();
-    const expanded = container.querySelector('.console-comment-body-expanded');
-    expect(expanded?.textContent).toContain('Second line of body');
+    expect(
+      container.querySelector('.console-comment-body-preview')?.textContent,
+    ).toBe('First line of body');
     fireEvent.click(article);
     expect(
       container.querySelector('.console-comment-body-expanded'),
-    ).toBeNull();
+    ).not.toBeNull();
+    expect(container.querySelector('.console-comment-body-preview')).toBeNull();
   });
 
   it('collapses an expanded comment in summary mode when clicked again', () => {
