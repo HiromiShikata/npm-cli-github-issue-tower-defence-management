@@ -6508,7 +6508,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFetchedAt: '2026-01-01T00:00:00.000Z',
         lastFullFetchAt: '2026-01-01T00:00:00.000Z',
         project: storyProject,
-        issues: [{ ...buildCachedIssueRecord(testIssue.url, testIssue.title), itemId: testIssue.itemId }],
+        issues: [
+          {
+            ...buildCachedIssueRecord(testIssue.url, testIssue.title),
+            itemId: testIssue.itemId,
+          },
+        ],
       };
       localStorageCacheRepository.getSingle.mockResolvedValue(existingCache);
       localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
@@ -6551,7 +6556,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFetchedAt: '2026-01-01T00:00:00.000Z',
         lastFullFetchAt: '2026-01-01T00:00:00.000Z',
         project: storyProject,
-        issues: [buildCachedIssueRecord('https://github.com/user/repo/issues/99', 'Other Issue')],
+        issues: [
+          buildCachedIssueRecord(
+            'https://github.com/user/repo/issues/99',
+            'Other Issue',
+          ),
+        ],
       };
       localStorageCacheRepository.getSingle.mockResolvedValue(existingCache);
 
@@ -6592,11 +6602,20 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         lastFetchedAt: '2026-01-01T00:00:00.000Z',
         lastFullFetchAt: '2026-01-01T00:00:00.000Z',
         project: storyProject,
-        issues: [{ ...buildCachedIssueRecord(testIssue.url, testIssue.title), itemId: testIssue.itemId }],
+        issues: [
+          {
+            ...buildCachedIssueRecord(testIssue.url, testIssue.title),
+            itemId: testIssue.itemId,
+          },
+        ],
       };
       localStorageCacheRepository.getSingle.mockResolvedValue(existingCache);
 
-      await repository.updateStory(storyProject, testIssue, 'nonexistent-option-id');
+      await repository.updateStory(
+        storyProject,
+        testIssue,
+        'nonexistent-option-id',
+      );
 
       expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
     });

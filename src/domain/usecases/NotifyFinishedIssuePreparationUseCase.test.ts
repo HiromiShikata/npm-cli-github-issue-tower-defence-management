@@ -6614,7 +6614,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           name: AGENT_FIELD_NAME,
           fieldId: 'agent-field-id',
           options: [
-            { id: 'opt-tdpm', name: 'tdpm-workflow-improver', color: 'GRAY', description: '' },
+            {
+              id: 'opt-tdpm',
+              name: 'tdpm-workflow-improver',
+              color: 'GRAY',
+              description: '',
+            },
           ],
         },
         story: {
@@ -6635,7 +6640,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
               description: '',
             },
           ],
-          workflowManagementStory: { id: 'wms-id', name: 'workflow management' },
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
         },
       });
 
