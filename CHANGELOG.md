@@ -1,3 +1,16 @@
+# [2.64.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.7...v2.64.0) (2026-09-06)
+
+
+### Bug Fixes
+
+* **dedup:** throw GitHubRateLimitError from preflight fetch when rate limited ([#2094](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2094)) ([8946af8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8946af85a55d0874069bdcc771687d71dd71cf1e))
+* **rate-limit:** add abuse detection phrase to SECONDARY_RATE_LIMIT_BODY_PATTERN ([#2113](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2113)) ([c72c749](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c72c749f51929eeea5fe87021310b9924b4dd845))
+
+
+### Features
+
+* **rest-rate-limit:** log x-ratelimit-* headers from REST responses ([#2112](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2112)) ([160b63b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/160b63ba3216479cec38964ddd1f06ecf56c1138))
+
 ## [2.63.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.63.6...v2.63.7) (2026-09-06)
 
 
