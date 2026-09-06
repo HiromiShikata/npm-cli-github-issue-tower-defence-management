@@ -214,6 +214,16 @@ describe('RestProjectRepository', () => {
         name: 'nextactiondate',
         fieldId: 'PVTF_nextactiondate',
       });
+      expect(mockGet).toHaveBeenCalledWith(
+        'https://api.github.com/users/HiromiShikata/projectsV2/48',
+        {
+          headers: {
+            Authorization: 'token dummy-token',
+            Accept: 'application/vnd.github+json',
+          },
+          timeout: GITHUB_REST_REQUEST_TIMEOUT_MS,
+        },
+      );
     });
 
     it('should return null when the project no longer exists at that owner and number', async () => {
