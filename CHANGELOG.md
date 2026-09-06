@@ -1,3 +1,11 @@
+## [2.69.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.3...v2.69.4) (2026-09-06)
+
+
+### Bug Fixes
+
+* **ConsoleCommentList:** clicking a comment does not expand to show full body ([#2152](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2152)) ([8aaee31](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8aaee31754749531ef6c659ae945fbba5c05d325)), closes [#2151](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2151)
+* **NotifyFinishedIssuePreparationUseCase:** use project item id from addIssueToProject to avoid empty itemId race condition ([#2150](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2150)) ([df208d0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/df208d00c214438f7be46013c310b22605915738))
+
 ## [2.69.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.69.2...v2.69.3) (2026-09-06)
 
 
