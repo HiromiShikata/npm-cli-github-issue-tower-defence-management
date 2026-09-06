@@ -1,3 +1,10 @@
+## [2.65.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.65.0...v2.65.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **queued-tab:** exclude issues with pending reactivation trigger from queued tab ([#2119](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2119)) ([6037f8a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6037f8a1b16c27177e1ef1a016e30f4fb7463da9))
+
 # [2.65.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.64.0...v2.65.0) (2026-09-06)
 
 
