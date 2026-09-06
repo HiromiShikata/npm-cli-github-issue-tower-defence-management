@@ -654,5 +654,79 @@ describe('githubRateLimitRetry', () => {
 
       expect(body).toEqual(payload);
     });
+
+    it('logs method and path from requestInfo when a successful response carries x-ratelimit-remaining', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      try {
+        const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+          new Response('{}', {
+            status: 200,
+            headers: {
+              'x-ratelimit-remaining': '42',
+              'x-ratelimit-used': '10',
+              'x-ratelimit-limit': '5000',
+              'x-ratelimit-resource': 'core',
+              'x-ratelimit-reset': '1700000000',
+            },
+          }),
+        );
+
+        await fetchWithGitHubRateLimitRetry(
+          request,
+          jest.fn().mockResolvedValue(undefined),
+          Date.now,
+          false,
+          false,
+          tmpStateFile,
+          { method: 'GET', path: '/repos/owner/repo/issues' },
+        );
+
+        expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+        const logLine: unknown = consoleLogSpy.mock.calls[0]?.[0];
+        expect(typeof logLine).toBe('string');
+        if (typeof logLine === 'string') {
+          expect(logLine).toContain('method=GET');
+          expect(logLine).toContain('path=/repos/owner/repo/issues');
+          expect(logLine).toContain('remaining=42');
+        }
+      } finally {
+        consoleLogSpy.mockRestore();
+      }
+    });
+
+    it('logs method=UNKNOWN and path=UNKNOWN when requestInfo is omitted', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      try {
+        const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+          new Response('{}', {
+            status: 200,
+            headers: { 'x-ratelimit-remaining': '100' },
+          }),
+        );
+
+        await fetchWithGitHubRateLimitRetry(
+          request,
+          jest.fn().mockResolvedValue(undefined),
+          Date.now,
+          false,
+          false,
+          tmpStateFile,
+        );
+
+        expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+        const logLine: unknown = consoleLogSpy.mock.calls[0]?.[0];
+        expect(typeof logLine).toBe('string');
+        if (typeof logLine === 'string') {
+          expect(logLine).toContain('method=UNKNOWN');
+          expect(logLine).toContain('path=UNKNOWN');
+        }
+      } finally {
+        consoleLogSpy.mockRestore();
+      }
+    });
   });
 });
