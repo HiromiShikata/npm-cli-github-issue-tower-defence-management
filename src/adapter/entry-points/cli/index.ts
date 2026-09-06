@@ -1,1748 +1,1747 @@
 #!/usr/bin/env node
-import { Command } from "commander";
-import fs from "fs";
-import YAML from "yaml";
+import { Command } from 'commander';
+import fs from 'fs';
+import YAML from 'yaml';
 
 export {
-	ConfigFile,
-	fetchProjectReadme,
-	loadConfigFile,
-	mergeConfigs,
-	parseProjectReadmeConfig,
-} from "./projectConfig";
+  ConfigFile,
+  fetchProjectReadme,
+  loadConfigFile,
+  mergeConfigs,
+  parseProjectReadmeConfig,
+} from './projectConfig';
 
-import * as path from "path";
-import type { IssueRepository } from "../../../domain/usecases/adapter-interfaces/IssueRepository";
-import { CheckIssueReviewReadinessUseCase } from "../../../domain/usecases/CheckIssueReviewReadinessUseCase";
-import { CliErrorReportUseCase } from "../../../domain/usecases/CliErrorReportUseCase";
-import { ConsoleErrorReportUseCase } from "../../../domain/usecases/ConsoleErrorReportUseCase";
-import { assertDashboardDisplayLabelsUnique } from "../../../domain/usecases/dashboard/DashboardProjectCode";
-import { isOwnerCallCalledAtValid } from "../../../domain/usecases/intmux/OwnerCallFile";
-import { NotifyFinishedIssuePreparationUseCase } from "../../../domain/usecases/NotifyFinishedIssuePreparationUseCase";
-import { RevertOrphanedPreparationUseCase } from "../../../domain/usecases/RevertOrphanedPreparationUseCase";
-import { StartPreparationUseCase } from "../../../domain/usecases/StartPreparationUseCase";
+import * as path from 'path';
+import type { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { CheckIssueReviewReadinessUseCase } from '../../../domain/usecases/CheckIssueReviewReadinessUseCase';
+import { CliErrorReportUseCase } from '../../../domain/usecases/CliErrorReportUseCase';
+import { ConsoleErrorReportUseCase } from '../../../domain/usecases/ConsoleErrorReportUseCase';
+import { assertDashboardDisplayLabelsUnique } from '../../../domain/usecases/dashboard/DashboardProjectCode';
+import { isOwnerCallCalledAtValid } from '../../../domain/usecases/intmux/OwnerCallFile';
+import { NotifyFinishedIssuePreparationUseCase } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
+import { RevertOrphanedPreparationUseCase } from '../../../domain/usecases/RevertOrphanedPreparationUseCase';
+import { StartPreparationUseCase } from '../../../domain/usecases/StartPreparationUseCase';
 
-import { FetchWebhookRepository } from "../../repositories/FetchWebhookRepository";
-import { GitHubIssueCommentRepository } from "../../repositories/GitHubIssueCommentRepository";
-import { GraphqlProjectRepository } from "../../repositories/GraphqlProjectRepository";
-import { ApiV3CheerioRestIssueRepository } from "../../repositories/issue/ApiV3CheerioRestIssueRepository";
-import { ApiV3IssueRepository } from "../../repositories/issue/ApiV3IssueRepository";
-import { GraphqlProjectItemRepository } from "../../repositories/issue/GraphqlProjectItemRepository";
-import { RestIssueRepository } from "../../repositories/issue/RestIssueRepository";
-import { GitHubRateLimitError } from "../../repositories/issue/githubRateLimitRetry";
-import { LocalCommandIssueAttachmentRepository } from "../../repositories/LocalCommandIssueAttachmentRepository";
-import { LocalStorageCacheRepository } from "../../repositories/LocalStorageCacheRepository";
-import { LocalStorageRepository } from "../../repositories/LocalStorageRepository";
-import { projectCacheDirectory } from "../../repositories/localStorageCacheDirectory";
-import { NodeLocalCommandRunner } from "../../repositories/NodeLocalCommandRunner";
-import { NodeTmuxSessionRepository } from "../../repositories/NodeTmuxSessionRepository";
-import { ProcTakeOwnershipSpawnRepository } from "../../repositories/ProcTakeOwnershipSpawnRepository";
-import { CliGitHubGraphqlRateLimitRepository } from "../../repositories/CliGitHubGraphqlRateLimitRepository";
-import { DoraMetricsWeeklyMeasureUseCase } from "../../../domain/usecases/DoraMetricsWeeklyMeasureUseCase";
-import { RestGitHubActionsRepository } from "../../repositories/RestGitHubActionsRepository";
-import { ProjectDoraConfig } from "../../../domain/entities/DoraMetrics";
+import { FetchWebhookRepository } from '../../repositories/FetchWebhookRepository';
+import { GitHubIssueCommentRepository } from '../../repositories/GitHubIssueCommentRepository';
+import { GraphqlProjectRepository } from '../../repositories/GraphqlProjectRepository';
+import { ApiV3CheerioRestIssueRepository } from '../../repositories/issue/ApiV3CheerioRestIssueRepository';
+import { ApiV3IssueRepository } from '../../repositories/issue/ApiV3IssueRepository';
+import { GraphqlProjectItemRepository } from '../../repositories/issue/GraphqlProjectItemRepository';
+import { RestIssueRepository } from '../../repositories/issue/RestIssueRepository';
+import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
+import { LocalCommandIssueAttachmentRepository } from '../../repositories/LocalCommandIssueAttachmentRepository';
+import { LocalStorageCacheRepository } from '../../repositories/LocalStorageCacheRepository';
+import { LocalStorageRepository } from '../../repositories/LocalStorageRepository';
+import { projectCacheDirectory } from '../../repositories/localStorageCacheDirectory';
+import { NodeLocalCommandRunner } from '../../repositories/NodeLocalCommandRunner';
+import { NodeTmuxSessionRepository } from '../../repositories/NodeTmuxSessionRepository';
+import { ProcTakeOwnershipSpawnRepository } from '../../repositories/ProcTakeOwnershipSpawnRepository';
+import { CliGitHubGraphqlRateLimitRepository } from '../../repositories/CliGitHubGraphqlRateLimitRepository';
+import { DoraMetricsWeeklyMeasureUseCase } from '../../../domain/usecases/DoraMetricsWeeklyMeasureUseCase';
+import { RestGitHubActionsRepository } from '../../repositories/RestGitHubActionsRepository';
+import { ProjectDoraConfig } from '../../../domain/entities/DoraMetrics';
 
 type ProjectDoraAdapterConfig = ProjectDoraConfig & {
-	ghTokenEnvVar: string | null;
+  ghTokenEnvVar: string | null;
 };
-import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from "../../../domain/usecases/resolveNextStepAgentDispatchRepetition";
-import { ProxyClaudeTokenUsageRepository } from "../../repositories/ProxyClaudeTokenUsageRepository";
-import { SystemDateRepository } from "../../repositories/SystemDateRepository";
-import * as os from "os";
+import { DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP } from '../../../domain/usecases/resolveNextStepAgentDispatchRepetition';
+import { ProxyClaudeTokenUsageRepository } from '../../repositories/ProxyClaudeTokenUsageRepository';
+import { SystemDateRepository } from '../../repositories/SystemDateRepository';
+import * as os from 'os';
 import {
-	createConsoleGithubTokenResolver,
-	createConsoleGithubTokenResolverByItemUrl,
-	createConsoleProjectRepositoryResolver,
-} from "../console/consoleGithubTokenResolver";
-import { buildReadIssueRepositoryResolver } from "../console/readOnlyTokenRotator";
-import { mintReadOnlyTokensFromKeyPaths } from "./githubAppTokenMinter";
+  createConsoleGithubTokenResolver,
+  createConsoleGithubTokenResolverByItemUrl,
+  createConsoleProjectRepositoryResolver,
+} from '../console/consoleGithubTokenResolver';
+import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
+import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
 import {
-	buildPjcodeToProjectUrl,
-	createConsoleProjectLoader,
-	createConsoleProjectResolver,
-	createPjcodeConfigChecker,
-} from "../console/consoleProjectResolver";
+  buildPjcodeToProjectUrl,
+  createConsoleProjectLoader,
+  createConsoleProjectResolver,
+  createPjcodeConfigChecker,
+} from '../console/consoleProjectResolver';
 import {
-	IssueTitleStateCache,
-	PullRequestStatusCache,
-} from "../console/consoleReadApi";
-import { ensureConsoleRunning } from "../console/ensureConsoleRunning";
-import { DEFAULT_WEB_PORT, startWebServer } from "../console/webServer";
-import { FileSystemConsoleTabsRepository } from "../handlers/FileSystemConsoleTabsRepository";
-import { InTmuxByHumanSessionTokenCountHandler } from "../handlers/InTmuxByHumanSessionTokenCountHandler";
-import { LiveSessionOauthTokenSelectHandler } from "../handlers/LiveSessionOauthTokenSelectHandler";
-import { OauthTokenSelectHandler } from "../handlers/OauthTokenSelectHandler";
+  IssueTitleStateCache,
+  PullRequestStatusCache,
+} from '../console/consoleReadApi';
+import { ensureConsoleRunning } from '../console/ensureConsoleRunning';
+import { DEFAULT_WEB_PORT, startWebServer } from '../console/webServer';
+import { FileSystemConsoleTabsRepository } from '../handlers/FileSystemConsoleTabsRepository';
+import { InTmuxByHumanSessionTokenCountHandler } from '../handlers/InTmuxByHumanSessionTokenCountHandler';
+import { LiveSessionOauthTokenSelectHandler } from '../handlers/LiveSessionOauthTokenSelectHandler';
+import { OauthTokenSelectHandler } from '../handlers/OauthTokenSelectHandler';
 import {
-	ownerCallFileAppend,
-	ownerCallFileDeleteInEveryProject,
-	ownerCallProjectCodeInInTmuxByHumanData,
-} from "../handlers/ownerCallFileStore";
-import { writeRotationOrderFile } from "../handlers/rotationOrderFileWriter";
+  ownerCallFileAppend,
+  ownerCallFileDeleteInEveryProject,
+  ownerCallProjectCodeInInTmuxByHumanData,
+} from '../handlers/ownerCallFileStore';
+import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import {
-	loadErrorReportingRepository,
-	loadLiveSessionOauthTokenSelectionSettings,
-	loadPreparationWorkerSettings,
-	loadWorkflowImprovementIssueUrl,
-	loadWorkflowIssueReporterSettings,
-	resolveFleetConfigFilePath,
-} from "./fleetConfig";
+  loadErrorReportingRepository,
+  loadLiveSessionOauthTokenSelectionSettings,
+  loadPreparationWorkerSettings,
+  loadWorkflowImprovementIssueUrl,
+  loadWorkflowIssueReporterSettings,
+  resolveFleetConfigFilePath,
+} from './fleetConfig';
 import {
-	type ConfigFile,
-	fetchProjectReadme,
-	isRecord,
-	loadConfigFile,
-	mergeConfigs,
-	parseProjectReadmeConfig,
-} from "./projectConfig";
+  type ConfigFile,
+  fetchProjectReadme,
+  isRecord,
+  loadConfigFile,
+  mergeConfigs,
+  parseProjectReadmeConfig,
+} from './projectConfig';
 
 type StartDaemonOptions = {
-	projectUrl?: string;
-	manager?: string;
-	defaultAgentName?: string;
-	defaultLlmModelName?: string;
-	fallbackLlmModelName?: string;
-	defaultLlmAgentName?: string;
-	maximumPreparingIssuesCount?: string;
-	utilizationPercentageThreshold?: string;
-	allowedIssueAuthors?: string;
-	preparationProcessCheckCommand?: string;
-	configFilePath: string;
-	fleetConfigFilePath?: string;
+  projectUrl?: string;
+  manager?: string;
+  defaultAgentName?: string;
+  defaultLlmModelName?: string;
+  fallbackLlmModelName?: string;
+  defaultLlmAgentName?: string;
+  maximumPreparingIssuesCount?: string;
+  utilizationPercentageThreshold?: string;
+  allowedIssueAuthors?: string;
+  preparationProcessCheckCommand?: string;
+  configFilePath: string;
+  fleetConfigFilePath?: string;
 };
 
 const resolvePositiveIntegerOption = (
-	rawValue: number | string | undefined,
-	optionName: string,
-	fallback: number,
+  rawValue: number | string | undefined,
+  optionName: string,
+  fallback: number,
 ): number => {
-	if (rawValue === undefined) {
-		return fallback;
-	}
-	const parsed = Number(rawValue);
-	if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
-		console.error(
-			`Invalid value for --${optionName}. It must be a positive integer.`,
-		);
-		process.exit(1);
-	}
-	return parsed;
+  if (rawValue === undefined) {
+    return fallback;
+  }
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    console.error(
+      `Invalid value for --${optionName}. It must be a positive integer.`,
+    );
+    process.exit(1);
+  }
+  return parsed;
 };
 
 type NotifyFinishedOptions = {
-	issueUrl: string;
-	projectUrl?: string;
-	thresholdForAutoReject?: string;
-	thresholdForDispatchLoop?: string;
-	workflowBlockerResolvedWebhookUrl?: string;
-	configFilePath: string;
-	fleetConfigFilePath?: string;
-	missingAgentName?: string;
-	sessionErrorLine?: string;
-	deferPreparation?: boolean;
+  issueUrl: string;
+  projectUrl?: string;
+  thresholdForAutoReject?: string;
+  thresholdForDispatchLoop?: string;
+  workflowBlockerResolvedWebhookUrl?: string;
+  configFilePath: string;
+  fleetConfigFilePath?: string;
+  missingAgentName?: string;
+  sessionErrorLine?: string;
+  deferPreparation?: boolean;
 };
 
 type CheckIssueReviewReadinessOptions = {
-	issueUrl: string;
-	projectUrl?: string;
-	configFilePath: string;
+  issueUrl: string;
+  projectUrl?: string;
+  configFilePath: string;
 };
 
 type ServeWebOptions = {
-	configFilePath: string;
-	port?: string;
-	consoleDataOutputDir?: string;
-	inTmuxDataDir?: string;
-	dashboardDir?: string;
-	dashboardDataDir?: string;
-	dashboardProjectNames?: string;
-	fleetConfigFilePath?: string;
+  configFilePath: string;
+  port?: string;
+  consoleDataOutputDir?: string;
+  inTmuxDataDir?: string;
+  dashboardDir?: string;
+  dashboardDataDir?: string;
+  dashboardProjectNames?: string;
+  fleetConfigFilePath?: string;
 };
 
 type OwnerCallFileAppendOptions = {
-	session: string;
-	calledAt: string;
-	bodyFile: string;
-	inTmuxDataDir?: string;
+  session: string;
+  calledAt: string;
+  bodyFile: string;
+  inTmuxDataDir?: string;
 };
 
 type OwnerCallFileDeleteOptions = {
-	session: string;
-	inTmuxDataDir?: string;
+  session: string;
+  inTmuxDataDir?: string;
 };
 
 const DEFAULT_IN_TMUX_DATA_DIR =
-	"/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human";
+  '/home/hiromi/0_workspaces/workspace1/jsonpub/in-tmux-by-human';
 
-const DEFAULT_DASHBOARD_DIR = "/home/hiromi/0_workspaces/workspace1/jsonpub";
+const DEFAULT_DASHBOARD_DIR = '/home/hiromi/0_workspaces/workspace1/jsonpub';
 
 const DEFAULT_DASHBOARD_DATA_DIR: string | null = null;
 
 const parseDashboardProjectNames = (raw: string | undefined): string[] => {
-	const names = (raw ?? "")
-		.split(",")
-		.map((name) => name.trim())
-		.filter((name) => name.length > 0);
-	if (names.length === 0) {
-		console.error(
-			"--dashboardProjectNames must list at least one project name",
-		);
-		return process.exit(1);
-	}
-	try {
-		assertDashboardDisplayLabelsUnique(names);
-	} catch (error) {
-		console.error(error instanceof Error ? error.message : String(error));
-		return process.exit(1);
-	}
-	return names;
+  const names = (raw ?? '')
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  if (names.length === 0) {
+    console.error(
+      '--dashboardProjectNames must list at least one project name',
+    );
+    return process.exit(1);
+  }
+  try {
+    assertDashboardDisplayLabelsUnique(names);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    return process.exit(1);
+  }
+  return names;
 };
 
 type SelectOauthTokenOptions = {
-	tokenListJsonPath?: string;
-	cacheDir?: string;
+  tokenListJsonPath?: string;
+  cacheDir?: string;
 };
 
 type SelectLiveSessionOauthTokenOptions = {
-	tokenListJsonPath?: string;
-	cacheDir?: string;
-	fleetConfigFilePath?: string;
+  tokenListJsonPath?: string;
+  cacheDir?: string;
+  fleetConfigFilePath?: string;
 };
 
 type CountInTmuxByHumanSessionsPerTokenOptions = {
-	configFilePath: string;
-	projectUrl?: string;
-	tokenListJsonPath?: string;
+  configFilePath: string;
+  projectUrl?: string;
+  tokenListJsonPath?: string;
 };
 
 type KillTmuxSessionOptions = {
-	session?: string;
-	self?: boolean;
+  session?: string;
+  self?: boolean;
 };
 
 type AttachOrCreateOptions = {
-	issueUrl: string;
+  issueUrl: string;
 };
 
 const resolveScopeLibPath = (): string | null => {
-	const explicitPath = process.env.CL_SCOPE_LIB_PATH;
-	if (explicitPath !== undefined && fs.existsSync(explicitPath)) {
-		return explicitPath;
-	}
-	const defaultPath = path.join(
-		os.homedir(),
-		"git",
-		"secretary",
-		"machine",
-		"sk",
-		"sh",
-		"cl-scope-lib.sh",
-	);
-	return fs.existsSync(defaultPath) ? defaultPath : null;
+  const explicitPath = process.env.CL_SCOPE_LIB_PATH;
+  if (explicitPath !== undefined && fs.existsSync(explicitPath)) {
+    return explicitPath;
+  }
+  const defaultPath = path.join(
+    os.homedir(),
+    'git',
+    'secretary',
+    'machine',
+    'sk',
+    'sh',
+    'cl-scope-lib.sh',
+  );
+  return fs.existsSync(defaultPath) ? defaultPath : null;
 };
 
 const buildGithubRepositoryParams = (
-	localStorageRepository: LocalStorageRepository,
-	token: string,
+  localStorageRepository: LocalStorageRepository,
+  token: string,
 ): readonly [LocalStorageRepository, string] => [localStorageRepository, token];
 
 const parseInTmuxProjectOrder = (raw: string | undefined): string[] | null => {
-	if (raw === undefined) {
-		return null;
-	}
-	return raw
-		.split(",")
-		.map((name) => name.trim())
-		.filter((name) => name.length > 0);
+  if (raw === undefined) {
+    return null;
+  }
+  return raw
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
 };
 
 interface ScheduleOptions {
-	trigger: "issue" | "schedule";
-	config: string;
-	issue?: string;
-	verbose: boolean;
-	inTmuxProjectOrder?: string;
+  trigger: 'issue' | 'schedule';
+  config: string;
+  issue?: string;
+  verbose: boolean;
+  inTmuxProjectOrder?: string;
 }
 
 export const program = new Command();
 
 program
-	.name("github-issue-tower-defence-management")
-	.description("CLI tool for GitHub Issue Tower Defence Management");
+  .name('github-issue-tower-defence-management')
+  .description('CLI tool for GitHub Issue Tower Defence Management');
 
 program
-	.command("schedule", { isDefault: true })
-	.description("Handle scheduled events (trigger: issue or schedule)")
-	.requiredOption(
-		"-t, --trigger <type>",
-		"Trigger type: issue or schedule",
-		/^(issue|schedule)$/i,
-	)
-	.requiredOption("-c, --config <path>", "Path to config YAML file")
-	.option("-v, --verbose", "Verbose output")
-	.option("-i, --issue <url>", "GitHub Issue URL")
-	.option(
-		"--inTmuxProjectOrder <names>",
-		"Comma-separated project names, in display order, for the in-tmux-by-human session list. When omitted, falls back to the inTmuxProjectOrder value in the config file.",
-	)
-	.action(async (options: ScheduleOptions) => {
-		if (options.trigger === "issue" && !options.issue) {
-			console.error('Issue URL is required when trigger type is "issue"');
-			process.exit(1);
-		}
-		if (options.trigger === "schedule") {
-			const scheduleFleetConfigFilePath = resolveFleetConfigFilePath(null);
-			process.env.TDPM_ERROR_REPORT_REPOSITORY =
-				loadErrorReportingRepository(scheduleFleetConfigFilePath) ??
-				loadConfigFile(options.config).errorReportingRepository ??
-				process.env.TDPM_ERROR_REPORT_REPOSITORY ??
-				"";
-			const { HandleScheduledEventUseCaseHandler } = await import(
-				"../handlers/HandleScheduledEventUseCaseHandler"
-			);
-			const handler = new HandleScheduledEventUseCaseHandler();
-			await handler.handle(
-				options.config,
-				options.verbose,
-				parseInTmuxProjectOrder(options.inTmuxProjectOrder),
-			);
-		}
-	});
+  .command('schedule', { isDefault: true })
+  .description('Handle scheduled events (trigger: issue or schedule)')
+  .requiredOption(
+    '-t, --trigger <type>',
+    'Trigger type: issue or schedule',
+    /^(issue|schedule)$/i,
+  )
+  .requiredOption('-c, --config <path>', 'Path to config YAML file')
+  .option('-v, --verbose', 'Verbose output')
+  .option('-i, --issue <url>', 'GitHub Issue URL')
+  .option(
+    '--inTmuxProjectOrder <names>',
+    'Comma-separated project names, in display order, for the in-tmux-by-human session list. When omitted, falls back to the inTmuxProjectOrder value in the config file.',
+  )
+  .action(async (options: ScheduleOptions) => {
+    if (options.trigger === 'issue' && !options.issue) {
+      console.error('Issue URL is required when trigger type is "issue"');
+      process.exit(1);
+    }
+    if (options.trigger === 'schedule') {
+      const scheduleFleetConfigFilePath = resolveFleetConfigFilePath(null);
+      process.env.TDPM_ERROR_REPORT_REPOSITORY =
+        loadErrorReportingRepository(scheduleFleetConfigFilePath) ??
+        loadConfigFile(options.config).errorReportingRepository ??
+        process.env.TDPM_ERROR_REPORT_REPOSITORY ??
+        '';
+      const { HandleScheduledEventUseCaseHandler } =
+        await import('../handlers/HandleScheduledEventUseCaseHandler');
+      const handler = new HandleScheduledEventUseCaseHandler();
+      await handler.handle(
+        options.config,
+        options.verbose,
+        parseInTmuxProjectOrder(options.inTmuxProjectOrder),
+      );
+    }
+  });
 
 program
-	.command("startDaemon")
-	.description("Start daemon to prepare GitHub issues")
-	.requiredOption(
-		"--configFilePath <path>",
-		"Path to config file for tower defence management",
-	)
-	.option("--projectUrl <url>", "GitHub project URL")
-	.option(
-		"--manager <login>",
-		"GitHub login of the manager; only Awaiting Workspace issues assigned to this login are picked up",
-	)
-	.option("--defaultAgentName <name>", "Default agent name")
-	.option("--defaultLlmModelName <name>", "Default LLM model name")
-	.option(
-		"--fallbackLlmModelName <name>",
-		"LLM model to fall back to when the default Sonnet model is selected but its 7-day weekly limit is exhausted across all tokens (default: claude-opus-4-8)",
-	)
-	.option("--defaultLlmAgentName <name>", "Default LLM agent name")
-	.option(
-		"--maximumPreparingIssuesCount <count>",
-		"Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)",
-	)
-	.option(
-		"--utilizationPercentageThreshold <percent>",
-		"Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)",
-	)
-	.option(
-		"--allowedIssueAuthors <authors>",
-		"Comma-separated list of allowed issue authors",
-	)
-	.option(
-		"--preparationProcessCheckCommand <template>",
-		"Shell command template with {URL} placeholder to check if a preparation process is alive",
-	)
-	.option(
-		"--fleetConfigFilePath <path>",
-		"Path to the fleet-wide YAML config file holding the preparationWorker mapping (normalConcurrentLimit, maxConcurrentWorkers, graphqlRateLimitFloor); falls back to the TDPM_FLEET_CONFIG environment variable, and to the built-in values when neither is set",
-	)
-	.action(async (options: StartDaemonOptions) => {
-		const token = process.env.GH_TOKEN;
-		if (!token) {
-			console.error("GH_TOKEN environment variable is required");
-			process.exit(1);
-		}
+  .command('startDaemon')
+  .description('Start daemon to prepare GitHub issues')
+  .requiredOption(
+    '--configFilePath <path>',
+    'Path to config file for tower defence management',
+  )
+  .option('--projectUrl <url>', 'GitHub project URL')
+  .option(
+    '--manager <login>',
+    'GitHub login of the manager; only Awaiting Workspace issues assigned to this login are picked up',
+  )
+  .option('--defaultAgentName <name>', 'Default agent name')
+  .option('--defaultLlmModelName <name>', 'Default LLM model name')
+  .option(
+    '--fallbackLlmModelName <name>',
+    'LLM model to fall back to when the default Sonnet model is selected but its 7-day weekly limit is exhausted across all tokens (default: claude-opus-4-8)',
+  )
+  .option('--defaultLlmAgentName <name>', 'Default LLM agent name')
+  .option(
+    '--maximumPreparingIssuesCount <count>',
+    'Maximum number of issues in preparation status (default: 6 per available Claude OAuth token, otherwise 6)',
+  )
+  .option(
+    '--utilizationPercentageThreshold <percent>',
+    'Per-token Claude 5h utilization % threshold; tokens at or above it are excluded from rotation. Per-token concurrency also tapers from 6 slots down to 1 as either the 5h or 7d utilization rises from 80% toward 100%, taking the more restrictive of the two (default: 90)',
+  )
+  .option(
+    '--allowedIssueAuthors <authors>',
+    'Comma-separated list of allowed issue authors',
+  )
+  .option(
+    '--preparationProcessCheckCommand <template>',
+    'Shell command template with {URL} placeholder to check if a preparation process is alive',
+  )
+  .option(
+    '--fleetConfigFilePath <path>',
+    'Path to the fleet-wide YAML config file holding the preparationWorker mapping (normalConcurrentLimit, maxConcurrentWorkers, graphqlRateLimitFloor); falls back to the TDPM_FLEET_CONFIG environment variable, and to the built-in values when neither is set',
+  )
+  .action(async (options: StartDaemonOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+    }
 
-		const configFileValues = loadConfigFile(options.configFilePath);
+    const configFileValues = loadConfigFile(options.configFilePath);
 
-		const cliOverrides: ConfigFile = {
-			projectUrl: options.projectUrl,
-			manager: options.manager,
-			defaultAgentName: options.defaultAgentName,
-			defaultLlmModelName: options.defaultLlmModelName,
-			fallbackLlmModelName: options.fallbackLlmModelName,
-			defaultLlmAgentName: options.defaultLlmAgentName,
-			maximumPreparingIssuesCount: options.maximumPreparingIssuesCount
-				? Number(options.maximumPreparingIssuesCount)
-				: undefined,
-			utilizationPercentageThreshold: options.utilizationPercentageThreshold
-				? Number(options.utilizationPercentageThreshold)
-				: undefined,
-			allowedIssueAuthors: options.allowedIssueAuthors,
-			preparationProcessCheckCommand: options.preparationProcessCheckCommand,
-		};
+    const cliOverrides: ConfigFile = {
+      projectUrl: options.projectUrl,
+      manager: options.manager,
+      defaultAgentName: options.defaultAgentName,
+      defaultLlmModelName: options.defaultLlmModelName,
+      fallbackLlmModelName: options.fallbackLlmModelName,
+      defaultLlmAgentName: options.defaultLlmAgentName,
+      maximumPreparingIssuesCount: options.maximumPreparingIssuesCount
+        ? Number(options.maximumPreparingIssuesCount)
+        : undefined,
+      utilizationPercentageThreshold: options.utilizationPercentageThreshold
+        ? Number(options.utilizationPercentageThreshold)
+        : undefined,
+      allowedIssueAuthors: options.allowedIssueAuthors,
+      preparationProcessCheckCommand: options.preparationProcessCheckCommand,
+    };
 
-		const tempProjectUrl =
-			cliOverrides.projectUrl ?? configFileValues.projectUrl;
+    const tempProjectUrl =
+      cliOverrides.projectUrl ?? configFileValues.projectUrl;
 
-		let readmeOverrides: ConfigFile = {};
-		if (tempProjectUrl) {
-			const readme = await fetchProjectReadme(tempProjectUrl, token);
-			if (readme) {
-				readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
-			}
-		}
+    let readmeOverrides: ConfigFile = {};
+    if (tempProjectUrl) {
+      const readme = await fetchProjectReadme(tempProjectUrl, token);
+      if (readme) {
+        readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
+      }
+    }
 
-		const config = mergeConfigs(
-			configFileValues,
-			cliOverrides,
-			readmeOverrides,
-		);
+    const config = mergeConfigs(
+      configFileValues,
+      cliOverrides,
+      readmeOverrides,
+    );
 
-		const fleetConfigFilePath = resolveFleetConfigFilePath(
-			options.fleetConfigFilePath ?? null,
-		);
-		process.env.TDPM_ERROR_REPORT_REPOSITORY =
-			loadErrorReportingRepository(fleetConfigFilePath) ??
-			config.errorReportingRepository ??
-			process.env.TDPM_ERROR_REPORT_REPOSITORY ??
-			"";
+    const fleetConfigFilePath = resolveFleetConfigFilePath(
+      options.fleetConfigFilePath ?? null,
+    );
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      loadErrorReportingRepository(fleetConfigFilePath) ??
+      config.errorReportingRepository ??
+      process.env.TDPM_ERROR_REPORT_REPOSITORY ??
+      '';
 
-		const projectUrl = config.projectUrl;
-		const defaultAgentName = config.defaultAgentName;
-		const manager = config.manager;
+    const projectUrl = config.projectUrl;
+    const defaultAgentName = config.defaultAgentName;
+    const manager = config.manager;
 
-		if (!projectUrl) {
-			console.error(
-				"projectUrl is required. Provide via --projectUrl, config file, or project README.",
-			);
-			process.exit(1);
-		}
-		if (!defaultAgentName) {
-			console.error(
-				"defaultAgentName is required. Provide via --defaultAgentName, config file, or project README.",
-			);
-			process.exit(1);
-		}
-		if (!manager) {
-			console.error(
-				"manager is required. Provide via the config file so that only issues assigned to the manager are picked up.",
-			);
-			process.exit(1);
-		}
+    if (!projectUrl) {
+      console.error(
+        'projectUrl is required. Provide via --projectUrl, config file, or project README.',
+      );
+      process.exit(1);
+    }
+    if (!defaultAgentName) {
+      console.error(
+        'defaultAgentName is required. Provide via --defaultAgentName, config file, or project README.',
+      );
+      process.exit(1);
+    }
+    if (!manager) {
+      console.error(
+        'manager is required. Provide via the config file so that only issues assigned to the manager are picked up.',
+      );
+      process.exit(1);
+    }
 
-		let maximumPreparingIssuesCount: number | null = null;
-		const rawMaxCount = config.maximumPreparingIssuesCount;
-		if (rawMaxCount !== undefined) {
-			const parsedCount = Number(rawMaxCount);
-			if (
-				!Number.isFinite(parsedCount) ||
-				!Number.isInteger(parsedCount) ||
-				parsedCount <= 0
-			) {
-				console.error(
-					"Invalid value for --maximumPreparingIssuesCount. It must be a positive integer.",
-				);
-				process.exit(1);
-			}
-			maximumPreparingIssuesCount = parsedCount;
-		}
+    let maximumPreparingIssuesCount: number | null = null;
+    const rawMaxCount = config.maximumPreparingIssuesCount;
+    if (rawMaxCount !== undefined) {
+      const parsedCount = Number(rawMaxCount);
+      if (
+        !Number.isFinite(parsedCount) ||
+        !Number.isInteger(parsedCount) ||
+        parsedCount <= 0
+      ) {
+        console.error(
+          'Invalid value for --maximumPreparingIssuesCount. It must be a positive integer.',
+        );
+        process.exit(1);
+      }
+      maximumPreparingIssuesCount = parsedCount;
+    }
 
-		console.log(
-			`maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? "null (default: 6 per available Claude OAuth token, otherwise 6)"}`,
-		);
+    console.log(
+      `maximumPreparingIssuesCount: ${maximumPreparingIssuesCount ?? 'null (default: 6 per available Claude OAuth token, otherwise 6)'}`,
+    );
 
-		const preparationWorkerSettings =
-			loadPreparationWorkerSettings(fleetConfigFilePath);
-		const fleetConfigSource =
-			fleetConfigFilePath !== null
-				? " (source: fleetConfig)"
-				: " (source: built-in default)";
-		console.log(
-			`Effective normalConcurrentLimit: ${preparationWorkerSettings.normalConcurrentLimit}${fleetConfigSource}`,
-		);
-		console.log(
-			`Effective maxConcurrentWorkers: ${preparationWorkerSettings.maxConcurrentWorkers}${fleetConfigSource}`,
-		);
-		console.log(
-			`Effective graphqlRateLimitFloor: ${preparationWorkerSettings.graphqlRateLimitFloor}${fleetConfigSource}`,
-		);
+    const preparationWorkerSettings =
+      loadPreparationWorkerSettings(fleetConfigFilePath);
+    const fleetConfigSource =
+      fleetConfigFilePath !== null
+        ? ' (source: fleetConfig)'
+        : ' (source: built-in default)';
+    console.log(
+      `Effective normalConcurrentLimit: ${preparationWorkerSettings.normalConcurrentLimit}${fleetConfigSource}`,
+    );
+    console.log(
+      `Effective maxConcurrentWorkers: ${preparationWorkerSettings.maxConcurrentWorkers}${fleetConfigSource}`,
+    );
+    console.log(
+      `Effective graphqlRateLimitFloor: ${preparationWorkerSettings.graphqlRateLimitFloor}${fleetConfigSource}`,
+    );
 
-		const projectName = config.projectName ?? "default";
-		const localStorageRepository = new LocalStorageRepository();
-		const cachePath = projectCacheDirectory(projectName);
-		const localStorageCacheRepository = new LocalStorageCacheRepository(
-			localStorageRepository,
-			cachePath,
-		);
-		const githubRepositoryParams = buildGithubRepositoryParams(
-			localStorageRepository,
-			token,
-		);
-		const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
-			config.githubAppPrivateKeyPaths ?? [],
-		);
-		const projectRepository = new GraphqlProjectRepository(
-			...githubRepositoryParams,
-			localStorageCacheRepository,
-			readGhTokens,
-		);
-		const apiV3IssueRepository = new ApiV3IssueRepository(
-			...githubRepositoryParams,
-		);
-		const restIssueRepository = new RestIssueRepository(
-			...githubRepositoryParams,
-			readGhTokens,
-		);
-		const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
-			...githubRepositoryParams,
-		);
-		const issueRepository = new ApiV3CheerioRestIssueRepository(
-			apiV3IssueRepository,
-			restIssueRepository,
-			graphqlProjectItemRepository,
-			localStorageCacheRepository,
-			projectRepository,
-			new SystemDateRepository(),
-			...githubRepositoryParams,
-		);
-		const localCommandRunner = new NodeLocalCommandRunner();
+    const projectName = config.projectName ?? 'default';
+    const localStorageRepository = new LocalStorageRepository();
+    const cachePath = projectCacheDirectory(projectName);
+    const localStorageCacheRepository = new LocalStorageCacheRepository(
+      localStorageRepository,
+      cachePath,
+    );
+    const githubRepositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      token,
+    );
+    const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+      config.githubAppPrivateKeyPaths ?? [],
+    );
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+      localStorageCacheRepository,
+      readGhTokens,
+    );
+    const apiV3IssueRepository = new ApiV3IssueRepository(
+      ...githubRepositoryParams,
+    );
+    const restIssueRepository = new RestIssueRepository(
+      ...githubRepositoryParams,
+      readGhTokens,
+    );
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+      ...githubRepositoryParams,
+    );
+    const issueRepository = new ApiV3CheerioRestIssueRepository(
+      apiV3IssueRepository,
+      restIssueRepository,
+      graphqlProjectItemRepository,
+      localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
+      ...githubRepositoryParams,
+    );
+    const localCommandRunner = new NodeLocalCommandRunner();
 
-		const preparationProcessCheckCommand =
-			config.preparationProcessCheckCommand;
-		if (preparationProcessCheckCommand) {
-			const revertIssueCommentRepository = new GitHubIssueCommentRepository(
-				token,
-				localStorageCacheRepository,
-			);
-			const revertUseCase = new RevertOrphanedPreparationUseCase(
-				projectRepository,
-				issueRepository,
-				revertIssueCommentRepository,
-				localCommandRunner,
-			);
-			await revertUseCase.run({
-				projectUrl,
-				preparationProcessCheckCommand,
-				thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
-				thresholdForDispatchLoop: config.thresholdForDispatchLoop,
-				awLogDirectoryPath: config.awLogDirectoryPath,
-				awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
-				labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
-				labelsNotRequiringPullRequest:
-					config.labelsNotRequiringPullRequest ?? null,
-				workflowIssueReporterSettings:
-					loadWorkflowIssueReporterSettings(fleetConfigFilePath),
-			});
-		}
+    const preparationProcessCheckCommand =
+      config.preparationProcessCheckCommand;
+    if (preparationProcessCheckCommand) {
+      const revertIssueCommentRepository = new GitHubIssueCommentRepository(
+        token,
+        localStorageCacheRepository,
+      );
+      const revertUseCase = new RevertOrphanedPreparationUseCase(
+        projectRepository,
+        issueRepository,
+        revertIssueCommentRepository,
+        localCommandRunner,
+      );
+      await revertUseCase.run({
+        projectUrl,
+        preparationProcessCheckCommand,
+        thresholdForAutoReject: config.thresholdForAutoReject ?? 3,
+        thresholdForDispatchLoop: config.thresholdForDispatchLoop,
+        awLogDirectoryPath: config.awLogDirectoryPath,
+        awLogStaleThresholdMinutes: config.awLogStaleThresholdMinutes,
+        labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+        labelsNotRequiringPullRequest:
+          config.labelsNotRequiringPullRequest ?? null,
+        workflowIssueReporterSettings:
+          loadWorkflowIssueReporterSettings(fleetConfigFilePath),
+      });
+    }
 
-		const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository(
-			config.claudeCodeOauthTokenListJsonPath ?? null,
-		);
-		const useCase = new StartPreparationUseCase(
-			projectRepository,
-			issueRepository,
-			localCommandRunner,
-			claudeTokenUsageRepository,
-			new ProcTakeOwnershipSpawnRepository(),
-			new CliGitHubGraphqlRateLimitRepository(localCommandRunner),
-		);
+    const claudeTokenUsageRepository = new ProxyClaudeTokenUsageRepository(
+      config.claudeCodeOauthTokenListJsonPath ?? null,
+    );
+    const useCase = new StartPreparationUseCase(
+      projectRepository,
+      issueRepository,
+      localCommandRunner,
+      claudeTokenUsageRepository,
+      new ProcTakeOwnershipSpawnRepository(),
+      new CliGitHubGraphqlRateLimitRepository(localCommandRunner),
+    );
 
-		const rawAllowedIssueAuthors = config.allowedIssueAuthors;
-		const allowedIssueAuthors = rawAllowedIssueAuthors
-			? rawAllowedIssueAuthors
-					.split(",")
-					.map((s) => s.trim())
-					.filter(Boolean)
-			: null;
+    const rawAllowedIssueAuthors = config.allowedIssueAuthors;
+    const allowedIssueAuthors = rawAllowedIssueAuthors
+      ? rawAllowedIssueAuthors
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : null;
 
-		const codexHomeCandidates =
-			config.codexHomeCandidates && config.codexHomeCandidates.length > 0
-				? config.codexHomeCandidates
-				: null;
+    const codexHomeCandidates =
+      config.codexHomeCandidates && config.codexHomeCandidates.length > 0
+        ? config.codexHomeCandidates
+        : null;
 
-		if (config.consoleAccessToken) {
-			const consoleProcess = await ensureConsoleRunning(
-				options.configFilePath,
-				DEFAULT_WEB_PORT,
-				Object.keys(config.consoleProjects ?? {}),
-			);
-			if (consoleProcess !== null) {
-				process.once("SIGTERM", () => {
-					consoleProcess.kill();
-					process.exit(0);
-				});
-				process.once("SIGINT", () => {
-					consoleProcess.kill();
-					process.exit(0);
-				});
-			}
-		}
+    if (config.consoleAccessToken) {
+      const consoleProcess = await ensureConsoleRunning(
+        options.configFilePath,
+        DEFAULT_WEB_PORT,
+        Object.keys(config.consoleProjects ?? {}),
+      );
+      if (consoleProcess !== null) {
+        process.once('SIGTERM', () => {
+          consoleProcess.kill();
+          process.exit(0);
+        });
+        process.once('SIGINT', () => {
+          consoleProcess.kill();
+          process.exit(0);
+        });
+      }
+    }
 
-		const preparationResult = await useCase.run({
-			projectUrl,
-			defaultAgentName,
-			defaultLlmModelName: config.defaultLlmModelName ?? null,
-			fallbackLlmModelName: config.fallbackLlmModelName ?? null,
-			defaultLlmAgentName: config.defaultLlmAgentName ?? null,
-			configFilePath: options.configFilePath,
-			maximumPreparingIssuesCount,
-			utilizationPercentageThreshold:
-				config.utilizationPercentageThreshold ?? 90,
-			allowedIssueAuthors,
-			manager,
-			codexHomeCandidates,
-			labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
-			agents: config.agents ?? null,
-			normalConcurrentLimit: preparationWorkerSettings.normalConcurrentLimit,
-			maxConcurrentWorkers: preparationWorkerSettings.maxConcurrentWorkers,
-			graphqlRateLimitFloor: preparationWorkerSettings.graphqlRateLimitFloor,
-			skipAgentAuthoredIssues: config.skipAgentAuthoredIssues ?? false,
-		});
-		if (preparationResult.rotationOrder !== null) {
-			writeRotationOrderFile(preparationResult.rotationOrder);
-		}
-	});
-
-program
-	.command("notifyFinishedIssuePreparation")
-	.description("Notify that issue preparation is finished")
-	.requiredOption(
-		"--configFilePath <path>",
-		"Path to config file for tower defence management",
-	)
-	.requiredOption("--issueUrl <url>", "GitHub issue URL")
-	.option("--projectUrl <url>", "GitHub project URL")
-	.option(
-		"--thresholdForAutoReject <count>",
-		"Threshold for auto-escalation after consecutive rejections (default: 3)",
-	)
-	.option(
-		"--thresholdForDispatchLoop <count>",
-		"Threshold for auto-escalation after one agent is dispatched this many times since the last human comment, whether it names itself or two agents name each other in turn (default: 6)",
-	)
-	.option(
-		"--workflowBlockerResolvedWebhookUrl <url>",
-		"Webhook URL to notify when a workflow blocker issue status changes to awaiting owner. Supports {URL} and {MESSAGE} placeholders.",
-	)
-	.option(
-		"--missingAgentName <name>",
-		"Agent definition name that was not found, triggering the missing-agent task creation path",
-	)
-	.option(
-		"--sessionErrorLine <line>",
-		"Exact error line from the session log to include in the task issue body",
-	)
-	.option(
-		"--deferPreparation",
-		"Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) without creating any issue; use for transient upstream failures",
-	)
-	.option(
-		"--fleetConfigFilePath <path>",
-		"Path to fleet config YAML file (also read from TDPM_FLEET_CONFIG env var)",
-	)
-	.action(async (options: NotifyFinishedOptions) => {
-		const token = process.env.GH_TOKEN;
-		if (!token) {
-			console.error("GH_TOKEN environment variable is required");
-			process.exit(1);
-		}
-
-		const configFileValues = loadConfigFile(options.configFilePath);
-
-		const cliOverrides: ConfigFile = {
-			projectUrl: options.projectUrl,
-			thresholdForAutoReject: options.thresholdForAutoReject
-				? Number(options.thresholdForAutoReject)
-				: undefined,
-			thresholdForDispatchLoop: options.thresholdForDispatchLoop
-				? Number(options.thresholdForDispatchLoop)
-				: undefined,
-			workflowBlockerResolvedWebhookUrl:
-				options.workflowBlockerResolvedWebhookUrl,
-		};
-
-		const tempProjectUrl =
-			cliOverrides.projectUrl ?? configFileValues.projectUrl;
-
-		let readmeOverrides: ConfigFile = {};
-		if (tempProjectUrl) {
-			const readme = await fetchProjectReadme(tempProjectUrl, token);
-			if (readme) {
-				readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
-			}
-		}
-
-		const config = mergeConfigs(
-			configFileValues,
-			cliOverrides,
-			readmeOverrides,
-		);
-
-		const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
-			options.fleetConfigFilePath ?? null,
-		);
-		const notifyEffectiveErrorReportingRepo =
-			loadErrorReportingRepository(notifyFleetConfigFilePath) ??
-			config.errorReportingRepository ??
-			null;
-		process.env.TDPM_ERROR_REPORT_REPOSITORY =
-			notifyEffectiveErrorReportingRepo ??
-			process.env.TDPM_ERROR_REPORT_REPOSITORY ??
-			"";
-
-		const projectUrl = config.projectUrl;
-
-		if (!projectUrl) {
-			console.error(
-				"projectUrl is required. Provide via --projectUrl, config file, or project README.",
-			);
-			process.exit(1);
-		}
-
-		const thresholdForAutoReject = resolvePositiveIntegerOption(
-			config.thresholdForAutoReject,
-			"thresholdForAutoReject",
-			3,
-		);
-		const thresholdForDispatchLoop = resolvePositiveIntegerOption(
-			config.thresholdForDispatchLoop,
-			"thresholdForDispatchLoop",
-			DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-		);
-
-		const workflowBlockerResolvedWebhookUrl: string | null =
-			config.workflowBlockerResolvedWebhookUrl ?? null;
-
-		const projectName = config.projectName ?? "default";
-		const localStorageRepository = new LocalStorageRepository();
-		const cachePath = projectCacheDirectory(projectName);
-		const localStorageCacheRepository = new LocalStorageCacheRepository(
-			localStorageRepository,
-			cachePath,
-		);
-		const githubRepositoryParams = buildGithubRepositoryParams(
-			localStorageRepository,
-			token,
-		);
-		const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
-			config.githubAppPrivateKeyPaths ?? [],
-		);
-		const projectRepository = new GraphqlProjectRepository(
-			...githubRepositoryParams,
-			localStorageCacheRepository,
-			readGhTokens,
-		);
-		const apiV3IssueRepository = new ApiV3IssueRepository(
-			...githubRepositoryParams,
-		);
-		const restIssueRepository = new RestIssueRepository(
-			...githubRepositoryParams,
-			readGhTokens,
-		);
-		const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
-			...githubRepositoryParams,
-		);
-		const issueRepository = new ApiV3CheerioRestIssueRepository(
-			apiV3IssueRepository,
-			restIssueRepository,
-			graphqlProjectItemRepository,
-			localStorageCacheRepository,
-			projectRepository,
-			new SystemDateRepository(),
-			...githubRepositoryParams,
-		);
-		const issueCommentRepository = new GitHubIssueCommentRepository(
-			token,
-			localStorageCacheRepository,
-		);
-		const webhookRepository = new FetchWebhookRepository();
-
-		const consoleDataOutputDir = config.consoleDataOutputDir ?? null;
-		const consoleTabsRepository =
-			consoleDataOutputDir !== null
-				? new FileSystemConsoleTabsRepository(consoleDataOutputDir, projectName)
-				: null;
-
-		const useCase = new NotifyFinishedIssuePreparationUseCase(
-			projectRepository,
-			issueRepository,
-			issueCommentRepository,
-			webhookRepository,
-			consoleTabsRepository,
-		);
-
-		const rawAllowedIssueAuthors = config.allowedIssueAuthors;
-		const allowedIssueAuthors = rawAllowedIssueAuthors
-			? rawAllowedIssueAuthors
-					.split(",")
-					.map((s) => s.trim())
-					.filter(Boolean)
-			: null;
-
-		try {
-			await useCase.run({
-				projectUrl,
-				issueUrl: options.issueUrl,
-				thresholdForAutoReject,
-				thresholdForDispatchLoop,
-				workflowBlockerResolvedWebhookUrl,
-				allowedIssueAuthors,
-				labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
-				labelsNotRequiringPullRequest:
-					config.labelsNotRequiringPullRequest ?? null,
-				changeTargetPathAliases: config.changeTargetPathAliases ?? null,
-				agents: config.agents ?? null,
-				missingAgentName: options.missingAgentName ?? null,
-				sessionErrorLine: options.sessionErrorLine ?? null,
-				manager: config.manager ?? null,
-				developerAgentNames: config.developerAgentNames ?? null,
-				deferPreparation: options.deferPreparation ?? null,
-				workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
-					notifyFleetConfigFilePath,
-				),
-				tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
-				projectName: config.projectName ?? null,
-			});
-		} catch (e) {
-			if (e instanceof GitHubRateLimitError) {
-				console.warn(
-					`notifyFinishedIssuePreparation rate-limited, will retry next cycle: ${e.message}`,
-				);
-				return;
-			}
-			throw e;
-		}
-	});
+    const preparationResult = await useCase.run({
+      projectUrl,
+      defaultAgentName,
+      defaultLlmModelName: config.defaultLlmModelName ?? null,
+      fallbackLlmModelName: config.fallbackLlmModelName ?? null,
+      defaultLlmAgentName: config.defaultLlmAgentName ?? null,
+      configFilePath: options.configFilePath,
+      maximumPreparingIssuesCount,
+      utilizationPercentageThreshold:
+        config.utilizationPercentageThreshold ?? 90,
+      allowedIssueAuthors,
+      manager,
+      codexHomeCandidates,
+      labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+      agents: config.agents ?? null,
+      normalConcurrentLimit: preparationWorkerSettings.normalConcurrentLimit,
+      maxConcurrentWorkers: preparationWorkerSettings.maxConcurrentWorkers,
+      graphqlRateLimitFloor: preparationWorkerSettings.graphqlRateLimitFloor,
+      skipAgentAuthoredIssues: config.skipAgentAuthoredIssues ?? false,
+    });
+    if (preparationResult.rotationOrder !== null) {
+      writeRotationOrderFile(preparationResult.rotationOrder);
+    }
+  });
 
 program
-	.command("checkIssueReviewReadiness")
-	.description(
-		"Check whether an issue is in a review-ready state without mutating any field or posting any comment",
-	)
-	.requiredOption(
-		"--configFilePath <path>",
-		"Path to config file for tower defence management",
-	)
-	.requiredOption("--issueUrl <url>", "GitHub issue URL")
-	.option("--projectUrl <url>", "GitHub project URL (optional)")
-	.action(async (options: CheckIssueReviewReadinessOptions) => {
-		const token = process.env.GH_TOKEN;
-		if (!token) {
-			console.error("GH_TOKEN environment variable is required");
-			process.exit(1);
-		}
+  .command('notifyFinishedIssuePreparation')
+  .description('Notify that issue preparation is finished')
+  .requiredOption(
+    '--configFilePath <path>',
+    'Path to config file for tower defence management',
+  )
+  .requiredOption('--issueUrl <url>', 'GitHub issue URL')
+  .option('--projectUrl <url>', 'GitHub project URL')
+  .option(
+    '--thresholdForAutoReject <count>',
+    'Threshold for auto-escalation after consecutive rejections (default: 3)',
+  )
+  .option(
+    '--thresholdForDispatchLoop <count>',
+    'Threshold for auto-escalation after one agent is dispatched this many times since the last human comment, whether it names itself or two agents name each other in turn (default: 6)',
+  )
+  .option(
+    '--workflowBlockerResolvedWebhookUrl <url>',
+    'Webhook URL to notify when a workflow blocker issue status changes to awaiting owner. Supports {URL} and {MESSAGE} placeholders.',
+  )
+  .option(
+    '--missingAgentName <name>',
+    'Agent definition name that was not found, triggering the missing-agent task creation path',
+  )
+  .option(
+    '--sessionErrorLine <line>',
+    'Exact error line from the session log to include in the task issue body',
+  )
+  .option(
+    '--deferPreparation',
+    'Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) without creating any issue; use for transient upstream failures',
+  )
+  .option(
+    '--fleetConfigFilePath <path>',
+    'Path to fleet config YAML file (also read from TDPM_FLEET_CONFIG env var)',
+  )
+  .action(async (options: NotifyFinishedOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+    }
 
-		const configFileValues = loadConfigFile(options.configFilePath);
+    const configFileValues = loadConfigFile(options.configFilePath);
 
-		const cliOverrides: ConfigFile = {
-			projectUrl: options.projectUrl,
-		};
+    const cliOverrides: ConfigFile = {
+      projectUrl: options.projectUrl,
+      thresholdForAutoReject: options.thresholdForAutoReject
+        ? Number(options.thresholdForAutoReject)
+        : undefined,
+      thresholdForDispatchLoop: options.thresholdForDispatchLoop
+        ? Number(options.thresholdForDispatchLoop)
+        : undefined,
+      workflowBlockerResolvedWebhookUrl:
+        options.workflowBlockerResolvedWebhookUrl,
+    };
 
-		const tempProjectUrl =
-			cliOverrides.projectUrl ?? configFileValues.projectUrl;
+    const tempProjectUrl =
+      cliOverrides.projectUrl ?? configFileValues.projectUrl;
 
-		let readmeOverrides: ConfigFile = {};
-		if (tempProjectUrl) {
-			const readme = await fetchProjectReadme(tempProjectUrl, token);
-			if (readme) {
-				readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
-			}
-		}
+    let readmeOverrides: ConfigFile = {};
+    if (tempProjectUrl) {
+      const readme = await fetchProjectReadme(tempProjectUrl, token);
+      if (readme) {
+        readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
+      }
+    }
 
-		const config = mergeConfigs(
-			configFileValues,
-			cliOverrides,
-			readmeOverrides,
-		);
+    const config = mergeConfigs(
+      configFileValues,
+      cliOverrides,
+      readmeOverrides,
+    );
 
-		const checkIssueReviewFleetConfigFilePath =
-			resolveFleetConfigFilePath(null);
-		process.env.TDPM_ERROR_REPORT_REPOSITORY =
-			loadErrorReportingRepository(checkIssueReviewFleetConfigFilePath) ??
-			config.errorReportingRepository ??
-			process.env.TDPM_ERROR_REPORT_REPOSITORY ??
-			"";
+    const notifyFleetConfigFilePath = resolveFleetConfigFilePath(
+      options.fleetConfigFilePath ?? null,
+    );
+    const notifyEffectiveErrorReportingRepo =
+      loadErrorReportingRepository(notifyFleetConfigFilePath) ??
+      config.errorReportingRepository ??
+      null;
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      notifyEffectiveErrorReportingRepo ??
+      process.env.TDPM_ERROR_REPORT_REPOSITORY ??
+      '';
 
-		const projectName = config.projectName ?? "default";
-		const localStorageRepository = new LocalStorageRepository();
-		const cachePath = projectCacheDirectory(projectName);
-		const localStorageCacheRepository = new LocalStorageCacheRepository(
-			localStorageRepository,
-			cachePath,
-		);
-		const githubRepositoryParams = buildGithubRepositoryParams(
-			localStorageRepository,
-			token,
-		);
-		const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
-			config.githubAppPrivateKeyPaths ?? [],
-		);
-		const apiV3IssueRepository = new ApiV3IssueRepository(
-			...githubRepositoryParams,
-		);
-		const restIssueRepository = new RestIssueRepository(
-			...githubRepositoryParams,
-			readGhTokens,
-		);
-		const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
-			...githubRepositoryParams,
-		);
-		const projectRepository = new GraphqlProjectRepository(
-			...githubRepositoryParams,
-			localStorageCacheRepository,
-			readGhTokens,
-		);
-		const issueRepository = new ApiV3CheerioRestIssueRepository(
-			apiV3IssueRepository,
-			restIssueRepository,
-			graphqlProjectItemRepository,
-			localStorageCacheRepository,
-			projectRepository,
-			new SystemDateRepository(),
-			...githubRepositoryParams,
-		);
-		const issueCommentRepository = new GitHubIssueCommentRepository(
-			token,
-			localStorageCacheRepository,
-		);
+    const projectUrl = config.projectUrl;
 
-		const rawAllowedIssueAuthors = config.allowedIssueAuthors;
-		const allowedIssueAuthors = rawAllowedIssueAuthors
-			? rawAllowedIssueAuthors
-					.split(",")
-					.map((s) => s.trim())
-					.filter(Boolean)
-			: null;
+    if (!projectUrl) {
+      console.error(
+        'projectUrl is required. Provide via --projectUrl, config file, or project README.',
+      );
+      process.exit(1);
+    }
 
-		const useCase = new CheckIssueReviewReadinessUseCase(
-			issueRepository,
-			issueCommentRepository,
-		);
+    const thresholdForAutoReject = resolvePositiveIntegerOption(
+      config.thresholdForAutoReject,
+      'thresholdForAutoReject',
+      3,
+    );
+    const thresholdForDispatchLoop = resolvePositiveIntegerOption(
+      config.thresholdForDispatchLoop,
+      'thresholdForDispatchLoop',
+      DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+    );
 
-		const result = await useCase.run({
-			issueUrl: options.issueUrl,
-			allowedIssueAuthors,
-			labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
-			labelsNotRequiringPullRequest:
-				config.labelsNotRequiringPullRequest ?? null,
-			developerAgentNames: config.developerAgentNames ?? null,
-		});
+    const workflowBlockerResolvedWebhookUrl: string | null =
+      config.workflowBlockerResolvedWebhookUrl ?? null;
 
-		process.stdout.write(`${JSON.stringify(result)}\n`);
-	});
+    const projectName = config.projectName ?? 'default';
+    const localStorageRepository = new LocalStorageRepository();
+    const cachePath = projectCacheDirectory(projectName);
+    const localStorageCacheRepository = new LocalStorageCacheRepository(
+      localStorageRepository,
+      cachePath,
+    );
+    const githubRepositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      token,
+    );
+    const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+      config.githubAppPrivateKeyPaths ?? [],
+    );
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+      localStorageCacheRepository,
+      readGhTokens,
+    );
+    const apiV3IssueRepository = new ApiV3IssueRepository(
+      ...githubRepositoryParams,
+    );
+    const restIssueRepository = new RestIssueRepository(
+      ...githubRepositoryParams,
+      readGhTokens,
+    );
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+      ...githubRepositoryParams,
+    );
+    const issueRepository = new ApiV3CheerioRestIssueRepository(
+      apiV3IssueRepository,
+      restIssueRepository,
+      graphqlProjectItemRepository,
+      localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
+      ...githubRepositoryParams,
+    );
+    const issueCommentRepository = new GitHubIssueCommentRepository(
+      token,
+      localStorageCacheRepository,
+    );
+    const webhookRepository = new FetchWebhookRepository();
+
+    const consoleDataOutputDir = config.consoleDataOutputDir ?? null;
+    const consoleTabsRepository =
+      consoleDataOutputDir !== null
+        ? new FileSystemConsoleTabsRepository(consoleDataOutputDir, projectName)
+        : null;
+
+    const useCase = new NotifyFinishedIssuePreparationUseCase(
+      projectRepository,
+      issueRepository,
+      issueCommentRepository,
+      webhookRepository,
+      consoleTabsRepository,
+    );
+
+    const rawAllowedIssueAuthors = config.allowedIssueAuthors;
+    const allowedIssueAuthors = rawAllowedIssueAuthors
+      ? rawAllowedIssueAuthors
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : null;
+
+    try {
+      await useCase.run({
+        projectUrl,
+        issueUrl: options.issueUrl,
+        thresholdForAutoReject,
+        thresholdForDispatchLoop,
+        workflowBlockerResolvedWebhookUrl,
+        allowedIssueAuthors,
+        labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+        labelsNotRequiringPullRequest:
+          config.labelsNotRequiringPullRequest ?? null,
+        changeTargetPathAliases: config.changeTargetPathAliases ?? null,
+        agents: config.agents ?? null,
+        missingAgentName: options.missingAgentName ?? null,
+        sessionErrorLine: options.sessionErrorLine ?? null,
+        manager: config.manager ?? null,
+        developerAgentNames: config.developerAgentNames ?? null,
+        deferPreparation: options.deferPreparation ?? null,
+        workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
+          notifyFleetConfigFilePath,
+        ),
+        tdpmReportingRepository: notifyEffectiveErrorReportingRepo,
+        projectName: config.projectName ?? null,
+      });
+    } catch (e) {
+      if (e instanceof GitHubRateLimitError) {
+        console.warn(
+          `notifyFinishedIssuePreparation rate-limited, will retry next cycle: ${e.message}`,
+        );
+        return;
+      }
+      throw e;
+    }
+  });
+
+program
+  .command('checkIssueReviewReadiness')
+  .description(
+    'Check whether an issue is in a review-ready state without mutating any field or posting any comment',
+  )
+  .requiredOption(
+    '--configFilePath <path>',
+    'Path to config file for tower defence management',
+  )
+  .requiredOption('--issueUrl <url>', 'GitHub issue URL')
+  .option('--projectUrl <url>', 'GitHub project URL (optional)')
+  .action(async (options: CheckIssueReviewReadinessOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+    }
+
+    const configFileValues = loadConfigFile(options.configFilePath);
+
+    const cliOverrides: ConfigFile = {
+      projectUrl: options.projectUrl,
+    };
+
+    const tempProjectUrl =
+      cliOverrides.projectUrl ?? configFileValues.projectUrl;
+
+    let readmeOverrides: ConfigFile = {};
+    if (tempProjectUrl) {
+      const readme = await fetchProjectReadme(tempProjectUrl, token);
+      if (readme) {
+        readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
+      }
+    }
+
+    const config = mergeConfigs(
+      configFileValues,
+      cliOverrides,
+      readmeOverrides,
+    );
+
+    const checkIssueReviewFleetConfigFilePath =
+      resolveFleetConfigFilePath(null);
+    process.env.TDPM_ERROR_REPORT_REPOSITORY =
+      loadErrorReportingRepository(checkIssueReviewFleetConfigFilePath) ??
+      config.errorReportingRepository ??
+      process.env.TDPM_ERROR_REPORT_REPOSITORY ??
+      '';
+
+    const projectName = config.projectName ?? 'default';
+    const localStorageRepository = new LocalStorageRepository();
+    const cachePath = projectCacheDirectory(projectName);
+    const localStorageCacheRepository = new LocalStorageCacheRepository(
+      localStorageRepository,
+      cachePath,
+    );
+    const githubRepositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      token,
+    );
+    const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+      config.githubAppPrivateKeyPaths ?? [],
+    );
+    const apiV3IssueRepository = new ApiV3IssueRepository(
+      ...githubRepositoryParams,
+    );
+    const restIssueRepository = new RestIssueRepository(
+      ...githubRepositoryParams,
+      readGhTokens,
+    );
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+      ...githubRepositoryParams,
+    );
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+      localStorageCacheRepository,
+      readGhTokens,
+    );
+    const issueRepository = new ApiV3CheerioRestIssueRepository(
+      apiV3IssueRepository,
+      restIssueRepository,
+      graphqlProjectItemRepository,
+      localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
+      ...githubRepositoryParams,
+    );
+    const issueCommentRepository = new GitHubIssueCommentRepository(
+      token,
+      localStorageCacheRepository,
+    );
+
+    const rawAllowedIssueAuthors = config.allowedIssueAuthors;
+    const allowedIssueAuthors = rawAllowedIssueAuthors
+      ? rawAllowedIssueAuthors
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : null;
+
+    const useCase = new CheckIssueReviewReadinessUseCase(
+      issueRepository,
+      issueCommentRepository,
+    );
+
+    const result = await useCase.run({
+      issueUrl: options.issueUrl,
+      allowedIssueAuthors,
+      labelsAsLlmAgentName: config.labelsAsLlmAgentName ?? null,
+      labelsNotRequiringPullRequest:
+        config.labelsNotRequiringPullRequest ?? null,
+      developerAgentNames: config.developerAgentNames ?? null,
+    });
+
+    process.stdout.write(`${JSON.stringify(result)}\n`);
+  });
 
 export const extractOwnerRepoFromGithubUrl = (
-	url: string,
+  url: string,
 ): { owner: string; repo: string } | null => {
-	const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
-	if (match === null) {
-		return null;
-	}
-	return { owner: match[1], repo: match[2] };
+  const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
+  if (match === null) {
+    return null;
+  }
+  return { owner: match[1], repo: match[2] };
 };
 
 const buildConsoleErrorReporter = (
-	workflowImprovementIssueUrl: string | null,
-	issueRepository: IssueRepository | null,
+  workflowImprovementIssueUrl: string | null,
+  issueRepository: IssueRepository | null,
 ): ((error: unknown, requestPath: string) => Promise<void>) | null => {
-	if (workflowImprovementIssueUrl === null || issueRepository === null) {
-		return null;
-	}
-	const ownerRepo = extractOwnerRepoFromGithubUrl(workflowImprovementIssueUrl);
-	if (ownerRepo === null) {
-		return null;
-	}
-	const useCase = new ConsoleErrorReportUseCase(issueRepository);
-	return async (error: unknown, requestPath: string): Promise<void> => {
-		await useCase.run({
-			error,
-			owner: ownerRepo.owner,
-			repo: ownerRepo.repo,
-			requestPath,
-		});
-	};
+  if (workflowImprovementIssueUrl === null || issueRepository === null) {
+    return null;
+  }
+  const ownerRepo = extractOwnerRepoFromGithubUrl(workflowImprovementIssueUrl);
+  if (ownerRepo === null) {
+    return null;
+  }
+  const useCase = new ConsoleErrorReportUseCase(issueRepository);
+  return async (error: unknown, requestPath: string): Promise<void> => {
+    await useCase.run({
+      error,
+      owner: ownerRepo.owner,
+      repo: ownerRepo.repo,
+      requestPath,
+    });
+  };
 };
 
 const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
-	const config = loadConfigFile(options.configFilePath);
+  const config = loadConfigFile(options.configFilePath);
 
-	const accessToken = config.consoleAccessToken;
-	if (!accessToken) {
-		console.error(
-			"consoleAccessToken is required. Provide it via the config file.",
-		);
-		process.exit(1);
-	}
+  const accessToken = config.consoleAccessToken;
+  if (!accessToken) {
+    console.error(
+      'consoleAccessToken is required. Provide it via the config file.',
+    );
+    process.exit(1);
+  }
 
-	let port = DEFAULT_WEB_PORT;
-	if (options.port !== undefined) {
-		const parsedPort = Number(options.port);
-		if (
-			!Number.isFinite(parsedPort) ||
-			!Number.isInteger(parsedPort) ||
-			parsedPort <= 0 ||
-			parsedPort > 65535
-		) {
-			console.error(
-				"Invalid value for --port. It must be a positive integer between 1 and 65535.",
-			);
-			process.exit(1);
-		}
-		port = parsedPort;
-	}
+  let port = DEFAULT_WEB_PORT;
+  if (options.port !== undefined) {
+    const parsedPort = Number(options.port);
+    if (
+      !Number.isFinite(parsedPort) ||
+      !Number.isInteger(parsedPort) ||
+      parsedPort <= 0 ||
+      parsedPort > 65535
+    ) {
+      console.error(
+        'Invalid value for --port. It must be a positive integer between 1 and 65535.',
+      );
+      process.exit(1);
+    }
+    port = parsedPort;
+  }
 
-	const token = process.env.GH_TOKEN;
-	if (!token) {
-		console.error("GH_TOKEN environment variable is required");
-		process.exit(1);
-	}
+  const token = process.env.GH_TOKEN;
+  if (!token) {
+    console.error('GH_TOKEN environment variable is required');
+    process.exit(1);
+  }
 
-	const projectUrl = config.projectUrl;
-	if (!projectUrl) {
-		console.error(
-			"projectUrl is required. Provide it via the config file or project README.",
-		);
-		process.exit(1);
-	}
+  const projectUrl = config.projectUrl;
+  if (!projectUrl) {
+    console.error(
+      'projectUrl is required. Provide it via the config file or project README.',
+    );
+    process.exit(1);
+  }
 
-	const dashboardProjectNames = parseDashboardProjectNames(
-		options.dashboardProjectNames,
-	);
+  const dashboardProjectNames = parseDashboardProjectNames(
+    options.dashboardProjectNames,
+  );
 
-	const projectName = config.projectName ?? "default";
-	const localStorageRepository = new LocalStorageRepository();
-	const cachePath = projectCacheDirectory(projectName);
-	const localStorageCacheRepository = new LocalStorageCacheRepository(
-		localStorageRepository,
-		cachePath,
-	);
-	const githubRepositoryParams = buildGithubRepositoryParams(
-		localStorageRepository,
-		token,
-	);
-	const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
-		config.githubAppPrivateKeyPaths ?? [],
-	);
-	const projectRepository = new GraphqlProjectRepository(
-		...githubRepositoryParams,
-		localStorageCacheRepository,
-		readGhTokens,
-	);
-	const apiV3IssueRepository = new ApiV3IssueRepository(
-		...githubRepositoryParams,
-	);
-	const restIssueRepository = new RestIssueRepository(
-		...githubRepositoryParams,
-		readGhTokens,
-	);
-	const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
-		...githubRepositoryParams,
-	);
-	const issueRepository = new ApiV3CheerioRestIssueRepository(
-		apiV3IssueRepository,
-		restIssueRepository,
-		graphqlProjectItemRepository,
-		localStorageCacheRepository,
-		projectRepository,
-		new SystemDateRepository(),
-		...githubRepositoryParams,
-	);
+  const projectName = config.projectName ?? 'default';
+  const localStorageRepository = new LocalStorageRepository();
+  const cachePath = projectCacheDirectory(projectName);
+  const localStorageCacheRepository = new LocalStorageCacheRepository(
+    localStorageRepository,
+    cachePath,
+  );
+  const githubRepositoryParams = buildGithubRepositoryParams(
+    localStorageRepository,
+    token,
+  );
+  const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+    config.githubAppPrivateKeyPaths ?? [],
+  );
+  const projectRepository = new GraphqlProjectRepository(
+    ...githubRepositoryParams,
+    localStorageCacheRepository,
+    readGhTokens,
+  );
+  const apiV3IssueRepository = new ApiV3IssueRepository(
+    ...githubRepositoryParams,
+  );
+  const restIssueRepository = new RestIssueRepository(
+    ...githubRepositoryParams,
+    readGhTokens,
+  );
+  const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+    ...githubRepositoryParams,
+  );
+  const issueRepository = new ApiV3CheerioRestIssueRepository(
+    apiV3IssueRepository,
+    restIssueRepository,
+    graphqlProjectItemRepository,
+    localStorageCacheRepository,
+    projectRepository,
+    new SystemDateRepository(),
+    ...githubRepositoryParams,
+  );
 
-	const resolveGithubToken = createConsoleGithubTokenResolver(
-		token,
-		config.consoleProjects ?? null,
-		config.consoleGithubTokens ?? null,
-	);
-	const issueRepositoryByToken = new Map<string, IssueRepository>();
-	issueRepositoryByToken.set(token, issueRepository);
-	const buildIssueRepositoryForToken = (
-		repositoryToken: string,
-	): IssueRepository => {
-		const alreadyBuilt = issueRepositoryByToken.get(repositoryToken);
-		if (alreadyBuilt !== undefined) {
-			return alreadyBuilt;
-		}
-		const repositoryParams = buildGithubRepositoryParams(
-			localStorageRepository,
-			repositoryToken,
-		);
-		const built = new ApiV3CheerioRestIssueRepository(
-			new ApiV3IssueRepository(...repositoryParams),
-			new RestIssueRepository(...repositoryParams),
-			new GraphqlProjectItemRepository(...repositoryParams),
-			localStorageCacheRepository,
-			new GraphqlProjectRepository(
-				...repositoryParams,
-				localStorageCacheRepository,
-			),
-			new SystemDateRepository(),
-			...repositoryParams,
-		);
-		issueRepositoryByToken.set(repositoryToken, built);
-		return built;
-	};
-	const resolveIssueRepository = await buildReadIssueRepositoryResolver(
-		config.githubAppPrivateKeyPaths,
-		mintReadOnlyTokensFromKeyPaths,
-		buildIssueRepositoryForToken,
-		resolveGithubToken,
-	);
-	const resolveGithubTokenForItemUrl =
-		createConsoleGithubTokenResolverByItemUrl(resolveGithubToken);
-	const projectRepositoryByToken = new Map<string, GraphqlProjectRepository>();
-	projectRepositoryByToken.set(token, projectRepository);
-	const buildProjectRepositoryForToken = (
-		repositoryToken: string,
-	): GraphqlProjectRepository => {
-		const alreadyBuilt = projectRepositoryByToken.get(repositoryToken);
-		if (alreadyBuilt !== undefined) {
-			return alreadyBuilt;
-		}
-		const built = new GraphqlProjectRepository(
-			...buildGithubRepositoryParams(localStorageRepository, repositoryToken),
-			localStorageCacheRepository,
-		);
-		projectRepositoryByToken.set(repositoryToken, built);
-		return built;
-	};
-	const resolveProjectRepository =
-		createConsoleProjectRepositoryResolver<GraphqlProjectRepository>(
-			resolveGithubToken,
-			buildProjectRepositoryForToken,
-		);
+  const resolveGithubToken = createConsoleGithubTokenResolver(
+    token,
+    config.consoleProjects ?? null,
+    config.consoleGithubTokens ?? null,
+  );
+  const issueRepositoryByToken = new Map<string, IssueRepository>();
+  issueRepositoryByToken.set(token, issueRepository);
+  const buildIssueRepositoryForToken = (
+    repositoryToken: string,
+  ): IssueRepository => {
+    const alreadyBuilt = issueRepositoryByToken.get(repositoryToken);
+    if (alreadyBuilt !== undefined) {
+      return alreadyBuilt;
+    }
+    const repositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      repositoryToken,
+    );
+    const built = new ApiV3CheerioRestIssueRepository(
+      new ApiV3IssueRepository(...repositoryParams),
+      new RestIssueRepository(...repositoryParams),
+      new GraphqlProjectItemRepository(...repositoryParams),
+      localStorageCacheRepository,
+      new GraphqlProjectRepository(
+        ...repositoryParams,
+        localStorageCacheRepository,
+      ),
+      new SystemDateRepository(),
+      ...repositoryParams,
+    );
+    issueRepositoryByToken.set(repositoryToken, built);
+    return built;
+  };
+  const resolveIssueRepository = await buildReadIssueRepositoryResolver(
+    config.githubAppPrivateKeyPaths,
+    mintReadOnlyTokensFromKeyPaths,
+    buildIssueRepositoryForToken,
+    resolveGithubToken,
+  );
+  const resolveGithubTokenForItemUrl =
+    createConsoleGithubTokenResolverByItemUrl(resolveGithubToken);
+  const projectRepositoryByToken = new Map<string, GraphqlProjectRepository>();
+  projectRepositoryByToken.set(token, projectRepository);
+  const buildProjectRepositoryForToken = (
+    repositoryToken: string,
+  ): GraphqlProjectRepository => {
+    const alreadyBuilt = projectRepositoryByToken.get(repositoryToken);
+    if (alreadyBuilt !== undefined) {
+      return alreadyBuilt;
+    }
+    const built = new GraphqlProjectRepository(
+      ...buildGithubRepositoryParams(localStorageRepository, repositoryToken),
+      localStorageCacheRepository,
+    );
+    projectRepositoryByToken.set(repositoryToken, built);
+    return built;
+  };
+  const resolveProjectRepository =
+    createConsoleProjectRepositoryResolver<GraphqlProjectRepository>(
+      resolveGithubToken,
+      buildProjectRepositoryForToken,
+    );
 
-	const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
-		projectName,
-		projectUrl,
-		config.consoleProjects ?? null,
-	);
-	const isPjcodeConfigured = createPjcodeConfigChecker(pjcodeToProjectUrl);
-	const {
-		resolve: resolveProject,
-		invalidate: invalidateProject,
-		updateEntry: updateProjectCacheEntry,
-	} = createConsoleProjectResolver(
-		pjcodeToProjectUrl,
-		createConsoleProjectLoader(
-			resolveProjectRepository,
-			(targetProjectId: string) =>
-				issueRepository.getCachedProject(targetProjectId),
-			(message: string) => console.error(message),
-		),
-	);
+  const pjcodeToProjectUrl = buildPjcodeToProjectUrl(
+    projectName,
+    projectUrl,
+    config.consoleProjects ?? null,
+  );
+  const isPjcodeConfigured = createPjcodeConfigChecker(pjcodeToProjectUrl);
+  const {
+    resolve: resolveProject,
+    invalidate: invalidateProject,
+    updateEntry: updateProjectCacheEntry,
+  } = createConsoleProjectResolver(
+    pjcodeToProjectUrl,
+    createConsoleProjectLoader(
+      resolveProjectRepository,
+      (targetProjectId: string) =>
+        issueRepository.getCachedProject(targetProjectId),
+      (message: string) => console.error(message),
+    ),
+  );
 
-	const uiDistDir = path.join(__dirname, "..", "console", "ui-dist");
-	const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
-	const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
-	const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
-	const dashboardDataDir =
-		options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
-	const fleetConfigFilePath = resolveFleetConfigFilePath(
-		options.fleetConfigFilePath ?? null,
-	);
-	const workflowImprovementIssueUrl =
-		loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
+  const uiDistDir = path.join(__dirname, '..', 'console', 'ui-dist');
+  const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+  const inTmuxDataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
+  const dashboardDir = options.dashboardDir ?? DEFAULT_DASHBOARD_DIR;
+  const dashboardDataDir =
+    options.dashboardDataDir ?? DEFAULT_DASHBOARD_DATA_DIR;
+  const fleetConfigFilePath = resolveFleetConfigFilePath(
+    options.fleetConfigFilePath ?? null,
+  );
+  const workflowImprovementIssueUrl =
+    loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
 
-	const consoleErrorReporter = buildConsoleErrorReporter(
-		workflowImprovementIssueUrl,
-		issueRepository,
-	);
+  const consoleErrorReporter = buildConsoleErrorReporter(
+    workflowImprovementIssueUrl,
+    issueRepository,
+  );
 
-	await startWebServer({
-		accessToken,
-		uiDistDir,
-		consoleDataOutputDir,
-		inTmuxDataDir,
-		dashboardDir,
-		dashboardDataDir,
-		dashboardProjectNames,
-		workflowImprovementIssueUrl,
-		resolveGithubToken,
-		issueRepository,
-		resolveIssueRepository,
-		resolveProject,
-		isPjcodeConfigured,
-		resolveProjectRepository,
-		invalidateProject,
-		updateProjectCacheEntry,
-		issueAttachmentRepository: new LocalCommandIssueAttachmentRepository(
-			new NodeLocalCommandRunner(),
-			resolveGithubTokenForItemUrl,
-		),
-		issueTitleStateCache: new IssueTitleStateCache(),
-		pullRequestStatusCache: new PullRequestStatusCache(),
-		consoleErrorReporter,
-		port,
-	});
-	console.log(`TDPM web server listening on port ${port}`);
+  await startWebServer({
+    accessToken,
+    uiDistDir,
+    consoleDataOutputDir,
+    inTmuxDataDir,
+    dashboardDir,
+    dashboardDataDir,
+    dashboardProjectNames,
+    workflowImprovementIssueUrl,
+    resolveGithubToken,
+    issueRepository,
+    resolveIssueRepository,
+    resolveProject,
+    isPjcodeConfigured,
+    resolveProjectRepository,
+    invalidateProject,
+    updateProjectCacheEntry,
+    issueAttachmentRepository: new LocalCommandIssueAttachmentRepository(
+      new NodeLocalCommandRunner(),
+      resolveGithubTokenForItemUrl,
+    ),
+    issueTitleStateCache: new IssueTitleStateCache(),
+    pullRequestStatusCache: new PullRequestStatusCache(),
+    consoleErrorReporter,
+    port,
+  });
+  console.log(`TDPM web server listening on port ${port}`);
 };
 
 const addServeWebOptions = (command: Command): Command =>
-	command
-		.requiredOption(
-			"--configFilePath <path>",
-			"Path to config file for tower defence management",
-		)
-		.option(
-			"--port <number>",
-			`Port for the web HTTP server (default: ${DEFAULT_WEB_PORT})`,
-		)
-		.option(
-			"--consoleDataOutputDir <path>",
-			"Directory where console data files are written and served from",
-		)
-		.option(
-			"--inTmuxDataDir <path>",
-			`Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
-		)
-		.option(
-			"--dashboardDir <path>",
-			`Directory containing the static dashboard HTML fragment tdpm.txt served at /tdpm.txt when compose mode is not active (default: ${DEFAULT_DASHBOARD_DIR})`,
-		)
-		.option(
-			"--dashboardDataDir <path>",
-			"Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)",
-		)
-		.option(
-			"--dashboardProjectNames <names>",
-			"Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names",
-		)
-		.option(
-			"--fleetConfigFilePath <path>",
-			"Path to the fleet-wide YAML config file; falls back to the TDPM_FLEET_CONFIG environment variable. Reads workflowImprovementIssueUrl for the workflow improvement link shown in the console.",
-		);
+  command
+    .requiredOption(
+      '--configFilePath <path>',
+      'Path to config file for tower defence management',
+    )
+    .option(
+      '--port <number>',
+      `Port for the web HTTP server (default: ${DEFAULT_WEB_PORT})`,
+    )
+    .option(
+      '--consoleDataOutputDir <path>',
+      'Directory where console data files are written and served from',
+    )
+    .option(
+      '--inTmuxDataDir <path>',
+      `Directory containing the flat in-tmux-by-human static JSON files served at /in-tmux-by-human/*.json (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
+    )
+    .option(
+      '--dashboardDir <path>',
+      `Directory containing the static dashboard HTML fragment tdpm.txt served at /tdpm.txt when compose mode is not active (default: ${DEFAULT_DASHBOARD_DIR})`,
+    )
+    .option(
+      '--dashboardDataDir <path>',
+      'Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them at request time, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)',
+    )
+    .option(
+      '--dashboardProjectNames <names>',
+      'Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names',
+    )
+    .option(
+      '--fleetConfigFilePath <path>',
+      'Path to the fleet-wide YAML config file; falls back to the TDPM_FLEET_CONFIG environment variable. Reads workflowImprovementIssueUrl for the workflow improvement link shown in the console.',
+    );
 
-addServeWebOptions(program.command("serveWeb"))
-	.description(
-		"Start the local TDPM web server (console tabs, dashboard, and in-tmux session list)",
-	)
-	.action(async (options: ServeWebOptions) => {
-		await runServeWeb(options);
-	});
+addServeWebOptions(program.command('serveWeb'))
+  .description(
+    'Start the local TDPM web server (console tabs, dashboard, and in-tmux session list)',
+  )
+  .action(async (options: ServeWebOptions) => {
+    await runServeWeb(options);
+  });
 
-addServeWebOptions(program.command("serveConsole"))
-	.description("Deprecated alias for serveWeb. Use serveWeb instead.")
-	.action(async (options: ServeWebOptions) => {
-		await runServeWeb(options);
-	});
-
-program
-	.command("selectOauthToken")
-	.description(
-		"Print exactly one Claude Code OAuth token chosen by a rate-limit-aware filter. Among rate-limit-eligible tokens the choice is weighted-random, with each token weighted by its per-token selectionWeight (default 1) multiplied by how urgent its 7d window is (the free share of that window times 168 divided by the hours left before it resets, with those hours floored at 1), so a token holding unused allowance that resets soon is chosen more often. When every eligible weight is identical, the choice stays deterministic and no random draw is made. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.",
-	)
-	.option(
-		"--tokenListJsonPath <path>",
-		"Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that biases how often this token is chosen among rate-limit-eligible candidates; a smaller weight is chosen proportionally less often and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.",
-	)
-	.option(
-		"--cacheDir <path>",
-		"Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.",
-	)
-	.action((options: SelectOauthTokenOptions) => {
-		const handler = new OauthTokenSelectHandler();
-		const output = handler.handle({
-			tokenListJsonPath: options.tokenListJsonPath ?? null,
-			cacheDirectory: options.cacheDir ?? null,
-			nowEpochSeconds: Date.now() / 1000,
-		});
-
-		for (const line of output.diagnostics) {
-			console.error(line);
-		}
-
-		if (output.selectedToken === null) {
-			process.exit(1);
-		}
-
-		process.stdout.write(`${output.selectedToken}\n`);
-	});
+addServeWebOptions(program.command('serveConsole'))
+  .description('Deprecated alias for serveWeb. Use serveWeb instead.')
+  .action(async (options: ServeWebOptions) => {
+    await runServeWeb(options);
+  });
 
 program
-	.command("selectLiveSessionOauthToken")
-	.description(
-		"Print exactly one Claude Code OAuth token chosen for a new live interactive session. The choice is deterministic. Each rate-limit-eligible token gets a concurrent session limit of maxConcurrentSessionCount (default 10), scaled by its per-token selectionWeight (default 1). That limit is held at full value while the free share of the 5h window is at or above fullSpeedFiveHourFreeRatio (default 0.5) and is tapered in proportion below it, never dropping under 1; the 7d window never lowers the limit, so a weekly allowance that is about to expire is drained at full speed instead of being discarded unused. Among eligible tokens still under that limit the token whose 7d window resets soonest wins; ties go to the token carrying fewer live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes). When every eligible token is at its limit the soonest-resetting one is still returned. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.",
-	)
-	.option(
-		"--tokenListJsonPath <path>",
-		"Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that scales this token concurrent live session limit; a smaller weight allows fewer simultaneous sessions and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.",
-	)
-	.option(
-		"--cacheDir <path>",
-		"Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.",
-	)
-	.option(
-		"--fleetConfigFilePath <path>",
-		"Path to the fleet-wide YAML config file holding the liveSessionOauthTokenSelection mapping (maxConcurrentSessionCount, fullSpeedFiveHourFreeRatio). Falls back to the TDPM_FLEET_CONFIG environment variable; when neither is set the built-in values are used. A key the file omits keeps its built-in value, and an unreadable file or an out-of-range value is reported as an error instead of being ignored.",
-	)
-	.action((options: SelectLiveSessionOauthTokenOptions) => {
-		const handler = new LiveSessionOauthTokenSelectHandler();
-		const output = handler.handle({
-			tokenListJsonPath: options.tokenListJsonPath ?? null,
-			cacheDirectory: options.cacheDir ?? null,
-			nowEpochSeconds: Date.now() / 1000,
-			selectionSettings: loadLiveSessionOauthTokenSelectionSettings(
-				resolveFleetConfigFilePath(options.fleetConfigFilePath ?? null),
-			),
-		});
+  .command('selectOauthToken')
+  .description(
+    'Print exactly one Claude Code OAuth token chosen by a rate-limit-aware filter. Among rate-limit-eligible tokens the choice is weighted-random, with each token weighted by its per-token selectionWeight (default 1) multiplied by how urgent its 7d window is (the free share of that window times 168 divided by the hours left before it resets, with those hours floored at 1), so a token holding unused allowance that resets soon is chosen more often. When every eligible weight is identical, the choice stays deterministic and no random draw is made. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+  )
+  .option(
+    '--tokenListJsonPath <path>',
+    'Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that biases how often this token is chosen among rate-limit-eligible candidates; a smaller weight is chosen proportionally less often and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
+  )
+  .option(
+    '--cacheDir <path>',
+    'Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.',
+  )
+  .action((options: SelectOauthTokenOptions) => {
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: options.tokenListJsonPath ?? null,
+      cacheDirectory: options.cacheDir ?? null,
+      nowEpochSeconds: Date.now() / 1000,
+    });
 
-		for (const line of output.diagnostics) {
-			console.error(line);
-		}
+    for (const line of output.diagnostics) {
+      console.error(line);
+    }
 
-		if (output.selectedToken === null) {
-			process.exit(1);
-		}
+    if (output.selectedToken === null) {
+      process.exit(1);
+    }
 
-		process.stdout.write(`${output.selectedToken}\n`);
-	});
+    process.stdout.write(`${output.selectedToken}\n`);
+  });
 
 program
-	.command("countInTmuxByHumanSessionsPerToken")
-	.description(
-		'Print, per Claude Code OAuth token, the count of live interactive sessions (cl-launched Claude processes carrying CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CODE_SESSION_ID with a --name <issue-url> argument, excluding Take ownership spawns) whose issue is currently in GitHub Project Status "In Tmux by human". One tab-separated line per token (<tokenName>\\t<count>) is written to stdout; the decision trace is written to stderr. Token values are never printed.',
-	)
-	.requiredOption(
-		"--configFilePath <path>",
-		"Path to config file for tower defence management",
-	)
-	.option("--projectUrl <url>", "GitHub project URL (optional)")
-	.option(
-		"--tokenListJsonPath <path>",
-		"Path to the JSON array of { name, token } records. Falls back to the claudeCodeOauthTokenListJsonPath config value, then to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.",
-	)
-	.action(async (options: CountInTmuxByHumanSessionsPerTokenOptions) => {
-		const token = process.env.GH_TOKEN;
-		if (!token) {
-			console.error("GH_TOKEN environment variable is required");
-			process.exit(1);
-		}
+  .command('selectLiveSessionOauthToken')
+  .description(
+    'Print exactly one Claude Code OAuth token chosen for a new live interactive session. The choice is deterministic. Each rate-limit-eligible token gets a concurrent session limit of maxConcurrentSessionCount (default 10), scaled by its per-token selectionWeight (default 1). That limit is held at full value while the free share of the 5h window is at or above fullSpeedFiveHourFreeRatio (default 0.5) and is tapered in proportion below it, never dropping under 1; the 7d window never lowers the limit, so a weekly allowance that is about to expire is drained at full speed instead of being discarded unused. Among eligible tokens still under that limit the token whose 7d window resets soonest wins; ties go to the token carrying fewer live sessions (by distinct CLAUDE_CODE_SESSION_ID found in running Claude Code processes). When every eligible token is at its limit the soonest-resetting one is still returned. The token string is written to stdout (pipeable); the per-candidate decision trace is written to stderr. Exits non-zero when no token passes the filter.',
+  )
+  .option(
+    '--tokenListJsonPath <path>',
+    'Path to the JSON array of { name, token, selectionWeight? } records. selectionWeight is an optional positive number (default 1) that scales this token concurrent live session limit; a smaller weight allows fewer simultaneous sessions and never bypasses eligibility filtering or starves a sole eligible token. Falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
+  )
+  .option(
+    '--cacheDir <path>',
+    'Directory holding per-token rate-limit cache files. Falls back to the TDPM_RATELIMIT_CACHE_DIR environment variable, then to ${XDG_CACHE_HOME:-~/.cache}/tdpm/ratelimit.',
+  )
+  .option(
+    '--fleetConfigFilePath <path>',
+    'Path to the fleet-wide YAML config file holding the liveSessionOauthTokenSelection mapping (maxConcurrentSessionCount, fullSpeedFiveHourFreeRatio). Falls back to the TDPM_FLEET_CONFIG environment variable; when neither is set the built-in values are used. A key the file omits keeps its built-in value, and an unreadable file or an out-of-range value is reported as an error instead of being ignored.',
+  )
+  .action((options: SelectLiveSessionOauthTokenOptions) => {
+    const handler = new LiveSessionOauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: options.tokenListJsonPath ?? null,
+      cacheDirectory: options.cacheDir ?? null,
+      nowEpochSeconds: Date.now() / 1000,
+      selectionSettings: loadLiveSessionOauthTokenSelectionSettings(
+        resolveFleetConfigFilePath(options.fleetConfigFilePath ?? null),
+      ),
+    });
 
-		const configFileValues = loadConfigFile(options.configFilePath);
+    for (const line of output.diagnostics) {
+      console.error(line);
+    }
 
-		const cliOverrides: ConfigFile = {
-			projectUrl: options.projectUrl,
-		};
+    if (output.selectedToken === null) {
+      process.exit(1);
+    }
 
-		const tempProjectUrl =
-			cliOverrides.projectUrl ?? configFileValues.projectUrl;
-
-		let readmeOverrides: ConfigFile = {};
-		if (tempProjectUrl) {
-			const readme = await fetchProjectReadme(tempProjectUrl, token);
-			if (readme) {
-				readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
-			}
-		}
-
-		const config = mergeConfigs(
-			configFileValues,
-			cliOverrides,
-			readmeOverrides,
-		);
-
-		const projectUrl = config.projectUrl;
-		if (!projectUrl) {
-			console.error(
-				"projectUrl is required. Provide via --projectUrl, config file, or project README.",
-			);
-			process.exit(1);
-		}
-
-		const projectName = config.projectName ?? "default";
-		const localStorageRepository = new LocalStorageRepository();
-		const cachePath = projectCacheDirectory(projectName);
-		const localStorageCacheRepository = new LocalStorageCacheRepository(
-			localStorageRepository,
-			cachePath,
-		);
-		const githubRepositoryParams = buildGithubRepositoryParams(
-			localStorageRepository,
-			token,
-		);
-		const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
-			config.githubAppPrivateKeyPaths ?? [],
-		);
-		const projectRepository = new GraphqlProjectRepository(
-			...githubRepositoryParams,
-			localStorageCacheRepository,
-			readGhTokens,
-		);
-		const apiV3IssueRepository = new ApiV3IssueRepository(
-			...githubRepositoryParams,
-		);
-		const restIssueRepository = new RestIssueRepository(
-			...githubRepositoryParams,
-			readGhTokens,
-		);
-		const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
-			...githubRepositoryParams,
-		);
-		const issueRepository = new ApiV3CheerioRestIssueRepository(
-			apiV3IssueRepository,
-			restIssueRepository,
-			graphqlProjectItemRepository,
-			localStorageCacheRepository,
-			projectRepository,
-			new SystemDateRepository(),
-			...githubRepositoryParams,
-		);
-
-		const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
-		if (!projectId) {
-			console.error(`No project found for projectUrl ${projectUrl}`);
-			process.exit(1);
-		}
-
-		const { issues } = await issueRepository.getAllIssues(projectId);
-
-		const handler = new InTmuxByHumanSessionTokenCountHandler();
-		const output = handler.handle({
-			tokenListJsonPath:
-				options.tokenListJsonPath ??
-				config.claudeCodeOauthTokenListJsonPath ??
-				null,
-			issues,
-		});
-
-		for (const line of output.diagnostics) {
-			console.error(line);
-		}
-
-		for (const line of output.lines) {
-			process.stdout.write(`${line}\n`);
-		}
-	});
+    process.stdout.write(`${output.selectedToken}\n`);
+  });
 
 program
-	.command("killTmuxSession")
-	.description(
-		"Cleanly kill a tmux session by running tmux kill-session and stopping its cl-*.scope systemd --user unit. Use --session <name> to kill another named session, or --self to terminate the current session from inside it.",
-	)
-	.option("--session <name>", "Name of the tmux session to kill")
-	.option(
-		"--self",
-		"Terminate the current session by stopping its own cl-*.scope systemd user unit, derived from /proc/self/cgroup",
-	)
-	.action(async (options: KillTmuxSessionOptions) => {
-		if (!options.session && !options.self) {
-			console.error("Either --session <name> or --self is required");
-			process.exit(1);
-		}
-		if (options.session && options.self) {
-			console.error("--session and --self cannot be used together");
-			process.exit(1);
-		}
+  .command('countInTmuxByHumanSessionsPerToken')
+  .description(
+    'Print, per Claude Code OAuth token, the count of live interactive sessions (cl-launched Claude processes carrying CLAUDE_CODE_OAUTH_TOKEN and CLAUDE_CODE_SESSION_ID with a --name <issue-url> argument, excluding Take ownership spawns) whose issue is currently in GitHub Project Status "In Tmux by human". One tab-separated line per token (<tokenName>\\t<count>) is written to stdout; the decision trace is written to stderr. Token values are never printed.',
+  )
+  .requiredOption(
+    '--configFilePath <path>',
+    'Path to config file for tower defence management',
+  )
+  .option('--projectUrl <url>', 'GitHub project URL (optional)')
+  .option(
+    '--tokenListJsonPath <path>',
+    'Path to the JSON array of { name, token } records. Falls back to the claudeCodeOauthTokenListJsonPath config value, then to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable.',
+  )
+  .action(async (options: CountInTmuxByHumanSessionsPerTokenOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+    }
 
-		const localCommandRunner = new NodeLocalCommandRunner();
-		const tmuxSessionRepository = new NodeTmuxSessionRepository(
-			localCommandRunner,
-		);
+    const configFileValues = loadConfigFile(options.configFilePath);
 
-		if (options.self) {
-			await tmuxSessionRepository.killOwnSession();
-		} else if (options.session) {
-			await tmuxSessionRepository.killSession(options.session);
-		}
-	});
+    const cliOverrides: ConfigFile = {
+      projectUrl: options.projectUrl,
+    };
+
+    const tempProjectUrl =
+      cliOverrides.projectUrl ?? configFileValues.projectUrl;
+
+    let readmeOverrides: ConfigFile = {};
+    if (tempProjectUrl) {
+      const readme = await fetchProjectReadme(tempProjectUrl, token);
+      if (readme) {
+        readmeOverrides = parseProjectReadmeConfig(readme, tempProjectUrl);
+      }
+    }
+
+    const config = mergeConfigs(
+      configFileValues,
+      cliOverrides,
+      readmeOverrides,
+    );
+
+    const projectUrl = config.projectUrl;
+    if (!projectUrl) {
+      console.error(
+        'projectUrl is required. Provide via --projectUrl, config file, or project README.',
+      );
+      process.exit(1);
+    }
+
+    const projectName = config.projectName ?? 'default';
+    const localStorageRepository = new LocalStorageRepository();
+    const cachePath = projectCacheDirectory(projectName);
+    const localStorageCacheRepository = new LocalStorageCacheRepository(
+      localStorageRepository,
+      cachePath,
+    );
+    const githubRepositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      token,
+    );
+    const readGhTokens = await mintReadOnlyTokensFromKeyPaths(
+      config.githubAppPrivateKeyPaths ?? [],
+    );
+    const projectRepository = new GraphqlProjectRepository(
+      ...githubRepositoryParams,
+      localStorageCacheRepository,
+      readGhTokens,
+    );
+    const apiV3IssueRepository = new ApiV3IssueRepository(
+      ...githubRepositoryParams,
+    );
+    const restIssueRepository = new RestIssueRepository(
+      ...githubRepositoryParams,
+      readGhTokens,
+    );
+    const graphqlProjectItemRepository = new GraphqlProjectItemRepository(
+      ...githubRepositoryParams,
+    );
+    const issueRepository = new ApiV3CheerioRestIssueRepository(
+      apiV3IssueRepository,
+      restIssueRepository,
+      graphqlProjectItemRepository,
+      localStorageCacheRepository,
+      projectRepository,
+      new SystemDateRepository(),
+      ...githubRepositoryParams,
+    );
+
+    const projectId = await projectRepository.findProjectIdByUrl(projectUrl);
+    if (!projectId) {
+      console.error(`No project found for projectUrl ${projectUrl}`);
+      process.exit(1);
+    }
+
+    const { issues } = await issueRepository.getAllIssues(projectId);
+
+    const handler = new InTmuxByHumanSessionTokenCountHandler();
+    const output = handler.handle({
+      tokenListJsonPath:
+        options.tokenListJsonPath ??
+        config.claudeCodeOauthTokenListJsonPath ??
+        null,
+      issues,
+    });
+
+    for (const line of output.diagnostics) {
+      console.error(line);
+    }
+
+    for (const line of output.lines) {
+      process.stdout.write(`${line}\n`);
+    }
+  });
 
 program
-	.command("ownerCallFileAppend")
-	.description(
-		"Append one owner call as a YAML document to the per-session owner call file. The project the session belongs to is resolved from the in-tmux-by-human data in the data directory, and a session no project lists is written under NA. The file is created when it does not exist, and every later call is appended after the existing documents so the oldest call stays first. Nothing is written to stdout on success.",
-	)
-	.requiredOption("--session <name>", "tmux session name that raised the call")
-	.requiredOption(
-		"--calledAt <timestamp>",
-		"Time the call was raised, as UTC ISO-8601 with second precision and a trailing Z",
-	)
-	.requiredOption(
-		"--body-file <path>",
-		"Path to the file holding the call body; the body is read from a file because it is multi-line and can be long",
-	)
-	.option(
-		"--inTmuxDataDir <path>",
-		`Directory the owner call files are written under, the same directory serveWeb serves them from (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
-	)
-	.action((options: OwnerCallFileAppendOptions) => {
-		if (!isOwnerCallCalledAtValid(options.calledAt)) {
-			console.error(
-				"--calledAt must be a UTC ISO-8601 timestamp with second precision and a trailing Z, for example 2026-08-14T04:22:28Z",
-			);
-			return process.exit(1);
-		}
-		const dataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
-		ownerCallFileAppend({
-			dataDir,
-			projectCode: ownerCallProjectCodeInInTmuxByHumanData(
-				dataDir,
-				options.session,
-			),
-			ownerCall: {
-				sessionName: options.session,
-				calledAt: options.calledAt,
-				body: fs.readFileSync(options.bodyFile, "utf-8"),
-			},
-		});
-	});
+  .command('killTmuxSession')
+  .description(
+    'Cleanly kill a tmux session by running tmux kill-session and stopping its cl-*.scope systemd --user unit. Use --session <name> to kill another named session, or --self to terminate the current session from inside it.',
+  )
+  .option('--session <name>', 'Name of the tmux session to kill')
+  .option(
+    '--self',
+    'Terminate the current session by stopping its own cl-*.scope systemd user unit, derived from /proc/self/cgroup',
+  )
+  .action(async (options: KillTmuxSessionOptions) => {
+    if (!options.session && !options.self) {
+      console.error('Either --session <name> or --self is required');
+      process.exit(1);
+    }
+    if (options.session && options.self) {
+      console.error('--session and --self cannot be used together');
+      process.exit(1);
+    }
+
+    const localCommandRunner = new NodeLocalCommandRunner();
+    const tmuxSessionRepository = new NodeTmuxSessionRepository(
+      localCommandRunner,
+    );
+
+    if (options.self) {
+      await tmuxSessionRepository.killOwnSession();
+    } else if (options.session) {
+      await tmuxSessionRepository.killSession(options.session);
+    }
+  });
 
 program
-	.command("ownerCallFileDelete")
-	.description(
-		"Delete the owner call file of one session, whichever project directory holds it, so a session that moved between projects after its call was appended leaves nothing behind. It succeeds when the file is already absent, so a reset that runs twice is not an error. Nothing is written to stdout on success.",
-	)
-	.requiredOption("--session <name>", "tmux session name that raised the call")
-	.option(
-		"--inTmuxDataDir <path>",
-		`Directory the owner call files are written under, the same directory serveWeb serves them from (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
-	)
-	.action((options: OwnerCallFileDeleteOptions) => {
-		ownerCallFileDeleteInEveryProject({
-			dataDir: options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR,
-			sessionName: options.session,
-		});
-	});
+  .command('ownerCallFileAppend')
+  .description(
+    'Append one owner call as a YAML document to the per-session owner call file. The project the session belongs to is resolved from the in-tmux-by-human data in the data directory, and a session no project lists is written under NA. The file is created when it does not exist, and every later call is appended after the existing documents so the oldest call stays first. Nothing is written to stdout on success.',
+  )
+  .requiredOption('--session <name>', 'tmux session name that raised the call')
+  .requiredOption(
+    '--calledAt <timestamp>',
+    'Time the call was raised, as UTC ISO-8601 with second precision and a trailing Z',
+  )
+  .requiredOption(
+    '--body-file <path>',
+    'Path to the file holding the call body; the body is read from a file because it is multi-line and can be long',
+  )
+  .option(
+    '--inTmuxDataDir <path>',
+    `Directory the owner call files are written under, the same directory serveWeb serves them from (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
+  )
+  .action((options: OwnerCallFileAppendOptions) => {
+    if (!isOwnerCallCalledAtValid(options.calledAt)) {
+      console.error(
+        '--calledAt must be a UTC ISO-8601 timestamp with second precision and a trailing Z, for example 2026-08-14T04:22:28Z',
+      );
+      return process.exit(1);
+    }
+    const dataDir = options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR;
+    ownerCallFileAppend({
+      dataDir,
+      projectCode: ownerCallProjectCodeInInTmuxByHumanData(
+        dataDir,
+        options.session,
+      ),
+      ownerCall: {
+        sessionName: options.session,
+        calledAt: options.calledAt,
+        body: fs.readFileSync(options.bodyFile, 'utf-8'),
+      },
+    });
+  });
 
 program
-	.command("attachOrCreate")
-	.description(
-		"Attach to an existing tmux session registered for the given issue URL, or create a new one. Looks up the cl session registry via cl-scope-lib.sh to find a registered session name; if that session is still alive it attaches to it, otherwise creates a new interactive session running cl for the issue URL.",
-	)
-	.requiredOption(
-		"--issueUrl <url>",
-		"GitHub issue URL to attach to or create a session for",
-	)
-	.action(async (options: AttachOrCreateOptions) => {
-		const localCommandRunner = new NodeLocalCommandRunner();
-		const tmuxSessionRepository = new NodeTmuxSessionRepository(
-			localCommandRunner,
-		);
-		const scopeLibPath = resolveScopeLibPath();
-		await tmuxSessionRepository.attachOrCreateInteractiveSession(
-			options.issueUrl,
-			scopeLibPath,
-		);
-	});
+  .command('ownerCallFileDelete')
+  .description(
+    'Delete the owner call file of one session, whichever project directory holds it, so a session that moved between projects after its call was appended leaves nothing behind. It succeeds when the file is already absent, so a reset that runs twice is not an error. Nothing is written to stdout on success.',
+  )
+  .requiredOption('--session <name>', 'tmux session name that raised the call')
+  .option(
+    '--inTmuxDataDir <path>',
+    `Directory the owner call files are written under, the same directory serveWeb serves them from (default: ${DEFAULT_IN_TMUX_DATA_DIR})`,
+  )
+  .action((options: OwnerCallFileDeleteOptions) => {
+    ownerCallFileDeleteInEveryProject({
+      dataDir: options.inTmuxDataDir ?? DEFAULT_IN_TMUX_DATA_DIR,
+      sessionName: options.session,
+    });
+  });
+
+program
+  .command('attachOrCreate')
+  .description(
+    'Attach to an existing tmux session registered for the given issue URL, or create a new one. Looks up the cl session registry via cl-scope-lib.sh to find a registered session name; if that session is still alive it attaches to it, otherwise creates a new interactive session running cl for the issue URL.',
+  )
+  .requiredOption(
+    '--issueUrl <url>',
+    'GitHub issue URL to attach to or create a session for',
+  )
+  .action(async (options: AttachOrCreateOptions) => {
+    const localCommandRunner = new NodeLocalCommandRunner();
+    const tmuxSessionRepository = new NodeTmuxSessionRepository(
+      localCommandRunner,
+    );
+    const scopeLibPath = resolveScopeLibPath();
+    await tmuxSessionRepository.attachOrCreateInteractiveSession(
+      options.issueUrl,
+      scopeLibPath,
+    );
+  });
 
 const parseStringArray = (value: unknown): string[] => {
-	if (!Array.isArray(value)) return [];
-	return value.filter((item): item is string => typeof item === "string");
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string');
 };
 
 const parseProjectDoraConfig = (
-	raw: unknown,
+  raw: unknown,
 ): ProjectDoraAdapterConfig | null => {
-	if (!isRecord(raw)) return null;
-	const name = typeof raw["name"] === "string" ? raw["name"] : "";
-	const owner = typeof raw["owner"] === "string" ? raw["owner"] : "";
-	const repo = typeof raw["repo"] === "string" ? raw["repo"] : "";
-	const deployWorkflowFiles = parseStringArray(raw["deployWorkflowFiles"]);
-	const deployBranch =
-		typeof raw["deployBranch"] === "string" ? raw["deployBranch"] : null;
-	const prBaseBranch =
-		typeof raw["prBaseBranch"] === "string" ? raw["prBaseBranch"] : null;
-	const mttrLabels = parseStringArray(raw["mttrLabels"]);
-	const ghTokenEnvVar =
-		typeof raw["ghTokenEnvVar"] === "string" ? raw["ghTokenEnvVar"] : null;
-	if (!name || !owner || !repo) return null;
-	return {
-		name,
-		owner,
-		repo,
-		deployWorkflowFiles,
-		deployBranch,
-		prBaseBranch,
-		mttrLabels,
-		ghTokenEnvVar,
-	};
+  if (!isRecord(raw)) return null;
+  const name = typeof raw['name'] === 'string' ? raw['name'] : '';
+  const owner = typeof raw['owner'] === 'string' ? raw['owner'] : '';
+  const repo = typeof raw['repo'] === 'string' ? raw['repo'] : '';
+  const deployWorkflowFiles = parseStringArray(raw['deployWorkflowFiles']);
+  const deployBranch =
+    typeof raw['deployBranch'] === 'string' ? raw['deployBranch'] : null;
+  const prBaseBranch =
+    typeof raw['prBaseBranch'] === 'string' ? raw['prBaseBranch'] : null;
+  const mttrLabels = parseStringArray(raw['mttrLabels']);
+  const ghTokenEnvVar =
+    typeof raw['ghTokenEnvVar'] === 'string' ? raw['ghTokenEnvVar'] : null;
+  if (!name || !owner || !repo) return null;
+  return {
+    name,
+    owner,
+    repo,
+    deployWorkflowFiles,
+    deployBranch,
+    prBaseBranch,
+    mttrLabels,
+    ghTokenEnvVar,
+  };
 };
 
 const parseDoraMetricsConfig = (
-	raw: unknown,
+  raw: unknown,
 ): {
-	reportOwner: string;
-	reportRepo: string;
-	projects: ProjectDoraAdapterConfig[];
+  reportOwner: string;
+  reportRepo: string;
+  projects: ProjectDoraAdapterConfig[];
 } => {
-	if (!isRecord(raw)) {
-		throw new Error("Invalid DORA metrics config: root must be a YAML object");
-	}
-	const reportOwner =
-		typeof raw["reportOwner"] === "string" ? raw["reportOwner"] : "";
-	const reportRepo =
-		typeof raw["reportRepo"] === "string" ? raw["reportRepo"] : "";
-	if (!reportOwner || !reportRepo) {
-		throw new Error(
-			"Invalid DORA metrics config: reportOwner and reportRepo are required",
-		);
-	}
-	const rawProjects = Array.isArray(raw["projects"]) ? raw["projects"] : [];
-	const parsedProjects = rawProjects.map(parseProjectDoraConfig);
-	const skippedCount = parsedProjects.filter((p) => p === null).length;
-	if (skippedCount > 0) {
-		console.warn(
-			`Warning: ${skippedCount} project(s) in DORA metrics config were invalid and skipped (missing name, owner, or repo).`,
-		);
-	}
-	const projects = parsedProjects.filter(
-		(p): p is ProjectDoraAdapterConfig => p !== null,
-	);
-	return { reportOwner, reportRepo, projects };
+  if (!isRecord(raw)) {
+    throw new Error('Invalid DORA metrics config: root must be a YAML object');
+  }
+  const reportOwner =
+    typeof raw['reportOwner'] === 'string' ? raw['reportOwner'] : '';
+  const reportRepo =
+    typeof raw['reportRepo'] === 'string' ? raw['reportRepo'] : '';
+  if (!reportOwner || !reportRepo) {
+    throw new Error(
+      'Invalid DORA metrics config: reportOwner and reportRepo are required',
+    );
+  }
+  const rawProjects = Array.isArray(raw['projects']) ? raw['projects'] : [];
+  const parsedProjects = rawProjects.map(parseProjectDoraConfig);
+  const skippedCount = parsedProjects.filter((p) => p === null).length;
+  if (skippedCount > 0) {
+    console.warn(
+      `Warning: ${skippedCount} project(s) in DORA metrics config were invalid and skipped (missing name, owner, or repo).`,
+    );
+  }
+  const projects = parsedProjects.filter(
+    (p): p is ProjectDoraAdapterConfig => p !== null,
+  );
+  return { reportOwner, reportRepo, projects };
 };
 
 type DoraMetricsOptions = {
-	configFilePath: string;
-	since?: string;
-	until?: string;
+  configFilePath: string;
+  since?: string;
+  until?: string;
 };
 
 program
-	.command("doraMetrics")
-	.description(
-		"Measure DORA metrics for configured projects and create a weekly report issue",
-	)
-	.requiredOption(
-		"-c, --configFilePath <path>",
-		"Path to DORA metrics YAML config file",
-	)
-	.option("--since <date>", "Start of measurement period (ISO 8601 UTC)")
-	.option("--until <date>", "End of measurement period (ISO 8601 UTC)")
-	.action(async (options: DoraMetricsOptions) => {
-		const token = process.env.GH_TOKEN;
-		if (!token) {
-			console.error("GH_TOKEN environment variable is required");
-			process.exit(1);
-		}
+  .command('doraMetrics')
+  .description(
+    'Measure DORA metrics for configured projects and create a weekly report issue',
+  )
+  .requiredOption(
+    '-c, --configFilePath <path>',
+    'Path to DORA metrics YAML config file',
+  )
+  .option('--since <date>', 'Start of measurement period (ISO 8601 UTC)')
+  .option('--until <date>', 'End of measurement period (ISO 8601 UTC)')
+  .action(async (options: DoraMetricsOptions) => {
+    const token = process.env.GH_TOKEN;
+    if (!token) {
+      console.error('GH_TOKEN environment variable is required');
+      process.exit(1);
+    }
 
-		const rawConfig = parseDoraMetricsConfig(
-			YAML.parse(fs.readFileSync(options.configFilePath, "utf-8")),
-		);
+    const rawConfig = parseDoraMetricsConfig(
+      YAML.parse(fs.readFileSync(options.configFilePath, 'utf-8')),
+    );
 
-		const until = options.until ? new Date(options.until) : new Date();
-		const since = options.since
-			? new Date(options.since)
-			: new Date(until.getTime() - 7 * 24 * 3600 * 1000);
+    const until = options.until ? new Date(options.until) : new Date();
+    const since = options.since
+      ? new Date(options.since)
+      : new Date(until.getTime() - 7 * 24 * 3600 * 1000);
 
-		const tokenOverrides: Record<string, string> = {};
-		for (const project of rawConfig.projects) {
-			if (project.ghTokenEnvVar) {
-				const overrideToken = process.env[project.ghTokenEnvVar];
-				if (!overrideToken) {
-					console.error(
-						`Error: environment variable ${project.ghTokenEnvVar} is required for project ${project.name} but is not set.`,
-					);
-					process.exit(1);
-				}
-				tokenOverrides[project.owner] = overrideToken;
-			}
-		}
+    const tokenOverrides: Record<string, string> = {};
+    for (const project of rawConfig.projects) {
+      if (project.ghTokenEnvVar) {
+        const overrideToken = process.env[project.ghTokenEnvVar];
+        if (!overrideToken) {
+          console.error(
+            `Error: environment variable ${project.ghTokenEnvVar} is required for project ${project.name} but is not set.`,
+          );
+          process.exit(1);
+        }
+        tokenOverrides[project.owner] = overrideToken;
+      }
+    }
 
-		const githubActionsRepository = new RestGitHubActionsRepository(
-			token,
-			tokenOverrides,
-		);
-		const localStorageRepository = new LocalStorageRepository();
-		const githubRepositoryParams = buildGithubRepositoryParams(
-			localStorageRepository,
-			token,
-		);
-		const restIssueRepository = new RestIssueRepository(
-			...githubRepositoryParams,
-		);
+    const githubActionsRepository = new RestGitHubActionsRepository(
+      token,
+      tokenOverrides,
+    );
+    const localStorageRepository = new LocalStorageRepository();
+    const githubRepositoryParams = buildGithubRepositoryParams(
+      localStorageRepository,
+      token,
+    );
+    const restIssueRepository = new RestIssueRepository(
+      ...githubRepositoryParams,
+    );
 
-		const useCase = new DoraMetricsWeeklyMeasureUseCase(
-			githubActionsRepository,
-			restIssueRepository.createNewIssue.bind(restIssueRepository),
-		);
+    const useCase = new DoraMetricsWeeklyMeasureUseCase(
+      githubActionsRepository,
+      restIssueRepository.createNewIssue.bind(restIssueRepository),
+    );
 
-		await useCase.run({
-			projects: rawConfig.projects,
-			reportOwner: rawConfig.reportOwner,
-			reportRepo: rawConfig.reportRepo,
-			since,
-			until,
-		});
+    await useCase.run({
+      projects: rawConfig.projects,
+      reportOwner: rawConfig.reportOwner,
+      reportRepo: rawConfig.reportRepo,
+      since,
+      until,
+    });
 
-		console.log("DORA metrics report issue created");
-	});
+    console.log('DORA metrics report issue created');
+  });
 
 export const reportFatalErrorAndExit = (error: unknown): void => {
-	console.error(error);
-	process.exit(1);
+  console.error(error);
+  process.exit(1);
 };
 
 const buildCliErrorReporter = (): {
-	useCase: CliErrorReportUseCase;
-	owner: string;
-	repo: string;
+  useCase: CliErrorReportUseCase;
+  owner: string;
+  repo: string;
 } | null => {
-	const token = process.env.GH_TOKEN;
-	const targetRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
-	if (!token || !targetRepo) {
-		return null;
-	}
-	const slashIndex = targetRepo.indexOf("/");
-	if (slashIndex <= 0 || slashIndex === targetRepo.length - 1) {
-		return null;
-	}
-	const owner = targetRepo.slice(0, slashIndex);
-	const repo = targetRepo.slice(slashIndex + 1);
-	const localStorageRepository = new LocalStorageRepository();
-	const githubRepositoryParams = buildGithubRepositoryParams(
-		localStorageRepository,
-		token,
-	);
-	const apiV3IssueRepository = new ApiV3IssueRepository(
-		...githubRepositoryParams,
-	);
-	const restIssueRepository = new RestIssueRepository(
-		...githubRepositoryParams,
-	);
-	const useCase = new CliErrorReportUseCase({
-		searchIssue: apiV3IssueRepository.searchIssue.bind(apiV3IssueRepository),
-		createNewIssue:
-			restIssueRepository.createNewIssue.bind(restIssueRepository),
-		createCommentByUrl: (issueOrPrUrl: string, commentBody: string) =>
-			restIssueRepository.createComment(issueOrPrUrl, commentBody),
-	});
-	return { useCase, owner, repo };
+  const token = process.env.GH_TOKEN;
+  const targetRepo = process.env.TDPM_ERROR_REPORT_REPOSITORY;
+  if (!token || !targetRepo) {
+    return null;
+  }
+  const slashIndex = targetRepo.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === targetRepo.length - 1) {
+    return null;
+  }
+  const owner = targetRepo.slice(0, slashIndex);
+  const repo = targetRepo.slice(slashIndex + 1);
+  const localStorageRepository = new LocalStorageRepository();
+  const githubRepositoryParams = buildGithubRepositoryParams(
+    localStorageRepository,
+    token,
+  );
+  const apiV3IssueRepository = new ApiV3IssueRepository(
+    ...githubRepositoryParams,
+  );
+  const restIssueRepository = new RestIssueRepository(
+    ...githubRepositoryParams,
+  );
+  const useCase = new CliErrorReportUseCase({
+    searchIssue: apiV3IssueRepository.searchIssue.bind(apiV3IssueRepository),
+    createNewIssue:
+      restIssueRepository.createNewIssue.bind(restIssueRepository),
+    createCommentByUrl: (issueOrPrUrl: string, commentBody: string) =>
+      restIssueRepository.createComment(issueOrPrUrl, commentBody),
+  });
+  return { useCase, owner, repo };
 };
 
 export const runCliProgram = async (
-	argv: string[],
-	handleFatalError: (error: unknown) => void,
+  argv: string[],
+  handleFatalError: (error: unknown) => void,
 ): Promise<void> => {
-	let reported = false;
+  let reported = false;
 
-	const safeReport = async (error: unknown): Promise<void> => {
-		if (reported) {
-			return;
-		}
-		reported = true;
-		const reporter = buildCliErrorReporter();
-		if (!reporter) {
-			return;
-		}
-		await reporter.useCase.run({
-			error,
-			owner: reporter.owner,
-			repo: reporter.repo,
-			commandLine: argv.join(" "),
-		});
-	};
+  const safeReport = async (error: unknown): Promise<void> => {
+    if (reported) {
+      return;
+    }
+    reported = true;
+    const reporter = buildCliErrorReporter();
+    if (!reporter) {
+      return;
+    }
+    await reporter.useCase.run({
+      error,
+      owner: reporter.owner,
+      repo: reporter.repo,
+      commandLine: argv.join(' '),
+    });
+  };
 
-	process.on("uncaughtException", (error: Error) => {
-		void safeReport(error).then(() => {
-			reportFatalErrorAndExit(error);
-		});
-	});
-	process.on("unhandledRejection", (reason: unknown) => {
-		void safeReport(reason).then(() => {
-			reportFatalErrorAndExit(reason);
-		});
-	});
+  process.on('uncaughtException', (error: Error) => {
+    void safeReport(error).then(() => {
+      reportFatalErrorAndExit(error);
+    });
+  });
+  process.on('unhandledRejection', (reason: unknown) => {
+    void safeReport(reason).then(() => {
+      reportFatalErrorAndExit(reason);
+    });
+  });
 
-	try {
-		await program.parseAsync(argv);
-	} catch (error) {
-		await safeReport(error);
-		handleFatalError(error);
-	}
+  try {
+    await program.parseAsync(argv);
+  } catch (error) {
+    await safeReport(error);
+    handleFatalError(error);
+  }
 };
 
 /* istanbul ignore next */
 if (process.argv && require.main === module) {
-	void runCliProgram(process.argv, reportFatalErrorAndExit);
+  void runCliProgram(process.argv, reportFatalErrorAndExit);
 }
