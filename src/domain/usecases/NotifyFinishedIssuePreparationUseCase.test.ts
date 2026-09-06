@@ -525,6 +525,42 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should move issue to Awaiting Workspace with NO_REPORT_FROM_AGENT_BOT when issue status is In Tmux by agent and there is no agent report', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'In Tmux by agent',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueRepository.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Awaiting Workspace',
+      }),
+      mockProject,
+    );
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+      mockProject,
+      expect.objectContaining({ status: 'Awaiting Workspace' }),
+      'awaiting-workspace-id',
+    );
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+      'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+    );
+  });
+
   it('should set status to Awaiting Workspace when issue has dependent issue URLs', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
