@@ -28,6 +28,7 @@ import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
+import { extractStory } from './extractStory';
 import { extractWaitingForOwner } from './extractWaitingForOwner';
 import { findLastAgentReport } from './findLastAgentReport';
 
@@ -323,6 +324,9 @@ export class NotifyFinishedIssuePreparationUseCase {
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
+    const storyName = lastAgentReport
+      ? extractStory(lastAgentReport.content)
+      : null;
     if (
       nextStepAgent !== null &&
       params.agents &&
@@ -526,6 +530,18 @@ export class NotifyFinishedIssuePreparationUseCase {
           project,
           agentOptionId,
         );
+      }
+      if (storyName !== null && project.story !== null) {
+        const storyOptionId = project.story.stories.find(
+          (s) => s.name === storyName,
+        )?.id;
+        if (storyOptionId !== undefined) {
+          await this.issueRepository.updateStory(
+            { ...project, story: project.story },
+            issue,
+            storyOptionId,
+          );
+        }
       }
       issue.status = AWAITING_WORKSPACE_STATUS_NAME;
       await this.issueRepository.update(issue, project);

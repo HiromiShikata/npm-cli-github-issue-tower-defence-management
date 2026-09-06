@@ -6439,6 +6439,169 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('updateStory', () => {
+    const storyProject: Project & { story: NonNullable<Project['story']> } = {
+      ...buildTestProject('PVT_story_test'),
+      story: {
+        name: 'Story',
+        fieldId: 'story-field-id',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'story-opt-a',
+            name: 'regular / workflow improvement',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'story-opt-b',
+            name: 'regular / other story',
+            color: 'GREEN',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow management' },
+      },
+    };
+
+    const testIssue: Issue = {
+      nameWithOwner: 'user/repo',
+      number: 1,
+      title: 'Test Issue',
+      state: 'OPEN',
+      status: 'Preparation',
+      story: null,
+      nextActionDate: null,
+      nextActionHour: null,
+      estimationMinutes: null,
+      dependedIssueUrls: [],
+      completionDate50PercentConfidence: null,
+      url: 'https://github.com/user/repo/issues/1',
+      assignees: [],
+      labels: [],
+      org: 'user',
+      repo: 'repo',
+      body: '',
+      itemId: 'item-test-1',
+      isPr: false,
+      isInProgress: false,
+      isClosed: false,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      author: '',
+      closingIssueReferenceUrls: [],
+      agent: null,
+      stateReason: null,
+    };
+
+    it('updates the allIssues cache story field after calling updateProjectField', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+      } = createApiV3CheerioRestIssueRepository();
+
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        undefined,
+      );
+
+      const existingCache = {
+        lastFetchedAt: '2026-01-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+        project: storyProject,
+        issues: [{ ...buildCachedIssueRecord(testIssue.url, testIssue.title), itemId: testIssue.itemId }],
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(existingCache);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.updateStory(storyProject, testIssue, 'story-opt-a');
+
+      expect(
+        graphqlProjectItemRepository.updateProjectField,
+      ).toHaveBeenCalledWith(
+        'PVT_story_test',
+        'story-field-id',
+        'item-test-1',
+        { singleSelectOptionId: 'story-opt-a' },
+      );
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        expect.stringContaining('PVT_story_test'),
+        expect.objectContaining({
+          issues: expect.arrayContaining([
+            expect.objectContaining({
+              url: testIssue.url,
+              story: 'regular / workflow improvement',
+            }),
+          ]),
+        }),
+      );
+    });
+
+    it('skips the cache update when the issue url is not in the cache', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+      } = createApiV3CheerioRestIssueRepository();
+
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        undefined,
+      );
+
+      const existingCache = {
+        lastFetchedAt: '2026-01-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+        project: storyProject,
+        issues: [buildCachedIssueRecord('https://github.com/user/repo/issues/99', 'Other Issue')],
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(existingCache);
+
+      await repository.updateStory(storyProject, testIssue, 'story-opt-a');
+
+      expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+    });
+
+    it('skips the cache update when the cache is absent', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+      } = createApiV3CheerioRestIssueRepository();
+
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        undefined,
+      );
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+
+      await repository.updateStory(storyProject, testIssue, 'story-opt-a');
+
+      expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+    });
+
+    it('skips the cache update when the storyOptionId does not match any story in the project', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+      } = createApiV3CheerioRestIssueRepository();
+
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        undefined,
+      );
+
+      const existingCache = {
+        lastFetchedAt: '2026-01-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+        project: storyProject,
+        issues: [{ ...buildCachedIssueRecord(testIssue.url, testIssue.title), itemId: testIssue.itemId }],
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(existingCache);
+
+      await repository.updateStory(storyProject, testIssue, 'nonexistent-option-id');
+
+      expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getIssueByUrl', () => {
     it('returns the cached issue without calling fetchProjectItemByUrl when a fresh cache entry matches the url', async () => {
       const {
