@@ -215,7 +215,10 @@ export class NodeTmuxSessionRepository implements TmuxSessionRepository {
     issueUrl: string,
   ): Promise<string | null> => {
     const { stdout: psOut, exitCode: psExit } =
-      await this.localCommandRunner.runCommand('ps', ['-eo', 'pid,ppid,args=']);
+      await this.localCommandRunner.runCommand('ps', [
+        '-eo',
+        'pid=,ppid=,args=',
+      ]);
     if (psExit !== 0) {
       return null;
     }
