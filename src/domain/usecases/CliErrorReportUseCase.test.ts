@@ -210,9 +210,7 @@ describe('CliErrorReportUseCase', () => {
     });
 
     it('should make no repository calls when the error message contains a rate-limit phrase', async () => {
-      const error = new Error(
-        'API rate limit exceeded for user ID 123456789',
-      );
+      const error = new Error('API rate limit exceeded for user ID 123456789');
       const consoleSpy = jest
         .spyOn(console, 'warn')
         .mockImplementation(() => undefined);
