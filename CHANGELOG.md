@@ -1,3 +1,10 @@
+## [2.72.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.2...v2.72.3) (2026-09-06)
+
+
+### Bug Fixes
+
+* **rest-project:** set 120-second timeout on REST GitHub API calls ([#2179](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2179)) ([81b1749](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/81b1749b1652a4db3ee48c60d72dba7c4c379853)), closes [HiromiShikata/secretary#5633](https://github.com/HiromiShikata/secretary/issues/5633)
+
 ## [2.72.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.1...v2.72.2) (2026-09-06)
 
 
