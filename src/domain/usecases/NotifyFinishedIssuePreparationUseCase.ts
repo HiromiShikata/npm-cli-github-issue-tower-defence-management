@@ -45,6 +45,7 @@ import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
+import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import {
   reportSilentRedispatchWorkflowIssue,
@@ -471,8 +472,10 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
 
     if (nextStepAgent !== null) {
+      const isNoStory =
+        issue.story !== null && issue.story.startsWith(NO_STORY_STORY_NAME);
       const repetition = resolveNextStepAgentDispatchRepetition({
-        agentFieldValue: issue.agent,
+        agentFieldValue: isNoStory ? null : issue.agent,
         nextStepAgent,
         comments,
         isTrustedAuthor,
