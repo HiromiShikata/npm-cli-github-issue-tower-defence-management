@@ -476,7 +476,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       }),
     ).rejects.toThrow(
-      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation, but got In Progress',
+      'Illegal issue status for https://github.com/user/repo/issues/1: expected Preparation or In Tmux by agent, but got In Progress',
     );
   });
 

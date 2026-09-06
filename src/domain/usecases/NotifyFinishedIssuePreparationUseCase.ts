@@ -218,7 +218,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       throw new IllegalIssueStatusError(
         params.issueUrl,
         issue.status,
-        PREPARATION_STATUS_NAME,
+        `${PREPARATION_STATUS_NAME} or ${IN_TMUX_BY_AGENT_STATUS_NAME}`,
       );
     }
 
