@@ -1164,7 +1164,6 @@ body {
   border: 1px solid #30363d;
   border-radius: 8px;
   margin-bottom: 4px;
-  cursor: pointer;
 }
 
 .console-comment-toggle {
@@ -1239,6 +1238,7 @@ body {
 .console-comment-body-expanded {
   flex-basis: 100%;
   min-width: 0;
+  cursor: default;
 }
 
 .console-files,

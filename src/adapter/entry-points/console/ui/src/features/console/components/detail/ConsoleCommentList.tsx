@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import type { ConsoleRepoContext } from '../../lib/markdown';
 import { formatRelativeTime } from '../../logic/relativeTime';
@@ -37,6 +37,39 @@ const saveExpandedKeys = (persistenceKey: string, keys: Set<string>): void => {
   } catch (e) {
     console.error('Failed to save comment expanded state to storage:', e);
   }
+};
+
+type ConsoleCommentBodyExpandedProps = {
+  comment: ConsoleComment;
+  buildImageProxyUrl?: ImageProxyUrlBuilder;
+  renderReferenceLink?: ConsoleReferenceLinkRenderer;
+  repoContext?: ConsoleRepoContext;
+};
+
+const ConsoleCommentBodyExpanded = ({
+  comment,
+  buildImageProxyUrl,
+  renderReferenceLink,
+  repoContext,
+}: ConsoleCommentBodyExpandedProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const stop = (e: Event) => e.stopPropagation();
+    el.addEventListener('click', stop);
+    return () => el.removeEventListener('click', stop);
+  }, []);
+  return (
+    <div ref={ref} className="console-comment-body-expanded">
+      <ConsoleMarkdownContent
+        body={comment.body}
+        buildImageProxyUrl={buildImageProxyUrl}
+        renderReferenceLink={renderReferenceLink}
+        repoContext={repoContext}
+      />
+    </div>
+  );
 };
 
 export type ConsoleCommentListProps = {
@@ -156,14 +189,12 @@ export const ConsoleCommentList = ({
               </a>
             )}
             {isExpanded && (
-              <div className="console-comment-body-expanded">
-                <ConsoleMarkdownContent
-                  body={comment.body}
-                  buildImageProxyUrl={buildImageProxyUrl}
-                  renderReferenceLink={renderReferenceLink}
-                  repoContext={repoContext}
-                />
-              </div>
+              <ConsoleCommentBodyExpanded
+                comment={comment}
+                buildImageProxyUrl={buildImageProxyUrl}
+                renderReferenceLink={renderReferenceLink}
+                repoContext={repoContext}
+              />
             )}
           </article>
         );
