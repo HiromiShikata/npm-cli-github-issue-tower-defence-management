@@ -1,11 +1,32 @@
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import {
   hasRateLimitSignals,
+  isSecondaryRateLimit,
   computeBoundedBackoffMs,
+  computeSecondaryRateLimitBackoffMs,
   computeRateLimitResetIso,
   fetchWithGitHubRateLimitRetry,
   RATE_LIMIT_MAX_RETRIES,
   RATE_LIMIT_TOTAL_BACKOFF_CAP_MS,
+  SECONDARY_RATE_LIMIT_FLOOR_MS,
 } from './githubRateLimitRetry';
+
+// Isolated temp directory for any state-file side-effects produced by the
+// functions under test.  Using an isolated path prevents writes from leaking
+// into the real TDPM cache directory.
+let tmpDir: string;
+let tmpStateFile: string;
+
+beforeAll(() => {
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tdpm-ratelimit-test-'));
+  tmpStateFile = path.join(tmpDir, 'gh-secondary-rate-limit.json');
+});
+
+afterAll(() => {
+  fs.rmSync(tmpDir, { recursive: true });
+});
 
 describe('githubRateLimitRetry', () => {
   describe('hasRateLimitSignals', () => {
@@ -46,6 +67,132 @@ describe('githubRateLimitRetry', () => {
     it('does not flag non-403/429 statuses', () => {
       const headers = new Headers({ 'retry-after': '2' });
       expect(hasRateLimitSignals(404, headers, 'rate limit')).toBe(false);
+    });
+  });
+
+  describe('isSecondaryRateLimit', () => {
+    const futureResetEpoch = Math.floor(Date.now() / 1000) + 3600;
+    const nowMs = Date.now();
+
+    it('detects signal 1: body containing "secondary rate limit"', () => {
+      const headers = new Headers();
+      expect(
+        isSecondaryRateLimit(
+          headers,
+          JSON.stringify({
+            message: 'You have exceeded a secondary rate limit',
+          }),
+          nowMs,
+        ),
+      ).toBe(true);
+    });
+
+    it('detects signal 1 case-insensitively', () => {
+      const headers = new Headers();
+      expect(
+        isSecondaryRateLimit(headers, 'Secondary Rate Limit triggered', nowMs),
+      ).toBe(true);
+    });
+
+    it('detects signal 2: retry-after header present', () => {
+      const headers = new Headers({ 'retry-after': '60' });
+      expect(isSecondaryRateLimit(headers, '', nowMs)).toBe(true);
+    });
+
+    it('detects signal 2 even when retry-after is zero', () => {
+      const headers = new Headers({ 'retry-after': '0' });
+      expect(isSecondaryRateLimit(headers, '', nowMs)).toBe(true);
+    });
+
+    it('detects signal 3: x-ratelimit-remaining 0 with x-ratelimit-reset in the future', () => {
+      const headers = new Headers({
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': String(futureResetEpoch),
+      });
+      expect(isSecondaryRateLimit(headers, '', nowMs)).toBe(true);
+    });
+
+    it('does not trigger signal 3 when x-ratelimit-reset is absent', () => {
+      // Primary rate limit pattern: remaining 0 but no reset header
+      const headers = new Headers({ 'x-ratelimit-remaining': '0' });
+      expect(
+        isSecondaryRateLimit(
+          headers,
+          JSON.stringify({ message: 'API rate limit exceeded' }),
+          nowMs,
+        ),
+      ).toBe(false);
+    });
+
+    it('does not trigger signal 3 when x-ratelimit-reset is in the past', () => {
+      const pastResetEpoch = Math.floor(nowMs / 1000) - 1;
+      const headers = new Headers({
+        'x-ratelimit-remaining': '0',
+        'x-ratelimit-reset': String(pastResetEpoch),
+      });
+      expect(isSecondaryRateLimit(headers, '', nowMs)).toBe(false);
+    });
+
+    it('does not flag a generic permission 403 with no rate-limit signals', () => {
+      const headers = new Headers({ 'x-ratelimit-remaining': '4999' });
+      expect(
+        isSecondaryRateLimit(
+          headers,
+          JSON.stringify({ message: 'Resource not accessible by integration' }),
+          nowMs,
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe('computeSecondaryRateLimitBackoffMs', () => {
+    const nowMs = 1_000_000;
+
+    it('enforces the 60-second floor when retry-after is shorter', () => {
+      const headers = new Headers({ 'retry-after': '1' });
+      expect(computeSecondaryRateLimitBackoffMs(headers, nowMs)).toBe(
+        SECONDARY_RATE_LIMIT_FLOOR_MS,
+      );
+    });
+
+    it('honours retry-after when it exceeds the 60-second floor', () => {
+      const headers = new Headers({ 'retry-after': '90' });
+      expect(computeSecondaryRateLimitBackoffMs(headers, nowMs)).toBe(90_000);
+    });
+
+    it('enforces the 60-second floor when x-ratelimit-reset gives fewer than 60 s', () => {
+      const resetEpochSeconds = Math.floor(nowMs / 1000) + 30;
+      const headers = new Headers({
+        'x-ratelimit-reset': String(resetEpochSeconds),
+      });
+      expect(computeSecondaryRateLimitBackoffMs(headers, nowMs)).toBe(
+        SECONDARY_RATE_LIMIT_FLOOR_MS,
+      );
+    });
+
+    it('uses x-ratelimit-reset when the wait exceeds the 60-second floor', () => {
+      const resetEpochSeconds = Math.floor(nowMs / 1000) + 90;
+      const headers = new Headers({
+        'x-ratelimit-reset': String(resetEpochSeconds),
+      });
+      expect(computeSecondaryRateLimitBackoffMs(headers, nowMs)).toBe(90_000);
+    });
+
+    it('returns the 60-second floor when no relevant headers are present', () => {
+      const headers = new Headers();
+      expect(computeSecondaryRateLimitBackoffMs(headers, nowMs)).toBe(
+        SECONDARY_RATE_LIMIT_FLOOR_MS,
+      );
+    });
+
+    it('prefers retry-after over x-ratelimit-reset when both are present', () => {
+      const resetEpochSeconds = Math.floor(nowMs / 1000) + 120;
+      const headers = new Headers({
+        'retry-after': '90',
+        'x-ratelimit-reset': String(resetEpochSeconds),
+      });
+      // retry-after wins: 90 s > 60 s floor
+      expect(computeSecondaryRateLimitBackoffMs(headers, nowMs)).toBe(90_000);
     });
   });
 
@@ -91,22 +238,167 @@ describe('githubRateLimitRetry', () => {
   });
 
   describe('fetchWithGitHubRateLimitRetry', () => {
-    const rateLimitResponse = (): Response =>
+    // Clear the shared state file before each test so circuit-breaker state
+    // from one test does not contaminate the next.
+    beforeEach(() => {
+      try {
+        fs.unlinkSync(tmpStateFile);
+      } catch {
+        // File may not exist yet; that is fine.
+      }
+    });
+
+    // Primary rate limit: x-ratelimit-remaining:0 without x-ratelimit-reset.
+    // isSecondaryRateLimit → false; hasRateLimitSignals → true.
+    const primaryRateLimitResponse = (): Response =>
       new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
         status: 403,
         headers: { 'x-ratelimit-remaining': '0' },
       });
 
-    it('retries a rate-limit response and resolves with the eventual success', async () => {
+    // Secondary rate limit: body names it explicitly.
+    const secondaryRateLimitBodyResponse = (): Response =>
+      new Response(
+        JSON.stringify({ message: 'You have exceeded a secondary rate limit' }),
+        { status: 403 },
+      );
+
+    // Secondary rate limit: retry-after header present.
+    const secondaryRateLimitRetryAfterResponse = (): Response =>
+      new Response(JSON.stringify({ message: 'Content creation rate limit' }), {
+        status: 403,
+        headers: { 'retry-after': '60' },
+      });
+
+    // Secondary rate limit: signal 3 (x-ratelimit-remaining:0 + future reset).
+    const futureResetEpoch = Math.floor(Date.now() / 1000) + 3600;
+    const secondaryRateLimitResetResponse = (): Response =>
+      new Response(JSON.stringify({ message: 'API rate limit exceeded' }), {
+        status: 403,
+        headers: {
+          'x-ratelimit-remaining': '0',
+          'x-ratelimit-reset': String(futureResetEpoch),
+        },
+      });
+
+    // Secondary rate limit detection is scoped to content-creating operations
+    // (isContentCreating: true).  Passing true here mirrors the real call path
+    // that approvePullRequest, mergePullRequest, etc. exercise.
+
+    it('returns immediately on a secondary rate limit body signal without retrying', async () => {
       const sleep = jest.fn().mockResolvedValue(undefined);
       const request = jest
         .fn<Promise<Response>, []>()
-        .mockResolvedValueOnce(rateLimitResponse())
+        .mockResolvedValue(secondaryRateLimitBodyResponse());
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        true, // isContentCreating
+        tmpStateFile,
+      );
+
+      expect(response.status).toBe(403);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it('returns immediately on a secondary rate limit retry-after signal without retrying', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const request = jest
+        .fn<Promise<Response>, []>()
+        .mockResolvedValue(secondaryRateLimitRetryAfterResponse());
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        true, // isContentCreating
+        tmpStateFile,
+      );
+
+      expect(response.status).toBe(403);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    it('returns immediately on a secondary rate limit x-ratelimit-reset signal without retrying', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const request = jest
+        .fn<Promise<Response>, []>()
+        .mockResolvedValue(secondaryRateLimitResetResponse());
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        true, // isContentCreating
+        tmpStateFile,
+      );
+
+      expect(response.status).toBe(403);
+      expect(request).toHaveBeenCalledTimes(1);
+      expect(sleep).not.toHaveBeenCalled();
+    });
+
+    // --- Non-interactive (retryOnSecondaryRateLimit: true) path ---
+
+    it('retries a secondary rate limit with a wait of at least 60 seconds when retryOnSecondaryRateLimit is true', async () => {
+      const sleeps: number[] = [];
+      const sleep = jest.fn(async (ms: number) => {
+        sleeps.push(ms);
+      });
+      const request = jest
+        .fn<Promise<Response>, []>()
+        // retry-after of 1 s — the floor must raise this to 60 s
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ message: 'secondary rate limit exceeded' }),
+            { status: 403, headers: { 'retry-after': '1' } },
+          ),
+        )
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ ok: true }), { status: 200 }),
         );
 
-      const response = await fetchWithGitHubRateLimitRetry(request, sleep);
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        true,  // retryOnSecondaryRateLimit
+        true,  // isContentCreating
+        tmpStateFile,
+      );
+
+      expect(response.status).toBe(200);
+      expect(request).toHaveBeenCalledTimes(2);
+      expect(sleep).toHaveBeenCalledTimes(1);
+      expect(sleeps[0]).toBeGreaterThanOrEqual(SECONDARY_RATE_LIMIT_FLOOR_MS);
+    });
+
+    // --- Primary rate limit unchanged paths ---
+
+    it('retries a primary rate-limit response and resolves with the eventual success', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const request = jest
+        .fn<Promise<Response>, []>()
+        .mockResolvedValueOnce(primaryRateLimitResponse())
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false,
+        tmpStateFile,
+      );
 
       expect(response.status).toBe(200);
       expect(request).toHaveBeenCalledTimes(2);
@@ -124,7 +416,14 @@ describe('githubRateLimitRetry', () => {
         ),
       );
 
-      const response = await fetchWithGitHubRateLimitRetry(request, sleep);
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false,
+        tmpStateFile,
+      );
 
       expect(response.status).toBe(403);
       expect(request).toHaveBeenCalledTimes(1);
@@ -138,9 +437,16 @@ describe('githubRateLimitRetry', () => {
       });
       const request = jest
         .fn<Promise<Response>, []>()
-        .mockResolvedValue(rateLimitResponse());
+        .mockResolvedValue(primaryRateLimitResponse());
 
-      const response = await fetchWithGitHubRateLimitRetry(request, sleep);
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false,
+        tmpStateFile,
+      );
 
       expect(response.status).toBe(403);
       expect(request).toHaveBeenCalledTimes(RATE_LIMIT_MAX_RETRIES + 1);
@@ -153,15 +459,42 @@ describe('githubRateLimitRetry', () => {
       const sleep = jest.fn().mockResolvedValue(undefined);
       const request = jest
         .fn<Promise<Response>, []>()
-        .mockResolvedValueOnce(rateLimitResponse())
+        .mockResolvedValueOnce(primaryRateLimitResponse())
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ value: 'final' }), { status: 200 }),
         );
 
-      const response = await fetchWithGitHubRateLimitRetry(request, sleep);
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false,
+        tmpStateFile,
+      );
       const body: unknown = await response.json();
 
       expect(body).toEqual({ value: 'final' });
+    });
+
+    it('preserves the response body when returning immediately on a secondary rate limit', async () => {
+      const sleep = jest.fn().mockResolvedValue(undefined);
+      const payload = { message: 'You have exceeded a secondary rate limit' };
+      const request = jest.fn<Promise<Response>, []>().mockResolvedValue(
+        new Response(JSON.stringify(payload), { status: 403 }),
+      );
+
+      const response = await fetchWithGitHubRateLimitRetry(
+        request,
+        sleep,
+        Date.now,
+        false,
+        false,
+        tmpStateFile,
+      );
+      const body: unknown = await response.json();
+
+      expect(body).toEqual(payload);
     });
   });
 });
