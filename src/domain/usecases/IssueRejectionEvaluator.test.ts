@@ -487,6 +487,24 @@ describe('IssueRejectionEvaluator', () => {
       ).toBe(false);
     });
 
+    it('should not require PR evaluation when issue agent is pr-reviewer and pr-reviewer label is in labelsNotRequiringPullRequest', async () => {
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['pr-reviewer'],
+          isPr: false,
+          agent: 'pr-reviewer',
+        },
+        ['pr-reviewer'],
+        { developerAgentNames: ['developer'] },
+      );
+
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(
+        result.rejections.some((r) => r.type === 'PULL_REQUEST_NOT_FOUND'),
+      ).toBe(false);
+    });
+
     describe('prebuilt relatedOpenPrUrls (in-memory derivation path)', () => {
       it('should resolve PR status via getOpenPullRequest and not call findRelatedOpenPRs when relatedOpenPrUrls is provided', async () => {
         mockIssueRepository.getOpenPullRequest.mockResolvedValue(
