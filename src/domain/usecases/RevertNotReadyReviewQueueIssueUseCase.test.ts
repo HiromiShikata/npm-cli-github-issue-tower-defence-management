@@ -2239,7 +2239,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(1);
       const [firstCallUrls] =
-        mockIssueRepository.getOpenPullRequests.mock.calls[0];
+        mockIssueRepository.getOpenPullRequests.mock.calls.map(
+          (call: string[][]) => call[0],
+        );
       expect(firstCallUrls).toHaveLength(100);
       expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
     });
