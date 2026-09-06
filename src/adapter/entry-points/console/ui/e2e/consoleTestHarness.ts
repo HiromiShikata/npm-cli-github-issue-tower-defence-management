@@ -756,7 +756,8 @@ const createStubIssueRepository = (
     }
     return map;
   },
-  addIssueToProject: async (): Promise<void> => undefined,
+  addIssueToProject: async (): Promise<string> => '',
+  updateStoryByProjectItemId: async (): Promise<void> => undefined,
   setDependedIssueUrl: () => notImplemented('setDependedIssueUrl'),
   getIssueOrPullRequestBody: async (): Promise<string> =>
     [

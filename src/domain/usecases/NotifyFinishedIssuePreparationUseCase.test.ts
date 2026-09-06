@@ -121,6 +121,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     updateStory: jest.Mock;
     addIssueToProject: jest.Mock;
     getIssueByUrl: jest.Mock;
+    updateStoryByProjectItemId: jest.Mock;
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
@@ -180,8 +181,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
       updateNextActionDate: jest.fn().mockResolvedValue(undefined),
       updateStory: jest.fn().mockResolvedValue(undefined),
-      addIssueToProject: jest.fn().mockResolvedValue(undefined),
+      addIssueToProject: jest.fn().mockResolvedValue(''),
       getIssueByUrl: jest.fn().mockResolvedValue(null),
+      updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
     };
 
     mockIssueCommentRepository = {
@@ -4896,6 +4898,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       const issueUrl = 'https://github.com/user/repo/issues/1';
       const blockerIssueUrl = 'https://github.com/user/repo/issues/42';
       const blockerStoryId = 'blocker-story-id';
+      const blockerProjectItemId = 'blocker-project-item-id';
       const projectWithStory = createMockProject({
         dependedIssueUrlSeparatedByComma: {
           name: 'Depended Issue URL',
@@ -4925,10 +4928,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           },
         },
       });
-      const blockerIssueObject = createMockIssue({
-        url: blockerIssueUrl,
-        itemId: 'blocker-item-id',
-      });
       const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
 
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithStory);
@@ -4941,7 +4940,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       ]);
       mockIssueRepository.searchIssue.mockResolvedValue([]);
       mockIssueRepository.createNewIssue.mockResolvedValue(42);
-      mockIssueRepository.getIssueByUrl.mockResolvedValue(blockerIssueObject);
+      mockIssueRepository.addIssueToProject.mockResolvedValue(
+        blockerProjectItemId,
+      );
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -4956,9 +4957,72 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         projectWithStory,
         blockerIssueUrl,
       );
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+      expect(
+        mockIssueRepository.updateStoryByProjectItemId,
+      ).toHaveBeenCalledWith(
         expect.objectContaining({ story: projectWithStory.story }),
-        blockerIssueObject,
+        blockerProjectItemId,
+        blockerStoryId,
+      );
+    });
+
+    it('sets workflow blocker story via project item id returned by addIssueToProject, not via getIssueByUrl', async () => {
+      const issueUrl = 'https://github.com/user/repo/issues/1';
+      const blockerStoryId = 'blocker-story-id';
+      const returnedProjectItemId = 'returned-project-item-id';
+      const projectWithStory = createMockProject({
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL',
+          fieldId: 'depended-field-id',
+        },
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: blockerStoryId,
+              name: 'workflow blocker',
+              color: 'RED',
+              description: '',
+            },
+          ],
+          workflowManagementStory: {
+            id: 'wms-id',
+            name: 'workflow management',
+          },
+        },
+      });
+      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithStory);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: test-agent (model)\n```json\n{"nextStepAgent": "unknown-agent"}\n```',
+        }),
+      ]);
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(42);
+      mockIssueRepository.addIssueToProject.mockResolvedValue(
+        returnedProjectItemId,
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['developer', 'triager'],
+      });
+
+      expect(
+        mockIssueRepository.updateStoryByProjectItemId,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ story: projectWithStory.story }),
+        returnedProjectItemId,
         blockerStoryId,
       );
     });

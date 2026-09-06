@@ -204,7 +204,12 @@ export interface IssueRepository {
   ) => Promise<IssueComment>;
   getAllOpened: (project: Project) => Promise<Issue[]>;
   getStoryObjectMap: (project: Project) => Promise<StoryObjectMap>;
-  addIssueToProject: (project: Project, issueUrl: string) => Promise<void>;
+  addIssueToProject: (project: Project, issueUrl: string) => Promise<string>;
+  updateStoryByProjectItemId: (
+    project: Project & { story: NonNullable<Project['story']> },
+    projectItemId: string,
+    storyOptionId: string,
+  ) => Promise<void>;
   setDependedIssueUrl: (
     prUrl: string,
     project: Project,

@@ -353,6 +353,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           | 'updateStory'
           | 'addIssueToProject'
           | 'getIssueByUrl'
+          | 'updateStoryByProjectItemId'
         >
       >;
       let notifyMockIssueCommentRepository: jest.Mocked<
@@ -466,8 +467,9 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           createCommentByUrl: jest.fn().mockResolvedValue(undefined),
           updateNextActionDate: jest.fn().mockResolvedValue(undefined),
           updateStory: jest.fn().mockResolvedValue(undefined),
-          addIssueToProject: jest.fn().mockResolvedValue(undefined),
+          addIssueToProject: jest.fn().mockResolvedValue(''),
           getIssueByUrl: jest.fn().mockResolvedValue(null),
+          updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
         };
         notifyMockIssueCommentRepository = {
           getCommentsFromIssue: jest.fn().mockResolvedValue([

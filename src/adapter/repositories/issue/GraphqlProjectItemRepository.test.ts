@@ -2207,7 +2207,7 @@ describe('GraphqlProjectItemRepository', () => {
       expect(result?.stateReason).toBe('REOPENED');
     });
 
-    it('should return issue content with empty customFields when issue exists but projectItems is empty and no projectId is given', async () => {
+    it('should return null when issue exists but projectItems is empty and no projectId is given', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
@@ -2246,13 +2246,7 @@ describe('GraphqlProjectItemRepository', () => {
         'https://github.com/example-org/example-repo/issues/585',
       );
 
-      expect(result).not.toBeNull();
-      expect(result?.url).toBe(
-        'https://github.com/example-org/example-repo/issues/585',
-      );
-      expect(result?.title).toBe('Issue Without Visible Project');
-      expect(result?.id).toBe('');
-      expect(result?.customFields).toEqual([]);
+      expect(result).toBeNull();
     });
 
     it('should return null when projectId is given and issue has no matching project item even with other items present', async () => {
