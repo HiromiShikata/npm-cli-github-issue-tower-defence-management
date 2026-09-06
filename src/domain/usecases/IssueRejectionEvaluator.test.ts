@@ -1256,7 +1256,9 @@ describe('IssueRejectionEvaluator', () => {
         });
 
         expect(result.rejections).toHaveLength(0);
-        expect(result.approvedPrUrl).toBe('https://github.com/user/repo/pull/1');
+        expect(result.approvedPrUrl).toBe(
+          'https://github.com/user/repo/pull/1',
+        );
       });
 
       it('should not reject when PR reviewDecision is null (no review yet)', async () => {
@@ -1274,7 +1276,9 @@ describe('IssueRejectionEvaluator', () => {
         });
 
         expect(result.rejections).toHaveLength(0);
-        expect(result.approvedPrUrl).toBe('https://github.com/user/repo/pull/1');
+        expect(result.approvedPrUrl).toBe(
+          'https://github.com/user/repo/pull/1',
+        );
       });
     });
   });
