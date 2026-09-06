@@ -228,7 +228,8 @@ export class GenerateConsoleListsUseCase {
         ),
         (issue) =>
           issue.status !== null &&
-          issue.status.toLowerCase() === AWAITING_OWNER_STATUS_NAME.toLowerCase(),
+          issue.status.toLowerCase() ===
+            AWAITING_OWNER_STATUS_NAME.toLowerCase(),
         [AWAITING_OWNER_STATUS_NAME.toLowerCase(), 'done'],
       ),
       'failed-preparation': buildStatusTabFromSource(
