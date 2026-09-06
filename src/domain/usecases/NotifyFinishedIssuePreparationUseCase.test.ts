@@ -5025,6 +5025,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         returnedProjectItemId,
         blockerStoryId,
       );
+      expect(mockIssueRepository.getIssueByUrl).not.toHaveBeenCalled();
     });
 
     it('reuses an existing open blocker issue instead of creating a new one', async () => {
