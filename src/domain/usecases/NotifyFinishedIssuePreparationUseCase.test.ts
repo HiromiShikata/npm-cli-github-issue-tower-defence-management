@@ -6400,10 +6400,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         status: 'Preparation',
         agent: 'accounting',
       });
-      const createdIssue = createMockIssue({
-        url: 'https://github.com/workflow-owner/workflow-repo/issues/99',
-        status: 'Todo by human',
-      });
+      const workflowProjectItemId = 'workflow-project-item-id';
       const reporterProject = createMockProject({
         story: {
           name: 'Story',
@@ -6433,7 +6430,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
       mockIssueRepository.searchIssue.mockResolvedValue([]);
       mockIssueRepository.createNewIssue.mockResolvedValue(99);
-      mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
+      mockIssueRepository.addIssueToProject.mockResolvedValue(
+        workflowProjectItemId,
+      );
 
       await useCase.run({
         projectUrl: 'https://github.com/users/user/projects/1',
@@ -6452,9 +6451,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         reporterProject,
         'https://github.com/workflow-owner/workflow-repo/issues/99',
       );
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+      expect(
+        mockIssueRepository.updateStoryByProjectItemId,
+      ).toHaveBeenCalledWith(
         { ...reporterProject, story: reporterProject.story },
-        createdIssue,
+        workflowProjectItemId,
         'workflow-blocker-story-id',
       );
     });

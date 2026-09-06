@@ -135,8 +135,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       | 'createNewIssue'
       | 'createCommentByUrl'
       | 'addIssueToProject'
-      | 'getIssueByUrl'
-      | 'updateStory'
+      | 'updateStoryByProjectItemId'
     >
   >;
   let mockIssueCommentRepository: Mocked<
@@ -174,8 +173,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       createNewIssue: jest.fn().mockResolvedValue(42),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
       addIssueToProject: jest.fn().mockResolvedValue(''),
-      getIssueByUrl: jest.fn().mockResolvedValue(null),
-      updateStory: jest.fn().mockResolvedValue(undefined),
+      updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
     };
     mockIssueCommentRepository = {
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
@@ -2529,6 +2527,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     it('should add new workflow issue to project and set workflow blocker story when projectUrl is provided', async () => {
       silentRedispatchSetup('developer');
+      const workflowProjectItemId = 'workflow-project-item-id';
       const reporterProject: Project = {
         id: 'reporter-project-1',
         url: 'https://github.com/orgs/workflow-owner/projects/5',
@@ -2567,15 +2566,13 @@ describe('RevertOrphanedPreparationUseCase', () => {
         completionDate50PercentConfidence: null,
         agent: null,
       };
-      const createdIssue = createMockIssue({
-        url: 'https://github.com/workflow-owner/workflow-repo/issues/99',
-        status: 'Todo by human',
-      });
 
       mockIssueRepository.searchIssue.mockResolvedValue([]);
       mockIssueRepository.createNewIssue.mockResolvedValue(99);
       mockProjectRepository.getByUrl.mockResolvedValue(reporterProject);
-      mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
+      mockIssueRepository.addIssueToProject.mockResolvedValue(
+        workflowProjectItemId,
+      );
 
       await useCase.run({
         projectUrl: 'https://github.com/user/repo',
@@ -2593,9 +2590,11 @@ describe('RevertOrphanedPreparationUseCase', () => {
         reporterProject,
         'https://github.com/workflow-owner/workflow-repo/issues/99',
       );
-      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+      expect(
+        mockIssueRepository.updateStoryByProjectItemId,
+      ).toHaveBeenCalledWith(
         { ...reporterProject, story: reporterProject.story },
-        createdIssue,
+        workflowProjectItemId,
         'workflow-blocker-story-id',
       );
     });
@@ -2617,7 +2616,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.addIssueToProject).not.toHaveBeenCalled();
-      expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+      expect(
+        mockIssueRepository.updateStoryByProjectItemId,
+      ).not.toHaveBeenCalled();
     });
   });
 

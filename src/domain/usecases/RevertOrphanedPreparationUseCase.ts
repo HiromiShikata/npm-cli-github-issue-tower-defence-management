@@ -59,8 +59,7 @@ export class RevertOrphanedPreparationUseCase {
       | 'createNewIssue'
       | 'createCommentByUrl'
       | 'addIssueToProject'
-      | 'getIssueByUrl'
-      | 'updateStory'
+      | 'updateStoryByProjectItemId'
     >,
     readonly issueCommentRepository: Pick<
       IssueCommentRepository,
