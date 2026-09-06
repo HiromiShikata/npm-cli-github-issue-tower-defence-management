@@ -1,3 +1,4 @@
+import { logGithubRestRateLimit } from '../githubRestClient';
 import {
   checkSecondaryRateLimitBreaker,
   secondaryRateLimitStateFilePath,
@@ -215,6 +216,7 @@ export const fetchWithGitHubRateLimitRetry = async (
 
     const response = await request();
     if (response.ok) {
+      logGithubRestRateLimit({ headers: response.headers });
       return response;
     }
     const bodyText = await response.clone().text();
