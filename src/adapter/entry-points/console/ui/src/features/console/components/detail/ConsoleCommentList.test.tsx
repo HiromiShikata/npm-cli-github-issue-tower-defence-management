@@ -389,16 +389,15 @@ describe('ConsoleCommentList', () => {
         buildImageProxyUrl={buildProxyUrl}
       />,
     );
-    expect(container.querySelector('img')).toBeNull();
-    const article = container.querySelector('.console-comment');
-    expect(article).not.toBeNull();
-    if (!article) throw new Error('article not found');
-    fireEvent.click(article);
     const img = container.querySelector('img');
     expect(img).not.toBeNull();
     expect(img?.getAttribute('src')).toBe(
       `/api/img?url=${encodeURIComponent(imageUrl)}`,
     );
+    const toggleBtn = container.querySelector('.console-comment-toggle');
+    if (!toggleBtn) throw new Error('toggle button not found');
+    fireEvent.click(toggleBtn);
+    expect(container.querySelector('img')).toBeNull();
   });
 
   it('resolves same-repo issue references as links when expanded with repoContext', () => {
