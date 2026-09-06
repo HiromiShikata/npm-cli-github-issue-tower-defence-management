@@ -9,6 +9,7 @@ import {
   TODO_BY_AGENT_STATUS_NAME,
   TODO_STATUS_NAME,
 } from '../../entities/WorkflowStatus';
+import { issueReactivationTriggerIsPending } from '../issueReactivationTriggerIsPending';
 import { encodeForURI } from '../utils';
 
 export type ConsoleColor = FieldOption['color'];
@@ -105,6 +106,7 @@ export type GenerateConsoleListsInput = {
   generatedAt: string;
   workflowBlockerStoryName: string | null;
   urlOfStoryView: string | null;
+  now: Date;
 };
 
 const UNKNOWN_STORY_SORT_INDEX = 999999;
@@ -119,6 +121,7 @@ export class GenerateConsoleListsUseCase {
       generatedAt,
       workflowBlockerStoryName,
       urlOfStoryView,
+      now,
     } = input;
 
     const storyOptions = project.story ? project.story.stories : [];
@@ -260,7 +263,8 @@ export class GenerateConsoleListsUseCase {
                 !issue.isClosed &&
                 (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
                   issue.status === PREPARATION_STATUS_NAME) &&
-                issue.dependedIssueUrls.length === 0,
+                issue.dependedIssueUrls.length === 0 &&
+                !issueReactivationTriggerIsPending(issue, now),
             )
             .map((issue) =>
               this.projectItem(

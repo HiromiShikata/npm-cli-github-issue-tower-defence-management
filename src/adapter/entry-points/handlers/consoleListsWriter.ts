@@ -102,6 +102,7 @@ export const writeConsoleLists = (params: ConsoleListsWriterParams): void => {
     generatedAt,
     workflowBlockerStoryName: params.workflowBlockerStoryName ?? null,
     urlOfStoryView: params.urlOfStoryView ?? null,
+    now: new Date(nowMs),
   });
 
   for (const tab of CONSOLE_LIST_TAB_NAMES) {
