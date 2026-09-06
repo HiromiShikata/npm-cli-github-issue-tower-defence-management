@@ -1,3 +1,12 @@
+## [2.72.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.1...v2.72.2) (2026-09-06)
+
+
+### Bug Fixes
+
+* **console:** auto-expand latest comment and fix expanded layout overflow ([#2168](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2168)) ([726ced1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/726ced17a465b15c648dd436689f59589dc23c21)), closes [HiromiShikata/umino-corporait-operation#31446](https://github.com/HiromiShikata/umino-corporait-operation/issues/31446) [#2167](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2167)
+* **dashboard:** return per-hour rates in close event count columns ([#2175](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2175)) ([26e37fe](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/26e37fed38f354674b75dae1aab84dff72006861))
+* **tdpm-cli:** address pr-reviewer L3 findings from PR [#2173](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2173) ([#2177](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2177)) ([f6437e3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f6437e31e81bee2b6ac7f78e3aba4c59529d7d80)), closes [HiromiShikata/umino-corporait-operation#31456](https://github.com/HiromiShikata/umino-corporait-operation/issues/31456)
+
 ## [2.72.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.0...v2.72.1) (2026-09-06)
 
 
