@@ -421,7 +421,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       {
         author: 'bot',
         content:
-          'From: :robot: developer\n\n```json\n{"nextStep":null,"nextStepAgent":"developer","waitingForOwner":true}\n```',
+          'From: :robot: developer\n\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T00:00:00Z'),
       },
       {
