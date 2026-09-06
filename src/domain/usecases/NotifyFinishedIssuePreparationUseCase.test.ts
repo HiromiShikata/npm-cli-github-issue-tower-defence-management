@@ -603,7 +603,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+      'NotifyFinishedIssuePreparation: REJECTED NO_REPORT_FROM_AGENT_BOT\n- NO_REPORT_FROM_AGENT_BOT',
     );
   });
 
@@ -897,7 +897,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
       }),
-      expect.stringContaining('Auto Status Check: REJECTED'),
+      expect.stringContaining('NotifyFinishedIssuePreparation: REJECTED'),
     );
   });
 
@@ -1183,7 +1183,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('Next step agent dispatch repeated: accounting'),
+      expect.stringContaining('NotifyFinishedIssuePreparation: DISPATCH_AGAIN accounting'),
     );
   });
 
@@ -1321,7 +1321,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
       expect.stringContaining(
-        'Failed to receive a report from the dispatched agent for 3 consecutive dispatches',
+        'Failed to receive a report from accounting for 3 consecutive dispatches',
       ),
     );
   });
@@ -1719,7 +1719,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect.objectContaining({
         url: 'https://github.com/user/repo/issues/1',
       }),
-      expect.stringContaining('Auto Status Check:'),
+      expect.stringContaining('NotifyFinishedIssuePreparation:'),
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.objectContaining({

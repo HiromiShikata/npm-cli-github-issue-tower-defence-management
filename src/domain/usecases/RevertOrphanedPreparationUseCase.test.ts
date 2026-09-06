@@ -390,7 +390,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
       expect.stringContaining(
-        'Failed to receive a report from the dispatched agent for 3 consecutive dispatches',
+        'Failed to receive a report from developer for 3 consecutive dispatches',
       ),
     );
   });
@@ -516,7 +516,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('Next step agent dispatch repeated: developer'),
+      expect.stringContaining('NotifyFinishedIssuePreparation: NO_REPORT_FROM_AGENT_BOT developer'),
     );
   });
 
@@ -2832,7 +2832,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         todoByAgentIssue,
       );
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         todoByAgentIssue,
         'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
       );

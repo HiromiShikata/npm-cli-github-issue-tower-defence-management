@@ -51,6 +51,7 @@ import {
   reportSilentRedispatchWorkflowIssue,
   WorkflowIssueReporterSettings,
 } from './reportSilentRedispatchWorkflowIssue';
+import { NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD } from './autoStatusCheckComments';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -405,7 +406,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       );
       await this.issueCommentRepository.createComment(
         issue,
-        `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
+        `NotifyFinishedIssuePreparation: REJECTED ANY_CI_JOB_FAILED_OR_IN_PROGRESS\n- ${ciFailingPrUrl}`,
       );
       return;
     }
@@ -420,10 +421,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       params.agents,
     );
 
-    const rejectionStatusMessage =
-      rejections.length > 0
-        ? `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`
-        : 'Auto Status Check: APPROVED';
+    const rejectionStatusMessage = `NotifyFinishedIssuePreparation: REJECTED ${rejections.map((r) => r.type).join(' ')}\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`;
 
     const lastTargetComments = comments.slice(
       -params.thresholdForAutoReject * 2,
@@ -432,7 +430,10 @@ export class NotifyFinishedIssuePreparationUseCase {
       rejections.length > 0 &&
       lastTargetComments.filter(
         (comment) =>
-          comment.content.startsWith('Auto Status Check: REJECTED') &&
+          (comment.content.startsWith('Auto Status Check: REJECTED') ||
+            comment.content.startsWith(
+              `${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} REJECTED`,
+            )) &&
           isTrustedAuthor(comment.author),
       ).length >= params.thresholdForAutoReject &&
       !lastTargetComments.some(

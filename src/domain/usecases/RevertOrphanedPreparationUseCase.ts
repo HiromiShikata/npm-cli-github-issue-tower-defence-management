@@ -390,10 +390,6 @@ export class RevertOrphanedPreparationUseCase {
         issue,
         awaitingWorkspaceStatusOption.id,
       );
-      await this.issueCommentRepository.createComment(
-        issue,
-        'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
-      );
     }
   };
 
