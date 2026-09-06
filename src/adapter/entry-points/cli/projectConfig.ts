@@ -157,6 +157,7 @@ const knownProjectReadmeConfigKeys = [
   'allowedIssueAuthors',
   'autoAssignManagerAuthors',
   'thresholdForAutoReject',
+  'thresholdForSelfNominationTotal',
   'workflowBlockerResolvedWebhookUrl',
   'preparationProcessCheckCommand',
   'codexHomeCandidates',
@@ -200,6 +201,10 @@ export const loadConfigFile = (configFilePath: string): ConfigFile => {
         'autoAssignManagerAuthors',
       ),
       thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
+      thresholdForSelfNominationTotal: getNumberValue(
+        parsed,
+        'thresholdForSelfNominationTotal',
+      ),
       workflowBlockerResolvedWebhookUrl: getStringValue(
         parsed,
         'workflowBlockerResolvedWebhookUrl',
@@ -312,6 +317,10 @@ export const parseProjectReadmeConfig = (
         'autoAssignManagerAuthors',
       ),
       thresholdForAutoReject: getNumberValue(parsed, 'thresholdForAutoReject'),
+      thresholdForSelfNominationTotal: getNumberValue(
+        parsed,
+        'thresholdForSelfNominationTotal',
+      ),
       workflowBlockerResolvedWebhookUrl: getStringValue(
         parsed,
         'workflowBlockerResolvedWebhookUrl',
@@ -403,6 +412,7 @@ export const mergeConfigs = (
     cliOverrides.thresholdForAutoReject ??
     configFile.thresholdForAutoReject,
   thresholdForSelfNominationTotal:
+    readmeOverrides.thresholdForSelfNominationTotal ??
     cliOverrides.thresholdForSelfNominationTotal ??
     configFile.thresholdForSelfNominationTotal,
   workflowBlockerResolvedWebhookUrl:
