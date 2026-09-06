@@ -1,3 +1,15 @@
+# [2.63.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.8...v2.63.0) (2026-09-06)
+
+
+### Bug Fixes
+
+* add duplicate-comment guard to skip posting same comment twice within 2 hours ([#2088](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2088)) ([8fff7e3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8fff7e3566975dda2eb6089e813139c2dc2bbe24)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#5505](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/5505)
+
+
+### Features
+
+* **console:** show last comment body or its executive summary in list view ([#1985](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1985)) ([3c8bf71](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3c8bf71e70f3d14dc253ad12d16630eb2bede140)), closes [HiromiShikata/umino-corporait-operation#31347](https://github.com/HiromiShikata/umino-corporait-operation/issues/31347)
+
 ## [2.62.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.62.7...v2.62.8) (2026-09-06)
 
 
