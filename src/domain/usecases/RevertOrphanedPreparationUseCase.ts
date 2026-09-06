@@ -27,6 +27,7 @@ import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
+import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import {
   reportSilentRedispatchWorkflowIssue,
   WorkflowIssueReporterSettings,
@@ -179,6 +180,9 @@ export class RevertOrphanedPreparationUseCase {
           );
           continue;
         }
+        const isNoStory =
+          issue.story === null ||
+          issue.story.startsWith(NO_STORY_STORY_NAME);
         const repetition = resolveNextStepAgentDispatchRepetition({
           agentFieldValue: issue.agent,
           nextStepAgent,
@@ -192,6 +196,7 @@ export class RevertOrphanedPreparationUseCase {
           thresholdForDispatchLoop:
             params.thresholdForDispatchLoop ??
             DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+          isNoStory,
         });
         if (
           (repetition.type === 'escalateSilentRedispatch' ||

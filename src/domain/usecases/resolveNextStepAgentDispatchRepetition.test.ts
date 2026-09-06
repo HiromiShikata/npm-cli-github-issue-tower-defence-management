@@ -606,4 +606,101 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('notRepeated');
     });
   });
+
+  describe('no-story guard', () => {
+    it('returns storyUnset instead of dispatchAgain when story is unset and the designated agent is already assigned', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [report('developer')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+      });
+
+      expect(result.type).toBe('storyUnset');
+    });
+
+    it('returns notRepeated when story is unset and the agent field is null', () => {
+      expect(
+        resolveNextStepAgentDispatchRepetition({
+          agentFieldValue: null,
+          nextStepAgent: 'developer',
+          comments: [report('developer')],
+          isTrustedAuthor: trustAll,
+          thresholdForAutoReject: 3,
+          thresholdForDispatchLoop: 6,
+          isNoStory: true,
+        }),
+      ).toEqual({ type: 'notRepeated' });
+    });
+
+    it('returns storyUnset instead of escalateSilentRedispatch when story is unset and the cycle count reaches the threshold', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          repetitionComment('developer'),
+          repetitionComment('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+      });
+
+      expect(result.type).toBe('storyUnset');
+    });
+
+    it('storyUnset comment mentions the designated agent name', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [report('developer')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+      });
+
+      const comment = result.type === 'storyUnset' ? result.comment : '';
+      expect(comment).toContain('developer');
+    });
+
+    it('storyUnset comment does not contain the crash escalation phrase', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [report('developer')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: true,
+      });
+
+      const comment = result.type === 'storyUnset' ? result.comment : '';
+      expect(comment).not.toContain('crashed');
+      expect(comment).not.toContain('silently');
+    });
+
+    it('still escalates to escalateSilentRedispatch when story is set and the cycle count reaches the threshold', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          repetitionComment('developer'),
+          repetitionComment('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+    });
+  });
 });
