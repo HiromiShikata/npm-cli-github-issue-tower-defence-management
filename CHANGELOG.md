@@ -1,3 +1,10 @@
+## [2.73.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.0...v2.73.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **tdpm-cli:** restore Awaiting Owner as required status and remove AWAITING_OWNER_REVERTED migration ([#2186](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2186)) ([275d3d7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/275d3d7d56021b640a62bb38b17566fc2a294a37)), closes [HiromiShikata/secretary#5636](https://github.com/HiromiShikata/secretary/issues/5636)
+
 # [2.73.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.72.5...v2.73.0) (2026-09-06)
 
 
