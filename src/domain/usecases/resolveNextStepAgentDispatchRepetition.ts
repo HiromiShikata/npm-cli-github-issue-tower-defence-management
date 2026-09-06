@@ -180,7 +180,7 @@ export const resolveNextStepAgentDispatchRepetition = <
   isTrustedAuthor: (author: string) => boolean;
   thresholdForAutoReject: number;
   thresholdForDispatchLoop: number;
-  isNoStory?: boolean;
+  isNoStory: boolean;
 }): NextStepAgentDispatchRepetition => {
   const silentRedispatches = countSilentRedispatches(params);
   if (params.isNoStory) {

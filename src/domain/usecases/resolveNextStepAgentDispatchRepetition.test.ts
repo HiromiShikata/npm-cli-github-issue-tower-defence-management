@@ -91,6 +91,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           isTrustedAuthor: trustAll,
           thresholdForAutoReject: 3,
           thresholdForDispatchLoop: 6,
+          isNoStory: false,
         }),
       ).toEqual({ type: 'notRepeated' });
     });
@@ -104,6 +105,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           isTrustedAuthor: trustAll,
           thresholdForAutoReject: 3,
           thresholdForDispatchLoop: 6,
+          isNoStory: false,
         }),
       ).toEqual({ type: 'notRepeated' });
     });
@@ -116,6 +118,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -133,6 +136,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           isTrustedAuthor: trustAll,
           thresholdForAutoReject: 3,
           thresholdForDispatchLoop: 6,
+          isNoStory: false,
         }).type,
       ).toBe('dispatchAgain');
     });
@@ -149,6 +153,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: (author: string): boolean => author === 'bot',
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -162,6 +167,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -182,6 +188,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 99,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -199,6 +206,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 99,
+        isNoStory: false,
       });
 
       const comment =
@@ -219,6 +227,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -236,6 +245,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -256,6 +266,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -277,6 +288,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -296,6 +308,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -316,6 +329,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -333,6 +347,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -353,6 +368,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -375,6 +391,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -392,6 +409,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateSilentRedispatch');
@@ -413,6 +431,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 3,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -429,6 +448,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -442,6 +462,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -463,6 +484,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           isTrustedAuthor: trustAll,
           thresholdForAutoReject: 3,
           thresholdForDispatchLoop: 3,
+          isNoStory: false,
         }),
       ).toEqual({ type: 'notRepeated' });
     });
@@ -482,6 +504,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -505,6 +528,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: (author: string): boolean => author === 'bot',
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('dispatchAgain');
@@ -525,6 +549,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -548,6 +573,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -565,6 +591,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 2,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('escalateDispatchLoop');
@@ -583,6 +610,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
           isTrustedAuthor: trustAll,
           thresholdForAutoReject: 99,
           thresholdForDispatchLoop: 3,
+          isNoStory: false,
         }),
       ).toEqual({ type: 'notRepeated' });
     });
@@ -601,6 +629,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isTrustedAuthor: trustAll,
         thresholdForAutoReject: 99,
         thresholdForDispatchLoop: 3,
+        isNoStory: false,
       });
 
       expect(result.type).toBe('notRepeated');
