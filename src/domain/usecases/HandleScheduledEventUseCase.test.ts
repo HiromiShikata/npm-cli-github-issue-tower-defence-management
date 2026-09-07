@@ -800,7 +800,9 @@ describe('HandleScheduledEventUseCase', () => {
           cacheUsed: false,
         });
         mockIssueRepository.createNewIssue.mockResolvedValue(99);
-        mockIssueRepository.addIssueToProject.mockResolvedValue('created-item-id');
+        mockIssueRepository.addIssueToProject.mockResolvedValue(
+          'created-item-id',
+        );
         const createdIssue = mock<Issue>();
         createdIssue.itemId = 'item-99';
         mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
@@ -878,7 +880,9 @@ describe('HandleScheduledEventUseCase', () => {
           expect.objectContaining({ id: 'proj-1' }),
           'https://github.com/test-org/test-repo/issues/99',
         );
-        expect(mockIssueRepository.updateStoryByProjectItemId).toHaveBeenCalledWith(
+        expect(
+          mockIssueRepository.updateStoryByProjectItemId,
+        ).toHaveBeenCalledWith(
           expect.objectContaining({ story: storyProject.story }),
           projectItemId,
           'story-1',
