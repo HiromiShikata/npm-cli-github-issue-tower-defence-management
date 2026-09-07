@@ -5,6 +5,7 @@ import {
   type FieldOption,
   type Project,
 } from '../../../domain/entities/Project';
+import type { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import type { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import type {
   IssueRepository,
@@ -1148,9 +1149,8 @@ const closeDeletedStoryItemsInBackground = async (
   pjcode: string,
   storyOption: FieldOption,
   issueRepository: IssueRepository,
-  project: Project,
+  storyObjectMap: StoryObjectMap,
 ): Promise<void> => {
-  const storyObjectMap = await issueRepository.getStoryObjectMap(project);
   const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
   if (storyIssue !== null) {
     try {
@@ -1209,7 +1209,10 @@ export const handleDeleteStory = async (
   const proxyUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
   const projectRepository = context.resolveProjectRepository(project.url);
-  const freshProject = await projectRepository.getProject(project.id);
+  const [freshProject, storyObjectMap] = await Promise.all([
+    projectRepository.getProject(project.id),
+    issueRepository.getStoryObjectMap(project),
+  ]);
   const freshStories = freshProject?.story?.stories ?? project.story.stories;
   const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
   await projectRepository.updateStoryList(project, filteredStories);
@@ -1219,7 +1222,7 @@ export const handleDeleteStory = async (
     pjcode,
     storyOption,
     issueRepository,
-    project,
+    storyObjectMap,
   );
   backgroundTask.catch((e) =>
     console.error('Background delete story cleanup failed:', e),

@@ -3860,22 +3860,29 @@ describe('consoleOperationApi', () => {
       const storyObjectMap: StoryObjectMap = new Map([
         [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
       ]);
-      let resolveStoryObjectMap!: (map: StoryObjectMap) => void;
-      const storyObjectMapPromise = new Promise<StoryObjectMap>((resolve) => {
-        resolveStoryObjectMap = resolve;
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+      let resolveCloseIssue!: () => void;
+      const closeIssuePromise = new Promise<void>((resolve) => {
+        resolveCloseIssue = resolve;
       });
-      issueRepository.getStoryObjectMap.mockReturnValue(storyObjectMapPromise);
+      issueRepository.closeIssueByUrl.mockReturnValue(closeIssuePromise);
 
       const response = await handleDeleteStory(deleteStoryContext(p), {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
 
+      // HTTP response returns immediately even while closeIssueByUrl is still pending
       expect(response.statusCode).toBe(200);
-      expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+      // backgroundTask is still pending (waiting for closeIssueByUrl to resolve)
+      let backgroundTaskResolved = false;
+      const backgroundTaskResult = response.backgroundTask?.then(() => {
+        backgroundTaskResolved = true;
+      });
+      expect(backgroundTaskResolved).toBe(false);
 
-      resolveStoryObjectMap(storyObjectMap);
-      await response.backgroundTask;
+      resolveCloseIssue();
+      await backgroundTaskResult;
       expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
         'https://github.com/acme-labs/ops/issues/42',
         'completed',
