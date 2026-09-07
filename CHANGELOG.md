@@ -1,3 +1,10 @@
+# [2.77.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.76.2...v2.77.0) (2026-09-07)
+
+
+### Features
+
+* **console:** run delete-story issue closing in background to eliminate blocking wait ([#2209](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2209)) ([bb9bea8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bb9bea8720048936116bd5229b2266aca8a653a8))
+
 ## [2.76.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.76.1...v2.76.2) (2026-09-07)
 
 
