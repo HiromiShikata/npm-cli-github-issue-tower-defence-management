@@ -1,3 +1,10 @@
+## [2.78.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.78.0...v2.78.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** use addIssueToProject to get authoritative itemId for updateStoryByProjectItemId ([#2210](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2210)) ([49fa70a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/49fa70a121526b3f634a531a091eb95f2a60f136)), closes [HiromiShikata/secretary#5769](https://github.com/HiromiShikata/secretary/issues/5769)
+
 # [2.78.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.77.0...v2.78.0) (2026-09-07)
 
 
