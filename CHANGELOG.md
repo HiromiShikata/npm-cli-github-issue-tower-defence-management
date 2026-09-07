@@ -1,3 +1,10 @@
+## [2.75.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.0...v2.75.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* stop infinite re-dispatch loop for tasks with null nextStepAgent ([#2198](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2198)) ([29fabb8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/29fabb89ecef77ec2a201cd86cfc31eb1637d776))
+
 # [2.75.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.74.0...v2.75.0) (2026-09-07)
 
 
