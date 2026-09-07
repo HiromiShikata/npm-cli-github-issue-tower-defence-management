@@ -1,3 +1,10 @@
+## [2.75.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.3...v2.75.4) (2026-09-07)
+
+
+### Bug Fixes
+
+* **dashboard:** align header, rename qc to ao, fix close columns, pad prep ([#2204](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2204)) ([518719c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/518719ce82277e1402d36cdc0fed32b94d001135)), closes [HiromiShikata/umino-corporait-operation#31484](https://github.com/HiromiShikata/umino-corporait-operation/issues/31484)
+
 ## [2.75.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.2...v2.75.3) (2026-09-07)
 
 
