@@ -47,7 +47,7 @@ type ProjectColumn = {
 
 const PROJECT_COLUMNS: ProjectColumn[] = [
   { header: 'td', key: 'todo' },
-  { header: 'qc', key: 'qc' },
+  { header: 'ao', key: 'qc' },
   { header: 'fl', key: 'fail' },
   { header: 'pp', key: 'pr' },
   { header: 'ws', key: 'ws' },
@@ -70,12 +70,12 @@ type CloseCountColumn = {
 };
 
 const CLOSE_COUNT_COLUMNS: CloseCountColumn[] = [
-  { header: '/1h', key: 'h1' },
-  { header: '/3h', key: 'h3' },
-  { header: '/5h', key: 'h5' },
+  { header: '1h', key: 'h1' },
+  { header: '3h', key: 'h3' },
+  { header: '5h', key: 'h5' },
 ];
 
-const CLOSE_COUNT_COLUMN_WIDTH = 3;
+const CLOSE_COUNT_COLUMN_WIDTH = 2;
 
 export const STATUS_DOT_DISPLAY_WIDTH = 2;
 
@@ -223,7 +223,9 @@ const capTwoDigits = (value: number): string =>
   value > 99 ? '99' : String(value);
 
 export const formatProjectHeaderLine = (): string => {
-  const head = padEnd('pj', 4, ' ');
+  const head =
+    ' '.repeat(STATUS_DOT_DISPLAY_WIDTH) +
+    padEnd('pj', PROJECT_COLUMN_WIDTH, ' ');
   const columns = PROJECT_COLUMNS.map(
     (column) => ' ' + padStart(column.header, PROJECT_COLUMN_WIDTH),
   ).join('');
@@ -377,7 +379,7 @@ export const formatTokenRowLine = (token: TokenStatus): string => {
     token.sevenDayUtilizationPercent,
   );
   const sevenDayReset = formatReset(token.sevenDayResetSeconds);
-  const prep = capTwoDigits(token.prep);
+  const prep = padStart(capTwoDigits(token.prep), 2);
   const hum = capTwoDigits(token.hum);
   return joinTokenRowSegments([
     `${dot}${name}`,

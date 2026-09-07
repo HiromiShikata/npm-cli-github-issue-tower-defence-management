@@ -511,12 +511,12 @@ describe('composeDashboardText', () => {
       ).toBe(
         '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14</tt><br>\n' +
           '<tt>🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-          '<tt>pj&nbsp;&nbsp;&nbsp;td&nbsp;qc&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵&nbsp;/1h&nbsp;/3h&nbsp;/5h</tt><br>\n' +
-          '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
-          '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
+          '<tt>&nbsp;&nbsp;pj&nbsp;td&nbsp;ao&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵&nbsp;1h&nbsp;3h&nbsp;5h</tt><br>\n' +
+          '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+          '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
           '<tt></tt><br>\n' +
           '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2&nbsp;1</tt><br>\n' +
-          '<tt>🟢ce&nbsp;10&nbsp;0d01h00&nbsp;12&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n',
+          '<tt>🟢ce&nbsp;10&nbsp;0d01h00&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1</tt><br>\n',
       );
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });

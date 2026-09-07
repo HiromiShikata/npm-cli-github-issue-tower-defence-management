@@ -324,7 +324,7 @@ describe('formatMachineStatusLines', () => {
 describe('formatProjectHeaderLine', () => {
   it('renders the project grid header with story color signal and close count columns', () => {
     expect(formatProjectHeaderLine()).toBe(
-      'pj   td qc fl pp ws dp 🔴 🟡 🔵 /1h /3h /5h',
+      '  pj td ao fl pp ws dp 🔴 🟡 🔵 1h 3h 5h',
     );
   });
 
@@ -343,7 +343,7 @@ describe('formatProjectRowLine', () => {
         row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }),
         closeEventCounts: noCloseEvents,
       }),
-    ).toBe('🟢ac  1  2  0  0  4  1  0  0  0   0   0   0');
+    ).toBe('🟢ac  1  2  0  0  4  1  0  0  0  0  0  0');
   });
 
   it('renders non-zero story color counts in the color columns', () => {
@@ -353,7 +353,7 @@ describe('formatProjectRowLine', () => {
         row: projectRow({ humanPendingRed: 8, humanPendingYellow: 3 }),
         closeEventCounts: noCloseEvents,
       }),
-    ).toBe('🟢ac  0  0  0  0  0  0  8  3  0   0   0   0');
+    ).toBe('🟢ac  0  0  0  0  0  0  8  3  0  0  0  0');
   });
 
   it('caps a story color count above 99 at 99', () => {
@@ -373,7 +373,7 @@ describe('formatProjectRowLine', () => {
         row: null,
         closeEventCounts: noCloseEvents,
       }),
-    ).toBe('  in -- -- -- -- -- -- -- -- --   0   0   0');
+    ).toBe('  in -- -- -- -- -- -- -- -- --  0  0  0');
   });
 
   it('caps a count above 99 at 99', () => {
@@ -383,7 +383,7 @@ describe('formatProjectRowLine', () => {
         row: projectRow({ todo: 1500 }),
         closeEventCounts: noCloseEvents,
       }),
-    ).toBe('🟢ac 99  0  0  0  0  0  0  0  0   0   0   0');
+    ).toBe('🟢ac 99  0  0  0  0  0  0  0  0  0  0  0');
   });
 
   it('renders close event counts in the h1, h3, h5 columns', () => {
@@ -393,7 +393,7 @@ describe('formatProjectRowLine', () => {
         row: null,
         closeEventCounts: { h1: 5, h3: 8, h5: 12 },
       }),
-    ).toBe('  ac -- -- -- -- -- -- -- -- --   5   8  12');
+    ).toBe('  ac -- -- -- -- -- -- -- -- --  5  8 12');
   });
 
   it('caps close event counts above 99 at 99', () => {
@@ -403,7 +403,7 @@ describe('formatProjectRowLine', () => {
         row: null,
         closeEventCounts: { h1: 100, h3: 100, h5: 100 },
       }),
-    ).toBe('  ac -- -- -- -- -- -- -- -- --  99  99  99');
+    ).toBe('  ac -- -- -- -- -- -- -- -- -- 99 99 99');
   });
 
   it('applies the four level severity dot rules in descending order', () => {
@@ -503,7 +503,7 @@ describe('formatTokenRowLine', () => {
           hum: 1,
         }),
       ),
-    ).toBe('🟢ce 10 0d01h00 12 5d00h00 2 1');
+    ).toBe('🟢ce 10 0d01h00 12 5d00h00  2 1');
   });
 
   it('uses last two characters of the name and caps utilization at 99', () => {
@@ -518,7 +518,7 @@ describe('formatTokenRowLine', () => {
           color: 'K',
         }),
       ),
-    ).toBe('⚪ob 99 0d00h00 95 0d02h00 0 0');
+    ).toBe('⚪ob 99 0d00h00 95 0d02h00  0 0');
   });
 
   it('renders question marks when window data is unavailable', () => {
@@ -535,7 +535,7 @@ describe('formatTokenRowLine', () => {
           hum: 0,
         }),
       ),
-    ).toBe('🟡xx  ? ?  ? ? 1 0');
+    ).toBe('🟡xx  ? ?  ? ?  1 0');
   });
 
   it('caps prep at 99 when above 99', () => {
@@ -569,7 +569,7 @@ describe('formatTokenRowLine', () => {
           hum: 100,
         }),
       ),
-    ).toBe('🟢ce 10 0d01h00 12 1d00h00 0 99');
+    ).toBe('🟢ce 10 0d01h00 12 1d00h00  0 99');
   });
 });
 
@@ -637,18 +637,18 @@ describe('ComposeDashboardUseCase', () => {
   const expectedBody =
     '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14</tt><br>\n' +
     '<tt>🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
-    '<tt>pj&nbsp;&nbsp;&nbsp;td&nbsp;qc&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵&nbsp;/1h&nbsp;/3h&nbsp;/5h</tt><br>\n' +
-    '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
-    '<tt>🟣um&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0&nbsp;&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;pj&nbsp;td&nbsp;ao&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵&nbsp;1h&nbsp;3h&nbsp;5h</tt><br>\n' +
+    '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;in&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;--&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
+    '<tt>🟣um&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt></tt><br>\n' +
     '<tt>' +
     '&nbsp;'.repeat(TOKEN_SESSION_COLUMN_START) +
     '3&nbsp;1</tt><br>\n' +
-    '<tt>⚪ob&nbsp;99&nbsp;0d00h00&nbsp;95&nbsp;0d02h00&nbsp;0&nbsp;0</tt><br>\n' +
-    '<tt>🟢ce&nbsp;10&nbsp;0d01h00&nbsp;12&nbsp;5d00h00&nbsp;2&nbsp;1</tt><br>\n' +
-    '<tt>🟡xx&nbsp;&nbsp;?&nbsp;?&nbsp;&nbsp;?&nbsp;?&nbsp;1&nbsp;0</tt><br>\n';
+    '<tt>⚪ob&nbsp;99&nbsp;0d00h00&nbsp;95&nbsp;0d02h00&nbsp;&nbsp;0&nbsp;0</tt><br>\n' +
+    '<tt>🟢ce&nbsp;10&nbsp;0d01h00&nbsp;12&nbsp;5d00h00&nbsp;&nbsp;2&nbsp;1</tt><br>\n' +
+    '<tt>🟡xx&nbsp;&nbsp;?&nbsp;?&nbsp;&nbsp;?&nbsp;?&nbsp;&nbsp;1&nbsp;0</tt><br>\n';
 
   it('composes byte-identical dashboard text for representative inputs', () => {
     expect(new ComposeDashboardUseCase().run(representativeInput)).toBe(
