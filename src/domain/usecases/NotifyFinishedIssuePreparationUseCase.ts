@@ -482,6 +482,7 @@ export class NotifyFinishedIssuePreparationUseCase {
           params.thresholdForDispatchLoop ??
           DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
         isNoStory,
+        commentHead: NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD,
       });
       if (repetition.type === 'escalateSilentRedispatch') {
         issue.status = FAILED_PREPARATION_STATUS_NAME;

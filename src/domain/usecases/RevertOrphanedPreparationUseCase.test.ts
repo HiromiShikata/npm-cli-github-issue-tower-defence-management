@@ -518,7 +518,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
       expect.stringContaining(
-        'NotifyFinishedIssuePreparation: NO_REPORT_FROM_AGENT_BOT developer',
+        'RevertOrphanedPreparation: NO_REPORT_FROM_AGENT_BOT developer',
       ),
     );
   });
@@ -719,7 +719,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 
@@ -797,7 +797,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 
@@ -949,7 +949,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 
@@ -1026,7 +1026,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 
@@ -1135,7 +1135,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
-  it('should post Auto Status Check: REJECTED comment when orphan path reverts to Awaiting Workspace', async () => {
+  it('should post RevertOrphanedPreparation: REJECTED comment when orphan path reverts to Awaiting Workspace', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -1165,7 +1165,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       stuckIssue,
     );
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION',
     );
   });
 
@@ -1654,7 +1654,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       stuckIssue,
     );
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION\n\nFailed to pass the check automatically for 3 times',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION\n\nFailed to pass the check automatically for 3 times',
     );
   });
 
@@ -1731,7 +1731,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION',
     );
   });
 
@@ -1779,7 +1779,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION',
     );
   });
 
@@ -1870,7 +1870,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION',
     );
   });
 
@@ -2508,7 +2508,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 

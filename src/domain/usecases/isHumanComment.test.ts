@@ -1,6 +1,7 @@
 import {
   AUTO_STATUS_CHECK_MESSAGE_HEAD,
   NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD,
+  REVERT_ORPHANED_PREPARATION_COMMENT_HEAD,
 } from './autoStatusCheckComments';
 import { isHumanComment } from './isHumanComment';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
@@ -72,6 +73,18 @@ describe('isHumanComment', () => {
         {
           author: 'bot',
           content: `${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} REJECTED NO_REPORT_FROM_AGENT_BOT\n- detail here`,
+        },
+        trustAll,
+      ),
+    ).toBe(false);
+  });
+
+  it('treats a RevertOrphanedPreparation comment as machine generated', () => {
+    expect(
+      isHumanComment(
+        {
+          author: 'bot',
+          content: `${REVERT_ORPHANED_PREPARATION_COMMENT_HEAD} REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION`,
         },
         trustAll,
       ),
