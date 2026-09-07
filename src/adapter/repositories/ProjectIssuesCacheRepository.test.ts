@@ -106,6 +106,7 @@ const seedCache = async (
     lastFullFetchAt: '2026-01-01T00:00:00.000Z',
     project: cachedProject,
     issues: [],
+    storyIssueUrlByOptionName: {},
   });
 };
 
@@ -214,5 +215,54 @@ describe('project issues cache shared by the project repository and the issue re
     ).getCachedProject(projectId);
 
     expect(project?.status.statuses).toEqual(savedStatusOptions);
+  });
+});
+
+describe('ProjectIssuesCacheRepository storyIssueUrlByOptionName', () => {
+  it('preserves storyIssueUrlByOptionName through a write-read round-trip', async () => {
+    const cache = buildSharedCache();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    const map = {
+      'umino / analyze exhibition #12490':
+        'https://github.com/HiromiShikata/secretary/issues/100',
+      'regular / workflow improvement':
+        'https://github.com/HiromiShikata/secretary/issues/200',
+    };
+
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [],
+      storyIssueUrlByOptionName: map,
+    });
+
+    const result = await repo.read(projectId);
+
+    expect(result?.storyIssueUrlByOptionName).toEqual(map);
+  });
+
+  it('returns an empty map when the stored cache has no storyIssueUrlByOptionName field', async () => {
+    const store = new Map<string, unknown>();
+    store.set(`allIssues-${projectId}`, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [],
+    });
+    const legacyCache: Pick<
+      LocalStorageCacheRepository,
+      'getSingle' | 'setSingle'
+    > = {
+      getSingle: async (key: string) => store.get(key) ?? null,
+      setSingle: async (key: string, value: unknown) => {
+        store.set(key, value);
+      },
+    };
+    const repo = new ProjectIssuesCacheRepository(legacyCache);
+
+    const result = await repo.read(projectId);
+
+    expect(result?.storyIssueUrlByOptionName).toEqual({});
   });
 });
