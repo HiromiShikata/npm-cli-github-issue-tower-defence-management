@@ -89,7 +89,7 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content: `${ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD} https://github.com/owner/repo/issues/1`,
+          content: `${ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD}\n- https://github.com/owner/repo/issues/1`,
         },
         trustAll,
       ),
@@ -101,7 +101,7 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content: `${SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD} https://github.com/owner/repo/issues/1`,
+          content: `${SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD}\n- https://github.com/owner/repo/issues/1`,
         },
         trustAll,
       ),
@@ -113,7 +113,7 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content: `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD} https://github.com/owner/repo/issues/1`,
+          content: `${ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD}\n- https://github.com/owner/repo/issues/1`,
         },
         trustAll,
       ),
@@ -125,7 +125,7 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content: `${SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD} https://github.com/owner/repo/issues/1`,
+          content: `${SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD}\n- https://github.com/owner/repo/issues/1`,
         },
         trustAll,
       ),
@@ -137,7 +137,7 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content: `${DEPENDENCY_REMOVED_COMMENT_HEAD} https://github.com/owner/repo/issues/1`,
+          content: `${DEPENDENCY_REMOVED_COMMENT_HEAD}\n- https://github.com/owner/repo/issues/1`,
         },
         trustAll,
       ),
@@ -149,7 +149,7 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content: `${CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD} https://github.com/owner/repo/issues/1`,
+          content: `${CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD}\n- https://github.com/owner/repo/issues/1`,
         },
         trustAll,
       ),
