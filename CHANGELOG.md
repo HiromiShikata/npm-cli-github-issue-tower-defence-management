@@ -1,3 +1,10 @@
+# [2.78.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.77.0...v2.78.0) (2026-09-07)
+
+
+### Features
+
+* **dashboard:** collapse configured-disk machine metrics onto one line ([#2211](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2211)) ([8846d33](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8846d33930d09aa944ae9967214c5381d28b96f1)), closes [HiromiShikata/umino-corporait-operation#31494](https://github.com/HiromiShikata/umino-corporait-operation/issues/31494)
+
 # [2.77.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.76.2...v2.77.0) (2026-09-07)
 
 
