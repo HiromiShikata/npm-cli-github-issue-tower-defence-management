@@ -756,7 +756,7 @@ query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query
               };
             } | null;
           } | null;
-          errors?: { message: string }[];
+          errors?: GraphqlError[];
         }>({
           ghToken: this.ghToken,
           query: graphqlQueryString,
@@ -769,8 +769,16 @@ query GetProjectItemsLight($projectId: ID!, $after: String, $first: Int!, $query
         }),
       );
       if (response.errors && response.errors.length > 0) {
-        throw new Error(
-          `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
+        const allForbiddenContent = response.errors.every(
+          isForbiddenContentError,
+        );
+        if (!allForbiddenContent || !response.data) {
+          throw new Error(
+            `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
+          );
+        }
+        console.warn(
+          `fetchProjectItemsLight: skipping ${response.errors.length} item(s) with FORBIDDEN content. paths: ${response.errors.map((e) => JSON.stringify(e.path)).join(', ')}`,
         );
       }
       const rawData = response.data;

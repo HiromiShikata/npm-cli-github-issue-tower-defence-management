@@ -1611,6 +1611,129 @@ describe('GraphqlProjectItemRepository', () => {
       );
       warnSpy.mockRestore();
     });
+
+    it('should skip FORBIDDEN content errors and return accessible items without throwing', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 2,
+                pageInfo: { endCursor: 'cursor-1', hasNextPage: false },
+                nodes: [
+                  {
+                    id: 'PVTI_accessible',
+                    updatedAt: '2026-07-07T10:00:00Z',
+                    content: {
+                      url: 'https://github.com/o/r/issues/1',
+                      number: 1,
+                    },
+                  },
+                  {
+                    id: 'PVTI_forbidden',
+                    updatedAt: '2026-07-07T10:00:00Z',
+                    content: null,
+                  },
+                ],
+              },
+            },
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['node', 'items', 'nodes', 1, 'content'],
+              message:
+                '`meta-site` forbids access via a personal access token (classic).',
+            },
+          ],
+        }),
+      );
+
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+      try {
+        const result = await repository.fetchProjectItemsLight(
+          'test-project-id',
+          'updated:>=2026-07-07',
+        );
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('PVTI_accessible');
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('FORBIDDEN'),
+        );
+      } finally {
+        consoleWarnSpy.mockRestore();
+      }
+    });
+
+    it('should still throw when FORBIDDEN content errors are mixed with other error types', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            node: {
+              items: {
+                totalCount: 2,
+                pageInfo: { endCursor: 'cursor-1', hasNextPage: false },
+                nodes: [],
+              },
+            },
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['node', 'items', 'nodes', 1, 'content'],
+              message: '`meta-site` forbids access.',
+            },
+            { message: 'Something else went wrong.' },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItemsLight(
+          'test-project-id',
+          'updated:>=2026-07-07',
+        ),
+      ).rejects.toThrow('GitHub GraphQL errors:');
+    });
+
+    it('should still throw when FORBIDDEN error path points to a non-content field', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: null,
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['node', 'items', 'nodes', 0, 'id'],
+              message: 'FORBIDDEN',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItemsLight(
+          'test-project-id',
+          'updated:>=2026-07-07',
+        ),
+      ).rejects.toThrow('GitHub GraphQL errors:');
+    });
   });
 
   describe('fetchProjectItemsByIds', () => {
