@@ -145,7 +145,12 @@ export const ConsoleCommentList = ({
         <button
           type="button"
           className="console-comment-show-all"
-          onClick={() => setShowAll(true)}
+          onClick={() => {
+            setShowAll(true);
+            setExpandedKeys(
+              (prev) => new Set([...prev, ...comments.map(buildCommentKey)]),
+            );
+          }}
         >
           Show all {comments.length}
         </button>
