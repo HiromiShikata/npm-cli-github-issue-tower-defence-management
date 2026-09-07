@@ -851,6 +851,9 @@ describe('HandleScheduledEventUseCase', () => {
           cacheUsed: false,
         });
         mockIssueRepository.createNewIssue.mockResolvedValue(99);
+        mockIssueRepository.addIssueToProject.mockResolvedValue(
+          'created-item-id',
+        );
         const createdIssue = mock<Issue>();
         createdIssue.itemId = 'item-99';
         mockIssueRepository.getIssueByUrl.mockResolvedValue(createdIssue);
@@ -884,36 +887,13 @@ describe('HandleScheduledEventUseCase', () => {
         expect(storyIssueCalls[0][3]).toContain('story desc');
       });
 
-      it('should emit Polling for issue log before each 30s sleep', async () => {
-        const runPromise = useCase.run(storyInput);
-        await jest.runAllTimersAsync();
-        await runPromise;
-
-        expect(capturedLogs[1]).toContain('Polling for issue (attempt 1/3)');
-        expect(capturedLogs[1]).toContain(
-          'https://github.com/test-org/test-repo/issues/99',
-        );
-      });
-
-      it('should emit Issue found log on successful issue lookup', async () => {
-        const runPromise = useCase.run(storyInput);
-        await jest.runAllTimersAsync();
-        await runPromise;
-
-        expect(capturedLogs[2]).toContain('Issue found');
-        expect(capturedLogs[2]).toContain(
-          'https://github.com/test-org/test-repo/issues/99',
-        );
-        expect(capturedLogs[2]).toContain('itemId=item-99');
-      });
-
       it('should emit Waiting for story update log before 10s sleep', async () => {
         const runPromise = useCase.run(storyInput);
         await jest.runAllTimersAsync();
         await runPromise;
 
-        expect(capturedLogs[3]).toContain('Waiting for story update');
-        expect(capturedLogs[3]).toContain(
+        expect(capturedLogs[1]).toContain('Waiting for story update');
+        expect(capturedLogs[1]).toContain(
           'https://github.com/test-org/test-repo/issues/99',
         );
       });
@@ -923,9 +903,9 @@ describe('HandleScheduledEventUseCase', () => {
         await jest.runAllTimersAsync();
         await runPromise;
 
-        expect(capturedLogs[4]).toContain('Story issue created');
-        expect(capturedLogs[4]).toContain('feature / StoryOne');
-        expect(capturedLogs[4]).toMatch(/elapsed=\d+ms/);
+        expect(capturedLogs[2]).toContain('Story issue created');
+        expect(capturedLogs[2]).toContain('feature / StoryOne');
+        expect(capturedLogs[2]).toMatch(/elapsed=\d+ms/);
       });
 
       it('should emit logs in expected order', async () => {
@@ -933,12 +913,32 @@ describe('HandleScheduledEventUseCase', () => {
         await jest.runAllTimersAsync();
         await runPromise;
 
-        expect(capturedLogs).toHaveLength(5);
+        expect(capturedLogs).toHaveLength(3);
         expect(capturedLogs[0]).toContain('Creating story issue');
-        expect(capturedLogs[1]).toContain('Polling for issue (attempt 1/3)');
-        expect(capturedLogs[2]).toContain('Issue found');
-        expect(capturedLogs[3]).toContain('Waiting for story update');
-        expect(capturedLogs[4]).toContain('Story issue created');
+        expect(capturedLogs[1]).toContain('Waiting for story update');
+        expect(capturedLogs[2]).toContain('Story issue created');
+      });
+
+      it('uses addIssueToProject to get project item id and calls updateStoryByProjectItemId, not updateStory via getIssueByUrl item id', async () => {
+        const projectItemId = 'correct-project-item-id-from-add';
+        mockIssueRepository.addIssueToProject.mockResolvedValue(projectItemId);
+
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        expect(mockIssueRepository.addIssueToProject).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'proj-1' }),
+          'https://github.com/test-org/test-repo/issues/99',
+        );
+        expect(
+          mockIssueRepository.updateStoryByProjectItemId,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({ story: storyProject.story }),
+          projectItemId,
+          'story-1',
+        );
+        expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       });
     });
 
