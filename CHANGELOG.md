@@ -1,3 +1,10 @@
+## [2.75.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.2...v2.75.3) (2026-09-07)
+
+
+### Bug Fixes
+
+* **console:** expand all comments when Show all is clicked ([#2203](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2203)) ([cd60b14](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cd60b1420a23c8aeb6f29aec67a2bcb12abb27c1)), closes [HiromiShikata/umino-corporait-operation#31474](https://github.com/HiromiShikata/umino-corporait-operation/issues/31474)
+
 ## [2.75.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.1...v2.75.2) (2026-09-07)
 
 
