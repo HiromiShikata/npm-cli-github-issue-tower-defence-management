@@ -263,29 +263,13 @@ export class HandleScheduledEventUseCase {
         ['story'],
       );
       const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
-      let issue: Issue | null = null;
-      for (let i = 0; i < 3; i++) {
-        console.log(
-          `[HandleScheduledEvent] Polling for issue (attempt ${i + 1}/3): url=${issueUrl}`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, 30 * 1000));
-        issue = await this.issueRepository.getIssueByUrl(issueUrl);
-        if (!issue || !issue.itemId) {
-          continue;
-        }
-        console.log(
-          `[HandleScheduledEvent] Issue found: url=${issueUrl} itemId=${issue.itemId}`,
-        );
-        break;
-      }
-      if (!issue) {
-        throw new Error(`Issue not found. URL: ${issueUrl}`);
-      } else if (!issue.itemId) {
-        throw new Error(`Issue itemId not found. URL: ${issueUrl}`);
-      }
-      await this.issueRepository.updateStory(
+      const projectItemId = await this.issueRepository.addIssueToProject(
+        project,
+        issueUrl,
+      );
+      await this.issueRepository.updateStoryByProjectItemId(
         { ...project, story: projectStory },
-        issue,
+        projectItemId,
         storyObject.story.id,
       );
       console.log(
