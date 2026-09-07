@@ -130,7 +130,7 @@ describe('formatMachineStatusLines', () => {
     ).toEqual(['M55% C62% D?% cy13 🔴LA 16 23 40']);
   });
 
-  it('renders each configured partition as title and percent on a disk line', () => {
+  it('renders configured partitions inline with memory and cpu on a single line', () => {
     expect(
       formatMachineStatusLines({
         memPct: 55,
@@ -143,7 +143,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% cy13', '🟡D89% S41%', '🔴LA 16 23 40']);
+    ).toEqual(['M55% C62% 🟡D89% S41% cy13 🔴LA 16 23 40']);
   });
 
   it('wraps partitions onto a second disk line when they exceed the width budget', () => {
