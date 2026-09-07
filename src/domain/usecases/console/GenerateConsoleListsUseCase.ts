@@ -275,7 +275,6 @@ export class GenerateConsoleListsUseCase {
               (issue) =>
                 !issue.isClosed &&
                 (issue.status === AWAITING_WORKSPACE_STATUS_NAME ||
-                  issue.status === AWAITING_OWNER_STATUS_NAME ||
                   issue.status === PREPARATION_STATUS_NAME) &&
                 issue.dependedIssueUrls.length === 0 &&
                 !issueReactivationTriggerIsPending(issue, now),
