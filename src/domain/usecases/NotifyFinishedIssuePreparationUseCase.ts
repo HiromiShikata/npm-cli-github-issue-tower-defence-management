@@ -50,6 +50,7 @@ import {
   reportSilentRedispatchWorkflowIssue,
   WorkflowIssueReporterSettings,
 } from './reportSilentRedispatchWorkflowIssue';
+import { DEPENDED_ISSUE_URLS_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -290,7 +291,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.patchConsoleTab(issue);
       await this.issueCommentRepository.createComment(
         issue,
-        `Issue has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+        `${DEPENDED_ISSUE_URLS_COMMENT_HEAD}\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       );
       return;
     }
