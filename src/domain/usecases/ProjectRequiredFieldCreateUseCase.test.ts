@@ -788,6 +788,29 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         expect(submitted?.id).toBe(original.id);
       }
     });
+
+    it('should submit options sorted numerically from 0 to 23', async () => {
+      const project = buildProjectWithNextActionHour(hoursWithoutZero);
+      const { projectRepository, useCase } = createUseCase(
+        [
+          'Title',
+          'Status',
+          'Story',
+          'Next Action Date',
+          'Next Action Hour',
+          'Depended Issue URL separated by comma',
+        ],
+        project,
+      );
+
+      await useCase.run({ projectUrl });
+
+      const submittedOptions =
+        projectRepository.updateNextActionHourList.mock.calls[0][1];
+      expect(submittedOptions.map((o) => o.name)).toEqual(
+        Array.from({ length: 24 }, (_, i) => `${i}`),
+      );
+    });
   });
 
   describe('reconcileAgentOptions', () => {
