@@ -1,10 +1,13 @@
-import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
+import {
+  AUTO_STATUS_CHECK_MESSAGE_HEAD,
+  NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD,
+} from './autoStatusCheckComments';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
 import {
+  DISPATCH_LOOP_ESCALATION_PHRASE,
+  REPORTING_LOOP_ESCALATION_PHRASE,
   resolveNextStepAgentDispatchRepetition,
   SILENT_CRASH_ESCALATION_PHRASE,
-  REPORTING_LOOP_ESCALATION_PHRASE,
-  DISPATCH_LOOP_ESCALATION_PHRASE,
 } from './resolveNextStepAgentDispatchRepetition';
 
 const trustAll = (): boolean => true;
@@ -78,6 +81,31 @@ This agent has been dispatched 3 times since the last human comment on this issu
 const humanComment = (author = 'bot'): TestComment => ({
   author,
   content: 'Please carry on with the second option.',
+});
+
+const newFormatDispatchAgainComment = (
+  nextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} DISPATCH_AGAIN ${nextStepAgent}
+
+No report has been received from ${nextStepAgent} since the last human comment. Dispatching it again (2/3).`,
+});
+
+const newFormatEscalationComment = (
+  nextStepAgent: string,
+  author = 'bot',
+): TestComment => ({
+  author,
+  content: `${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} NO_REPORT_FROM_AGENT_BOT ${nextStepAgent}
+
+Failed to receive a report from ${nextStepAgent} for 3 consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
+});
+
+const newFormatRejectedComment = (author = 'bot'): TestComment => ({
+  author,
+  content: `${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} REJECTED NO_REPORT_FROM_AGENT_BOT\n- NO_REPORT_FROM_AGENT_BOT`,
 });
 
 describe('resolveNextStepAgentDispatchRepetition', () => {
@@ -430,6 +458,54 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('escalateReportingLoop');
+    });
+
+    it('recognizes new-format DISPATCH_AGAIN comments as silent redispatches', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'accounting',
+        nextStepAgent: 'accounting',
+        comments: [
+          newFormatDispatchAgainComment('accounting'),
+          newFormatDispatchAgainComment('accounting'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+    });
+
+    it('resets the count after a new-format escalation comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'accounting',
+        nextStepAgent: 'accounting',
+        comments: [
+          newFormatEscalationComment('accounting'),
+          newFormatDispatchAgainComment('accounting'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+    });
+
+    it('does not treat new-format REJECTED comments as silent redispatches', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'accounting',
+        nextStepAgent: 'accounting',
+        comments: [newFormatRejectedComment()],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
     });
   });
 

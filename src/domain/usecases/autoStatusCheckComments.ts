@@ -1,1 +1,9 @@
 export const AUTO_STATUS_CHECK_MESSAGE_HEAD = 'Auto Status Check:';
+export const NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD =
+  'NotifyFinishedIssuePreparation:';
+export const REVERT_ORPHANED_PREPARATION_COMMENT_HEAD =
+  'RevertOrphanedPreparation:';
+export const ALL_USE_CASE_COMMENT_HEADS = [
+  NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD,
+  REVERT_ORPHANED_PREPARATION_COMMENT_HEAD,
+] as const;

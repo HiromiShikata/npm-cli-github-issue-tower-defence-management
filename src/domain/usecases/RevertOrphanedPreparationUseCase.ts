@@ -27,6 +27,10 @@ import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
+import {
+  NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD,
+  REVERT_ORPHANED_PREPARATION_COMMENT_HEAD,
+} from './autoStatusCheckComments';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import {
   reportSilentRedispatchWorkflowIssue,
@@ -200,6 +204,7 @@ export class RevertOrphanedPreparationUseCase {
             params.thresholdForDispatchLoop ??
             DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
           isNoStory,
+          commentHead: REVERT_ORPHANED_PREPARATION_COMMENT_HEAD,
         });
         if (
           repetition.type === 'escalateSilentRedispatch' &&
@@ -290,7 +295,7 @@ export class RevertOrphanedPreparationUseCase {
         );
         await this.issueCommentRepository.createComment(
           issue,
-          `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
+          `${REVERT_ORPHANED_PREPARATION_COMMENT_HEAD} REJECTED ANY_CI_JOB_FAILED_OR_IN_PROGRESS\n- ${ciFailingPrUrl}`,
         );
         continue;
       }
@@ -311,12 +316,19 @@ export class RevertOrphanedPreparationUseCase {
         continue;
       }
 
-      const rejectionStatusMessage = `Auto Status Check: REJECTED\n- ${ORPHANED_PREPARATION_REJECTION_DETAIL}`;
+      const rejectionStatusMessage = `${REVERT_ORPHANED_PREPARATION_COMMENT_HEAD} REJECTED ${ORPHANED_PREPARATION_REJECTION_DETAIL}\n- ${ORPHANED_PREPARATION_REJECTION_DETAIL}`;
       const lastTargetComments = comments.slice(
         -params.thresholdForAutoReject * 2,
       );
-      const rejectionCommentCount = lastTargetComments.filter((comment) =>
-        comment.content.startsWith('Auto Status Check: REJECTED'),
+      const rejectionCommentCount = lastTargetComments.filter(
+        (comment) =>
+          comment.content.startsWith('Auto Status Check: REJECTED') ||
+          comment.content.startsWith(
+            `${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} REJECTED`,
+          ) ||
+          comment.content.startsWith(
+            `${REVERT_ORPHANED_PREPARATION_COMMENT_HEAD} REJECTED`,
+          ),
       ).length;
       const alreadyEscalated = lastTargetComments.some((comment) =>
         comment.content
@@ -373,10 +385,6 @@ export class RevertOrphanedPreparationUseCase {
         project,
         issue,
         awaitingWorkspaceStatusOption.id,
-      );
-      await this.issueCommentRepository.createComment(
-        issue,
-        'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
       );
     }
   };

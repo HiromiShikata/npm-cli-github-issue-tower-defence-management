@@ -5,6 +5,7 @@ import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
+import { NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD } from './autoStatusCheckComments';
 
 type Mocked<T> = jest.Mocked<T> & jest.MockedObject<T>;
 
@@ -384,7 +385,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
       expect.stringContaining(
-        'Failed to receive a report from the dispatched agent for 3 consecutive dispatches',
+        'Failed to receive a report from developer for 3 consecutive dispatches',
       ),
     );
   });
@@ -510,7 +511,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('Next step agent dispatch repeated: developer'),
+      expect.stringContaining(
+        'RevertOrphanedPreparation: NO_REPORT_FROM_AGENT_BOT developer',
+      ),
     );
   });
 
@@ -710,7 +713,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 
@@ -788,7 +791,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 
@@ -940,7 +943,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 
@@ -1017,7 +1020,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 
@@ -1126,7 +1129,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
-  it('should post Auto Status Check: REJECTED comment when orphan path reverts to Awaiting Workspace', async () => {
+  it('should post RevertOrphanedPreparation: REJECTED comment when orphan path reverts to Awaiting Workspace', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
       status: 'Preparation',
@@ -1156,7 +1159,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       stuckIssue,
     );
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION',
     );
   });
 
@@ -1645,8 +1648,48 @@ describe('RevertOrphanedPreparationUseCase', () => {
       stuckIssue,
     );
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION\n\nFailed to pass the check automatically for 3 times',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION\n\nFailed to pass the check automatically for 3 times',
     );
+  });
+
+  it('should transition orphaned issue to Failed Preparation when new-format rejection threshold is met', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'bot',
+        content: `${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} REJECTED NO_REPORT_FROM_AGENT_BOT\n- NO_REPORT_FROM_AGENT_BOT`,
+        createdAt: new Date(),
+      },
+      {
+        author: 'bot',
+        content: `${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} REJECTED NO_REPORT_FROM_AGENT_BOT\n- NO_REPORT_FROM_AGENT_BOT`,
+        createdAt: new Date(),
+      },
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(mockProject);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toBe(stuckIssue);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
   });
 
   it('should revert orphaned issue to Awaiting Workspace when rejection threshold is not yet met', async () => {
@@ -1682,7 +1725,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION',
     );
   });
 
@@ -1730,7 +1773,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION',
     );
   });
 
@@ -1821,7 +1864,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toBe(
-      'Auto Status Check: REJECTED\n- ORPHANED_PREPARATION',
+      'RevertOrphanedPreparation: REJECTED ORPHANED_PREPARATION\n- ORPHANED_PREPARATION',
     );
   });
 
@@ -2459,7 +2502,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment.mock.calls).toHaveLength(1);
     expect(mockIssueCommentRepository.createComment.mock.calls[0][1]).toContain(
-      'Auto Status Check: REJECTED',
+      'RevertOrphanedPreparation: REJECTED',
     );
   });
 
@@ -2826,7 +2869,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         todoByAgentIssue,
       );
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         todoByAgentIssue,
         'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
       );
