@@ -5,6 +5,7 @@ import {
   type FieldOption,
   type Project,
 } from '../../../domain/entities/Project';
+import type { StoryObjectMap } from '../../../domain/entities/StoryObjectMap';
 import type { IssueAttachmentRepository } from '../../../domain/usecases/adapter-interfaces/IssueAttachmentRepository';
 import type {
   IssueRepository,
@@ -80,6 +81,7 @@ export type ConsoleOperationContext = {
 export type ConsoleOperationResponse = {
   statusCode: number;
   body: unknown;
+  backgroundTask?: Promise<void>;
 };
 
 const ok = (): ConsoleOperationResponse => ({
@@ -1142,6 +1144,38 @@ const removeFromConsoleLists = (
   );
 };
 
+const closeDeletedStoryItemsInBackground = async (
+  context: ConsoleOperationContext,
+  pjcode: string,
+  storyOption: FieldOption,
+  issueRepository: IssueRepository,
+  storyObjectMap: StoryObjectMap,
+): Promise<void> => {
+  const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
+  if (storyIssue !== null) {
+    try {
+      await issueRepository.closeIssueByUrl(storyIssue.url, 'completed');
+    } catch (e) {
+      console.error('Failed to close story issue after story deletion:', e);
+    }
+    removeFromConsoleLists(context, pjcode, storyIssue.itemId);
+  }
+  const storyTasks = storyObjectMap.get(storyOption.name)?.issues ?? [];
+  for (const task of storyTasks) {
+    if (!task.isClosed && !task.isPr) {
+      try {
+        await issueRepository.closeIssueByUrl(task.url, 'not_planned');
+      } catch (e) {
+        console.error(
+          `Failed to close task after story deletion: ${task.url}`,
+          e,
+        );
+      }
+      removeFromConsoleLists(context, pjcode, task.itemId);
+    }
+  }
+};
+
 export const handleDeleteStory = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
@@ -1174,37 +1208,26 @@ export const handleDeleteStory = async (
   }
   const proxyUrl = `https://github.com/${projectOwner}/${projectOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
-  const storyObjectMap = await issueRepository.getStoryObjectMap(project);
-  const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
   const projectRepository = context.resolveProjectRepository(project.url);
-  const freshProject = await projectRepository.getProject(project.id);
+  const [freshProject, storyObjectMap] = await Promise.all([
+    projectRepository.getProject(project.id),
+    issueRepository.getStoryObjectMap(project),
+  ]);
   const freshStories = freshProject?.story?.stories ?? project.story.stories;
   const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
   await projectRepository.updateStoryList(project, filteredStories);
   context.invalidateProject?.(pjcode);
-  if (storyIssue !== null) {
-    try {
-      await issueRepository.closeIssueByUrl(storyIssue.url, 'completed');
-    } catch (e) {
-      console.error('Failed to close story issue after story deletion:', e);
-    }
-    removeFromConsoleLists(context, pjcode, storyIssue.itemId);
-  }
-  const storyTasks = storyObjectMap.get(storyOption.name)?.issues ?? [];
-  for (const task of storyTasks) {
-    if (!task.isClosed && !task.isPr) {
-      try {
-        await issueRepository.closeIssueByUrl(task.url, 'not_planned');
-      } catch (e) {
-        console.error(
-          `Failed to close task after story deletion: ${task.url}`,
-          e,
-        );
-      }
-      removeFromConsoleLists(context, pjcode, task.itemId);
-    }
-  }
-  return ok();
+  const backgroundTask = closeDeletedStoryItemsInBackground(
+    context,
+    pjcode,
+    storyOption,
+    issueRepository,
+    storyObjectMap,
+  );
+  backgroundTask.catch((e) =>
+    console.error('Background delete story cleanup failed:', e),
+  );
+  return { statusCode: 200, body: { ok: true }, backgroundTask };
 };
 
 export const handleStoryRename = async (

@@ -3632,6 +3632,7 @@ describe('consoleOperationApi', () => {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       expect(response.statusCode).toBe(200);
       expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
@@ -3655,10 +3656,11 @@ describe('consoleOperationApi', () => {
       ]);
       issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
 
-      await handleDeleteStory(deleteStoryContext(p), {
+      const response = await handleDeleteStory(deleteStoryContext(p), {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
     });
@@ -3706,6 +3708,7 @@ describe('consoleOperationApi', () => {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       expect(response.statusCode).toBe(200);
     });
@@ -3735,6 +3738,7 @@ describe('consoleOperationApi', () => {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       expect(response.statusCode).toBe(200);
       expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
@@ -3764,10 +3768,11 @@ describe('consoleOperationApi', () => {
       ]);
       issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
 
-      await handleDeleteStory(deleteStoryContext(p), {
+      const response = await handleDeleteStory(deleteStoryContext(p), {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
     });
@@ -3800,6 +3805,7 @@ describe('consoleOperationApi', () => {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
         'https://github.com/acme-labs/ops/issues/102',
@@ -3833,9 +3839,54 @@ describe('consoleOperationApi', () => {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       expect(response.statusCode).toBe(200);
       expect(issueRepository.closeIssueByUrl).not.toHaveBeenCalled();
+    });
+
+    it('returns 200 before issue closing completes in the background', async () => {
+      const p = projectWithStoriesToDelete();
+      const { story } = p;
+      if (story === null) throw new Error('test fixture must have story');
+      const storyToRemove = story.stories.find((s) => s.id === 'opt_remove');
+      if (storyToRemove === undefined)
+        throw new Error('test fixture must have opt_remove story');
+      const storyIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/ops/issues/42',
+        title: 'Remove this story',
+      };
+      const storyObjectMap: StoryObjectMap = new Map([
+        [storyToRemove.name, { story: storyToRemove, storyIssue, issues: [] }],
+      ]);
+      issueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+      let resolveCloseIssue!: () => void;
+      const closeIssuePromise = new Promise<void>((resolve) => {
+        resolveCloseIssue = resolve;
+      });
+      issueRepository.closeIssueByUrl.mockReturnValue(closeIssuePromise);
+
+      const response = await handleDeleteStory(deleteStoryContext(p), {
+        pjcode: 'acme',
+        storyOptionId: 'opt_remove',
+      });
+
+      // HTTP response returns immediately even while closeIssueByUrl is still pending
+      expect(response.statusCode).toBe(200);
+      // backgroundTask is still pending (waiting for closeIssueByUrl to resolve)
+      let backgroundTaskResolved = false;
+      const backgroundTaskResult = response.backgroundTask?.then(() => {
+        backgroundTaskResolved = true;
+      });
+      expect(backgroundTaskResolved).toBe(false);
+
+      resolveCloseIssue();
+      await backgroundTaskResult;
+      expect(issueRepository.closeIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/acme-labs/ops/issues/42',
+        'completed',
+      );
     });
 
     it('preserves story options added server-side after cache was populated when deleting a story', async () => {
@@ -3915,10 +3966,11 @@ describe('consoleOperationApi', () => {
         );
       }
 
-      await handleDeleteStory(deleteStoryContext(p), {
+      const response = await handleDeleteStory(deleteStoryContext(p), {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       for (const tab of tabsWithItem) {
         const filePath = path.join(baseDir, 'acme', tab, 'list.json');
@@ -3956,10 +4008,11 @@ describe('consoleOperationApi', () => {
         );
       }
 
-      await handleDeleteStory(deleteStoryContext(p), {
+      const response = await handleDeleteStory(deleteStoryContext(p), {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       for (const tab of tabsWithItem) {
         const filePath = path.join(baseDir, 'acme', tab, 'list.json');
@@ -3999,6 +4052,7 @@ describe('consoleOperationApi', () => {
         pjcode: 'acme',
         storyOptionId: 'opt_remove',
       });
+      await response.backgroundTask;
 
       expect(response.statusCode).toBe(200);
     });
