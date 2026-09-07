@@ -313,7 +313,9 @@ describe('formatMachineStatusLines', () => {
       cycleMinutes: 999,
     });
     expect(lines).toEqual(['🔴M100% 🔴C100% 🔴D100% cy999 🔴LA 108 120 95']);
-    expect(codePointLength(lines[0])).toBeLessThanOrEqual(PROJECT_ROW_WIDTH_BUDGET);
+    expect(codePointLength(lines[0])).toBeLessThanOrEqual(
+      PROJECT_ROW_WIDTH_BUDGET,
+    );
   });
 });
 
@@ -553,7 +555,9 @@ describe('formatProjectTotalLine', () => {
         closeEventCounts: { h1: 99, h3: 99, h5: 99 },
       },
     ]);
-    expect(codePointLength(result)).toBeLessThanOrEqual(PROJECT_ROW_WIDTH_BUDGET);
+    expect(codePointLength(result)).toBeLessThanOrEqual(
+      PROJECT_ROW_WIDTH_BUDGET,
+    );
   });
 
   it('aligns columns with the header and project rows', () => {
