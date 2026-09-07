@@ -1,3 +1,10 @@
+# [2.75.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.74.0...v2.75.0) (2026-09-07)
+
+
+### Features
+
+* **cache:** add storyIssueUrlByOptionName precomputed map to CachedProjectIssues ([#2201](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2201)) ([ffc0d42](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ffc0d42fe39a0a5c84368d68ea84e180710f4349)), closes [#2199](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2199)
+
 # [2.74.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.73.7...v2.74.0) (2026-09-06)
 
 
