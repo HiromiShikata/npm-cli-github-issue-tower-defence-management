@@ -23,9 +23,9 @@ import {
 import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import {
   CachedProjectIssues,
+  deserializeStoryIssueUrlByOptionName,
   isIssueArray,
   isProject,
-  isStringRecord,
   ProjectIssuesCacheRepository,
 } from '../ProjectIssuesCacheRepository';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
@@ -937,19 +937,12 @@ export class ApiV3CheerioRestIssueRepository
     if (!issues) {
       return null;
     }
-    const rawMap =
-      'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
-    const storyIssueUrlByOptionName: Record<string, string> = isStringRecord(
-      rawMap,
-    )
-      ? rawMap
-      : {};
     return {
       lastFetchedAt: raw.lastFetchedAt,
       lastFullFetchAt: raw.lastFullFetchAt,
       project: raw.project,
       issues,
-      storyIssueUrlByOptionName,
+      storyIssueUrlByOptionName: deserializeStoryIssueUrlByOptionName(raw),
     };
   };
 

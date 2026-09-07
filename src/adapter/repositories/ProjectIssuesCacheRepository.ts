@@ -34,6 +34,14 @@ export const isStringRecord = (
   !Array.isArray(value) &&
   Object.values(value).every((v) => typeof v === 'string');
 
+export const deserializeStoryIssueUrlByOptionName = (
+  raw: object,
+): Record<string, string> => {
+  const rawMap =
+    'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
+  return isStringRecord(rawMap) ? rawMap : {};
+};
+
 export const isIssueArray = (value: unknown): value is Issue[] =>
   Array.isArray(value) &&
   value.every(
@@ -83,19 +91,12 @@ export class ProjectIssuesCacheRepository {
     if (!isProject(raw.project) || !isIssueArray(raw.issues)) {
       return null;
     }
-    const rawMap =
-      'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
-    const storyIssueUrlByOptionName: Record<string, string> = isStringRecord(
-      rawMap,
-    )
-      ? rawMap
-      : {};
     return {
       lastFetchedAt: raw.lastFetchedAt,
       lastFullFetchAt: raw.lastFullFetchAt,
       project: raw.project,
       issues: raw.issues,
-      storyIssueUrlByOptionName,
+      storyIssueUrlByOptionName: deserializeStoryIssueUrlByOptionName(raw),
     };
   };
 

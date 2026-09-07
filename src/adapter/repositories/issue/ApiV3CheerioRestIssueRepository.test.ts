@@ -683,6 +683,54 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         'cached-project',
       );
     });
+
+    it('writes storyIssueUrlByOptionName built from story-labeled issues during incremental fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('cached-project'),
+        issues: [
+          {
+            ...buildCachedIssueRecord(
+              'https://github.com/o/r/issues/50',
+              'story issue',
+            ),
+            labels: ['story'],
+            story: 'umino / story beta',
+          },
+          {
+            ...buildCachedIssueRecord(
+              'https://github.com/o/r/issues/51',
+              'task issue',
+            ),
+            labels: [],
+            story: 'umino / story beta',
+          },
+        ],
+      });
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('cached-project'),
+      );
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('cached-project');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyIssueUrlByOptionName: {
+          'umino / story beta': 'https://github.com/o/r/issues/50',
+        },
+      });
+    });
   });
 
   describe('getAllIssues story option rename detection', () => {
@@ -6657,6 +6705,50 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
 
       expect(localStorageCacheRepository.setSingle).not.toHaveBeenCalled();
+    });
+
+    it('rebuilds storyIssueUrlByOptionName after updating the story field', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+      } = createApiV3CheerioRestIssueRepository();
+
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue(
+        undefined,
+      );
+
+      const storyIssueUrl = 'https://github.com/user/repo/issues/99';
+      const existingCache = {
+        lastFetchedAt: '2026-01-01T00:00:00.000Z',
+        lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+        project: storyProject,
+        issues: [
+          {
+            ...buildCachedIssueRecord(testIssue.url, testIssue.title),
+            itemId: testIssue.itemId,
+            labels: [],
+            story: null,
+          },
+          {
+            ...buildCachedIssueRecord(storyIssueUrl, 'Story Issue'),
+            labels: ['story'],
+            story: 'regular / workflow improvement',
+          },
+        ],
+        storyIssueUrlByOptionName: {},
+      };
+      localStorageCacheRepository.getSingle.mockResolvedValue(existingCache);
+      localStorageCacheRepository.setSingle.mockResolvedValue(undefined);
+
+      await repository.updateStory(storyProject, testIssue, 'story-opt-a');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyIssueUrlByOptionName: {
+          'regular / workflow improvement': storyIssueUrl,
+        },
+      });
     });
   });
 
