@@ -7,6 +7,7 @@ export type CachedProjectIssues = {
   lastFullFetchAt: string;
   project: Project;
   issues: Issue[];
+  storyIssueUrlByOptionName: Record<string, string>;
 };
 
 export const isProject = (value: unknown): value is Project => {
@@ -23,6 +24,22 @@ export const isProject = (value: unknown): value is Project => {
   )
     return false;
   return true;
+};
+
+export const isStringRecord = (
+  value: unknown,
+): value is Record<string, string> =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.values(value).every((v) => typeof v === 'string');
+
+export const deserializeStoryIssueUrlByOptionName = (
+  raw: object,
+): Record<string, string> => {
+  const rawMap =
+    'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
+  return isStringRecord(rawMap) ? rawMap : {};
 };
 
 export const isIssueArray = (value: unknown): value is Issue[] =>
@@ -79,6 +96,7 @@ export class ProjectIssuesCacheRepository {
       lastFullFetchAt: raw.lastFullFetchAt,
       project: raw.project,
       issues: raw.issues,
+      storyIssueUrlByOptionName: deserializeStoryIssueUrlByOptionName(raw),
     };
   };
 
