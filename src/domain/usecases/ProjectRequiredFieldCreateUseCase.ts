@@ -154,10 +154,11 @@ export class ProjectRequiredFieldCreateUseCase {
       ...project.nextActionHour.options.map((o) => ({ ...o })),
       ...missingOptions.map((o) => ({ ...o, id: null })),
     ];
-    mergedOptions.sort(
-      (a, b) => parseInt(a.name, 10) - parseInt(b.name, 10),
+    mergedOptions.sort((a, b) => parseInt(a.name, 10) - parseInt(b.name, 10));
+    await this.projectRepository.updateNextActionHourList(
+      project,
+      mergedOptions,
     );
-    await this.projectRepository.updateNextActionHourList(project, mergedOptions);
   };
 
   reconcileAgentOptions = async (

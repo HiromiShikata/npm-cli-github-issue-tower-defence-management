@@ -736,9 +736,9 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
 
       await useCase.run({ projectUrl });
 
-      expect(
-        projectRepository.updateNextActionHourList,
-      ).toHaveBeenCalledTimes(1);
+      expect(projectRepository.updateNextActionHourList).toHaveBeenCalledTimes(
+        1,
+      );
     });
 
     it('should submit option 0 without an id', async () => {
@@ -782,7 +782,9 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
       const submittedOptions =
         projectRepository.updateNextActionHourList.mock.calls[0][1];
       for (const original of hoursWithoutZero) {
-        const submitted = submittedOptions.find((o) => o.name === original.name);
+        const submitted = submittedOptions.find(
+          (o) => o.name === original.name,
+        );
         expect(submitted?.id).toBe(original.id);
       }
     });
