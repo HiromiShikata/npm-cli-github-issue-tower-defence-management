@@ -12,7 +12,8 @@ const isHorizontallyScrollable = (start: EventTarget | null): boolean => {
     const overflowX = style.overflowX;
     if (
       (overflowX === 'auto' || overflowX === 'scroll') &&
-      node.scrollWidth > node.clientWidth
+      node.scrollWidth > node.clientWidth &&
+      node.scrollLeft > 0
     ) {
       return true;
     }
