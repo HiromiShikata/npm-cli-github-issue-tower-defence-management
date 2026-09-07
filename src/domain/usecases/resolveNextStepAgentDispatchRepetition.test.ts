@@ -1,6 +1,7 @@
 import {
   AUTO_STATUS_CHECK_MESSAGE_HEAD,
   NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD,
+  REVERT_ORPHANED_PREPARATION_COMMENT_HEAD,
 } from './autoStatusCheckComments';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
 import {
@@ -726,6 +727,93 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('notRepeated');
+    });
+  });
+
+  describe('commentHead parameter', () => {
+    it('uses the provided commentHead in REPORTING_LOOP escalation comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          {
+            author: 'bot',
+            content: `${REVERT_ORPHANED_PREPARATION_COMMENT_HEAD} DISPATCH_AGAIN developer\n\nDispatching again.`,
+          },
+          report('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+        commentHead: REVERT_ORPHANED_PREPARATION_COMMENT_HEAD,
+      });
+
+      expect(result.type).toBe('escalateReportingLoop');
+      const comment =
+        result.type === 'escalateReportingLoop' ? result.comment : '';
+      expect(comment).toMatch(
+        new RegExp(
+          `^${REVERT_ORPHANED_PREPARATION_COMMENT_HEAD} REPORTING_LOOP`,
+        ),
+      );
+    });
+
+    it('uses the provided commentHead in DISPATCH_LOOP escalation comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: null,
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          report('other'),
+          report('developer'),
+          report('other'),
+          report('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        isNoStory: false,
+        commentHead: REVERT_ORPHANED_PREPARATION_COMMENT_HEAD,
+      });
+
+      expect(result.type).toBe('escalateDispatchLoop');
+      const comment =
+        result.type === 'escalateDispatchLoop' ? result.comment : '';
+      expect(comment).toMatch(
+        new RegExp(
+          `^${REVERT_ORPHANED_PREPARATION_COMMENT_HEAD} DISPATCH_LOOP`,
+        ),
+      );
+    });
+
+    it('defaults to NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD when commentHead is omitted', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          {
+            author: 'bot',
+            content: `${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} DISPATCH_AGAIN developer\n\nDispatching again.`,
+          },
+          report('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('escalateReportingLoop');
+      const comment =
+        result.type === 'escalateReportingLoop' ? result.comment : '';
+      expect(comment).toMatch(
+        new RegExp(
+          `^${NOTIFY_FINISHED_PREPARATION_COMMENT_HEAD} REPORTING_LOOP`,
+        ),
+      );
     });
   });
 
