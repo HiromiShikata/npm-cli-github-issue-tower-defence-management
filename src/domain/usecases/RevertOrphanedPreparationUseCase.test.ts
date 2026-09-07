@@ -3103,4 +3103,65 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
     });
   });
+
+  describe('null nextStepAgent dispatch loop detection', () => {
+    it('should escalate to Failed Preparation when a task with no nextStepAgent has been re-dispatched up to the dispatch loop threshold', async () => {
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        story: 'Default Story',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T00:00:00Z'),
+        },
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T01:00:00Z'),
+        },
+        {
+          author: 'bot',
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date('2024-01-02T02:00:00Z'),
+        },
+      ]);
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: 'https://github.com/user/repo/issues/10',
+          status: 'Preparation',
+        }),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        allowedIssueAuthors: ['bot'],
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('no-next-step-agent'),
+      );
+    });
+  });
 });

@@ -50,6 +50,7 @@ import {
   reportSilentRedispatchWorkflowIssue,
   WorkflowIssueReporterSettings,
 } from './reportSilentRedispatchWorkflowIssue';
+import { DEPENDED_ISSUE_URLS_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -290,7 +291,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.patchConsoleTab(issue);
       await this.issueCommentRepository.createComment(
         issue,
-        `Issue has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+        `${DEPENDED_ISSUE_URLS_COMMENT_HEAD}\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       );
       return;
     }
@@ -455,67 +456,88 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    if (nextStepAgent !== null) {
-      const isNoStory =
-        issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
-      const repetition = resolveNextStepAgentDispatchRepetition({
-        agentFieldValue: issue.agent,
-        nextStepAgent,
-        comments,
-        isTrustedAuthor,
-        thresholdForAutoReject: params.thresholdForAutoReject,
-        thresholdForDispatchLoop:
-          params.thresholdForDispatchLoop ??
-          DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-        isNoStory,
-      });
-      if (repetition.type === 'escalateSilentRedispatch') {
-        issue.status = FAILED_PREPARATION_STATUS_NAME;
-        await this.issueRepository.update(issue, project);
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          failedPreparationStatusOption.id,
-        );
-        await this.patchConsoleTab(issue);
-        await this.issueCommentRepository.createComment(
-          issue,
-          repetition.comment,
-        );
-        await this.sendWorkflowBlockerNotification(
+    const isNoStory =
+      nextStepAgent !== null &&
+      (issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME));
+    const repetition = resolveNextStepAgentDispatchRepetition({
+      agentFieldValue: issue.agent,
+      nextStepAgent,
+      comments,
+      isTrustedAuthor,
+      thresholdForAutoReject: params.thresholdForAutoReject,
+      thresholdForDispatchLoop:
+        params.thresholdForDispatchLoop ?? DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+      isNoStory,
+    });
+    if (repetition.type === 'escalateSilentRedispatch') {
+      issue.status = FAILED_PREPARATION_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        failedPreparationStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.issueCommentRepository.createComment(
+        issue,
+        repetition.comment,
+      );
+      await this.sendWorkflowBlockerNotification(
+        params.issueUrl,
+        params.workflowBlockerResolvedWebhookUrl,
+        project,
+      );
+      if (nextStepAgent !== null && params.workflowIssueReporterSettings) {
+        await reportSilentRedispatchWorkflowIssue(
+          nextStepAgent,
           params.issueUrl,
-          params.workflowBlockerResolvedWebhookUrl,
-          project,
+          params.workflowIssueReporterSettings,
+          this.issueRepository,
+          this.projectRepository,
         );
-        if (params.workflowIssueReporterSettings) {
-          await reportSilentRedispatchWorkflowIssue(
-            nextStepAgent,
-            params.issueUrl,
-            params.workflowIssueReporterSettings,
-            this.issueRepository,
-            this.projectRepository,
-          );
-        }
-        return;
       }
-      if (
-        repetition.type === 'escalateReportingLoop' ||
-        repetition.type === 'escalateDispatchLoop'
-      ) {
-        issue.status = AWAITING_OWNER_STATUS_NAME;
-        await this.issueRepository.update(issue, project);
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingOwnerStatusOption.id,
-        );
-        await this.patchConsoleTab(issue);
-        await this.issueCommentRepository.createComment(
-          issue,
-          repetition.comment,
-        );
-        return;
-      }
+      return;
+    }
+    if (
+      repetition.type === 'escalateReportingLoop' ||
+      (repetition.type === 'escalateDispatchLoop' && nextStepAgent !== null)
+    ) {
+      issue.status = AWAITING_OWNER_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingOwnerStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.issueCommentRepository.createComment(
+        issue,
+        repetition.comment,
+      );
+      return;
+    }
+    if (repetition.type === 'escalateDispatchLoop' && nextStepAgent === null) {
+      issue.status = FAILED_PREPARATION_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        failedPreparationStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.issueCommentRepository.createComment(
+        issue,
+        repetition.comment,
+      );
+      await this.sendWorkflowBlockerNotification(
+        params.issueUrl,
+        params.workflowBlockerResolvedWebhookUrl,
+        project,
+      );
+      return;
+    }
+
+    if (nextStepAgent !== null) {
       const agentOptionId = await this.ensureAgentOptionAndGetId(
         project,
         nextStepAgent,

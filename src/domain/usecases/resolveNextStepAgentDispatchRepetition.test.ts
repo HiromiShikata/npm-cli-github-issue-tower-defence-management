@@ -80,6 +80,24 @@ const humanComment = (author = 'bot'): TestComment => ({
   content: 'Please carry on with the second option.',
 });
 
+const reportWithNullNextStep = (author = 'bot'): TestComment => ({
+  author,
+  content: `From: :robot: some-agent (model)
+
+\`\`\`json
+{ "nextStep": null }
+\`\`\`
+
+Report body.`,
+});
+
+const nullDispatchLoopEscalationComment = (author = 'bot'): TestComment => ({
+  author,
+  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} (no next-step agent)
+
+This no-next-step-agent task has been dispatched 3 times since the last human comment without advancing, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
+});
+
 describe('resolveNextStepAgentDispatchRepetition', () => {
   describe('silent agent bound', () => {
     it('returns notRepeated when the agent field holds no value', () => {
@@ -747,6 +765,118 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('escalateReportingLoop');
+    });
+  });
+
+  describe('null nextStepAgent', () => {
+    it('returns notRepeated when fewer null-nextStep reports exist than the dispatch loop threshold', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: null,
+        nextStepAgent: null,
+        comments: [reportWithNullNextStep(), reportWithNullNextStep()],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('notRepeated');
+    });
+
+    it('returns escalateDispatchLoop when null-nextStep reports reach the dispatch loop threshold', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: null,
+        nextStepAgent: null,
+        comments: [
+          reportWithNullNextStep(),
+          reportWithNullNextStep(),
+          reportWithNullNextStep(),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('escalateDispatchLoop');
+    });
+
+    it('uses the no-next-step-agent label in the escalation comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: null,
+        nextStepAgent: null,
+        comments: [
+          reportWithNullNextStep(),
+          reportWithNullNextStep(),
+          reportWithNullNextStep(),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        isNoStory: false,
+      });
+
+      const comment =
+        result.type === 'escalateDispatchLoop' ? result.comment : '';
+      expect(comment).toContain('(no next-step agent)');
+    });
+
+    it('uses the null-specific dispatch loop message body', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: null,
+        nextStepAgent: null,
+        comments: [
+          reportWithNullNextStep(),
+          reportWithNullNextStep(),
+          reportWithNullNextStep(),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        isNoStory: false,
+      });
+
+      const comment =
+        result.type === 'escalateDispatchLoop' ? result.comment : '';
+      expect(comment).toContain('no-next-step-agent task');
+    });
+
+    it('resets the null dispatch count after a human comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: null,
+        nextStepAgent: null,
+        comments: [
+          reportWithNullNextStep(),
+          reportWithNullNextStep(),
+          humanComment('human'),
+          reportWithNullNextStep(),
+        ],
+        isTrustedAuthor: (author) => author !== 'human',
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('notRepeated');
+    });
+
+    it('resets the null dispatch count after a null dispatch loop escalation comment', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: null,
+        nextStepAgent: null,
+        comments: [
+          reportWithNullNextStep(),
+          reportWithNullNextStep(),
+          nullDispatchLoopEscalationComment(),
+          reportWithNullNextStep(),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 3,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('notRepeated');
     });
   });
 });

@@ -2,6 +2,14 @@ import { Issue } from '../entities/Issue';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { Project } from '../entities/Project';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
+import {
+  ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD,
+  ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD,
+  CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD,
+  DEPENDENCY_REMOVED_COMMENT_HEAD,
+  SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD,
+  SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD,
+} from './dependencyNotificationCommentHeads';
 
 export class ClearDependedIssueURLUseCase {
   constructor(
@@ -38,8 +46,7 @@ export class ClearDependedIssueURLUseCase {
         );
         await this.issueRepository.createComment(
           issue,
-          `Circular dependency removed:
-${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+          `${CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD}\n${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
         continue;
       }
@@ -124,15 +131,13 @@ ${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
           iceboxDependedIssueUrls.length === 0;
         await this.issueRepository.createComment(
           issue,
-          `${allCleared ? 'All depended issues are already closed, dependency field cleared' : 'Some depended issues are already closed, removed from dependency field'}:
-${closedDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+          `${allCleared ? ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD : SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD}\n${closedDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
       }
       if (notFoundDependedIssueUrls.length > 0) {
         await this.issueRepository.createComment(
           issue,
-          `Dependency removed:
-${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+          `${DEPENDENCY_REMOVED_COMMENT_HEAD}\n${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
       }
       if (iceboxDependedIssueUrls.length > 0) {
@@ -142,7 +147,7 @@ ${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
           notFoundDependedIssueUrls.length === 0;
         await this.issueRepository.createComment(
           issue,
-          `${iceboxAllCleared ? 'All depended issues are in Icebox, dependency field cleared' : 'Some depended issues are in Icebox, removed from dependency field'}:\n${iceboxDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
+          `${iceboxAllCleared ? ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD : SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD}\n${iceboxDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
       }
     }

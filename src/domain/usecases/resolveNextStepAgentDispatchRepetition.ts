@@ -67,14 +67,18 @@ const countSilentRedispatches = <
   CommentLike extends { author: string; content: string },
 >(params: {
   agentFieldValue: string | null;
-  nextStepAgent: string;
+  nextStepAgent: string | null;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
 }): SilentRedispatch | null => {
+  if (params.nextStepAgent === null) {
+    return null;
+  }
+  const nextStepAgent = params.nextStepAgent;
   if (
     params.agentFieldValue === null ||
     normalizeProjectFieldName(params.agentFieldValue) !==
-      normalizeProjectFieldName(params.nextStepAgent)
+      normalizeProjectFieldName(nextStepAgent)
   ) {
     return null;
   }
@@ -88,10 +92,7 @@ const countSilentRedispatches = <
   const lastEscalationIndex = commentsInCurrentCycle.reduce(
     (found, comment, index) =>
       params.isTrustedAuthor(comment.author) &&
-      isSilentRedispatchCommentForAgent(
-        comment.content,
-        params.nextStepAgent,
-      ) &&
+      isSilentRedispatchCommentForAgent(comment.content, nextStepAgent) &&
       isEscalationDispatchComment(comment.content)
         ? index
         : found,
@@ -105,10 +106,7 @@ const countSilentRedispatches = <
     commentsAfterLastEscalation.filter(
       (comment) =>
         params.isTrustedAuthor(comment.author) &&
-        isSilentRedispatchCommentForAgent(
-          comment.content,
-          params.nextStepAgent,
-        ),
+        isSilentRedispatchCommentForAgent(comment.content, nextStepAgent),
     ).length + 1;
   const hasReportsInCycle = commentsAfterLastEscalation.some((comment) => {
     if (!params.isTrustedAuthor(comment.author)) return false;
@@ -121,7 +119,7 @@ const countSilentRedispatches = <
       .trim();
     return (
       normalizeProjectFieldName(reportingAgent) ===
-      normalizeProjectFieldName(params.nextStepAgent)
+      normalizeProjectFieldName(nextStepAgent)
     );
   });
   return { count, hasReportsInCycle };
@@ -130,7 +128,7 @@ const countSilentRedispatches = <
 const countDispatchesInCurrentCycle = <
   CommentLike extends { author: string; content: string },
 >(params: {
-  nextStepAgent: string;
+  nextStepAgent: string | null;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
 }): number => {
@@ -163,6 +161,9 @@ const countDispatchesInCurrentCycle = <
   return (
     reportsInCurrentCycle.slice(0, -1).filter((comment) => {
       const declared = extractNextStepAgent(comment.content);
+      if (params.nextStepAgent === null) {
+        return declared === null;
+      }
       return (
         declared !== null &&
         normalizeProjectFieldName(declared) ===
@@ -176,12 +177,12 @@ export const resolveNextStepAgentDispatchRepetition = <
   CommentLike extends { author: string; content: string },
 >(params: {
   agentFieldValue: string | null;
-  nextStepAgent: string;
+  nextStepAgent: string | null;
   comments: CommentLike[];
   isTrustedAuthor: (author: string) => boolean;
   thresholdForAutoReject: number;
   thresholdForDispatchLoop: number;
-  isNoStory: boolean;
+  isNoStory?: boolean;
 }): NextStepAgentDispatchRepetition => {
   const silentRedispatches = countSilentRedispatches(params);
   if (params.isNoStory) {
@@ -214,12 +215,20 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
   }
   const dispatchesInCycle = countDispatchesInCurrentCycle(params);
   if (dispatchesInCycle >= params.thresholdForDispatchLoop) {
+    const agentLabel = params.nextStepAgent ?? '(no next-step agent)';
+    const dispatchLoopBody =
+      params.nextStepAgent === null
+        ? `This no-next-step-agent task has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment without advancing, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`
+        : `This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`;
     return {
       type: 'escalateDispatchLoop',
-      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${agentLabel}
 
-This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
+${dispatchLoopBody}`,
     };
+  }
+  if (params.nextStepAgent === null) {
+    return { type: 'notRepeated' };
   }
   if (
     silentRedispatches !== null &&
