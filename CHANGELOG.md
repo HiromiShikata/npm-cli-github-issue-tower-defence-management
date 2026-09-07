@@ -1,3 +1,10 @@
+# [2.76.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.4...v2.76.0) (2026-09-07)
+
+
+### Features
+
+* **dashboard:** combine machine health into one line and add project totals row ([#2206](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2206)) ([b317791](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b317791662af395ffbd981d24938f9c1ffd6f5da))
+
 ## [2.75.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.3...v2.75.4) (2026-09-07)
 
 
