@@ -690,6 +690,58 @@ export class GraphqlProjectRepository
     });
     return response.data.updateProjectV2Field.projectV2Field.options;
   };
+  updateNextActionHourList = async (
+    project: Project,
+    newHourList: (Omit<FieldOption, 'id'> & {
+      id: FieldOption['id'] | null;
+    })[],
+  ): Promise<FieldOption[]> => {
+    if (!project.nextActionHour) {
+      throw new Error('Project has no nextActionHour field');
+    }
+    const mutation = `mutation UpdateNextActionHourOptions($fieldId: ID!, $options: [ProjectV2SingleSelectFieldOptionInput!]!) {
+  updateProjectV2Field(input: {
+    fieldId: $fieldId
+    singleSelectOptions: $options
+  }) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        options {
+          id
+          name
+          color
+          description
+        }
+      }
+    }
+  }
+}`;
+    const variables = {
+      fieldId: project.nextActionHour.fieldId,
+      options: newHourList.map(({ id, name, color, description }) => ({
+        ...(id !== null ? { id } : {}),
+        name,
+        color,
+        description,
+      })),
+    };
+    const response = await postGithubGraphqlJson<{
+      data: {
+        updateProjectV2Field: {
+          projectV2Field: {
+            options: FieldOption[];
+          };
+        };
+      };
+    }>({
+      ghToken: isMutationOperation(mutation)
+        ? this.ghToken
+        : this.selectReadToken(),
+      query: mutation,
+      variables,
+    });
+    return response.data.updateProjectV2Field.projectV2Field.options;
+  };
   updateStatusList = async (
     project: Project,
     newStatusList: (Omit<FieldOption, 'id'> & {

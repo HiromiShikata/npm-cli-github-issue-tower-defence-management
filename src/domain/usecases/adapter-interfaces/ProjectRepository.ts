@@ -25,5 +25,11 @@ export interface ProjectRepository {
       id: FieldOption['id'] | null;
     })[],
   ) => Promise<FieldOption[]>;
+  updateNextActionHourList: (
+    project: Project,
+    hourOptions: (Omit<FieldOption, 'id'> & {
+      id: FieldOption['id'] | null;
+    })[],
+  ) => Promise<FieldOption[]>;
   getByUrl: (url: string) => Promise<Project>;
 }

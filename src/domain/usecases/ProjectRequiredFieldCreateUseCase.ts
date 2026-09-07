@@ -2,6 +2,7 @@ import { FieldOption, Project } from '../entities/Project';
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import {
   AGENT_FIELD_NAME,
+  NEXT_ACTION_HOUR_FIELD_NAME,
   REQUIRED_PROJECT_FIELDS,
   STORY_FIELD_NAME,
 } from '../entities/RequiredProjectField';
@@ -21,6 +22,7 @@ export class ProjectRequiredFieldCreateUseCase {
       | 'createField'
       | 'updateStoryList'
       | 'updateAgentList'
+      | 'updateNextActionHourList'
     >,
     private readonly agentDefaultRepository: Pick<
       AgentDefaultRepository,
@@ -39,6 +41,7 @@ export class ProjectRequiredFieldCreateUseCase {
       params.projectUrl,
     );
     await this.reconcileStoryOptions(updatedProject);
+    await this.reconcileNextActionHourOptions(updatedProject);
     await this.reconcileAgentOptions(
       updatedProject,
       params.agents ?? null,
@@ -121,6 +124,40 @@ export class ProjectRequiredFieldCreateUseCase {
       latestProject,
       freshMergedOptions,
     );
+  };
+
+  private reconcileNextActionHourOptions = async (
+    project: Project,
+  ): Promise<void> => {
+    if (!project.nextActionHour) {
+      return;
+    }
+    const hourFieldDefinition = REQUIRED_PROJECT_FIELDS.find(
+      (f) =>
+        normalizeProjectFieldName(f.name) ===
+        normalizeProjectFieldName(NEXT_ACTION_HOUR_FIELD_NAME),
+    );
+    if (!hourFieldDefinition) {
+      return;
+    }
+    const requiredOptions = hourFieldDefinition.options;
+    const existingByName = new Map(
+      project.nextActionHour.options.map((o) => [o.name, o]),
+    );
+    const missingOptions = requiredOptions.filter(
+      (required) => !existingByName.has(required.name),
+    );
+    if (missingOptions.length === 0) {
+      return;
+    }
+    const mergedOptions: OptionToSubmit[] = [
+      ...project.nextActionHour.options.map((o) => ({ ...o })),
+      ...missingOptions.map((o) => ({ ...o, id: null })),
+    ];
+    mergedOptions.sort(
+      (a, b) => parseInt(a.name, 10) - parseInt(b.name, 10),
+    );
+    await this.projectRepository.updateNextActionHourList(project, mergedOptions);
   };
 
   reconcileAgentOptions = async (

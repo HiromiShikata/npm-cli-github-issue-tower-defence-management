@@ -29,9 +29,9 @@ const REQUIRED_STORY_OPTIONS: Omit<FieldOption, 'id'>[] = [
 ];
 
 const REQUIRED_NEXT_ACTION_HOUR_OPTIONS: Omit<FieldOption, 'id'>[] = Array.from(
-  { length: 23 },
+  { length: 24 },
   (_, index) => ({
-    name: `${index + 1}`,
+    name: `${index}`,
     color: 'GRAY' as const,
     description: '',
   }),

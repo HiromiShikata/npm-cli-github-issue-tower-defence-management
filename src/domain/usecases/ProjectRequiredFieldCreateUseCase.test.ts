@@ -65,6 +65,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
           | 'createField'
           | 'updateStoryList'
           | 'updateAgentList'
+          | 'updateNextActionHourList'
         >
       >();
     projectRepository.getByUrl.mockResolvedValue(project);
@@ -72,6 +73,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
     projectRepository.createField.mockResolvedValue(undefined);
     projectRepository.updateStoryList.mockResolvedValue([]);
     projectRepository.updateAgentList.mockResolvedValue([]);
+    projectRepository.updateNextActionHourList.mockResolvedValue([]);
     return {
       projectRepository,
       useCase: new ProjectRequiredFieldCreateUseCase(
@@ -161,7 +163,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
     ]);
   });
 
-  it('should create the next action hour field with the hour options from 1 to 23', async () => {
+  it('should create the next action hour field with the hour options from 0 to 23', async () => {
     const { projectRepository, useCase } = createUseCase(
       ['Title', 'Status'],
       projectWithoutStory,
@@ -174,7 +176,7 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
     );
     expect(hourCall?.[1].dataType).toBe('SINGLE_SELECT');
     expect(hourCall?.[1].options.map((option) => option.name)).toEqual(
-      Array.from({ length: 23 }, (_, index) => `${index + 1}`),
+      Array.from({ length: 24 }, (_, index) => `${index}`),
     );
   });
 
@@ -646,6 +648,143 @@ describe('ProjectRequiredFieldCreateUseCase', () => {
         projectRepository.updateStoryList.mock.calls[0][1];
       const submittedNames = submittedOptions.map((o) => o.name);
       expect(submittedNames).toContain('regular / concurrent project');
+    });
+  });
+
+  describe('reconcileNextActionHourOptions', () => {
+    const allHourOptions: FieldOption[] = Array.from(
+      { length: 24 },
+      (_, index) => ({
+        id: `opt_hour_${index}`,
+        name: `${index}`,
+        color: 'GRAY' as const,
+        description: '',
+      }),
+    );
+
+    const hoursWithoutZero: FieldOption[] = Array.from(
+      { length: 23 },
+      (_, index) => ({
+        id: `opt_hour_${index + 1}`,
+        name: `${index + 1}`,
+        color: 'GRAY' as const,
+        description: '',
+      }),
+    );
+
+    const buildProjectWithNextActionHour = (
+      options: FieldOption[],
+    ): Project => ({
+      ...projectWithoutStory,
+      nextActionHour: {
+        name: NEXT_ACTION_HOUR_FIELD_NAME,
+        fieldId: 'PVTSSF_hour',
+        options,
+      },
+    });
+
+    it('should not call updateNextActionHourList when nextActionHour field does not exist on the project', async () => {
+      const { projectRepository, useCase } = createUseCase(
+        [
+          'Title',
+          'Status',
+          'Story',
+          'Next Action Date',
+          'Next Action Hour',
+          'Depended Issue URL separated by comma',
+        ],
+        projectWithoutStory,
+      );
+
+      await useCase.run({ projectUrl });
+
+      expect(projectRepository.updateNextActionHourList).not.toHaveBeenCalled();
+    });
+
+    it('should not call updateNextActionHourList when all hour options 0 to 23 are already present', async () => {
+      const project = buildProjectWithNextActionHour(allHourOptions);
+      const { projectRepository, useCase } = createUseCase(
+        [
+          'Title',
+          'Status',
+          'Story',
+          'Next Action Date',
+          'Next Action Hour',
+          'Depended Issue URL separated by comma',
+        ],
+        project,
+      );
+
+      await useCase.run({ projectUrl });
+
+      expect(projectRepository.updateNextActionHourList).not.toHaveBeenCalled();
+    });
+
+    it('should call updateNextActionHourList when option 0 is missing from the existing nextActionHour field', async () => {
+      const project = buildProjectWithNextActionHour(hoursWithoutZero);
+      const { projectRepository, useCase } = createUseCase(
+        [
+          'Title',
+          'Status',
+          'Story',
+          'Next Action Date',
+          'Next Action Hour',
+          'Depended Issue URL separated by comma',
+        ],
+        project,
+      );
+
+      await useCase.run({ projectUrl });
+
+      expect(
+        projectRepository.updateNextActionHourList,
+      ).toHaveBeenCalledTimes(1);
+    });
+
+    it('should submit option 0 without an id', async () => {
+      const project = buildProjectWithNextActionHour(hoursWithoutZero);
+      const { projectRepository, useCase } = createUseCase(
+        [
+          'Title',
+          'Status',
+          'Story',
+          'Next Action Date',
+          'Next Action Hour',
+          'Depended Issue URL separated by comma',
+        ],
+        project,
+      );
+
+      await useCase.run({ projectUrl });
+
+      const submittedOptions =
+        projectRepository.updateNextActionHourList.mock.calls[0][1];
+      const zeroOption = submittedOptions.find((o) => o.name === '0');
+      expect(zeroOption?.id).toBeNull();
+    });
+
+    it('should preserve existing option ids when adding missing hour 0', async () => {
+      const project = buildProjectWithNextActionHour(hoursWithoutZero);
+      const { projectRepository, useCase } = createUseCase(
+        [
+          'Title',
+          'Status',
+          'Story',
+          'Next Action Date',
+          'Next Action Hour',
+          'Depended Issue URL separated by comma',
+        ],
+        project,
+      );
+
+      await useCase.run({ projectUrl });
+
+      const submittedOptions =
+        projectRepository.updateNextActionHourList.mock.calls[0][1];
+      for (const original of hoursWithoutZero) {
+        const submitted = submittedOptions.find((o) => o.name === original.name);
+        expect(submitted?.id).toBe(original.id);
+      }
     });
   });
 
