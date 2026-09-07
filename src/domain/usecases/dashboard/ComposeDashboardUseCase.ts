@@ -214,13 +214,37 @@ export const formatMachineStatusLines = (
     ];
   }
   return [
-    `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskDot}D${diskText} ${cycle}`,
-    loadLine,
+    `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskDot}D${diskText} ${cycle} ${loadLine}`,
   ];
 };
 
 const capTwoDigits = (value: number): string =>
   value > 99 ? '99' : String(value);
+
+export const formatProjectTotalLine = (
+  projects: ComposeDashboardProject[],
+): string => {
+  const head = ' '.repeat(STATUS_DOT_DISPLAY_WIDTH + 2);
+  const validRows = projects
+    .map((p) => p.row)
+    .filter((row): row is DashboardRow => row !== null);
+  const cells = PROJECT_COLUMNS.map((column) => {
+    const total = validRows.reduce((sum, row) => sum + row[column.key], 0);
+    return ' ' + padStart(capTwoDigits(total), PROJECT_COLUMN_WIDTH);
+  }).join('');
+  const storyColorCells = STORY_COLOR_COLUMNS.map((column) => {
+    const total = validRows.reduce((sum, row) => sum + row[column.key], 0);
+    return ' ' + padStart(capTwoDigits(total), STORY_COLOR_COLUMN_VALUE_WIDTH);
+  }).join('');
+  const closeCountCells = CLOSE_COUNT_COLUMNS.map((column) => {
+    const total = projects.reduce(
+      (sum, p) => sum + p.closeEventCounts[column.key],
+      0,
+    );
+    return ' ' + padStart(capTwoDigits(total), CLOSE_COUNT_COLUMN_WIDTH);
+  }).join('');
+  return head + cells + storyColorCells + closeCountCells;
+};
 
 export const formatProjectHeaderLine = (): string => {
   const head =
@@ -399,6 +423,7 @@ export class ComposeDashboardUseCase {
   run = (input: ComposeDashboardInput): string => {
     const statsLines = formatMachineStatusLines(input.machineStatus);
     const projectLines = [
+      formatProjectTotalLine(input.projects),
       formatProjectHeaderLine(),
       ...input.projects.map((project) => formatProjectRowLine(project)),
     ];
