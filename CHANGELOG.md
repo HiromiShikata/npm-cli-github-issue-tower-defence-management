@@ -1,3 +1,10 @@
+## [2.78.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.78.2...v2.78.3) (2026-09-07)
+
+
+### Bug Fixes
+
+* add hour 0 to Next Action Hour options and reconcile existing projects ([#2215](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2215)) ([d069107](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d069107e2369affda297636edc07eb3f5cc2f277)), closes [HiromiShikata/umino-corporait-operation#31498](https://github.com/HiromiShikata/umino-corporait-operation/issues/31498)
+
 ## [2.78.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.78.1...v2.78.2) (2026-09-07)
 
 
