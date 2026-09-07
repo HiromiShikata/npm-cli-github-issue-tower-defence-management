@@ -1267,7 +1267,7 @@ test('story select in task detail shows current story pre-selected and fires set
     .toBe(1);
 });
 
-test('shows latest comment expanded and non-latest as preview in summary mode, both visible after show-all', async ({
+test('shows only last comment expanded by default and expands others individually on toggle', async ({
   page,
 }) => {
   const multiCommentHarness = await startConsoleE2eHarness({
@@ -1299,11 +1299,11 @@ test('shows latest comment expanded and non-latest as preview in summary mode, b
     await expect(page.locator('.console-comment-body-expanded')).toHaveCount(1);
     await expect(page.getByText('Acknowledged.')).toBeVisible();
     await expect(page.getByText('Second paragraph detail.')).not.toBeVisible();
-    await page.getByRole('button', { name: 'Show all 2' }).click();
-    await expect(page.locator('.console-comment-body-preview')).toHaveCount(1);
+    await page.locator('.console-comment-toggle').first().click();
+    await expect(page.locator('.console-comment-body-preview')).toHaveCount(0);
     await expect(page.getByText('First review comment.')).toBeVisible();
+    await expect(page.getByText('Second paragraph detail.')).toBeVisible();
     await expect(page.getByText('Acknowledged.')).toBeVisible();
-    await expect(page.getByText('Second paragraph detail.')).not.toBeVisible();
   } finally {
     await multiCommentHarness.stop();
   }
