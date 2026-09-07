@@ -1,3 +1,10 @@
+## [2.76.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.76.0...v2.76.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** forward skipAgentAuthoredIssues to StartPreparationUseCase ([#2205](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2205)) ([35fd097](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/35fd097eb5af7d914dcf2faa47c15b6820eb340b))
+
 # [2.76.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.4...v2.76.0) (2026-09-07)
 
 
