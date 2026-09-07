@@ -85,8 +85,11 @@ export class ProjectIssuesCacheRepository {
     }
     const rawMap =
       'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
-    const storyIssueUrlByOptionName: Record<string, string> =
-      isStringRecord(rawMap) ? rawMap : {};
+    const storyIssueUrlByOptionName: Record<string, string> = isStringRecord(
+      rawMap,
+    )
+      ? rawMap
+      : {};
     return {
       lastFetchedAt: raw.lastFetchedAt,
       lastFullFetchAt: raw.lastFullFetchAt,

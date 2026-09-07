@@ -318,8 +318,7 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       await repository.getAllIssues('test-project-id');
 
-      const cacheWrite =
-        localStorageCacheRepository.setSingle.mock.calls[0][1];
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
       expect(cacheWrite).toMatchObject({
         storyIssueUrlByOptionName: {
           'umino / story alpha': 'https://github.com/o/r/issues/10',

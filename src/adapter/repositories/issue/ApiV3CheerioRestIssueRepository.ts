@@ -56,10 +56,15 @@ export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 export const RELATED_OPEN_PRS_CACHE_TTL_MS = 10 * 60 * 1000;
 
-const buildStoryIssueUrlByOptionName = (issues: Issue[]): Record<string, string> => {
+const buildStoryIssueUrlByOptionName = (
+  issues: Issue[],
+): Record<string, string> => {
   const map: Record<string, string> = {};
   for (const issue of issues) {
-    if (issue.story !== null && issue.labels.some((l) => l.toLowerCase() === 'story')) {
+    if (
+      issue.story !== null &&
+      issue.labels.some((l) => l.toLowerCase() === 'story')
+    ) {
       map[issue.story] = issue.url;
     }
   }
@@ -934,8 +939,11 @@ export class ApiV3CheerioRestIssueRepository
     }
     const rawMap =
       'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
-    const storyIssueUrlByOptionName: Record<string, string> =
-      isStringRecord(rawMap) ? rawMap : {};
+    const storyIssueUrlByOptionName: Record<string, string> = isStringRecord(
+      rawMap,
+    )
+      ? rawMap
+      : {};
     return {
       lastFetchedAt: raw.lastFetchedAt,
       lastFullFetchAt: raw.lastFullFetchAt,
