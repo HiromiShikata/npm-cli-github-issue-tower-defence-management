@@ -282,6 +282,50 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         graphqlProjectItemRepository.fetchProjectItems,
       ).toHaveBeenCalledTimes(1);
     });
+
+    it('writes storyIssueUrlByOptionName built from story-labeled issues into the cache', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('test-project-id'),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/10',
+            'umino / story alpha',
+          ),
+          labels: ['story'],
+          customFields: [{ name: 'story', value: 'umino / story alpha' }],
+        },
+        {
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/20',
+            'regular task',
+          ),
+          labels: [],
+          customFields: [{ name: 'story', value: 'umino / story alpha' }],
+        },
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('test-project-id');
+
+      const cacheWrite =
+        localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyIssueUrlByOptionName: {
+          'umino / story alpha': 'https://github.com/o/r/issues/10',
+        },
+      });
+    });
   });
 
   describe('get', () => {

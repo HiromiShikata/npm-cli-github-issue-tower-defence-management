@@ -7,6 +7,7 @@ export type CachedProjectIssues = {
   lastFullFetchAt: string;
   project: Project;
   issues: Issue[];
+  storyIssueUrlByOptionName: Record<string, string>;
 };
 
 export const isProject = (value: unknown): value is Project => {
@@ -24,6 +25,14 @@ export const isProject = (value: unknown): value is Project => {
     return false;
   return true;
 };
+
+export const isStringRecord = (
+  value: unknown,
+): value is Record<string, string> =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.values(value).every((v) => typeof v === 'string');
 
 export const isIssueArray = (value: unknown): value is Issue[] =>
   Array.isArray(value) &&
@@ -74,11 +83,16 @@ export class ProjectIssuesCacheRepository {
     if (!isProject(raw.project) || !isIssueArray(raw.issues)) {
       return null;
     }
+    const rawMap =
+      'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
+    const storyIssueUrlByOptionName: Record<string, string> =
+      isStringRecord(rawMap) ? rawMap : {};
     return {
       lastFetchedAt: raw.lastFetchedAt,
       lastFullFetchAt: raw.lastFullFetchAt,
       project: raw.project,
       issues: raw.issues,
+      storyIssueUrlByOptionName,
     };
   };
 

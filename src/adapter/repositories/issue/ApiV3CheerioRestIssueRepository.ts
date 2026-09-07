@@ -25,6 +25,7 @@ import {
   CachedProjectIssues,
   isIssueArray,
   isProject,
+  isStringRecord,
   ProjectIssuesCacheRepository,
 } from '../ProjectIssuesCacheRepository';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
@@ -54,6 +55,16 @@ export const FULL_ISSUE_FETCH_INTERVAL_MS = 60 * 60 * 1000;
 export const INCREMENTAL_FETCH_SKEW_BUFFER_MS = 5 * 60 * 1000;
 export const REQUIRED_CHECKS_CACHE_TTL_MS = 10 * 60 * 1000;
 export const RELATED_OPEN_PRS_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const buildStoryIssueUrlByOptionName = (issues: Issue[]): Record<string, string> => {
+  const map: Record<string, string> = {};
+  for (const issue of issues) {
+    if (issue.story !== null && issue.labels.some((l) => l.toLowerCase() === 'story')) {
+      map[issue.story] = issue.url;
+    }
+  }
+  return map;
+};
 
 type CachedRelatedOpenPrs = {
   fetchedAtMs: number;
@@ -921,11 +932,16 @@ export class ApiV3CheerioRestIssueRepository
     if (!issues) {
       return null;
     }
+    const rawMap =
+      'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
+    const storyIssueUrlByOptionName: Record<string, string> =
+      isStringRecord(rawMap) ? rawMap : {};
     return {
       lastFetchedAt: raw.lastFetchedAt,
       lastFullFetchAt: raw.lastFullFetchAt,
       project: raw.project,
       issues,
+      storyIssueUrlByOptionName,
     };
   };
 
@@ -1011,6 +1027,7 @@ export class ApiV3CheerioRestIssueRepository
         lastFullFetchAt: nowIso,
         project,
         issues,
+        storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(issues),
       });
       this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
       return { issues, project, cacheUsed: false };
@@ -1048,6 +1065,7 @@ export class ApiV3CheerioRestIssueRepository
       lastFullFetchAt: cache.lastFullFetchAt,
       project,
       issues,
+      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(issues),
     });
     this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
     return { issues, project, cacheUsed: true };
@@ -1328,7 +1346,10 @@ export class ApiV3CheerioRestIssueRepository
       return;
     }
     cachedIssue.story = storyName;
-    await this.projectIssuesCacheRepository.write(project.id, cached);
+    await this.projectIssuesCacheRepository.write(project.id, {
+      ...cached,
+      storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(cached.issues),
+    });
   };
   updateStoryOptionColor = async (
     project: Project & { story: NonNullable<Project['story']> },
