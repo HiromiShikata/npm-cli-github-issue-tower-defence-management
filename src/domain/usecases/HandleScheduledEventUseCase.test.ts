@@ -725,11 +725,11 @@ describe('HandleScheduledEventUseCase', () => {
         },
         urlOfStoryView: 'https://github.com/test-org/test-project/issues',
         disabled: false,
+        skipAgentAuthoredIssues: true,
         startPreparation: {
           defaultAgentName: 'aw',
           configFilePath: '/path/to/config.yml',
           maximumPreparingIssuesCount: null,
-          skipAgentAuthoredIssues: true,
         },
       });
 
