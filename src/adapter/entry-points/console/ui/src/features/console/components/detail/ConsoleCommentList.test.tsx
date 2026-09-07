@@ -44,7 +44,7 @@ describe('ConsoleCommentList', () => {
     expect(article?.classList.contains('is-expanded')).toBe(true);
   });
 
-  it('shows first line of non-latest comments and full body of latest in summary mode', () => {
+  it('shows only the last comment expanded by default when multiple comments exist', () => {
     const firstComment = {
       author: 'reviewer',
       body: 'First line\nFirst detail',
@@ -75,8 +75,57 @@ describe('ConsoleCommentList', () => {
     expect(
       latestArticle.querySelector('.console-comment-body-preview'),
     ).toBeNull();
-    fireEvent.click(getByText('Show all 2'));
-    expect(getByText('First line')).toBeInTheDocument();
+  });
+
+  it('resets to only the new last comment expanded when a new comment is added', () => {
+    const firstComment = {
+      author: 'reviewer',
+      body: 'First comment body',
+      createdAt: '2026-06-17T08:00:00.000Z',
+      url: null,
+    };
+    const secondComment = {
+      author: 'HiromiShikata',
+      body: 'Second comment body',
+      createdAt: '2026-06-17T10:00:00.000Z',
+      url: null,
+    };
+    const newComment = {
+      author: 'agent',
+      body: 'New agent comment body',
+      createdAt: '2026-06-17T11:00:00.000Z',
+      url: null,
+    };
+    const { container, rerender, queryByText } = render(
+      <ConsoleCommentList
+        comments={[firstComment, secondComment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    const toggleBtns = container.querySelectorAll('.console-comment-toggle');
+    fireEvent.click(toggleBtns[0]);
+    expect(
+      container.querySelectorAll('.console-comment.is-expanded'),
+    ).toHaveLength(2);
+    rerender(
+      <ConsoleCommentList
+        comments={[firstComment, secondComment, newComment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    const articles = container.querySelectorAll('.console-comment');
+    expect(articles).toHaveLength(3);
+    expect(articles[0].classList.contains('is-expanded')).toBe(false);
+    expect(articles[1].classList.contains('is-expanded')).toBe(false);
+    expect(articles[2].classList.contains('is-expanded')).toBe(true);
+    expect(queryByText('New agent comment body')).toBeInTheDocument();
+    expect(
+      articles[2].querySelector('.console-comment-body-expanded'),
+    ).not.toBeNull();
   });
 
   it('renders each comment as a single inline line without a separate header block', () => {
@@ -425,77 +474,7 @@ describe('ConsoleCommentList', () => {
     );
   });
 
-  it('restores expanded state from localStorage when persistenceKey is provided', () => {
-    const persistenceKey = 'https://github.com/owner/repo/issues/1';
-    const firstComment = {
-      author: 'reviewer',
-      body: 'First line\nSecond line',
-      createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
-    };
-    const latestComment = {
-      author: 'HiromiShikata',
-      body: 'Latest comment',
-      createdAt: '2026-06-17T10:00:00.000Z',
-      url: null,
-    };
-    const firstKey = `${firstComment.author}:${firstComment.createdAt}:${firstComment.body}`;
-    localStorage.setItem(
-      `console-comment-expanded:${persistenceKey}`,
-      JSON.stringify([firstKey]),
-    );
-    const { container } = render(
-      <ConsoleCommentList
-        comments={[firstComment, latestComment]}
-        isLoading={false}
-        error={null}
-        now={now}
-        persistenceKey={persistenceKey}
-      />,
-    );
-    const articles = container.querySelectorAll('.console-comment');
-    expect(articles[0].classList.contains('is-expanded')).toBe(true);
-    expect(
-      articles[0].querySelector('.console-comment-body-expanded'),
-    ).not.toBeNull();
-  });
-
-  it('saves expanded state to localStorage when persistenceKey is provided', () => {
-    const persistenceKey = 'https://github.com/owner/repo/issues/2';
-    const comment = {
-      author: 'reviewer',
-      body: 'A comment body',
-      createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
-    };
-    const latestComment = {
-      author: 'HiromiShikata',
-      body: 'Latest',
-      createdAt: '2026-06-17T10:00:00.000Z',
-      url: null,
-    };
-    const { container } = render(
-      <ConsoleCommentList
-        comments={[comment, latestComment]}
-        isLoading={false}
-        error={null}
-        now={now}
-        persistenceKey={persistenceKey}
-      />,
-    );
-    const toggleBtns = container.querySelectorAll('.console-comment-toggle');
-    fireEvent.click(toggleBtns[0]);
-    const stored = localStorage.getItem(
-      `console-comment-expanded:${persistenceKey}`,
-    );
-    expect(stored).not.toBeNull();
-    if (stored === null) throw new Error('stored should not be null');
-    const parsed = JSON.parse(stored);
-    const commentKey = `${comment.author}:${comment.createdAt}:${comment.body}`;
-    expect(parsed).toContain(commentKey);
-  });
-
-  it('does not touch localStorage when persistenceKey is not provided', () => {
+  it('does not touch localStorage', () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Content',

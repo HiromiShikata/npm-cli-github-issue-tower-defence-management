@@ -10,34 +10,8 @@ import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 const extractFirstLine = (body: string): string =>
   body.split('\n').find((line) => line.trim() !== '') ?? '';
 
-const buildCommentKey = (comment: ConsoleComment): string =>
-  `${comment.author}:${comment.createdAt}:${comment.body}`;
-
-const STORAGE_KEY_PREFIX = 'console-comment-expanded:';
-
-const loadExpandedKeys = (persistenceKey: string): Set<string> => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_PREFIX + persistenceKey);
-    if (stored === null) return new Set();
-    const parsed: unknown = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((k): k is string => typeof k === 'string'));
-  } catch (e) {
-    console.error('Failed to load comment expanded state from storage:', e);
-    return new Set();
-  }
-};
-
-const saveExpandedKeys = (persistenceKey: string, keys: Set<string>): void => {
-  try {
-    localStorage.setItem(
-      STORAGE_KEY_PREFIX + persistenceKey,
-      JSON.stringify([...keys]),
-    );
-  } catch (e) {
-    console.error('Failed to save comment expanded state to storage:', e);
-  }
-};
+const buildCommentId = (comment: ConsoleComment): string =>
+  `${comment.author}:${comment.createdAt}`;
 
 type ConsoleCommentBodyExpandedProps = {
   comment: ConsoleComment;
@@ -81,7 +55,6 @@ export type ConsoleCommentListProps = {
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
-  persistenceKey?: string | null;
 };
 
 export const ConsoleCommentList = ({
@@ -93,33 +66,30 @@ export const ConsoleCommentList = ({
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
-  persistenceKey = null,
 }: ConsoleCommentListProps) => {
-  const [showAll, setShowAll] = useState<boolean>(false);
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
-    persistenceKey != null ? loadExpandedKeys(persistenceKey) : new Set(),
+  const lastCommentId =
+    comments.length > 0 ? buildCommentId(comments[comments.length - 1]) : null;
+
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
+    lastCommentId != null ? new Set([lastCommentId]) : new Set(),
   );
 
-  const latestKey =
-    comments.length > 0 ? buildCommentKey(comments[comments.length - 1]) : null;
+  const prevLastCommentIdRef = useRef<string | null>(lastCommentId);
 
   useEffect(() => {
-    if (latestKey === null) return;
-    setExpandedKeys((prev) => new Set([...prev, latestKey]));
-  }, [latestKey]);
+    if (lastCommentId === null) return;
+    if (lastCommentId === prevLastCommentIdRef.current) return;
+    prevLastCommentIdRef.current = lastCommentId;
+    setExpandedIds(new Set([lastCommentId]));
+  }, [lastCommentId]);
 
-  useEffect(() => {
-    if (persistenceKey == null) return;
-    saveExpandedKeys(persistenceKey, expandedKeys);
-  }, [persistenceKey, expandedKeys]);
-
-  const toggleExpanded = (key: string) => {
-    setExpandedKeys((prev) => {
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
+      if (next.has(id)) {
+        next.delete(id);
       } else {
-        next.add(key);
+        next.add(id);
       }
       return next;
     });
@@ -137,31 +107,20 @@ export const ConsoleCommentList = ({
     return <p className="console-comment-empty">No comments.</p>;
   }
 
-  const isSummaryMode = !showAll && comments.length > 1;
-
   return (
     <div className="console-comment-list">
-      {isSummaryMode && (
-        <button
-          type="button"
-          className="console-comment-show-all"
-          onClick={() => setShowAll(true)}
-        >
-          Show all {comments.length}
-        </button>
-      )}
       {comments.map((comment) => {
-        const key = buildCommentKey(comment);
-        const isExpanded = expandedKeys.has(key);
+        const id = buildCommentId(comment);
+        const isExpanded = expandedIds.has(id);
         return (
           <article
-            key={key}
-            className={`console-comment${isExpanded ? ' is-expanded' : isSummaryMode ? ' console-comment--expandable' : ''}`}
+            key={id}
+            className={`console-comment${isExpanded ? ' is-expanded' : ''}`}
           >
             <button
               type="button"
               className="console-comment-toggle"
-              onClick={() => toggleExpanded(key)}
+              onClick={() => toggleExpanded(id)}
               aria-expanded={isExpanded}
             >
               <span className="console-comment-author">{comment.author}</span>
