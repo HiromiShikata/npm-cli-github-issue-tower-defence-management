@@ -186,6 +186,7 @@ export class HandleScheduledEventUseCase {
       autoAdvanceQualityCheckEnabled?: boolean;
       autoRevertReopenedDoneEnabled?: boolean;
       labelsAsLlmAgentName?: string[] | null;
+      skipAgentAuthoredIssues?: boolean;
     } | null;
     thresholdForAutoReject?: number;
     thresholdForDispatchLoop?: number;
@@ -535,6 +536,8 @@ ${JSON.stringify(e)}
         codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
         labelsAsLlmAgentName,
         agents: input.agents ?? null,
+        skipAgentAuthoredIssues:
+          input.startPreparation.skipAgentAuthoredIssues ?? false,
       });
       return { rotationOrder: preparationResult.rotationOrder };
     }
