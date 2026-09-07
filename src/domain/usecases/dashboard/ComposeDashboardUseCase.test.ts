@@ -9,6 +9,7 @@ import {
   formatMachineStatusLines,
   formatProjectHeaderLine,
   formatProjectRowLine,
+  formatProjectTotalLine,
   formatResetCountdown,
   formatSevenDayWindowAggregateLine,
   formatTokenRowLine,
@@ -75,7 +76,7 @@ describe('formatResetCountdown', () => {
 });
 
 describe('formatMachineStatusLines', () => {
-  it('renders the host metrics as two lines from a machine status', () => {
+  it('renders the host metrics as a single line from a machine status', () => {
     expect(
       formatMachineStatusLines({
         memPct: 55,
@@ -84,7 +85,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% 🔴D93% cy13', '🔴LA 16 23 40']);
+    ).toEqual(['M55% C62% 🔴D93% cy13 🔴LA 16 23 40']);
   });
 
   it('rounds loads with half-to-even and renders integers', () => {
@@ -96,13 +97,12 @@ describe('formatMachineStatusLines', () => {
         load: [1.2, 0.98, 0.75],
         cycleMinutes: 14,
       }),
-    ).toEqual(['M62% C31% D7% cy14', 'LA 1 1 1']);
+    ).toEqual(['M62% C31% D7% cy14 LA 1 1 1']);
   });
 
   it('falls back to placeholders when the machine status is absent', () => {
     expect(formatMachineStatusLines(null)).toEqual([
-      'M?% C?% D?% cy-',
-      'LA ? ? ?',
+      'M?% C?% D?% cy- LA ? ? ?',
     ]);
   });
 
@@ -115,7 +115,7 @@ describe('formatMachineStatusLines', () => {
         load: [0, 0, 0],
         cycleMinutes: null,
       }),
-    ).toEqual(['M1% C2% D3% cy-', 'LA 0 0 0']);
+    ).toEqual(['M1% C2% D3% cy- LA 0 0 0']);
   });
 
   it('renders D?% when only the disk percent is unavailable', () => {
@@ -127,7 +127,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% D?% cy13', '🔴LA 16 23 40']);
+    ).toEqual(['M55% C62% D?% cy13 🔴LA 16 23 40']);
   });
 
   it('renders each configured partition as title and percent on a disk line', () => {
@@ -182,7 +182,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% 🟡D89% cy13', '🔴LA 16 23 40']);
+    ).toEqual(['M55% C62% 🟡D89% cy13 🔴LA 16 23 40']);
   });
 
   it('prefixes memory with yellow dot at 80% and red dot at 90%', () => {
@@ -283,7 +283,7 @@ describe('formatMachineStatusLines', () => {
       load: [4.9, 0, 0],
       cycleMinutes: null,
     });
-    expect(below[below.length - 1]).toMatch(/^LA/);
+    expect(below[0]).toContain(' LA ');
 
     const warning = formatMachineStatusLines({
       memPct: 0,
@@ -292,7 +292,7 @@ describe('formatMachineStatusLines', () => {
       load: [5, 0, 0],
       cycleMinutes: null,
     });
-    expect(warning[warning.length - 1]).toMatch(/^🟡LA/);
+    expect(warning[0]).toContain('🟡LA');
 
     const danger = formatMachineStatusLines({
       memPct: 0,
@@ -301,10 +301,10 @@ describe('formatMachineStatusLines', () => {
       load: [10, 0, 0],
       cycleMinutes: null,
     });
-    expect(danger[danger.length - 1]).toMatch(/^🔴LA/);
+    expect(danger[0]).toContain('🔴LA');
   });
 
-  it('keeps both lines within the 32 character width budget at worst case', () => {
+  it('renders worst-case host metrics as a single line', () => {
     const lines = formatMachineStatusLines({
       memPct: 100,
       cpuPct: 100,
@@ -312,12 +312,8 @@ describe('formatMachineStatusLines', () => {
       load: [108.5, 120.25, 95.1],
       cycleMinutes: 999,
     });
-    expect(lines).toEqual(['🔴M100% 🔴C100% 🔴D100% cy999', '🔴LA 108 120 95']);
-    for (const line of lines) {
-      expect(codePointLength(line)).toBeLessThanOrEqual(
-        PROJECT_ROW_WIDTH_BUDGET,
-      );
-    }
+    expect(lines).toEqual(['🔴M100% 🔴C100% 🔴D100% cy999 🔴LA 108 120 95']);
+    expect(codePointLength(lines[0])).toBeLessThanOrEqual(PROJECT_ROW_WIDTH_BUDGET);
   });
 });
 
@@ -488,6 +484,91 @@ describe('formatProjectRowLine', () => {
   });
 });
 
+describe('formatProjectTotalLine', () => {
+  it('sums project column values across all projects with valid rows', () => {
+    expect(
+      formatProjectTotalLine([
+        {
+          code: 'ac',
+          row: projectRow({ todo: 1, qc: 2, ws: 4, dep: 1 }),
+          closeEventCounts: noCloseEvents,
+        },
+        {
+          code: 'gl',
+          row: projectRow({ qc: 16, fail: 6, pr: 1 }),
+          closeEventCounts: noCloseEvents,
+        },
+      ]),
+    ).toBe('      1 18  6  1  4  1  0  0  0  0  0  0');
+  });
+
+  it('excludes null rows from project column totals but includes their close counts', () => {
+    expect(
+      formatProjectTotalLine([
+        {
+          code: 'ac',
+          row: projectRow({ todo: 5 }),
+          closeEventCounts: { h1: 2, h3: 0, h5: 0 },
+        },
+        {
+          code: 'in',
+          row: null,
+          closeEventCounts: { h1: 3, h3: 0, h5: 0 },
+        },
+      ]),
+    ).toBe('      5  0  0  0  0  0  0  0  0  5  0  0');
+  });
+
+  it('caps totals above 99 at 99', () => {
+    const result = formatProjectTotalLine([
+      {
+        code: 'ac',
+        row: projectRow({ todo: 60 }),
+        closeEventCounts: noCloseEvents,
+      },
+      {
+        code: 'gl',
+        row: projectRow({ todo: 60 }),
+        closeEventCounts: noCloseEvents,
+      },
+    ]);
+    expect(result).toContain(' 99');
+  });
+
+  it('fits within the code point width budget at maximum values', () => {
+    const result = formatProjectTotalLine([
+      {
+        code: 'ac',
+        row: projectRow({
+          todo: 999,
+          qc: 999,
+          fail: 999,
+          pr: 999,
+          ws: 999,
+          dep: 999,
+          humanPendingRed: 99,
+          humanPendingYellow: 99,
+          humanPendingBlue: 99,
+        }),
+        closeEventCounts: { h1: 99, h3: 99, h5: 99 },
+      },
+    ]);
+    expect(codePointLength(result)).toBeLessThanOrEqual(PROJECT_ROW_WIDTH_BUDGET);
+  });
+
+  it('aligns columns with the header and project rows', () => {
+    const total = formatProjectTotalLine([
+      {
+        code: 'ac',
+        row: projectRow({ todo: 1 }),
+        closeEventCounts: noCloseEvents,
+      },
+    ]);
+    const header = formatProjectHeaderLine();
+    expect(total.length).toBe(header.replace(/🔴|🟡|🔵/g, '  ').length);
+  });
+});
+
 describe('formatTokenRowLine', () => {
   it('renders a token row with the last two name chars, utilization without percent, reset countdown, prep and hum', () => {
     expect(
@@ -635,8 +716,8 @@ describe('ComposeDashboardUseCase', () => {
   };
 
   const expectedBody =
-    '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14</tt><br>\n' +
-    '<tt>🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
+    '<tt>M55%&nbsp;C62%&nbsp;🟡D89%&nbsp;cy14&nbsp;🔴LA&nbsp;16&nbsp;23&nbsp;40</tt><br>\n' +
+    '<tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;18&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>&nbsp;&nbsp;pj&nbsp;td&nbsp;ao&nbsp;fl&nbsp;pp&nbsp;ws&nbsp;dp&nbsp;🔴&nbsp;🟡&nbsp;🔵&nbsp;1h&nbsp;3h&nbsp;5h</tt><br>\n' +
     '<tt>🟢ac&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;4&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
     '<tt>🟠gl&nbsp;&nbsp;0&nbsp;16&nbsp;&nbsp;6&nbsp;&nbsp;1&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0&nbsp;&nbsp;0</tt><br>\n' +
@@ -686,8 +767,7 @@ describe('ComposeDashboardUseCase', () => {
     });
     expect(
       output.startsWith(
-        '<tt>M?%&nbsp;C?%&nbsp;D?%&nbsp;cy-</tt><br>\n' +
-          '<tt>LA&nbsp;?&nbsp;?&nbsp;?</tt><br>\n',
+        '<tt>M?%&nbsp;C?%&nbsp;D?%&nbsp;cy-&nbsp;LA&nbsp;?&nbsp;?&nbsp;?</tt><br>\n',
       ),
     ).toBe(true);
   });
