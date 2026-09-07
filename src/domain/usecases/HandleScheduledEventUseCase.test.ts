@@ -712,6 +712,57 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    it('should forward skipAgentAuthoredIssues true to startPreparationUseCase when configured', async () => {
+      await useCase.run({
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        skipAgentAuthoredIssues: true,
+        startPreparation: {
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      });
+
+      expect(mockStartPreparationUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({ skipAgentAuthoredIssues: true }),
+      );
+    });
+
+    it('should forward skipAgentAuthoredIssues false to startPreparationUseCase when not configured', async () => {
+      await useCase.run({
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'aw',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      });
+
+      expect(mockStartPreparationUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({ skipAgentAuthoredIssues: false }),
+      );
+    });
+
     it('should not invoke UpdateRateLimitCacheUseCase when startPreparation is absent', async () => {
       const input = {
         projectName: 'test-project',
