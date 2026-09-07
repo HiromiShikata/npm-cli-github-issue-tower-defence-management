@@ -1,3 +1,10 @@
+## [2.76.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.76.1...v2.76.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* **useConsoleSwipeNavigation:** allow swipe when touching wide code block at scroll position zero ([#2207](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2207)) ([853bc38](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/853bc38785d16ac4cb8cb29e861edf4691d60b60)), closes [HiromiShikata/umino-corporait-operation#31491](https://github.com/HiromiShikata/umino-corporait-operation/issues/31491)
+
 ## [2.76.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.76.0...v2.76.1) (2026-09-07)
 
 
