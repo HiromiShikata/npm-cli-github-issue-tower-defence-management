@@ -223,7 +223,9 @@ const capTwoDigits = (value: number): string =>
   value > 99 ? '99' : String(value);
 
 export const formatProjectHeaderLine = (): string => {
-  const head = '  ' + padEnd('pj', 2, ' ');
+  const head =
+    ' '.repeat(STATUS_DOT_DISPLAY_WIDTH) +
+    padEnd('pj', PROJECT_COLUMN_WIDTH, ' ');
   const columns = PROJECT_COLUMNS.map(
     (column) => ' ' + padStart(column.header, PROJECT_COLUMN_WIDTH),
   ).join('');
