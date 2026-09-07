@@ -1,3 +1,10 @@
+## [2.75.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.1...v2.75.2) (2026-09-07)
+
+
+### Bug Fixes
+
+* **queued-tab:** exclude Awaiting Owner issues from the queued tab ([#2202](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2202)) ([e620ab6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e620ab6d71a6b6333c76c60d3d62e85b9fbc6ed4)), closes [HiromiShikata/umino-corporait-operation#31473](https://github.com/HiromiShikata/umino-corporait-operation/issues/31473) [HiromiShikata/umino-corporait-operation#31473](https://github.com/HiromiShikata/umino-corporait-operation/issues/31473)
+
 ## [2.75.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.75.0...v2.75.1) (2026-09-07)
 
 
