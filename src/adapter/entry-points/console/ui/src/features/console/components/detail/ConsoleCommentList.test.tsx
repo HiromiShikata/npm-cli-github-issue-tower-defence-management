@@ -76,7 +76,42 @@ describe('ConsoleCommentList', () => {
       latestArticle.querySelector('.console-comment-body-preview'),
     ).toBeNull();
     fireEvent.click(getByText('Show all 2'));
-    expect(getByText('First line')).toBeInTheDocument();
+    const articlesAfterShowAll = container.querySelectorAll('.console-comment');
+    expect(
+      articlesAfterShowAll[0].querySelector('.console-comment-body-expanded'),
+    ).not.toBeNull();
+  });
+
+  it('expands all comments when Show all is clicked', () => {
+    const firstComment = {
+      author: 'reviewer',
+      body: 'First line summary\nFirst detail body',
+      createdAt: '2026-06-17T08:00:00.000Z',
+      url: null,
+    };
+    const latestComment = {
+      author: 'HiromiShikata',
+      body: 'Latest comment body',
+      createdAt: '2026-06-17T10:00:00.000Z',
+      url: null,
+    };
+    const { getByText, container } = render(
+      <ConsoleCommentList
+        comments={[firstComment, latestComment]}
+        isLoading={false}
+        error={null}
+        now={now}
+      />,
+    );
+    const articles = container.querySelectorAll('.console-comment');
+    expect(
+      articles[0].querySelector('.console-comment-body-expanded'),
+    ).toBeNull();
+    fireEvent.click(getByText('Show all 2'));
+    const articlesAfter = container.querySelectorAll('.console-comment');
+    expect(
+      articlesAfter[0].querySelector('.console-comment-body-expanded'),
+    ).not.toBeNull();
   });
 
   it('renders each comment as a single inline line without a separate header block', () => {
