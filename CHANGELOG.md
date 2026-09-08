@@ -1,3 +1,10 @@
+# [2.89.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.88.1...v2.89.0) (2026-09-08)
+
+
+### Features
+
+* add fleet task create link to console tab bar ([#2237](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2237)) ([1f5bab0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1f5bab040e6e6ec53ce11b0221f95658f4223e04)), closes [HiromiShikata/umino-corporait-operation#31541](https://github.com/HiromiShikata/umino-corporait-operation/issues/31541)
+
 ## [2.88.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.88.0...v2.88.1) (2026-09-08)
 
 
