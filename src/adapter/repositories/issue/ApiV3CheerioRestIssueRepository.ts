@@ -24,9 +24,11 @@ import { LocalStorageCacheRepository } from '../LocalStorageCacheRepository';
 import {
   CachedProjectIssues,
   deserializeStoryIssueUrlByOptionName,
+  deserializeStoryOptions,
   isIssueArray,
   isProject,
   ProjectIssuesCacheRepository,
+  StoryOptionEntry,
 } from '../ProjectIssuesCacheRepository';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import {
@@ -70,6 +72,12 @@ const buildStoryIssueUrlByOptionName = (
   }
   return map;
 };
+
+const buildStoryOptions = (project: Project): StoryOptionEntry[] =>
+  project.story?.stories.map((s) => ({
+    name: s.name,
+    description: s.description ?? '',
+  })) ?? [];
 
 type CachedRelatedOpenPrs = {
   fetchedAtMs: number;
@@ -943,6 +951,7 @@ export class ApiV3CheerioRestIssueRepository
       project: raw.project,
       issues,
       storyIssueUrlByOptionName: deserializeStoryIssueUrlByOptionName(raw),
+      storyOptions: deserializeStoryOptions(raw),
     };
   };
 
@@ -1029,6 +1038,7 @@ export class ApiV3CheerioRestIssueRepository
         project,
         issues,
         storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(issues),
+        storyOptions: buildStoryOptions(project),
       });
       this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
       return { issues, project, cacheUsed: false };
@@ -1067,6 +1077,7 @@ export class ApiV3CheerioRestIssueRepository
       project,
       issues,
       storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(issues),
+      storyOptions: buildStoryOptions(project),
     });
     this.lastIssuesFetchedAtByProjectId.set(projectId, nowIso);
     return { issues, project, cacheUsed: true };
@@ -1350,6 +1361,7 @@ export class ApiV3CheerioRestIssueRepository
     await this.projectIssuesCacheRepository.write(project.id, {
       ...cached,
       storyIssueUrlByOptionName: buildStoryIssueUrlByOptionName(cached.issues),
+      storyOptions: buildStoryOptions(project),
     });
   };
   updateStoryOptionColor = async (

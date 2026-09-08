@@ -325,6 +325,76 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       });
     });
+
+    it('writes storyOptions derived from project story stories during full fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      const projectWithStories: Project = {
+        ...buildTestProject('test-project-id'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 's1',
+              name: 'regular / alpha',
+              color: 'BLUE',
+              description: 'Alpha work',
+            },
+            {
+              id: 's2',
+              name: 'regular / beta',
+              color: 'GREEN',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      projectRepository.getProject.mockResolvedValue(projectWithStories);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('test-project-id');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyOptions: [
+          { name: 'regular / alpha', description: 'Alpha work' },
+          { name: 'regular / beta', description: '' },
+        ],
+      });
+    });
+
+    it('writes empty storyOptions when project has no story field during full fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(
+        buildTestProject('test-project-id'),
+      );
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('test-project-id');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({ storyOptions: [] });
+    });
   });
 
   describe('get', () => {
@@ -729,6 +799,55 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         storyIssueUrlByOptionName: {
           'umino / story beta': 'https://github.com/o/r/issues/50',
         },
+      });
+    });
+
+    it('writes storyOptions derived from project story stories during incremental fetch', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:45:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue({
+        lastFetchedAt: '2026-07-07T00:30:00.000Z',
+        lastFullFetchAt: '2026-07-07T00:00:00.000Z',
+        project: buildTestProject('cached-project'),
+        issues: [],
+      });
+      const projectWithStories: Project = {
+        ...buildTestProject('cached-project'),
+        story: {
+          name: 'Story',
+          fieldId: 'story-field-id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 's1',
+              name: 'regular / workflow improvement',
+              color: 'BLUE',
+              description: 'Workflow tasks',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow management' },
+        },
+      };
+      projectRepository.getProject.mockResolvedValue(projectWithStories);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+
+      await repository.getAllIssues('cached-project');
+
+      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls[0][1];
+      expect(cacheWrite).toMatchObject({
+        storyOptions: [
+          {
+            name: 'regular / workflow improvement',
+            description: 'Workflow tasks',
+          },
+        ],
       });
     });
   });
@@ -6748,6 +6867,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         storyIssueUrlByOptionName: {
           'regular / workflow improvement': storyIssueUrl,
         },
+        storyOptions: [
+          { name: 'regular / workflow improvement', description: '' },
+          { name: 'regular / other story', description: '' },
+        ],
       });
     });
   });

@@ -2,12 +2,18 @@ import { Issue } from '../../domain/entities/Issue';
 import { FieldOption, Project } from '../../domain/entities/Project';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 
+export type StoryOptionEntry = {
+  name: string;
+  description: string;
+};
+
 export type CachedProjectIssues = {
   lastFetchedAt: string;
   lastFullFetchAt: string;
   project: Project;
   issues: Issue[];
   storyIssueUrlByOptionName: Record<string, string>;
+  storyOptions: StoryOptionEntry[];
 };
 
 export const isProject = (value: unknown): value is Project => {
@@ -40,6 +46,23 @@ export const deserializeStoryIssueUrlByOptionName = (
   const rawMap =
     'storyIssueUrlByOptionName' in raw ? raw.storyIssueUrlByOptionName : null;
   return isStringRecord(rawMap) ? rawMap : {};
+};
+
+const isStoryOptionsArray = (value: unknown): value is StoryOptionEntry[] =>
+  Array.isArray(value) &&
+  value.every(
+    (item: unknown) =>
+      typeof item === 'object' &&
+      item !== null &&
+      'name' in item &&
+      typeof item.name === 'string' &&
+      'description' in item &&
+      typeof item.description === 'string',
+  );
+
+export const deserializeStoryOptions = (raw: object): StoryOptionEntry[] => {
+  const rawArray = 'storyOptions' in raw ? raw.storyOptions : null;
+  return isStoryOptionsArray(rawArray) ? rawArray : [];
 };
 
 export const isIssueArray = (value: unknown): value is Issue[] =>
@@ -97,6 +120,7 @@ export class ProjectIssuesCacheRepository {
       project: raw.project,
       issues: raw.issues,
       storyIssueUrlByOptionName: deserializeStoryIssueUrlByOptionName(raw),
+      storyOptions: deserializeStoryOptions(raw),
     };
   };
 
@@ -137,9 +161,17 @@ export class ProjectIssuesCacheRepository {
     if (project === null) {
       return;
     }
+    const storyOptions =
+      project.story !== null && project.story.fieldId === fieldId
+        ? project.story.stories.map((s) => ({
+            name: s.name,
+            description: s.description ?? '',
+          }))
+        : deserializeStoryOptions(raw);
     await this.localStorageCacheRepository.setSingle(this.cacheKey(projectId), {
       ...raw,
       project,
+      storyOptions,
     });
   };
 
