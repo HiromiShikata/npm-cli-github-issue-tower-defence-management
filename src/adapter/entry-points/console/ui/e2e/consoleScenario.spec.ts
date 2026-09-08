@@ -1428,7 +1428,9 @@ test('max settings button is always visible and cross-project settings modal lis
 }) => {
   await page.goto(harness.appRootUrl);
 
-  const maxSettingsButton = page.getByRole('button', { name: 'Open max settings' });
+  const maxSettingsButton = page.getByRole('button', {
+    name: 'Open max settings',
+  });
   await expect(maxSettingsButton).toBeVisible();
 
   await maxSettingsButton.click();
