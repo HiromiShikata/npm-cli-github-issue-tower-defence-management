@@ -838,13 +838,26 @@ export const handleCreateIssue = async (
     return badRequest(`story option "${storyOptionId}" not found in project`);
   }
 
+  const agentOptionId =
+    typeof body.agentOptionId === 'string' &&
+    body.agentOptionId.trim().length > 0
+      ? body.agentOptionId.trim()
+      : null;
+  const rawReferenceUrl =
+    typeof body.referenceUrl === 'string' ? body.referenceUrl.trim() : null;
+  const referenceUrl =
+    rawReferenceUrl !== null && rawReferenceUrl.length > 0
+      ? rawReferenceUrl
+      : null;
+  const issueBody = referenceUrl !== null ? `Related: ${referenceUrl}` : '';
+
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
   const issueNumber = await issueRepository.createNewIssue(
     org,
     repo,
     title,
-    '',
+    issueBody,
     [],
     [],
   );
@@ -859,6 +872,13 @@ export const handleCreateIssue = async (
       addedIssue,
       storyOptionId,
     );
+    if (agentOptionId !== null && project.agent !== null) {
+      await issueRepository.setIssueAgentField(
+        issueUrl,
+        project,
+        agentOptionId,
+      );
+    }
   }
 
   return { statusCode: 200, body: { ok: true, issueUrl } };
