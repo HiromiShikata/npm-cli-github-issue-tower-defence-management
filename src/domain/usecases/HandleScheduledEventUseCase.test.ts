@@ -3,7 +3,6 @@ import { mock } from 'jest-mock-extended';
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
 import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
-import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
@@ -99,8 +98,6 @@ describe('HandleScheduledEventUseCase', () => {
       mock<SetWorkflowManagementIssueToStoryUseCase>();
     const mockClearPastNextActionDateHourUseCase =
       mock<ClearPastNextActionDateHourUseCase>();
-    const mockAnalyzeProblemByIssueUseCase =
-      mock<AnalyzeProblemByIssueUseCase>();
     const mockAnalyzeStoriesUseCase = mock<AnalyzeStoriesUseCase>();
     const mockClearDependedIssueURLUseCase =
       mock<ClearDependedIssueURLUseCase>();
@@ -146,7 +143,6 @@ describe('HandleScheduledEventUseCase', () => {
       mockActionAnnouncementUseCase,
       mockSetWorkflowManagementIssueToStoryUseCase,
       mockClearPastNextActionDateHourUseCase,
-      mockAnalyzeProblemByIssueUseCase,
       mockAnalyzeStoriesUseCase,
       mockClearDependedIssueURLUseCase,
       mockSetDependedIssueUrlForOpenTaskPRsUseCase,
@@ -192,27 +188,6 @@ describe('HandleScheduledEventUseCase', () => {
       mockStartPreparationUseCase.run.mockResolvedValue({
         rotationOrder: null,
       });
-    });
-
-    it('should call AnalyzeProblemByIssueUseCase with correct parameters', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabled: false,
-      };
-
-      const mockProject = mock<Project>();
-      mockProjectRepository.getProject.mockResolvedValue(mockProject);
-      await useCase.run(input);
-      expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalled();
     });
 
     it('should call UpdateIssueStatusByLabelUseCase with correct parameters', async () => {
@@ -325,7 +300,6 @@ describe('HandleScheduledEventUseCase', () => {
       const result = await useCase.run(input);
       expect(result).toBeNull();
       expect(mockProjectRepository.findProjectIdByUrl).not.toHaveBeenCalled();
-      expect(mockAnalyzeProblemByIssueUseCase.run).not.toHaveBeenCalled();
       expect(mockUpdateIssueStatusByLabelUseCase.run).not.toHaveBeenCalled();
     });
 
@@ -349,53 +323,6 @@ describe('HandleScheduledEventUseCase', () => {
       const result = await useCase.run(input);
       expect(result).not.toBeNull();
       expect(mockProjectRepository.findProjectIdByUrl).toHaveBeenCalled();
-    });
-
-    it('should pass storyProgressCommentEnabled true to AnalyzeProblemByIssueUseCase when the field is absent', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabled: false,
-      };
-
-      await useCase.run(input);
-      expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalledWith(
-        expect.objectContaining({
-          storyProgressCommentEnabled: true,
-        }),
-      );
-    });
-
-    it('should pass storyProgressCommentEnabled false to AnalyzeProblemByIssueUseCase when the field is false', async () => {
-      const input = {
-        projectName: 'test-project',
-        org: 'test-org',
-        projectUrl: 'https://github.com/test-org/test-project',
-        manager: 'test-manager',
-        workingReport: {
-          repo: 'test-repo',
-          members: ['member1'],
-          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
-        },
-        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
-        disabled: false,
-        storyProgressCommentEnabled: false,
-      };
-
-      await useCase.run(input);
-      expect(mockAnalyzeProblemByIssueUseCase.run).toHaveBeenCalledWith(
-        expect.objectContaining({
-          storyProgressCommentEnabled: false,
-        }),
-      );
     });
 
     it('should call getAllIssues with the resolved project id', async () => {
@@ -1875,7 +1802,6 @@ describe('HandleScheduledEventUseCase', () => {
       mock<ActionAnnouncementUseCase>(),
       mock<SetWorkflowManagementIssueToStoryUseCase>(),
       mock<ClearPastNextActionDateHourUseCase>(),
-      mock<AnalyzeProblemByIssueUseCase>(),
       mock<AnalyzeStoriesUseCase>(),
       mock<ClearDependedIssueURLUseCase>(),
       mock<SetDependedIssueUrlForOpenTaskPRsUseCase>(),

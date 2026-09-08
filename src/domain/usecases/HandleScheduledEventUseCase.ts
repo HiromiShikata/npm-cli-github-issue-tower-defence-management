@@ -9,7 +9,6 @@ import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepositor
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
 import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
-import { AnalyzeProblemByIssueUseCase } from './AnalyzeProblemByIssueUseCase';
 import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
@@ -123,7 +122,6 @@ export class HandleScheduledEventUseCase {
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
     readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase,
-    readonly analyzeProblemByIssueUseCase: AnalyzeProblemByIssueUseCase,
     readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase,
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
     readonly setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase,
@@ -191,7 +189,6 @@ export class HandleScheduledEventUseCase {
     thresholdForDispatchLoop?: number;
     queryToAddProjectEnabled?: boolean;
     queryToAddProject?: string | null;
-    storyProgressCommentEnabled?: boolean;
     dailySecurityScan?: DailySecurityScanConfig | null;
     developerAgentNames?: string[] | null;
     workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
@@ -543,12 +540,6 @@ ${JSON.stringify(e)}
       project,
       issues,
       cacheUsed,
-    });
-    await this.analyzeProblemByIssueUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      storyObjectMap: storyObjectMap,
-      storyProgressCommentEnabled: input.storyProgressCommentEnabled ?? true,
     });
     await this.actionAnnouncementUseCase.run({
       targetDates: targetDateTimes,
