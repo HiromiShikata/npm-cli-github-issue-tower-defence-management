@@ -168,7 +168,7 @@ describe('OauthTokenSelectHandler', () => {
     expect(output.selectedName).toBe('fresh');
   });
 
-  it('returns null and a diagnostic when no token passes the filter', () => {
+  it('falls back to a token when primary selection fails due to 5h threshold, selecting it via fallback', () => {
     writeTokenList([{ name: 'busy', token: 'fake-busy' }]);
     writeCache('fake-busy', {
       fiveHourUtilization: 0.9,
@@ -184,10 +184,9 @@ describe('OauthTokenSelectHandler', () => {
       nowEpochSeconds: NOW,
     });
 
-    expect(output.selectedToken).toBeNull();
-    expect(output.diagnostics.join('\n')).toContain(
-      'No eligible token passed the rate-limit filter.',
-    );
+    expect(output.selectedToken).toBe('fake-busy');
+    expect(output.selectedName).toBe('busy');
+    expect(output.diagnostics.join('\n')).toContain('falling back');
   });
 
   it('returns a diagnostic when no token list path is resolvable', () => {
@@ -394,7 +393,7 @@ describe('OauthTokenSelectHandler', () => {
     expect(Number(drawWeightMatch?.[1])).toBeGreaterThan(0);
   });
 
-  it('excludes a token whose 5h window has only 59% free (CL script threshold is 60%)', () => {
+  it('falls back to a token with 59% 5h free that fails CL script threshold but has >= 3% 7d free', () => {
     writeTokenList([{ name: 'low5h', token: 'fake-low5h' }]);
     writeCache('fake-low5h', {
       fiveHourUtilization: 0.41,
@@ -410,8 +409,8 @@ describe('OauthTokenSelectHandler', () => {
       nowEpochSeconds: NOW,
     });
 
-    expect(output.selectedToken).toBeNull();
-    expect(output.diagnostics.join('\n')).toContain('5h window');
+    expect(output.selectedName).toBe('low5h');
+    expect(output.diagnostics.join('\n')).toContain('falling back');
   });
 
   it('treats exactly 60% 5h free as eligible in the handler (CL script boundary)', () => {
@@ -433,7 +432,7 @@ describe('OauthTokenSelectHandler', () => {
     expect(output.selectedName).toBe('boundary5h');
   });
 
-  it('excludes a token whose 7d window has only 13% free (CL script threshold is 14%)', () => {
+  it('falls back to a token with 13% 7d free that fails CL script threshold but has >= 3% 7d free', () => {
     writeTokenList([{ name: 'low7d', token: 'fake-low7d' }]);
     writeCache('fake-low7d', {
       fiveHourUtilization: 0.1,
@@ -449,8 +448,8 @@ describe('OauthTokenSelectHandler', () => {
       nowEpochSeconds: NOW,
     });
 
-    expect(output.selectedToken).toBeNull();
-    expect(output.diagnostics.join('\n')).toContain('7d window');
+    expect(output.selectedName).toBe('low7d');
+    expect(output.diagnostics.join('\n')).toContain('falling back');
   });
 
   it('treats exactly 14% 7d free as eligible in the handler (CL script boundary)', () => {
@@ -470,6 +469,79 @@ describe('OauthTokenSelectHandler', () => {
     });
 
     expect(output.selectedName).toBe('boundary7d');
+  });
+
+  it('falls back selecting the token with the highest 5h free ratio when primary selection fails', () => {
+    writeTokenList([
+      { name: 'more5h', token: 'fake-more5h' },
+      { name: 'less5h', token: 'fake-less5h' },
+    ]);
+    writeCache('fake-more5h', {
+      fiveHourUtilization: 0.45,
+      fiveHourReset: NOW + 5 * HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + 7 * DAY,
+    });
+    writeCache('fake-less5h', {
+      fiveHourUtilization: 0.5,
+      fiveHourReset: NOW + 5 * HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + 7 * DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedName).toBe('more5h');
+    expect(output.diagnostics.join('\n')).toContain('falling back');
+    expect(output.diagnostics.join('\n')).toContain('Fallback-selected more5h');
+  });
+
+  it('returns null when primary and fallback both fail because 7d free is below 3%', () => {
+    writeTokenList([{ name: 'depleted', token: 'fake-depleted' }]);
+    writeCache('fake-depleted', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + 5 * HOUR,
+      sevenDayUtilization: 0.98,
+      sevenDayReset: NOW + 7 * DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    expect(output.selectedToken).toBeNull();
+    expect(output.selectedName).toBeNull();
+  });
+
+  it('includes falling-back message in diagnostics when fallback is used', () => {
+    writeTokenList([{ name: 'fallbackToken', token: 'fake-fallback' }]);
+    writeCache('fake-fallback', {
+      fiveHourUtilization: 0.5,
+      fiveHourReset: NOW + 5 * HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + 7 * DAY,
+    });
+
+    const handler = new OauthTokenSelectHandler();
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+    });
+
+    const diagnostics = output.diagnostics.join('\n');
+    expect(diagnostics).toContain(
+      'No eligible token passed the CL script rate-limit filter; falling back',
+    );
+    expect(diagnostics).toContain('Fallback-selected fallbackToken');
   });
 
   describe('resolveTokenListJsonPath', () => {
