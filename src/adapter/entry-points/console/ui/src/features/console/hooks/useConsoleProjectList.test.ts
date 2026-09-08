@@ -15,6 +15,7 @@ describe('useConsoleProjectList', () => {
     expect(result.current.isLoading).toBe(true);
     expect(result.current.pjcodes).toEqual([]);
     expect(result.current.workflowImprovementIssueUrl).toBeNull();
+    expect(result.current.fleetTaskCreateUrl).toBeNull();
     expect(result.current.error).toBeNull();
   });
 
@@ -31,6 +32,7 @@ describe('useConsoleProjectList', () => {
     });
     expect(result.current.pjcodes).toEqual(['acme', 'beta']);
     expect(result.current.workflowImprovementIssueUrl).toBeNull();
+    expect(result.current.fleetTaskCreateUrl).toBeNull();
     expect(result.current.error).toBeNull();
   });
 
@@ -51,6 +53,27 @@ describe('useConsoleProjectList', () => {
     expect(result.current.pjcodes).toEqual(['acme']);
     expect(result.current.workflowImprovementIssueUrl).toBe(
       'https://github.com/owner/repo/issues/new',
+    );
+    expect(result.current.error).toBeNull();
+  });
+
+  it('populates fleetTaskCreateUrl when the server returns it', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcodes: ['acme'],
+        fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
+      }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList());
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.pjcodes).toEqual(['acme']);
+    expect(result.current.fleetTaskCreateUrl).toBe(
+      'https://github.com/myorg/myrepo/issues/new',
     );
     expect(result.current.error).toBeNull();
   });

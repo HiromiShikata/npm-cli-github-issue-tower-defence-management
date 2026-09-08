@@ -118,6 +118,7 @@ export const ConsolePage = () => {
   const {
     pjcodes,
     workflowImprovementIssueUrl,
+    fleetTaskCreateUrl,
     isLoading: isLoadingPjcodes,
   } = useConsoleProjectList();
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
@@ -877,6 +878,7 @@ export const ConsolePage = () => {
         onAirplaneModeStartSync={airplaneMode.startSync}
         onAirplaneModeTurnOff={airplaneMode.turnOff}
         workflowImprovementIssueUrl={workflowImprovementIssueUrl}
+        fleetTaskCreateUrl={fleetTaskCreateUrl}
       />
       <ConsoleProjectTimerBar
         timerEndsAt={activeSnapshot?.timerEndsAt ?? null}

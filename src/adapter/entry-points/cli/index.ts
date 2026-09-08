@@ -80,6 +80,7 @@ import {
 import { writeRotationOrderFile } from '../handlers/rotationOrderFileWriter';
 import {
   loadErrorReportingRepository,
+  loadFleetTaskCreateUrl,
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
   loadWorkflowImprovementIssueUrl,
@@ -1132,6 +1133,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
   );
   const workflowImprovementIssueUrl =
     loadWorkflowImprovementIssueUrl(fleetConfigFilePath);
+  const fleetTaskCreateUrl = loadFleetTaskCreateUrl(fleetConfigFilePath);
 
   const consoleErrorReporter = buildConsoleErrorReporter(
     workflowImprovementIssueUrl,
@@ -1147,6 +1149,7 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     dashboardDataDir,
     dashboardProjectNames,
     workflowImprovementIssueUrl,
+    fleetTaskCreateUrl,
     resolveGithubToken,
     issueRepository,
     resolveIssueRepository,
