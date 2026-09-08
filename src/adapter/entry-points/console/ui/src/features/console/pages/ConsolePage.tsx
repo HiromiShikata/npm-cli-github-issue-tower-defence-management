@@ -41,7 +41,7 @@ import {
   postConsoleReorderStory,
   postConsoleStoryColor,
 } from '../lib/consoleApi';
-import { navigateAssign, navigateReplace } from '../lib/navigation';
+import { navigatePush, navigateReplaceState } from '../lib/navigation';
 import {
   actionAdvances,
   actionToastColor,
@@ -407,7 +407,7 @@ export const ConsolePage = () => {
         projectMinutes,
       );
       if (firstPjcode !== null) {
-        navigateReplace(`/projects/${firstPjcode}`);
+        navigateReplaceState(`/projects/${firstPjcode}`);
       }
     }
   }, [pjcode, timerMode, pjcodes, projectMinutes]);
@@ -493,7 +493,7 @@ export const ConsolePage = () => {
                 projectMinutes,
               );
               if (nextPjcode !== null) {
-                navigateAssign(`/projects/${nextPjcode}`);
+                navigatePush(`/projects/${nextPjcode}`);
               }
             } else {
               advanceToNext(actedKey);
@@ -789,7 +789,7 @@ export const ConsolePage = () => {
         fromCache={fromCache}
         tabHref={navigation.tabHref}
         onSelectTab={selectTab}
-        onSelectProject={(code) => navigateAssign(`/projects/${code}`)}
+        onSelectProject={(code) => navigatePush(`/projects/${code}`)}
         settingsButton={
           <>
             <ConsoleTimerSettingsModalDialog
