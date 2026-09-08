@@ -6867,6 +6867,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         storyIssueUrlByOptionName: {
           'regular / workflow improvement': storyIssueUrl,
         },
+        storyOptions: [
+          { name: 'regular / workflow improvement', description: '' },
+          { name: 'regular / other story', description: '' },
+        ],
       });
     });
   });

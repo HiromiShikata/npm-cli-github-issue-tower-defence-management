@@ -28,6 +28,7 @@ import {
   isIssueArray,
   isProject,
   ProjectIssuesCacheRepository,
+  StoryOptionEntry,
 } from '../ProjectIssuesCacheRepository';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import {
@@ -72,9 +73,7 @@ const buildStoryIssueUrlByOptionName = (
   return map;
 };
 
-const buildStoryOptions = (
-  project: Project,
-): { name: string; description: string }[] =>
+const buildStoryOptions = (project: Project): StoryOptionEntry[] =>
   project.story?.stories.map((s) => ({
     name: s.name,
     description: s.description ?? '',
