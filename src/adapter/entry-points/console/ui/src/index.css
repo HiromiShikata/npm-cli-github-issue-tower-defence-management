@@ -57,13 +57,27 @@ body {
 
 .console-tabbar {
   display: flex;
+  flex-direction: column;
+  background: #161b22;
+  border-bottom: 2px solid #30363d;
+}
+
+.console-tabbar-top {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  padding: 4px 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.console-tabbar-bottom {
+  display: flex;
   flex-wrap: nowrap;
   align-items: stretch;
   gap: 0;
   padding: 0 8px;
-  min-height: 42px;
-  background: #161b22;
-  border-bottom: 2px solid #30363d;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -171,7 +185,6 @@ body {
 }
 
 .console-tab-geninfo {
-  margin-left: auto;
   align-self: center;
   padding: 0 4px;
   color: #8b949e;

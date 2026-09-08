@@ -715,11 +715,14 @@ test('project switcher appears at the left end of the tab bar and opens a dropdo
   await page.goto(harness.appRootUrl);
 
   const nav = page.locator('nav.console-tabbar');
-  const pjnameDiv = nav.locator('.console-tab-pjname');
+  const topRow = nav.locator('.console-tabbar-top');
+  await expect(topRow).toBeVisible();
+
+  const pjnameDiv = topRow.locator('.console-tab-pjname');
   await expect(pjnameDiv).toBeVisible();
 
-  const firstChild = nav.locator(':scope > *').first();
-  await expect(firstChild).toHaveClass(/console-tab-pjname/);
+  const firstTopChild = topRow.locator(':scope > *').first();
+  await expect(firstTopChild).toHaveClass(/console-tab-pjname/);
 
   await expect(page.locator('.console-tab-pjname-dropdown')).toHaveCount(0);
 
