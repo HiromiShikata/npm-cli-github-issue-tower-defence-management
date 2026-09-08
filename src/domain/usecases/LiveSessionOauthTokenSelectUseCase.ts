@@ -148,28 +148,33 @@ export class LiveSessionOauthTokenSelectUseCase {
           !entry.candidate.subscriptionDisabled &&
           !entry.candidate.unifiedRejected &&
           !entry.candidate.fableRejected &&
-          entry.metric.sevenDayFreeRatio >= LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO,
+          entry.metric.sevenDayFreeRatio >=
+            LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO,
       );
 
       if (fallbackEligible.length === 0) {
         return { selected: null, metrics };
       }
 
-      const fallbackSelected = fallbackEligible.reduce((bestEntry, currentEntry) => {
-        if (
-          currentEntry.metric.fiveHourFreeRatio > bestEntry.metric.fiveHourFreeRatio
-        ) {
-          return currentEntry;
-        }
-        if (
-          currentEntry.metric.fiveHourFreeRatio ===
-            bestEntry.metric.fiveHourFreeRatio &&
-          currentEntry.metric.liveSessionCount < bestEntry.metric.liveSessionCount
-        ) {
-          return currentEntry;
-        }
-        return bestEntry;
-      });
+      const fallbackSelected = fallbackEligible.reduce(
+        (bestEntry, currentEntry) => {
+          if (
+            currentEntry.metric.fiveHourFreeRatio >
+            bestEntry.metric.fiveHourFreeRatio
+          ) {
+            return currentEntry;
+          }
+          if (
+            currentEntry.metric.fiveHourFreeRatio ===
+              bestEntry.metric.fiveHourFreeRatio &&
+            currentEntry.metric.liveSessionCount <
+              bestEntry.metric.liveSessionCount
+          ) {
+            return currentEntry;
+          }
+          return bestEntry;
+        },
+      );
 
       return { selected: fallbackSelected.candidate, metrics };
     }

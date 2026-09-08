@@ -423,12 +423,30 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const result = useCase.run(
       [
         ...rejected,
-        candidate('dev2', snapshot({ sevenDayUtilization: 0.91, fiveHourUtilization: 0.3 })),
-        candidate('dev9', snapshot({ sevenDayUtilization: 0.97, fiveHourUtilization: 0.02 })),
-        candidate('main', snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.68 })),
-        candidate('de11', snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.56 })),
-        candidate('de12', snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.65 })),
-        candidate('de13', snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.92 })),
+        candidate(
+          'dev2',
+          snapshot({ sevenDayUtilization: 0.91, fiveHourUtilization: 0.3 }),
+        ),
+        candidate(
+          'dev9',
+          snapshot({ sevenDayUtilization: 0.97, fiveHourUtilization: 0.02 }),
+        ),
+        candidate(
+          'main',
+          snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.68 }),
+        ),
+        candidate(
+          'de11',
+          snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.56 }),
+        ),
+        candidate(
+          'de12',
+          snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.65 }),
+        ),
+        candidate(
+          'de13',
+          snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.92 }),
+        ),
       ],
       [],
       NOW,
