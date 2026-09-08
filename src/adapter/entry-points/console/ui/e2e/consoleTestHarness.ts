@@ -990,7 +990,7 @@ export const startConsoleE2eHarness = async (options?: {
     inTmuxDataDir: null,
     dashboardDir: null,
     dashboardDataDir: null,
-    dashboardProjectNames: [],
+    dashboardProjectNames: [CONSOLE_E2E_PJCODE],
     workflowImprovementIssueUrl: options?.workflowImprovementIssueUrl ?? null,
     port: 0,
   });
