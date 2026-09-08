@@ -1,14 +1,13 @@
 import type { ClaudeLiveSessionRepository } from '../../../domain/usecases/adapter-interfaces/ClaudeLiveSessionRepository';
 import {
+  LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO,
   type LiveSessionOauthTokenSelectionSettings,
   type LiveSessionOauthTokenSelectResult,
   LiveSessionOauthTokenSelectUseCase,
 } from '../../../domain/usecases/LiveSessionOauthTokenSelectUseCase';
 import {
   DEFAULT_SELECTION_WEIGHT,
-  FIVE_HOUR_MIN_FREE_RATIO,
   type OauthTokenCandidate,
-  SEVEN_DAY_MIN_FREE_RATIO,
 } from '../../../domain/usecases/OauthTokenSelectUseCase';
 import { FABLE_LIMIT_TYPE, readRateLimit } from '../../proxy/RateLimitCache';
 import { loadTokenEntries } from '../../proxy/TokenListLoader';
@@ -104,13 +103,18 @@ export class LiveSessionOauthTokenSelectHandler {
     return {
       selectedToken: result.selected?.token ?? null,
       selectedName: result.selected?.name ?? null,
-      diagnostics: this.formatDiagnostics(result, input.nowEpochSeconds),
+      diagnostics: this.formatDiagnostics(
+        result,
+        input.nowEpochSeconds,
+        input.selectionSettings,
+      ),
     };
   };
 
   private formatDiagnostics = (
     result: LiveSessionOauthTokenSelectResult,
     nowEpochSeconds: number,
+    settings: LiveSessionOauthTokenSelectionSettings,
   ): string[] => {
     const lines = result.metrics.map((metric) => {
       const secondsUntilSevenDayEnd = Math.round(
@@ -124,12 +128,23 @@ export class LiveSessionOauthTokenSelectHandler {
 
     if (result.selected === null) {
       lines.push(
-        `No eligible token: every token is below the 5h >= ${Math.round(FIVE_HOUR_MIN_FREE_RATIO * 100)}% free and 7d >= ${Math.round(SEVEN_DAY_MIN_FREE_RATIO * 100)}% free thresholds required to start a live session.`,
+        `No eligible token: all tokens are below the live session thresholds (5h >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% free, 7d >= ${Math.round(settings.minSevenDayFreeRatio * 100)}% free) and no token met the ${Math.round(LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO * 100)}% 7d fallback condition either.`,
       );
     } else {
-      lines.push(
-        `Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit, which is set by the free share of the 5h window alone).`,
+      const selectedMetric = result.metrics.find(
+        (m) => m.name === result.selected?.name,
       );
+      const usedFallback =
+        selectedMetric !== undefined && !selectedMetric.eligible;
+      if (usedFallback) {
+        lines.push(
+          `Selected ${result.selected.name} via fallback (highest 5h free ratio among non-excluded tokens with 7d >= ${Math.round(LIVE_SESSION_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO * 100)}% free; no token met the live session thresholds of 5h >= ${Math.round(settings.minFiveHourFreeRatio * 100)}% and 7d >= ${Math.round(settings.minSevenDayFreeRatio * 100)}%).`,
+        );
+      } else {
+        lines.push(
+          `Selected ${result.selected.name} (the soonest-resetting 7d window among tokens still under their concurrent session limit, which is set by the free share of the 5h window alone).`,
+        );
+      }
     }
 
     return lines;

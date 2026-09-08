@@ -299,12 +299,12 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     expect(output.selectedName).toBe('free');
   });
 
-  it('returns no token and a threshold-naming diagnostic without leaking the token when no token passes the filter', () => {
+  it('returns no token and a threshold-naming diagnostic without leaking the token when no token passes even the fallback filter', () => {
     writeTokenList([{ name: 'busy', token: 'fake-busy' }]);
     writeCache('fake-busy', {
       fiveHourUtilization: 0.9,
       fiveHourReset: NOW + 5 * HOUR,
-      sevenDayUtilization: 0.1,
+      sevenDayUtilization: 0.98,
       sevenDayReset: NOW + 7 * DAY,
     });
 
@@ -320,9 +320,34 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     expect(output.selectedName).toBeNull();
     const diagnostics = output.diagnostics.join('\n');
     expect(diagnostics).toContain('No eligible token');
-    expect(diagnostics).toContain('5h >= 25% free');
-    expect(diagnostics).toContain('7d >= 1% free');
+    expect(diagnostics).toContain('5h >= 60% free');
+    expect(diagnostics).toContain('7d >= 14% free');
+    expect(diagnostics).toContain('3% 7d fallback');
     expect(diagnostics).not.toContain('fake-busy');
+  });
+
+  it('selects via fallback and emits a fallback diagnostic when no token meets live session thresholds but one meets the 3% seven day floor', () => {
+    writeTokenList([{ name: 'fallbackToken', token: 'fake-fallback' }]);
+    writeCache('fake-fallback', {
+      fiveHourUtilization: 0.5,
+      fiveHourReset: NOW + 5 * HOUR,
+      sevenDayUtilization: 0.96,
+      sevenDayReset: NOW + 7 * DAY,
+    });
+
+    const handler = buildHandler([]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
+    });
+
+    expect(output.selectedName).toBe('fallbackToken');
+    const diagnostics = output.diagnostics.join('\n');
+    expect(diagnostics).toContain('via fallback');
+    expect(diagnostics).toContain('5h >= 60%');
+    expect(diagnostics).toContain('7d >= 14%');
   });
 
   it('returns the token on the selected path when an eligible token exists', () => {
