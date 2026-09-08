@@ -1,3 +1,10 @@
+# [2.81.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.80.0...v2.81.0) (2026-09-08)
+
+
+### Features
+
+* **preparation:** remove skipAgentAuthoredIssues option and agentAuthoredIssue exclusion ([#2219](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2219)) ([66b30fe](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/66b30fed78bed2612cf793210de57f3215e606cf))
+
 # [2.80.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.79.0...v2.80.0) (2026-09-08)
 
 
