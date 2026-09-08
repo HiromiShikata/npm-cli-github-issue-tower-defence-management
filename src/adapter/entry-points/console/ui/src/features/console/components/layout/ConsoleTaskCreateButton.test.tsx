@@ -1,8 +1,9 @@
 import { fireEvent, render, waitFor } from '@testing-library/react';
-import type { ConsoleStoryEntry } from '../../logic/types';
+import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 import {
   ConsoleTaskCreateButton,
   type ConsoleTaskCreateButtonProps,
+  type IssueCreateParams,
 } from './ConsoleTaskCreateButton';
 
 const storyEntries: ConsoleStoryEntry[] = [
@@ -24,9 +25,14 @@ const storyEntries: ConsoleStoryEntry[] = [
   },
 ];
 
+const agentOptions: ConsoleFieldOption[] = [
+  { id: 'agent-developer', name: 'developer', color: 'BLUE' },
+];
+
 const baseProps: ConsoleTaskCreateButtonProps = {
   pjcode: 'umino',
   storyEntries,
+  agentOptions,
   defaultNameWithOwner:
     'HiromiShikata/npm-cli-github-issue-tower-defence-management',
   onCreateIssue: jest.fn(),
@@ -54,141 +60,56 @@ describe('ConsoleTaskCreateButton', () => {
     expect(getByRole('button', { name: /new task/i })).toBeDisabled();
   });
 
-  it('opens the form when the New task button is clicked', () => {
+  it('opens the dialog when the New task button is clicked', () => {
+    const { getByRole } = render(<ConsoleTaskCreateButton {...baseProps} />);
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    expect(getByRole('dialog', { name: /create new task/i })).not.toBeNull();
+  });
+
+  it('closes the dialog when Cancel is clicked', () => {
     const { getByRole, queryByRole } = render(
       <ConsoleTaskCreateButton {...baseProps} />,
     );
-    expect(queryByRole('combobox', { name: /story/i })).toBeNull();
     fireEvent.click(getByRole('button', { name: /new task/i }));
-    expect(getByRole('combobox', { name: /story/i })).not.toBeNull();
-    expect(getByRole('textbox', { name: /issue title/i })).not.toBeNull();
-    expect(getByRole('button', { name: /^create$/i })).not.toBeNull();
-    expect(getByRole('button', { name: /^cancel$/i })).not.toBeNull();
+    expect(getByRole('dialog', { name: /create new task/i })).not.toBeNull();
+    fireEvent.click(getByRole('button', { name: /^cancel$/i }));
+    expect(queryByRole('dialog', { name: /create new task/i })).toBeNull();
   });
 
-  it('populates the story select with all story options', () => {
-    const { getByRole } = render(<ConsoleTaskCreateButton {...baseProps} />);
-    fireEvent.click(getByRole('button', { name: /new task/i }));
-    const select = getByRole('combobox', {
-      name: /story/i,
-    }) as HTMLSelectElement;
-    expect(select.options.length).toBe(2);
-    expect(select.options[0].text).toBe('regular / workflow improvement');
-    expect(select.options[1].text).toBe(
-      'regular / tdpm dashboard & console improvement',
-    );
-  });
-
-  it('calls onCreateIssue with first story id and entered title on submit', async () => {
+  it('calls onCreateIssue with correct IssueCreateParams when form is submitted', async () => {
     const onCreateIssue = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
       <ConsoleTaskCreateButton {...baseProps} onCreateIssue={onCreateIssue} />,
     );
     fireEvent.click(getByRole('button', { name: /new task/i }));
-    const titleInput = getByRole('textbox', { name: /issue title/i });
-    fireEvent.change(titleInput, { target: { value: 'Fix the bug' } });
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Fix the bug' },
+    });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(onCreateIssue).toHaveBeenCalledWith(
-        'opt-workflow-improvement',
-        'Fix the bug',
-      ),
+      expect(onCreateIssue).toHaveBeenCalledWith<[IssueCreateParams]>({
+        storyOptionId: 'opt-workflow-improvement',
+        agentOptionId: null,
+        title: 'Fix the bug',
+        referenceUrl: null,
+        files: [],
+      }),
     );
   });
 
-  it('calls onCreateIssue with selected story id when a different story is chosen', async () => {
-    const onCreateIssue = jest.fn().mockResolvedValue(undefined);
-    const { getByRole } = render(
-      <ConsoleTaskCreateButton {...baseProps} onCreateIssue={onCreateIssue} />,
-    );
-    fireEvent.click(getByRole('button', { name: /new task/i }));
-    const select = getByRole('combobox', { name: /story/i });
-    fireEvent.change(select, { target: { value: 'opt-tdpm-console' } });
-    const titleInput = getByRole('textbox', { name: /issue title/i });
-    fireEvent.change(titleInput, { target: { value: 'New console feature' } });
-    fireEvent.click(getByRole('button', { name: /^create$/i }));
-    await waitFor(() =>
-      expect(onCreateIssue).toHaveBeenCalledWith(
-        'opt-tdpm-console',
-        'New console feature',
-      ),
-    );
-  });
-
-  it('closes the form after successful submission', async () => {
+  it('closes the dialog after successful submission', async () => {
     const onCreateIssue = jest.fn().mockResolvedValue(undefined);
     const { getByRole, queryByRole } = render(
       <ConsoleTaskCreateButton {...baseProps} onCreateIssue={onCreateIssue} />,
     );
     fireEvent.click(getByRole('button', { name: /new task/i }));
-    fireEvent.change(getByRole('textbox', { name: /issue title/i }), {
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Done task' },
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(queryByRole('combobox', { name: /story/i })).toBeNull(),
+      expect(queryByRole('dialog', { name: /create new task/i })).toBeNull(),
     );
     expect(getByRole('button', { name: /new task/i })).not.toBeNull();
-  });
-
-  it('shows an error message when onCreateIssue rejects', async () => {
-    const onCreateIssue = jest
-      .fn()
-      .mockRejectedValue(new Error('Network error'));
-    const { getByRole, getByText } = render(
-      <ConsoleTaskCreateButton {...baseProps} onCreateIssue={onCreateIssue} />,
-    );
-    fireEvent.click(getByRole('button', { name: /new task/i }));
-    fireEvent.change(getByRole('textbox', { name: /issue title/i }), {
-      target: { value: 'Task with error' },
-    });
-    fireEvent.click(getByRole('button', { name: /^create$/i }));
-    await waitFor(() => expect(getByText('Network error')).not.toBeNull());
-  });
-
-  it('shows an error when title is empty on submit', async () => {
-    const onCreateIssue = jest.fn();
-    const { getByRole, getByText } = render(
-      <ConsoleTaskCreateButton {...baseProps} onCreateIssue={onCreateIssue} />,
-    );
-    fireEvent.click(getByRole('button', { name: /new task/i }));
-    fireEvent.click(getByRole('button', { name: /^create$/i }));
-    await waitFor(() => expect(getByText(/title is required/i)).not.toBeNull());
-    expect(onCreateIssue).not.toHaveBeenCalled();
-  });
-
-  it('canceling the form hides it and does not call onCreateIssue', () => {
-    const onCreateIssue = jest.fn();
-    const { getByRole, queryByRole } = render(
-      <ConsoleTaskCreateButton {...baseProps} onCreateIssue={onCreateIssue} />,
-    );
-    fireEvent.click(getByRole('button', { name: /new task/i }));
-    fireEvent.change(getByRole('textbox', { name: /issue title/i }), {
-      target: { value: 'Some title' },
-    });
-    fireEvent.click(getByRole('button', { name: /^cancel$/i }));
-    expect(queryByRole('combobox', { name: /story/i })).toBeNull();
-    expect(getByRole('button', { name: /new task/i })).not.toBeNull();
-    expect(onCreateIssue).not.toHaveBeenCalled();
-  });
-
-  it('resets the title input after successful submission when opened again', async () => {
-    const onCreateIssue = jest.fn().mockResolvedValue(undefined);
-    const { getByRole } = render(
-      <ConsoleTaskCreateButton {...baseProps} onCreateIssue={onCreateIssue} />,
-    );
-    fireEvent.click(getByRole('button', { name: /new task/i }));
-    fireEvent.change(getByRole('textbox', { name: /issue title/i }), {
-      target: { value: 'First task' },
-    });
-    fireEvent.click(getByRole('button', { name: /^create$/i }));
-    await waitFor(() =>
-      expect(getByRole('button', { name: /new task/i })).not.toBeNull(),
-    );
-    fireEvent.click(getByRole('button', { name: /new task/i }));
-    const titleInput = getByRole('textbox', {
-      name: /issue title/i,
-    }) as HTMLInputElement;
-    expect(titleInput.value).toBe('');
   });
 });

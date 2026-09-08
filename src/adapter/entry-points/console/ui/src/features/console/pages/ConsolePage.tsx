@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleProjectSettingsModalScreen';
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
+import type { IssueCreateParams } from '../components/layout/ConsoleTaskCreateButton';
 import { ConsoleTaskCreateButton } from '../components/layout/ConsoleTaskCreateButton';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
@@ -34,7 +35,10 @@ import { useConsoleTabData } from '../hooks/useConsoleTabData';
 import { useConsoleTabSelectHandler } from '../hooks/useConsoleTabSelectHandler';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
+  encodeAttachmentContent,
   postConsoleAddStory,
+  postConsoleAttachment,
+  postConsoleComment,
   postConsoleCreateIssue,
   postConsoleDeleteStory,
   postConsoleRenameStory,
@@ -578,6 +582,45 @@ export const ConsolePage = () => {
     [pjcode, defaultNameWithOwner],
   );
 
+  const handleCreateIssueFromDialog = useCallback(
+    async (params: IssueCreateParams): Promise<void> => {
+      if (pjcode === null) {
+        throw new Error('No project specified in the URL path.');
+      }
+      if (defaultNameWithOwner === null) {
+        throw new Error('No repository configured for this project.');
+      }
+      const issueUrl = await postConsoleCreateIssue({
+        pjcode,
+        title: params.title,
+        storyOptionId: params.storyOptionId,
+        agentOptionId: params.agentOptionId,
+        referenceUrl: params.referenceUrl,
+        nameWithOwner: defaultNameWithOwner,
+      });
+      if (params.files.length > 0) {
+        const markdownParts: string[] = [];
+        for (const file of params.files) {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          const contentBase64 = encodeAttachmentContent(bytes);
+          const markdown = await postConsoleAttachment({
+            pjcode,
+            url: issueUrl,
+            fileName: file.name,
+            contentBase64,
+          });
+          markdownParts.push(markdown);
+        }
+        await postConsoleComment({
+          pjcode,
+          url: issueUrl,
+          body: markdownParts.join('\n\n'),
+        });
+      }
+    },
+    [pjcode, defaultNameWithOwner],
+  );
+
   const handleReorderStory = useCallback(
     async (storyOptionId: string, direction: 'up' | 'down'): Promise<void> => {
       if (pjcode === null) {
@@ -818,8 +861,9 @@ export const ConsolePage = () => {
                 <ConsoleTaskCreateButton
                   pjcode={pjcode}
                   storyEntries={storyEntries}
+                  agentOptions={agentOptions}
                   defaultNameWithOwner={defaultNameWithOwner}
-                  onCreateIssue={handleCreateIssue}
+                  onCreateIssue={handleCreateIssueFromDialog}
                 />
               </>
             )}

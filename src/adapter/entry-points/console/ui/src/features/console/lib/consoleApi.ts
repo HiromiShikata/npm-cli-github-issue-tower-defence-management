@@ -451,6 +451,8 @@ export type ConsoleCreateIssueRequest = {
   title: string;
   storyOptionId: string;
   nameWithOwner: string;
+  agentOptionId?: string | null;
+  referenceUrl?: string | null;
 };
 
 export const STORY_COLOR_OPERATION_PATH = '/api/storycolor';

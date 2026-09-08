@@ -1,9 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
-import {
-  ConsoleTaskCreateButton,
-  type IssueCreateParams,
-} from './ConsoleTaskCreateButton';
+import { IssueCreateModalDialog } from './IssueCreateModalDialog';
 
 const storyEntries: ConsoleStoryEntry[] = [
   {
@@ -41,35 +38,33 @@ const agentOptions: ConsoleFieldOption[] = [
   { id: 'agent-pr-reviewer', name: 'pr-reviewer', color: 'PURPLE' },
 ];
 
-const meta: Meta<typeof ConsoleTaskCreateButton> = {
-  title: 'Console/ConsoleTaskCreateButton',
-  component: ConsoleTaskCreateButton,
+const meta: Meta<typeof IssueCreateModalDialog> = {
+  title: 'Console/IssueCreateModalDialog',
+  component: IssueCreateModalDialog,
   args: {
-    pjcode: 'umino',
     storyEntries,
     agentOptions,
-    defaultNameWithOwner:
-      'HiromiShikata/npm-cli-github-issue-tower-defence-management',
-    onCreateIssue: async (_params: IssueCreateParams) => {
+    onSubmit: async () => {
       await new Promise((resolve) => setTimeout(resolve, 800));
     },
+    onClose: () => {},
   },
 };
 
 export default meta;
 
-type Story = StoryObj<typeof ConsoleTaskCreateButton>;
+type Story = StoryObj<typeof IssueCreateModalDialog>;
 
 export const Default: Story = {};
 
-export const NoRepository: Story = {
+export const NoAgentOptions: Story = {
   args: {
-    defaultNameWithOwner: null,
+    agentOptions: [],
   },
 };
 
-export const NoStories: Story = {
+export const SingleStory: Story = {
   args: {
-    storyEntries: [],
+    storyEntries: [storyEntries[0]],
   },
 };
