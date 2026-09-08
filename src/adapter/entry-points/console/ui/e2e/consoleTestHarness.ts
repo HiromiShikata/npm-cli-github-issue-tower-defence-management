@@ -882,6 +882,7 @@ export type ConsoleE2eHarness = {
 
 export const startConsoleE2eHarness = async (options?: {
   workflowImprovementIssueUrl?: string | null;
+  fleetTaskCreateUrl?: string | null;
   mergePullRequest?: () => Promise<void>;
   getIssueOrPullRequestComments?: () => Promise<IssueComment[]>;
 }): Promise<ConsoleE2eHarness> => {
@@ -992,6 +993,7 @@ export const startConsoleE2eHarness = async (options?: {
     dashboardDataDir: null,
     dashboardProjectNames: [],
     workflowImprovementIssueUrl: options?.workflowImprovementIssueUrl ?? null,
+    fleetTaskCreateUrl: options?.fleetTaskCreateUrl ?? null,
     port: 0,
   });
 

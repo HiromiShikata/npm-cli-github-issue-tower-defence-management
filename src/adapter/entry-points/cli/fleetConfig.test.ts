@@ -838,17 +838,21 @@ describe('loadFleetTaskCreateUrl', () => {
     expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBeNull();
   });
 
-  it('returns null when owner is missing', () => {
+  it('throws when owner is missing in workflowIssueReporter section', () => {
     const fleetConfigFilePath = writeFleetConfig(
       'workflowIssueReporter:\n  repo: myrepo\n',
     );
-    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBeNull();
+    expect(() => loadFleetTaskCreateUrl(fleetConfigFilePath)).toThrow(
+      'workflowIssueReporter.owner',
+    );
   });
 
-  it('returns null when repo is missing', () => {
+  it('throws when repo is missing in workflowIssueReporter section', () => {
     const fleetConfigFilePath = writeFleetConfig(
       'workflowIssueReporter:\n  owner: myorg\n',
     );
-    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBeNull();
+    expect(() => loadFleetTaskCreateUrl(fleetConfigFilePath)).toThrow(
+      'workflowIssueReporter.repo',
+    );
   });
 });
