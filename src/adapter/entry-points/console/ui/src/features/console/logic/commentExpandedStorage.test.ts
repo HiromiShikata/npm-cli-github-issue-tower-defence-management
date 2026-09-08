@@ -12,7 +12,9 @@ describe('loadCommentExpandedKeys', () => {
   });
 
   it('returns an empty set when no entry exists', () => {
-    const result = loadCommentExpandedKeys('https://github.com/owner/repo/issues/1');
+    const result = loadCommentExpandedKeys(
+      'https://github.com/owner/repo/issues/1',
+    );
     expect(result.size).toBe(0);
   });
 

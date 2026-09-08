@@ -75,7 +75,9 @@ export const ConsoleCommentList = ({
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
-    persistenceKey != null ? loadCommentExpandedKeys(persistenceKey) : new Set(),
+    persistenceKey != null
+      ? loadCommentExpandedKeys(persistenceKey)
+      : new Set(),
   );
 
   const latestKey =

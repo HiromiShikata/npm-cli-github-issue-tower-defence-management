@@ -1,6 +1,8 @@
 const STORAGE_KEY_PREFIX = 'console-comment-expanded:';
 
-export const loadCommentExpandedKeys = (persistenceKey: string): Set<string> => {
+export const loadCommentExpandedKeys = (
+  persistenceKey: string,
+): Set<string> => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY_PREFIX + persistenceKey);
     if (stored === null) return new Set();
