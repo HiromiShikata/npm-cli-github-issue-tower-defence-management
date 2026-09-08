@@ -219,6 +219,7 @@ export const WithFleetTaskCreateLink: Story = {
       stories: 0,
     },
     pjcodes: [],
-    fleetTaskCreateUrl: 'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
+    fleetTaskCreateUrl:
+      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
   },
 };
