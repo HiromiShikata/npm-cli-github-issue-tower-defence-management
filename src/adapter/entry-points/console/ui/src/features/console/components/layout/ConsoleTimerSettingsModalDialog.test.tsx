@@ -3,6 +3,7 @@ import { ConsoleTimerSettingsModalDialog } from './ConsoleTimerSettingsModalDial
 
 const baseProps = {
   isOpen: false,
+  isTimerActive: false,
   timerMode: false,
   projectMinutes: {},
   pjcodes: ['alpha', 'beta', 'gamma'],
@@ -19,7 +20,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the gear button when the dialog is closed', () => {
+  it('renders the timer button when the dialog is closed', () => {
     const { getByRole, queryByRole } = render(
       <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={false} />,
     );
@@ -29,7 +30,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     expect(queryByRole('dialog')).toBeNull();
   });
 
-  it('renders the gear button when the dialog is open', () => {
+  it('renders the timer button when the dialog is open', () => {
     const { getByRole } = render(
       <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={true} />,
     );
@@ -38,7 +39,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     ).toBeInTheDocument();
   });
 
-  it('calls onOpen when the gear button is clicked', () => {
+  it('calls onOpen when the timer button is clicked', () => {
     const onOpen = jest.fn();
     const { getByRole } = render(
       <ConsoleTimerSettingsModalDialog
@@ -59,6 +60,32 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     expect(getByRole('dialog')).toHaveAttribute(
       'aria-label',
       'Console Settings',
+    );
+  });
+
+  it('adds active class to the button when isTimerActive is true', () => {
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={false}
+        isTimerActive={true}
+      />,
+    );
+    expect(getByRole('button', { name: 'Console Settings' })).toHaveClass(
+      'console-timer-settings-button--active',
+    );
+  });
+
+  it('does not add active class to the button when isTimerActive is false', () => {
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={false}
+        isTimerActive={false}
+      />,
+    );
+    expect(getByRole('button', { name: 'Console Settings' })).not.toHaveClass(
+      'console-timer-settings-button--active',
     );
   });
 

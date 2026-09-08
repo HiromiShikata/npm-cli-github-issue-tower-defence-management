@@ -5,6 +5,7 @@ const meta: Meta<typeof ConsoleTimerSettingsModalDialog> = {
   title: 'Console/ConsoleTimerSettingsModalDialog',
   component: ConsoleTimerSettingsModalDialog,
   args: {
+    isTimerActive: false,
     pjcodes: ['acme', 'beta'],
     isLoadingPjcodes: false,
     projectMinutes: { acme: 25, beta: 0 },
@@ -24,6 +25,13 @@ type Story = StoryObj<typeof ConsoleTimerSettingsModalDialog>;
 export const Closed: Story = {
   args: {
     isOpen: false,
+  },
+};
+
+export const ClosedTimerActive: Story = {
+  args: {
+    isOpen: false,
+    isTimerActive: true,
   },
 };
 

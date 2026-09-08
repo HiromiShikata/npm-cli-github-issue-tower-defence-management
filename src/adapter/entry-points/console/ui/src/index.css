@@ -248,14 +248,14 @@ body {
   background: #21262d;
 }
 
-.console-timer-settings-dialog {
+.console-timer-settings-button--active {
+  color: #e67e00;
+}
+
+.console-timer-settings-overlay {
   position: fixed;
   inset: 0;
   z-index: 100;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  padding: 48px 16px 0;
 }
 
 .console-timer-settings-backdrop {
