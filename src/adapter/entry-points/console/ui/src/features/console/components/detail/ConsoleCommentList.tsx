@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ImageProxyUrlBuilder } from '../../lib/imageProxy';
 import type { ConsoleRepoContext } from '../../lib/markdown';
+import {
+  loadCommentExpandedKeys,
+  saveCommentExpandedKeys,
+} from '../../logic/commentExpandedStorage';
 import { formatRelativeTime } from '../../logic/relativeTime';
 import type { ConsoleComment } from '../../logic/types';
 import { buildWorkflowIncidentReportUrl } from '../../logic/workflowIncidentReport';
@@ -12,32 +16,6 @@ const extractFirstLine = (body: string): string =>
 
 const buildCommentKey = (comment: ConsoleComment): string =>
   `${comment.author}:${comment.createdAt}:${comment.body}`;
-
-const STORAGE_KEY_PREFIX = 'console-comment-expanded:';
-
-const loadExpandedKeys = (persistenceKey: string): Set<string> => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_PREFIX + persistenceKey);
-    if (stored === null) return new Set();
-    const parsed: unknown = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((k): k is string => typeof k === 'string'));
-  } catch (e) {
-    console.error('Failed to load comment expanded state from storage:', e);
-    return new Set();
-  }
-};
-
-const saveExpandedKeys = (persistenceKey: string, keys: Set<string>): void => {
-  try {
-    localStorage.setItem(
-      STORAGE_KEY_PREFIX + persistenceKey,
-      JSON.stringify([...keys]),
-    );
-  } catch (e) {
-    console.error('Failed to save comment expanded state to storage:', e);
-  }
-};
 
 type ConsoleCommentBodyExpandedProps = {
   comment: ConsoleComment;
@@ -97,7 +75,9 @@ export const ConsoleCommentList = ({
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
-    persistenceKey != null ? loadExpandedKeys(persistenceKey) : new Set(),
+    persistenceKey != null
+      ? loadCommentExpandedKeys(persistenceKey)
+      : new Set(),
   );
 
   const latestKey =
@@ -110,7 +90,7 @@ export const ConsoleCommentList = ({
 
   useEffect(() => {
     if (persistenceKey == null) return;
-    saveExpandedKeys(persistenceKey, expandedKeys);
+    saveCommentExpandedKeys(persistenceKey, expandedKeys);
   }, [persistenceKey, expandedKeys]);
 
   const toggleExpanded = (key: string) => {
