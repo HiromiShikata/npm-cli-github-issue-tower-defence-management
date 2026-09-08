@@ -208,7 +208,9 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     } as DOMRect);
 
     await act(async () => {
-      rerender(<ConsoleTimerSettingsModalDialog {...baseProps} isOpen={true} />);
+      rerender(
+        <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={true} />,
+      );
     });
 
     const dialog = getByRole('dialog');
