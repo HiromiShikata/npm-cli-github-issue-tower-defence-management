@@ -8,6 +8,7 @@ import {
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
+  ICEBOX_STATUS_NAME,
   IN_TMUX_BY_AGENT_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   TODO_STATUS_NAME,
@@ -223,6 +224,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     } else if (issue.status === TODO_STATUS_NAME) {
       console.log(
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is in Todo by human`,
+      );
+      return;
+    } else if (issue.status === ICEBOX_STATUS_NAME) {
+      console.log(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is in Icebox`,
       );
       return;
     } else if (
