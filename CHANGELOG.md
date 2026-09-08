@@ -1,3 +1,10 @@
+# [2.83.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.82.3...v2.83.0) (2026-09-08)
+
+
+### Features
+
+* **console:** split header into top row (controls) and bottom row (tabs) ([#2226](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2226)) ([0025c04](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0025c044a2134a93d6e5cde350495492bf699d1c)), closes [HiromiShikata/umino-corporait-operation#31526](https://github.com/HiromiShikata/umino-corporait-operation/issues/31526)
+
 ## [2.82.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.82.2...v2.82.3) (2026-09-08)
 
 
