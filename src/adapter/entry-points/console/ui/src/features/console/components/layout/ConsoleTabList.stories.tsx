@@ -205,3 +205,20 @@ export const WithoutWorkflowImprovementLink: Story = {
     workflowImprovementIssueUrl: null,
   },
 };
+
+export const WithFleetTaskCreateLink: Story = {
+  args: {
+    activeTab: 'prs',
+    counts: {
+      'workflow-blocker': 0,
+      prs: 35,
+      'failed-preparation': 0,
+      'todo-by-human': 0,
+      'todo-by-agent': 0,
+      queued: 0,
+      stories: 0,
+    },
+    pjcodes: [],
+    fleetTaskCreateUrl: 'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
+  },
+};
