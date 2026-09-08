@@ -1,3 +1,10 @@
+# [2.79.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.78.3...v2.79.0) (2026-09-08)
+
+
+### Features
+
+* **console:** clear comment expand/collapse state on console tab switch ([#2216](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2216)) ([5d16ca6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5d16ca67f52198c2f4cda3397a14e734bc67d9af)), closes [HiromiShikata/umino-corporait-operation#31503](https://github.com/HiromiShikata/umino-corporait-operation/issues/31503)
+
 ## [2.78.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.78.2...v2.78.3) (2026-09-07)
 
 
