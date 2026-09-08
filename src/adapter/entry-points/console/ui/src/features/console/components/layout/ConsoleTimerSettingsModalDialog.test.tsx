@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { ConsoleTimerSettingsModalDialog } from './ConsoleTimerSettingsModalDialog';
 
 const baseProps = {
@@ -180,5 +180,47 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     );
     fireEvent.click(getByRole('button', { name: 'Close settings' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('clamps dialog right position so dialog stays within viewport when button is near the left edge', async () => {
+    const originalInnerWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 500,
+    });
+
+    const { getByRole, rerender } = render(
+      <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={false} />,
+    );
+
+    const settingsButton = getByRole('button', { name: 'Console Settings' });
+    jest.spyOn(settingsButton, 'getBoundingClientRect').mockReturnValue({
+      right: 35,
+      bottom: 40,
+      top: 10,
+      left: 5,
+      width: 30,
+      height: 30,
+      x: 5,
+      y: 10,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    await act(async () => {
+      rerender(<ConsoleTimerSettingsModalDialog {...baseProps} isOpen={true} />);
+    });
+
+    const dialog = getByRole('dialog');
+    const rightValue = parseFloat((dialog as HTMLElement).style.right);
+    // unclamped: 500 - 35 = 465 → dialog left edge = 500 - 465 - 280 = -245 (off-screen)
+    // clamped:   min(465, 500 - 280 - 8) = 212 → dialog left edge = 500 - 212 - 280 = 8 (visible)
+    expect(rightValue).toBeLessThanOrEqual(212);
+
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: originalInnerWidth,
+    });
   });
 });

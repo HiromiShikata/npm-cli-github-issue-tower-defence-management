@@ -37,9 +37,16 @@ export const ConsoleTimerSettingsModalDialog = ({
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+      const rawRight = viewportWidth - rect.right;
+      const dialogMinWidth = 280;
+      const margin = 8;
       setDialogPos({
         top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
+        right: Math.max(
+          margin,
+          Math.min(rawRight, viewportWidth - dialogMinWidth - margin),
+        ),
       });
     }
   }, [isOpen]);
