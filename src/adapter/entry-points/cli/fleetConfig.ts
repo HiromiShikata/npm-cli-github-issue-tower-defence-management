@@ -333,6 +333,30 @@ export const loadWorkflowImprovementIssueUrl = (
   return value;
 };
 
+export const loadFleetTaskCreateUrl = (
+  fleetConfigFilePath: string | null,
+): string | null => {
+  if (fleetConfigFilePath === null) {
+    return null;
+  }
+  const section = readFleetConfigSection(
+    fleetConfigFilePath,
+    WORKFLOW_ISSUE_REPORTER_SECTION_KEY,
+  );
+  if (section === null) {
+    return null;
+  }
+  const owner = section['owner'];
+  const repo = section['repo'];
+  if (typeof owner !== 'string' || owner === '') {
+    return null;
+  }
+  if (typeof repo !== 'string' || repo === '') {
+    return null;
+  }
+  return `https://github.com/${owner}/${repo}/issues/new`;
+};
+
 export const ERROR_REPORTING_REPOSITORY_KEY = 'errorReportingRepository';
 
 export const loadErrorReportingRepository = (

@@ -325,4 +325,43 @@ describe('ConsoleTabList', () => {
       container.querySelector('.console-tab-workflow-improvement-link'),
     ).toBeNull();
   });
+
+  it('renders a fleet task create link that opens in a new tab when fleetTaskCreateUrl is set', () => {
+    const url = 'https://github.com/myorg/myrepo/issues/new';
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        fleetTaskCreateUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /create fleet task/i });
+    expect(link).toHaveAttribute('href', url);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('does not render the fleet task create link when fleetTaskCreateUrl is null', () => {
+    const { container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        fleetTaskCreateUrl={null}
+      />,
+    );
+    expect(
+      container.querySelector('.console-tab-fleet-task-create-link'),
+    ).toBeNull();
+  });
+
+  it('does not render the fleet task create link when fleetTaskCreateUrl is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(
+      container.querySelector('.console-tab-fleet-task-create-link'),
+    ).toBeNull();
+  });
 });

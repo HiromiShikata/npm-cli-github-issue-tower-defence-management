@@ -7,6 +7,7 @@ import {
   DEFAULT_START_PREPARATION_FLEET_SETTINGS,
   FLEET_CONFIG_FILE_PATH_ENVIRONMENT_VARIABLE,
   loadErrorReportingRepository,
+  loadFleetTaskCreateUrl,
   loadLiveSessionOauthTokenSelectionSettings,
   loadPreparationWorkerSettings,
   loadSilentNotificationEnabled,
@@ -792,5 +793,62 @@ describe('loadErrorReportingRepository', () => {
     expect(() => loadErrorReportingRepository(fleetConfigFilePath)).toThrow(
       'must be a string',
     );
+  });
+});
+
+describe('loadFleetTaskCreateUrl', () => {
+  let tempDir: string;
+
+  const writeFleetConfig = (content: string): string => {
+    const fleetConfigFilePath = path.join(tempDir, 'fleet.config.yaml');
+    fs.writeFileSync(fleetConfigFilePath, content);
+    return fleetConfigFilePath;
+  };
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fleet-config-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('returns null when no fleet config path is given', () => {
+    expect(loadFleetTaskCreateUrl(null)).toBeNull();
+  });
+
+  it('returns the GitHub new-issue URL derived from workflowIssueReporter owner and repo', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
+      'https://github.com/myorg/myrepo/issues/new',
+    );
+  });
+
+  it('returns null when the workflowIssueReporter section is absent', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'preparationWorker:\n  normalConcurrentLimit: 5\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns null for an empty fleet config file', () => {
+    const fleetConfigFilePath = writeFleetConfig('');
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns null when owner is missing', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  repo: myrepo\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBeNull();
+  });
+
+  it('returns null when repo is missing', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBeNull();
   });
 });

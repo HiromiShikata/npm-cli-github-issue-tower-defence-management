@@ -26,6 +26,7 @@ export type ConsoleTabBarProps = {
   onAirplaneModeStartSync: () => void;
   onAirplaneModeTurnOff: () => void;
   workflowImprovementIssueUrl?: string | null;
+  fleetTaskCreateUrl?: string | null;
 };
 
 export const ConsoleTabList = ({
@@ -47,6 +48,7 @@ export const ConsoleTabList = ({
   onAirplaneModeStartSync,
   onAirplaneModeTurnOff,
   workflowImprovementIssueUrl = null,
+  fleetTaskCreateUrl = null,
 }: ConsoleTabBarProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{
@@ -149,6 +151,17 @@ export const ConsoleTabList = ({
             aria-label="Open workflow improvement issue"
           >
             ⚡
+          </a>
+        )}
+        {fleetTaskCreateUrl !== null && (
+          <a
+            href={fleetTaskCreateUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="console-tab-fleet-task-create-link"
+            aria-label="Create fleet task"
+          >
+            +
           </a>
         )}
         {generatedAt !== null && airplaneModeStatus !== 'on' && (
