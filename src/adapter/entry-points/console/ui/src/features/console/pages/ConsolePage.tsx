@@ -794,6 +794,7 @@ export const ConsolePage = () => {
           <>
             <ConsoleTimerSettingsModalDialog
               isOpen={isSettingsOpen}
+              isTimerActive={timerMode}
               timerMode={draftTimerMode}
               projectMinutes={draftProjectMinutes}
               pjcodes={pjcodes}

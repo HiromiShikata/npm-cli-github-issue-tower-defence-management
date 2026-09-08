@@ -1,5 +1,9 @@
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
 export type ConsoleTimerSettingsModalDialogProps = {
   isOpen: boolean;
+  isTimerActive: boolean;
   timerMode: boolean;
   projectMinutes: Record<string, number>;
   pjcodes: string[];
@@ -13,6 +17,7 @@ export type ConsoleTimerSettingsModalDialogProps = {
 
 export const ConsoleTimerSettingsModalDialog = ({
   isOpen,
+  isTimerActive,
   timerMode,
   projectMinutes,
   pjcodes,
@@ -23,96 +28,121 @@ export const ConsoleTimerSettingsModalDialog = ({
   onSave,
   onClose,
 }: ConsoleTimerSettingsModalDialogProps) => {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dialogPos, setDialogPos] = useState<{ top: number; right: number } | null>(null);
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDialogPos({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [isOpen]);
+
   return (
     <>
       <button
+        ref={buttonRef}
         type="button"
-        className="console-timer-settings-button"
+        className={`console-timer-settings-button${isTimerActive ? ' console-timer-settings-button--active' : ''}`}
         aria-label="Console Settings"
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         onClick={onOpen}
       >
-        ⚙
+        ⏱
       </button>
-      {isOpen && (
-        <div
-          className="console-timer-settings-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Console Settings"
-        >
-          <button
-            type="button"
-            className="console-timer-settings-backdrop"
-            aria-label="Close settings"
-            onClick={onClose}
-          />
-          <div className="console-timer-settings-dialog-inner">
-            <h2 className="console-timer-settings-title">Console Settings</h2>
-            <div className="console-timer-settings-row">
-              <label
-                className="console-timer-settings-label"
-                htmlFor="timer-mode-toggle"
-              >
-                Timer Mode
-              </label>
-              <input
-                id="timer-mode-toggle"
-                type="checkbox"
-                checked={timerMode}
-                onChange={(e) => onToggleTimerMode(e.target.checked)}
-              />
-            </div>
-            {isLoadingPjcodes ? (
-              <div className="console-timer-settings-loading">
-                Loading projects...
+      {isOpen &&
+        createPortal(
+          <div className="console-timer-settings-overlay">
+            <button
+              type="button"
+              className="console-timer-settings-backdrop"
+              aria-label="Close settings"
+              onClick={onClose}
+            />
+            <div
+              className="console-timer-settings-dialog-inner"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Console Settings"
+              style={
+                dialogPos !== null
+                  ? {
+                      position: 'fixed',
+                      top: dialogPos.top,
+                      right: dialogPos.right,
+                    }
+                  : undefined
+              }
+            >
+              <h2 className="console-timer-settings-title">Console Settings</h2>
+              <div className="console-timer-settings-row">
+                <label
+                  className="console-timer-settings-label"
+                  htmlFor="timer-mode-toggle"
+                >
+                  Timer Mode
+                </label>
+                <input
+                  id="timer-mode-toggle"
+                  type="checkbox"
+                  checked={timerMode}
+                  onChange={(e) => onToggleTimerMode(e.target.checked)}
+                />
               </div>
-            ) : (
-              <ul className="console-timer-settings-project-list">
-                {pjcodes.map((pjcode) => (
-                  <li
-                    key={pjcode}
-                    className="console-timer-settings-project-row"
-                  >
-                    <label
-                      htmlFor={`timer-minutes-${pjcode}`}
-                      className="console-timer-settings-pjcode"
+              {isLoadingPjcodes ? (
+                <div className="console-timer-settings-loading">
+                  Loading projects...
+                </div>
+              ) : (
+                <ul className="console-timer-settings-project-list">
+                  {pjcodes.map((pjcode) => (
+                    <li
+                      key={pjcode}
+                      className="console-timer-settings-project-row"
                     >
-                      {pjcode}
-                    </label>
-                    <input
-                      id={`timer-minutes-${pjcode}`}
-                      type="number"
-                      min={0}
-                      value={projectMinutes[pjcode] ?? 0}
-                      onChange={(e) =>
-                        onChangeMinutes(
-                          pjcode,
-                          Math.max(0, parseInt(e.target.value, 10) || 0),
-                        )
-                      }
-                      className="console-timer-settings-minutes-input"
-                    />
-                    <span className="console-timer-settings-minutes-label">
-                      {(projectMinutes[pjcode] ?? 0) === 0 ? 'Skip' : 'min'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="console-timer-settings-actions">
-              <button
-                type="button"
-                className="console-timer-settings-save"
-                onClick={onSave}
-              >
-                Save and Close
-              </button>
+                      <label
+                        htmlFor={`timer-minutes-${pjcode}`}
+                        className="console-timer-settings-pjcode"
+                      >
+                        {pjcode}
+                      </label>
+                      <input
+                        id={`timer-minutes-${pjcode}`}
+                        type="number"
+                        min={0}
+                        value={projectMinutes[pjcode] ?? 0}
+                        onChange={(e) =>
+                          onChangeMinutes(
+                            pjcode,
+                            Math.max(0, parseInt(e.target.value, 10) || 0),
+                          )
+                        }
+                        className="console-timer-settings-minutes-input"
+                      />
+                      <span className="console-timer-settings-minutes-label">
+                        {(projectMinutes[pjcode] ?? 0) === 0 ? 'Skip' : 'min'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="console-timer-settings-actions">
+                <button
+                  type="button"
+                  className="console-timer-settings-save"
+                  onClick={onSave}
+                >
+                  Save and Close
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 };
