@@ -47,6 +47,13 @@ export type OauthTokenSelectionThresholds = {
 const SECONDS_PER_DAY = 86400;
 const SEVEN_DAYS_IN_SECONDS = 7 * SECONDS_PER_DAY;
 
+const SUBSCRIPTION_DISABLED_REASON =
+  'organization has disabled Claude subscription access for Claude Code';
+const UNIFIED_REJECTED_REASON =
+  'token request was rejected (anthropic-ratelimit-unified-status: rejected)';
+const FABLE_REJECTED_REASON =
+  'fable weekly limit exhausted (a fable request was rejected with HTTP 429)';
+
 export const FIVE_HOUR_MIN_FREE_RATIO = 0.25;
 export const SEVEN_DAY_MIN_FREE_RATIO = 0.01;
 
@@ -179,11 +186,11 @@ export class OauthTokenSelectUseCase {
       );
 
       const hardRejectionReason = candidate.subscriptionDisabled
-        ? 'organization has disabled Claude subscription access for Claude Code'
+        ? SUBSCRIPTION_DISABLED_REASON
         : candidate.unifiedRejected
-          ? 'token request was rejected (anthropic-ratelimit-unified-status: rejected)'
+          ? UNIFIED_REJECTED_REASON
           : candidate.fableRejected
-            ? 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)'
+            ? FABLE_REJECTED_REASON
             : null;
 
       const exclusionReason =
@@ -298,13 +305,13 @@ export class OauthTokenSelectUseCase {
     sevenDayDeadlinePassed: boolean,
   ): string | null => {
     if (subscriptionDisabled) {
-      return 'organization has disabled Claude subscription access for Claude Code';
+      return SUBSCRIPTION_DISABLED_REASON;
     }
     if (unifiedRejected) {
-      return 'token request was rejected (anthropic-ratelimit-unified-status: rejected)';
+      return UNIFIED_REJECTED_REASON;
     }
     if (fableRejected) {
-      return 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)';
+      return FABLE_REJECTED_REASON;
     }
     if (
       !fiveHourDeadlinePassed &&

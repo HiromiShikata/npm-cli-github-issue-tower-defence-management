@@ -853,6 +853,32 @@ describe('selectFallback', () => {
     expect(tooLittle?.exclusionReason).toContain('fallback requires >= 3%');
   });
 
+  it('breaks a tie by selecting the candidate whose 7d window resets soonest', () => {
+    const result = useCase.selectFallback(
+      [
+        candidate(
+          'far',
+          snapshot({
+            fiveHourUtilization: 0.5,
+            sevenDayUtilization: 0.5,
+            sevenDayReset: NOW + 6 * DAY,
+          }),
+        ),
+        candidate(
+          'soon',
+          snapshot({
+            fiveHourUtilization: 0.5,
+            sevenDayUtilization: 0.5,
+            sevenDayReset: NOW + 2 * DAY,
+          }),
+        ),
+      ],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('soon');
+  });
+
   it('confirms CL_SCRIPT_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO equals 0.03', () => {
     expect(CL_SCRIPT_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO).toBe(0.03);
   });

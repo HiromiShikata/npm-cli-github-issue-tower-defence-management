@@ -519,6 +519,9 @@ describe('OauthTokenSelectHandler', () => {
 
     expect(output.selectedToken).toBeNull();
     expect(output.selectedName).toBeNull();
+    expect(output.diagnostics.join('\n')).toContain(
+      'No eligible token passed the rate-limit filter.',
+    );
   });
 
   it('includes falling-back message in diagnostics when fallback is used', () => {
