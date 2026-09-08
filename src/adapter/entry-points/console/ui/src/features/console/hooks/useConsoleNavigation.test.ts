@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
-import type { ConsoleTabName } from '../logic/types';
 import { navigatePush } from '../lib/navigation';
+import type { ConsoleTabName } from '../logic/types';
 import {
   parseItemKeyFromHash,
   parseSettingsFromHash,
