@@ -595,7 +595,11 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
     typeof payload !== 'object' ||
     Array.isArray(payload)
   ) {
-    return { pjcodes: [], workflowImprovementIssueUrl: null, fleetTaskCreateUrl: null };
+    return {
+      pjcodes: [],
+      workflowImprovementIssueUrl: null,
+      fleetTaskCreateUrl: null,
+    };
   }
   const record = payload as Record<string, unknown>;
   const pjcodes = Array.isArray(record.pjcodes)

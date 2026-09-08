@@ -45,5 +45,11 @@ export const useConsoleProjectList = (): ConsoleProjectListState => {
     };
   }, []);
 
-  return { pjcodes, workflowImprovementIssueUrl, fleetTaskCreateUrl, isLoading, error };
+  return {
+    pjcodes,
+    workflowImprovementIssueUrl,
+    fleetTaskCreateUrl,
+    isLoading,
+    error,
+  };
 };
