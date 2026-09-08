@@ -76,6 +76,7 @@ export type ConsoleStoryEntry = {
   storyName: string;
   storyOptionId: string;
   color: ConsoleColor;
+  description: string;
   openItemCount: number;
   storyViewUrl: string | null;
   items: ConsoleListItem[];
@@ -206,6 +207,7 @@ export class GenerateConsoleListsUseCase {
       storyName: option.name,
       storyOptionId: option.id,
       color: option.color,
+      description: option.description,
       openItemCount: openItemCountByStory.get(option.name) ?? 0,
       storyViewUrl: urlOfStoryView
         ? `${urlOfStoryView}?sliceBy%5Bvalue%5D=${encodeForURI(option.name)}`

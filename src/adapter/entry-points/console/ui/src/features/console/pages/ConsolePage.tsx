@@ -44,6 +44,7 @@ import {
   postConsoleRenameStory,
   postConsoleReorderStory,
   postConsoleStoryColor,
+  postConsoleUpdateStoryDescription,
 } from '../lib/consoleApi';
 import { navigatePush, navigateReplaceState } from '../lib/navigation';
 import {
@@ -756,6 +757,29 @@ export const ConsolePage = () => {
     [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
 
+  const handleStoryUpdateDescription = useCallback(
+    async (storyOptionId: string, newDescription: string): Promise<void> => {
+      if (pjcode === null) {
+        throw new Error('No project specified in the URL path.');
+      }
+      await postConsoleUpdateStoryDescription({
+        pjcode,
+        storyOptionId,
+        description: newDescription,
+      });
+      const updatedEntries = storyEntries.map((e) =>
+        e.storyOptionId === storyOptionId
+          ? { ...e, description: newDescription }
+          : e,
+      );
+      setLocalStoryEntriesOverride({
+        generatedAt: storiesSnapshot?.generatedAt,
+        stories: updatedEntries,
+      });
+    },
+    [pjcode, storyEntries, storiesSnapshot?.generatedAt],
+  );
+
   const prsTabSummaries = useConsolePrsTabSummaries(
     pendingItems,
     caches.comments,
@@ -899,6 +923,7 @@ export const ConsolePage = () => {
             onReorderStory={handleReorderStory}
             onDeleteStory={handleStoryDelete}
             onRenameStory={handleStoryRename}
+            onUpdateDescription={handleStoryUpdateDescription}
             optimisticColors={storyOptimisticColors}
             colorChangeInFlight={storyColorChangeInFlight}
             colorErrors={storyColorErrors}

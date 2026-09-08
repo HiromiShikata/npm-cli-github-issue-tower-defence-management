@@ -31,6 +31,7 @@ import {
   handleStoryAdd,
   handleStoryColor,
   handleStoryRename,
+  handleStoryUpdateDescription,
   handleTimer,
   handleTriage,
 } from './consoleOperationApi';
@@ -4423,6 +4424,189 @@ describe('consoleOperationApi', () => {
           expect.objectContaining({ id: 'opt_server_only' }),
         ]),
       );
+    });
+  });
+
+  describe('handleStoryUpdateDescription', () => {
+    const projectWithStoriesToUpdateDescription = (): Project => ({
+      ...project,
+      url: 'https://github.com/orgs/acme-labs/projects/1',
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'opt_alpha',
+            name: 'Alpha story',
+            color: 'BLUE',
+            description: 'Original description',
+          },
+          {
+            id: 'opt_beta',
+            name: 'Beta story',
+            color: 'GREEN',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    const updateDescriptionStoryList = jest.fn();
+    const descGetProject = jest.fn();
+    const descProjectRepositoryResolver = jest.fn(() => ({
+      updateStoryList: updateDescriptionStoryList,
+      getProject: descGetProject,
+    }));
+
+    const descriptionContext = (p: Project): ConsoleOperationContext => ({
+      ...contextForProject(p),
+      resolveProjectRepository: descProjectRepositoryResolver,
+    });
+
+    beforeEach(() => {
+      updateDescriptionStoryList.mockResolvedValue([]);
+      descGetProject.mockResolvedValue(null);
+      descProjectRepositoryResolver.mockReturnValue({
+        updateStoryList: updateDescriptionStoryList,
+        getProject: descGetProject,
+      });
+    });
+
+    it('calls updateStoryList with the updated description and returns 200', async () => {
+      const p = projectWithStoriesToUpdateDescription();
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(p),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: 'Updated description',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true });
+      expect(updateDescriptionStoryList).toHaveBeenCalledWith(p, [
+        {
+          id: 'opt_alpha',
+          name: 'Alpha story',
+          color: 'BLUE',
+          description: 'Updated description',
+        },
+        {
+          id: 'opt_beta',
+          name: 'Beta story',
+          color: 'GREEN',
+          description: '',
+        },
+      ]);
+    });
+
+    it('allows clearing a description to empty string', async () => {
+      const p = projectWithStoriesToUpdateDescription();
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(p),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: '',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(updateDescriptionStoryList).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'opt_alpha', description: '' }),
+        ]),
+      );
+    });
+
+    it('calls invalidateProject after a successful update', async () => {
+      const p = projectWithStoriesToUpdateDescription();
+      const invalidateProject = jest.fn();
+      const ctx: ConsoleOperationContext = {
+        ...descriptionContext(p),
+        invalidateProject,
+      };
+      await handleStoryUpdateDescription(ctx, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        description: 'New description',
+      });
+      expect(invalidateProject).toHaveBeenCalledWith('acme');
+    });
+
+    it('returns 502 when resolveProjectRepository is null', async () => {
+      const response = await handleStoryUpdateDescription(
+        contextForProject(projectWithStoriesToUpdateDescription()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: 'New description',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'project repository is not configured' },
+      });
+    });
+
+    it('returns 400 when storyOptionId is missing', async () => {
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(projectWithStoriesToUpdateDescription()),
+        { pjcode: 'acme', description: 'New description' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'storyOptionId is required' },
+      });
+    });
+
+    it('returns 400 when description is not a string', async () => {
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(projectWithStoriesToUpdateDescription()),
+        { pjcode: 'acme', storyOptionId: 'opt_alpha' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'description is required' },
+      });
+    });
+
+    it('returns 400 when the project has no story field', async () => {
+      const projectWithoutStory: Project = {
+        ...projectWithStoriesToUpdateDescription(),
+        story: null,
+      };
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(projectWithoutStory),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: 'New description',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'project does not have a story field' },
+      });
+    });
+
+    it('returns 400 when the story option is not found', async () => {
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(projectWithStoriesToUpdateDescription()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_nonexistent',
+          description: 'New description',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: {
+          error: 'story option "opt_nonexistent" not found in project',
+        },
+      });
     });
   });
 

@@ -150,6 +150,7 @@ export type ConsoleStoryEntry = {
   storyName: string;
   storyOptionId: string;
   color: ConsoleColor;
+  description: string;
   openItemCount: number;
   storyViewUrl: string | null;
   items: ConsoleListItem[];

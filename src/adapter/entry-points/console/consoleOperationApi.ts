@@ -1299,6 +1299,44 @@ export const handleStoryRename = async (
   return ok();
 };
 
+export const handleStoryUpdateDescription = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  if (context.resolveProjectRepository === null) {
+    return badGateway('project repository is not configured');
+  }
+  const storyOptionId = body.storyOptionId;
+  const description = body.description;
+  if (!isNonEmptyString(storyOptionId)) {
+    return badRequest('storyOptionId is required');
+  }
+  if (typeof description !== 'string') {
+    return badRequest('description is required');
+  }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { pjcode, project } = binding;
+  if (project.story === null) {
+    return badRequest('project does not have a story field');
+  }
+  const projectRepository = context.resolveProjectRepository(project.url);
+  const freshProject = await projectRepository.getProject(project.id);
+  const freshStories = freshProject?.story?.stories ?? project.story.stories;
+  const storyOption = freshStories.find((s) => s.id === storyOptionId);
+  if (storyOption === undefined) {
+    return badRequest(`story option "${storyOptionId}" not found in project`);
+  }
+  const updatedStories = freshStories.map((s) =>
+    s.id === storyOptionId ? { ...s, description } : s,
+  );
+  await projectRepository.updateStoryList(project, updatedStories);
+  context.invalidateProject?.(pjcode);
+  return ok();
+};
+
 export const handleTimer = (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
