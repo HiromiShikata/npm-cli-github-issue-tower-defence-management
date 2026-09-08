@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleProjectSettingsModalScreen';
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
+import { ConsoleTaskCreateButton } from '../components/layout/ConsoleTaskCreateButton';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsolePrsAgentFilter } from '../components/list/ConsolePrsAgentFilter';
@@ -804,14 +805,22 @@ export const ConsolePage = () => {
               onClose={closeSettings}
             />
             {pjcode !== null && (
-              <button
-                type="button"
-                className="console-tab-settings-button"
-                aria-label="Open project settings"
-                onClick={projectSettings.open}
-              >
-                ⚙
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="console-tab-settings-button"
+                  aria-label="Open project settings"
+                  onClick={projectSettings.open}
+                >
+                  ⚙
+                </button>
+                <ConsoleTaskCreateButton
+                  pjcode={pjcode}
+                  storyEntries={storyEntries}
+                  defaultNameWithOwner={defaultNameWithOwner}
+                  onCreateIssue={handleCreateIssue}
+                />
+              </>
             )}
           </>
         }

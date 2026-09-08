@@ -2055,3 +2055,83 @@ body {
   border-color: #f85149;
   color: #f85149;
 }
+
+.console-task-create-button {
+  align-self: center;
+  margin-left: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.console-task-create-button:hover {
+  color: #e6edf3;
+  border-color: #58a6ff;
+}
+
+.console-task-create-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.console-task-create-form {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-left: 4px;
+}
+
+.console-task-create-form-select {
+  padding: 3px 6px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.console-task-create-form-input {
+  padding: 3px 8px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 0.8125rem;
+  min-width: 160px;
+}
+
+.console-task-create-form-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.console-task-create-form-submit,
+.console-task-create-form-cancel {
+  padding: 3px 10px;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #21262d;
+  color: #e6edf3;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.console-task-create-form-submit:hover,
+.console-task-create-form-cancel:hover {
+  border-color: #484f58;
+}
+
+.console-task-create-form-submit:disabled,
+.console-task-create-form-cancel:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
