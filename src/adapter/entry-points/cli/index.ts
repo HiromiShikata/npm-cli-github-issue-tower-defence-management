@@ -587,7 +587,6 @@ program
       normalConcurrentLimit: preparationWorkerSettings.normalConcurrentLimit,
       maxConcurrentWorkers: preparationWorkerSettings.maxConcurrentWorkers,
       graphqlRateLimitFloor: preparationWorkerSettings.graphqlRateLimitFloor,
-      skipAgentAuthoredIssues: config.skipAgentAuthoredIssues ?? false,
     });
     if (preparationResult.rotationOrder !== null) {
       writeRotationOrderFile(preparationResult.rotationOrder);

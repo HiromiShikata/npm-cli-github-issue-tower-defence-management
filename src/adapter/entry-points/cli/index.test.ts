@@ -864,7 +864,6 @@ mysteryKey: 'value'
         normalConcurrentLimit: 6,
         maxConcurrentWorkers: 40,
         graphqlRateLimitFloor: 500,
-        skipAgentAuthoredIssues: false,
       });
     });
 
@@ -942,7 +941,6 @@ mysteryKey: 'value'
         normalConcurrentLimit: 6,
         maxConcurrentWorkers: 40,
         graphqlRateLimitFloor: 500,
-        skipAgentAuthoredIssues: false,
       });
     });
 
