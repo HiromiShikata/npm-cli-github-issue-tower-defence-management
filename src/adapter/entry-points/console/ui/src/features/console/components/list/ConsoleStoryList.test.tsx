@@ -402,7 +402,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, getByPlaceholderText } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstButton] = getAllByRole('button', { name: 'Edit description' });
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
       fireEvent.click(firstButton);
       expect(getByPlaceholderText('Story description')).toBeInTheDocument();
     });
@@ -411,7 +413,9 @@ describe('ConsoleStoryList', () => {
       const { getAllByRole, queryByPlaceholderText } = render(
         <ConsoleStoryList {...defaultProps} />,
       );
-      const [firstButton] = getAllByRole('button', { name: 'Edit description' });
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
       fireEvent.click(firstButton);
       fireEvent.click(firstButton);
       expect(queryByPlaceholderText('Story description')).toBeNull();
@@ -436,7 +440,9 @@ describe('ConsoleStoryList', () => {
           onUpdateDescription={onUpdateDescription}
         />,
       );
-      const [firstButton] = getAllByRole('button', { name: 'Edit description' });
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
       fireEvent.click(firstButton);
       fireEvent.change(getByPlaceholderText('Story description'), {
         target: { value: 'New description text' },
@@ -459,15 +465,15 @@ describe('ConsoleStoryList', () => {
             onUpdateDescription={onUpdateDescription}
           />,
         );
-      const [firstButton] = getAllByRole('button', { name: 'Edit description' });
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
       fireEvent.click(firstButton);
       fireEvent.change(getByPlaceholderText('Story description'), {
         target: { value: 'Some description' },
       });
       fireEvent.click(getByRole('button', { name: 'Save' }));
-      await waitFor(() =>
-        expect(queryByRole('textbox')).toBeNull(),
-      );
+      await waitFor(() => expect(queryByRole('textbox')).toBeNull());
     });
 
     it('allows saving an empty description', async () => {
@@ -483,7 +489,9 @@ describe('ConsoleStoryList', () => {
           onUpdateDescription={onUpdateDescription}
         />,
       );
-      const [firstButton] = getAllByRole('button', { name: 'Edit description' });
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
       fireEvent.click(firstButton);
       fireEvent.change(getByPlaceholderText('Story description'), {
         target: { value: '' },
