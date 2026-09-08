@@ -400,15 +400,80 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('fresh');
   });
 
-  it('returns null selection when no token passes the rate-limit filter', () => {
+  it('returns null selection when no token passes even the fallback filter', () => {
     const result = useCase.run(
-      [candidate('blocked', snapshot({ fiveHourUtilization: 0.9 }))],
+      [
+        candidate(
+          'blocked',
+          snapshot({ fiveHourUtilization: 0.9, sevenDayUtilization: 0.98 }),
+        ),
+      ],
       [],
       NOW,
       SETTINGS,
     );
 
     expect(result.selected).toBeNull();
+  });
+
+  it('selects the token with the highest five hour free ratio among non-excluded tokens with at least 3% seven day free when no token meets the live session thresholds', () => {
+    const rejected = Array.from({ length: 7 }, (_unused, index) =>
+      candidate(`rejected${index}`, snapshot({}), false, true),
+    );
+    const result = useCase.run(
+      [
+        ...rejected,
+        candidate('dev2', snapshot({ sevenDayUtilization: 0.91, fiveHourUtilization: 0.3 })),
+        candidate('dev9', snapshot({ sevenDayUtilization: 0.97, fiveHourUtilization: 0.02 })),
+        candidate('main', snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.68 })),
+        candidate('de11', snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.56 })),
+        candidate('de12', snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.65 })),
+        candidate('de13', snapshot({ sevenDayUtilization: 0.2, fiveHourUtilization: 0.92 })),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    expect(result.selected?.name).toBe('dev9');
+  });
+
+  it('does not include hard-excluded tokens in the fallback even when their seven day window is above 3%', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'hardRejected',
+          snapshot({ sevenDayUtilization: 0.5, fiveHourUtilization: 0.9 }),
+          false,
+          true,
+        ),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    expect(result.selected).toBeNull();
+  });
+
+  it('breaks a five hour free ratio tie in the fallback by the fewer live sessions', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'busyFallback',
+          snapshot({ sevenDayUtilization: 0.9, fiveHourUtilization: 0.5 }),
+        ),
+        candidate(
+          'idleFallback',
+          snapshot({ sevenDayUtilization: 0.9, fiveHourUtilization: 0.5 }),
+        ),
+      ],
+      sessionsFor('busyFallback', 3),
+      NOW,
+      SETTINGS,
+    );
+
+    expect(result.selected?.name).toBe('idleFallback');
   });
 
   it('returns null selection for an empty candidate list', () => {
