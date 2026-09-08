@@ -804,6 +804,38 @@ test('does not show the workflow improvement link when workflowImprovementIssueU
   ).toHaveCount(0);
 });
 
+test('shows the fleet task create link when fleetTaskCreateUrl is configured', async ({
+  browser,
+}) => {
+  const fleetUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new';
+  const localHarness = await startConsoleE2eHarness({
+    fleetTaskCreateUrl: fleetUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    const link = page.locator('.console-tab-fleet-task-create-link');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', fleetUrl);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noreferrer');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
+});
+
+test('does not show the fleet task create link when fleetTaskCreateUrl is not configured', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+  await expect(page.locator('.console-tab-fleet-task-create-link')).toHaveCount(
+    0,
+  );
+});
+
 test('shows the task-level workflow incident report link in the detail subbar when workflowImprovementIssueUrl is configured', async ({
   browser,
 }) => {
