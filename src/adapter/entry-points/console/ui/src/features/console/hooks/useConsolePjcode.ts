@@ -14,7 +14,9 @@ export const parsePjcodeFromPath = (pathname: string): string | null => {
 
 export const useConsolePjcode = (): string | null => {
   const [pjcode, setPjcode] = useState<string | null>(() =>
-    parsePjcodeFromPath(typeof window === 'undefined' ? '' : window.location.pathname),
+    parsePjcodeFromPath(
+      typeof window === 'undefined' ? '' : window.location.pathname,
+    ),
   );
 
   useEffect(() => {
