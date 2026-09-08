@@ -1,3 +1,10 @@
+# [2.80.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.79.0...v2.80.0) (2026-09-08)
+
+
+### Features
+
+* **OauthTokenSelectUseCase:** add fallback selection when CL script thresholds find no token ([#2217](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2217)) ([017034f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/017034f8b89c66bc3b28f735ee65b47b08fb4865))
+
 # [2.79.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.78.3...v2.79.0) (2026-09-08)
 
 
