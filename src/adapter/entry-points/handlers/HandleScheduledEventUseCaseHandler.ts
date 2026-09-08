@@ -45,7 +45,6 @@ import { projectCacheDirectory } from '../../repositories/localStorageCacheDirec
 import { ActionAnnouncementUseCase } from '../../../domain/usecases/ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from '../../../domain/usecases/SetWorkflowManagementIssueToStoryUseCase';
 import { ClearPastNextActionDateHourUseCase } from '../../../domain/usecases/ClearPastNextActionDateHourUseCase';
-import { AnalyzeProblemByIssueUseCase } from '../../../domain/usecases/AnalyzeProblemByIssueUseCase';
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
 
@@ -447,10 +446,6 @@ export class HandleScheduledEventUseCaseHandler {
     const clearPastNextActionUseCase = new ClearPastNextActionDateHourUseCase(
       issueRepository,
     );
-    const analyzeProblemByIssueUseCase = new AnalyzeProblemByIssueUseCase(
-      issueRepository,
-      systemDateRepository,
-    );
     const analyzeStoriesUseCase = new AnalyzeStoriesUseCase(
       issueRepository,
       systemDateRepository,
@@ -548,7 +543,6 @@ export class HandleScheduledEventUseCaseHandler {
       actionAnnouncement,
       setWorkflowManagementIssueToStoryUseCase,
       clearPastNextActionUseCase,
-      analyzeProblemByIssueUseCase,
       analyzeStoriesUseCase,
       clearDependedIssueURLUseCase,
       setDependedIssueUrlForOpenTaskPRsUseCase,
