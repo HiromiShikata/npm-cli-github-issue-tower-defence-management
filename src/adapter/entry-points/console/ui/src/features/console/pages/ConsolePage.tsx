@@ -791,16 +791,6 @@ export const ConsolePage = () => {
         onSelectProject={(code) => navigateAssign(`/projects/${code}`)}
         settingsButton={
           <>
-            {pjcode !== null && (
-              <button
-                type="button"
-                className="console-tab-settings-button"
-                aria-label="Open project settings"
-                onClick={projectSettings.open}
-              >
-                ⚙
-              </button>
-            )}
             <ConsoleTimerSettingsModalDialog
               isOpen={isSettingsOpen}
               timerMode={draftTimerMode}
@@ -813,6 +803,16 @@ export const ConsolePage = () => {
               onSave={saveSettings}
               onClose={closeSettings}
             />
+            {pjcode !== null && (
+              <button
+                type="button"
+                className="console-tab-settings-button"
+                aria-label="Open project settings"
+                onClick={projectSettings.open}
+              >
+                ⚙
+              </button>
+            )}
           </>
         }
         airplaneModeEnabled={featuresConfig.airplaneMode}

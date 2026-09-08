@@ -87,125 +87,129 @@ export const ConsoleTabList = ({
 
   return (
     <nav aria-label="Console tabs" className="console-tabbar">
-      {pjcode !== null && (
-        <div className="console-tab-pjname">
-          <button
-            ref={buttonRef}
-            type="button"
-            className="console-tab-pjname-button"
-            aria-expanded={isDropdownOpen}
-            aria-haspopup="menu"
-            onClick={handleButtonClick}
-          >
-            {pjcode}
-            <span className="console-tab-pjname-arrow" aria-hidden="true">
-              ▾
-            </span>
-          </button>
-          {isDropdownOpen &&
-            dropdownPos !== null &&
-            createPortal(
-              <div
-                ref={dropdownRef}
-                role="menu"
-                className="console-tab-pjname-dropdown"
-                aria-label="Select project"
-                style={{
-                  position: 'fixed',
-                  top: dropdownPos.top,
-                  left: dropdownPos.left,
-                }}
-              >
-                {pjcodes.map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    role="menuitem"
-                    className="console-tab-pjname-option"
-                    data-active={code === pjcode ? 'true' : undefined}
-                    onClick={() => {
-                      onSelectProject(code);
-                      setIsDropdownOpen(false);
-                    }}
-                  >
-                    {code}
-                  </button>
-                ))}
-              </div>,
-              document.body,
-            )}
-        </div>
-      )}
-      {CONSOLE_TABS.filter((tab) => {
-        const count = counts[tab.name] ?? 0;
-        return count > 0 || tab.name === activeTab;
-      }).map((tab) => {
-        const count = counts[tab.name] ?? 0;
-        const isActive = tab.name === activeTab;
-        return (
-          <a
-            key={tab.name}
-            href={tabHref(tab.name)}
-            className="console-tab"
-            data-active={isActive ? 'true' : undefined}
-            aria-current={isActive ? 'page' : undefined}
-            onClick={(event) => {
-              if (
-                event.defaultPrevented ||
-                event.button !== 0 ||
-                event.metaKey ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey
-              ) {
-                return;
-              }
-              event.preventDefault();
-              onSelectTab(tab.name);
-            }}
-          >
-            <span className="console-tab-label">{tab.label}</span>
-            <span
-              className="console-tab-badge"
-              data-zero={count === 0 ? 'true' : undefined}
+      <div className="console-tabbar-top">
+        {pjcode !== null && (
+          <div className="console-tab-pjname">
+            <button
+              ref={buttonRef}
+              type="button"
+              className="console-tab-pjname-button"
+              aria-expanded={isDropdownOpen}
+              aria-haspopup="menu"
+              onClick={handleButtonClick}
             >
-              {count}
-            </span>
+              {pjcode}
+              <span className="console-tab-pjname-arrow" aria-hidden="true">
+                ▾
+              </span>
+            </button>
+            {isDropdownOpen &&
+              dropdownPos !== null &&
+              createPortal(
+                <div
+                  ref={dropdownRef}
+                  role="menu"
+                  className="console-tab-pjname-dropdown"
+                  aria-label="Select project"
+                  style={{
+                    position: 'fixed',
+                    top: dropdownPos.top,
+                    left: dropdownPos.left,
+                  }}
+                >
+                  {pjcodes.map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      role="menuitem"
+                      className="console-tab-pjname-option"
+                      data-active={code === pjcode ? 'true' : undefined}
+                      onClick={() => {
+                        onSelectProject(code);
+                        setIsDropdownOpen(false);
+                      }}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>,
+                document.body,
+              )}
+          </div>
+        )}
+        {settingsButton !== undefined && (
+          <span className="console-tab-settings">{settingsButton}</span>
+        )}
+        {workflowImprovementIssueUrl !== null && (
+          <a
+            href={workflowImprovementIssueUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="console-tab-workflow-improvement-link"
+            aria-label="Open workflow improvement issue"
+          >
+            ⚡
           </a>
-        );
-      })}
-      {generatedAt !== null && airplaneModeStatus !== 'on' && (
-        <span
-          className="console-tab-geninfo"
-          data-from-cache={fromCache ? 'true' : undefined}
-        >
-          {fromCache ? '(cached) ' : ''}snapshot: {generatedAt}
-        </span>
-      )}
-      {settingsButton !== undefined && (
-        <span className="console-tab-settings">{settingsButton}</span>
-      )}
-      {workflowImprovementIssueUrl !== null && (
-        <a
-          href={workflowImprovementIssueUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="console-tab-workflow-improvement-link"
-          aria-label="Open workflow improvement issue"
-        >
-          ⚡
-        </a>
-      )}
-      {airplaneModeEnabled && (
-        <ConsoleAirplaneModeButton
-          status={airplaneModeStatus}
-          progress={airplaneModeProgress}
-          capturedAt={airplaneModeCapturedAt}
-          failures={airplaneModeFailures}
-          onStartSync={onAirplaneModeStartSync}
-          onTurnOff={onAirplaneModeTurnOff}
-        />
-      )}
+        )}
+        {generatedAt !== null && airplaneModeStatus !== 'on' && (
+          <span
+            className="console-tab-geninfo"
+            data-from-cache={fromCache ? 'true' : undefined}
+          >
+            {fromCache ? '(cached) ' : ''}snapshot: {generatedAt}
+          </span>
+        )}
+        {airplaneModeEnabled && (
+          <ConsoleAirplaneModeButton
+            status={airplaneModeStatus}
+            progress={airplaneModeProgress}
+            capturedAt={airplaneModeCapturedAt}
+            failures={airplaneModeFailures}
+            onStartSync={onAirplaneModeStartSync}
+            onTurnOff={onAirplaneModeTurnOff}
+          />
+        )}
+      </div>
+      <div className="console-tabbar-bottom">
+        {CONSOLE_TABS.filter((tab) => {
+          const count = counts[tab.name] ?? 0;
+          return count > 0 || tab.name === activeTab;
+        }).map((tab) => {
+          const count = counts[tab.name] ?? 0;
+          const isActive = tab.name === activeTab;
+          return (
+            <a
+              key={tab.name}
+              href={tabHref(tab.name)}
+              className="console-tab"
+              data-active={isActive ? 'true' : undefined}
+              aria-current={isActive ? 'page' : undefined}
+              onClick={(event) => {
+                if (
+                  event.defaultPrevented ||
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                onSelectTab(tab.name);
+              }}
+            >
+              <span className="console-tab-label">{tab.label}</span>
+              <span
+                className="console-tab-badge"
+                data-zero={count === 0 ? 'true' : undefined}
+              >
+                {count}
+              </span>
+            </a>
+          );
+        })}
+      </div>
     </nav>
   );
 };

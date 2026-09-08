@@ -78,20 +78,16 @@ describe('ConsoleTabList', () => {
     expect(container.querySelector('.console-tab-count-heading')).toBeNull();
   });
 
-  it('renders the project switcher button before the first tab in the DOM', () => {
+  it('renders the project switcher in the top row and tabs in the bottom row', () => {
     const { container } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
-    const nav = container.querySelector('nav.console-tabbar');
-    const children = Array.from(nav?.children ?? []);
-    const pjnameIndex = children.findIndex((el) =>
-      el.classList.contains('console-tab-pjname'),
-    );
-    const firstTabIndex = children.findIndex((el) =>
-      el.classList.contains('console-tab'),
-    );
-    expect(pjnameIndex).toBeGreaterThanOrEqual(0);
-    expect(firstTabIndex).toBeGreaterThan(pjnameIndex);
+    const topRow = container.querySelector('.console-tabbar-top');
+    const bottomRow = container.querySelector('.console-tabbar-bottom');
+    expect(topRow?.querySelector('.console-tab-pjname')).not.toBeNull();
+    expect(topRow?.querySelector('.console-tab')).toBeNull();
+    expect(bottomRow?.querySelector('.console-tab')).not.toBeNull();
+    expect(bottomRow?.querySelector('.console-tab-pjname')).toBeNull();
   });
 
   it('renders the Workflow Blocker tab immediately left of Awaiting Owner', () => {
@@ -171,7 +167,7 @@ describe('ConsoleTabList', () => {
     expect(document.querySelector('[data-from-cache]')).toBeNull();
   });
 
-  it('renders the settingsButton prop at the end of the tab bar when provided', () => {
+  it('renders the settingsButton prop in the top row when provided', () => {
     const { getByTestId } = render(
       <ConsoleTabList
         {...baseProps}
@@ -186,7 +182,7 @@ describe('ConsoleTabList', () => {
     );
     const btn = getByTestId('settings-btn');
     expect(btn).toBeInTheDocument();
-    expect(btn.closest('nav.console-tabbar')).not.toBeNull();
+    expect(btn.closest('.console-tabbar-top')).not.toBeNull();
   });
 
   it('does not render a settings slot when settingsButton is not provided', () => {
