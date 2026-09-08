@@ -1,3 +1,10 @@
+# [2.85.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.84.0...v2.85.0) (2026-09-08)
+
+
+### Features
+
+* **console:** add per-project new task creation button to console header ([#2228](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2228)) ([0bafb4a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0bafb4a929ed4c020c4fc8f4ebfb88dd1894ba69)), closes [HiromiShikata/umino-corporait-operation#31529](https://github.com/HiromiShikata/umino-corporait-operation/issues/31529)
+
 # [2.84.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.83.0...v2.84.0) (2026-09-08)
 
 
