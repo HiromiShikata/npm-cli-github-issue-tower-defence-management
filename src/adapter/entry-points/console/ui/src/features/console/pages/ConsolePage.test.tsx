@@ -23,6 +23,8 @@ jest.mock('../lib/mermaidLoader', () => ({
 jest.mock('../lib/navigation', () => ({
   navigateReplace: jest.fn(),
   navigateAssign: jest.fn(),
+  navigatePush: jest.fn(),
+  navigateReplaceState: jest.fn(),
 }));
 
 const listPayload = (tab: string) => ({
@@ -1391,13 +1393,13 @@ describe('ConsolePage auto-advance tab', () => {
       JSON.stringify({ timerMode: true, projectMinutes: { acme: 30 } }),
     );
     window.history.replaceState({}, '', '/');
-    const { navigateReplace } = jest.requireMock<{
-      navigateReplace: jest.Mock;
+    const { navigateReplaceState } = jest.requireMock<{
+      navigateReplaceState: jest.Mock;
     }>('../lib/navigation');
-    navigateReplace.mockClear();
+    navigateReplaceState.mockClear();
     render(<ConsolePage />);
     await waitFor(() => {
-      expect(navigateReplace).toHaveBeenCalledWith('/projects/acme');
+      expect(navigateReplaceState).toHaveBeenCalledWith('/projects/acme');
     });
   });
 
@@ -1654,11 +1656,11 @@ describe('ConsolePage auto-advance tab', () => {
       act(() => {
         jest.advanceTimersByTime(5100);
       });
-      const { navigateAssign } = jest.requireMock<{
-        navigateAssign: jest.Mock;
+      const { navigatePush } = jest.requireMock<{
+        navigatePush: jest.Mock;
       }>('../lib/navigation');
       await waitFor(() => {
-        expect(navigateAssign).toHaveBeenCalledWith('/projects/beta');
+        expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
       });
     } finally {
       jest.useRealTimers();
