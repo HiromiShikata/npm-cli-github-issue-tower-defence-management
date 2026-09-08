@@ -62,8 +62,6 @@ export const CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS: OauthTokenSelectionThre
     sevenDayMinFreeRatio: 0.14,
   };
 
-export const CL_SCRIPT_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO = 0.03;
-
 export const SEVEN_DAY_WINDOW_HOURS = 168;
 export const MIN_HOURS_TO_RESET = 1;
 export const SEVEN_DAY_SPEND_DEADLINE_HOURS = 24;
@@ -158,80 +156,6 @@ export class OauthTokenSelectUseCase {
     );
 
     return { selected: selected.candidate, metrics };
-  };
-
-  selectFallback = (
-    candidates: OauthTokenCandidate[],
-    nowEpochSeconds: number,
-  ): OauthTokenSelectResult => {
-    const evaluated = candidates.map((candidate) => {
-      const fiveHourFreeRatio = this.fiveHourFreeRatio(
-        candidate.snapshot,
-        nowEpochSeconds,
-      );
-      const sevenDayFreeRatio = this.sevenDayFreeRatio(
-        candidate.snapshot,
-        nowEpochSeconds,
-      );
-      const sevenDayEndEpoch = this.sevenDayEndEpoch(
-        candidate.snapshot,
-        nowEpochSeconds,
-      );
-
-      const hardRejectionReason = candidate.subscriptionDisabled
-        ? 'organization has disabled Claude subscription access for Claude Code'
-        : candidate.unifiedRejected
-          ? 'token request was rejected (anthropic-ratelimit-unified-status: rejected)'
-          : candidate.fableRejected
-            ? 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)'
-            : null;
-
-      const exclusionReason =
-        hardRejectionReason !== null
-          ? hardRejectionReason
-          : sevenDayFreeRatio < CL_SCRIPT_FALLBACK_SEVEN_DAY_MIN_FREE_RATIO
-            ? `7d window only ${this.toPercent(sevenDayFreeRatio)}% free (fallback requires >= 3%)`
-            : null;
-
-      return {
-        candidate,
-        metric: {
-          name: candidate.name,
-          fiveHourFreeRatio,
-          sevenDayFreeRatio,
-          sevenDayEndEpoch,
-          eligible: exclusionReason === null,
-          exclusionReason,
-          drawWeight: 0,
-        },
-      };
-    });
-
-    const eligible = evaluated.filter((entry) => entry.metric.eligible);
-    const metrics = evaluated.map((entry) => entry.metric);
-
-    if (eligible.length === 0) {
-      return { selected: null, metrics };
-    }
-
-    const best = eligible.reduce((bestEntry, currentEntry) => {
-      if (
-        currentEntry.metric.fiveHourFreeRatio >
-        bestEntry.metric.fiveHourFreeRatio
-      ) {
-        return currentEntry;
-      }
-      if (
-        currentEntry.metric.fiveHourFreeRatio ===
-          bestEntry.metric.fiveHourFreeRatio &&
-        currentEntry.metric.sevenDayEndEpoch < bestEntry.metric.sevenDayEndEpoch
-      ) {
-        return currentEntry;
-      }
-      return bestEntry;
-    });
-
-    return { selected: best.candidate, metrics };
   };
 
   private evaluate = (

@@ -122,40 +122,10 @@ export class OauthTokenSelectHandler {
       CL_SCRIPT_OAUTH_TOKEN_SELECTION_THRESHOLDS,
     );
 
-    if (result.selected !== null) {
-      return {
-        selectedToken: result.selected.token,
-        selectedName: result.selected.name,
-        diagnostics: this.formatDiagnostics(result, input.nowEpochSeconds),
-      };
-    }
-
-    const fallbackResult = this.useCase.selectFallback(
-      candidates,
-      input.nowEpochSeconds,
-    );
-
-    const primaryDiagnostics = this.formatDiagnostics(
-      result,
-      input.nowEpochSeconds,
-    );
-
-    if (fallbackResult.selected === null) {
-      return {
-        selectedToken: null,
-        selectedName: null,
-        diagnostics: primaryDiagnostics,
-      };
-    }
-
     return {
-      selectedToken: fallbackResult.selected.token,
-      selectedName: fallbackResult.selected.name,
-      diagnostics: [
-        ...primaryDiagnostics,
-        'No eligible token passed the CL script rate-limit filter; falling back to the token with the most 5h remaining (>= 3% 7d free required).',
-        `Fallback-selected ${fallbackResult.selected.name} (highest 5h free ratio among tokens with >= 3% 7d window remaining).`,
-      ],
+      selectedToken: result.selected?.token ?? null,
+      selectedName: result.selected?.name ?? null,
+      diagnostics: this.formatDiagnostics(result, input.nowEpochSeconds),
     };
   };
 
