@@ -1,3 +1,10 @@
+# [2.82.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.81.0...v2.82.0) (2026-09-08)
+
+
+### Features
+
+* **cache:** add storyOptions field to latest.json cache ([#2222](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2222)) ([db307c4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/db307c4e9e77a9f18e5148887b035ee290400e3a))
+
 # [2.81.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.80.0...v2.81.0) (2026-09-08)
 
 
