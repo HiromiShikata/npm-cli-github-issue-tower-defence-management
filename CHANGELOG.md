@@ -1,3 +1,10 @@
+# [2.86.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.85.0...v2.86.0) (2026-09-08)
+
+
+### Features
+
+* **console:** change timer settings button from gear to timer icon with active state indicator ([#2229](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2229)) ([f0fdb8f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f0fdb8f759bf20080eaa1805680b37b4e3e4ad0f)), closes [HiromiShikata/umino-corporait-operation#31530](https://github.com/HiromiShikata/umino-corporait-operation/issues/31530)
+
 # [2.85.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.84.0...v2.85.0) (2026-09-08)
 
 
