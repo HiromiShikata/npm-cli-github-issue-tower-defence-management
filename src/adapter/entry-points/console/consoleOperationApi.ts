@@ -839,7 +839,8 @@ export const handleCreateIssue = async (
   }
 
   const agentOptionId =
-    typeof body.agentOptionId === 'string' && body.agentOptionId.trim().length > 0
+    typeof body.agentOptionId === 'string' &&
+    body.agentOptionId.trim().length > 0
       ? body.agentOptionId.trim()
       : null;
   const rawReferenceUrl =
@@ -872,7 +873,11 @@ export const handleCreateIssue = async (
       storyOptionId,
     );
     if (agentOptionId !== null && project.agent !== null) {
-      await issueRepository.setIssueAgentField(issueUrl, project, agentOptionId);
+      await issueRepository.setIssueAgentField(
+        issueUrl,
+        project,
+        agentOptionId,
+      );
     }
   }
 

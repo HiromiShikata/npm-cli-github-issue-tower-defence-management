@@ -106,9 +106,7 @@ describe('IssueCreateModalDialog', () => {
     const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(
-        document.body.querySelector('[role="alert"]'),
-      ).not.toBeNull(),
+      expect(document.body.querySelector('[role="alert"]')).not.toBeNull(),
     );
   });
 
@@ -158,7 +156,8 @@ describe('IssueCreateModalDialog', () => {
     });
     fireEvent.change(getByPlaceholderText(/paste current task url/i), {
       target: {
-        value: 'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
+        value:
+          'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
       },
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));

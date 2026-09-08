@@ -168,9 +168,7 @@ export const IssueCreateModalDialog = ({
             multiple
             className="console-task-create-dialog-file-input"
             disabled={submitting}
-            onChange={(e) =>
-              setSelectedFiles(Array.from(e.target.files ?? []))
-            }
+            onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
           />
 
           {submitError !== null && (
