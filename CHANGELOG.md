@@ -1,3 +1,15 @@
+# [2.88.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.87.0...v2.88.0) (2026-09-08)
+
+
+### Bug Fixes
+
+* **console:** switch projects without page reload in timer mode ([#2233](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2233)) ([f6c9434](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f6c94345e659dcccb4301a67eb66383f2f038b5c)), closes [HiromiShikata/umino-corporait-operation#31533](https://github.com/HiromiShikata/umino-corporait-operation/issues/31533)
+
+
+### Features
+
+* **console:** move workflow-blocker tab to the right of todo-by-human ([#2232](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2232)) ([8bb3c25](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8bb3c2589c7bada8b66b71506635c9997fbf425c)), closes [HiromiShikata/umino-corporait-operation#31532](https://github.com/HiromiShikata/umino-corporait-operation/issues/31532)
+
 # [2.87.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.86.0...v2.87.0) (2026-09-08)
 
 
