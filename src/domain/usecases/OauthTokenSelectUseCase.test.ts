@@ -758,8 +758,14 @@ describe('selectFallback', () => {
   it('selects the candidate with the highest 5h free ratio when all fail CL script thresholds', () => {
     const result = useCase.selectFallback(
       [
-        candidate('low5h', snapshot({ fiveHourUtilization: 0.5, sevenDayUtilization: 0.5 })),
-        candidate('high5h', snapshot({ fiveHourUtilization: 0.2, sevenDayUtilization: 0.5 })),
+        candidate(
+          'low5h',
+          snapshot({ fiveHourUtilization: 0.5, sevenDayUtilization: 0.5 }),
+        ),
+        candidate(
+          'high5h',
+          snapshot({ fiveHourUtilization: 0.2, sevenDayUtilization: 0.5 }),
+        ),
       ],
       NOW,
     );
@@ -827,14 +833,22 @@ describe('selectFallback', () => {
   it('selects the candidate with the highest 5h free when one has >= 3% 7d and another has < 3% 7d', () => {
     const result = useCase.selectFallback(
       [
-        candidate('enoughSevenDay', snapshot({ fiveHourUtilization: 0.3, sevenDayUtilization: 0.95 })),
-        candidate('tooLittleSevenDay', snapshot({ fiveHourUtilization: 0.1, sevenDayUtilization: 0.98 })),
+        candidate(
+          'enoughSevenDay',
+          snapshot({ fiveHourUtilization: 0.3, sevenDayUtilization: 0.95 }),
+        ),
+        candidate(
+          'tooLittleSevenDay',
+          snapshot({ fiveHourUtilization: 0.1, sevenDayUtilization: 0.98 }),
+        ),
       ],
       NOW,
     );
 
     expect(result.selected?.name).toBe('enoughSevenDay');
-    const tooLittle = result.metrics.find((m) => m.name === 'tooLittleSevenDay');
+    const tooLittle = result.metrics.find(
+      (m) => m.name === 'tooLittleSevenDay',
+    );
     expect(tooLittle?.eligible).toBe(false);
     expect(tooLittle?.exclusionReason).toContain('fallback requires >= 3%');
   });
