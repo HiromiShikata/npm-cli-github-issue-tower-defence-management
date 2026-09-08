@@ -15,7 +15,10 @@ jest.mock('ky', () => ({
 }));
 
 import { mock } from 'jest-mock-extended';
-import { ProjectIssuesCacheRepository } from './ProjectIssuesCacheRepository';
+import {
+  ProjectIssuesCacheRepository,
+  deserializeStoryOptions,
+} from './ProjectIssuesCacheRepository';
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
@@ -107,6 +110,7 @@ const seedCache = async (
     project: cachedProject,
     issues: [],
     storyIssueUrlByOptionName: {},
+    storyOptions: [],
   });
 };
 
@@ -235,6 +239,7 @@ describe('ProjectIssuesCacheRepository storyIssueUrlByOptionName', () => {
       project: cachedProject,
       issues: [],
       storyIssueUrlByOptionName: map,
+      storyOptions: [],
     });
 
     const result = await repo.read(projectId);
@@ -264,5 +269,136 @@ describe('ProjectIssuesCacheRepository storyIssueUrlByOptionName', () => {
     const result = await repo.read(projectId);
 
     expect(result?.storyIssueUrlByOptionName).toEqual({});
+  });
+});
+
+describe('ProjectIssuesCacheRepository storyOptions', () => {
+  it('preserves storyOptions through a write-read round-trip', async () => {
+    const cache = buildSharedCache();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    const options = [
+      { name: 'First Story', description: 'The first story description' },
+      { name: 'regular / workflow improvement', description: 'Workflow tasks' },
+    ];
+
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [],
+      storyIssueUrlByOptionName: {},
+      storyOptions: options,
+    });
+
+    const result = await repo.read(projectId);
+
+    expect(result?.storyOptions).toEqual(options);
+  });
+
+  it('returns empty array when the stored cache has no storyOptions field', async () => {
+    const store = new Map<string, unknown>();
+    store.set(`allIssues-${projectId}`, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [],
+    });
+    const legacyCache: Pick<
+      LocalStorageCacheRepository,
+      'getSingle' | 'setSingle'
+    > = {
+      getSingle: async (key: string) => store.get(key) ?? null,
+      setSingle: async (key: string, value: unknown) => {
+        store.set(key, value);
+      },
+    };
+    const repo = new ProjectIssuesCacheRepository(legacyCache);
+
+    const result = await repo.read(projectId);
+
+    expect(result?.storyOptions).toEqual([]);
+  });
+
+  it('syncs storyOptions when updateFieldOptions is called for the story field', async () => {
+    const cache = buildSharedCache();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [{ name: 'First Story', description: '' }],
+    });
+    const updatedOptions: FieldOption[] = [
+      {
+        id: 'story1',
+        name: 'First Story',
+        color: 'BLUE',
+        description: 'Updated description',
+      },
+      {
+        id: 'story2',
+        name: 'New Story',
+        color: 'GREEN',
+        description: 'A new story',
+      },
+    ];
+
+    await repo.updateFieldOptions(projectId, storyFieldId, updatedOptions);
+
+    const result = await repo.read(projectId);
+    expect(result?.storyOptions).toEqual([
+      { name: 'First Story', description: 'Updated description' },
+      { name: 'New Story', description: 'A new story' },
+    ]);
+  });
+
+  it('leaves storyOptions unchanged when updateFieldOptions is called for a non-story field', async () => {
+    const cache = buildSharedCache();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    const originalStoryOptions = [
+      { name: 'First Story', description: 'original' },
+    ];
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [],
+      storyIssueUrlByOptionName: {},
+      storyOptions: originalStoryOptions,
+    });
+    const newStatusOptions: FieldOption[] = [
+      { id: 'st1', name: 'Todo', color: 'GRAY', description: '' },
+      { id: 'st2', name: 'In Progress', color: 'BLUE', description: '' },
+    ];
+
+    await repo.updateFieldOptions(projectId, statusFieldId, newStatusOptions);
+
+    const result = await repo.read(projectId);
+    expect(result?.storyOptions).toEqual(originalStoryOptions);
+  });
+
+  it('deserializeStoryOptions returns empty array for object without storyOptions field', () => {
+    expect(deserializeStoryOptions({})).toEqual([]);
+  });
+
+  it('deserializeStoryOptions returns empty array when storyOptions is not a valid array', () => {
+    expect(deserializeStoryOptions({ storyOptions: 'not-an-array' })).toEqual(
+      [],
+    );
+  });
+
+  it('deserializeStoryOptions returns the array when storyOptions entries have name and description', () => {
+    const raw = {
+      storyOptions: [
+        { name: 'story A', description: 'desc A' },
+        { name: 'story B', description: '' },
+      ],
+    };
+    expect(deserializeStoryOptions(raw)).toEqual([
+      { name: 'story A', description: 'desc A' },
+      { name: 'story B', description: '' },
+    ]);
   });
 });
