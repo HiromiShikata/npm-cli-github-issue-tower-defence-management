@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { navigatePush } from '../lib/navigation';
 import type { ConsoleTabName } from '../logic/types';
 import {
   parseItemKeyFromHash,
@@ -166,5 +167,21 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
       useConsoleNavigation('acme', counts({ 'todo-by-human': 6 })),
     );
     expect(result.current.activeTab).toBe('todo-by-human');
+  });
+});
+
+describe('useConsoleNavigation project switch', () => {
+  it('resets the active tab to default when navigatePush switches to a new project', () => {
+    window.history.replaceState({}, '', '/projects/acme/prs');
+    const { result } = renderHook(() =>
+      useConsoleNavigation('acme', counts({ 'failed-preparation': 6 })),
+    );
+    expect(result.current.activeTab).toBe('prs');
+
+    act(() => {
+      navigatePush('/projects/beta');
+    });
+
+    expect(result.current.activeTab).toBe('failed-preparation');
   });
 });

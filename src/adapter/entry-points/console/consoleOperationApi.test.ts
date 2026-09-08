@@ -2370,6 +2370,107 @@ describe('consoleOperationApi', () => {
         body: { error: 'story option "nonexistent" not found in project' },
       });
     });
+
+    it('creates issue with body containing referenceUrl when referenceUrl is provided', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      await handleCreateIssue(contextForProject(projectWithStory()), {
+        pjcode: 'acme',
+        title: 'New task title',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+        referenceUrl: 'https://github.com/owner/repo/issues/99',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        'Related: https://github.com/owner/repo/issues/99',
+        [],
+        [],
+      );
+    });
+
+    it('creates issue with empty body when referenceUrl is not provided', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      await handleCreateIssue(contextForProject(projectWithStory()), {
+        pjcode: 'acme',
+        title: 'New task title',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        '',
+        [],
+        [],
+      );
+    });
+
+    it('sets agent field when agentOptionId is provided and project has agent field', async () => {
+      const agentField = {
+        name: 'Agent',
+        fieldId: 'agentField',
+        options: [
+          {
+            id: 'agent_opt_developer',
+            name: 'developer',
+            color: 'BLUE' as const,
+            description: '',
+          },
+        ],
+      };
+      const projectWithStoryAndAgent = (): Project => ({
+        ...projectWithStory(),
+        agent: agentField,
+      });
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_new',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+      await handleCreateIssue(contextForProject(projectWithStoryAndAgent()), {
+        pjcode: 'acme',
+        title: 'Task with agent',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+        agentOptionId: 'agent_opt_developer',
+      });
+      expect(issueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'https://github.com/acme-labs/portal/issues/42',
+        expect.objectContaining({ agent: agentField }),
+        'agent_opt_developer',
+      );
+    });
+
+    it('skips setting agent when agentOptionId is not provided', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      await handleCreateIssue(contextForProject(projectWithStory()), {
+        pjcode: 'acme',
+        title: 'Task without agent',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+      });
+      expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+
+    it('skips setting agent when project has no agent field', async () => {
+      const projectWithStoryNoAgent = (): Project => ({
+        ...projectWithStory(),
+        agent: null,
+      });
+      issueRepository.get.mockResolvedValue(null);
+      await handleCreateIssue(contextForProject(projectWithStoryNoAgent()), {
+        pjcode: 'acme',
+        title: 'Task',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+        agentOptionId: 'agent_opt_developer',
+      });
+      expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleReorderStory', () => {

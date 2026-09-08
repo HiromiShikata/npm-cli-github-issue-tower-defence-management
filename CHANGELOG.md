@@ -1,3 +1,10 @@
+# [2.87.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.86.0...v2.87.0) (2026-09-08)
+
+
+### Features
+
+* **console:** replace inline task create form with large modal dialog ([#2231](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2231)) ([e7fc17e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e7fc17e206fa415daa9fa119d2ef519165579108)), closes [HiromiShikata/umino-corporait-operation#31535](https://github.com/HiromiShikata/umino-corporait-operation/issues/31535)
+
 # [2.86.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.85.0...v2.86.0) (2026-09-08)
 
 
