@@ -29,7 +29,10 @@ export const ConsoleTimerSettingsModalDialog = ({
   onClose,
 }: ConsoleTimerSettingsModalDialogProps) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const [dialogPos, setDialogPos] = useState<{ top: number; right: number } | null>(null);
+  const [dialogPos, setDialogPos] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen && buttonRef.current) {
