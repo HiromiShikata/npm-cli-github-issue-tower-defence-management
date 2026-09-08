@@ -1,3 +1,10 @@
+## [2.88.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.88.0...v2.88.1) (2026-09-08)
+
+
+### Bug Fixes
+
+* **console:** detect English-only '## Executive Summary' heading in console display ([#2235](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2235)) ([6f0cf3f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6f0cf3fb5266e6f540ba55bb7580b34dbf3d39bd)), closes [#2234](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2234)
+
 # [2.88.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.87.0...v2.88.0) (2026-09-08)
 
 
