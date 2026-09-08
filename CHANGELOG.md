@@ -1,3 +1,10 @@
+## [2.82.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.82.1...v2.82.2) (2026-09-08)
+
+
+### Bug Fixes
+
+* **LiveSessionOauthTokenSelectUseCase:** add fallback selection when no token meets live session thresholds ([#2224](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2224)) ([9a54142](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9a541428c285294a2041425c8649060b1e6c2bb4)), closes [HiromiShikata/secretary#5836](https://github.com/HiromiShikata/secretary/issues/5836)
+
 ## [2.82.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.82.0...v2.82.1) (2026-09-08)
 
 
