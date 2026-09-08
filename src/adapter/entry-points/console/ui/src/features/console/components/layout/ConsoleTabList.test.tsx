@@ -90,7 +90,7 @@ describe('ConsoleTabList', () => {
     expect(bottomRow?.querySelector('.console-tab-pjname')).toBeNull();
   });
 
-  it('renders the Workflow Blocker tab immediately left of Awaiting Owner', () => {
+  it('renders the Workflow Blocker tab immediately right of Todo by human', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
@@ -99,9 +99,9 @@ describe('ConsoleTabList', () => {
       tabBar?.querySelectorAll('.console-tab-label') ?? [],
     ).map((node) => node.textContent);
     const blockerIndex = labels.indexOf('Workflow Blocker');
-    const prsIndex = labels.indexOf('Awaiting Owner');
+    const todoByHumanIndex = labels.indexOf('Todo by human');
     expect(blockerIndex).toBeGreaterThanOrEqual(0);
-    expect(prsIndex).toBe(blockerIndex + 1);
+    expect(todoByHumanIndex).toBe(blockerIndex - 1);
   });
 
   it('renders the project code and snapshot time', () => {

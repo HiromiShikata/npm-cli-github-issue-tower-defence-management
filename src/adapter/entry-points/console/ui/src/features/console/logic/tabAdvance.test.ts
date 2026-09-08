@@ -33,7 +33,16 @@ describe('findNextNonEmptyTabToRight', () => {
     ).toBe('todo-by-human');
   });
 
-  it('advances from todo-by-human to todo-by-agent when it has items', () => {
+  it('advances from todo-by-human to workflow-blocker when it has items', () => {
+    expect(
+      findNextNonEmptyTabToRight(
+        'todo-by-human',
+        counts({ 'workflow-blocker': 5 }),
+      ),
+    ).toBe('workflow-blocker');
+  });
+
+  it('advances from todo-by-human to todo-by-agent when workflow-blocker is empty', () => {
     expect(
       findNextNonEmptyTabToRight(
         'todo-by-human',
@@ -72,7 +81,7 @@ describe('resolveDefaultActiveTab', () => {
           'todo-by-human': 4,
         }),
       ),
-    ).toBe('workflow-blocker');
+    ).toBe('prs');
   });
 
   it('skips empty left-most tabs and returns the first non-empty tab', () => {
@@ -84,6 +93,6 @@ describe('resolveDefaultActiveTab', () => {
   });
 
   it('falls back to the first tab when every tab is empty', () => {
-    expect(resolveDefaultActiveTab(counts({}))).toBe('workflow-blocker');
+    expect(resolveDefaultActiveTab(counts({}))).toBe('prs');
   });
 });

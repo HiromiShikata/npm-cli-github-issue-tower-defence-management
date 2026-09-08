@@ -103,16 +103,22 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
 });
 
-test('renders the Workflow Blocker tab leftmost and shows its detail operations', async ({
+test('renders the Workflow Blocker tab immediately right of Todo by human and shows its detail operations', async ({
   page,
 }) => {
   await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Workflow Blocker').click();
 
   await expect(activeTabLabel(page)).toHaveText('Workflow Blocker');
   await expect(tabBadge(page, 'Workflow Blocker')).toHaveText('1');
 
   const labels = page.locator('.console-tab .console-tab-label');
-  await expect(labels.nth(0)).toHaveText('Workflow Blocker');
+  const labelsText = await labels.allTextContents();
+  const blockerIdx = labelsText.indexOf('Workflow Blocker');
+  const todoByHumanIdx = labelsText.indexOf('Todo by human');
+  expect(blockerIdx).toBeGreaterThanOrEqual(0);
+  expect(todoByHumanIdx).toBe(blockerIdx - 1);
 
   await expect(page.locator('.console-tab-count-heading')).toHaveCount(0);
 
@@ -290,6 +296,7 @@ test('opens the comment input with the item detail, keeps it on screen while the
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -646,6 +653,7 @@ test('posts a comment and moves the item to Awaiting Workspace when the Comment 
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -680,6 +688,7 @@ test('posts an ok comment and moves the item to Awaiting Workspace when the ok &
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -736,6 +745,7 @@ test('deletes all comments when the dangerous actions panel is opened and the de
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -935,6 +945,7 @@ test('shows issue number after resolved title in reference links inside item bod
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -986,6 +997,7 @@ test('rare actions toggle is in the bottom row left pair alongside the dangerous
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -1291,6 +1303,7 @@ test('shows latest comment expanded and non-latest as preview in summary mode, e
   });
   try {
     await page.goto(multiCommentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
     await itemRowByText(
       page,
       'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -1392,6 +1405,7 @@ test.describe('expanded comment body renders github images through the image pro
     page,
   }) => {
     await page.goto(commentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
     await itemRowByText(
       page,
       'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -1413,6 +1427,7 @@ test.describe('expanded comment body renders github images through the image pro
     page,
   }) => {
     await page.goto(commentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
     await itemRowByText(
       page,
       'Resolve the shared GitHub token rate-limit exhaustion blocker',
