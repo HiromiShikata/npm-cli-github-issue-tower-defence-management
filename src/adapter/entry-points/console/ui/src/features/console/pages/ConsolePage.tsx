@@ -30,6 +30,7 @@ import { useConsoleProjectTimer } from '../hooks/useConsoleProjectTimer';
 import { useConsolePrsTabSummaries } from '../hooks/useConsolePrsTabSummaries';
 import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
+import { useConsoleTabSelectHandler } from '../hooks/useConsoleTabSelectHandler';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
   postConsoleAddStory,
@@ -145,8 +146,8 @@ export const ConsolePage = () => {
   }, [snapshots, overlayState.overlay]);
 
   const navigation = useConsoleNavigation(pjcode, counts);
-  const { activeTab, selectedItemKey, openItem, closeItem, selectTab } =
-    navigation;
+  const { activeTab, selectedItemKey, openItem, closeItem } = navigation;
+  const selectTab = useConsoleTabSelectHandler(navigation.selectTab);
 
   const commentDrafts = useRef(new Map<string, string>());
   const handleCommentDraftChange = useCallback(
@@ -786,7 +787,7 @@ export const ConsolePage = () => {
         generatedAt={generatedAt}
         fromCache={fromCache}
         tabHref={navigation.tabHref}
-        onSelectTab={navigation.selectTab}
+        onSelectTab={selectTab}
         onSelectProject={(code) => navigateAssign(`/projects/${code}`)}
         settingsButton={
           <>
