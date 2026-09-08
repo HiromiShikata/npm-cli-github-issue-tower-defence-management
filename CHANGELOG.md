@@ -1,3 +1,10 @@
+# [2.84.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.83.0...v2.84.0) (2026-09-08)
+
+
+### Features
+
+* remove story progress comment creation feature ([#2227](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2227)) ([8acc5d6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8acc5d60d11f780fc5636588f51ba93a05bc7bdd))
+
 # [2.83.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.82.3...v2.83.0) (2026-09-08)
 
 
