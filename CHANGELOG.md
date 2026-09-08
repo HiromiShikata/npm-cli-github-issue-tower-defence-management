@@ -1,3 +1,10 @@
+## [2.82.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.82.2...v2.82.3) (2026-09-08)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparation:** skip Icebox status instead of throwing ([3067f69](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3067f69a217f097ce1bac76206c26947a527ce44)), closes [HiromiShikata/secretary#5835](https://github.com/HiromiShikata/secretary/issues/5835)
+
 ## [2.82.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.82.1...v2.82.2) (2026-09-08)
 
 
