@@ -441,6 +441,21 @@ body {
   gap: 6px;
 }
 
+.console-settings-modal-project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.console-settings-modal-project-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .console-settings-modal-label {
   color: #e6edf3;
   font-size: 0.875rem;
