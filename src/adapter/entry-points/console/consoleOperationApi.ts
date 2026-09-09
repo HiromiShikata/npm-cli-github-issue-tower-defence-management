@@ -620,8 +620,8 @@ export const handleTriage = async (
       const freshOptionId =
         staleName === undefined
           ? storyOptionId
-          : (freshProject.story.stories.find((s) => s.name === staleName)
-              ?.id ?? storyOptionId);
+          : (freshProject.story.stories.find((s) => s.name === staleName)?.id ??
+            storyOptionId);
       await issueRepo.updateStory(
         { ...freshProject, story: freshProject.story },
         projectItemReference(issueUrl, projectItemId),

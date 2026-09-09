@@ -1354,7 +1354,12 @@ describe('consoleOperationApi', () => {
           fieldId: 'fresh_field_id',
           databaseId: 1,
           stories: [
-            { id: 'fresh_opt', name: 'My story', color: 'BLUE', description: '' },
+            {
+              id: 'fresh_opt',
+              name: 'My story',
+              color: 'BLUE',
+              description: '',
+            },
           ],
           workflowManagementStory: { id: 'wms', name: 'workflow' },
         },
@@ -1395,7 +1400,10 @@ describe('consoleOperationApi', () => {
       expect(retryItemArg.itemId).toBe('PVTI_h');
       expect(retryOptionId).toBe('fresh_opt');
       expect(invalidateProject).toHaveBeenCalledWith('acme');
-      expect(updateProjectCacheEntry).toHaveBeenCalledWith('acme', freshProject);
+      expect(updateProjectCacheEntry).toHaveBeenCalledWith(
+        'acme',
+        freshProject,
+      );
     });
 
     it('re-throws from set_story when error is not a stale node id error', async () => {
@@ -1454,7 +1462,9 @@ describe('consoleOperationApi', () => {
           projectItemId: 'PVTI_h',
           storyOptionId: 'story_opt_1',
         }),
-      ).rejects.toThrow("Could not resolve to a node with the global id of 'storyField'.");
+      ).rejects.toThrow(
+        "Could not resolve to a node with the global id of 'storyField'.",
+      );
     });
 
     it('rejects set_agent without an agentOptionId', async () => {
