@@ -366,6 +366,43 @@ body {
   background: #2ea043;
 }
 
+.console-toggle-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 44px;
+  height: 24px;
+  border: none;
+  border-radius: 12px;
+  background: #30363d;
+  cursor: pointer;
+  padding: 2px;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.console-toggle-switch--on {
+  background: #238636;
+}
+
+.console-toggle-switch-thumb {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e6edf3;
+  transition: transform 0.2s ease;
+}
+
+.console-toggle-switch--on .console-toggle-switch-thumb {
+  transform: translateX(20px);
+}
+
+.console-toggle-switch:focus-visible {
+  outline: 2px solid #58a6ff;
+  outline-offset: 2px;
+}
+
 .console-tab-settings-button {
   align-self: center;
   margin-left: 4px;

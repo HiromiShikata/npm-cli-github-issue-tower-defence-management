@@ -151,9 +151,9 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     expect(onSave).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onToggleTimerMode when the timer mode checkbox is changed', () => {
+  it('calls onToggleTimerMode when the timer mode switch is clicked', () => {
     const onToggleTimerMode = jest.fn();
-    const { getByLabelText } = render(
+    const { getByRole } = render(
       <ConsoleTimerSettingsModalDialog
         {...baseProps}
         isOpen={true}
@@ -161,7 +161,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
         onToggleTimerMode={onToggleTimerMode}
       />,
     );
-    fireEvent.click(getByLabelText('Timer Mode'));
+    fireEvent.click(getByRole('switch', { name: 'Timer Mode' }));
     expect(onToggleTimerMode).toHaveBeenCalledWith(true);
   });
 

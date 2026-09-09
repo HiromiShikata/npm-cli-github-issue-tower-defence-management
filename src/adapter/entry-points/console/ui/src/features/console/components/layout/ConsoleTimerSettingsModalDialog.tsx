@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ConsoleToggleSwitch } from '../shared/ConsoleToggleSwitch';
 
 export type ConsoleTimerSettingsModalDialogProps = {
   isOpen: boolean;
@@ -90,17 +91,11 @@ export const ConsoleTimerSettingsModalDialog = ({
             >
               <h2 className="console-timer-settings-title">Console Settings</h2>
               <div className="console-timer-settings-row">
-                <label
-                  className="console-timer-settings-label"
-                  htmlFor="timer-mode-toggle"
-                >
-                  Timer Mode
-                </label>
-                <input
-                  id="timer-mode-toggle"
-                  type="checkbox"
+                <span className="console-timer-settings-label">Timer Mode</span>
+                <ConsoleToggleSwitch
                   checked={timerMode}
-                  onChange={(e) => onToggleTimerMode(e.target.checked)}
+                  ariaLabel="Timer Mode"
+                  onChange={onToggleTimerMode}
                 />
               </div>
               {isLoadingPjcodes ? (
