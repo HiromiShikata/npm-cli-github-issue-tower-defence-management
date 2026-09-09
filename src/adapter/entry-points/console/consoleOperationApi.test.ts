@@ -2161,7 +2161,6 @@ describe('consoleOperationApi', () => {
         'https://github.com/o/r/issues/9999',
       );
     });
-
   });
 
   describe('handleCreateIssue', () => {
