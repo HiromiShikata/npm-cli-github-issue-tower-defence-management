@@ -1,3 +1,10 @@
+# [2.95.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.94.1...v2.95.0) (2026-09-09)
+
+
+### Features
+
+* **cli:** remove doraMetrics command and report task generation ([#2258](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2258)) ([a3103e0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a3103e0ecd5982d0102e4b7cc9fe41738a16348e)), closes [HiromiShikata/umino-corporait-operation#31570](https://github.com/HiromiShikata/umino-corporait-operation/issues/31570)
+
 ## [2.94.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.94.0...v2.94.1) (2026-09-09)
 
 
