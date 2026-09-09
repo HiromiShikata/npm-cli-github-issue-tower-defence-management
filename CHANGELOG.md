@@ -1,3 +1,10 @@
+# [2.92.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.4...v2.92.0) (2026-09-09)
+
+
+### Features
+
+* add GitHub project URL links to TDPM console project switcher ([#2254](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2254)) ([269428b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/269428b93974b8f1383ac320b80952116382b302)), closes [HiromiShikata/umino-corporait-operation#31562](https://github.com/HiromiShikata/umino-corporait-operation/issues/31562)
+
 ## [2.91.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.3...v2.91.4) (2026-09-09)
 
 
