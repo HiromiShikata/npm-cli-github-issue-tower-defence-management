@@ -1,3 +1,10 @@
+## [2.94.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.94.0...v2.94.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **console:** clear stale snapshots immediately when pjcode changes ([#2257](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2257)) ([874a88d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/874a88d3ae811dbdac4c97846ff19b84ca685b5d)), closes [#2233](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2233) [HiromiShikata/umino-corporait-operation#31565](https://github.com/HiromiShikata/umino-corporait-operation/issues/31565)
+
 # [2.94.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.93.0...v2.94.0) (2026-09-09)
 
 
