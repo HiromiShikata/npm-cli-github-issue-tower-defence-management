@@ -7044,13 +7044,14 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false rather than throw when GitHub responds with 500', async () => {
+    it('should return false and emit a console.warn rather than throw when GitHub responds with 500', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
         new Response('Internal Server Error', {
           status: 500,
           statusText: 'Internal Server Error',
         }),
       );
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
       const { repository } = createApiV3CheerioRestIssueRepository();
       const result = await repository.updateBranch(
@@ -7058,6 +7059,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       );
 
       expect(result).toBe(false);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'transient error updating branch for PR https://github.com/utage3/fc-happy/pull/1909',
+        ),
+      );
     });
   });
 

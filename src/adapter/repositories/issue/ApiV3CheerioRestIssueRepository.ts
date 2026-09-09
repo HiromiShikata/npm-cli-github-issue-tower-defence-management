@@ -3568,10 +3568,16 @@ export class ApiV3CheerioRestIssueRepository
     if (response.ok) {
       return true;
     }
-    if (response.status === 422 || response.status >= 500) {
+    if (response.status === 422) {
       return false;
     }
     const reason = await this.formatGitHubErrorWithStatus(response);
+    if (response.status >= 500) {
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: transient error updating branch for PR ${prUrl}, treating as not updated. reason: ${reason}`,
+      );
+      return false;
+    }
     throw new Error(`Failed to update branch for PR ${prUrl}: ${reason}`);
   };
 
