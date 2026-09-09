@@ -1596,6 +1596,23 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       variables: addQuery.variables,
     });
     if (addRes.errors) {
+      const isDuplicate = addRes.errors.some((e) =>
+        e.message.includes('Content already exists in this project'),
+      );
+      if (isDuplicate) {
+        const existingItemId = await this.fetchItemId(
+          projectId,
+          owner,
+          repo,
+          issueNumber,
+        );
+        if (!existingItemId) {
+          throw new Error(
+            `Content already exists in project ${projectId} but could not retrieve existing item id for ${issueUrl}`,
+          );
+        }
+        return existingItemId;
+      }
       throw new Error(addRes.errors.map((e) => e.message).join('\n'));
     }
     return addRes.data.addProjectV2ItemById.item.id;

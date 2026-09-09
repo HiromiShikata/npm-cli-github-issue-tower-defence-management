@@ -2630,4 +2630,124 @@ describe('GraphqlProjectItemRepository', () => {
       expect(mockPost).toHaveBeenCalledTimes(GRAPHQL_RETRY_LIMIT + 1);
     });
   });
+
+  describe('addIssueToProject', () => {
+    afterEach(() => {
+      mockPost.mockReset();
+    });
+
+    it('returns the new item id when the mutation succeeds', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              repository: {
+                issueOrPullRequest: { id: 'content-node-id' },
+              },
+            },
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              addProjectV2ItemById: { item: { id: 'new-item-id' } },
+            },
+          }),
+        );
+
+      const result = await repository.addIssueToProject(
+        'proj-id',
+        'https://github.com/owner/repo/issues/1',
+      );
+
+      expect(result).toBe('new-item-id');
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns the existing item id when the issue is already in the project', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              repository: {
+                issueOrPullRequest: { id: 'content-node-id' },
+              },
+            },
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            errors: [{ message: 'Content already exists in this project' }],
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              repository: {
+                issue: {
+                  projectItems: {
+                    nodes: [
+                      { id: 'existing-item-id', project: { id: 'proj-id' } },
+                    ],
+                  },
+                },
+              },
+            },
+          }),
+        );
+
+      const result = await repository.addIssueToProject(
+        'proj-id',
+        'https://github.com/owner/repo/issues/1',
+      );
+
+      expect(result).toBe('existing-item-id');
+      expect(mockPost).toHaveBeenCalledTimes(3);
+    });
+
+    it('throws when a non-duplicate error is returned from the mutation', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              repository: {
+                issueOrPullRequest: { id: 'content-node-id' },
+              },
+            },
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            errors: [{ message: 'UNAUTHORIZED' }],
+          }),
+        );
+
+      await expect(
+        repository.addIssueToProject(
+          'proj-id',
+          'https://github.com/owner/repo/issues/1',
+        ),
+      ).rejects.toThrow('UNAUTHORIZED');
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+  });
 });
