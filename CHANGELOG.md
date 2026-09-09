@@ -1,3 +1,10 @@
+## [2.97.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.97.0...v2.97.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **handleTriage:** retry set_story with fresh project data on stale field id ([#2263](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2263)) ([9d076dc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9d076dc8f9d3ca623f37747e967964466d83d8ae)), closes [HiromiShikata/umino-corporait-operation#31580](https://github.com/HiromiShikata/umino-corporait-operation/issues/31580)
+
 # [2.97.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.96.1...v2.97.0) (2026-09-09)
 
 
