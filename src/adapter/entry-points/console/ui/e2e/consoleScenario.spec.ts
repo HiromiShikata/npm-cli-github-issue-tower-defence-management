@@ -506,7 +506,9 @@ test('opens a fullscreen-overlay modal when the console header new-task button i
   });
   expect(overlayPosition).toBe('fixed');
 
-  await page.getByRole('textbox', { name: /title/i }).fill('My console header task');
+  await page
+    .getByRole('textbox', { name: /title/i })
+    .fill('My console header task');
   await page.getByRole('button', { name: /^create$/i }).click();
 
   await expect
