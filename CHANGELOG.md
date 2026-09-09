@@ -1,3 +1,10 @@
+# [2.93.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.92.0...v2.93.0) (2026-09-09)
+
+
+### Features
+
+* **console:** add body textarea to task creation dialog and fix story option overflow ([#2253](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2253)) ([4ac30a2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4ac30a2fd8daebc4cd51f78102c56551263c2ba6)), closes [HiromiShikata/umino-corporait-operation#31559](https://github.com/HiromiShikata/umino-corporait-operation/issues/31559) [#31559](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31559)
+
 # [2.92.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.4...v2.92.0) (2026-09-09)
 
 
