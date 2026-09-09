@@ -133,6 +133,25 @@ describe('IssueCreateModalDialog', () => {
     );
   });
 
+  it('calls onSubmit with body: null when body textarea contains only whitespace', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'My new task' },
+    });
+    fireEvent.change(getByRole('textbox', { name: /body/i }), {
+      target: { value: '   ' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({ body: null }),
+      ),
+    );
+  });
+
   it('calls onSubmit with body text when body textarea is filled', async () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
