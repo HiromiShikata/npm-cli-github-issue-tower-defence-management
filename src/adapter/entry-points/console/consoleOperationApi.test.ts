@@ -2411,6 +2411,25 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('treats whitespace-only body as absent and uses empty body', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      await handleCreateIssue(contextForProject(projectWithStory()), {
+        pjcode: 'acme',
+        title: 'New task title',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+        body: '   ',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        '',
+        [],
+        [],
+      );
+    });
+
     it('creates issue with body containing referenceUrl when referenceUrl is provided', async () => {
       issueRepository.get.mockResolvedValue(null);
       await handleCreateIssue(contextForProject(projectWithStory()), {
