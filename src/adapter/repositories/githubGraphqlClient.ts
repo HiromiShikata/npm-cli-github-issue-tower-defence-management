@@ -107,37 +107,80 @@ export const logGithubGraphqlCost = (params: {
 export const GRAPHQL_RETRY_LIMIT = 2;
 export const GRAPHQL_RETRY_STATUS_CODES: number[] = [500, 502, 503, 504];
 
-export const postGithubGraphqlJson = async <T>(params: {
-  ghToken: string;
-  query: string;
-  variables?: Record<string, unknown>;
-}): Promise<T> => {
-  const callSite = captureGraphqlCallSite();
-  const response = await ky
-    .post(GITHUB_GRAPHQL_ENDPOINT, {
-      json: {
-        query: injectRateLimitSelection(params.query),
-        ...(params.variables !== undefined
-          ? { variables: params.variables }
-          : {}),
-      },
-      headers: {
-        Authorization: `Bearer ${params.ghToken}`,
-      },
-      timeout: GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
-      retry: {
-        limit: GRAPHQL_RETRY_LIMIT,
-        methods: ['post'],
-        statusCodes: GRAPHQL_RETRY_STATUS_CODES,
-      },
-    })
-    .json<T>();
-  logGithubGraphqlCost({
-    query: params.query,
-    responseBody: response,
-    callSite,
+export const GRAPHQL_TRANSIENT_ERROR_PATTERN = /something went wrong/i;
+export const GRAPHQL_TRANSIENT_ERROR_BACKOFF_MS = 5_000;
+
+export const isTransientGraphqlResponse = (response: unknown): boolean => {
+  if (typeof response !== 'object' || response === null) {
+    return false;
+  }
+  if (!('errors' in response)) {
+    return false;
+  }
+  const errors: unknown = response.errors;
+  if (!Array.isArray(errors)) {
+    return false;
+  }
+  return errors.some((e: unknown) => {
+    if (typeof e !== 'object' || e === null || !('message' in e)) {
+      return false;
+    }
+    const message: unknown = e.message;
+    return (
+      typeof message === 'string' &&
+      GRAPHQL_TRANSIENT_ERROR_PATTERN.test(message)
+    );
   });
-  return response;
+};
+
+const realSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+export const postGithubGraphqlJson = async <T>(
+  params: {
+    ghToken: string;
+    query: string;
+    variables?: Record<string, unknown>;
+  },
+  sleep: (ms: number) => Promise<void> = realSleep,
+): Promise<T> => {
+  const callSite = captureGraphqlCallSite();
+  let attempt = 0;
+  for (;;) {
+    const response = await ky
+      .post(GITHUB_GRAPHQL_ENDPOINT, {
+        json: {
+          query: injectRateLimitSelection(params.query),
+          ...(params.variables !== undefined
+            ? { variables: params.variables }
+            : {}),
+        },
+        headers: {
+          Authorization: `Bearer ${params.ghToken}`,
+        },
+        timeout: GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
+        retry: {
+          limit: GRAPHQL_RETRY_LIMIT,
+          methods: ['post'],
+          statusCodes: GRAPHQL_RETRY_STATUS_CODES,
+        },
+      })
+      .json<T>();
+    logGithubGraphqlCost({
+      query: params.query,
+      responseBody: response,
+      callSite,
+    });
+    if (attempt < GRAPHQL_RETRY_LIMIT && isTransientGraphqlResponse(response)) {
+      console.log(
+        `postGithubGraphqlJson: GitHub returned a transient error. Backing off ${GRAPHQL_TRANSIENT_ERROR_BACKOFF_MS}ms before retry ${attempt + 1}/${GRAPHQL_RETRY_LIMIT}.`,
+      );
+      await sleep(GRAPHQL_TRANSIENT_ERROR_BACKOFF_MS);
+      attempt++;
+      continue;
+    }
+    return response;
+  }
 };
 
 export const fetchGithubGraphql = async (params: {
