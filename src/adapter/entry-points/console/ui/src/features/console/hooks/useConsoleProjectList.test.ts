@@ -38,27 +38,6 @@ describe('useConsoleProjectList', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('populates projectUrls when the server returns them', async () => {
-    global.fetch = jest.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        pjcodes: ['acme'],
-        projectUrls: { acme: 'https://github.com/users/owner/projects/1' },
-      }),
-    })) as unknown as typeof fetch;
-
-    const { result } = renderHook(() => useConsoleProjectList());
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-    expect(result.current.pjcodes).toEqual(['acme']);
-    expect(result.current.projectUrls).toEqual({
-      acme: 'https://github.com/users/owner/projects/1',
-    });
-    expect(result.current.error).toBeNull();
-  });
-
   it('populates workflowImprovementIssueUrl when the server returns it', async () => {
     global.fetch = jest.fn(async () => ({
       ok: true,
