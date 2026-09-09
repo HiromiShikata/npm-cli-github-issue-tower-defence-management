@@ -247,6 +247,15 @@ export class HandleScheduledEventUseCase {
       ) {
         continue;
       }
+      const hasClosedStoryIssue = issues.some(
+        (issue) =>
+          storyObject.story.name.startsWith(issue.title) &&
+          issue.isClosed &&
+          issue.labels.includes('story'),
+      );
+      if (hasClosedStoryIssue) {
+        continue;
+      }
       const storyStartTime = Date.now();
       console.log(
         `[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}"`,
