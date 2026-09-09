@@ -130,7 +130,7 @@ describe('formatMachineStatusLines', () => {
     ).toEqual(['M55% C62% D?% cy13 🔴LA 16 23 40']);
   });
 
-  it('renders configured partitions inline with memory and cpu on a single line', () => {
+  it('renders configured partitions on a second line with load average on the stats line', () => {
     expect(
       formatMachineStatusLines({
         memPct: 55,
@@ -143,10 +143,10 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% 🟡D89% S41% cy13 🔴LA 16 23 40']);
+    ).toEqual(['M55% C62% cy13 🔴LA 16 23 40', '🟡D89% S41%']);
   });
 
-  it('wraps partitions onto a second disk line when they exceed the width budget', () => {
+  it('wraps partitions onto subsequent lines when they exceed the width budget', () => {
     const lines = formatMachineStatusLines({
       memPct: 55,
       cpuPct: 62,
@@ -163,10 +163,9 @@ describe('formatMachineStatusLines', () => {
       load: [16, 23, 40],
       cycleMinutes: 13,
     });
-    expect(lines[0]).toBe('M55% C62% cy13');
-    expect(lines[lines.length - 1]).toBe('🔴LA 16 23 40');
-    expect(lines.length).toBeGreaterThan(3);
-    for (const line of lines) {
+    expect(lines[0]).toBe('M55% C62% cy13 🔴LA 16 23 40');
+    expect(lines.length).toBeGreaterThan(2);
+    for (const line of lines.slice(1)) {
       expect(codePointLength(line)).toBeLessThanOrEqual(
         PROJECT_ROW_WIDTH_BUDGET,
       );
