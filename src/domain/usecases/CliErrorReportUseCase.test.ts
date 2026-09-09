@@ -262,5 +262,32 @@ describe('CliErrorReportUseCase', () => {
       expect(mockIssueRepository.searchIssue).toHaveBeenCalled();
       expect(mockIssueRepository.createNewIssue).toHaveBeenCalled();
     });
+
+    it('should make no repository calls when the error matches GitHub GraphQL transient "Something went wrong while executing your query"', async () => {
+      const error = new Error(
+        'Something went wrong while executing your query on 2026-09-09T23:34:05Z. Please include `BE9A:BD63D:2E4757E:95BB975:6AA1ECEC` when reporting this issue.',
+      );
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.searchIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalled();
+      expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should report errors where "Something went wrong" appears in a non-GitHub-transient context', async () => {
+      const error = new Error('Something went wrong in the database layer');
+      mockIssueRepository.searchIssue.mockResolvedValue([]);
+      mockIssueRepository.createNewIssue.mockResolvedValue(8);
+
+      await useCase.run({ error, owner, repo, commandLine });
+
+      expect(mockIssueRepository.searchIssue).toHaveBeenCalled();
+      expect(mockIssueRepository.createNewIssue).toHaveBeenCalled();
+    });
   });
 });
