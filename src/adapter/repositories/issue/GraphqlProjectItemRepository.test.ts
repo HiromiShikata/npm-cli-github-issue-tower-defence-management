@@ -21,6 +21,7 @@ jest.mock('ky', () => {
 import { HTTPError } from 'ky';
 import {
   GraphqlProjectItemRepository,
+  GRAPHQL_INTERNAL_ERROR_MAX_RETRIES,
   PAGINATION_DELAY_MS,
   PROJECT_ITEM_ASSIGNEES_FIRST,
   PROJECT_ITEM_LABELS_FIRST,
@@ -2490,6 +2491,134 @@ describe('GraphqlProjectItemRepository', () => {
       } finally {
         consoleSpy.mockRestore();
       }
+    });
+  });
+
+  describe('updateProjectField', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      mockPost.mockClear();
+      jest.useRealTimers();
+    });
+
+    it('resolves without retrying when the mutation succeeds on the first attempt', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          data: {
+            updateProjectV2ItemFieldValue: { clientMutationId: null },
+          },
+        }),
+      );
+
+      await expect(
+        repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+          singleSelectOptionId: 'opt-id',
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws immediately without retrying for non-transient GraphQL errors', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [{ message: 'UNAUTHORIZED' }],
+        }),
+      );
+
+      await expect(
+        repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+          text: 'value',
+        }),
+      ).rejects.toThrow('UNAUTHORIZED');
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries and succeeds when GitHub returns a transient internal error on the first attempt', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            errors: [
+              {
+                message:
+                  'Something went wrong while executing your query on 2026-09-08T23:00:00Z.',
+              },
+            ],
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              updateProjectV2ItemFieldValue: { clientMutationId: null },
+            },
+          }),
+        );
+
+      const resultPromise = repository.updateProjectField(
+        'proj-id',
+        'field-id',
+        'item-id',
+        { text: 'value' },
+      );
+      await jest.runAllTimersAsync();
+
+      await expect(resultPromise).resolves.toBeUndefined();
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws after exhausting the maximum number of transient retries', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              message:
+                'Something went wrong while executing your query on 2026-09-08T23:00:00Z.',
+            },
+          ],
+        }),
+      );
+
+      const resultPromise = repository
+        .updateProjectField('proj-id', 'field-id', 'item-id', { text: 'v' })
+        .catch((e: unknown) => e);
+      await jest.runAllTimersAsync();
+
+      const caught = await resultPromise;
+      expect(caught).toBeInstanceOf(Error);
+      expect(extractErrorMessage(caught)).toContain(
+        'Something went wrong while executing your query',
+      );
+      expect(mockPost).toHaveBeenCalledTimes(
+        GRAPHQL_INTERNAL_ERROR_MAX_RETRIES + 1,
+      );
     });
   });
 });
