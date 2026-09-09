@@ -206,6 +206,10 @@ export const formatMachineStatusLines = (
     const diskTokens = disks.map(
       (disk) => `${metricDot(disk.pct)}${disk.title}${disk.pct}%`,
     );
+    const singleLine = `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskTokens.join(' ')} ${cycle} ${loadSegment}`;
+    if ([...singleLine].length <= PROJECT_ROW_WIDTH_BUDGET) {
+      return [singleLine];
+    }
     const diskLines = packTokensWithinBudget(diskTokens);
     return [
       `${memDot}M${memText} ${cpuDot}C${cpuText} ${cycle} ${loadSegment}`,

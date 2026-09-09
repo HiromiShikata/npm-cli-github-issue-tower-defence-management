@@ -130,7 +130,7 @@ describe('formatMachineStatusLines', () => {
     ).toEqual(['M55% C62% D?% cy13 🔴LA 16 23 40']);
   });
 
-  it('renders configured partitions on a second line with load average on the stats line', () => {
+  it('renders configured partitions inline with metrics when they fit on one line', () => {
     expect(
       formatMachineStatusLines({
         memPct: 55,
@@ -143,7 +143,7 @@ describe('formatMachineStatusLines', () => {
         load: [16, 23, 40],
         cycleMinutes: 13,
       }),
-    ).toEqual(['M55% C62% cy13 🔴LA 16 23 40', '🟡D89% S41%']);
+    ).toEqual(['M55% C62% 🟡D89% S41% cy13 🔴LA 16 23 40']);
   });
 
   it('wraps partitions onto subsequent lines when they exceed the width budget', () => {
