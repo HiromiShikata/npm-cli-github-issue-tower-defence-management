@@ -1,3 +1,19 @@
+# [2.90.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.89.1...v2.90.0) (2026-09-09)
+
+
+### Bug Fixes
+
+* **console:** clamp timer settings dialog position to stay within viewport ([#2240](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2240)) ([7c4cd1e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7c4cd1e60d84d2d5bb3d646c98f50560d2ee6f76)), closes [HiromiShikata/umino-corporait-operation#31545](https://github.com/HiromiShikata/umino-corporait-operation/issues/31545)
+* **graphql-client:** retry on transient GitHub GraphQL errors ([#2245](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2245)) ([c5f1f65](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c5f1f65f0bf9e3d67f7e7e0a265e7b2e39aa237f)), closes [HiromiShikata/secretary#5901](https://github.com/HiromiShikata/secretary/issues/5901)
+* retry transient GitHub GraphQL internal errors in updateProjectField ([#2243](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2243)) ([7431b1a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7431b1a312833fa0afd3aa9f8c02fc3eb0d88c9b)), closes [HiromiShikata/umino-corporait-operation#31549](https://github.com/HiromiShikata/umino-corporait-operation/issues/31549)
+* **updateBranch:** return false on HTTP 5xx instead of throwing ([#2244](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2244)) ([3cd14d0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3cd14d063b1762e90e569700ee5809ea19298f3c)), closes [HiromiShikata/secretary#5903](https://github.com/HiromiShikata/secretary/issues/5903) [HiromiShikata/secretary#5903](https://github.com/HiromiShikata/secretary/issues/5903)
+* **updateProjectField:** remove redundant transient retry duplicated by postGithubGraphqlJson ([#2246](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2246)) ([2c2abbb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2c2abbb74934b767c41db0a8f579092b1dc0ff12)), closes [#2243](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2243) [#2245](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2245) [HiromiShikata/secretary#5904](https://github.com/HiromiShikata/secretary/issues/5904)
+
+
+### Features
+
+* **console:** rebuild Story tab with description field and status column ([#2242](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2242)) ([9a7067b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9a7067b25148000e43d0187e27bc77a207ceb7ac)), closes [HiromiShikata/umino-corporait-operation#31548](https://github.com/HiromiShikata/umino-corporait-operation/issues/31548)
+
 ## [2.89.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.89.0...v2.89.1) (2026-09-09)
 
 
