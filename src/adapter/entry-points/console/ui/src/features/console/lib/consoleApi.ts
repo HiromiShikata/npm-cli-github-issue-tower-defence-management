@@ -648,7 +648,12 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
     typeof record.fleetTaskCreateUrl === 'string'
       ? record.fleetTaskCreateUrl
       : null;
-  return { pjcodes, projectUrls, workflowImprovementIssueUrl, fleetTaskCreateUrl };
+  return {
+    pjcodes,
+    projectUrls,
+    workflowImprovementIssueUrl,
+    fleetTaskCreateUrl,
+  };
 };
 
 export const PROJECT_README_CONFIG_PATH = '/api/projectreadmeconfig';
