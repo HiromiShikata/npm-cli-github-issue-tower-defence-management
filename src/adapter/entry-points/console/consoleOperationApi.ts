@@ -843,13 +843,23 @@ export const handleCreateIssue = async (
     body.agentOptionId.trim().length > 0
       ? body.agentOptionId.trim()
       : null;
+  const rawBodyText = typeof body.body === 'string' ? body.body.trim() : null;
+  const bodyText =
+    rawBodyText !== null && rawBodyText.length > 0 ? rawBodyText : null;
   const rawReferenceUrl =
     typeof body.referenceUrl === 'string' ? body.referenceUrl.trim() : null;
   const referenceUrl =
     rawReferenceUrl !== null && rawReferenceUrl.length > 0
       ? rawReferenceUrl
       : null;
-  const issueBody = referenceUrl !== null ? `Related: ${referenceUrl}` : '';
+  let issueBody = '';
+  if (bodyText !== null && referenceUrl !== null) {
+    issueBody = `${bodyText}\n\nRelated: ${referenceUrl}`;
+  } else if (bodyText !== null) {
+    issueBody = bodyText;
+  } else if (referenceUrl !== null) {
+    issueBody = `Related: ${referenceUrl}`;
+  }
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);

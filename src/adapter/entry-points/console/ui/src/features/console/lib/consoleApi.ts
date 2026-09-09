@@ -452,6 +452,7 @@ export type ConsoleCreateIssueRequest = {
   storyOptionId: string;
   nameWithOwner: string;
   agentOptionId?: string | null;
+  body?: string | null;
   referenceUrl?: string | null;
 };
 

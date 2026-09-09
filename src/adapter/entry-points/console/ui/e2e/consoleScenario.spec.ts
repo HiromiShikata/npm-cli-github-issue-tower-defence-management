@@ -509,12 +509,18 @@ test('opens a fullscreen-overlay modal when the console header new-task button i
   await page
     .getByRole('textbox', { name: /title/i })
     .fill('My console header task');
+
+  const bodyTextarea = page.getByRole('textbox', { name: /body/i });
+  await expect(bodyTextarea).toBeVisible();
+  await bodyTextarea.fill('E2E body description');
+
   await page.getByRole('button', { name: /^create$/i }).click();
 
   await expect
     .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
     .toBe(initialCreateCount + 1);
   expect(harness.createIssueCalls.at(-1)?.title).toBe('My console header task');
+  expect(harness.createIssueCalls.at(-1)?.body).toBe('E2E body description');
 });
 
 test('creates a new story when the add-story button and form are used', async ({

@@ -6,6 +6,7 @@ export type IssueCreateParams = {
   storyOptionId: string;
   agentOptionId: string | null;
   title: string;
+  body: string | null;
   referenceUrl: string | null;
   files: File[];
 };
@@ -30,6 +31,7 @@ export const IssueCreateModalDialog = ({
     string | null
   >(null);
   const [titleValue, setTitleValue] = useState('');
+  const [bodyValue, setBodyValue] = useState('');
   const [referenceUrlValue, setReferenceUrlValue] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -54,10 +56,12 @@ export const IssueCreateModalDialog = ({
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const trimmedBody = bodyValue.trim();
       await onSubmit({
         storyOptionId: selectedStoryOptionId,
         agentOptionId: selectedAgentOptionId,
         title: trimmedTitle,
+        body: trimmedBody.length > 0 ? trimmedBody : null,
         referenceUrl: trimmedUrl.length > 0 ? trimmedUrl : null,
         files: selectedFiles,
       });
@@ -102,6 +106,16 @@ export const IssueCreateModalDialog = ({
             onChange={(e) => setTitleValue(e.target.value)}
             disabled={submitting}
             rows={3}
+          />
+
+          <span className="console-task-create-dialog-section-label">Body</span>
+          <textarea
+            className="console-task-create-dialog-textarea"
+            aria-label="Body"
+            value={bodyValue}
+            onChange={(e) => setBodyValue(e.target.value)}
+            disabled={submitting}
+            rows={4}
           />
 
           <span className="console-task-create-dialog-section-label">

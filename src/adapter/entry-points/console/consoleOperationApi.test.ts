@@ -2372,6 +2372,64 @@ describe('consoleOperationApi', () => {
       });
     });
 
+    it('creates issue with provided body text when body is given', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      await handleCreateIssue(contextForProject(projectWithStory()), {
+        pjcode: 'acme',
+        title: 'New task title',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+        body: 'Task body content here',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        'Task body content here',
+        [],
+        [],
+      );
+    });
+
+    it('combines body and referenceUrl when both are provided', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      await handleCreateIssue(contextForProject(projectWithStory()), {
+        pjcode: 'acme',
+        title: 'New task title',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+        body: 'Task body content here',
+        referenceUrl: 'https://github.com/owner/repo/issues/99',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        'Task body content here\n\nRelated: https://github.com/owner/repo/issues/99',
+        [],
+        [],
+      );
+    });
+
+    it('treats whitespace-only body as absent and uses empty body', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      await handleCreateIssue(contextForProject(projectWithStory()), {
+        pjcode: 'acme',
+        title: 'New task title',
+        storyOptionId: 'opt_blue',
+        nameWithOwner: 'acme-labs/portal',
+        body: '   ',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        '',
+        [],
+        [],
+      );
+    });
+
     it('creates issue with body containing referenceUrl when referenceUrl is provided', async () => {
       issueRepository.get.mockResolvedValue(null);
       await handleCreateIssue(contextForProject(projectWithStory()), {
