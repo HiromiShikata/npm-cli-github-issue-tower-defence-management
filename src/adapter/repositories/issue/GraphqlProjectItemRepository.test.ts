@@ -21,13 +21,13 @@ jest.mock('ky', () => {
 import { HTTPError } from 'ky';
 import {
   GraphqlProjectItemRepository,
-  GRAPHQL_INTERNAL_ERROR_MAX_RETRIES,
   PAGINATION_DELAY_MS,
   PROJECT_ITEM_ASSIGNEES_FIRST,
   PROJECT_ITEM_LABELS_FIRST,
   RATE_LIMIT_MAX_RETRIES,
   callWithRateLimitRetry,
 } from './GraphqlProjectItemRepository';
+import { GRAPHQL_RETRY_LIMIT } from '../githubGraphqlClient';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 
 const mockJsonResponse = <T>(data: T) => ({
@@ -2588,7 +2588,7 @@ describe('GraphqlProjectItemRepository', () => {
       expect(mockPost).toHaveBeenCalledTimes(2);
     });
 
-    it('throws after exhausting the maximum number of transient retries', async () => {
+    it('throws after postGithubGraphqlJson exhausts its transient retries', async () => {
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
@@ -2616,9 +2616,7 @@ describe('GraphqlProjectItemRepository', () => {
       expect(extractErrorMessage(caught)).toContain(
         'Something went wrong while executing your query',
       );
-      expect(mockPost).toHaveBeenCalledTimes(
-        GRAPHQL_INTERNAL_ERROR_MAX_RETRIES + 1,
-      );
+      expect(mockPost).toHaveBeenCalledTimes(GRAPHQL_RETRY_LIMIT + 1);
     });
   });
 });

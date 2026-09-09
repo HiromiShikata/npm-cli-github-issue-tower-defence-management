@@ -185,9 +185,6 @@ export const RATE_LIMIT_MAX_RETRIES = 6;
 export const RATE_LIMIT_MIN_BACKOFF_MS = 1000;
 export const RATE_LIMIT_DEFAULT_BACKOFF_MS = 60000;
 export const RATE_LIMIT_MAX_BACKOFF_MS = 300000;
-export const GRAPHQL_INTERNAL_ERROR_MAX_RETRIES = 3;
-export const GRAPHQL_INTERNAL_ERROR_BACKOFF_MS = 5000;
-
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -308,12 +305,6 @@ const isForbiddenContentError = (error: GraphqlError): boolean =>
   typeof error.path[3] === 'number' &&
   error.path[4] === 'content';
 
-const isTransientGraphqlInternalError = (
-  errors: { message: string }[],
-): boolean =>
-  errors.some((e) =>
-    e.message.includes('Something went wrong while executing your query'),
-  );
 
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
@@ -1438,33 +1429,19 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
     }`,
     };
 
-    let attempt = 0;
-    for (;;) {
-      const res = await postGithubGraphqlJson<{
-        data: {
-          updateProjectV2ItemFieldValue: {
-            clientMutationId: string;
-          };
+    const res = await postGithubGraphqlJson<{
+      data: {
+        updateProjectV2ItemFieldValue: {
+          clientMutationId: string;
         };
-        errors: { message: string }[];
-      }>({
-        ghToken: this.ghToken,
-        query: graphqlQuery.query,
-      });
-      if (!res.errors) {
-        return;
-      }
-      if (
-        !isTransientGraphqlInternalError(res.errors) ||
-        attempt >= GRAPHQL_INTERNAL_ERROR_MAX_RETRIES
-      ) {
-        throw new Error(res.errors.map((e) => e.message).join('\n'));
-      }
-      console.log(
-        `updateProjectField: GitHub returned transient internal error, backing off ${GRAPHQL_INTERNAL_ERROR_BACKOFF_MS}ms before retry ${attempt + 1}/${GRAPHQL_INTERNAL_ERROR_MAX_RETRIES}.`,
-      );
-      await sleep(GRAPHQL_INTERNAL_ERROR_BACKOFF_MS);
-      attempt++;
+      };
+      errors: { message: string }[];
+    }>({
+      ghToken: this.ghToken,
+      query: graphqlQuery.query,
+    });
+    if (res.errors) {
+      throw new Error(res.errors.map((e) => e.message).join('\n'));
     }
   };
 
