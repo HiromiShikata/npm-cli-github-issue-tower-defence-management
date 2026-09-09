@@ -596,7 +596,7 @@ export const ConsolePage = () => {
       const issueUrl = await postConsoleCreateIssue({
         pjcode,
         title: params.title,
-        storyOptionId: params.storyOptionId,
+        storyName: params.storyName,
         agentOptionId: params.agentOptionId,
         body: params.body,
         referenceUrl: params.referenceUrl,

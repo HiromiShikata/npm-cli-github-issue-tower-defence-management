@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 
 export type IssueCreateParams = {
-  storyOptionId: string;
+  storyName: string;
   agentOptionId: string | null;
   title: string;
   body: string | null;
@@ -24,9 +24,9 @@ export const IssueCreateModalDialog = ({
   onSubmit,
   onClose,
 }: IssueCreateModalDialogProps) => {
-  const [selectedStoryOptionId, setSelectedStoryOptionId] = useState<
-    string | null
-  >(storyEntries[0]?.storyOptionId ?? null);
+  const [selectedStoryName, setSelectedStoryName] = useState<string | null>(
+    storyEntries[0]?.storyName ?? null,
+  );
   const [selectedAgentOptionId, setSelectedAgentOptionId] = useState<
     string | null
   >(null);
@@ -48,7 +48,7 @@ export const IssueCreateModalDialog = ({
       setSubmitError('Title is required.');
       return;
     }
-    if (selectedStoryOptionId === null) {
+    if (selectedStoryName === null) {
       setSubmitError('Please select a story.');
       return;
     }
@@ -58,7 +58,7 @@ export const IssueCreateModalDialog = ({
     try {
       const trimmedBody = bodyValue.trim();
       await onSubmit({
-        storyOptionId: selectedStoryOptionId,
+        storyName: selectedStoryName,
         agentOptionId: selectedAgentOptionId,
         title: trimmedTitle,
         body: trimmedBody.length > 0 ? trimmedBody : null,
@@ -126,9 +126,9 @@ export const IssueCreateModalDialog = ({
               <button
                 key={entry.storyOptionId}
                 type="button"
-                className={`console-task-create-dialog-option-button${selectedStoryOptionId === entry.storyOptionId ? ' console-task-create-dialog-option-button--selected' : ''}`}
-                aria-pressed={selectedStoryOptionId === entry.storyOptionId}
-                onClick={() => setSelectedStoryOptionId(entry.storyOptionId)}
+                className={`console-task-create-dialog-option-button${selectedStoryName === entry.storyName ? ' console-task-create-dialog-option-button--selected' : ''}`}
+                aria-pressed={selectedStoryName === entry.storyName}
+                onClick={() => setSelectedStoryName(entry.storyName)}
                 disabled={submitting}
               >
                 {entry.storyName}
