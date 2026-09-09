@@ -627,7 +627,6 @@ export const handleTriage = async (
         projectItemReference(issueUrl, projectItemId),
         freshOptionId,
       );
-      context.invalidateProject?.(pjcode);
       context.updateProjectCacheEntry?.(pjcode, freshProject);
     }
     recordDoneForStoryChange(context, pjcode, projectItemId);
