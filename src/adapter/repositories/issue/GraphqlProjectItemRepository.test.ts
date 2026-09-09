@@ -45,7 +45,18 @@ const makeHttpError = (
   const request = new Request('https://api.github.com/graphql');
   const normalizedOptions: ConstructorParameters<typeof HTTPError>[2] = {
     method: 'post',
-    retry: {},
+    headers: new Headers(),
+    retry: {
+      limit: 0,
+      methods: [],
+      statusCodes: [],
+      afterStatusCodes: [],
+      maxRetryAfter: Number.POSITIVE_INFINITY,
+      backoffLimit: Number.POSITIVE_INFINITY,
+      delay: () => 0,
+      jitter: false,
+      retryOnTimeout: false,
+    },
     prefix: '',
     onDownloadProgress: undefined,
     onUploadProgress: undefined,
