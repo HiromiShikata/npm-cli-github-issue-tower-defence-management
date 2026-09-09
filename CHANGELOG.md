@@ -1,3 +1,10 @@
+## [2.91.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.1...v2.91.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* **token-exhaustion:** kill and relaunch bare-name leaders immediately without sending a handover message ([#1960](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1960)) ([cfa36c5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cfa36c5ec9542408e2a3bf8d3fa4acceb738dd9a))
+
 ## [2.91.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.0...v2.91.1) (2026-09-09)
 
 
