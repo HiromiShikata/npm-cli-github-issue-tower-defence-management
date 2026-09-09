@@ -7007,6 +7007,66 @@ describe('ApiV3CheerioRestIssueRepository', () => {
     });
   });
 
+  describe('updateBranch', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should return true when the API responds with 202', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Accepted' }), {
+          status: 202,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.updateBranch(
+        'https://github.com/utage3/fc-happy/pull/1909',
+      );
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when the API responds with 422', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Unprocessable Entity' }), {
+          status: 422,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.updateBranch(
+        'https://github.com/utage3/fc-happy/pull/1909',
+      );
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false and emit a console.warn rather than throw when GitHub responds with 500', async () => {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response('Internal Server Error', {
+          status: 500,
+          statusText: 'Internal Server Error',
+        }),
+      );
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const { repository } = createApiV3CheerioRestIssueRepository();
+      const result = await repository.updateBranch(
+        'https://github.com/utage3/fc-happy/pull/1909',
+      );
+
+      expect(result).toBe(false);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'transient error updating branch for PR https://github.com/utage3/fc-happy/pull/1909',
+        ),
+      );
+    });
+  });
+
   const createApiV3CheerioRestIssueRepository = () => {
     const apiV3IssueRepository = mock<ApiV3IssueRepository>();
     const restIssueRepository = mock<RestIssueRepository>();
