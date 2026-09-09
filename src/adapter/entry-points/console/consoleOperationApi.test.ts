@@ -2146,6 +2146,37 @@ describe('consoleOperationApi', () => {
       });
     });
 
+    it('accepts a valid github url for a newly created issue not yet in the console list files', async () => {
+      const received: {
+        issueOrPullRequestUrl: string;
+        fileName: string;
+        content: Uint8Array;
+      }[] = [];
+      const response = await handleAttachmentUpload(
+        uploadContext(async (request) => {
+          received.push(request);
+          return '![shot](https://github.com/user-attachments/assets/new)';
+        }),
+        {
+          pjcode: 'acme',
+          url: 'https://github.com/o/r/issues/9999',
+          fileName: 'shot.png',
+          contentBase64: Buffer.from([1, 2, 3]).toString('base64'),
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 200,
+        body: {
+          ok: true,
+          markdown: '![shot](https://github.com/user-attachments/assets/new)',
+        },
+      });
+      expect(received).toHaveLength(1);
+      expect(received[0].issueOrPullRequestUrl).toBe(
+        'https://github.com/o/r/issues/9999',
+      );
+    });
+
     it('rejects a url that is not listed as a console item of the project', async () => {
       const response = await handleAttachmentUpload(
         uploadContext(async () => 'unused'),
