@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { ConsoleTimerSettingsModalDialog } from './ConsoleTimerSettingsModalDialog';
 
 const baseProps = {
@@ -16,8 +16,19 @@ const baseProps = {
 };
 
 describe('ConsoleTimerSettingsModalDialog', () => {
+  let originalInnerWidth: number;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    originalInnerWidth = window.innerWidth;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: originalInnerWidth,
+    });
   });
 
   it('renders the timer button when the dialog is closed', () => {
@@ -180,5 +191,46 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     );
     fireEvent.click(getByRole('button', { name: 'Close settings' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('clamps dialog right position so dialog stays within viewport when button is near the left edge', async () => {
+    const testViewportWidth = 500;
+    const buttonRight = 35;
+    const cssDialogMinWidth = 280;
+    const edgeMargin = 8;
+    const maxAllowedRight = testViewportWidth - cssDialogMinWidth - edgeMargin;
+
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: testViewportWidth,
+    });
+
+    const { getByRole, rerender } = render(
+      <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={false} />,
+    );
+
+    const settingsButton = getByRole('button', { name: 'Console Settings' });
+    jest.spyOn(settingsButton, 'getBoundingClientRect').mockReturnValue({
+      right: buttonRight,
+      bottom: 40,
+      top: 10,
+      left: 5,
+      width: 30,
+      height: 30,
+      x: 5,
+      y: 10,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    await act(async () => {
+      rerender(
+        <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={true} />,
+      );
+    });
+
+    const dialog = getByRole('dialog');
+    const rightValue = parseFloat((dialog as HTMLElement).style.right);
+    expect(rightValue).toBeLessThanOrEqual(maxAllowedRight);
   });
 });
