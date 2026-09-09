@@ -568,7 +568,7 @@ export const ConsolePage = () => {
   }, [selectedItem, storyEntries]);
 
   const handleCreateIssue = useCallback(
-    async (storyOptionId: string, title: string): Promise<void> => {
+    async (storyName: string, title: string): Promise<void> => {
       if (pjcode === null) {
         throw new Error('No project specified in the URL path.');
       }
@@ -578,7 +578,7 @@ export const ConsolePage = () => {
       await postConsoleCreateIssue({
         pjcode,
         title,
-        storyOptionId,
+        storyName,
         nameWithOwner: defaultNameWithOwner,
       });
     },
@@ -596,7 +596,7 @@ export const ConsolePage = () => {
       const issueUrl = await postConsoleCreateIssue({
         pjcode,
         title: params.title,
-        storyOptionId: params.storyOptionId,
+        storyName: params.storyName,
         agentOptionId: params.agentOptionId,
         body: params.body,
         nameWithOwner: defaultNameWithOwner,

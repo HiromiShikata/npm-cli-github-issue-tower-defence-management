@@ -449,7 +449,7 @@ export const CREATE_ISSUE_OPERATION_PATH = '/api/createissue';
 export type ConsoleCreateIssueRequest = {
   pjcode: string;
   title: string;
-  storyOptionId: string;
+  storyName: string;
   nameWithOwner: string;
   agentOptionId?: string | null;
   body?: string | null;

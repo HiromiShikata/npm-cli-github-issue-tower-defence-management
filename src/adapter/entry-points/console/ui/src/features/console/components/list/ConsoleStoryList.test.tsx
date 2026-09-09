@@ -110,7 +110,7 @@ describe('ConsoleStoryList', () => {
     expect(queryByPlaceholderText('Issue title')).toBeNull();
   });
 
-  it('calls onCreateIssue with the correct storyOptionId and title', async () => {
+  it('calls onCreateIssue with the correct storyName and title', async () => {
     const onCreateIssue = jest.fn().mockResolvedValue(undefined);
     const { getAllByRole, getByPlaceholderText, getByRole } = render(
       <ConsoleStoryList {...defaultProps} onCreateIssue={onCreateIssue} />,
@@ -122,7 +122,7 @@ describe('ConsoleStoryList', () => {
     fireEvent.click(getByRole('button', { name: 'Create' }));
     await waitFor(() =>
       expect(onCreateIssue).toHaveBeenCalledWith(
-        '1491051e',
+        'TDPM Console port',
         'New feature task',
       ),
     );

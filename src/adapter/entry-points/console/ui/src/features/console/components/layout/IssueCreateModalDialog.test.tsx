@@ -181,7 +181,7 @@ describe('IssueCreateModalDialog', () => {
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>({
-        storyOptionId: 'opt-workflow-improvement',
+        storyName: 'regular / workflow improvement',
         agentOptionId: null,
         title: 'My new task',
         body: null,

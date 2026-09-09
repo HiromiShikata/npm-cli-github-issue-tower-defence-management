@@ -90,7 +90,7 @@ describe('ConsoleTaskCreateButton', () => {
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
       expect(onCreateIssue).toHaveBeenCalledWith<[IssueCreateParams]>({
-        storyOptionId: 'opt-workflow-improvement',
+        storyName: 'regular / workflow improvement',
         agentOptionId: null,
         title: 'Fix the bug',
         body: null,

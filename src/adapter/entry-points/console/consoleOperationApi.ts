@@ -794,13 +794,13 @@ export const handleCreateIssue = async (
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
   const title = body.title;
-  const storyOptionId = body.storyOptionId;
+  const storyName = body.storyName;
   const nameWithOwner = body.nameWithOwner;
   if (!isNonEmptyString(title)) {
     return badRequest('title is required');
   }
-  if (!isNonEmptyString(storyOptionId)) {
-    return badRequest('storyOptionId is required');
+  if (!isNonEmptyString(storyName)) {
+    return badRequest('storyName is required');
   }
   if (!isNonEmptyString(nameWithOwner)) {
     return badRequest('nameWithOwner is required');
@@ -821,9 +821,18 @@ export const handleCreateIssue = async (
   if (project.story === null) {
     return badRequest('project does not have a story field');
   }
-  const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
+
+  if (context.resolveProjectRepository === null) {
+    return badGateway('project repository is not configured');
+  }
+
+  const projectRepository = context.resolveProjectRepository(project.url);
+  const freshProject = await projectRepository.getProject(project.id);
+  const freshStories = freshProject?.story?.stories ?? project.story.stories;
+
+  const storyOption = freshStories.find((s) => s.name === storyName);
   if (storyOption === undefined) {
-    return badRequest(`story option "${storyOptionId}" not found in project`);
+    return badRequest(`story option "${storyName}" not found in project`);
   }
 
   const agentOptionId =
@@ -868,7 +877,7 @@ export const handleCreateIssue = async (
     await issueRepository.updateStory(
       { ...project, story: project.story },
       addedIssue,
-      storyOptionId,
+      storyOption.id,
     );
     if (agentOptionId !== null && project.agent !== null) {
       await issueRepository.setIssueAgentField(
