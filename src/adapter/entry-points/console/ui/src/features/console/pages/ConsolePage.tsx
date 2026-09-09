@@ -597,6 +597,7 @@ export const ConsolePage = () => {
         title: params.title,
         storyOptionId: params.storyOptionId,
         agentOptionId: params.agentOptionId,
+        body: params.body,
         referenceUrl: params.referenceUrl,
         nameWithOwner: defaultNameWithOwner,
       });

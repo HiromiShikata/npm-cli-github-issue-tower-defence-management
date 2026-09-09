@@ -93,6 +93,7 @@ describe('ConsoleTaskCreateButton', () => {
         storyOptionId: 'opt-workflow-improvement',
         agentOptionId: null,
         title: 'Fix the bug',
+        body: null,
         referenceUrl: null,
         files: [],
       }),
