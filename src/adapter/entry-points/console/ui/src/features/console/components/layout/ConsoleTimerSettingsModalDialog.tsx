@@ -91,9 +91,7 @@ export const ConsoleTimerSettingsModalDialog = ({
             >
               <h2 className="console-timer-settings-title">Console Settings</h2>
               <div className="console-timer-settings-row">
-                <span className="console-timer-settings-label">
-                  Timer Mode
-                </span>
+                <span className="console-timer-settings-label">Timer Mode</span>
                 <ConsoleToggleSwitch
                   checked={timerMode}
                   ariaLabel="Timer Mode"
