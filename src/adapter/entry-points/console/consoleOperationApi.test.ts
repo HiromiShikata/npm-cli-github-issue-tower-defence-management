@@ -2188,9 +2188,61 @@ describe('consoleOperationApi', () => {
       },
     });
 
+    const contextWithCreateIssueProjectRepository = (
+      resolveProjectRepository: ConsoleOperationContext['resolveProjectRepository'],
+      baseProject: Project = projectWithStory(),
+    ): ConsoleOperationContext => ({
+      ...contextForProject(baseProject),
+      resolveProjectRepository,
+    });
+
     beforeEach(() => {
       issueRepository.createNewIssue.mockResolvedValue(42);
       issueRepository.addIssueToProject.mockResolvedValue('');
+    });
+
+    it('uses the fresh story option id from GitHub when the cached option id is stale', async () => {
+      const cachedProject = projectWithStory();
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          ...cachedProject.story!,
+          stories: [
+            {
+              id: 'fresh_id',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_new',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(freshProject),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(issueRepository.updateStory).toHaveBeenCalledWith(
+        expect.anything(),
+        createdIssue,
+        'fresh_id',
+      );
     });
 
     it('creates the issue, adds it to the project, and sets the story', async () => {
