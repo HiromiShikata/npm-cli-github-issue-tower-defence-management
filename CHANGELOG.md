@@ -1,3 +1,10 @@
+# [2.94.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.93.0...v2.94.0) (2026-09-09)
+
+
+### Features
+
+* **console:** replace timer mode checkbox with toggle switch UI ([#2255](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2255)) ([0c57d22](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0c57d22494f5381d8c963592add47793f091ff6d)), closes [HiromiShikata/umino-corporait-operation#31566](https://github.com/HiromiShikata/umino-corporait-operation/issues/31566)
+
 # [2.93.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.92.0...v2.93.0) (2026-09-09)
 
 
