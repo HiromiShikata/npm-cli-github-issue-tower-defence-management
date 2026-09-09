@@ -1,3 +1,12 @@
+## [2.91.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.2...v2.91.3) (2026-09-09)
+
+
+### Bug Fixes
+
+* **GraphqlProjectItemRepository:** return existing item id when issue already in project ([#2249](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2249)) ([2ec6721](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2ec6721c3abeab434e9b65a68f3083da4cb9d77b)), closes [HiromiShikata/secretary#5920](https://github.com/HiromiShikata/secretary/issues/5920)
+* **handleReorderStory:** return 400 when target option deleted server-side ([#1967](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1967)) ([d6be774](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d6be7745f2e85d76b7666cb5eebf9156d185fe1b))
+* **HandleScheduledEventUseCase:** stop story issue recreation loop when closed issue exists ([#2251](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2251)) ([342cc21](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/342cc21d73fdc76ff7f54110dc17e1cca8552f8d)), closes [HiromiShikata/secretary#5914](https://github.com/HiromiShikata/secretary/issues/5914)
+
 ## [2.91.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.1...v2.91.2) (2026-09-09)
 
 
