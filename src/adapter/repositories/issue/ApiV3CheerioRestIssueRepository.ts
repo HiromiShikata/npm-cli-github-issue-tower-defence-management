@@ -3568,7 +3568,7 @@ export class ApiV3CheerioRestIssueRepository
     if (response.ok) {
       return true;
     }
-    if (response.status === 422) {
+    if (response.status === 422 || response.status >= 500) {
       return false;
     }
     const reason = await this.formatGitHubErrorWithStatus(response);
