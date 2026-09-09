@@ -604,6 +604,59 @@ describe('postProjectMaxPreparingUpdate', () => {
   });
 });
 
+describe('fetchProjectList', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('returns projectUrls as a string map when the server returns a valid map', async () => {
+    mockFetchOnce({
+      pjcodes: ['alpha'],
+      projectUrls: { alpha: 'https://github.com/users/owner/projects/1' },
+    });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toEqual({
+      alpha: 'https://github.com/users/owner/projects/1',
+    });
+    expect(result.pjcodes).toEqual(['alpha']);
+  });
+
+  it('returns projectUrls as null when the server returns null', async () => {
+    mockFetchOnce({ pjcodes: ['alpha'], projectUrls: null });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toBeNull();
+  });
+
+  it('returns projectUrls as null when the server returns an array', async () => {
+    mockFetchOnce({
+      pjcodes: ['alpha'],
+      projectUrls: ['https://github.com/users/owner/projects/1'],
+    });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toBeNull();
+  });
+
+  it('returns projectUrls as null when the server returns a number', async () => {
+    mockFetchOnce({ pjcodes: ['alpha'], projectUrls: 42 });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toBeNull();
+  });
+
+  it('filters out non-string values from a projectUrls map', async () => {
+    mockFetchOnce({
+      pjcodes: ['alpha', 'beta'],
+      projectUrls: {
+        alpha: 123,
+        beta: 'https://github.com/users/owner/projects/2',
+      },
+    });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toEqual({
+      beta: 'https://github.com/users/owner/projects/2',
+    });
+  });
+});
+
 describe('postConsoleComment', () => {
   const request = {
     pjcode: 'acme',
