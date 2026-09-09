@@ -1623,7 +1623,10 @@ describe('ConsolePage auto-advance tab', () => {
   it('navigates to the next project when the awaiting owner tab becomes empty in timer mode', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
-      JSON.stringify({ timerMode: true, projectMinutes: { acme: 30, beta: 30 } }),
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: { acme: 30, beta: 30 },
+      }),
     );
     global.fetch = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);

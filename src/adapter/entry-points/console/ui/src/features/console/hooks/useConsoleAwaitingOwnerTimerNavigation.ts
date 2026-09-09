@@ -22,7 +22,11 @@ export const useConsoleAwaitingOwnerTimerNavigation = (
     if (!timerMode) return;
     if (previousPjcode !== pjcode) return;
     if (previousCount > 0 && prsCount === 0) {
-      const nextPjcode = findNextPjcodeWithMinutes(pjcodes, pjcode, projectMinutes);
+      const nextPjcode = findNextPjcodeWithMinutes(
+        pjcodes,
+        pjcode,
+        projectMinutes,
+      );
       if (nextPjcode !== null) {
         navigatePush(`/projects/${nextPjcode}`);
       }

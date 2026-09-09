@@ -77,13 +77,7 @@ describe('useConsoleAwaitingOwnerTimerNavigation', () => {
 
   it('does not navigate when pjcode changes even if prs count drops to zero', () => {
     const { rerender } = renderHook(
-      ({
-        prsCount,
-        pjcode,
-      }: {
-        prsCount: number;
-        pjcode: string;
-      }) =>
+      ({ prsCount, pjcode }: { prsCount: number; pjcode: string }) =>
         useConsoleAwaitingOwnerTimerNavigation(
           true,
           prsCount,
