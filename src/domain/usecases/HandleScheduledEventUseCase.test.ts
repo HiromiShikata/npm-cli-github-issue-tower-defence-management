@@ -816,6 +816,52 @@ describe('HandleScheduledEventUseCase', () => {
         );
         expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       });
+
+      it('should not create a new story issue when a closed story issue already exists', async () => {
+        const closedStoryIssue: Issue = {
+          nameWithOwner: 'test-org/test-repo',
+          number: 50,
+          title: 'feature / StoryOne',
+          state: 'CLOSED',
+          status: 'Done',
+          story: null,
+          nextActionDate: null,
+          nextActionHour: null,
+          estimationMinutes: null,
+          dependedIssueUrls: [],
+          completionDate50PercentConfidence: null,
+          url: 'https://github.com/test-org/test-repo/issues/50',
+          assignees: [],
+          labels: ['story'],
+          org: 'test-org',
+          repo: 'test-repo',
+          body: '',
+          itemId: 'item-50',
+          isPr: false,
+          isInProgress: false,
+          isClosed: true,
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          author: '',
+          closingIssueReferenceUrls: [],
+          agent: null,
+          stateReason: 'COMPLETED',
+        };
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [closedStoryIssue],
+          project: storyProject,
+          cacheUsed: false,
+        });
+
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        const storyIssueCalls =
+          mockIssueRepository.createNewIssue.mock.calls.filter(
+            (call) => Array.isArray(call[5]) && call[5].includes('story'),
+          );
+        expect(storyIssueCalls).toHaveLength(0);
+      });
     });
 
     describe('slow sweep cadence', () => {
