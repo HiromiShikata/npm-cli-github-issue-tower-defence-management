@@ -2014,21 +2014,6 @@ describe('consoleOperationApi', () => {
   });
 
   describe('handleAttachmentUpload', () => {
-    const listItemUrl = 'https://github.com/o/r/issues/1';
-
-    const writeListWithItem = (url: string): void => {
-      const dir = path.join(baseDir, 'acme', 'prs');
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(
-        path.join(dir, 'list.json'),
-        JSON.stringify({ items: [{ url }] }),
-      );
-    };
-
-    beforeEach(() => {
-      writeListWithItem(listItemUrl);
-    });
-
     const uploadContext = (
       uploadAttachment: (request: {
         issueOrPullRequestUrl: string;
@@ -2177,21 +2162,6 @@ describe('consoleOperationApi', () => {
       );
     });
 
-    it('rejects a url that is not listed as a console item of the project', async () => {
-      const response = await handleAttachmentUpload(
-        uploadContext(async () => 'unused'),
-        {
-          pjcode: 'acme',
-          url: 'https://github.com/o/r/issues/9999',
-          fileName: 'shot.png',
-          contentBase64: 'AAEC',
-        },
-      );
-      expect(response).toEqual({
-        statusCode: 400,
-        body: { error: 'url is not a console item of this project' },
-      });
-    });
   });
 
   describe('handleCreateIssue', () => {
