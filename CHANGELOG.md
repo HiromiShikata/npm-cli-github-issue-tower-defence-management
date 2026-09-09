@@ -1,3 +1,10 @@
+## [2.91.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.0...v2.91.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **console:** add missing CSS for IssueCreateModalDialog overlay and form ([#2247](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2247)) ([8ce39c4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8ce39c42c382eff7efdae0d84c3ef13bab40e628)), closes [#2231](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2231) [HiromiShikata/umino-corporait-operation#31552](https://github.com/HiromiShikata/umino-corporait-operation/issues/31552)
+
 # [2.91.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.90.0...v2.91.0) (2026-09-09)
 
 
