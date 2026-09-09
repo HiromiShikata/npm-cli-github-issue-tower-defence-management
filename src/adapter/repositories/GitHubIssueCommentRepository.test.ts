@@ -187,6 +187,12 @@ describe('GitHubIssueCommentRepository', () => {
     });
 
     it('throws an error including status and statusText when response is non-2xx', async () => {
+      const fastSleep = jest.fn().mockResolvedValue(undefined);
+      const repoWithFastSleep = new GitHubIssueCommentRepository(
+        'test-token',
+        null,
+        fastSleep,
+      );
       jest.spyOn(global, 'fetch').mockResolvedValue(
         new Response('Not Found', {
           status: 404,
@@ -195,11 +201,140 @@ describe('GitHubIssueCommentRepository', () => {
       );
 
       await expect(
-        repository.getCommentsFromIssue(buildIssue(TEST_URL)),
+        repoWithFastSleep.getCommentsFromIssue(buildIssue(TEST_URL)),
       ).rejects.toThrow('404');
       await expect(
-        repository.getCommentsFromIssue(buildIssue(TEST_URL)),
+        repoWithFastSleep.getCommentsFromIssue(buildIssue(TEST_URL)),
       ).rejects.toThrow('Not Found');
+    });
+
+    it('retries on transient 404 and returns comments when subsequent attempt succeeds', async () => {
+      const fastSleep = jest.fn().mockResolvedValue(undefined);
+      const repoWithFastSleep = new GitHubIssueCommentRepository(
+        'test-token',
+        null,
+        fastSleep,
+      );
+      const commentPayloads = [
+        {
+          user: { login: 'testuser' },
+          body: 'Comment body',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      ];
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(commentPayloads), { status: 200 }),
+        );
+
+      const result = await repoWithFastSleep.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fastSleep).toHaveBeenCalledTimes(1);
+      expect(fastSleep).toHaveBeenCalledWith(1000);
+      expect(result).toEqual([
+        {
+          author: 'testuser',
+          content: 'Comment body',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+      ]);
+    });
+
+    it('retries on transient 5xx and returns comments when subsequent attempt succeeds', async () => {
+      const fastSleep = jest.fn().mockResolvedValue(undefined);
+      const repoWithFastSleep = new GitHubIssueCommentRepository(
+        'test-token',
+        null,
+        fastSleep,
+      );
+      const commentPayloads = [
+        {
+          user: { login: 'testuser' },
+          body: 'Comment body',
+          created_at: '2024-01-01T00:00:00Z',
+        },
+      ];
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response('Service Unavailable', {
+            status: 503,
+            statusText: 'Service Unavailable',
+          }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify(commentPayloads), { status: 200 }),
+        );
+
+      const result = await repoWithFastSleep.getCommentsFromIssue(
+        buildIssue(TEST_URL),
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(fastSleep).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([
+        {
+          author: 'testuser',
+          content: 'Comment body',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+        },
+      ]);
+    });
+
+    it('throws after exhausting 3 retries on persistent 404 with exponential backoff', async () => {
+      const fastSleep = jest.fn().mockResolvedValue(undefined);
+      const repoWithFastSleep = new GitHubIssueCommentRepository(
+        'test-token',
+        null,
+        fastSleep,
+      );
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
+
+      await expect(
+        repoWithFastSleep.getCommentsFromIssue(buildIssue(TEST_URL)),
+      ).rejects.toThrow(
+        'Failed to fetch comments from GitHub REST API: 404 Not Found',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(fastSleep).toHaveBeenCalledTimes(3);
+      expect(fastSleep).toHaveBeenNthCalledWith(1, 1000);
+      expect(fastSleep).toHaveBeenNthCalledWith(2, 2000);
+      expect(fastSleep).toHaveBeenNthCalledWith(3, 4000);
+    });
+
+    it('does not retry on 403 non-transient error and throws immediately', async () => {
+      const fastSleep = jest.fn().mockResolvedValue(undefined);
+      const repoWithFastSleep = new GitHubIssueCommentRepository(
+        'test-token',
+        null,
+        fastSleep,
+      );
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
+        );
+
+      await expect(
+        repoWithFastSleep.getCommentsFromIssue(buildIssue(TEST_URL)),
+      ).rejects.toThrow(
+        'Failed to fetch comments from GitHub REST API: 403 Forbidden',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fastSleep).not.toHaveBeenCalled();
     });
 
     it('caches comments with ETag on first call, sends If-None-Match on second call and returns cached comments on 304', async () => {
