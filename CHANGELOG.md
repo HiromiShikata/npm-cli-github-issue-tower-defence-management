@@ -1,3 +1,16 @@
+# [2.96.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.95.0...v2.96.0) (2026-09-09)
+
+
+### Bug Fixes
+
+* **console:** prevent attachment upload failure for newly created issue URLs ([#2261](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2261)) ([5bc2b6d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5bc2b6d97bf5c26b76a9d54f0221d4fe67c29c70))
+* **dashboard:** restore single-line rendering for configured disks when they fit within budget ([#2260](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2260)) ([b3cab73](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b3cab734a2e8f49c4a729b66faf567e1ff7dcdb7)), closes [#2192](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2192) [#2211](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2211) [#2192](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2192) [HiromiShikata/umino-corporait-operation#31575](https://github.com/HiromiShikata/umino-corporait-operation/issues/31575)
+
+
+### Features
+
+* add story color dots and remove Reference URL field from create task dialog ([#2259](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2259)) ([544d790](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/544d790b93f79b27bb4664b48da796dc9d34bb2b))
+
 # [2.95.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.94.1...v2.95.0) (2026-09-09)
 
 
