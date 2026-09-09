@@ -1,3 +1,10 @@
+# [2.91.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.90.0...v2.91.0) (2026-09-09)
+
+
+### Features
+
+* **dashboard:** merge load average onto stats line and keep disk partitions on subsequent lines ([#2192](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2192)) ([03f252f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/03f252fda577d94e9eac97b6acc8760390e27104))
+
 # [2.90.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.89.1...v2.90.0) (2026-09-09)
 
 
