@@ -305,7 +305,6 @@ const isForbiddenContentError = (error: GraphqlError): boolean =>
   typeof error.path[3] === 'number' &&
   error.path[4] === 'content';
 
-
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
     projectId: string,
