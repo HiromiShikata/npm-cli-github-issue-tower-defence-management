@@ -2206,7 +2206,10 @@ describe('consoleOperationApi', () => {
       const freshProject: Project = {
         ...cachedProject,
         story: {
-          ...cachedProject.story!,
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
           stories: [
             {
               id: 'fresh_id',
@@ -2255,11 +2258,14 @@ describe('consoleOperationApi', () => {
       issueRepository.get.mockResolvedValue(createdIssue);
 
       const response = await handleCreateIssue(
-        contextForProject(storyProject),
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(storyProject),
+          updateStoryList: jest.fn(),
+        })),
         {
           pjcode: 'acme',
           title: 'New task title',
-          storyOptionId: 'opt_blue',
+          storyName: 'Portal redesign',
           nameWithOwner: 'acme-labs/portal',
         },
       );
@@ -2291,7 +2297,10 @@ describe('consoleOperationApi', () => {
     it('resolves the issue repository from a proxy url of the target repo', async () => {
       const resolvedUrls: string[] = [];
       const recordingContext: ConsoleOperationContext = {
-        ...contextForProject(projectWithStory()),
+        ...contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
         resolveIssueRepository: (url: string) => {
           resolvedUrls.push(url);
           return issueRepository;
@@ -2302,7 +2311,7 @@ describe('consoleOperationApi', () => {
       await handleCreateIssue(recordingContext, {
         pjcode: 'acme',
         title: 'Task',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
         nameWithOwner: 'acme-labs/portal',
       });
 
@@ -2315,11 +2324,14 @@ describe('consoleOperationApi', () => {
       issueRepository.get.mockResolvedValue(null);
 
       const response = await handleCreateIssue(
-        contextForProject(projectWithStory()),
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
         {
           pjcode: 'acme',
           title: 'Task without project item',
-          storyOptionId: 'opt_green',
+          storyName: 'Move to Okinawa',
           nameWithOwner: 'acme-labs/portal',
         },
       );
@@ -2331,7 +2343,7 @@ describe('consoleOperationApi', () => {
     it('rejects when title is missing', async () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'acme',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
         nameWithOwner: 'acme-labs/portal',
       });
       expect(response).toEqual({
@@ -2340,7 +2352,7 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('rejects when storyOptionId is missing', async () => {
+    it('rejects when storyName is missing', async () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'acme',
         title: 'Task',
@@ -2348,7 +2360,7 @@ describe('consoleOperationApi', () => {
       });
       expect(response).toEqual({
         statusCode: 400,
-        body: { error: 'storyOptionId is required' },
+        body: { error: 'storyName is required' },
       });
     });
 
@@ -2356,7 +2368,7 @@ describe('consoleOperationApi', () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'acme',
         title: 'Task',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
       });
       expect(response).toEqual({
         statusCode: 400,
@@ -2368,7 +2380,7 @@ describe('consoleOperationApi', () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'acme',
         title: 'Task',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
         nameWithOwner: 'noslash',
       });
       expect(response).toEqual({
@@ -2381,7 +2393,7 @@ describe('consoleOperationApi', () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'unknown',
         title: 'Task',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
         nameWithOwner: 'acme-labs/portal',
       });
       expect(response).toEqual({
@@ -2398,7 +2410,7 @@ describe('consoleOperationApi', () => {
         {
           pjcode: 'acme',
           title: 'Task',
-          storyOptionId: 'opt_blue',
+          storyName: 'Portal redesign',
           nameWithOwner: 'acme-labs/portal',
         },
       );
@@ -2408,31 +2420,56 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('rejects when the storyOptionId is not found in the project', async () => {
+    it('returns 502 when resolveProjectRepository is null', async () => {
       const response = await handleCreateIssue(
         contextForProject(projectWithStory()),
         {
           pjcode: 'acme',
           title: 'Task',
-          storyOptionId: 'nonexistent',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'project repository is not configured' },
+      });
+    });
+
+    it('rejects when the storyName is not found in the project', async () => {
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'Task',
+          storyName: 'Nonexistent story',
           nameWithOwner: 'acme-labs/portal',
         },
       );
       expect(response).toEqual({
         statusCode: 400,
-        body: { error: 'story option "nonexistent" not found in project' },
+        body: { error: 'story option "Nonexistent story" not found in project' },
       });
     });
 
     it('creates issue with provided body text when body is given', async () => {
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStory()), {
-        pjcode: 'acme',
-        title: 'New task title',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-        body: 'Task body content here',
-      });
+      await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          body: 'Task body content here',
+        },
+      );
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2445,14 +2482,20 @@ describe('consoleOperationApi', () => {
 
     it('combines body and referenceUrl when both are provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStory()), {
-        pjcode: 'acme',
-        title: 'New task title',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-        body: 'Task body content here',
-        referenceUrl: 'https://github.com/owner/repo/issues/99',
-      });
+      await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          body: 'Task body content here',
+          referenceUrl: 'https://github.com/owner/repo/issues/99',
+        },
+      );
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2465,13 +2508,19 @@ describe('consoleOperationApi', () => {
 
     it('treats whitespace-only body as absent and uses empty body', async () => {
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStory()), {
-        pjcode: 'acme',
-        title: 'New task title',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-        body: '   ',
-      });
+      await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          body: '   ',
+        },
+      );
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2484,13 +2533,19 @@ describe('consoleOperationApi', () => {
 
     it('creates issue with body containing referenceUrl when referenceUrl is provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStory()), {
-        pjcode: 'acme',
-        title: 'New task title',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-        referenceUrl: 'https://github.com/owner/repo/issues/99',
-      });
+      await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          referenceUrl: 'https://github.com/owner/repo/issues/99',
+        },
+      );
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2503,12 +2558,18 @@ describe('consoleOperationApi', () => {
 
     it('creates issue with empty body when referenceUrl is not provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStory()), {
-        pjcode: 'acme',
-        title: 'New task title',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-      });
+      await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2542,13 +2603,22 @@ describe('consoleOperationApi', () => {
         itemId: 'PVTI_new',
       };
       issueRepository.get.mockResolvedValue(createdIssue);
-      await handleCreateIssue(contextForProject(projectWithStoryAndAgent()), {
-        pjcode: 'acme',
-        title: 'Task with agent',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-        agentOptionId: 'agent_opt_developer',
-      });
+      await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(
+          () => ({
+            getProject: jest.fn().mockResolvedValue(projectWithStoryAndAgent()),
+            updateStoryList: jest.fn(),
+          }),
+          projectWithStoryAndAgent(),
+        ),
+        {
+          pjcode: 'acme',
+          title: 'Task with agent',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          agentOptionId: 'agent_opt_developer',
+        },
+      );
       expect(issueRepository.setIssueAgentField).toHaveBeenCalledWith(
         'https://github.com/acme-labs/portal/issues/42',
         expect.objectContaining({ agent: agentField }),
@@ -2558,12 +2628,18 @@ describe('consoleOperationApi', () => {
 
     it('skips setting agent when agentOptionId is not provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStory()), {
-        pjcode: 'acme',
-        title: 'Task without agent',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-      });
+      await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'Task without agent',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
       expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
 
@@ -2573,13 +2649,22 @@ describe('consoleOperationApi', () => {
         agent: null,
       });
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStoryNoAgent()), {
-        pjcode: 'acme',
-        title: 'Task',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-        agentOptionId: 'agent_opt_developer',
-      });
+      await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(
+          () => ({
+            getProject: jest.fn().mockResolvedValue(projectWithStoryNoAgent()),
+            updateStoryList: jest.fn(),
+          }),
+          projectWithStoryNoAgent(),
+        ),
+        {
+          pjcode: 'acme',
+          title: 'Task',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          agentOptionId: 'agent_opt_developer',
+        },
+      );
       expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
   });

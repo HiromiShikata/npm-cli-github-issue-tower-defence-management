@@ -122,20 +122,20 @@ const InlineInputForm = ({
 };
 
 type StoryCreateFormProps = {
-  storyOptionId: string;
-  onSubmit: (storyOptionId: string, title: string) => Promise<void>;
+  storyName: string;
+  onSubmit: (storyName: string, title: string) => Promise<void>;
   onCancel: () => void;
 };
 
 const StoryCreateForm = ({
-  storyOptionId,
+  storyName,
   onSubmit,
   onCancel,
 }: StoryCreateFormProps) => (
   <InlineInputForm
     placeholder="Issue title"
     emptyValueError="Title is required"
-    onSubmit={(title) => onSubmit(storyOptionId, title)}
+    onSubmit={(title) => onSubmit(storyName, title)}
     onCancel={onCancel}
   />
 );
@@ -305,7 +305,7 @@ export type ConsoleStoryListProps = {
   isLoading: boolean;
   error: string | null;
   showGray: boolean;
-  onCreateIssue: (storyOptionId: string, title: string) => Promise<void>;
+  onCreateIssue: (storyName: string, title: string) => Promise<void>;
   onAddStory: (storyName: string) => Promise<void>;
   onSelectColor: (storyOptionId: string, newColor: ConsoleColor) => void;
   onToggleGray: () => void;
@@ -415,10 +415,10 @@ export const ConsoleStoryList = ({
   };
 
   const handleSubmit = async (
-    storyOptionId: string,
+    storyName: string,
     title: string,
   ): Promise<void> => {
-    await onCreateIssue(storyOptionId, title);
+    await onCreateIssue(storyName, title);
     setExpandedOptionId(null);
   };
 
@@ -660,7 +660,7 @@ export const ConsoleStoryList = ({
                 )}
                 {isExpanded && (
                   <StoryCreateForm
-                    storyOptionId={entry.storyOptionId}
+                    storyName={entry.storyName}
                     onSubmit={handleSubmit}
                     onCancel={() => setExpandedOptionId(null)}
                   />
