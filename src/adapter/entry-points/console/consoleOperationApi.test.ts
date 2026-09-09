@@ -2014,21 +2014,6 @@ describe('consoleOperationApi', () => {
   });
 
   describe('handleAttachmentUpload', () => {
-    const listItemUrl = 'https://github.com/o/r/issues/1';
-
-    const writeListWithItem = (url: string): void => {
-      const dir = path.join(baseDir, 'acme', 'prs');
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(
-        path.join(dir, 'list.json'),
-        JSON.stringify({ items: [{ url }] }),
-      );
-    };
-
-    beforeEach(() => {
-      writeListWithItem(listItemUrl);
-    });
-
     const uploadContext = (
       uploadAttachment: (request: {
         issueOrPullRequestUrl: string;
@@ -2146,20 +2131,35 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('rejects a url that is not listed as a console item of the project', async () => {
+    it('accepts a valid github url for a newly created issue not yet in the console list files', async () => {
+      const received: {
+        issueOrPullRequestUrl: string;
+        fileName: string;
+        content: Uint8Array;
+      }[] = [];
       const response = await handleAttachmentUpload(
-        uploadContext(async () => 'unused'),
+        uploadContext(async (request) => {
+          received.push(request);
+          return '![shot](https://github.com/user-attachments/assets/new)';
+        }),
         {
           pjcode: 'acme',
           url: 'https://github.com/o/r/issues/9999',
           fileName: 'shot.png',
-          contentBase64: 'AAEC',
+          contentBase64: Buffer.from([1, 2, 3]).toString('base64'),
         },
       );
       expect(response).toEqual({
-        statusCode: 400,
-        body: { error: 'url is not a console item of this project' },
+        statusCode: 200,
+        body: {
+          ok: true,
+          markdown: '![shot](https://github.com/user-attachments/assets/new)',
+        },
       });
+      expect(received).toHaveLength(1);
+      expect(received[0].issueOrPullRequestUrl).toBe(
+        'https://github.com/o/r/issues/9999',
+      );
     });
   });
 

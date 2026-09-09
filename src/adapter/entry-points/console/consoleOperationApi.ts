@@ -21,7 +21,6 @@ import {
 import { appendCloseEvent } from './consoleCloseEventStore';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { extractProjectOwner } from './consoleGithubTokenResolver';
-import { findConsoleItemUrl } from './consoleItemUrlLookup';
 import {
   deleteProjectTimer,
   writeProjectTimer,
@@ -776,22 +775,11 @@ export const handleAttachmentUpload = async (
   if (typeof pjcodeResult !== 'string') {
     return pjcodeResult;
   }
-  if (context.consoleDataOutputDir === null) {
-    return badGateway('console data output dir is not configured');
-  }
-  const knownUrl = findConsoleItemUrl(
-    context.consoleDataOutputDir,
-    pjcodeResult,
-    url,
-  );
-  if (knownUrl === null) {
-    return badRequest('url is not a console item of this project');
-  }
   if (context.issueAttachmentRepository === null) {
     return badGateway('attachment upload is not configured');
   }
   const markdown = await context.issueAttachmentRepository.uploadAttachment({
-    issueOrPullRequestUrl: knownUrl,
+    issueOrPullRequestUrl: url,
     fileName,
     content: Buffer.from(contentBase64, 'base64'),
   });
