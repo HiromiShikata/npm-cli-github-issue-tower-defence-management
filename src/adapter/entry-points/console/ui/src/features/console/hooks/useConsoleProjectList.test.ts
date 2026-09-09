@@ -94,6 +94,26 @@ describe('useConsoleProjectList', () => {
     expect(result.current.pjcodes).toEqual([]);
   });
 
+  it('populates projectUrls when the server returns a project URL map', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcodes: ['acme'],
+        projectUrls: { acme: 'https://github.com/users/owner/projects/1' },
+      }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList());
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.projectUrls).toEqual({
+      acme: 'https://github.com/users/owner/projects/1',
+    });
+    expect(result.current.error).toBeNull();
+  });
+
   it('skips state update when component unmounts before fetch resolves', async () => {
     let resolveResponse!: (value: unknown) => void;
     const pendingFetch = new Promise<unknown>((resolve) => {
