@@ -1,3 +1,10 @@
+# [2.97.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.96.1...v2.97.0) (2026-09-09)
+
+
+### Features
+
+* navigate to next project in timer mode when awaiting owner items reach zero ([#2264](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2264)) ([438519e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/438519e807d3e2faaa4fe7ee03a212c5a52d47d0))
+
 ## [2.96.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.96.0...v2.96.1) (2026-09-09)
 
 
