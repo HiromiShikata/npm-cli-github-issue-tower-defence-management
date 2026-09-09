@@ -1,3 +1,10 @@
+## [2.89.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.89.0...v2.89.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* compose loadFleetTaskCreateUrl from loadWorkflowIssueReporterSettings and add e2e tests ([#2241](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2241)) ([65bd304](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/65bd304d2ae0acf6810073fd22adef0921a06eac))
+
 # [2.89.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.88.1...v2.89.0) (2026-09-08)
 
 
