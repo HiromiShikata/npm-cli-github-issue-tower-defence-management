@@ -38,6 +38,7 @@ import {
 import * as projectConfig from '../cli/projectConfig';
 import { readProjectTimer } from './consoleProjectTimerStore';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
+import { createConsoleProjectResolver } from './consoleProjectResolver';
 
 describe('consoleOperationApi', () => {
   let baseDir: string;
@@ -1328,6 +1329,216 @@ describe('consoleOperationApi', () => {
         expect.objectContaining({ itemId: 'PVTI_h' }),
         'story_opt_1',
       );
+    });
+
+    it('retries set_story with fresh project data when updateStory throws a stale node id error', async () => {
+      const cachedStoryOption = {
+        id: 'stale_opt',
+        name: 'My story',
+        color: 'BLUE' as const,
+        description: '',
+      };
+      const cachedProject: Project = {
+        ...project,
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [cachedStoryOption],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'fresh_opt',
+              name: 'My story',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const staleError = new Error(
+        "Could not resolve to a node with the global id of 'stale_field_id'.",
+      );
+      issueRepository.updateStory
+        .mockRejectedValueOnce(staleError)
+        .mockResolvedValue(undefined);
+      const getProject = jest.fn().mockResolvedValue(freshProject);
+      const invalidateProject = jest.fn();
+      const updateProjectCacheEntry = jest.fn();
+      const contextWithFreshProject: ConsoleOperationContext = {
+        ...contextForProject(cachedProject),
+        resolveProjectRepository: () => ({
+          getProject,
+          updateStoryList: jest.fn(),
+        }),
+        invalidateProject,
+        updateProjectCacheEntry,
+      };
+
+      const response = await handleTriage(contextWithFreshProject, {
+        pjcode: 'acme',
+        action: 'set_story',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_h',
+        storyOptionId: 'stale_opt',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(getProject).toHaveBeenCalledWith('PVT_1');
+      expect(issueRepository.updateStory).toHaveBeenCalledTimes(2);
+      const [retryProjectArg, retryItemArg, retryOptionId] =
+        issueRepository.updateStory.mock.calls[1];
+      expect(retryProjectArg.story?.fieldId).toBe('fresh_field_id');
+      expect(retryItemArg.itemId).toBe('PVTI_h');
+      expect(retryOptionId).toBe('fresh_opt');
+      expect(invalidateProject).not.toHaveBeenCalled();
+      expect(updateProjectCacheEntry).toHaveBeenCalledWith(
+        'acme',
+        freshProject,
+      );
+    });
+
+    it('re-throws from set_story when error is not a stale node id error', async () => {
+      const cachedProject: Project = {
+        ...project,
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          stories: [],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const networkError = new Error('Network timeout');
+      issueRepository.updateStory.mockRejectedValueOnce(networkError);
+      const contextWithProjectRepo: ConsoleOperationContext = {
+        ...contextForProject(cachedProject),
+        resolveProjectRepository: () => ({
+          getProject: jest.fn(),
+          updateStoryList: jest.fn(),
+        }),
+      };
+
+      await expect(
+        handleTriage(contextWithProjectRepo, {
+          pjcode: 'acme',
+          action: 'set_story',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_h',
+          storyOptionId: 'story_opt_1',
+        }),
+      ).rejects.toThrow('Network timeout');
+    });
+
+    it('re-throws from set_story when resolveProjectRepository is null on stale node id error', async () => {
+      const cachedProject: Project = {
+        ...project,
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          stories: [],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const staleError = new Error(
+        "Could not resolve to a node with the global id of 'storyField'.",
+      );
+      issueRepository.updateStory.mockRejectedValueOnce(staleError);
+
+      await expect(
+        handleTriage(contextForProject(cachedProject), {
+          pjcode: 'acme',
+          action: 'set_story',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_h',
+          storyOptionId: 'story_opt_1',
+        }),
+      ).rejects.toThrow(
+        "Could not resolve to a node with the global id of 'storyField'.",
+      );
+    });
+
+    it('updates the in-memory cache with freshProject after stale-id retry without emptying it', async () => {
+      const cachedStoryOption = {
+        id: 'stale_opt',
+        name: 'My story',
+        color: 'BLUE' as const,
+        description: '',
+      };
+      const cachedProject: Project = {
+        ...project,
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [cachedStoryOption],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'fresh_opt',
+              name: 'My story',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const staleError = new Error(
+        "Could not resolve to a node with the global id of 'stale_field_id'.",
+      );
+      issueRepository.updateStory
+        .mockRejectedValueOnce(staleError)
+        .mockResolvedValue(undefined);
+      const loadProject = jest.fn().mockResolvedValue(cachedProject);
+      const resolver = createConsoleProjectResolver(
+        { acme: 'https://github.com/orgs/acme/projects/1' },
+        loadProject,
+      );
+      await resolver.resolve('acme');
+
+      const getProject = jest.fn().mockResolvedValue(freshProject);
+      const contextWithRealResolver: ConsoleOperationContext = {
+        ...context,
+        resolveProject: resolver.resolve,
+        invalidateProject: resolver.invalidate,
+        updateProjectCacheEntry: resolver.updateEntry,
+        resolveProjectRepository: () => ({
+          getProject,
+          updateStoryList: jest.fn(),
+        }),
+      };
+
+      const response = await handleTriage(contextWithRealResolver, {
+        pjcode: 'acme',
+        action: 'set_story',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_h',
+        storyOptionId: 'stale_opt',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const cachedBinding = await resolver.resolve('acme');
+      expect(cachedBinding?.project.story?.fieldId).toBe('fresh_field_id');
+      expect(loadProject).toHaveBeenCalledTimes(1);
     });
 
     it('rejects set_agent without an agentOptionId', async () => {

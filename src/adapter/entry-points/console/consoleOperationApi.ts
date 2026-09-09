@@ -101,6 +101,10 @@ const badGateway = (message: string): ConsoleOperationResponse => ({
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0;
 
+const isStaleNodeIdError = (error: unknown): boolean =>
+  error instanceof Error &&
+  error.message.includes('Could not resolve to a node with the global id');
+
 const isPullRequestUrl = (url: string): boolean =>
   /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url);
 
@@ -591,13 +595,40 @@ export const handleTriage = async (
     if (project.story === null) {
       return badRequest('project does not have a story field');
     }
-    await context
-      .resolveIssueRepository(issueUrl)
-      .updateStory(
+    const issueRepo = context.resolveIssueRepository(issueUrl);
+    try {
+      await issueRepo.updateStory(
         { ...project, story: project.story },
         projectItemReference(issueUrl, projectItemId),
         storyOptionId,
       );
+    } catch (error) {
+      if (
+        !isStaleNodeIdError(error) ||
+        context.resolveProjectRepository === null
+      ) {
+        throw error;
+      }
+      const projectRepository = context.resolveProjectRepository(project.url);
+      const freshProject = await projectRepository.getProject(project.id);
+      if (freshProject === null || freshProject.story === null) {
+        throw error;
+      }
+      const staleName = project.story.stories.find(
+        (s) => s.id === storyOptionId,
+      )?.name;
+      const freshOptionId =
+        staleName === undefined
+          ? storyOptionId
+          : (freshProject.story.stories.find((s) => s.name === staleName)?.id ??
+            storyOptionId);
+      await issueRepo.updateStory(
+        { ...freshProject, story: freshProject.story },
+        projectItemReference(issueUrl, projectItemId),
+        freshOptionId,
+      );
+      context.updateProjectCacheEntry?.(pjcode, freshProject);
+    }
     recordDoneForStoryChange(context, pjcode, projectItemId);
     return ok();
   }
