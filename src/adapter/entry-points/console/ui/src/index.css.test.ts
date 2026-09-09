@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 
 const SRC_DIR = __dirname;
 const INDEX_CSS_PATH = join(__dirname, "index.css");
@@ -55,7 +55,7 @@ describe("console CSS class contract", () => {
 			const content = readFileSync(filePath, "utf-8");
 			if (!isModalOverlayComponent(content)) continue;
 
-			const relPath = filePath.replace(`${SRC_DIR}/`, "");
+			const relPath = relative(SRC_DIR, filePath);
 			for (const className of extractConsoleClassNames(content)) {
 				if (!definedClasses.has(className)) {
 					missingEntries.push({ file: relPath, className });
