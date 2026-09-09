@@ -1389,11 +1389,11 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(getProject).toHaveBeenCalledWith('PVT_1');
       expect(issueRepository.updateStory).toHaveBeenCalledTimes(2);
-      expect(issueRepository.updateStory).toHaveBeenLastCalledWith(
-        expect.objectContaining({ story: expect.objectContaining({ fieldId: 'fresh_field_id' }) }),
-        expect.objectContaining({ itemId: 'PVTI_h' }),
-        'fresh_opt',
-      );
+      const [retryProjectArg, retryItemArg, retryOptionId] =
+        issueRepository.updateStory.mock.calls[1];
+      expect(retryProjectArg.story?.fieldId).toBe('fresh_field_id');
+      expect(retryItemArg.itemId).toBe('PVTI_h');
+      expect(retryOptionId).toBe('fresh_opt');
       expect(invalidateProject).toHaveBeenCalledWith('acme');
       expect(updateProjectCacheEntry).toHaveBeenCalledWith('acme', freshProject);
     });
