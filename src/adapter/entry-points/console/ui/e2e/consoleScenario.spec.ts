@@ -488,6 +488,35 @@ test('creates an issue for a story when the add-task button and form are used', 
   );
 });
 
+test('opens a fullscreen-overlay modal when the console header new-task button is clicked', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  const initialCreateCount = harness.createIssueCalls.length;
+
+  const newTaskButton = page.locator('.console-task-create-button');
+  await expect(newTaskButton).toBeVisible();
+  await newTaskButton.click();
+
+  const overlayPosition = await page.evaluate(() => {
+    const el = document.querySelector('.console-task-create-dialog-overlay');
+    if (el === null) return null;
+    return window.getComputedStyle(el).position;
+  });
+  expect(overlayPosition).toBe('fixed');
+
+  await page
+    .getByRole('textbox', { name: /title/i })
+    .fill('My console header task');
+  await page.getByRole('button', { name: /^create$/i }).click();
+
+  await expect
+    .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
+    .toBe(initialCreateCount + 1);
+  expect(harness.createIssueCalls.at(-1)?.title).toBe('My console header task');
+});
+
 test('creates a new story when the add-story button and form are used', async ({
   page,
 }) => {
