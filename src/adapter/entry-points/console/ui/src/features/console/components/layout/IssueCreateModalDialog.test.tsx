@@ -112,6 +112,46 @@ describe('IssueCreateModalDialog', () => {
     );
   });
 
+  it('renders a body textarea', () => {
+    const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+    expect(getByRole('textbox', { name: /body/i })).not.toBeNull();
+  });
+
+  it('calls onSubmit with body: null when body textarea is empty', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'My new task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({ body: null }),
+      ),
+    );
+  });
+
+  it('calls onSubmit with body text when body textarea is filled', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'My new task' },
+    });
+    fireEvent.change(getByRole('textbox', { name: /body/i }), {
+      target: { value: 'Detailed description here' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({ body: 'Detailed description here' }),
+      ),
+    );
+  });
+
   it('calls onSubmit with correct params when the form is valid', async () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
@@ -125,6 +165,7 @@ describe('IssueCreateModalDialog', () => {
         storyOptionId: 'opt-workflow-improvement',
         agentOptionId: null,
         title: 'My new task',
+        body: null,
         referenceUrl: null,
         files: [],
       }),
