@@ -7030,13 +7030,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
     it('should return false when the API responds with 422', async () => {
       jest.spyOn(global, 'fetch').mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ message: 'Unprocessable Entity' }),
-          {
-            status: 422,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
+        new Response(JSON.stringify({ message: 'Unprocessable Entity' }), {
+          status: 422,
+          headers: { 'Content-Type': 'application/json' },
+        }),
       );
 
       const { repository } = createApiV3CheerioRestIssueRepository();
