@@ -1,3 +1,10 @@
+## [2.91.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.3...v2.91.4) (2026-09-09)
+
+
+### Bug Fixes
+
+* **getCommentsFromIssue:** retry on transient 404 and 5xx responses ([#2250](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2250)) ([0e0af23](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0e0af236944b68c2785c28bacf3bfd50c85084f0))
+
 ## [2.91.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.2...v2.91.3) (2026-09-09)
 
 
