@@ -1,3 +1,10 @@
+## [2.96.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.96.0...v2.96.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **handleCreateIssue:** resolve story option by name using fresh GitHub data ([#2262](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2262)) ([56ebe74](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/56ebe74159820fe4a1ade49b99846518f93cc570)), closes [HiromiShikata/umino-corporait-operation#31577](https://github.com/HiromiShikata/umino-corporait-operation/issues/31577)
+
 # [2.96.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.95.0...v2.96.0) (2026-09-09)
 
 
