@@ -599,7 +599,6 @@ export const ConsolePage = () => {
         storyOptionId: params.storyOptionId,
         agentOptionId: params.agentOptionId,
         body: params.body,
-        referenceUrl: params.referenceUrl,
         nameWithOwner: defaultNameWithOwner,
       });
       if (params.files.length > 0) {

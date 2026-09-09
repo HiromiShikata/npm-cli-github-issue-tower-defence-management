@@ -185,7 +185,6 @@ describe('IssueCreateModalDialog', () => {
         agentOptionId: null,
         title: 'My new task',
         body: null,
-        referenceUrl: null,
         files: [],
       }),
     );
@@ -208,29 +207,19 @@ describe('IssueCreateModalDialog', () => {
     );
   });
 
-  it('calls onSubmit with referenceUrl when reference URL is filled in', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
-    const { getByRole, getByPlaceholderText } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+  it('renders color dot for each story entry', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const dots = document.body.querySelectorAll('.console-story-dot');
+    expect(dots.length).toBe(storyEntries.length);
+    const firstDot = dots[0] as HTMLElement;
+    expect(firstDot.style.backgroundColor).toBeTruthy();
+  });
+
+  it('does not render a Reference URL input', () => {
+    const { queryByPlaceholderText } = render(
+      <IssueCreateModalDialog {...baseProps} />,
     );
-    fireEvent.change(getByRole('textbox', { name: /title/i }), {
-      target: { value: 'Task with ref' },
-    });
-    fireEvent.change(getByPlaceholderText(/paste current task url/i), {
-      target: {
-        value:
-          'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
-      },
-    });
-    fireEvent.click(getByRole('button', { name: /^create$/i }));
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
-        expect.objectContaining({
-          referenceUrl:
-            'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
-        }),
-      ),
-    );
+    expect(queryByPlaceholderText(/paste current task url/i)).toBeNull();
   });
 
   it('calls onClose when Cancel is clicked', () => {
