@@ -2451,7 +2451,9 @@ describe('consoleOperationApi', () => {
       );
       expect(response).toEqual({
         statusCode: 400,
-        body: { error: 'story option "Nonexistent story" not found in project' },
+        body: {
+          error: 'story option "Nonexistent story" not found in project',
+        },
       });
     });
 
