@@ -486,6 +486,28 @@ describe('githubGraphqlClient', () => {
       expect(result).toEqual(errorBody);
     });
 
+    it('does not retry queries that contain a transient error because queries use their own halving-fallback retry', async () => {
+      const transientBody = {
+        errors: [
+          { message: 'Something went wrong while executing your query.' },
+        ],
+      };
+      mockPost.mockReturnValue({
+        json: jest.fn().mockResolvedValue(transientBody),
+      });
+      const sleepMock = jest.fn().mockResolvedValue(undefined);
+      const result = await postGithubGraphqlJson(
+        {
+          ghToken: 'token-a',
+          query: 'query GetProjectItems($id: ID!) { node(id: $id) { id } }',
+        },
+        sleepMock,
+      );
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(sleepMock).not.toHaveBeenCalled();
+      expect(result).toEqual(transientBody);
+    });
+
     it('configures retry for POST requests on transient 5xx errors so a 504 is retried automatically', async () => {
       mockPost.mockReturnValue({
         json: jest.fn().mockResolvedValue({

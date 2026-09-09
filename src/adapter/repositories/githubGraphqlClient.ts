@@ -171,7 +171,11 @@ export const postGithubGraphqlJson = async <T>(
       responseBody: response,
       callSite,
     });
-    if (attempt < GRAPHQL_RETRY_LIMIT && isTransientGraphqlResponse(response)) {
+    if (
+      attempt < GRAPHQL_RETRY_LIMIT &&
+      isMutationOperation(params.query) &&
+      isTransientGraphqlResponse(response)
+    ) {
       console.log(
         `postGithubGraphqlJson: GitHub returned a transient error. Backing off ${GRAPHQL_TRANSIENT_ERROR_BACKOFF_MS}ms before retry ${attempt + 1}/${GRAPHQL_RETRY_LIMIT}.`,
       );
