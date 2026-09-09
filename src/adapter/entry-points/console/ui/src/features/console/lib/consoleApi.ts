@@ -601,6 +601,7 @@ export const postConsoleUpdateStoryDescription = async (
 
 export type ProjectListResponse = {
   pjcodes: string[];
+  projectUrls: Record<string, string> | null;
   workflowImprovementIssueUrl: string | null;
   fleetTaskCreateUrl: string | null;
 };
@@ -618,6 +619,7 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
   ) {
     return {
       pjcodes: [],
+      projectUrls: null,
       workflowImprovementIssueUrl: null,
       fleetTaskCreateUrl: null,
     };
@@ -628,6 +630,16 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
         (entry): entry is string => typeof entry === 'string',
       )
     : [];
+  const projectUrls =
+    record.projectUrls !== null &&
+    typeof record.projectUrls === 'object' &&
+    !Array.isArray(record.projectUrls)
+      ? Object.fromEntries(
+          Object.entries(record.projectUrls as Record<string, unknown>).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        )
+      : null;
   const workflowImprovementIssueUrl =
     typeof record.workflowImprovementIssueUrl === 'string'
       ? record.workflowImprovementIssueUrl
@@ -636,7 +648,7 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
     typeof record.fleetTaskCreateUrl === 'string'
       ? record.fleetTaskCreateUrl
       : null;
-  return { pjcodes, workflowImprovementIssueUrl, fleetTaskCreateUrl };
+  return { pjcodes, projectUrls, workflowImprovementIssueUrl, fleetTaskCreateUrl };
 };
 
 export const PROJECT_README_CONFIG_PATH = '/api/projectreadmeconfig';
