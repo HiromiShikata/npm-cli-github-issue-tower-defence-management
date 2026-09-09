@@ -647,4 +647,41 @@ describe('useConsoleTabData', () => {
     );
     expect(result.current.snapshots.prs).toBe(snapshotBefore);
   });
+
+  it('clears snapshots immediately when pjcode changes so stale timer data from the previous project is not shown', async () => {
+    const fetchMock = jest.fn(async (url: string) => {
+      if (url.includes('/acme/')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            makeTabPayload({
+              timerEndsAt: '2026-09-09T10:00:00.000Z',
+              timerTotalSeconds: 1800,
+            }),
+        };
+      }
+      return new Promise<never>(() => {});
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string | null }) => useConsoleTabData(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.snapshots.prs?.timerEndsAt).toBe(
+        '2026-09-09T10:00:00.000Z',
+      );
+    });
+
+    act(() => {
+      rerender({ pjcode: 'beta' });
+    });
+
+    expect(
+      Object.values(result.current.snapshots).every((s) => s === null),
+    ).toBe(true);
+  });
 });
