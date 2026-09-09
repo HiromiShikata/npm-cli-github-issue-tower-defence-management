@@ -16,8 +16,19 @@ const baseProps = {
 };
 
 describe('ConsoleTimerSettingsModalDialog', () => {
+  let originalInnerWidth: number;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    originalInnerWidth = window.innerWidth;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: originalInnerWidth,
+    });
   });
 
   it('renders the timer button when the dialog is closed', () => {
@@ -183,11 +194,16 @@ describe('ConsoleTimerSettingsModalDialog', () => {
   });
 
   it('clamps dialog right position so dialog stays within viewport when button is near the left edge', async () => {
-    const originalInnerWidth = window.innerWidth;
+    const testViewportWidth = 500;
+    const buttonRight = 35;
+    const cssDialogMinWidth = 280;
+    const edgeMargin = 8;
+    const maxAllowedRight = testViewportWidth - cssDialogMinWidth - edgeMargin;
+
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
-      value: 500,
+      value: testViewportWidth,
     });
 
     const { getByRole, rerender } = render(
@@ -196,7 +212,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
 
     const settingsButton = getByRole('button', { name: 'Console Settings' });
     jest.spyOn(settingsButton, 'getBoundingClientRect').mockReturnValue({
-      right: 35,
+      right: buttonRight,
       bottom: 40,
       top: 10,
       left: 5,
@@ -215,14 +231,6 @@ describe('ConsoleTimerSettingsModalDialog', () => {
 
     const dialog = getByRole('dialog');
     const rightValue = parseFloat((dialog as HTMLElement).style.right);
-    // unclamped: 500 - 35 = 465 → dialog left edge = 500 - 465 - 280 = -245 (off-screen)
-    // clamped:   min(465, 500 - 280 - 8) = 212 → dialog left edge = 500 - 212 - 280 = 8 (visible)
-    expect(rightValue).toBeLessThanOrEqual(212);
-
-    Object.defineProperty(window, 'innerWidth', {
-      writable: true,
-      configurable: true,
-      value: originalInnerWidth,
-    });
+    expect(rightValue).toBeLessThanOrEqual(maxAllowedRight);
   });
 });
