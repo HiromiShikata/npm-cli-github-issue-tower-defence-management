@@ -90,4 +90,27 @@ describe('useConsoleAwaitingOwnerTimerNavigation', () => {
     rerender({ prsCount: 0, pjcode: 'beta' });
     expect(navigatePush).not.toHaveBeenCalled();
   });
+
+  it('navigates again when prs count drops to zero a second time after recovering', () => {
+    const { rerender } = renderHook(
+      ({ prsCount }: { prsCount: number }) =>
+        useConsoleAwaitingOwnerTimerNavigation(
+          true,
+          prsCount,
+          'acme',
+          ['acme', 'beta'],
+          { acme: 30, beta: 30 },
+        ),
+      { initialProps: { prsCount: 1 } },
+    );
+    rerender({ prsCount: 0 });
+    expect(navigatePush).toHaveBeenCalledTimes(1);
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+
+    (navigatePush as jest.Mock).mockClear();
+    rerender({ prsCount: 2 });
+    rerender({ prsCount: 0 });
+    expect(navigatePush).toHaveBeenCalledTimes(1);
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+  });
 });
