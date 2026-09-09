@@ -262,6 +262,7 @@ export const useConsoleTabData = (
     let cancelled = false;
     setIsLoading(true);
     setError(null);
+    setSnapshots(emptySnapshots());
 
     if (pjcode === null) {
       setSnapshots(emptySnapshots());
