@@ -199,26 +199,21 @@ export const formatMachineStatusLines = (
     machineStatus !== null && machineStatus.cycleMinutes !== null
       ? `cy${machineStatus.cycleMinutes}`
       : 'cy-';
-  const loadLine = `${loadPrefix}LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`;
+  const loadSegment = `${loadPrefix}LA ${oneMinute} ${fiveMinute} ${fifteenMinute}`;
   const disks =
     machineStatus !== null && machineStatus.disks ? machineStatus.disks : null;
   if (disks !== null && disks.length > 0) {
     const diskTokens = disks.map(
       (disk) => `${metricDot(disk.pct)}${disk.title}${disk.pct}%`,
     );
-    const singleLine = `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskTokens.join(' ')} ${cycle} ${loadLine}`;
-    if ([...singleLine].length <= PROJECT_ROW_WIDTH_BUDGET) {
-      return [singleLine];
-    }
     const diskLines = packTokensWithinBudget(diskTokens);
     return [
-      `${memDot}M${memText} ${cpuDot}C${cpuText} ${cycle}`,
+      `${memDot}M${memText} ${cpuDot}C${cpuText} ${cycle} ${loadSegment}`,
       ...diskLines,
-      loadLine,
     ];
   }
   return [
-    `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskDot}D${diskText} ${cycle} ${loadLine}`,
+    `${memDot}M${memText} ${cpuDot}C${cpuText} ${diskDot}D${diskText} ${cycle} ${loadSegment}`,
   ];
 };
 
