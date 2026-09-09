@@ -295,9 +295,11 @@ describe('GitHubIssueCommentRepository', () => {
         null,
         fastSleep,
       );
-      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response('Not Found', { status: 404, statusText: 'Not Found' }),
-      );
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response('Not Found', { status: 404, statusText: 'Not Found' }),
+        );
 
       await expect(
         repoWithFastSleep.getCommentsFromIssue(buildIssue(TEST_URL)),
@@ -319,9 +321,11 @@ describe('GitHubIssueCommentRepository', () => {
         null,
         fastSleep,
       );
-      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
-        new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
-      );
+      const fetchSpy = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response('Forbidden', { status: 403, statusText: 'Forbidden' }),
+        );
 
       await expect(
         repoWithFastSleep.getCommentsFromIssue(buildIssue(TEST_URL)),

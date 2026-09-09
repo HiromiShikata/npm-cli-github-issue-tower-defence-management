@@ -21,7 +21,12 @@ import {
   GitHubRateLimitError,
   hasRateLimitSignals,
   isSecondaryRateLimit,
+  realSleep,
+  Sleep,
 } from './issue/githubRateLimitRetry';
+
+export const FETCH_COMMENTS_TRANSIENT_ERROR_MAX_RETRIES = 3;
+export const FETCH_COMMENTS_TRANSIENT_ERROR_BASE_BACKOFF_MS = 1000;
 
 type RestCommentPayload = {
   user: { login: string } | null;
@@ -91,6 +96,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
   constructor(
     private readonly token: string,
     private readonly commentCacheRepository: CommentCacheRepository | null = null,
+    private readonly sleep: Sleep = realSleep,
   ) {}
 
   private parseIssueUrl(issue: Issue): {
@@ -146,6 +152,28 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     );
   }
 
+  private async fetchCommentsPage(
+    url: string,
+    headers: Record<string, string>,
+  ): Promise<Response> {
+    let attempt = 0;
+    for (;;) {
+      const response = await fetch(url, { headers });
+      if (response.ok || response.status === 304) return response;
+      const isTransient = response.status === 404 || response.status >= 500;
+      if (
+        !isTransient ||
+        attempt >= FETCH_COMMENTS_TRANSIENT_ERROR_MAX_RETRIES
+      ) {
+        return response;
+      }
+      await this.sleep(
+        FETCH_COMMENTS_TRANSIENT_ERROR_BASE_BACKOFF_MS * Math.pow(2, attempt),
+      );
+      attempt++;
+    }
+  }
+
   async getCommentsFromIssue(issue: Issue): Promise<Comment[]> {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
 
@@ -178,7 +206,7 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
         headers['If-None-Match'] = cachedPage.etag;
       }
 
-      const response = await fetch(url, { headers });
+      const response = await this.fetchCommentsPage(url, headers);
 
       if (response.status === 304 && cachedPage) {
         for (const c of cachedPage.comments) {
