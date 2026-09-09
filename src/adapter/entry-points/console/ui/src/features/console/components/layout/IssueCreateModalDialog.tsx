@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { colorFromEnum } from '../../logic/colors';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 
 export type IssueCreateParams = {
@@ -7,7 +8,6 @@ export type IssueCreateParams = {
   agentOptionId: string | null;
   title: string;
   body: string | null;
-  referenceUrl: string | null;
   files: File[];
 };
 
@@ -32,7 +32,6 @@ export const IssueCreateModalDialog = ({
   >(null);
   const [titleValue, setTitleValue] = useState('');
   const [bodyValue, setBodyValue] = useState('');
-  const [referenceUrlValue, setReferenceUrlValue] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -52,7 +51,6 @@ export const IssueCreateModalDialog = ({
       setSubmitError('Please select a story.');
       return;
     }
-    const trimmedUrl = referenceUrlValue.trim();
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -62,7 +60,6 @@ export const IssueCreateModalDialog = ({
         agentOptionId: selectedAgentOptionId,
         title: trimmedTitle,
         body: trimmedBody.length > 0 ? trimmedBody : null,
-        referenceUrl: trimmedUrl.length > 0 ? trimmedUrl : null,
         files: selectedFiles,
       });
       onClose();
@@ -131,6 +128,12 @@ export const IssueCreateModalDialog = ({
                 onClick={() => setSelectedStoryOptionId(entry.storyOptionId)}
                 disabled={submitting}
               >
+                <span
+                  className="console-story-dot"
+                  style={{
+                    backgroundColor: colorFromEnum(entry.color).dot,
+                  }}
+                />
                 {entry.storyName}
               </button>
             ))}
@@ -161,18 +164,6 @@ export const IssueCreateModalDialog = ({
               </div>
             </>
           )}
-
-          <span className="console-task-create-dialog-section-label">
-            Reference URL
-          </span>
-          <input
-            type="url"
-            className="console-task-create-dialog-input"
-            placeholder="Paste current task URL here"
-            value={referenceUrlValue}
-            onChange={(e) => setReferenceUrlValue(e.target.value)}
-            disabled={submitting}
-          />
 
           <span className="console-task-create-dialog-section-label">
             Attachments
