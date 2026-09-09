@@ -223,3 +223,11 @@ export const WithFleetTaskCreateLink: Story = {
       'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
   },
 };
+
+export const WithProjectUrl: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    projectUrl: 'https://github.com/users/HiromiShikata/projects/48',
+  },
+};

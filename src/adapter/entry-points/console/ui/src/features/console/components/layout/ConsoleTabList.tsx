@@ -25,6 +25,7 @@ export type ConsoleTabBarProps = {
   airplaneModeFailures: string[];
   onAirplaneModeStartSync: () => void;
   onAirplaneModeTurnOff: () => void;
+  projectUrl?: string | null;
   workflowImprovementIssueUrl?: string | null;
   fleetTaskCreateUrl?: string | null;
 };
@@ -47,6 +48,7 @@ export const ConsoleTabList = ({
   airplaneModeFailures,
   onAirplaneModeStartSync,
   onAirplaneModeTurnOff,
+  projectUrl = null,
   workflowImprovementIssueUrl = null,
   fleetTaskCreateUrl = null,
 }: ConsoleTabBarProps) => {
@@ -137,6 +139,17 @@ export const ConsoleTabList = ({
                 </div>,
                 document.body,
               )}
+            {projectUrl !== null && (
+              <a
+                href={projectUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="console-tab-pjname-project-link"
+                aria-label="Open GitHub project"
+              >
+                ↗
+              </a>
+            )}
           </div>
         )}
         {settingsButton !== undefined && (

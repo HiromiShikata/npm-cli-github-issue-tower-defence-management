@@ -364,4 +364,60 @@ describe('ConsoleTabList', () => {
       container.querySelector('.console-tab-fleet-task-create-link'),
     ).toBeNull();
   });
+
+  it('renders a project link that opens in a new tab when projectUrl is set', () => {
+    const url = 'https://github.com/users/HiromiShikata/projects/48';
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        projectUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /open github project/i });
+    expect(link).toHaveAttribute('href', url);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('renders the project link inside the pjname container', () => {
+    const url = 'https://github.com/users/HiromiShikata/projects/48';
+    const { getByRole, container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        projectUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /open github project/i });
+    expect(link.closest('.console-tab-pjname')).not.toBeNull();
+    expect(container.querySelector('.console-tab-pjname-project-link')).toBe(
+      link,
+    );
+  });
+
+  it('does not render the project link when projectUrl is null', () => {
+    const { container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        projectUrl={null}
+      />,
+    );
+    expect(
+      container.querySelector('.console-tab-pjname-project-link'),
+    ).toBeNull();
+  });
+
+  it('does not render the project link when projectUrl is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(
+      container.querySelector('.console-tab-pjname-project-link'),
+    ).toBeNull();
+  });
 });

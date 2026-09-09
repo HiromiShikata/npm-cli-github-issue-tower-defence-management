@@ -118,6 +118,7 @@ export const ConsolePage = () => {
   } = useConsoleTimerSettings();
   const {
     pjcodes,
+    projectUrls,
     workflowImprovementIssueUrl,
     fleetTaskCreateUrl,
     isLoading: isLoadingPjcodes,
@@ -901,6 +902,7 @@ export const ConsolePage = () => {
         airplaneModeFailures={airplaneMode.failures}
         onAirplaneModeStartSync={airplaneMode.startSync}
         onAirplaneModeTurnOff={airplaneMode.turnOff}
+        projectUrl={pjcode !== null ? (projectUrls?.[pjcode] ?? null) : null}
         workflowImprovementIssueUrl={workflowImprovementIssueUrl}
         fleetTaskCreateUrl={fleetTaskCreateUrl}
       />
