@@ -108,9 +108,7 @@ export const IssueCreateModalDialog = ({
             rows={3}
           />
 
-          <span className="console-task-create-dialog-section-label">
-            Body
-          </span>
+          <span className="console-task-create-dialog-section-label">Body</span>
           <textarea
             className="console-task-create-dialog-textarea"
             aria-label="Body"

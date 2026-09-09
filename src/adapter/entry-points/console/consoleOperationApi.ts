@@ -843,8 +843,7 @@ export const handleCreateIssue = async (
     body.agentOptionId.trim().length > 0
       ? body.agentOptionId.trim()
       : null;
-  const rawBodyText =
-    typeof body.body === 'string' ? body.body.trim() : null;
+  const rawBodyText = typeof body.body === 'string' ? body.body.trim() : null;
   const bodyText =
     rawBodyText !== null && rawBodyText.length > 0 ? rawBodyText : null;
   const rawReferenceUrl =
