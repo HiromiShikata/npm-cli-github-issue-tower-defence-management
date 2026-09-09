@@ -19,6 +19,7 @@ import {
 } from '../components/operations/ConsoleUndoToast';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
+import { useConsoleAwaitingOwnerTimerNavigation } from '../hooks/useConsoleAwaitingOwnerTimerNavigation';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
 import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
@@ -152,6 +153,14 @@ export const ConsolePage = () => {
     }
     return result;
   }, [snapshots, overlayState.overlay]);
+
+  useConsoleAwaitingOwnerTimerNavigation(
+    timerMode,
+    counts.prs,
+    pjcode,
+    pjcodes,
+    projectMinutes,
+  );
 
   const navigation = useConsoleNavigation(pjcode, counts);
   const { activeTab, selectedItemKey, openItem, closeItem } = navigation;
