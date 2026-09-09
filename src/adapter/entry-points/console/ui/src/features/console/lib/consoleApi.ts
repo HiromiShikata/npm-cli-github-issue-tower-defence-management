@@ -578,6 +578,27 @@ export const postConsoleRenameStory = async (
   }
 };
 
+export const UPDATE_STORY_DESCRIPTION_PATH = '/api/storydescription';
+
+export type ConsoleUpdateStoryDescriptionRequest = {
+  pjcode: string;
+  storyOptionId: string;
+  description: string;
+};
+
+export const postConsoleUpdateStoryDescription = async (
+  request: ConsoleUpdateStoryDescriptionRequest,
+): Promise<void> => {
+  const response = await fetch(UPDATE_STORY_DESCRIPTION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
 export type ProjectListResponse = {
   pjcodes: string[];
   workflowImprovementIssueUrl: string | null;

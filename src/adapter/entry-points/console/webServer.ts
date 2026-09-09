@@ -42,6 +42,7 @@ import {
   handleSetDependedIssueUrl,
   handleStoryColor,
   handleStoryRename,
+  handleStoryUpdateDescription,
   handleTimer,
   handleTriage,
 } from './consoleOperationApi';
@@ -577,6 +578,8 @@ const dispatchOperation = (
       return handleDeleteStory(context, body);
     case '/api/renamestory':
       return handleStoryRename(context, body);
+    case '/api/storydescription':
+      return handleStoryUpdateDescription(context, body);
     case '/api/timer':
       return Promise.resolve(handleTimer(context, body));
     case '/api/projectsettings':

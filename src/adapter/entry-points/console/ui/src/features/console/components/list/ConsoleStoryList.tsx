@@ -5,7 +5,6 @@ import type {
   ConsoleListItem,
   ConsoleStoryEntry,
 } from '../../logic/types';
-import { ConsoleCopyStoryNameButton } from './ConsoleCopyStoryNameButton';
 
 type RowReorderState = {
   inProgress: boolean;
@@ -22,6 +21,7 @@ type InlineInputFormProps = {
   initialValue?: string;
   submitLabel?: string;
   selectAllOnFocus?: boolean;
+  multiline?: boolean;
 };
 
 const InlineInputForm = ({
@@ -32,23 +32,32 @@ const InlineInputForm = ({
   initialValue = '',
   submitLabel = 'Create',
   selectAllOnFocus = false,
+  multiline = false,
 }: InlineInputFormProps) => {
   const [valueInput, setValueInput] = useState(initialValue);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const selectAllOnFocusRef = useRef(selectAllOnFocus);
 
   useEffect(() => {
-    inputRef.current?.focus();
-    if (selectAllOnFocusRef.current) {
-      inputRef.current?.select();
+    if (multiline) {
+      textareaRef.current?.focus();
+      if (selectAllOnFocusRef.current) {
+        textareaRef.current?.select();
+      }
+    } else {
+      inputRef.current?.focus();
+      if (selectAllOnFocusRef.current) {
+        inputRef.current?.select();
+      }
     }
-  }, []);
+  }, [multiline]);
 
   const handleSubmit = async (): Promise<void> => {
     const trimmed = valueInput.trim();
-    if (trimmed.length === 0) {
+    if (trimmed.length === 0 && emptyValueError !== '') {
       setSubmitError(emptyValueError);
       return;
     }
@@ -71,15 +80,27 @@ const InlineInputForm = ({
         void handleSubmit();
       }}
     >
-      <input
-        ref={inputRef}
-        type="text"
-        className="console-inline-input-form-input"
-        placeholder={placeholder}
-        value={valueInput}
-        onChange={(e) => setValueInput(e.target.value)}
-        disabled={submitting}
-      />
+      {multiline ? (
+        <textarea
+          ref={textareaRef}
+          className="console-inline-input-form-textarea"
+          placeholder={placeholder}
+          value={valueInput}
+          onChange={(e) => setValueInput(e.target.value)}
+          disabled={submitting}
+          rows={3}
+        />
+      ) : (
+        <input
+          ref={inputRef}
+          type="text"
+          className="console-inline-input-form-input"
+          placeholder={placeholder}
+          value={valueInput}
+          onChange={(e) => setValueInput(e.target.value)}
+          disabled={submitting}
+        />
+      )}
       <button type="submit" className="console-op-button" disabled={submitting}>
         {submitting ? `${submitLabel.replace(/e$/, '')}ing…` : submitLabel}
       </button>
@@ -136,6 +157,29 @@ const StoryRenameForm = ({
     initialValue={currentName}
     submitLabel="Rename"
     selectAllOnFocus={true}
+    onSubmit={onSubmit}
+    onCancel={onCancel}
+  />
+);
+
+type StoryDescriptionFormProps = {
+  currentDescription: string;
+  onSubmit: (newDescription: string) => Promise<void>;
+  onCancel: () => void;
+};
+
+const StoryDescriptionForm = ({
+  currentDescription,
+  onSubmit,
+  onCancel,
+}: StoryDescriptionFormProps) => (
+  <InlineInputForm
+    placeholder="Story description"
+    emptyValueError=""
+    initialValue={currentDescription}
+    submitLabel="Save"
+    selectAllOnFocus={true}
+    multiline={true}
     onSubmit={onSubmit}
     onCancel={onCancel}
   />
@@ -236,6 +280,7 @@ const StoryTaskList = ({ items }: StoryTaskListProps) => (
         >
           {item.title}
         </a>
+        <span className="console-story-task-status">{item.status ?? '—'}</span>
         <span className="console-story-task-agent">{item.agent ?? '—'}</span>
         <span className="console-story-task-depended-urls">
           {item.dependedIssueUrls.length > 0
@@ -270,6 +315,10 @@ export type ConsoleStoryListProps = {
   ) => Promise<void>;
   onDeleteStory: (storyOptionId: string) => Promise<void>;
   onRenameStory: (storyOptionId: string, newName: string) => Promise<void>;
+  onUpdateDescription: (
+    storyOptionId: string,
+    newDescription: string,
+  ) => Promise<void>;
   optimisticColors: Record<string, ConsoleColor>;
   colorChangeInFlight: string | null;
   colorErrors: Record<string, string>;
@@ -292,6 +341,7 @@ export const ConsoleStoryList = ({
   onReorderStory,
   onDeleteStory,
   onRenameStory,
+  onUpdateDescription,
   optimisticColors,
   colorChangeInFlight,
   colorErrors,
@@ -314,6 +364,9 @@ export const ConsoleStoryList = ({
     Record<string, StoryDeleteState>
   >({});
   const [renameOptionId, setRenameOptionId] = useState<string | null>(null);
+  const [descriptionEditOptionId, setDescriptionEditOptionId] = useState<
+    string | null
+  >(null);
 
   const getRowReorderState = (id: string): RowReorderState =>
     rowReorderStates[id] ?? { inProgress: false, error: null };
@@ -427,6 +480,20 @@ export const ConsoleStoryList = ({
     setRenameOptionId(null);
   };
 
+  const handleDescriptionEditClick = (storyOptionId: string): void => {
+    setDescriptionEditOptionId(
+      descriptionEditOptionId === storyOptionId ? null : storyOptionId,
+    );
+  };
+
+  const handleDescriptionSubmit = async (
+    storyOptionId: string,
+    newDescription: string,
+  ): Promise<void> => {
+    await onUpdateDescription(storyOptionId, newDescription);
+    setDescriptionEditOptionId(null);
+  };
+
   const visibleStories = showGray
     ? stories
     : stories.filter((s) => s.color !== 'GRAY');
@@ -457,8 +524,11 @@ export const ConsoleStoryList = ({
               error: null,
             };
             const isRenameOpen = renameOptionId === entry.storyOptionId;
+            const isDescriptionEditOpen =
+              descriptionEditOptionId === entry.storyOptionId;
             const isTasksExpanded =
               expandedTasksOptionId === entry.storyOptionId;
+            const description = entry.description ?? '';
             return (
               <li key={entry.storyOptionId} className="console-story-list-row">
                 <div className="console-story-list-row-main">
@@ -488,7 +558,6 @@ export const ConsoleStoryList = ({
                       {entry.storyName}
                     </span>
                   )}
-                  <ConsoleCopyStoryNameButton storyName={entry.storyName} />
                   <span className="console-story-count">
                     {entry.openItemCount}
                   </span>
@@ -548,6 +617,16 @@ export const ConsoleStoryList = ({
                   <button
                     type="button"
                     className="console-op-button"
+                    aria-label="Edit description"
+                    onClick={() =>
+                      handleDescriptionEditClick(entry.storyOptionId)
+                    }
+                  >
+                    Edit description
+                  </button>
+                  <button
+                    type="button"
+                    className="console-op-button"
                     onClick={() =>
                       setExpandedTasksOptionId(
                         isTasksExpanded ? null : entry.storyOptionId,
@@ -557,6 +636,9 @@ export const ConsoleStoryList = ({
                     {isTasksExpanded ? 'Hide tasks' : 'Show tasks'}
                   </button>
                 </div>
+                {description !== '' && (
+                  <p className="console-story-description">{description}</p>
+                )}
                 {isTasksExpanded && <StoryTaskList items={entry.items} />}
                 {reorderError !== null && (
                   <p role="alert" className="console-list-error">
@@ -601,6 +683,18 @@ export const ConsoleStoryList = ({
                       handleRenameSubmit(entry.storyOptionId, newName)
                     }
                     onCancel={() => setRenameOptionId(null)}
+                  />
+                )}
+                {isDescriptionEditOpen && (
+                  <StoryDescriptionForm
+                    currentDescription={description}
+                    onSubmit={(newDescription) =>
+                      handleDescriptionSubmit(
+                        entry.storyOptionId,
+                        newDescription,
+                      )
+                    }
+                    onCancel={() => setDescriptionEditOptionId(null)}
                   />
                 )}
               </li>

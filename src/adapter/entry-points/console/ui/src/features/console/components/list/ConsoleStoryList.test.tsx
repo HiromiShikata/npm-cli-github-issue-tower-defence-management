@@ -30,6 +30,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyName: 'TDPM Console port',
     storyOptionId: '1491051e',
     color: 'BLUE',
+    description: '',
     openItemCount: 12,
     storyViewUrl: null,
     items: [],
@@ -38,6 +39,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyName: 'Move to Okinawa',
     storyOptionId: '564803ee',
     color: 'PURPLE',
+    description: '',
     openItemCount: 0,
     storyViewUrl: null,
     items: [],
@@ -48,6 +50,7 @@ const grayStoryEntry: ConsoleStoryEntry = {
   storyName: 'Archived Story',
   storyOptionId: 'gray-id',
   color: 'GRAY',
+  description: '',
   openItemCount: 3,
   storyViewUrl: null,
   items: [],
@@ -67,22 +70,13 @@ const defaultProps = {
   onReorderStory: () => Promise.resolve(),
   onDeleteStory: () => Promise.resolve(),
   onRenameStory: () => Promise.resolve(),
+  onUpdateDescription: () => Promise.resolve(),
   optimisticColors: {} as Record<string, ConsoleColor>,
   colorChangeInFlight: null as string | null,
   colorErrors: {} as Record<string, string>,
 };
 
 describe('ConsoleStoryList', () => {
-  const writeText = jest.fn(async () => {});
-
-  beforeEach(() => {
-    writeText.mockClear();
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText },
-    });
-  });
-
   it('renders each story name and its open item count', () => {
     const { getByText } = render(<ConsoleStoryList {...defaultProps} />);
     expect(getByText('TDPM Console port')).toBeInTheDocument();
@@ -397,19 +391,116 @@ describe('ConsoleStoryList', () => {
     expect(getByText('Color update failed')).toBeInTheDocument();
   });
 
-  it('renders a "Copy name" button for each story row', () => {
-    const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
-    const buttons = getAllByRole('button', { name: 'Copy story name' });
-    expect(buttons).toHaveLength(storyEntries.length);
-  });
-
-  it('writes the first row story name to clipboard when its "Copy name" button is clicked', async () => {
-    const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
-    const [firstButton] = getAllByRole('button', { name: 'Copy story name' });
-    await act(async () => {
-      fireEvent.click(firstButton);
+  describe('story description', () => {
+    it('renders an Edit description button for each story row', () => {
+      const { getAllByRole } = render(<ConsoleStoryList {...defaultProps} />);
+      const buttons = getAllByRole('button', { name: 'Edit description' });
+      expect(buttons).toHaveLength(storyEntries.length);
     });
-    expect(writeText).toHaveBeenCalledWith(storyEntries[0].storyName);
+
+    it('shows the description form when Edit description is clicked', () => {
+      const { getAllByRole, getByPlaceholderText } = render(
+        <ConsoleStoryList {...defaultProps} />,
+      );
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
+      fireEvent.click(firstButton);
+      expect(getByPlaceholderText('Story description')).toBeInTheDocument();
+    });
+
+    it('hides the description form when Edit description is clicked again', () => {
+      const { getAllByRole, queryByPlaceholderText } = render(
+        <ConsoleStoryList {...defaultProps} />,
+      );
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
+      fireEvent.click(firstButton);
+      fireEvent.click(firstButton);
+      expect(queryByPlaceholderText('Story description')).toBeNull();
+    });
+
+    it('displays description text when story has a non-empty description', () => {
+      const withDescription: ConsoleStoryEntry[] = [
+        { ...storyEntries[0], description: 'Track all TDPM console work' },
+        storyEntries[1],
+      ];
+      const { getByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={withDescription} />,
+      );
+      expect(getByText('Track all TDPM console work')).toBeInTheDocument();
+    });
+
+    it('calls onUpdateDescription with the correct storyOptionId and new description on submit', async () => {
+      const onUpdateDescription = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole, getByPlaceholderText, getByRole } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          onUpdateDescription={onUpdateDescription}
+        />,
+      );
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
+      fireEvent.click(firstButton);
+      fireEvent.change(getByPlaceholderText('Story description'), {
+        target: { value: 'New description text' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(onUpdateDescription).toHaveBeenCalledWith(
+          '1491051e',
+          'New description text',
+        ),
+      );
+    });
+
+    it('closes the description form after a successful save', async () => {
+      const onUpdateDescription = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole, getByPlaceholderText, getByRole, queryByRole } =
+        render(
+          <ConsoleStoryList
+            {...defaultProps}
+            onUpdateDescription={onUpdateDescription}
+          />,
+        );
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
+      fireEvent.click(firstButton);
+      fireEvent.change(getByPlaceholderText('Story description'), {
+        target: { value: 'Some description' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(queryByRole('textbox')).toBeNull());
+    });
+
+    it('allows saving an empty description', async () => {
+      const onUpdateDescription = jest.fn().mockResolvedValue(undefined);
+      const withDescription: ConsoleStoryEntry[] = [
+        { ...storyEntries[0], description: 'Existing description' },
+        storyEntries[1],
+      ];
+      const { getAllByRole, getByPlaceholderText, getByRole } = render(
+        <ConsoleStoryList
+          {...defaultProps}
+          stories={withDescription}
+          onUpdateDescription={onUpdateDescription}
+        />,
+      );
+      const [firstButton] = getAllByRole('button', {
+        name: 'Edit description',
+      });
+      fireEvent.click(firstButton);
+      fireEvent.change(getByPlaceholderText('Story description'), {
+        target: { value: '' },
+      });
+      fireEvent.click(getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(onUpdateDescription).toHaveBeenCalledWith('1491051e', ''),
+      );
+    });
   });
 
   describe('gray story toggle', () => {
@@ -836,6 +927,7 @@ describe('ConsoleStoryList', () => {
         storyName: 'TDPM Console port',
         storyOptionId: '1491051e',
         color: 'BLUE',
+        description: '',
         openItemCount: 2,
         storyViewUrl: null,
         items: [
@@ -843,6 +935,7 @@ describe('ConsoleStoryList', () => {
             number: 10,
             title: 'Fix login bug',
             url: 'https://github.com/demo/repo/issues/10',
+            status: 'Awaiting Owner',
             agent: 'developer',
             nextActionDate: '2026-07-10T00:00:00.000Z',
             nextActionHour: 9,
@@ -855,6 +948,7 @@ describe('ConsoleStoryList', () => {
             number: 11,
             title: 'Add analytics',
             url: 'https://github.com/demo/repo/issues/11',
+            status: null,
             agent: null,
             nextActionDate: null,
             nextActionHour: null,
@@ -866,6 +960,7 @@ describe('ConsoleStoryList', () => {
         storyName: 'Move to Okinawa',
         storyOptionId: '564803ee',
         color: 'PURPLE',
+        description: '',
         openItemCount: 0,
         storyViewUrl: null,
         items: [],
@@ -908,6 +1003,14 @@ describe('ConsoleStoryList', () => {
         'href',
         'https://github.com/demo/repo/issues/10',
       );
+    });
+
+    it('shows status value when set', () => {
+      const { getAllByRole, getByText } = render(
+        <ConsoleStoryList {...defaultProps} stories={storyWithItems} />,
+      );
+      fireEvent.click(getAllByRole('button', { name: 'Show tasks' })[0]);
+      expect(getByText('Awaiting Owner')).toBeInTheDocument();
     });
 
     it('shows agent value when set', () => {
