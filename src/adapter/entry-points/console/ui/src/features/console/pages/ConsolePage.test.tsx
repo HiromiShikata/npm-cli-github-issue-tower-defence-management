@@ -1620,6 +1620,56 @@ describe('ConsolePage auto-advance tab', () => {
     expect(localStorage.getItem('console-story-show-gray')).toBe('true');
   });
 
+  it('navigates to the next project when the awaiting owner tab becomes empty in timer mode', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: { acme: 30, beta: 30 },
+      }),
+    );
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve & Merge'));
+      act(() => {
+        jest.advanceTimersByTime(5100);
+      });
+      await waitFor(() => {
+        expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('navigates to the next project when a completing action fires after the project timer elapses', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
