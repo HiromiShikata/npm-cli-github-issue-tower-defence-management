@@ -114,4 +114,23 @@ describe('ConsoleTaskCreateButton', () => {
     );
     expect(getByRole('button', { name: /new task/i })).not.toBeNull();
   });
+
+  it('shows the open-in-new-tab link in the dialog when fleetTaskCreateUrl is provided', () => {
+    const url = 'https://github.com/HiromiShikata/secretary/issues/new';
+    const { getByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} fleetTaskCreateUrl={url} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    const link = getByRole('link', { name: /open in new tab/i });
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe(url);
+  });
+
+  it('does not show the open-in-new-tab link in the dialog when fleetTaskCreateUrl is not provided', () => {
+    const { getByRole, queryByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    expect(queryByRole('link', { name: /open in new tab/i })).toBeNull();
+  });
 });
