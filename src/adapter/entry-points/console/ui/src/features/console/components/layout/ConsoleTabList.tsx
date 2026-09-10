@@ -186,7 +186,8 @@ export const ConsoleTabList = ({
             data-from-cache={fromCache ? 'true' : undefined}
             title={generatedAt}
           >
-            {fromCache ? '(cached) ' : ''}snapshot: {formatSnapshotAge(generatedAt, now)}
+            {fromCache ? '(cached) ' : ''}snapshot:{' '}
+            {formatSnapshotAge(generatedAt, now)}
           </span>
         )}
         {airplaneModeEnabled && (

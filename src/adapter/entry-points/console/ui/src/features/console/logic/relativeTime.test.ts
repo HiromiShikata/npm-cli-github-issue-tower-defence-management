@@ -68,9 +68,9 @@ describe('formatRelativeTime', () => {
 describe('formatSnapshotAge', () => {
   it('returns 0s ago for a future timestamp', () => {
     const futureNow = Date.parse('2026-06-19T12:00:00.000Z');
-    expect(
-      formatSnapshotAge('2026-06-19T12:00:05.000Z', futureNow),
-    ).toBe('0s ago');
+    expect(formatSnapshotAge('2026-06-19T12:00:05.000Z', futureNow)).toBe(
+      '0s ago',
+    );
   });
 
   it('returns seconds ago for times under one minute', () => {
