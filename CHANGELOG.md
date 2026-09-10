@@ -1,3 +1,10 @@
+## [2.97.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.97.1...v2.97.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* **CliErrorReportUseCase:** suppress GitHub GraphQL transient errors to prevent premature secretary issues ([#2265](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2265)) ([cb27392](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cb27392ebc95c775845790e3e7272719f57ee87f))
+
 ## [2.97.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.97.0...v2.97.1) (2026-09-09)
 
 
