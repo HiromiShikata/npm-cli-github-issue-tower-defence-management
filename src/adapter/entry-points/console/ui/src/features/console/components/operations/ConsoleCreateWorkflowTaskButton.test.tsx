@@ -51,12 +51,16 @@ describe('ConsoleCreateWorkflowTaskButton', () => {
     const onCreateWorkflowTask = jest
       .fn()
       .mockResolvedValue('https://github.com/HiromiShikata/secretary/issues/1');
-    const { getByTitle, getByPlaceholderText, getByText, queryByPlaceholderText } =
-      render(
-        <ConsoleCreateWorkflowTaskButton
-          onCreateWorkflowTask={onCreateWorkflowTask}
-        />,
-      );
+    const {
+      getByTitle,
+      getByPlaceholderText,
+      getByText,
+      queryByPlaceholderText,
+    } = render(
+      <ConsoleCreateWorkflowTaskButton
+        onCreateWorkflowTask={onCreateWorkflowTask}
+      />,
+    );
     fireEvent.click(getByTitle('Create workflow improvement task'));
     fireEvent.change(getByPlaceholderText('Task title'), {
       target: { value: '  Fix the pipeline  ' },
@@ -99,7 +103,9 @@ describe('ConsoleCreateWorkflowTaskButton', () => {
     const input = getByPlaceholderText('Task title');
     fireEvent.change(input, { target: { value: 'Fix the pipeline' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => expect(queryByPlaceholderText('Task title')).toBeNull());
+    await waitFor(() =>
+      expect(queryByPlaceholderText('Task title')).toBeNull(),
+    );
     expect(onCreateWorkflowTask).toHaveBeenCalledWith('Fix the pipeline');
   });
 });
