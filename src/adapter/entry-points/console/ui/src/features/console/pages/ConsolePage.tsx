@@ -914,6 +914,7 @@ export const ConsolePage = () => {
         projectUrl={pjcode !== null ? (projectUrls?.[pjcode] ?? null) : null}
         workflowImprovementIssueUrl={workflowImprovementIssueUrl}
         fleetTaskCreateUrl={fleetTaskCreateUrl}
+        now={now}
       />
       <ConsoleProjectTimerBar
         timerEndsAt={activeSnapshot?.timerEndsAt ?? null}
