@@ -2459,6 +2459,85 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('uses the fresh story fieldId when the cached fieldId is stale', async () => {
+      const cachedProject: Project = {
+        ...projectWithStory(),
+        story: {
+          name: 'Story',
+          fieldId: 'PVTSSF_stale',
+          databaseId: 1,
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+          stories: [
+            {
+              id: 'opt_blue',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          name: 'Story',
+          fieldId: 'PVTSSF_fresh',
+          databaseId: 1,
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+          stories: [
+            {
+              id: 'opt_blue',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_new',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+
+      await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(
+          () => ({
+            getProject: jest.fn().mockResolvedValue(freshProject),
+            updateStoryList: jest.fn(),
+          }),
+          cachedProject,
+        ),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      const expectedFreshStory = {
+        name: 'Story',
+        fieldId: 'PVTSSF_fresh',
+        databaseId: 1,
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+        stories: [
+          {
+            id: 'opt_blue',
+            name: 'Portal redesign',
+            color: 'BLUE' as const,
+            description: '',
+          },
+        ],
+      };
+      expect(issueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: expectedFreshStory }),
+        createdIssue,
+        'opt_blue',
+      );
+    });
+
     it('creates the issue, adds it to the project, and sets the story', async () => {
       const storyProject = projectWithStory();
       const createdIssue: Issue = {

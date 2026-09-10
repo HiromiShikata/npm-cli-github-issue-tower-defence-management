@@ -20,6 +20,7 @@ export type ConsoleListsWriterParams = {
   urlOfStoryView?: string | null;
   generatedAt?: string;
   nowMs?: number;
+  defaultTaskNameWithOwner?: string | null;
 };
 
 export const formatConsoleGeneratedAt = (date: Date): string =>
@@ -103,6 +104,7 @@ export const writeConsoleLists = (params: ConsoleListsWriterParams): void => {
     workflowBlockerStoryName: params.workflowBlockerStoryName ?? null,
     urlOfStoryView: params.urlOfStoryView ?? null,
     now: new Date(nowMs),
+    defaultTaskNameWithOwner: params.defaultTaskNameWithOwner ?? null,
   });
 
   for (const tab of CONSOLE_LIST_TAB_NAMES) {
