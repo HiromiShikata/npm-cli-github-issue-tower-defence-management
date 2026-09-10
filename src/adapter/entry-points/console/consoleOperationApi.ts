@@ -853,16 +853,11 @@ export const handleCreateIssue = async (
     return badRequest('project does not have a story field');
   }
 
-  if (context.resolveProjectRepository === null) {
-    return badGateway('project repository is not configured');
-  }
-
-  const projectRepository = context.resolveProjectRepository(project.url);
-  const freshProject = await projectRepository.getProject(project.id);
-  const freshStories = freshProject?.story?.stories ?? project.story.stories;
-
-  const storyOption = freshStories.find((s) => s.name === storyName);
-  if (storyOption === undefined) {
+  const cachedProjectStory = project.story;
+  const cachedStoryOption = cachedProjectStory.stories.find(
+    (s) => s.name === storyName,
+  );
+  if (cachedStoryOption === undefined) {
     return badRequest(`story option "${storyName}" not found in project`);
   }
 
@@ -901,27 +896,42 @@ export const handleCreateIssue = async (
   );
   const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
 
-  await issueRepository.addIssueToProject(project, issueUrl);
-
-  const addedIssue = await issueRepository.get(issueUrl, project);
-  if (addedIssue !== null) {
-    const effectiveProject = freshProject ?? project;
-    const effectiveStory = freshProject?.story ?? project.story;
-    await issueRepository.updateStory(
-      { ...effectiveProject, story: effectiveStory },
-      addedIssue,
-      storyOption.id,
-    );
-    if (agentOptionId !== null && effectiveProject.agent !== null) {
-      await issueRepository.setIssueAgentField(
-        issueUrl,
-        effectiveProject,
-        agentOptionId,
+  const backgroundTask = (async () => {
+    await issueRepository.addIssueToProject(project, issueUrl);
+    const addedIssue = await issueRepository.get(issueUrl, project);
+    if (addedIssue !== null) {
+      const projectRepository =
+        context.resolveProjectRepository !== null
+          ? context.resolveProjectRepository(project.url)
+          : null;
+      const freshProject =
+        projectRepository !== null
+          ? await projectRepository.getProject(project.id)
+          : null;
+      const effectiveProject = freshProject ?? project;
+      const effectiveStory = freshProject?.story ?? cachedProjectStory;
+      const storyOption =
+        effectiveStory.stories.find((s) => s.name === storyName) ??
+        cachedStoryOption;
+      await issueRepository.updateStory(
+        { ...effectiveProject, story: effectiveStory },
+        addedIssue,
+        storyOption.id,
       );
+      if (agentOptionId !== null && effectiveProject.agent !== null) {
+        await issueRepository.setIssueAgentField(
+          issueUrl,
+          effectiveProject,
+          agentOptionId,
+        );
+      }
     }
-  }
+  })();
+  backgroundTask.catch((e) =>
+    console.error('Background issue setup failed:', e),
+  );
 
-  return { statusCode: 200, body: { ok: true, issueUrl } };
+  return { statusCode: 200, body: { ok: true, issueUrl }, backgroundTask };
 };
 
 export const handleReviewComment = async (
