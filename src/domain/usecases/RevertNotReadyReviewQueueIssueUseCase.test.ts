@@ -167,6 +167,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   };
   let mockIssueCommentRepository: {
     createComment: jest.Mock;
+    getCommentsFromIssue: jest.Mock;
   };
   let mockProject: Project;
   let useCase: RevertNotReadyReviewQueueIssueUseCase;
@@ -200,6 +201,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     mockIssueCommentRepository = {
       createComment: jest.fn().mockResolvedValue(undefined),
+      getCommentsFromIssue: jest.fn().mockResolvedValue([]),
     };
 
     useCase = new RevertNotReadyReviewQueueIssueUseCase(
@@ -349,6 +351,73 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issues: [issue],
         cacheUsed: false,
       });
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+      );
+    });
+
+    it('skips revert when developer agent issue has last agent report with waitingForOwner true', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        labels: [],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'owner',
+          content:
+            'From: :robot: developer (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('reverts developer agent issue when last agent report has waitingForOwner false', async () => {
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        labels: [],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'owner',
+          content:
+            'From: :robot: developer (model)\n\n```json\n{ "waitingForOwner": false }\n```\n',
+          createdAt: new Date(),
+        },
+      ]);
 
       await useCase.run({
         manager: 'manager-user',
