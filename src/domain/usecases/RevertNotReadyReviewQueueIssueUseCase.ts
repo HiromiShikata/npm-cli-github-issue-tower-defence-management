@@ -162,27 +162,27 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         continue;
       }
 
-      if (
-        this.issueRejectionEvaluator.requiresPullRequestEvaluation(
-          issue,
-          labelsNotRequiringPullRequest,
-          params.developerAgentNames,
-        )
-      ) {
-        const issueComments =
-          await this.issueCommentRepository.getCommentsFromIssue(issue);
-        const lastAgentReport = findLastAgentReport(issueComments, (author) =>
-          isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
-        );
-        if (
-          lastAgentReport &&
-          extractWaitingForOwner(lastAgentReport.content)
-        ) {
-          continue;
-        }
-      }
-
       try {
+        if (
+          this.issueRejectionEvaluator.requiresPullRequestEvaluation(
+            issue,
+            labelsNotRequiringPullRequest,
+            params.developerAgentNames,
+          )
+        ) {
+          const issueComments =
+            await this.issueCommentRepository.getCommentsFromIssue(issue);
+          const lastAgentReport = findLastAgentReport(issueComments, (author) =>
+            isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+          );
+          if (
+            lastAgentReport &&
+            extractWaitingForOwner(lastAgentReport.content)
+          ) {
+            continue;
+          }
+        }
+
         const { rejections, approvedPrUrl } =
           await this.issueRejectionEvaluator.evaluate(
             issue,

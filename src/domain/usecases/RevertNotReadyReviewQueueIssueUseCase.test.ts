@@ -1715,6 +1715,53 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
+    it('should skip an issue whose getCommentsFromIssue times out and continue with remaining issues', async () => {
+      const timedOutIssue = createMockIssue({
+        number: 1,
+        url: 'https://github.com/user/repo/issues/1',
+        itemId: 'timed-out-item',
+        status: 'Awaiting Owner',
+        agent: 'developer',
+      });
+      const normalIssue = createMockIssue({
+        number: 2,
+        url: 'https://github.com/user/repo/issues/2',
+        itemId: 'normal-item',
+        status: 'Awaiting Owner',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: mockProject,
+        issues: [timedOutIssue, normalIssue],
+        cacheUsed: false,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockImplementation(
+        (issue: Issue) =>
+          issue.url === timedOutIssue.url
+            ? Promise.reject(createKyTimeoutError())
+            : Promise.resolve([]),
+      );
+
+      await useCase.run({
+        manager: 'manager-user',
+        projectUrl: 'https://github.com/users/user/projects/1',
+        allowedIssueAuthors: ['owner'],
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        mockProject,
+        timedOutIssue,
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        normalIssue,
+        'awaiting-workspace-id',
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(timedOutIssue.url),
+      );
+    });
+
     it('should skip an Awaiting Owner pull request whose updateStatus times out and continue with remaining pull requests', async () => {
       const timedOutPullRequest = createMockPullRequest({
         number: 1,
