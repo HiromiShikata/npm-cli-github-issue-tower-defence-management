@@ -775,6 +775,40 @@ test('project switcher appears at the left end of the tab bar and opens a dropdo
   await expect(page.locator('.console-tab-pjname-dropdown')).toBeVisible();
 });
 
+test('project switcher dropdown options have adequate touch target height of at least 40px', async ({
+  page,
+}) => {
+  await page.route('**/api/projects', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        pjcodes: ['acme', 'beta', 'gamma'],
+        projectUrls: null,
+        workflowImprovementIssueUrl: null,
+        fleetTaskCreateUrl: null,
+      }),
+    });
+  });
+
+  await page.goto(harness.appRootUrl);
+
+  const pjnameDiv = page.locator('.console-tab-pjname');
+  await pjnameDiv.locator('button').click();
+
+  const dropdown = page.locator('.console-tab-pjname-dropdown');
+  await expect(dropdown).toBeVisible();
+
+  const firstOption = page.locator('.console-tab-pjname-option').first();
+  await expect(firstOption).toBeVisible();
+
+  const box = await firstOption.boundingBox();
+  if (box === null) {
+    throw new Error('.console-tab-pjname-option must be laid out');
+  }
+  expect(box.height).toBeGreaterThanOrEqual(40);
+});
+
 test('deletes all comments when the dangerous actions panel is opened and the delete button is clicked', async ({
   page,
 }) => {
