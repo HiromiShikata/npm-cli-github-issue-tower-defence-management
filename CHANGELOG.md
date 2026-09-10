@@ -1,3 +1,11 @@
+# [2.99.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.98.2...v2.99.0) (2026-09-10)
+
+
+### Features
+
+* **console:** add safe-area padding, highlight current project, show snapshot as relative time ([#2270](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2270)) ([da3a02e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/da3a02e06a7f5eb74621b57673b3e63f15bed510)), closes [#e6edf3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/e6edf3) [HiromiShikata/umino-corporait-operation#31594](https://github.com/HiromiShikata/umino-corporait-operation/issues/31594)
+* **console:** move file attachments below body in task creation dialog ([#2271](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2271)) ([d7e8962](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d7e89625b3d25d08596cce4a36ca828c20f5eb7f)), closes [HiromiShikata/umino-corporait-operation#31597](https://github.com/HiromiShikata/umino-corporait-operation/issues/31597)
+
 ## [2.98.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.98.1...v2.98.2) (2026-09-10)
 
 
