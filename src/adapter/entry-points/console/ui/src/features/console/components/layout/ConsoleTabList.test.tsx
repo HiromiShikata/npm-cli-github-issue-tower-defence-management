@@ -381,7 +381,7 @@ describe('ConsoleTabList', () => {
     expect(link).toHaveAttribute('rel', 'noreferrer');
   });
 
-  it('renders the project link inside the pjname container', () => {
+  it('renders the project link at the top-bar level, outside the pjname container', () => {
     const url = 'https://github.com/users/HiromiShikata/projects/48';
     const { getByRole, container } = render(
       <ConsoleTabList
@@ -392,10 +392,8 @@ describe('ConsoleTabList', () => {
       />,
     );
     const link = getByRole('link', { name: /open github project/i });
-    expect(link.closest('.console-tab-pjname')).not.toBeNull();
-    expect(container.querySelector('.console-tab-pjname-project-link')).toBe(
-      link,
-    );
+    expect(link.closest('.console-tab-pjname')).toBeNull();
+    expect(container.querySelector('.console-tab-project-link')).toBe(link);
   });
 
   it('does not render the project link when projectUrl is null', () => {
@@ -407,17 +405,13 @@ describe('ConsoleTabList', () => {
         projectUrl={null}
       />,
     );
-    expect(
-      container.querySelector('.console-tab-pjname-project-link'),
-    ).toBeNull();
+    expect(container.querySelector('.console-tab-project-link')).toBeNull();
   });
 
   it('does not render the project link when projectUrl is not provided', () => {
     const { container } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
-    expect(
-      container.querySelector('.console-tab-pjname-project-link'),
-    ).toBeNull();
+    expect(container.querySelector('.console-tab-project-link')).toBeNull();
   });
 });
