@@ -1,3 +1,10 @@
+# [2.100.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.99.0...v2.100.0) (2026-09-10)
+
+
+### Features
+
+* run issue setup (addIssueToProject, updateStory) in background after createNewIssue ([#2272](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2272)) ([065861b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/065861b29a6a89b5aa8461e71a4b676fad04d3a4)), closes [HiromiShikata/umino-corporait-operation#31596](https://github.com/HiromiShikata/umino-corporait-operation/issues/31596)
+
 # [2.99.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.98.2...v2.99.0) (2026-09-10)
 
 
