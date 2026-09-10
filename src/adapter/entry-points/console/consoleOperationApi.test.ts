@@ -20,6 +20,7 @@ import {
   handleAttachmentUpload,
   handleComment,
   handleCreateIssue,
+  handleCreateWorkflowIssue,
   handleDeleteAllComments,
   handleDeleteStory,
   handleIntmux,
@@ -5336,6 +5337,69 @@ describe('consoleOperationApi', () => {
         expect.stringContaining('maximumPreparingIssuesCount'),
         'meta-site-token',
       );
+    });
+  });
+
+  describe('handleCreateWorkflowIssue', () => {
+    beforeEach(() => {
+      issueRepository.createNewIssue.mockResolvedValue(7);
+    });
+
+    it('creates an issue in the specified repository and returns its URL', async () => {
+      const response = await handleCreateWorkflowIssue(issueRepository, {
+        nameWithOwner: 'HiromiShikata/secretary',
+        title: 'Fix the workflow pipeline',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toMatchObject({
+        ok: true,
+        issueUrl: 'https://github.com/HiromiShikata/secretary/issues/7',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'HiromiShikata',
+        'secretary',
+        'Fix the workflow pipeline',
+        '',
+        [],
+        [],
+      );
+    });
+
+    it('trims the title before creating the issue', async () => {
+      await handleCreateWorkflowIssue(issueRepository, {
+        nameWithOwner: 'HiromiShikata/secretary',
+        title: '  Trimmed title  ',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'HiromiShikata',
+        'secretary',
+        'Trimmed title',
+        '',
+        [],
+        [],
+      );
+    });
+
+    it('returns 400 when nameWithOwner is missing', async () => {
+      const response = await handleCreateWorkflowIssue(issueRepository, {
+        title: 'Some title',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when title is missing', async () => {
+      const response = await handleCreateWorkflowIssue(issueRepository, {
+        nameWithOwner: 'HiromiShikata/secretary',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when nameWithOwner has no slash', async () => {
+      const response = await handleCreateWorkflowIssue(issueRepository, {
+        nameWithOwner: 'invalid',
+        title: 'Some title',
+      });
+      expect(response.statusCode).toBe(400);
     });
   });
 });

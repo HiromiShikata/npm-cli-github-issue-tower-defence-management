@@ -924,6 +924,36 @@ export const handleCreateIssue = async (
   return { statusCode: 200, body: { ok: true, issueUrl } };
 };
 
+export const handleCreateWorkflowIssue = async (
+  issueRepository: IssueRepository,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const nameWithOwner = body.nameWithOwner;
+  const title = body.title;
+  if (!isNonEmptyString(nameWithOwner)) {
+    return badRequest('nameWithOwner is required');
+  }
+  if (!isNonEmptyString(title)) {
+    return badRequest('title is required');
+  }
+  const slashIndex = nameWithOwner.indexOf('/');
+  if (slashIndex <= 0 || slashIndex === nameWithOwner.length - 1) {
+    return badRequest('nameWithOwner must be in owner/repo format');
+  }
+  const org = nameWithOwner.slice(0, slashIndex);
+  const repo = nameWithOwner.slice(slashIndex + 1);
+  const issueNumber = await issueRepository.createNewIssue(
+    org,
+    repo,
+    title.trim(),
+    '',
+    [],
+    [],
+  );
+  const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
+  return { statusCode: 200, body: { ok: true, issueUrl } };
+};
+
 export const handleReviewComment = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,

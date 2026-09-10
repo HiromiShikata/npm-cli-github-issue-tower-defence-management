@@ -498,6 +498,33 @@ export const postConsoleCreateIssue = async (
   return payload.issueUrl;
 };
 
+export const CREATE_WORKFLOW_ISSUE_OPERATION_PATH = '/api/createworkflowissue';
+
+export type ConsoleCreateWorkflowIssueRequest = {
+  nameWithOwner: string;
+  title: string;
+};
+
+export const postConsoleCreateWorkflowIssue = async (
+  request: ConsoleCreateWorkflowIssueRequest,
+): Promise<string> => {
+  const response = await fetch(CREATE_WORKFLOW_ISSUE_OPERATION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+  const payload: unknown = await response.json();
+  const isRecordLocal = (v: unknown): v is Record<string, unknown> =>
+    v !== null && typeof v === 'object' && !Array.isArray(v);
+  if (!isRecordLocal(payload) || typeof payload.issueUrl !== 'string') {
+    throw new Error('issueUrl was not returned');
+  }
+  return payload.issueUrl;
+};
+
 export const REORDER_STORY_OPERATION_PATH = '/api/reorderstory';
 
 export type ConsoleReorderStoryRequest = {
