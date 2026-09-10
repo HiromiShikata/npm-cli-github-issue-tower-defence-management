@@ -1,3 +1,10 @@
+## [2.100.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.100.1...v2.100.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* **useConsoleAwaitingOwnerTimerNavigation:** prevent spurious navigation after project selector navigation ([#2275](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2275)) ([2d12213](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2d12213ac18ef2d4f936ab03b58b2758951b2b98)), closes [HiromiShikata/umino-corporait-operation#31616](https://github.com/HiromiShikata/umino-corporait-operation/issues/31616)
+
 ## [2.100.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.100.0...v2.100.1) (2026-09-10)
 
 
