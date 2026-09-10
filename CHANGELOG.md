@@ -1,3 +1,10 @@
+## [2.98.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.98.1...v2.98.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* use fresh ProjectV2 field IDs when creating TDPM console tasks ([#2269](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2269)) ([09b75f1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/09b75f13ead2f5e957c4334e7822df9d5616d5f6)), closes [HiromiShikata/umino-corporait-operation#31590](https://github.com/HiromiShikata/umino-corporait-operation/issues/31590)
+
 ## [2.98.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.98.0...v2.98.1) (2026-09-10)
 
 
