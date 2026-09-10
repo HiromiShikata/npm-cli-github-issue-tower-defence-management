@@ -116,6 +116,17 @@ export const IssueCreateModalDialog = ({
           />
 
           <span className="console-task-create-dialog-section-label">
+            Attachments
+          </span>
+          <input
+            type="file"
+            multiple
+            className="console-task-create-dialog-file-input"
+            disabled={submitting}
+            onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
+          />
+
+          <span className="console-task-create-dialog-section-label">
             Story
           </span>
           <div className="console-task-create-dialog-option-list">
@@ -164,17 +175,6 @@ export const IssueCreateModalDialog = ({
               </div>
             </>
           )}
-
-          <span className="console-task-create-dialog-section-label">
-            Attachments
-          </span>
-          <input
-            type="file"
-            multiple
-            className="console-task-create-dialog-file-input"
-            disabled={submitting}
-            onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
-          />
 
           {submitError !== null && (
             <p role="alert" className="console-list-error">

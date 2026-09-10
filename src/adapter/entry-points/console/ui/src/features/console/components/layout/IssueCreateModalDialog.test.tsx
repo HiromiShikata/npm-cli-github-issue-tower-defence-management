@@ -222,6 +222,24 @@ describe('IssueCreateModalDialog', () => {
     expect(queryByPlaceholderText(/paste current task url/i)).toBeNull();
   });
 
+  it('renders file input directly after body textarea and before story buttons', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const allElements = Array.from(
+      document.body.querySelectorAll(
+        'input[type="file"], .console-task-create-dialog-option-button',
+      ),
+    );
+    const fileInputIndex = allElements.findIndex(
+      (el) => el.tagName === 'INPUT',
+    );
+    const firstStoryButtonIndex = allElements.findIndex(
+      (el) => el.tagName === 'BUTTON',
+    );
+    expect(fileInputIndex).not.toBe(-1);
+    expect(firstStoryButtonIndex).not.toBe(-1);
+    expect(fileInputIndex).toBeLessThan(firstStoryButtonIndex);
+  });
+
   it('calls onClose when Cancel is clicked', () => {
     const onClose = jest.fn();
     const { getByRole } = render(
