@@ -1,3 +1,10 @@
+# [2.98.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.97.2...v2.98.0) (2026-09-10)
+
+
+### Features
+
+* **ConsoleTabList:** move GitHub project link icon to header icon row ([#2267](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2267)) ([197bcdc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/197bcdc69d2a3a80b0ce2176f0c71e2689f9b847)), closes [#2266](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2266)
+
 ## [2.97.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.97.1...v2.97.2) (2026-09-10)
 
 
