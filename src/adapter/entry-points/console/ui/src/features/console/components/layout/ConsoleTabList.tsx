@@ -139,18 +139,18 @@ export const ConsoleTabList = ({
                 </div>,
                 document.body,
               )}
-            {projectUrl !== null && (
-              <a
-                href={projectUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="console-tab-pjname-project-link"
-                aria-label="Open GitHub project"
-              >
-                ↗
-              </a>
-            )}
           </div>
+        )}
+        {projectUrl !== null && (
+          <a
+            href={projectUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="console-tab-project-link"
+            aria-label="Open GitHub project"
+          >
+            ↗
+          </a>
         )}
         {settingsButton !== undefined && (
           <span className="console-tab-settings">{settingsButton}</span>

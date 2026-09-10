@@ -66,7 +66,7 @@ body {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0;
+  gap: 12px;
   padding: 4px 8px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -181,6 +181,19 @@ body {
 
 .console-tab-pjname-option:hover,
 .console-tab-pjname-option[data-active='true'] {
+  background: #21262d;
+}
+
+.console-tab-project-link {
+  color: #8b949e;
+  text-decoration: none;
+  font-size: 0.7188rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.console-tab-project-link:hover {
+  color: #e6edf3;
   background: #21262d;
 }
 
