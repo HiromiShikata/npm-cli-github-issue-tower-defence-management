@@ -10,6 +10,8 @@ import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprov
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
+import { findLastAgentReport } from './findLastAgentReport';
+import { extractWaitingForOwner } from './extractWaitingForOwner';
 import {
   AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
@@ -52,7 +54,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
-      'createComment'
+      'createComment' | 'getCommentsFromIssue'
     >,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
@@ -158,6 +160,25 @@ export class RevertNotReadyReviewQueueIssueUseCase {
           'Auto Status Check: REJECTED\n- Reactivation trigger not yet reached',
         );
         continue;
+      }
+
+      if (
+        this.issueRejectionEvaluator.requiresPullRequestEvaluation(
+          issue,
+          labelsNotRequiringPullRequest,
+          params.developerAgentNames,
+        )
+      ) {
+        const issueComments =
+          await this.issueCommentRepository.getCommentsFromIssue(issue);
+        const lastAgentReport = findLastAgentReport(
+          issueComments,
+          (author) =>
+            isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+        );
+        if (lastAgentReport && extractWaitingForOwner(lastAgentReport.content)) {
+          continue;
+        }
       }
 
       try {
