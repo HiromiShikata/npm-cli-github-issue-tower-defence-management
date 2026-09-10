@@ -1,3 +1,10 @@
+## [2.100.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.100.0...v2.100.1) (2026-09-10)
+
+
+### Bug Fixes
+
+* **RevertNotReadyReviewQueueIssueUseCase:** prevent redispatch of waitingForOwner issues when PR not found ([#2274](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2274)) ([8d7ab31](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8d7ab3166b1a0a6918bbce0bebd1dd577de88ba9)), closes [HiromiShikata/secretary#5992](https://github.com/HiromiShikata/secretary/issues/5992)
+
 # [2.100.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.99.0...v2.100.0) (2026-09-10)
 
 
