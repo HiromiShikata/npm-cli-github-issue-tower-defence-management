@@ -903,6 +903,20 @@ describe('HandleScheduledEventUseCase', () => {
         expect(mockCreateNewStoryByLabelUseCase.run).toHaveBeenCalled();
       });
 
+      it('analyzeStoriesUseCase must be removed from HandleScheduledEventUseCase (story progress creation stopped)', async () => {
+        mockSpreadsheetRepository.getSheet.mockResolvedValue([
+          ['LastExecutionDateTime'],
+          ['2024-01-01T00:00:00Z'],
+        ]);
+        mockDateRepository.now.mockResolvedValue(
+          new Date('2024-01-01T00:10:00Z'),
+        );
+
+        await useCase.run(baseInput);
+
+        expect(mockAnalyzeStoriesUseCase.run).not.toHaveBeenCalled();
+      });
+
       it('should skip slow sweep use cases when LastSlowSweepDateTime is within 600 seconds', async () => {
         const now = new Date('2024-01-01T00:10:00Z');
         const recentSlowSweep = new Date(
