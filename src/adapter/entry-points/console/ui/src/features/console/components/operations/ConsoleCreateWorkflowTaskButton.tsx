@@ -63,7 +63,6 @@ export const ConsoleCreateWorkflowTaskButton = ({
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={submitting}
-            autoFocus
           />
           <button
             type="button"
