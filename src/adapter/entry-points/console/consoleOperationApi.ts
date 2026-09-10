@@ -905,15 +905,17 @@ export const handleCreateIssue = async (
 
   const addedIssue = await issueRepository.get(issueUrl, project);
   if (addedIssue !== null) {
+    const effectiveProject = freshProject ?? project;
+    const effectiveStory = freshProject?.story ?? project.story;
     await issueRepository.updateStory(
-      { ...project, story: project.story },
+      { ...effectiveProject, story: effectiveStory },
       addedIssue,
       storyOption.id,
     );
-    if (agentOptionId !== null && project.agent !== null) {
+    if (agentOptionId !== null && effectiveProject.agent !== null) {
       await issueRepository.setIssueAgentField(
         issueUrl,
-        project,
+        effectiveProject,
         agentOptionId,
       );
     }

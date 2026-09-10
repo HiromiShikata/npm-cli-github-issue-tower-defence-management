@@ -129,6 +129,7 @@ export class HandleScheduledEventUseCaseHandler {
       dashboardDataDir?: string;
       disks?: { title: string; mountpoint: string }[];
       workflowBlockerStoryName?: string;
+      defaultTaskNameWithOwner?: string;
       inTmuxDataOutputDir?: string;
       newIssueRepo?: string;
       inTmuxConsoleBaseUrl?: string;
@@ -595,6 +596,8 @@ export class HandleScheduledEventUseCaseHandler {
           workflowBlockerStoryName:
             mergedInput.workflowBlockerStoryName ?? null,
           urlOfStoryView: mergedInput.urlOfStoryView,
+          defaultTaskNameWithOwner:
+            mergedInput.defaultTaskNameWithOwner ?? null,
         });
       } catch (error) {
         console.error(
