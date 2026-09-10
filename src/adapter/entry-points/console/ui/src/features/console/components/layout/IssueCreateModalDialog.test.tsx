@@ -1,6 +1,7 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 import {
+  type IssueCreateDraft,
   IssueCreateModalDialog,
   type IssueCreateModalDialogProps,
   type IssueCreateParams,
@@ -345,5 +346,114 @@ describe('IssueCreateModalDialog', () => {
     expect(linkIndex).not.toBe(-1);
     expect(closeIndex).not.toBe(-1);
     expect(linkIndex).toBeLessThan(closeIndex);
+  });
+
+  it('does not close when clicking the overlay outside the dialog', () => {
+    const onClose = jest.fn();
+    render(<IssueCreateModalDialog {...baseProps} onClose={onClose} />);
+    const overlay = document.body.querySelector(
+      '.console-task-create-dialog-overlay',
+    ) as HTMLElement;
+    fireEvent.click(overlay);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  describe('initialDraft and onDraftChange', () => {
+    it('initializes title from initialDraft when provided', () => {
+      const draft: IssueCreateDraft = {
+        title: 'Saved title',
+        body: 'Saved body',
+        storyName: storyEntries[0].storyName,
+        agentOptionId: null,
+      };
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
+      );
+      expect(getByRole('textbox', { name: /title/i })).toHaveValue(
+        'Saved title',
+      );
+    });
+
+    it('initializes body from initialDraft when provided', () => {
+      const draft: IssueCreateDraft = {
+        title: '',
+        body: 'Saved body',
+        storyName: storyEntries[0].storyName,
+        agentOptionId: null,
+      };
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
+      );
+      expect(getByRole('textbox', { name: /body/i })).toHaveValue('Saved body');
+    });
+
+    it('initializes story selection from initialDraft when provided', () => {
+      const draft: IssueCreateDraft = {
+        title: '',
+        body: '',
+        storyName: storyEntries[1].storyName,
+        agentOptionId: null,
+      };
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
+      );
+      expect(
+        getByRole('button', {
+          name: /regular \/ tdpm dashboard & console improvement/i,
+        }).getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(
+        getByRole('button', {
+          name: /regular \/ workflow improvement/i,
+        }).getAttribute('aria-pressed'),
+      ).toBe('false');
+    });
+
+    it('initializes agent selection from initialDraft when provided', () => {
+      const draft: IssueCreateDraft = {
+        title: '',
+        body: '',
+        storyName: storyEntries[0].storyName,
+        agentOptionId: 'agent-developer',
+      };
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
+      );
+      expect(
+        getByRole('button', { name: /developer/i }).getAttribute('aria-pressed'),
+      ).toBe('true');
+    });
+
+    it('calls onDraftChange when title changes', () => {
+      const onDraftChange = jest.fn();
+      const { getByRole } = render(
+        <IssueCreateModalDialog
+          {...baseProps}
+          onDraftChange={onDraftChange}
+        />,
+      );
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'New title' },
+      });
+      expect(onDraftChange).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'New title' }),
+      );
+    });
+
+    it('calls onDraftChange when body changes', () => {
+      const onDraftChange = jest.fn();
+      const { getByRole } = render(
+        <IssueCreateModalDialog
+          {...baseProps}
+          onDraftChange={onDraftChange}
+        />,
+      );
+      fireEvent.change(getByRole('textbox', { name: /body/i }), {
+        target: { value: 'New body' },
+      });
+      expect(onDraftChange).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'New body' }),
+      );
+    });
   });
 });

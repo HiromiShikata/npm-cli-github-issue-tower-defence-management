@@ -133,4 +133,53 @@ describe('ConsoleTaskCreateButton', () => {
     fireEvent.click(getByRole('button', { name: /new task/i }));
     expect(queryByRole('link', { name: /open in new tab/i })).toBeNull();
   });
+
+  it('restores draft title when dialog is closed via Cancel and reopened', () => {
+    const { getByRole, queryByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'My draft title' },
+    });
+    fireEvent.click(getByRole('button', { name: /^cancel$/i }));
+    expect(queryByRole('dialog', { name: /create new task/i })).toBeNull();
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue(
+      'My draft title',
+    );
+  });
+
+  it('restores draft body when dialog is closed via Cancel and reopened', () => {
+    const { getByRole, queryByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    fireEvent.change(getByRole('textbox', { name: /body/i }), {
+      target: { value: 'My draft body' },
+    });
+    fireEvent.click(getByRole('button', { name: /^cancel$/i }));
+    expect(queryByRole('dialog', { name: /create new task/i })).toBeNull();
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    expect(getByRole('textbox', { name: /body/i })).toHaveValue(
+      'My draft body',
+    );
+  });
+
+  it('clears draft after successful submission', async () => {
+    const onCreateIssue = jest.fn().mockResolvedValue(undefined);
+    const { getByRole, queryByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} onCreateIssue={onCreateIssue} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Task to submit' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(queryByRole('dialog', { name: /create new task/i })).toBeNull(),
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue('');
+  });
 });
