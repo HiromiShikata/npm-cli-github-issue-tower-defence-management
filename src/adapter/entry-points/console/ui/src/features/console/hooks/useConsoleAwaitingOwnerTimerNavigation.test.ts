@@ -113,4 +113,21 @@ describe('useConsoleAwaitingOwnerTimerNavigation', () => {
     expect(navigatePush).toHaveBeenCalledTimes(1);
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
   });
+
+  it('does not navigate when snapshot reset clears prs count after project selector navigation', () => {
+    const { rerender } = renderHook(
+      ({ prsCount, pjcode }: { prsCount: number; pjcode: string }) =>
+        useConsoleAwaitingOwnerTimerNavigation(
+          true,
+          prsCount,
+          pjcode,
+          ['acme', 'beta', 'gamma'],
+          { acme: 30, beta: 30, gamma: 30 },
+        ),
+      { initialProps: { prsCount: 3, pjcode: 'acme' } },
+    );
+    rerender({ prsCount: 3, pjcode: 'beta' });
+    rerender({ prsCount: 0, pjcode: 'beta' });
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
 });
