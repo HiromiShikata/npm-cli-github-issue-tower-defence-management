@@ -20,7 +20,10 @@ export const useConsoleAwaitingOwnerTimerNavigation = (
     previousPjcodeRef.current = pjcode;
 
     if (!timerMode) return;
-    if (previousPjcode !== pjcode) return;
+    if (previousPjcode !== pjcode) {
+      previousPrsCountRef.current = 0;
+      return;
+    }
     if (previousCount > 0 && prsCount === 0) {
       const nextPjcode = findNextPjcodeWithMinutes(
         pjcodes,
