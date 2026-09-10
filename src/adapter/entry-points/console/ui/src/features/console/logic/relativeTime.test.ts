@@ -1,4 +1,8 @@
-import { formatFullTimestamp, formatRelativeTime } from './relativeTime';
+import {
+  formatFullTimestamp,
+  formatRelativeTime,
+  formatSnapshotAge,
+} from './relativeTime';
 
 const now = Date.parse('2026-06-19T12:00:00.000Z');
 
@@ -58,6 +62,39 @@ describe('formatRelativeTime', () => {
 
   it('returns an empty string for an invalid date', () => {
     expect(formatRelativeTime('nonsense', now)).toBe('');
+  });
+});
+
+describe('formatSnapshotAge', () => {
+  it('returns 0s ago for a future timestamp', () => {
+    const futureNow = Date.parse('2026-06-19T12:00:00.000Z');
+    expect(
+      formatSnapshotAge('2026-06-19T12:00:05.000Z', futureNow),
+    ).toBe('0s ago');
+  });
+
+  it('returns seconds ago for times under one minute', () => {
+    const base = Date.parse('2026-06-19T12:00:30.000Z');
+    expect(formatSnapshotAge('2026-06-19T12:00:00.000Z', base)).toBe('30s ago');
+  });
+
+  it('returns minutes ago for times under one hour', () => {
+    const base = Date.parse('2026-06-19T12:05:00.000Z');
+    expect(formatSnapshotAge('2026-06-19T12:00:00.000Z', base)).toBe('5m ago');
+  });
+
+  it('returns hours ago for times under one day', () => {
+    const base = Date.parse('2026-06-19T15:00:00.000Z');
+    expect(formatSnapshotAge('2026-06-19T12:00:00.000Z', base)).toBe('3h ago');
+  });
+
+  it('returns days ago for times over one day', () => {
+    const base = Date.parse('2026-06-22T12:00:00.000Z');
+    expect(formatSnapshotAge('2026-06-19T12:00:00.000Z', base)).toBe('3d ago');
+  });
+
+  it('returns empty string for an invalid date', () => {
+    expect(formatSnapshotAge('nonsense', now)).toBe('');
   });
 });
 

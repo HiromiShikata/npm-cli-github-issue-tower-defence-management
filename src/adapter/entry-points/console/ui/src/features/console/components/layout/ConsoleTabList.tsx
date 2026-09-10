@@ -4,6 +4,7 @@ import type {
   AirplaneModeStatus,
   AirplaneSyncProgress,
 } from '../../hooks/useAirplaneMode';
+import { formatSnapshotAge } from '../../logic/relativeTime';
 import { CONSOLE_TABS, type ConsoleTabName } from '../../logic/types';
 import { ConsoleAirplaneModeButton } from './ConsoleAirplaneModeButton';
 
@@ -28,6 +29,7 @@ export type ConsoleTabBarProps = {
   projectUrl?: string | null;
   workflowImprovementIssueUrl?: string | null;
   fleetTaskCreateUrl?: string | null;
+  now: number;
 };
 
 export const ConsoleTabList = ({
@@ -51,6 +53,7 @@ export const ConsoleTabList = ({
   projectUrl = null,
   workflowImprovementIssueUrl = null,
   fleetTaskCreateUrl = null,
+  now,
 }: ConsoleTabBarProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{
@@ -181,8 +184,9 @@ export const ConsoleTabList = ({
           <span
             className="console-tab-geninfo"
             data-from-cache={fromCache ? 'true' : undefined}
+            title={generatedAt}
           >
-            {fromCache ? '(cached) ' : ''}snapshot: {generatedAt}
+            {fromCache ? '(cached) ' : ''}snapshot: {formatSnapshotAge(generatedAt, now)}
           </span>
         )}
         {airplaneModeEnabled && (

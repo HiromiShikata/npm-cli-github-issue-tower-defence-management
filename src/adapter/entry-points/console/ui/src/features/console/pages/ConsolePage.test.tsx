@@ -441,7 +441,10 @@ describe('ConsolePage', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     expect(container.querySelector('.console-tab-count-heading')).toBeNull();
-    expect(getByText('snapshot: 2026-06-19T00:00:00.000Z')).toBeInTheDocument();
+    const genInfo = container.querySelector('.console-tab-geninfo');
+    expect(genInfo).toBeInTheDocument();
+    expect(genInfo?.getAttribute('title')).toBe('2026-06-19T00:00:00.000Z');
+    expect(genInfo?.textContent).toMatch(/^snapshot: \d+[smhd] ago$/);
   });
 
   it('shows a cancellable toast and only drives the tab to zero after the five second window', async () => {
@@ -778,11 +781,13 @@ describe('ConsolePage', () => {
 
   it('renders reorder buttons in the Stories tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
-    const { getAllByRole, getByText } = render(<ConsolePage />);
+    const { getAllByRole, container } = render(<ConsolePage />);
     await waitFor(() => {
       expect(
-        getByText('snapshot: 2026-06-19T00:00:00.000Z'),
-      ).toBeInTheDocument();
+        container.querySelector(
+          '.console-tab-geninfo[title="2026-06-19T00:00:00.000Z"]',
+        ),
+      ).not.toBeNull();
     });
     expect(getAllByRole('button', { name: 'Move up' }).length).toBeGreaterThan(
       0,
@@ -791,11 +796,13 @@ describe('ConsolePage', () => {
 
   it('does not render reorder buttons in the Triage tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/triage?k=token');
-    const { queryAllByRole, getByText } = render(<ConsolePage />);
+    const { queryAllByRole, container } = render(<ConsolePage />);
     await waitFor(() => {
       expect(
-        getByText('snapshot: 2026-06-19T00:00:00.000Z'),
-      ).toBeInTheDocument();
+        container.querySelector(
+          '.console-tab-geninfo[title="2026-06-19T00:00:00.000Z"]',
+        ),
+      ).not.toBeNull();
     });
     expect(queryAllByRole('button', { name: 'Move up' })).toHaveLength(0);
   });

@@ -23,6 +23,7 @@ const meta: Meta<typeof ConsoleTabList> = {
     airplaneModeFailures: [],
     onAirplaneModeStartSync: () => {},
     onAirplaneModeTurnOff: () => {},
+    now: Date.parse('2026-06-19T08:42:41.000Z'),
   },
 };
 

@@ -60,6 +60,8 @@ body {
   flex-direction: column;
   background: #161b22;
   border-bottom: 2px solid #30363d;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
 }
 
 .console-tabbar-top {
@@ -135,9 +137,10 @@ body {
 .console-tab-pjname-button {
   background: transparent;
   border: none;
-  color: #8b949e;
+  color: #e6edf3;
   cursor: pointer;
-  font-size: 0.7188rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
   padding: 2px 4px;
   border-radius: 4px;
   display: flex;

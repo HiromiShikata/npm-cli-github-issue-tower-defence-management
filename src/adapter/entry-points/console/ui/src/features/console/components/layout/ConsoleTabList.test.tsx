@@ -12,10 +12,13 @@ const counts: Record<ConsoleTabName, number> = {
   stories: 0,
 };
 
+const GENERATED_AT = '2026-06-19T08:42:11.000Z';
+const NOW_30S_LATER = Date.parse('2026-06-19T08:42:41.000Z');
+
 const baseProps = {
   pjcode: 'acme',
   pjcodes: ['acme', 'beta', 'gamma', 'delta', 'epsilon'],
-  generatedAt: '2026-06-19T08:42:11.000Z',
+  generatedAt: GENERATED_AT,
   fromCache: false,
   tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
   onSelectTab: () => {},
@@ -27,6 +30,7 @@ const baseProps = {
   airplaneModeFailures: [],
   onAirplaneModeStartSync: () => {},
   onAirplaneModeTurnOff: () => {},
+  now: NOW_30S_LATER,
 };
 
 describe('ConsoleTabList', () => {
@@ -104,12 +108,20 @@ describe('ConsoleTabList', () => {
     expect(todoByHumanIndex).toBe(blockerIndex - 1);
   });
 
-  it('renders the project code and snapshot time', () => {
+  it('renders the project code and snapshot age as relative time', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
     expect(getByText('acme')).toBeInTheDocument();
-    expect(getByText('snapshot: 2026-06-19T08:42:11.000Z')).toBeInTheDocument();
+    expect(getByText('snapshot: 30s ago')).toBeInTheDocument();
+  });
+
+  it('exposes the absolute timestamp in the title attribute of the snapshot info', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    const genInfo = container.querySelector('.console-tab-geninfo');
+    expect(genInfo).toHaveAttribute('title', GENERATED_AT);
   });
 
   it('uses the exact lowercase Todo by human label', () => {
@@ -146,7 +158,7 @@ describe('ConsoleTabList', () => {
         fromCache={true}
       />,
     );
-    const genInfo = getByText('(cached) snapshot: 2026-06-19T08:42:11.000Z');
+    const genInfo = getByText('(cached) snapshot: 30s ago');
     expect(genInfo).toBeInTheDocument();
     expect(genInfo).toHaveAttribute('data-from-cache', 'true');
   });
@@ -160,10 +172,8 @@ describe('ConsoleTabList', () => {
         fromCache={false}
       />,
     );
-    expect(getByText('snapshot: 2026-06-19T08:42:11.000Z')).toBeInTheDocument();
-    expect(
-      queryByText('(cached) snapshot: 2026-06-19T08:42:11.000Z'),
-    ).toBeNull();
+    expect(getByText('snapshot: 30s ago')).toBeInTheDocument();
+    expect(queryByText('(cached) snapshot: 30s ago')).toBeNull();
     expect(document.querySelector('[data-from-cache]')).toBeNull();
   });
 
