@@ -171,12 +171,13 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       ) {
         const issueComments =
           await this.issueCommentRepository.getCommentsFromIssue(issue);
-        const lastAgentReport = findLastAgentReport(
-          issueComments,
-          (author) =>
-            isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+        const lastAgentReport = findLastAgentReport(issueComments, (author) =>
+          isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
         );
-        if (lastAgentReport && extractWaitingForOwner(lastAgentReport.content)) {
+        if (
+          lastAgentReport &&
+          extractWaitingForOwner(lastAgentReport.content)
+        ) {
           continue;
         }
       }
