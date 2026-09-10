@@ -1,3 +1,10 @@
+## [2.98.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.98.0...v2.98.1) (2026-09-10)
+
+
+### Bug Fixes
+
+* **ConsoleTabList:** increase project selector item padding for mobile touch targets ([#2268](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2268)) ([b4d7373](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b4d7373155a20ba4a001530982c82d74ef600f15)), closes [HiromiShikata/umino-corporait-operation#31589](https://github.com/HiromiShikata/umino-corporait-operation/issues/31589)
+
 # [2.98.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.97.2...v2.98.0) (2026-09-10)
 
 
