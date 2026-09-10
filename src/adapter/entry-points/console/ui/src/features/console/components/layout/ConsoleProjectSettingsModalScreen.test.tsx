@@ -2,8 +2,9 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ConsoleProjectSettingsModalScreen } from './ConsoleProjectSettingsModalScreen';
 
 const baseProps = {
-  value: '5',
-  onChange: jest.fn(),
+  pjcodes: ['acme', 'beta'],
+  inputValues: { acme: '5', beta: '3' },
+  onChangeInput: jest.fn(),
   isLoading: false,
   isSaving: false,
   error: null,
@@ -12,51 +13,80 @@ const baseProps = {
 };
 
 describe('ConsoleProjectSettingsModalScreen', () => {
-  it('shows the current maximumPreparingIssuesCount value', () => {
+  it('shows all projects with their current max values', () => {
     render(<ConsoleProjectSettingsModalScreen {...baseProps} />);
-    const input = screen.getByLabelText('Maximum preparing issues count');
-    expect((input as HTMLInputElement).value).toBe('5');
-  });
-
-  it('shows an empty input when no current value is set', () => {
-    render(<ConsoleProjectSettingsModalScreen {...baseProps} value="" />);
-    const input = screen.getByLabelText('Maximum preparing issues count');
-    expect((input as HTMLInputElement).value).toBe('');
-  });
-
-  it('calls onChange with the new string value when the user types', () => {
-    const onChange = jest.fn();
-    render(
-      <ConsoleProjectSettingsModalScreen {...baseProps} onChange={onChange} />,
+    const acmeInput = screen.getByLabelText(
+      'Maximum preparing issues count for acme',
     );
-    const input = screen.getByLabelText('Maximum preparing issues count');
-    fireEvent.change(input, { target: { value: '10' } });
-    expect(onChange).toHaveBeenCalledWith('10');
+    const betaInput = screen.getByLabelText(
+      'Maximum preparing issues count for beta',
+    );
+    expect((acmeInput as HTMLInputElement).value).toBe('5');
+    expect((betaInput as HTMLInputElement).value).toBe('3');
   });
 
-  it('calls onSave with the parsed count when Save is clicked', () => {
-    const onSave = jest.fn();
+  it('shows an empty input when no value is set for a project', () => {
     render(
       <ConsoleProjectSettingsModalScreen
         {...baseProps}
-        value="8"
-        onSave={onSave}
+        inputValues={{ acme: '', beta: '' }}
       />,
     );
-    fireEvent.click(screen.getByLabelText('Save settings'));
-    expect(onSave).toHaveBeenCalledWith(8);
+    const acmeInput = screen.getByLabelText(
+      'Maximum preparing issues count for acme',
+    );
+    expect((acmeInput as HTMLInputElement).value).toBe('');
   });
 
-  it('disables Save when the value is empty', () => {
-    render(<ConsoleProjectSettingsModalScreen {...baseProps} value="" />);
-    expect(screen.getByLabelText('Save settings')).toBeDisabled();
+  it('calls onChangeInput with the pjcode and new string value when the user types', () => {
+    const onChangeInput = jest.fn();
+    render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        onChangeInput={onChangeInput}
+      />,
+    );
+    const acmeInput = screen.getByLabelText(
+      'Maximum preparing issues count for acme',
+    );
+    fireEvent.change(acmeInput, { target: { value: '10' } });
+    expect(onChangeInput).toHaveBeenCalledWith('acme', '10');
+  });
+
+  it('calls onSave when Save is clicked', () => {
+    const onSave = jest.fn();
+    render(
+      <ConsoleProjectSettingsModalScreen {...baseProps} onSave={onSave} />,
+    );
+    fireEvent.click(screen.getByLabelText('Save max settings'));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables Save when all values are empty', () => {
+    render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        inputValues={{ acme: '', beta: '' }}
+      />,
+    );
+    expect(screen.getByLabelText('Save max settings')).toBeDisabled();
+  });
+
+  it('enables Save when at least one project has a valid value', () => {
+    render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        inputValues={{ acme: '5', beta: '' }}
+      />,
+    );
+    expect(screen.getByLabelText('Save max settings')).not.toBeDisabled();
   });
 
   it('disables Save when isSaving is true', () => {
     render(
       <ConsoleProjectSettingsModalScreen {...baseProps} isSaving={true} />,
     );
-    expect(screen.getByLabelText('Save settings')).toBeDisabled();
+    expect(screen.getByLabelText('Save max settings')).toBeDisabled();
   });
 
   it('shows a loading state when isLoading is true', () => {
@@ -65,7 +95,7 @@ describe('ConsoleProjectSettingsModalScreen', () => {
     );
     expect(screen.getByText('Loading…')).toBeInTheDocument();
     expect(
-      screen.queryByLabelText('Maximum preparing issues count'),
+      screen.queryByLabelText('Maximum preparing issues count for acme'),
     ).toBeNull();
   });
 
@@ -84,18 +114,38 @@ describe('ConsoleProjectSettingsModalScreen', () => {
     render(
       <ConsoleProjectSettingsModalScreen {...baseProps} onClose={onClose} />,
     );
-    fireEvent.click(screen.getByLabelText('Close project settings'));
+    fireEvent.click(screen.getByLabelText('Close max settings'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('displays the value from the value prop on rerender', () => {
+  it('shows updated input value on rerender', () => {
     const { rerender } = render(
-      <ConsoleProjectSettingsModalScreen {...baseProps} value="3" />,
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        inputValues={{ acme: '3', beta: '3' }}
+      />,
     );
-    let input = screen.getByLabelText('Maximum preparing issues count');
-    expect((input as HTMLInputElement).value).toBe('3');
-    rerender(<ConsoleProjectSettingsModalScreen {...baseProps} value="9" />);
-    input = screen.getByLabelText('Maximum preparing issues count');
-    expect((input as HTMLInputElement).value).toBe('9');
+    let acmeInput = screen.getByLabelText(
+      'Maximum preparing issues count for acme',
+    );
+    expect((acmeInput as HTMLInputElement).value).toBe('3');
+    rerender(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        inputValues={{ acme: '9', beta: '3' }}
+      />,
+    );
+    acmeInput = screen.getByLabelText(
+      'Maximum preparing issues count for acme',
+    );
+    expect((acmeInput as HTMLInputElement).value).toBe('9');
+  });
+
+  it('labels the dialog as Max settings', () => {
+    render(<ConsoleProjectSettingsModalScreen {...baseProps} />);
+    expect(screen.getByRole('dialog')).toHaveAttribute(
+      'aria-label',
+      'Max settings',
+    );
   });
 });

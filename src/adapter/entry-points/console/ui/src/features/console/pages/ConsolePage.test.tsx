@@ -113,6 +113,13 @@ const installFetch = (): void => {
         json: async () => ({ pjcodes: ['acme'] }),
       };
     }
+    if (url.startsWith('/api/projectreadmeconfig')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ maximumPreparingIssuesCount: 3 }),
+      };
+    }
     return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
   });
   global.fetch = fetchMock as unknown as typeof fetch;
@@ -1375,6 +1382,38 @@ describe('ConsolePage auto-advance tab', () => {
       'aria-label',
       'Console Settings',
     );
+  });
+
+  it('renders the max settings button in the tab bar', async () => {
+    const { getByText, getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    const maxBtn = getByRole('button', { name: 'Open max settings' });
+    expect(maxBtn).toBeInTheDocument();
+    expect(maxBtn.closest('nav.console-tabbar')).not.toBeNull();
+  });
+
+  it('shows the max settings button even when no project is selected', async () => {
+    window.history.replaceState({}, '', '/');
+    const { getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByRole('button', { name: 'Open max settings' }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('opens the max settings dialog when the max settings button is clicked', async () => {
+    const { getByText, getByRole, queryByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    expect(queryByRole('dialog', { name: 'Max settings' })).toBeNull();
+    fireEvent.click(getByRole('button', { name: 'Open max settings' }));
+    await waitFor(() => {
+      expect(getByRole('dialog', { name: 'Max settings' })).toBeInTheDocument();
+    });
   });
 
   it('saves timer settings to localStorage and closes the dialog when Save and Close is clicked', async () => {
