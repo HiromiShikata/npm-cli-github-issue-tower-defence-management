@@ -5808,6 +5808,48 @@ describe('StartPreparationUseCase', () => {
       );
     });
 
+    it('dispatches the explicitly designated agent even when story is NO STORY', async () => {
+      const project = projectWithAgentOption('agent-option-liaison', 'liaison');
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          createMockIssue({
+            url: 'url1',
+            status: 'Awaiting Workspace',
+            labels: [],
+            story:
+              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+            agent: 'liaison',
+          }),
+        ]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents: [],
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'liaison',
+      );
+    });
+
     it('dispatches to defaultAgentName without setting the Agent field when story is NO STORY and agent field is null', async () => {
       const project = projectWithAgentOption('agent-option-agent1', 'agent1');
       mockProjectRepository.getByUrl.mockResolvedValue(project);
