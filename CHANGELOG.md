@@ -1,3 +1,10 @@
+## [2.107.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.3...v2.107.4) (2026-09-11)
+
+
+### Bug Fixes
+
+* prevent spurious timer navigation during stale-to-fresh cache transition ([#2298](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2298)) ([76a12b9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/76a12b917721de2df0de21595b2a4e25c1f48a3f)), closes [HiromiShikata/umino-corporait-operation#31657](https://github.com/HiromiShikata/umino-corporait-operation/issues/31657)
+
 ## [2.107.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.2...v2.107.3) (2026-09-11)
 
 
