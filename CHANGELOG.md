@@ -1,3 +1,10 @@
+# [2.103.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.4...v2.103.0) (2026-09-11)
+
+
+### Features
+
+* **ConsoleTimerSettingsModalDialog:** move timer mode toggle above save button and display empty for 0-minute inputs ([#2284](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2284)) ([796724c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/796724c5e57826ee36172dc16e0f5b79f0af5f0d)), closes [HiromiShikata/umino-corporait-operation#31635](https://github.com/HiromiShikata/umino-corporait-operation/issues/31635)
+
 ## [2.102.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.3...v2.102.4) (2026-09-11)
 
 
