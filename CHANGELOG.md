@@ -1,3 +1,10 @@
+## [2.102.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.3...v2.102.4) (2026-09-11)
+
+
+### Bug Fixes
+
+* allow maximumPreparingIssuesCount to be set to 0 ([#2285](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2285)) ([42e4877](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/42e4877b51bc6f019eec33b226d7eda3e4294a66)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#31636](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31636)
+
 ## [2.102.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.2...v2.102.3) (2026-09-11)
 
 
