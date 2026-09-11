@@ -5930,86 +5930,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
   });
 
-  describe('waitingForOwnerApproval key in report is now ignored', () => {
-    const issueUrl = 'https://github.com/user/repo/issues/1';
-
-    it('does not post AWAITING_OWNER_APPROVAL comment when report contains waitingForOwnerApproval: true', async () => {
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: systems-analyst (model)\n```json\n{"waitingForOwnerApproval": true, "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        {
-          url: 'https://github.com/user/repo/pull/1',
-          isConflicted: false,
-          isPassedAllCiJob: true,
-          isCiStateSuccess: true,
-          isResolvedAllReviewComments: true,
-          isBranchOutOfDate: false,
-          missingRequiredCheckNames: [],
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.stringContaining('AWAITING_OWNER_APPROVAL'),
-      );
-    });
-
-    it('advances issue to Awaiting Owner when report has waitingForOwnerApproval: true and no rejection', async () => {
-      const issue = createMockIssue({ url: issueUrl, status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: systems-analyst (model)\n```json\n{"waitingForOwnerApproval": true, "nextStep": null}\n```',
-        }),
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        {
-          url: 'https://github.com/user/repo/pull/1',
-          isConflicted: false,
-          isPassedAllCiJob: true,
-          isCiStateSuccess: true,
-          isResolvedAllReviewComments: true,
-          isBranchOutOfDate: false,
-          missingRequiredCheckNames: [],
-        },
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl,
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        expect.objectContaining({
-          url: issueUrl,
-          status: 'Awaiting Owner',
-        }),
-        'awaiting-owner-id',
-      );
-    });
-  });
-
   describe('non-developer agent CI failure reassignment', () => {
     const makeProjectWithDeveloper = (developerName = 'developer') =>
       createMockProject({
@@ -6797,39 +6717,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.anything(),
         'workflow-blocker-story-id',
       );
-    });
-  });
-
-  describe('waitingForOwner handling', () => {
-    it('moves issue to Awaiting Owner without posting comment when last report has waitingForOwner true', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-      mockIssueRepository.get.mockResolvedValue(issue);
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({
-          content:
-            'From: :robot: agent (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
-        }),
-      ]);
-
-      await useCase.run({
-        projectUrl: 'https://github.com/users/user/projects/1',
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        thresholdForAutoReject: 3,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: ['test-user'],
-      });
-
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Owner' }),
-        mockProject,
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        mockProject,
-        expect.objectContaining({ status: 'Awaiting Owner' }),
-        'awaiting-owner-id',
-      );
-      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
   });
 
