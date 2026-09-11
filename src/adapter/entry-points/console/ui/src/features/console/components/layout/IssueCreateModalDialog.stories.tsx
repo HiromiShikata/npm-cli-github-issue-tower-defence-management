@@ -71,3 +71,9 @@ export const SingleStory: Story = {
     storyEntries: [storyEntries[0]],
   },
 };
+
+export const WithFleetTaskCreateUrl: Story = {
+  args: {
+    fleetTaskCreateUrl: 'https://github.com/HiromiShikata/secretary/issues/new',
+  },
+};

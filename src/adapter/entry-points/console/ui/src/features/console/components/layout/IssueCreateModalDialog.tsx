@@ -16,6 +16,7 @@ export type IssueCreateModalDialogProps = {
   agentOptions: ConsoleFieldOption[];
   onSubmit: (params: IssueCreateParams) => Promise<void>;
   onClose: () => void;
+  fleetTaskCreateUrl?: string | null;
 };
 
 export const IssueCreateModalDialog = ({
@@ -23,6 +24,7 @@ export const IssueCreateModalDialog = ({
   agentOptions,
   onSubmit,
   onClose,
+  fleetTaskCreateUrl = null,
 }: IssueCreateModalDialogProps) => {
   const [selectedStoryName, setSelectedStoryName] = useState<string | null>(
     storyEntries[0]?.storyName ?? null,
@@ -82,14 +84,27 @@ export const IssueCreateModalDialog = ({
           <span className="console-task-create-dialog-title">
             Create new task
           </span>
-          <button
-            type="button"
-            className="console-task-create-dialog-close"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            ✕
-          </button>
+          <div className="console-task-create-dialog-bar-actions">
+            {fleetTaskCreateUrl !== null && (
+              <a
+                href={fleetTaskCreateUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="console-task-create-dialog-open-link"
+                aria-label="Open in new tab"
+              >
+                ↗
+              </a>
+            )}
+            <button
+              type="button"
+              className="console-task-create-dialog-close"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div className="console-task-create-dialog-body">
           <span className="console-task-create-dialog-section-label">

@@ -302,4 +302,48 @@ describe('IssueCreateModalDialog', () => {
     fireEvent.click(getByRole('button', { name: /close/i }));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('renders an open-in-new-tab link to the left of the close button when fleetTaskCreateUrl is provided', () => {
+    const url = 'https://github.com/HiromiShikata/secretary/issues/new';
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} fleetTaskCreateUrl={url} />,
+    );
+    const link = getByRole('link', { name: /open in new tab/i });
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe(url);
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noreferrer');
+  });
+
+  it('does not render the open-in-new-tab link when fleetTaskCreateUrl is null', () => {
+    const { queryByRole } = render(
+      <IssueCreateModalDialog {...baseProps} fleetTaskCreateUrl={null} />,
+    );
+    expect(queryByRole('link', { name: /open in new tab/i })).toBeNull();
+  });
+
+  it('does not render the open-in-new-tab link when fleetTaskCreateUrl is not provided', () => {
+    const { queryByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+    expect(queryByRole('link', { name: /open in new tab/i })).toBeNull();
+  });
+
+  it('renders the open-in-new-tab link to the left of the close button', () => {
+    const url = 'https://github.com/HiromiShikata/secretary/issues/new';
+    render(<IssueCreateModalDialog {...baseProps} fleetTaskCreateUrl={url} />);
+    const bar = document.body.querySelector(
+      '.console-task-create-dialog-bar-actions',
+    );
+    expect(bar).not.toBeNull();
+    const children = Array.from(bar?.children ?? []);
+    const linkIndex = children.findIndex(
+      (el) => el.tagName === 'A' && el.getAttribute('href') === url,
+    );
+    const closeIndex = children.findIndex(
+      (el) =>
+        el.tagName === 'BUTTON' && el.getAttribute('aria-label') === 'Close',
+    );
+    expect(linkIndex).not.toBe(-1);
+    expect(closeIndex).not.toBe(-1);
+    expect(linkIndex).toBeLessThan(closeIndex);
+  });
 });

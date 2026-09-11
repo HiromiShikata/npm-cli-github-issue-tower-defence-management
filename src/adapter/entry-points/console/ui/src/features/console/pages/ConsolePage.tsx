@@ -899,6 +899,7 @@ export const ConsolePage = () => {
                   agentOptions={agentOptions}
                   defaultNameWithOwner={defaultNameWithOwner}
                   onCreateIssue={handleCreateIssueFromDialog}
+                  fleetTaskCreateUrl={fleetTaskCreateUrl}
                 />
               </>
             )}
