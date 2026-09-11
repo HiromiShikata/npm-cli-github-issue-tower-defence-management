@@ -1391,11 +1391,21 @@ describe('StartPreparationUseCase', () => {
     mockIssueRepository.getStoryObjectMap.mockResolvedValue(
       createMockStoryObjectMap([...awaitingIssues, olderPrIssue, newerPrIssue]),
     );
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([olderPR, newerPR]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+      olderPR,
+      newerPR,
+    ]);
     mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
       async (url: string) => {
         const body = url === newerPrUrl ? prDedupComment : issueDedupComment;
-        return [{ author: 'bot', body, createdAt: withinWindow, url: `${url}#issuecomment-1` }];
+        return [
+          {
+            author: 'bot',
+            body,
+            createdAt: withinWindow,
+            url: `${url}#issuecomment-1`,
+          },
+        ];
       },
     );
     mockLocalCommandRunner.runCommand.mockResolvedValue({
@@ -1417,7 +1427,9 @@ describe('StartPreparationUseCase', () => {
       codexHomeCandidates: null,
       labelsAsLlmAgentName: null,
     });
-    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(newerPrUrl);
+    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(
+      newerPrUrl,
+    );
     expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
   });
   it('should skip and not call wrapper when issue has one related open PR with null branchName', async () => {
