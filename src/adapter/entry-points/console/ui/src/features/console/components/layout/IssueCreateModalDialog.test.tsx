@@ -420,17 +420,16 @@ describe('IssueCreateModalDialog', () => {
         <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
       );
       expect(
-        getByRole('button', { name: /developer/i }).getAttribute('aria-pressed'),
+        getByRole('button', { name: /developer/i }).getAttribute(
+          'aria-pressed',
+        ),
       ).toBe('true');
     });
 
     it('calls onDraftChange when title changes', () => {
       const onDraftChange = jest.fn();
       const { getByRole } = render(
-        <IssueCreateModalDialog
-          {...baseProps}
-          onDraftChange={onDraftChange}
-        />,
+        <IssueCreateModalDialog {...baseProps} onDraftChange={onDraftChange} />,
       );
       fireEvent.change(getByRole('textbox', { name: /title/i }), {
         target: { value: 'New title' },
@@ -443,10 +442,7 @@ describe('IssueCreateModalDialog', () => {
     it('calls onDraftChange when body changes', () => {
       const onDraftChange = jest.fn();
       const { getByRole } = render(
-        <IssueCreateModalDialog
-          {...baseProps}
-          onDraftChange={onDraftChange}
-        />,
+        <IssueCreateModalDialog {...baseProps} onDraftChange={onDraftChange} />,
       );
       fireEvent.change(getByRole('textbox', { name: /body/i }), {
         target: { value: 'New body' },
