@@ -595,42 +595,54 @@ export const ConsolePage = () => {
   );
 
   const handleCreateIssueFromDialog = useCallback(
-    async (params: IssueCreateParams): Promise<void> => {
+    (params: IssueCreateParams): Promise<void> => {
       if (pjcode === null) {
-        throw new Error('No project specified in the URL path.');
+        return Promise.reject(new Error('No project specified in the URL path.'));
       }
       if (defaultNameWithOwner === null) {
-        throw new Error('No repository configured for this project.');
+        return Promise.reject(
+          new Error('No repository configured for this project.'),
+        );
       }
-      const issueUrl = await postConsoleCreateIssue({
-        pjcode,
-        title: params.title,
-        storyName: params.storyName,
-        agentOptionId: params.agentOptionId,
-        body: params.body,
-        nameWithOwner: defaultNameWithOwner,
-      });
-      if (params.files.length > 0) {
-        const markdownParts: string[] = [];
-        for (const file of params.files) {
-          const bytes = new Uint8Array(await file.arrayBuffer());
-          const contentBase64 = encodeAttachmentContent(bytes);
-          const markdown = await postConsoleAttachment({
-            pjcode,
-            url: issueUrl,
-            fileName: file.name,
-            contentBase64,
+      const capturedPjcode = pjcode;
+      const capturedNameWithOwner = defaultNameWithOwner;
+      actionQueue.enqueue({
+        message: `Task created — "${params.title}"`,
+        color: 'blue',
+        commit: async () => {
+          const issueUrl = await postConsoleCreateIssue({
+            pjcode: capturedPjcode,
+            title: params.title,
+            storyName: params.storyName,
+            agentOptionId: params.agentOptionId,
+            body: params.body,
+            nameWithOwner: capturedNameWithOwner,
           });
-          markdownParts.push(markdown);
-        }
-        await postConsoleComment({
-          pjcode,
-          url: issueUrl,
-          body: markdownParts.join('\n\n'),
-        });
-      }
+          if (params.files.length > 0) {
+            const markdownParts: string[] = [];
+            for (const file of params.files) {
+              const bytes = new Uint8Array(await file.arrayBuffer());
+              const contentBase64 = encodeAttachmentContent(bytes);
+              const markdown = await postConsoleAttachment({
+                pjcode: capturedPjcode,
+                url: issueUrl,
+                fileName: file.name,
+                contentBase64,
+              });
+              markdownParts.push(markdown);
+            }
+            await postConsoleComment({
+              pjcode: capturedPjcode,
+              url: issueUrl,
+              body: markdownParts.join('\n\n'),
+            });
+          }
+        },
+        advance: () => {},
+      });
+      return Promise.resolve();
     },
-    [pjcode, defaultNameWithOwner],
+    [pjcode, defaultNameWithOwner, actionQueue],
   );
 
   const handleReorderStory = useCallback(
