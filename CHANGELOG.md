@@ -1,3 +1,10 @@
+## [2.104.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.104.0...v2.104.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **console-ui:** Create new task dialog cannot scroll in landscape orientation ([#2286](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2286)) ([3169d80](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3169d80360a457b30c2f1cfc499db0519a4a5fdc)), closes [HiromiShikata/umino-corporait-operation#31644](https://github.com/HiromiShikata/umino-corporait-operation/issues/31644)
+
 # [2.104.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.103.0...v2.104.0) (2026-09-11)
 
 
