@@ -1,3 +1,10 @@
+# [2.107.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.106.1...v2.107.0) (2026-09-11)
+
+
+### Features
+
+* **consoleTabData:** implement stale-while-revalidate pattern for console tab list cache display ([#2295](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2295)) ([e1fb62c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e1fb62ceeb5ed386fbcaf3803d184149f136e692)), closes [#2292](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2292)
+
 ## [2.106.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.106.0...v2.106.1) (2026-09-11)
 
 
