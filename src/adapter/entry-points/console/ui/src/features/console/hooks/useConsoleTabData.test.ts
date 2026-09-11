@@ -648,7 +648,7 @@ describe('useConsoleTabData', () => {
     expect(result.current.snapshots.prs).toBe(snapshotBefore);
   });
 
-  it('clears snapshots immediately when pjcode changes so stale timer data from the previous project is not shown', async () => {
+  it('clears stale timer data from the previous project after switching when no cache exists for the new project', async () => {
     const fetchMock = jest.fn(async (url: string) => {
       if (url.includes('/acme/')) {
         return {
@@ -676,13 +676,54 @@ describe('useConsoleTabData', () => {
       );
     });
 
-    act(() => {
-      rerender({ pjcode: 'beta' });
-    });
+    rerender({ pjcode: 'beta' });
 
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(true);
+    });
     expect(
       Object.values(result.current.snapshots).every((s) => s === null),
     ).toBe(true);
+  });
+
+  it('does not set isLoading to true when switching to a previously-visited project with cached data', async () => {
+    installNetworkFetch();
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) => useConsoleTabData(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let resolveCacheLoad!: () => void;
+    const cacheGate = new Promise<void>((resolve) => {
+      resolveCacheLoad = resolve;
+    });
+    const cachedPayload = makeTabPayload({
+      generatedAt: '2026-06-10T00:00:00.000Z',
+    });
+    installMockCaches({
+      json: jest.fn(async () => {
+        await cacheGate;
+        return cachedPayload;
+      }),
+    });
+    global.fetch = jest.fn(
+      () => new Promise<never>(() => undefined),
+    ) as unknown as typeof fetch;
+
+    rerender({ pjcode: 'beta' });
+
+    expect(result.current.isLoading).toBe(false);
+
+    await act(async () => {
+      resolveCacheLoad();
+      await cacheGate;
+    });
+
+    await waitFor(() =>
+      expect(result.current.snapshots.prs?.fromCache).toBe(true),
+    );
+    expect(result.current.isLoading).toBe(false);
   });
 
   it('displays cached data immediately on project switch without waiting for the network response', async () => {

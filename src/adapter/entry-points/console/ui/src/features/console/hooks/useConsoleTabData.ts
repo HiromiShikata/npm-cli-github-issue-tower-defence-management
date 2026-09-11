@@ -277,9 +277,7 @@ export const useConsoleTabData = (
 
     let cancelled = false;
     let freshDataReceived = false;
-    setIsLoading(true);
     setError(null);
-    setSnapshots(emptySnapshots());
 
     if (pjcode === null) {
       setSnapshots(emptySnapshots());
@@ -296,6 +294,9 @@ export const useConsoleTabData = (
       if (hasAny && !freshDataReceived) {
         setSnapshots(cached);
         setIsLoading(false);
+      } else if (!hasAny && !freshDataReceived) {
+        setIsLoading(true);
+        setSnapshots(emptySnapshots());
       }
     });
 
