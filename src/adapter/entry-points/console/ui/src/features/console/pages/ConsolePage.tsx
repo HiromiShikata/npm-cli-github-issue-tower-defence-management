@@ -161,6 +161,7 @@ export const ConsolePage = () => {
     pjcode,
     pjcodes,
     projectMinutes,
+    snapshots.prs?.fromCache ?? false,
   );
 
   const navigation = useConsoleNavigation(pjcode, counts);

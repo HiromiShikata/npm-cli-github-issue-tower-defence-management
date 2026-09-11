@@ -130,4 +130,57 @@ describe('useConsoleAwaitingOwnerTimerNavigation', () => {
     rerender({ prsCount: 0, pjcode: 'beta' });
     expect(navigatePush).not.toHaveBeenCalled();
   });
+
+  it('does not navigate when stale cache data transitions to fresh data with zero prs count', () => {
+    const { rerender } = renderHook(
+      ({
+        prsCount,
+        pjcode,
+        prsSnapshotFromCache,
+      }: {
+        prsCount: number;
+        pjcode: string;
+        prsSnapshotFromCache: boolean;
+      }) =>
+        useConsoleAwaitingOwnerTimerNavigation(
+          true,
+          prsCount,
+          pjcode,
+          ['acme', 'beta', 'gamma'],
+          { acme: 30, beta: 30, gamma: 30 },
+          prsSnapshotFromCache,
+        ),
+      { initialProps: { prsCount: 0, pjcode: 'beta', prsSnapshotFromCache: false } },
+    );
+    rerender({ prsCount: 3, pjcode: 'beta', prsSnapshotFromCache: true });
+    rerender({ prsCount: 0, pjcode: 'beta', prsSnapshotFromCache: false });
+    expect(navigatePush).not.toHaveBeenCalled();
+  });
+
+  it('still navigates when user processes all prs after stale-to-fresh transition', () => {
+    const { rerender } = renderHook(
+      ({
+        prsCount,
+        pjcode,
+        prsSnapshotFromCache,
+      }: {
+        prsCount: number;
+        pjcode: string;
+        prsSnapshotFromCache: boolean;
+      }) =>
+        useConsoleAwaitingOwnerTimerNavigation(
+          true,
+          prsCount,
+          pjcode,
+          ['acme', 'beta', 'gamma'],
+          { acme: 30, beta: 30, gamma: 30 },
+          prsSnapshotFromCache,
+        ),
+      { initialProps: { prsCount: 0, pjcode: 'beta', prsSnapshotFromCache: false } },
+    );
+    rerender({ prsCount: 3, pjcode: 'beta', prsSnapshotFromCache: true });
+    rerender({ prsCount: 3, pjcode: 'beta', prsSnapshotFromCache: false });
+    rerender({ prsCount: 0, pjcode: 'beta', prsSnapshotFromCache: false });
+    expect(navigatePush).toHaveBeenCalledWith('/projects/gamma');
+  });
 });
