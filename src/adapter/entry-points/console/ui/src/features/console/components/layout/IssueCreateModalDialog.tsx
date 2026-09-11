@@ -50,9 +50,9 @@ export const IssueCreateModalDialog = ({
   const [selectedFiles, setSelectedFiles] = useState<
     Array<{ id: string; file: File }>
   >([]);
-  const [thumbnailUrls, setThumbnailUrls] = useState<ReadonlyMap<string, string>>(
-    new Map(),
-  );
+  const [thumbnailUrls, setThumbnailUrls] = useState<
+    ReadonlyMap<string, string>
+  >(new Map());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);

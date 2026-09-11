@@ -557,11 +557,15 @@ describe('IssueCreateModalDialog', () => {
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [imageFile] } });
       });
-      const imageFile2 = new File(['img2'], 'photo2.png', { type: 'image/png' });
+      const imageFile2 = new File(['img2'], 'photo2.png', {
+        type: 'image/png',
+      });
       await act(async () => {
         fireEvent.change(fileInput, { target: { files: [imageFile2] } });
       });
-      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url-photo.png');
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith(
+        'blob:mock-url-photo.png',
+      );
     });
   });
 });
