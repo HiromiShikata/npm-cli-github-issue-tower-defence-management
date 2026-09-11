@@ -1614,3 +1614,20 @@ test('max settings button is always visible and opens the Max settings modal', a
   const modal = page.getByRole('dialog', { name: 'Max settings' });
   await expect(modal).toBeVisible();
 });
+
+test('Create new task dialog body is scrollable in landscape orientation', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.goto(harness.appUrl);
+
+  await page.getByRole('button', { name: 'Create new task' }).click();
+
+  const { scrollHeight, clientHeight } = await page
+    .locator('.console-task-create-dialog-body')
+    .evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }));
+  expect(scrollHeight).toBeGreaterThan(clientHeight);
+});
