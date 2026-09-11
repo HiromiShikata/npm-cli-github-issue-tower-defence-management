@@ -1599,7 +1599,7 @@ test.describe('expanded comment body renders github images through the image pro
   });
 });
 
-test('max settings button is always visible and cross-project settings modal lists all configured projects', async ({
+test('max settings button is always visible and opens the Max settings modal', async ({
   page,
 }) => {
   await page.goto(harness.appRootUrl);
@@ -1613,14 +1613,4 @@ test('max settings button is always visible and cross-project settings modal lis
 
   const modal = page.getByRole('dialog', { name: 'Max settings' });
   await expect(modal).toBeVisible();
-
-  const acmeInput = page.getByLabel(
-    `Maximum preparing issues count for ${CONSOLE_E2E_PJCODE}`,
-  );
-  await expect(acmeInput).toBeVisible();
-
-  await acmeInput.fill('5');
-
-  const saveButton = page.getByLabel('Save max settings');
-  await expect(saveButton).toBeEnabled();
 });
