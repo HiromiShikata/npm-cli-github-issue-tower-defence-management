@@ -1,3 +1,10 @@
+## [2.102.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.2...v2.102.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **AgentDesignationLabelAdoptUseCase:** set default agent on issues with no agent label ([#2282](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2282)) ([a708b5c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a708b5c594f83096eaf601abc54d83d308b03ba1)), closes [HiromiShikata/umino-corporait-operation#31634](https://github.com/HiromiShikata/umino-corporait-operation/issues/31634)
+
 ## [2.102.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.1...v2.102.2) (2026-09-11)
 
 
