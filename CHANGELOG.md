@@ -1,3 +1,10 @@
+## [2.107.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.1...v2.107.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* **useConsoleNavigation:** introduce pjcodeRef to prevent automatic tab switching ([#2301](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2301)) ([5d8587d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5d8587df9106e15eed99dba1d34be62ae98ea6fd))
+
 ## [2.107.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.0...v2.107.1) (2026-09-11)
 
 
