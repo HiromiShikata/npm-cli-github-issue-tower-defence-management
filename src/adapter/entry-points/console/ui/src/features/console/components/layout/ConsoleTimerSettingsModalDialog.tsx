@@ -90,14 +90,6 @@ export const ConsoleTimerSettingsModalDialog = ({
               }
             >
               <h2 className="console-timer-settings-title">Console Settings</h2>
-              <div className="console-timer-settings-row">
-                <span className="console-timer-settings-label">Timer Mode</span>
-                <ConsoleToggleSwitch
-                  checked={timerMode}
-                  ariaLabel="Timer Mode"
-                  onChange={onToggleTimerMode}
-                />
-              </div>
               {isLoadingPjcodes ? (
                 <div className="console-timer-settings-loading">
                   Loading projects...
@@ -119,7 +111,11 @@ export const ConsoleTimerSettingsModalDialog = ({
                         id={`timer-minutes-${pjcode}`}
                         type="number"
                         min={0}
-                        value={projectMinutes[pjcode] ?? 0}
+                        value={
+                          (projectMinutes[pjcode] ?? 0) === 0
+                            ? ''
+                            : projectMinutes[pjcode]
+                        }
                         onChange={(e) =>
                           onChangeMinutes(
                             pjcode,
@@ -135,6 +131,14 @@ export const ConsoleTimerSettingsModalDialog = ({
                   ))}
                 </ul>
               )}
+              <div className="console-timer-settings-row">
+                <span className="console-timer-settings-label">Timer Mode</span>
+                <ConsoleToggleSwitch
+                  checked={timerMode}
+                  ariaLabel="Timer Mode"
+                  onChange={onToggleTimerMode}
+                />
+              </div>
               <div className="console-timer-settings-actions">
                 <button
                   type="button"

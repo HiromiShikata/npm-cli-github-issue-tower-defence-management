@@ -122,7 +122,37 @@ describe('ConsoleTimerSettingsModalDialog', () => {
       />,
     );
     expect(getByLabelText('alpha')).toHaveValue(5);
-    expect(getByLabelText('beta')).toHaveValue(0);
+    expect(getByLabelText('beta')).toHaveValue(null);
+  });
+
+  it('displays empty input for projects with 0 minutes so users can type without deleting a zero first', () => {
+    const { getByLabelText } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha', 'beta']}
+        projectMinutes={{ alpha: 10, beta: 0 }}
+      />,
+    );
+    expect(getByLabelText('alpha')).toHaveValue(10);
+    expect(getByLabelText('beta')).toHaveValue(null);
+  });
+
+  it('renders the timer mode toggle after the project list', () => {
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{ alpha: 5 }}
+      />,
+    );
+    const timerSwitch = getByRole('switch', { name: 'Timer Mode' });
+    const projectList = getByRole('list');
+    expect(
+      projectList.compareDocumentPosition(timerSwitch) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('shows "Skip" label for projects with 0 minutes', () => {
