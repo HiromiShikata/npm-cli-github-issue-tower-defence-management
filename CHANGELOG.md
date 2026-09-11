@@ -1,3 +1,10 @@
+## [2.101.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.101.0...v2.101.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **StartPreparation:** dispatch explicitly designated agent when story is NO STORY ([#2280](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2280)) ([f9f52b5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f9f52b5ac0da492f8351ad0df41e50c18eee086b))
+
 # [2.101.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.100.2...v2.101.0) (2026-09-11)
 
 
