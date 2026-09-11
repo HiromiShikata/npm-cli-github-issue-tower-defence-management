@@ -159,6 +159,7 @@ export type ConsoleStoryEntry = {
 export type ConsoleTab = {
   name: ConsoleTabName;
   label: string;
+  isNavigable?: boolean;
 };
 
 export const CONSOLE_TABS: ConsoleTab[] = [
@@ -168,5 +169,5 @@ export const CONSOLE_TABS: ConsoleTab[] = [
   { name: 'workflow-blocker', label: 'Workflow Blocker' },
   { name: 'todo-by-agent', label: 'Todo by agent' },
   { name: 'queued', label: 'Queued' },
-  { name: 'stories', label: 'Stories' },
+  { name: 'stories', label: 'Stories', isNavigable: false },
 ];
