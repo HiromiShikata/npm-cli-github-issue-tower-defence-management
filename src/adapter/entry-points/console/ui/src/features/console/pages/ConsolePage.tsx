@@ -28,6 +28,7 @@ import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
 import { useConsoleProjectList } from '../hooks/useConsoleProjectList';
+import { useConsoleProjectSelectHandler } from '../hooks/useConsoleProjectSelectHandler';
 import { useConsoleProjectSettings } from '../hooks/useConsoleProjectSettings';
 import { useConsoleProjectTimer } from '../hooks/useConsoleProjectTimer';
 import { useConsolePrsTabSummaries } from '../hooks/useConsolePrsTabSummaries';
@@ -165,6 +166,11 @@ export const ConsolePage = () => {
   const navigation = useConsoleNavigation(pjcode, counts);
   const { activeTab, selectedItemKey, openItem, closeItem } = navigation;
   const selectTab = useConsoleTabSelectHandler(navigation.selectTab);
+  const navigateToProject = useCallback(
+    (code: string) => navigatePush(`/projects/${code}`),
+    [],
+  );
+  const selectProject = useConsoleProjectSelectHandler(navigateToProject);
 
   const commentDrafts = useRef(new Map<string, string>());
   const handleCommentDraftChange = useCallback(
@@ -868,7 +874,7 @@ export const ConsolePage = () => {
         fromCache={fromCache}
         tabHref={navigation.tabHref}
         onSelectTab={selectTab}
-        onSelectProject={(code) => navigatePush(`/projects/${code}`)}
+        onSelectProject={selectProject}
         settingsButton={
           <>
             <ConsoleTimerSettingsModalDialog
