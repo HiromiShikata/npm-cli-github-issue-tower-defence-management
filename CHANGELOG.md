@@ -1,3 +1,10 @@
+# [2.106.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.105.0...v2.106.0) (2026-09-11)
+
+
+### Features
+
+* **ConsolePage:** enqueue task creation in actionQueue for immediate dialog close and undo support ([#2291](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2291)) ([55c6614](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/55c66141f664731267b444e45c7aac435d2da35c)), closes [#2289](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2289)
+
 # [2.105.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.104.1...v2.105.0) (2026-09-11)
 
 
