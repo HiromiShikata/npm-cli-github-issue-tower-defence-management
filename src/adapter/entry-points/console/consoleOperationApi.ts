@@ -1435,8 +1435,10 @@ export const handleProjectMaxPreparingUpdate = async (
     return badGateway('github token is not configured');
   }
   const count = body.maximumPreparingIssuesCount;
-  if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) {
-    return badRequest('maximumPreparingIssuesCount must be a positive integer');
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 0) {
+    return badRequest(
+      'maximumPreparingIssuesCount must be a non-negative integer',
+    );
   }
   const binding = await resolveBinding(context, body);
   if (isOperationResponse(binding)) {
