@@ -2047,7 +2047,9 @@ describe('ConsolePage task creation action queue', () => {
     jest.useFakeTimers();
     try {
       installFetchWithBlockingCreate();
-      const { queryByRole, getByRole, getByLabelText } = render(<ConsolePage />);
+      const { queryByRole, getByRole, getByLabelText } = render(
+        <ConsolePage />,
+      );
 
       await waitFor(() => {
         expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
@@ -2056,7 +2058,9 @@ describe('ConsolePage task creation action queue', () => {
       fireEvent.click(getByRole('button', { name: 'Create new task' }));
 
       await waitFor(() => {
-        expect(getByRole('dialog', { name: 'Create new task' })).toBeInTheDocument();
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
       });
 
       fireEvent.change(getByLabelText('Title'), {
@@ -2077,7 +2081,9 @@ describe('ConsolePage task creation action queue', () => {
     jest.useFakeTimers();
     try {
       installFetchWithBlockingCreate();
-      const { queryByText, getByRole, getByLabelText } = render(<ConsolePage />);
+      const { queryByText, getByRole, getByLabelText } = render(
+        <ConsolePage />,
+      );
 
       await waitFor(() => {
         expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
@@ -2086,7 +2092,9 @@ describe('ConsolePage task creation action queue', () => {
       fireEvent.click(getByRole('button', { name: 'Create new task' }));
 
       await waitFor(() => {
-        expect(getByRole('dialog', { name: 'Create new task' })).toBeInTheDocument();
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
       });
 
       fireEvent.change(getByLabelText('Title'), {
@@ -2116,7 +2124,9 @@ describe('ConsolePage task creation action queue', () => {
       fireEvent.click(getByRole('button', { name: 'Create new task' }));
 
       await waitFor(() => {
-        expect(getByRole('dialog', { name: 'Create new task' })).toBeInTheDocument();
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
       });
 
       fireEvent.change(getByLabelText('Title'), {
@@ -2174,7 +2184,11 @@ describe('ConsolePage task creation action queue', () => {
             }),
           };
         }
-        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
       });
       global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -2187,7 +2201,9 @@ describe('ConsolePage task creation action queue', () => {
       fireEvent.click(getByRole('button', { name: 'Create new task' }));
 
       await waitFor(() => {
-        expect(getByRole('dialog', { name: 'Create new task' })).toBeInTheDocument();
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
       });
 
       fireEvent.change(getByLabelText('Title'), {

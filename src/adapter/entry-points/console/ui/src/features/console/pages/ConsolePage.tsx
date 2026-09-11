@@ -597,7 +597,9 @@ export const ConsolePage = () => {
   const handleCreateIssueFromDialog = useCallback(
     (params: IssueCreateParams): Promise<void> => {
       if (pjcode === null) {
-        return Promise.reject(new Error('No project specified in the URL path.'));
+        return Promise.reject(
+          new Error('No project specified in the URL path.'),
+        );
       }
       if (defaultNameWithOwner === null) {
         return Promise.reject(
