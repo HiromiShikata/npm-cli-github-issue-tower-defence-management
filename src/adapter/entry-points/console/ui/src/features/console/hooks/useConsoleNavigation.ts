@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { resolveDefaultActiveTab } from '../logic/tabAdvance';
 import { CONSOLE_TABS, type ConsoleTabName } from '../logic/types';
 
@@ -58,6 +58,8 @@ export const useConsoleNavigation = (
   }, [counts]);
 
   const [state, setState] = useState(readState);
+  const pjcodeRef = useRef<string | null>(null);
+  pjcodeRef.current = pjcode;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -82,6 +84,14 @@ export const useConsoleNavigation = (
       return;
     }
     const fallbackTab = resolveDefaultActiveTab(counts);
+    const hasData = Object.values(counts).some((c) => c > 0);
+    if (hasData && pjcodeRef.current !== null) {
+      window.history.replaceState(
+        {},
+        '',
+        `/projects/${pjcodeRef.current}/${fallbackTab}${window.location.search}`,
+      );
+    }
     setState((current) =>
       current.activeTab === fallbackTab
         ? current
