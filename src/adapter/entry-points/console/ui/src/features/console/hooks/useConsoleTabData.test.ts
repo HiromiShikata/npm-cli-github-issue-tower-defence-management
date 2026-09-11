@@ -684,4 +684,149 @@ describe('useConsoleTabData', () => {
       Object.values(result.current.snapshots).every((s) => s === null),
     ).toBe(true);
   });
+
+  it('displays cached data immediately on project switch without waiting for the network response', async () => {
+    const cachedPayload = makeTabPayload({
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      items: [{ number: 10, itemId: 'PVTI_CACHE', projectItemId: 'PVTI_CACHE' }],
+    });
+    installMockCaches({ json: jest.fn(async () => cachedPayload) });
+    global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.snapshots.prs?.fromCache).toBe(true);
+    expect(result.current.snapshots.prs?.items).toHaveLength(1);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('updates display with the network response after initial cache data is shown', async () => {
+    const cachedGeneratedAt = '2026-01-01T00:00:00.000Z';
+    const networkGeneratedAt = '2026-06-01T00:00:00.000Z';
+    installMockCaches({
+      json: jest.fn(async () => makeTabPayload({ generatedAt: cachedGeneratedAt })),
+    });
+    type FetchResponse = { ok: boolean; status: number; json: () => Promise<unknown> };
+    const networkResolvers: Array<(v: FetchResponse) => void> = [];
+    global.fetch = jest.fn(
+      () => new Promise<FetchResponse>((resolve) => networkResolvers.push(resolve)),
+    ) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.snapshots.prs?.fromCache).toBe(true);
+    });
+
+    const networkPayload = makeTabPayload({ generatedAt: networkGeneratedAt });
+    await act(async () => {
+      for (const resolve of networkResolvers) {
+        resolve({ ok: true, status: 200, json: async () => networkPayload });
+      }
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.snapshots.prs?.fromCache).toBe(false);
+      expect(result.current.snapshots.prs?.generatedAt).toBe(networkGeneratedAt);
+    });
+  });
+
+  it('does not overwrite fresh network data with a late-arriving cache result', async () => {
+    const networkGeneratedAt = '2026-06-01T00:00:00.000Z';
+    const cachedGeneratedAt = '2026-01-01T00:00:00.000Z';
+    const networkPayload = makeTabPayload({ generatedAt: networkGeneratedAt });
+    const cachedPayload = makeTabPayload({ generatedAt: cachedGeneratedAt });
+
+    const cacheMatchResolvers: Array<(v: MockCacheEntry | undefined) => void> = [];
+    const mockCacheDeferred: MockCache = {
+      match: jest.fn(
+        () =>
+          new Promise<MockCacheEntry | undefined>((resolve) =>
+            cacheMatchResolvers.push(resolve),
+          ),
+      ),
+      put: jest.fn(async () => undefined),
+    };
+    Object.defineProperty(global, 'caches', {
+      value: { open: jest.fn(async () => mockCacheDeferred) },
+      writable: true,
+      configurable: true,
+    });
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => networkPayload,
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.snapshots.prs?.fromCache).toBe(false);
+      expect(result.current.snapshots.prs?.generatedAt).toBe(networkGeneratedAt);
+    });
+
+    await act(async () => {
+      for (const resolve of cacheMatchResolvers) {
+        resolve({ json: jest.fn(async () => cachedPayload) });
+      }
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.snapshots.prs?.fromCache).toBe(false);
+    expect(result.current.snapshots.prs?.generatedAt).toBe(networkGeneratedAt);
+  });
+
+  it('keeps isLoading true when no cache entry exists until the network responds', async () => {
+    installMockCaches(undefined);
+    type FetchResponse = { ok: boolean; status: number; json: () => Promise<unknown> };
+    const networkResolvers: Array<(v: FetchResponse) => void> = [];
+    global.fetch = jest.fn(
+      () => new Promise<FetchResponse>((resolve) => networkResolvers.push(resolve)),
+    ) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+
+    await act(async () => {
+      for (let i = 0; i < 4; i++) await Promise.resolve();
+    });
+
+    expect(result.current.isLoading).toBe(true);
+
+    const networkPayload = makeTabPayload();
+    await act(async () => {
+      for (const resolve of networkResolvers) {
+        resolve({ ok: true, status: 200, json: async () => networkPayload });
+      }
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+  });
+
+  it('retains cached display and reports no error when the network fails after cache data is shown', async () => {
+    const cachedPayload = makeTabPayload({ generatedAt: '2026-01-01T00:00:00.000Z' });
+    installMockCaches({ json: jest.fn(async () => cachedPayload) });
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new Error('network error')) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleTabData('acme'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.snapshots.prs?.fromCache).toBe(true);
+    expect(result.current.error).toBeNull();
+  });
 });
