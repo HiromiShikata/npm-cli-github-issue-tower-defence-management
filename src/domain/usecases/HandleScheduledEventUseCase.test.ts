@@ -3,7 +3,6 @@ import { mock } from 'jest-mock-extended';
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
 import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
-import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
@@ -98,7 +97,6 @@ describe('HandleScheduledEventUseCase', () => {
       mock<SetWorkflowManagementIssueToStoryUseCase>();
     const mockClearPastNextActionDateHourUseCase =
       mock<ClearPastNextActionDateHourUseCase>();
-    const mockAnalyzeStoriesUseCase = mock<AnalyzeStoriesUseCase>();
     const mockClearDependedIssueURLUseCase =
       mock<ClearDependedIssueURLUseCase>();
     const mockSetDependedIssueUrlForOpenTaskPRsUseCase =
@@ -143,7 +141,6 @@ describe('HandleScheduledEventUseCase', () => {
       mockActionAnnouncementUseCase,
       mockSetWorkflowManagementIssueToStoryUseCase,
       mockClearPastNextActionDateHourUseCase,
-      mockAnalyzeStoriesUseCase,
       mockClearDependedIssueURLUseCase,
       mockSetDependedIssueUrlForOpenTaskPRsUseCase,
       mockStaleTaskPullRequestCloseUseCase,
@@ -897,24 +894,9 @@ describe('HandleScheduledEventUseCase', () => {
 
         await useCase.run(baseInput);
 
-        expect(mockAnalyzeStoriesUseCase.run).toHaveBeenCalled();
         expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
         expect(mockChangeStatusByStoryColorUseCase.run).toHaveBeenCalled();
         expect(mockCreateNewStoryByLabelUseCase.run).toHaveBeenCalled();
-      });
-
-      it('analyzeStoriesUseCase must be removed from HandleScheduledEventUseCase (story progress creation stopped)', async () => {
-        mockSpreadsheetRepository.getSheet.mockResolvedValue([
-          ['LastExecutionDateTime'],
-          ['2024-01-01T00:00:00Z'],
-        ]);
-        mockDateRepository.now.mockResolvedValue(
-          new Date('2024-01-01T00:10:00Z'),
-        );
-
-        await useCase.run(baseInput);
-
-        expect(mockAnalyzeStoriesUseCase.run).not.toHaveBeenCalled();
       });
 
       it('should skip slow sweep use cases when LastSlowSweepDateTime is within 600 seconds', async () => {
@@ -936,7 +918,6 @@ describe('HandleScheduledEventUseCase', () => {
 
         await useCase.run(baseInput);
 
-        expect(mockAnalyzeStoriesUseCase.run).not.toHaveBeenCalled();
         expect(mockUpdateIssueStatusByLabelUseCase.run).not.toHaveBeenCalled();
         expect(mockChangeStatusByStoryColorUseCase.run).not.toHaveBeenCalled();
       });
@@ -961,7 +942,6 @@ describe('HandleScheduledEventUseCase', () => {
         await useCase.run(baseInput);
 
         expect(mockCreateNewStoryByLabelUseCase.run).toHaveBeenCalledTimes(1);
-        expect(mockAnalyzeStoriesUseCase.run).not.toHaveBeenCalled();
       });
 
       it('should still run preparation use cases even when slow sweep is skipped', async () => {
@@ -1005,7 +985,6 @@ describe('HandleScheduledEventUseCase', () => {
 
         await useCase.run(baseInput);
 
-        expect(mockAnalyzeStoriesUseCase.run).toHaveBeenCalled();
         expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
       });
 
@@ -1862,7 +1841,6 @@ describe('HandleScheduledEventUseCase', () => {
       mock<ActionAnnouncementUseCase>(),
       mock<SetWorkflowManagementIssueToStoryUseCase>(),
       mock<ClearPastNextActionDateHourUseCase>(),
-      mock<AnalyzeStoriesUseCase>(),
       mock<ClearDependedIssueURLUseCase>(),
       mock<SetDependedIssueUrlForOpenTaskPRsUseCase>(),
       mock<StaleTaskPullRequestCloseUseCase>(),

@@ -63,9 +63,6 @@ jest.mock(
       .mockImplementation(() => ({})),
   }),
 );
-jest.mock('../../../domain/usecases/AnalyzeStoriesUseCase', () => ({
-  AnalyzeStoriesUseCase: jest.fn().mockImplementation(() => ({})),
-}));
 jest.mock('../../../domain/usecases/ClearDependedIssueURLUseCase', () => ({
   ClearDependedIssueURLUseCase: jest.fn().mockImplementation(() => ({})),
 }));

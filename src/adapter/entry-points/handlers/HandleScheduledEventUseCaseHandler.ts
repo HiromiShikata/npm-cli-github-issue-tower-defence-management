@@ -48,7 +48,6 @@ import { ClearPastNextActionDateHourUseCase } from '../../../domain/usecases/Cle
 import { Issue } from '../../../domain/entities/Issue';
 import { Project } from '../../../domain/entities/Project';
 
-import { AnalyzeStoriesUseCase } from '../../../domain/usecases/AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from '../../../domain/usecases/ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from '../../../domain/usecases/SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { StaleTaskPullRequestCloseUseCase } from '../../../domain/usecases/StaleTaskPullRequestCloseUseCase';
@@ -447,10 +446,6 @@ export class HandleScheduledEventUseCaseHandler {
     const clearPastNextActionUseCase = new ClearPastNextActionDateHourUseCase(
       issueRepository,
     );
-    const analyzeStoriesUseCase = new AnalyzeStoriesUseCase(
-      issueRepository,
-      systemDateRepository,
-    );
     const clearDependedIssueURLUseCase = new ClearDependedIssueURLUseCase(
       issueRepository,
     );
@@ -544,7 +539,6 @@ export class HandleScheduledEventUseCaseHandler {
       actionAnnouncement,
       setWorkflowManagementIssueToStoryUseCase,
       clearPastNextActionUseCase,
-      analyzeStoriesUseCase,
       clearDependedIssueURLUseCase,
       setDependedIssueUrlForOpenTaskPRsUseCase,
       staleTaskPullRequestCloseUseCase,

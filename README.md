@@ -747,13 +747,11 @@ The following use cases execute on every `schedule` trigger (cadence is determin
 
 The following use cases run only when at least 600 seconds have elapsed since the last slow sweep:
 
-- `AnalyzeStoriesUseCase`
 - `CreateNewStoryByLabelUseCase`
 - `ChangeStatusByStoryColorUseCase`
 - `UpdateIssueStatusByLabelUseCase`
 - `SetWorkflowManagementIssueToStoryUseCase`
 - `SetNoStoryIssueToStoryUseCase`
-- `AnalyzeProblemByIssueUseCase`
 - `ActionAnnouncementUseCase`
 - `ClearPastNextActionDateHourUseCase`
 - `ClearDependedIssueURLUseCase`
