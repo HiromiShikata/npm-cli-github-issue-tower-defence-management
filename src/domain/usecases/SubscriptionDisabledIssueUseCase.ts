@@ -1,4 +1,5 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export type SubscriptionDisabledTokenEntry = {
   name: string;
@@ -9,7 +10,10 @@ export class SubscriptionDisabledIssueUseCase {
   constructor(
     private readonly issueRepository: Pick<
       IssueRepository,
-      'searchIssue' | 'createNewIssue' | 'createCommentByUrl'
+      | 'searchIssue'
+      | 'createNewIssue'
+      | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
     >,
   ) {}
 
@@ -50,10 +54,23 @@ export class SubscriptionDisabledIssueUseCase {
     );
 
     if (existingIssue) {
-      await this.issueRepository.createCommentByUrl(
-        existingIssue.url,
-        `The Claude subscription access for the token displayed as \`${tokenName}\` remains disabled. Please restore the account's Claude Code subscription access.`,
-      );
+      const commentBody = `The Claude subscription access for the token displayed as \`${tokenName}\` remains disabled. Please restore the account's Claude Code subscription access.`;
+      const existingComments =
+        await this.issueRepository.getIssueOrPullRequestComments(
+          existingIssue.url,
+        );
+      if (
+        !isDuplicateWithinWindow(
+          commentBody,
+          existingComments.map((c) => ({ text: c.body, createdAt: c.createdAt })),
+          new Date(),
+        )
+      ) {
+        await this.issueRepository.createCommentByUrl(
+          existingIssue.url,
+          commentBody,
+        );
+      }
       console.log(
         `SubscriptionDisabledIssue: commented on existing issue for token ${tokenName}: ${existingIssue.url}`,
       );

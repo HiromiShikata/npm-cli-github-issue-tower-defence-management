@@ -10,12 +10,16 @@ import {
   SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD,
   SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD,
 } from './dependencyNotificationCommentHeads';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export class ClearDependedIssueURLUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'clearProjectField' | 'createComment' | 'updateProjectTextField'
+      | 'clearProjectField'
+      | 'createComment'
+      | 'updateProjectTextField'
+      | 'getIssueOrPullRequestComments'
     >,
   ) {}
 
@@ -44,7 +48,7 @@ export class ClearDependedIssueURLUseCase {
           dependedIssueUrlSeparatedByComma.fieldId,
           issue,
         );
-        await this.issueRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           `${CIRCULAR_DEPENDENCY_REMOVED_COMMENT_HEAD}\n${circularDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
@@ -129,13 +133,13 @@ export class ClearDependedIssueURLUseCase {
           remainingDependedIssueUrls.length === 0 &&
           notFoundDependedIssueUrls.length === 0 &&
           iceboxDependedIssueUrls.length === 0;
-        await this.issueRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           `${allCleared ? ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD : SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD}\n${closedDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
       }
       if (notFoundDependedIssueUrls.length > 0) {
-        await this.issueRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           `${DEPENDENCY_REMOVED_COMMENT_HEAD}\n${notFoundDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
@@ -145,12 +149,30 @@ export class ClearDependedIssueURLUseCase {
           remainingDependedIssueUrls.length === 0 &&
           closedDependedIssueUrls.length === 0 &&
           notFoundDependedIssueUrls.length === 0;
-        await this.issueRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           `${iceboxAllCleared ? ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD : SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD}\n${iceboxDependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
       }
     }
+  };
+
+  private createCommentWithDedup = async (
+    issue: Issue,
+    commentBody: string,
+  ): Promise<void> => {
+    const existing =
+      await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+    if (
+      isDuplicateWithinWindow(
+        commentBody,
+        existing.map((c) => ({ text: c.body, createdAt: c.createdAt })),
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    await this.issueRepository.createComment(issue, commentBody);
   };
 
   private isFromAllowedExternalRepo = (

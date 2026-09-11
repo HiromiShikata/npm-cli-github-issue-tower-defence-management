@@ -89,6 +89,7 @@ describe('SubscriptionDisabledIssueUseCase', () => {
   describe('when a token is disabled and an open issue already exists', () => {
     it('comments on the existing issue instead of creating a new one', async () => {
       const mockIssueRepository = mock<IssueRepository>();
+      mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
       const existingIssueUrl =
         'https://github.com/test-org/test-repo/issues/99';
       mockIssueRepository.searchIssue.mockResolvedValue([

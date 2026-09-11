@@ -117,6 +117,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     searchIssue: jest.Mock;
     createNewIssue: jest.Mock;
     createCommentByUrl: jest.Mock;
+    getIssueOrPullRequestComments: jest.Mock;
     updateNextActionDate: jest.Mock;
     updateStory: jest.Mock;
     addIssueToProject: jest.Mock;
@@ -179,6 +180,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       searchIssue: jest.fn().mockResolvedValue([]),
       createNewIssue: jest.fn().mockResolvedValue(42),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       updateNextActionDate: jest.fn().mockResolvedValue(undefined),
       updateStory: jest.fn().mockResolvedValue(undefined),
       addIssueToProject: jest.fn().mockResolvedValue(''),
@@ -187,7 +189,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     };
 
     mockIssueCommentRepository = {
-      getCommentsFromIssue: jest.fn(),
+      getCommentsFromIssue: jest.fn().mockResolvedValue([]),
       createComment: jest.fn(),
     };
 

@@ -133,16 +133,6 @@ describe('RestIssueRepository', () => {
   });
 
   describe('createComment', () => {
-    let fetchSpy: jest.SpyInstance<
-      ReturnType<typeof global.fetch>,
-      Parameters<typeof global.fetch>
-    >;
-    beforeEach(() => {
-      fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
-    });
-
     it('should create a comment and return the created comment data', async () => {
       mockPost.mockReturnValue(
         mockJsonResponse({
@@ -286,180 +276,31 @@ describe('RestIssueRepository', () => {
       });
     });
 
-    it('skips posting when a comment with the same body was posted within 2 hours', async () => {
-      const dedupIssueUrl =
-        'https://github.com/HiromiShikata/test-repository/issues/501';
+    it('posts comment without a preflight comment fetch', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch');
+      const issueUrl =
+        'https://github.com/HiromiShikata/test-repository/issues/507';
       const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      fetchSpy.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([
-            { body: 'Auto Status Check: REJECTED', created_at: recentTs },
-          ]),
-          { status: 200, headers: { ETag: '"etag-1"' } },
-        ),
-      );
-
-      const result = await restIssueRepository.createComment(
-        dedupIssueUrl,
-        'Auto Status Check: REJECTED',
-      );
-
-      expect(mockPost).not.toHaveBeenCalled();
-      expect(result.url).toBeNull();
-    });
-
-    it('still posts when the identical comment was posted more than 2 hours ago', async () => {
-      const dedupIssueUrl =
-        'https://github.com/HiromiShikata/test-repository/issues/502';
-      const oldTs = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
-      fetchSpy.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([
-            { body: 'Auto Status Check: REJECTED', created_at: oldTs },
-          ]),
-          { status: 200, headers: { ETag: '"etag-2"' } },
-        ),
-      );
       mockPost.mockReturnValue(
         mockJsonResponse({
           user: { login: 'bot' },
           body: 'Auto Status Check: REJECTED',
           created_at: new Date().toISOString(),
-          html_url: `${dedupIssueUrl}#issuecomment-1`,
+          html_url: `${issueUrl}#issuecomment-1`,
         }),
       );
 
-      await restIssueRepository.createComment(
-        dedupIssueUrl,
+      const result = await restIssueRepository.createComment(
+        issueUrl,
         'Auto Status Check: REJECTED',
       );
 
+      expect(fetchSpy).not.toHaveBeenCalled();
       expect(mockPost).toHaveBeenCalledTimes(1);
-    });
+      expect(typeof result.url).toBe('string');
+      expect(result.url).not.toBeNull();
 
-    it('still posts when recent comment body differs', async () => {
-      const dedupIssueUrl =
-        'https://github.com/HiromiShikata/test-repository/issues/503';
-      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      fetchSpy.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([
-            {
-              body: 'Auto Status Check: AWAITING_OWNER_APPROVAL',
-              created_at: recentTs,
-            },
-          ]),
-          { status: 200, headers: { ETag: '"etag-3"' } },
-        ),
-      );
-      mockPost.mockReturnValue(
-        mockJsonResponse({
-          user: { login: 'bot' },
-          body: 'Auto Status Check: REJECTED',
-          created_at: new Date().toISOString(),
-          html_url: `${dedupIssueUrl}#issuecomment-2`,
-        }),
-      );
-
-      await restIssueRepository.createComment(
-        dedupIssueUrl,
-        'Auto Status Check: REJECTED',
-      );
-
-      expect(mockPost).toHaveBeenCalledTimes(1);
-    });
-
-    it('treats bodies differing only in timestamps as duplicates after normalisation', async () => {
-      const dedupIssueUrl =
-        'https://github.com/HiromiShikata/test-repository/issues/504';
-      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      fetchSpy.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([
-            {
-              body: 'CLI error recurrence at 2026-09-05T10:00:00Z: some error',
-              created_at: recentTs,
-            },
-          ]),
-          { status: 200, headers: { ETag: '"etag-4"' } },
-        ),
-      );
-
-      const result = await restIssueRepository.createComment(
-        dedupIssueUrl,
-        'CLI error recurrence at 2026-09-05T11:30:00Z: some error',
-      );
-
-      expect(mockPost).not.toHaveBeenCalled();
-      expect(result.url).toBeNull();
-    });
-
-    it('detects a duplicate that lies beyond the first page of comments by following Link rel="next" pagination', async () => {
-      const dedupIssueUrl =
-        'https://github.com/HiromiShikata/test-repository/issues/505';
-      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-
-      fetchSpy
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify([
-              { body: 'Some other comment', created_at: recentTs },
-            ]),
-            {
-              status: 200,
-              headers: {
-                Link: '<https://api.github.com/repos/HiromiShikata/test-repository/issues/505/comments?page=2>; rel="next"',
-              },
-            },
-          ),
-        )
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify([
-              {
-                body: 'Auto Status Check: REJECTED',
-                created_at: recentTs,
-              },
-            ]),
-            { status: 200 },
-          ),
-        );
-
-      const result = await restIssueRepository.createComment(
-        dedupIssueUrl,
-        'Auto Status Check: REJECTED',
-      );
-
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-      expect(mockPost).not.toHaveBeenCalled();
-      expect(result.url).toBeNull();
-    });
-
-    it('skips comment but does not prevent other operations from running', async () => {
-      const dedupIssueUrl =
-        'https://github.com/HiromiShikata/test-repository/issues/506';
-      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      fetchSpy.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([
-            { body: 'Auto Status Check: REJECTED', created_at: recentTs },
-          ]),
-          { status: 200, headers: { ETag: '"etag-6"' } },
-        ),
-      );
-
-      const result = await restIssueRepository.createComment(
-        dedupIssueUrl,
-        'Auto Status Check: REJECTED',
-      );
-
-      expect(mockPost).not.toHaveBeenCalled();
-      expect(result).toEqual(
-        expect.objectContaining({
-          body: 'Auto Status Check: REJECTED',
-          url: null,
-        }),
-      );
+      void recentTs;
     });
 
     describe('circuit breaker', () => {
@@ -527,168 +368,6 @@ describe('RestIssueRepository', () => {
       });
     });
 
-    it('throws GitHubRateLimitError and does not call ky.post when dedup preflight returns 403 with rate-limit signals', async () => {
-      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
-      const resetEpoch = 1725547200;
-      fetchSpy.mockResolvedValueOnce(
-        new Response('API rate limit exceeded for user ID 42', {
-          status: 403,
-          headers: {
-            'x-ratelimit-remaining': '0',
-            'x-ratelimit-reset': String(resetEpoch),
-          },
-        }),
-      );
-
-      await expect(
-        restIssueRepository.createComment(
-          'https://github.com/HiromiShikata/test-repository/issues/901',
-          'completion comment',
-        ),
-      ).rejects.toBeInstanceOf(GitHubRateLimitError);
-
-      expect(mockPost).not.toHaveBeenCalled();
-    });
-
-    it('includes rate-limit reset time in thrown error when dedup preflight returns 403', async () => {
-      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
-      const resetEpoch = 1725547200;
-      fetchSpy.mockResolvedValueOnce(
-        new Response('API rate limit exceeded', {
-          status: 403,
-          headers: {
-            'x-ratelimit-remaining': '0',
-            'x-ratelimit-reset': String(resetEpoch),
-          },
-        }),
-      );
-
-      let thrownError: unknown;
-      try {
-        await restIssueRepository.createComment(
-          'https://github.com/HiromiShikata/test-repository/issues/902',
-          'completion comment',
-        );
-      } catch (e) {
-        thrownError = e;
-      }
-
-      expect(thrownError).toBeInstanceOf(GitHubRateLimitError);
-      expect(thrownError).toMatchObject({
-        rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
-      });
-    });
-
-    it('throws GitHubRateLimitError and does not call ky.post when dedup preflight returns 429 with retry-after', async () => {
-      const { GitHubRateLimitError } = await import('./githubRateLimitRetry');
-      fetchSpy.mockResolvedValueOnce(
-        new Response('secondary rate limit', {
-          status: 429,
-          headers: { 'retry-after': '60' },
-        }),
-      );
-
-      await expect(
-        restIssueRepository.createComment(
-          'https://github.com/HiromiShikata/test-repository/issues/903',
-          'completion comment',
-        ),
-      ).rejects.toBeInstanceOf(GitHubRateLimitError);
-
-      expect(mockPost).not.toHaveBeenCalled();
-    });
-
-    it('calls ky.post when dedup preflight returns a non-rate-limit HTTP error (fail open)', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response('Not Found', { status: 404 }),
-      );
-      mockPost.mockReturnValue(
-        mockJsonResponse({
-          user: { login: 'bot' },
-          body: 'completion comment',
-          created_at: new Date().toISOString(),
-          html_url:
-            'https://github.com/HiromiShikata/test-repository/issues/904#issuecomment-1',
-        }),
-      );
-
-      await restIssueRepository.createComment(
-        'https://github.com/HiromiShikata/test-repository/issues/904',
-        'completion comment',
-      );
-
-      expect(mockPost).toHaveBeenCalledTimes(1);
-    });
-
-    it('calls ky.post when dedup preflight returns a response with an unexpected shape (fail open)', async () => {
-      fetchSpy.mockResolvedValueOnce(
-        new Response(JSON.stringify({ unexpected: true }), { status: 200 }),
-      );
-      mockPost.mockReturnValue(
-        mockJsonResponse({
-          user: { login: 'bot' },
-          body: 'completion comment',
-          created_at: new Date().toISOString(),
-          html_url:
-            'https://github.com/HiromiShikata/test-repository/issues/905#issuecomment-2',
-        }),
-      );
-
-      await restIssueRepository.createComment(
-        'https://github.com/HiromiShikata/test-repository/issues/905',
-        'completion comment',
-      );
-
-      expect(mockPost).toHaveBeenCalledTimes(1);
-    });
-
-    it('skips ky.post when successful dedup preflight finds an identical recent comment', async () => {
-      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      fetchSpy.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([
-            { body: 'completion comment', created_at: recentTs },
-          ]),
-          { status: 200 },
-        ),
-      );
-
-      const result = await restIssueRepository.createComment(
-        'https://github.com/HiromiShikata/test-repository/issues/906',
-        'completion comment',
-      );
-
-      expect(mockPost).not.toHaveBeenCalled();
-      expect(result.url).toBeNull();
-    });
-
-    it('calls ky.post when successful dedup preflight finds no matching recent comment', async () => {
-      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      fetchSpy.mockResolvedValueOnce(
-        new Response(
-          JSON.stringify([
-            { body: 'a different comment', created_at: recentTs },
-          ]),
-          { status: 200 },
-        ),
-      );
-      mockPost.mockReturnValue(
-        mockJsonResponse({
-          user: { login: 'bot' },
-          body: 'completion comment',
-          created_at: new Date().toISOString(),
-          html_url:
-            'https://github.com/HiromiShikata/test-repository/issues/907#issuecomment-3',
-        }),
-      );
-
-      await restIssueRepository.createComment(
-        'https://github.com/HiromiShikata/test-repository/issues/907',
-        'completion comment',
-      );
-
-      expect(mockPost).toHaveBeenCalledTimes(1);
-    });
   });
   describe('createNewIssue', () => {
     it('should create a new issue', async () => {

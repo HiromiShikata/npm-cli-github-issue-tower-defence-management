@@ -4,13 +4,15 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 import { Member } from '../entities/Member';
+import { Issue } from '../entities/Issue';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export class ChangeStatusByStoryColorUseCase {
   constructor(
     readonly dateRepository: Pick<DateRepository, 'now'>,
     readonly issueRepository: Pick<
       IssueRepository,
-      'updateStatus' | 'createComment'
+      'updateStatus' | 'createComment' | 'getIssueOrPullRequestComments'
     >,
   ) {}
 
@@ -46,7 +48,7 @@ export class ChangeStatusByStoryColorUseCase {
             issue,
             disabledStatusObject.id,
           );
-          await this.issueRepository.createComment(
+          await this.createCommentWithDedup(
             issue,
             `This issue status is changed because the story is disabled.`,
           );
@@ -69,12 +71,30 @@ export class ChangeStatusByStoryColorUseCase {
             issue,
             firstStatus.id,
           );
-          await this.issueRepository.createComment(
+          await this.createCommentWithDedup(
             issue,
             `This issue status is changed because the story is enabled.`,
           );
         }
       }
     }
+  };
+
+  private createCommentWithDedup = async (
+    issue: Issue,
+    commentBody: string,
+  ): Promise<void> => {
+    const existing =
+      await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+    if (
+      isDuplicateWithinWindow(
+        commentBody,
+        existing.map((c) => ({ text: c.body, createdAt: c.createdAt })),
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    await this.issueRepository.createComment(issue, commentBody);
   };
 }

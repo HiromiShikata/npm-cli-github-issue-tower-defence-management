@@ -6,12 +6,16 @@ import { DateRepository } from './adapter-interfaces/DateRepository';
 import { StoryObjectMap } from '../entities/StoryObjectMap';
 import { encodeForURI } from './utils';
 import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export class CreateEstimationIssueUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'createNewIssue' | 'clearProjectField' | 'createComment'
+      | 'createNewIssue'
+      | 'clearProjectField'
+      | 'createComment'
+      | 'getIssueOrPullRequestComments'
     >,
     readonly dateRepository: Pick<DateRepository, 'formatDateWithDayOfWeek'>,
   ) {}
@@ -75,7 +79,7 @@ export class CreateEstimationIssueUseCase {
           !!issueInStory.estimationMinutes &&
           issueInStory.estimationMinutes > 0
         ) {
-          await this.issueRepository.createComment(
+          await this.createCommentWithDedup(
             issueInStory,
             `\`${estimationMinutesField.name}\` field value \`${issueInStory.estimationMinutes}\` is removed to re-estimate.`,
           );
@@ -93,7 +97,7 @@ export class CreateEstimationIssueUseCase {
             targetDate.getTime() + 7 * 24 * 60 * 60 * 1000 ||
             targetDate.getUTCDay() === 1)
         ) {
-          await this.issueRepository.createComment(
+          await this.createCommentWithDedup(
             issueInStory,
             `\`${completionDate50PercentConfidenceField.name}\` field value \`${this.dateRepository.formatDateWithDayOfWeek(issueInStory.completionDate50PercentConfidence)}\` is removed to re-estimate.`,
           );
@@ -125,6 +129,24 @@ export class CreateEstimationIssueUseCase {
       }
     }
   };
+  private createCommentWithDedup = async (
+    issue: Issue,
+    commentBody: string,
+  ): Promise<void> => {
+    const existing =
+      await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+    if (
+      isDuplicateWithinWindow(
+        commentBody,
+        existing.map((c) => ({ text: c.body, createdAt: c.createdAt })),
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    await this.issueRepository.createComment(issue, commentBody);
+  };
+
   createEstimationIssueBody = (
     storyObject: {
       storyIssue: Issue;

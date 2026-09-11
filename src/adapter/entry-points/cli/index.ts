@@ -1547,6 +1547,10 @@ const buildCliErrorReporter = (): {
       restIssueRepository.createNewIssue.bind(restIssueRepository),
     createCommentByUrl: (issueOrPrUrl: string, commentBody: string) =>
       restIssueRepository.createComment(issueOrPrUrl, commentBody),
+    getIssueOrPullRequestComments:
+      restIssueRepository.getIssueOrPullRequestComments.bind(
+        restIssueRepository,
+      ),
   });
   return { useCase, owner, repo };
 };

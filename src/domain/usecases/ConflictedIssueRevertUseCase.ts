@@ -9,6 +9,7 @@ import {
   ICEBOX_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 const EXCLUDED_STATUSES = new Set([
   DONE_STATUS_NAME,
@@ -118,8 +119,13 @@ export class ConflictedIssueRevertUseCase {
       );
       const existingComments =
         await this.issueCommentRepository.getCommentsFromIssue(issue);
-      const lastComment = existingComments[existingComments.length - 1];
-      if (lastComment?.content === 'conflict') {
+      if (
+        isDuplicateWithinWindow(
+          'conflict',
+          existingComments.map((c) => ({ text: c.content, createdAt: c.createdAt })),
+          new Date(),
+        )
+      ) {
         continue;
       }
       try {

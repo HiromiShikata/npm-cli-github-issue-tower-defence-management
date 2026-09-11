@@ -1,11 +1,12 @@
 import type { Issue } from '../entities/Issue';
 import type { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export class StaleTaskPullRequestCloseUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'closePullRequest' | 'createCommentByUrl'
+      'closePullRequest' | 'createCommentByUrl' | 'getIssueOrPullRequestComments'
     >,
   ) {}
 
@@ -31,7 +32,7 @@ export class StaleTaskPullRequestCloseUseCase {
       }
       const closedRefs = issue.closingIssueReferenceUrls.join(', ');
       try {
-        await this.issueRepository.createCommentByUrl(
+        await this.createCommentByUrlWithDedup(
           issue.url,
           `Closing this pull request because all referenced task issues are already closed: ${closedRefs}`,
         );
@@ -42,5 +43,23 @@ export class StaleTaskPullRequestCloseUseCase {
         );
       }
     }
+  };
+
+  private createCommentByUrlWithDedup = async (
+    url: string,
+    commentBody: string,
+  ): Promise<void> => {
+    const existing =
+      await this.issueRepository.getIssueOrPullRequestComments(url);
+    if (
+      isDuplicateWithinWindow(
+        commentBody,
+        existing.map((c) => ({ text: c.body, createdAt: c.createdAt })),
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    await this.issueRepository.createCommentByUrl(url, commentBody);
   };
 }

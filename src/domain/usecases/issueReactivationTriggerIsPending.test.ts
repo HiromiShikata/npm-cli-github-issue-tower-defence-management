@@ -318,6 +318,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           | 'closePullRequest'
           | 'deletePullRequestBranch'
           | 'createCommentByUrl'
+          | 'getIssueOrPullRequestComments'
           | 'setIssueAgentField'
           | 'removeLabel'
         >
@@ -349,6 +350,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           | 'searchIssue'
           | 'createNewIssue'
           | 'createCommentByUrl'
+          | 'getIssueOrPullRequestComments'
           | 'updateNextActionDate'
           | 'updateStory'
           | 'addIssueToProject'
@@ -392,6 +394,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           closePullRequest: jest.fn().mockResolvedValue(undefined),
           deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
           createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+          getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
           setIssueAgentField: jest.fn().mockResolvedValue(undefined),
           removeLabel: jest.fn().mockResolvedValue(undefined),
         };
@@ -465,6 +468,7 @@ describe('spawn and finish sides agree on the reactivation trigger predicate', (
           searchIssue: jest.fn().mockResolvedValue([]),
           createNewIssue: jest.fn().mockResolvedValue(42),
           createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+          getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
           updateNextActionDate: jest.fn().mockResolvedValue(undefined),
           updateStory: jest.fn().mockResolvedValue(undefined),
           addIssueToProject: jest.fn().mockResolvedValue(''),

@@ -1,8 +1,12 @@
 import type { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 type CliErrorReportRepository = Pick<
   IssueRepository,
-  'searchIssue' | 'createNewIssue' | 'createCommentByUrl'
+  | 'searchIssue'
+  | 'createNewIssue'
+  | 'createCommentByUrl'
+  | 'getIssueOrPullRequestComments'
 >;
 
 const isGitHubRateLimitError = (error: unknown): boolean => {
@@ -87,7 +91,7 @@ export class CliErrorReportUseCase {
       });
       const existing = results.find((r) => r.title === title);
       if (existing) {
-        await this.issueRepository.createCommentByUrl(
+        await this.createCommentByUrlWithDedup(
           existing.url,
           buildBody('CLI error recurrence'),
         );
@@ -107,5 +111,23 @@ export class CliErrorReportUseCase {
         reportError,
       );
     }
+  };
+
+  private createCommentByUrlWithDedup = async (
+    url: string,
+    commentBody: string,
+  ): Promise<void> => {
+    const existing =
+      await this.issueRepository.getIssueOrPullRequestComments(url);
+    if (
+      isDuplicateWithinWindow(
+        commentBody,
+        existing.map((c) => ({ text: c.body, createdAt: c.createdAt })),
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    await this.issueRepository.createCommentByUrl(url, commentBody);
   };
 }

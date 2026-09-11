@@ -3,6 +3,7 @@ import {
   IssueRepository,
   RelatedPullRequest,
 } from './adapter-interfaces/IssueRepository';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
@@ -52,7 +53,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
-      'createComment'
+      'getCommentsFromIssue' | 'createComment'
     >,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
@@ -140,7 +141,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
           issue,
           awaitingWorkspaceStatusOption.id,
         );
-        await this.issueCommentRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           `Auto Status Check: REJECTED\n- Has dependent issue URLs:\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
         );
@@ -153,7 +154,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
           issue,
           awaitingWorkspaceStatusOption.id,
         );
-        await this.issueCommentRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           'Auto Status Check: REJECTED\n- Reactivation trigger not yet reached',
         );
@@ -195,7 +196,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
             }
             throw error;
           }
-          await this.issueCommentRepository.createComment(
+          await this.createCommentWithDedup(
             issue,
             `Auto Status Check: REJECTED\n${rejections.map((r) => `- ${r.detail}`).join('\n')}`,
           );
@@ -287,5 +288,23 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       result.set(issueUrl, Array.from(prUrls));
     }
     return result;
+  };
+
+  private createCommentWithDedup = async (
+    issue: Issue,
+    commentBody: string,
+  ): Promise<void> => {
+    const existing =
+      await this.issueCommentRepository.getCommentsFromIssue(issue);
+    if (
+      isDuplicateWithinWindow(
+        commentBody,
+        existing.map((c) => ({ text: c.content, createdAt: c.createdAt })),
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    await this.issueCommentRepository.createComment(issue, commentBody);
   };
 }

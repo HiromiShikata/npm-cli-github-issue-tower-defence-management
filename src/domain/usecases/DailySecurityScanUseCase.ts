@@ -2,6 +2,7 @@ import { LocalCommandRunner } from './adapter-interfaces/LocalCommandRunner';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { HttpRepository } from './adapter-interfaces/HttpRepository';
 import { KevReportWatermarkRepository } from './adapter-interfaces/KevReportWatermarkRepository';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import { KevReportWatermark } from '../entities/KevReportWatermark';
 import { Member } from '../entities/Member';
 
@@ -163,7 +164,10 @@ export class DailySecurityScanUseCase {
     readonly localCommandRunner: LocalCommandRunner,
     readonly issueRepository: Pick<
       IssueRepository,
-      'createNewIssue' | 'searchIssue' | 'createCommentByUrl'
+      | 'createNewIssue'
+      | 'searchIssue'
+      | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
     >,
     readonly httpRepository: HttpRepository,
     readonly kevReportWatermarkRepository: KevReportWatermarkRepository,
@@ -315,10 +319,25 @@ export class DailySecurityScanUseCase {
           (issue) => issue.title === 'Daily security scan findings',
         );
         if (existingIssue) {
-          await this.issueRepository.createCommentByUrl(
-            existingIssue.url,
-            findingsBody,
-          );
+          const existingComments =
+            await this.issueRepository.getIssueOrPullRequestComments(
+              existingIssue.url,
+            );
+          if (
+            !isDuplicateWithinWindow(
+              findingsBody,
+              existingComments.map((c) => ({
+                text: c.body,
+                createdAt: c.createdAt,
+              })),
+              new Date(),
+            )
+          ) {
+            await this.issueRepository.createCommentByUrl(
+              existingIssue.url,
+              findingsBody,
+            );
+          }
         } else {
           await this.issueRepository.createNewIssue(
             repositoryOrg,

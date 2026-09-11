@@ -51,6 +51,7 @@ import {
   WorkflowIssueReporterSettings,
 } from './reportSilentRedispatchWorkflowIssue';
 import { DEPENDED_ISSUE_URLS_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -119,6 +120,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'searchIssue'
       | 'createNewIssue'
       | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
       | 'updateNextActionDate'
       | 'updateStory'
       | 'addIssueToProject'
@@ -294,7 +296,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         `${DEPENDED_ISSUE_URLS_COMMENT_HEAD}\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       );
@@ -311,7 +313,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         `Reactivation trigger not yet reached: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`,
       );
@@ -380,7 +382,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.issueUrl,
         project,
       );
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
       );
@@ -433,7 +435,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.issueUrl,
         project,
       );
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
       );
@@ -467,7 +469,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         failedPreparationStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         repetition.comment,
       );
@@ -499,7 +501,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingOwnerStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         repetition.comment,
       );
@@ -514,7 +516,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         failedPreparationStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         repetition.comment,
       );
@@ -564,7 +566,7 @@ export class NotifyFinishedIssuePreparationUseCase {
           params.issueUrl,
           project,
         );
-        await this.issueCommentRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           rejectionStatusMessage,
         );
@@ -573,7 +575,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         repetition.type === 'dispatchAgain' ||
         repetition.type === 'storyUnset'
       ) {
-        await this.issueCommentRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           repetition.comment,
         );
@@ -623,7 +625,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       project,
     );
 
-    await this.issueCommentRepository.createComment(
+    await this.createCommentWithDedup(
       issue,
       rejectionStatusMessage,
     );
@@ -649,7 +651,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       awaitingWorkspaceStatusOption.id,
     );
     await this.patchConsoleTab(issue);
-    await this.issueCommentRepository.createComment(
+    await this.createCommentWithDedup(
       issue,
       `Preparation deferred due to transient failure; item reactivates from ${tomorrow.toISOString().split('T')[0]}\nSession stop reason: ${sessionErrorLine ?? '(not captured)'}`,
     );
@@ -729,7 +731,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       awaitingWorkspaceStatusOption.id,
     );
     await this.patchConsoleTab(issue);
-    await this.issueCommentRepository.createComment(
+    await this.createCommentWithDedup(
       issue,
       `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`,
     );
@@ -818,7 +820,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       awaitingWorkspaceStatusOption.id,
     );
     await this.patchConsoleTab(issue);
-    await this.issueCommentRepository.createComment(
+    await this.createCommentWithDedup(
       issue,
       `nextStepAgent \`${nextStepAgent}\` is not in the configured agents list. Created workflow blocker task:\n${blockerIssueUrl}`,
     );
@@ -1064,5 +1066,23 @@ export class NotifyFinishedIssuePreparationUseCase {
       item,
       targetTabName,
     });
+  };
+
+  private createCommentWithDedup = async (
+    issue: Issue,
+    body: string,
+  ): Promise<void> => {
+    const existing =
+      await this.issueCommentRepository.getCommentsFromIssue(issue);
+    if (
+      isDuplicateWithinWindow(
+        body,
+        existing.map((c) => ({ text: c.content, createdAt: c.createdAt })),
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    await this.issueCommentRepository.createComment(issue, body);
   };
 }
