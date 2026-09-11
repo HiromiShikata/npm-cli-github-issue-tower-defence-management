@@ -5,8 +5,9 @@ const meta: Meta<typeof ConsoleProjectSettingsModalScreen> = {
   title: 'Console/ConsoleProjectSettingsModalScreen',
   component: ConsoleProjectSettingsModalScreen,
   args: {
-    value: '5',
-    onChange: () => {},
+    pjcodes: ['acme', 'beta', 'gamma'],
+    inputValues: { acme: '5', beta: '3', gamma: '8' },
+    onChangeInput: () => {},
     isLoading: false,
     isSaving: false,
     error: null,
@@ -19,18 +20,18 @@ export default meta;
 
 type Story = StoryObj<typeof ConsoleProjectSettingsModalScreen>;
 
-export const WithCurrentValue: Story = {};
+export const WithCurrentValues: Story = {};
 
-export const NoCurrentValue: Story = {
+export const NoCurrentValues: Story = {
   args: {
-    value: '',
+    inputValues: {},
   },
 };
 
 export const Loading: Story = {
   args: {
     isLoading: true,
-    value: '',
+    inputValues: {},
   },
 };
 

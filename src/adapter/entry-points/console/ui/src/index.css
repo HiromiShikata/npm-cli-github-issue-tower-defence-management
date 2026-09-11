@@ -488,7 +488,16 @@ body {
   font-size: 0.875rem;
 }
 
-.console-settings-modal-field {
+.console-settings-modal-project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.console-settings-modal-project-row {
   display: flex;
   flex-direction: column;
   gap: 6px;

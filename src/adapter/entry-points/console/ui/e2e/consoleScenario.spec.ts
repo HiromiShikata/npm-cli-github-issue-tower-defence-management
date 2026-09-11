@@ -1598,3 +1598,19 @@ test.describe('expanded comment body renders github images through the image pro
     await expect(page.locator('.console-comment-body-expanded')).toBeVisible();
   });
 });
+
+test('max settings button is always visible and opens the Max settings modal', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  const maxSettingsButton = page.getByRole('button', {
+    name: 'Open max settings',
+  });
+  await expect(maxSettingsButton).toBeVisible();
+
+  await maxSettingsButton.click();
+
+  const modal = page.getByRole('dialog', { name: 'Max settings' });
+  await expect(modal).toBeVisible();
+});
