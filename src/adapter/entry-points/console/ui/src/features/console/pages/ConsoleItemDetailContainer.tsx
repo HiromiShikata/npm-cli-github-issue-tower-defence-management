@@ -296,6 +296,7 @@ export const ConsoleItemDetailContainer = ({
             name: option.name,
             color: option.color,
           }),
+        revertAdvance: () => operations.patchItemOverlay(item, false),
       });
     },
     onDeleteAllComments: () => {

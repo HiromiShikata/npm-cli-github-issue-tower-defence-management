@@ -863,4 +863,32 @@ describe('ConsoleItemDetailContainer', () => {
       color: 'BLUE',
     });
   });
+
+  it('provides revertAdvance that restores the overlay when ok & Awaiting Workspace undo is triggered', () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    fireEvent.click(getByText('ok & Awaiting Workspace'));
+    expect(onQueueAction).toHaveBeenCalledTimes(1);
+    const input = onQueueAction.mock.calls[0][0];
+    expect(input.revertAdvance).toBeDefined();
+    input.revertAdvance();
+    expect(operations.patchItemOverlay).toHaveBeenCalledWith(issueItem, false);
+  });
 });
