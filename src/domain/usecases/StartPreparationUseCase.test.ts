@@ -104,6 +104,7 @@ describe('StartPreparationUseCase', () => {
       | 'closePullRequest'
       | 'deletePullRequestBranch'
       | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
     >
@@ -130,6 +131,7 @@ describe('StartPreparationUseCase', () => {
       closePullRequest: jest.fn().mockResolvedValue(undefined),
       deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
     };
@@ -7379,6 +7381,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
       | 'closePullRequest'
       | 'deletePullRequestBranch'
       | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
     >
@@ -7391,6 +7394,7 @@ describe('StartPreparationUseCase.buildRotationOrder', () => {
     closePullRequest: jest.fn(),
     deletePullRequestBranch: jest.fn(),
     createCommentByUrl: jest.fn(),
+    getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
     setIssueAgentField: jest.fn(),
     removeLabel: jest.fn(),
   };
@@ -7701,6 +7705,7 @@ describe('StartPreparationUseCase.getTokenConcurrentLimit', () => {
         closePullRequest: jest.fn(),
         deletePullRequestBranch: jest.fn(),
         createCommentByUrl: jest.fn(),
+        getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
       },
@@ -7789,6 +7794,7 @@ describe('StartPreparationUseCase.run normalConcurrentLimit', () => {
       closePullRequest: jest.fn().mockResolvedValue(undefined),
       deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
     };
@@ -7880,6 +7886,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       closePullRequest: jest.fn().mockResolvedValue(undefined),
       deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
     };
@@ -7957,6 +7964,7 @@ describe('StartPreparationUseCase.run board-cache PR guard', () => {
       closePullRequest: jest.fn().mockResolvedValue(undefined),
       deletePullRequestBranch: jest.fn().mockResolvedValue(undefined),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       setIssueAgentField: jest.fn().mockResolvedValue(undefined),
       removeLabel: jest.fn().mockResolvedValue(undefined),
     };
@@ -8038,6 +8046,7 @@ describe('StartPreparationUseCase.fetchSpawnCandidateBranchSources', () => {
         closePullRequest: jest.fn(),
         deletePullRequestBranch: jest.fn(),
         createCommentByUrl: jest.fn(),
+        getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
         setIssueAgentField: jest.fn(),
         removeLabel: jest.fn(),
         ...issueRepositoryOverrides,

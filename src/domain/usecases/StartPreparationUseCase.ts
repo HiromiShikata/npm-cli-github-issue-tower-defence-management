@@ -18,6 +18,7 @@ import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -68,6 +69,7 @@ export class StartPreparationUseCase {
       | 'closePullRequest'
       | 'deletePullRequestBranch'
       | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
       | 'setIssueAgentField'
       | 'removeLabel'
     >,
@@ -709,16 +711,46 @@ export class StartPreparationUseCase {
                 duplicatePR.branchName,
               );
             }
-            await this.issueRepository.createCommentByUrl(
-              duplicatePR.url,
-              `This PR was automatically closed to resolve multiple-open-PR ambiguity for issue ${issue.url}. The adopted canonical PR is ${canonicalPR.url}.`,
-            );
+            const duplicatePrCommentBody = `This PR was automatically closed to resolve multiple-open-PR ambiguity for issue ${issue.url}. The adopted canonical PR is ${canonicalPR.url}.`;
+            const duplicatePrExistingComments =
+              await this.issueRepository.getIssueOrPullRequestComments(
+                duplicatePR.url,
+              );
+            if (
+              !isDuplicateWithinWindow(
+                duplicatePrCommentBody,
+                duplicatePrExistingComments.map((c) => ({
+                  text: c.body,
+                  createdAt: c.createdAt,
+                })),
+                new Date(),
+              )
+            ) {
+              await this.issueRepository.createCommentByUrl(
+                duplicatePR.url,
+                duplicatePrCommentBody,
+              );
+            }
           }
           const removedPrUrls = duplicatePRs.map((pr) => pr.url).join(', ');
-          await this.issueRepository.createCommentByUrl(
-            issue.url,
-            `${duplicatePRs.length} duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${removedPrUrls}\nAdopted PR: ${canonicalPR.url}`,
-          );
+          const issueCommentBody = `${duplicatePRs.length} duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${removedPrUrls}\nAdopted PR: ${canonicalPR.url}`;
+          const issueExistingComments =
+            await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+          if (
+            !isDuplicateWithinWindow(
+              issueCommentBody,
+              issueExistingComments.map((c) => ({
+                text: c.body,
+                createdAt: c.createdAt,
+              })),
+              new Date(),
+            )
+          ) {
+            await this.issueRepository.createCommentByUrl(
+              issue.url,
+              issueCommentBody,
+            );
+          }
           if (canonicalPR.branchName === null) {
             console.warn(
               `Skipping issue ${issue.url}: adopted canonical PR has unavailable head branch.`,

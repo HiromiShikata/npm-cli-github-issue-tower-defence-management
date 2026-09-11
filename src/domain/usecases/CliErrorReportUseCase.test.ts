@@ -10,6 +10,7 @@ describe('CliErrorReportUseCase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
   });
 
   const owner = 'test-owner';
@@ -57,7 +58,7 @@ describe('CliErrorReportUseCase', () => {
         author: 'bot',
         body: 'CLI error: TypeError: something went wrong',
         createdAt: new Date(0),
-        url: null,
+        url: 'https://github.com/test-owner/test-repo/issues/10#issuecomment-1',
       });
 
       await useCase.run({ error, owner, repo, commandLine });

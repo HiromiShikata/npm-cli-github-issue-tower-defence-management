@@ -1452,13 +1452,13 @@ test('shows latest comment expanded and non-latest as preview in summary mode, e
         author: 'reviewer',
         body: 'First review comment.\n\nSecond paragraph detail.',
         createdAt: new Date('2026-06-17T06:12:40.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-1',
       },
       {
         author: 'HiromiShikata',
         body: 'Acknowledged.',
         createdAt: new Date('2026-06-17T09:00:00.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-2',
       },
     ],
   });
@@ -1550,7 +1550,7 @@ test.describe('expanded comment body renders github images through the image pro
           author: 'HiromiShikata',
           body: '![Screenshot](https://github.com/user-attachments/assets/test-e2e-proxy-fixture)',
           createdAt: new Date('2026-09-06T12:00:00.000Z'),
-          url: null,
+          url: 'https://github.com/o/r/issues/1#issuecomment-3',
         },
       ],
     });

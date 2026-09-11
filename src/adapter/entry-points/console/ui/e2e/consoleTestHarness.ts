@@ -719,7 +719,7 @@ const createStubIssueRepository = (
     body: string,
   ): Promise<IssueComment> => {
     commentCalls.push({ url, body });
-    return { author: '', body, createdAt: new Date(0), url: null };
+    return { author: '', body, createdAt: new Date(0), url };
   },
   getAllOpened: () => notImplemented('getAllOpened'),
   getStoryObjectMap: async (project): Promise<StoryObjectMap> => {

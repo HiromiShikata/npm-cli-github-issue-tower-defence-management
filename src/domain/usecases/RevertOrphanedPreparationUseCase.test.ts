@@ -134,6 +134,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       | 'searchIssue'
       | 'createNewIssue'
       | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
       | 'addIssueToProject'
       | 'updateStoryByProjectItemId'
     >
@@ -172,6 +173,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       searchIssue: jest.fn().mockResolvedValue([]),
       createNewIssue: jest.fn().mockResolvedValue(42),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       addIssueToProject: jest.fn().mockResolvedValue(''),
       updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
     };

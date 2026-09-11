@@ -7,19 +7,13 @@ import { IssueCommentRepository } from '../../domain/usecases/adapter-interfaces
 import { Issue } from '../../domain/entities/Issue';
 import { Comment } from '../../domain/entities/Comment';
 import {
-  isDuplicateWithinWindow,
-  DUPLICATE_COMMENT_WINDOW_MS,
-} from './commentDeduplication';
-import {
   checkSecondaryRateLimitBreaker,
   secondaryRateLimitStateFilePath,
   writeSecondaryRateLimitState,
 } from './issue/githubSecondaryRateLimitBreaker';
 import {
-  computeRateLimitResetIso,
   computeSecondaryRateLimitBackoffMs,
   GitHubRateLimitError,
-  hasRateLimitSignals,
   isSecondaryRateLimit,
   realSleep,
   Sleep,
@@ -272,85 +266,8 @@ export class GitHubIssueCommentRepository implements IssueCommentRepository {
     return comments;
   }
 
-  private async fetchCommentsForDedupCheck(
-    owner: string,
-    repo: string,
-    issueNumber: number,
-  ): Promise<ReadonlyArray<{ text: string; createdAt: Date }> | null> {
-    const since = new Date(
-      Date.now() - DUPLICATE_COMMENT_WINDOW_MS,
-    ).toISOString();
-    const comments: Array<{ text: string; createdAt: Date }> = [];
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.token}`,
-      Accept: 'application/vnd.github+json',
-    };
-
-    let url: string | null =
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&since=${encodeURIComponent(since)}`;
-
-    try {
-      while (url !== null) {
-        const response: Response = await fetch(url, { headers });
-
-        if (!response.ok) {
-          const bodyText = await response.text().catch(() => '');
-          if (
-            hasRateLimitSignals(response.status, response.headers, bodyText)
-          ) {
-            throw new GitHubRateLimitError(
-              `GitHub API rate limit during dedup preflight: HTTP ${response.status}`,
-              computeRateLimitResetIso(response.headers),
-            );
-          }
-          return null;
-        }
-
-        const body: unknown = await response.json();
-        if (!isRestCommentPayloadArray(body)) {
-          return null;
-        }
-
-        for (const item of body) {
-          comments.push({
-            text: item.body,
-            createdAt: new Date(item.created_at),
-          });
-        }
-
-        const linkHeader: string = response.headers.get('Link') ?? '';
-        const nextMatch: RegExpMatchArray | null = linkHeader.match(
-          /<([^>]+)>;\s*rel="next"/,
-        );
-        url = nextMatch?.[1] ?? null;
-      }
-    } catch (e) {
-      if (e instanceof GitHubRateLimitError) {
-        throw e;
-      }
-      return null;
-    }
-
-    return comments;
-  }
-
   async createComment(issue: Issue, commentContent: string): Promise<void> {
     const { owner, repo, issueNumber } = this.parseIssueUrl(issue);
-
-    const existingComments = await this.fetchCommentsForDedupCheck(
-      owner,
-      repo,
-      issueNumber,
-    );
-    if (existingComments !== null) {
-      const now = new Date();
-      if (isDuplicateWithinWindow(commentContent, existingComments, now)) {
-        console.warn(
-          `GitHubIssueCommentRepository: skipping duplicate comment within ${DUPLICATE_COMMENT_WINDOW_MS / 60000} minutes on ${issue.url}`,
-        );
-        return;
-      }
-    }
 
     const caller = captureRestCallSite();
     const stateFilePath = secondaryRateLimitStateFilePath();

@@ -31,6 +31,7 @@ import {
   reportSilentRedispatchWorkflowIssue,
   WorkflowIssueReporterSettings,
 } from './reportSilentRedispatchWorkflowIssue';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 const ORPHANED_PREPARATION_REJECTION_DETAIL = 'ORPHANED_PREPARATION';
 
@@ -58,6 +59,7 @@ export class RevertOrphanedPreparationUseCase {
       | 'searchIssue'
       | 'createNewIssue'
       | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
       | 'addIssueToProject'
       | 'updateStoryByProjectItemId'
     >,
@@ -160,7 +162,7 @@ export class RevertOrphanedPreparationUseCase {
             failedPreparationStatusOption.id,
           );
         }
-        await this.issueCommentRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           `nextStepAgent '${nextStepAgent}' is not in the configured agents list. Update the configuration to include it.`,
         );
@@ -193,10 +195,7 @@ export class RevertOrphanedPreparationUseCase {
           issue,
           failedPreparationStatusOption.id,
         );
-        await this.issueCommentRepository.createComment(
-          issue,
-          repetition.comment,
-        );
+        await this.createCommentWithDedup(issue, repetition.comment);
         if (nextStepAgent !== null && params.workflowIssueReporterSettings) {
           await reportSilentRedispatchWorkflowIssue(
             nextStepAgent,
@@ -219,10 +218,7 @@ export class RevertOrphanedPreparationUseCase {
             awaitingOwnerStatusOption.id,
           );
         }
-        await this.issueCommentRepository.createComment(
-          issue,
-          repetition.comment,
-        );
+        await this.createCommentWithDedup(issue, repetition.comment);
         continue;
       }
       if (
@@ -236,10 +232,7 @@ export class RevertOrphanedPreparationUseCase {
             failedPreparationStatusOption.id,
           );
         }
-        await this.issueCommentRepository.createComment(
-          issue,
-          repetition.comment,
-        );
+        await this.createCommentWithDedup(issue, repetition.comment);
         continue;
       }
       if (nextStepAgent !== null) {
@@ -261,10 +254,7 @@ export class RevertOrphanedPreparationUseCase {
           awaitingWorkspaceStatusOption.id,
         );
         if (repetition.type !== 'notRepeated') {
-          await this.issueCommentRepository.createComment(
-            issue,
-            repetition.comment,
-          );
+          await this.createCommentWithDedup(issue, repetition.comment);
         }
         continue;
       }
@@ -289,7 +279,7 @@ export class RevertOrphanedPreparationUseCase {
           issue,
           awaitingWorkspaceStatusOption.id,
         );
-        await this.issueCommentRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
         );
@@ -335,7 +325,7 @@ export class RevertOrphanedPreparationUseCase {
           issue,
           failedPreparationStatusOption.id,
         );
-        await this.issueCommentRepository.createComment(
+        await this.createCommentWithDedup(
           issue,
           `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
         );
@@ -375,11 +365,29 @@ export class RevertOrphanedPreparationUseCase {
         issue,
         awaitingWorkspaceStatusOption.id,
       );
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         'Auto Status Check: STRAY_TODO_BY_AGENT_REVERTED',
       );
     }
+  };
+
+  private createCommentWithDedup = async (
+    issue: Issue,
+    body: string,
+  ): Promise<void> => {
+    const existing =
+      await this.issueCommentRepository.getCommentsFromIssue(issue);
+    if (
+      isDuplicateWithinWindow(
+        body,
+        existing.map((c) => ({ text: c.content, createdAt: c.createdAt })),
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    await this.issueCommentRepository.createComment(issue, body);
   };
 
   private isStillInStatus = async (

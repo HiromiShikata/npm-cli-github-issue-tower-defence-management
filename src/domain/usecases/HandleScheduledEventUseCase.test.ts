@@ -178,6 +178,7 @@ describe('HandleScheduledEventUseCase', () => {
         project: mock<Project>(),
         cacheUsed: false,
       });
+      mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
       mockSpreadsheetRepository.getSheet.mockResolvedValue([
         ['LastExecutionDateTime'],
         ['2024-01-01T00:00:00Z'],

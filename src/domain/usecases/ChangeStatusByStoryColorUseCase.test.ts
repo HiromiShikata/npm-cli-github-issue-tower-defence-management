@@ -217,6 +217,7 @@ describe('ChangeStatusByStoryColorUseCase', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockDateRepository.now.mockResolvedValue(new Date('2000-01-01T00:00:00Z'));
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
   });
 
   describe('run', () => {

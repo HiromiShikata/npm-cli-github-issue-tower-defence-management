@@ -9,7 +9,10 @@ export type SubscriptionDisabledTokenHandlerParams = {
   repo: string;
   issueRepository: Pick<
     IssueRepository,
-    'searchIssue' | 'createNewIssue' | 'createCommentByUrl'
+    | 'searchIssue'
+    | 'createNewIssue'
+    | 'createCommentByUrl'
+    | 'getIssueOrPullRequestComments'
   >;
 };
 

@@ -40,6 +40,7 @@ import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -363,10 +364,25 @@ ${JSON.stringify(e)}
           title: WORKFLOW_INCIDENT_ISSUE_TITLE,
         });
         if (existingIncidentIssues.length > 0) {
-          await this.issueRepository.createCommentByUrl(
-            existingIncidentIssues[0].url,
-            errorBody,
-          );
+          const existingComments =
+            await this.issueRepository.getIssueOrPullRequestComments(
+              existingIncidentIssues[0].url,
+            );
+          if (
+            !isDuplicateWithinWindow(
+              errorBody,
+              existingComments.map((c) => ({
+                text: c.body,
+                createdAt: c.createdAt,
+              })),
+              new Date(),
+            )
+          ) {
+            await this.issueRepository.createCommentByUrl(
+              existingIncidentIssues[0].url,
+              errorBody,
+            );
+          }
         } else {
           await this.issueRepository.createNewIssue(
             input.org,

@@ -16,6 +16,7 @@ describe('DailySecurityScanUseCase', () => {
     const mockKevReportWatermarkRepository =
       mock<KevReportWatermarkRepository>();
     mockKevReportWatermarkRepository.load.mockResolvedValue({ type: 'absent' });
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
     const useCase = new DailySecurityScanUseCase(
       mockLocalCommandRunner,
       mockIssueRepository,

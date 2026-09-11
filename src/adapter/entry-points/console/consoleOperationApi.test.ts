@@ -1993,7 +1993,7 @@ describe('consoleOperationApi', () => {
         author: 'HiromiShikata',
         body: 'Please rebase onto the latest main branch.',
         createdAt: new Date('2026-06-17T09:03:27.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-1',
       });
       const response = await handleComment(context, {
         pjcode: 'acme',
@@ -2023,7 +2023,7 @@ describe('consoleOperationApi', () => {
         author: 'github-actions',
         body: 'A first comment on this issue.',
         createdAt: new Date('2026-06-17T08:00:00.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-2',
       });
       const response = await handleComment(context, {
         pjcode: 'acme',
@@ -2114,7 +2114,7 @@ describe('consoleOperationApi', () => {
         author: 'bot',
         body: 'ok',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-3',
       });
       const response = await handleComment(context, {
         url: 'https://github.com/o/r/issues/1',
