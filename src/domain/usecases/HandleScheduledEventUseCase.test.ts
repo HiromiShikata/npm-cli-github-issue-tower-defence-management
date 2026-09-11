@@ -244,6 +244,67 @@ describe('HandleScheduledEventUseCase', () => {
       );
     });
 
+    it('should pass defaultAgentName from startPreparation to agentDesignationLabelAdoptUseCase', async () => {
+      const mockProject = mock<Project>();
+      const mockIssues = [mock<Issue>()];
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: mockIssues,
+        project: mockProject,
+        cacheUsed: false,
+      });
+      await useCase.run({
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'chore',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      });
+      expect(mockAgentDesignationLabelAdoptUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultAgentName: 'chore',
+        }),
+      );
+    });
+
+    it('should pass null defaultAgentName to agentDesignationLabelAdoptUseCase when startPreparation is not configured', async () => {
+      const mockProject = mock<Project>();
+      const mockIssues = [mock<Issue>()];
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: mockIssues,
+        project: mockProject,
+        cacheUsed: false,
+      });
+      await useCase.run({
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      });
+      expect(mockAgentDesignationLabelAdoptUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultAgentName: null,
+        }),
+      );
+    });
+
     it('should call IssueNoStatusUpdateUseCase with project and issues when startPreparation is configured', async () => {
       const input = {
         projectName: 'test-project',
