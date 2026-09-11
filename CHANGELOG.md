@@ -1,3 +1,10 @@
+## [2.102.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.0...v2.102.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **IssueCreateModalDialog:** allow removing attached files and show image thumbnails ([#2277](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2277)) ([462cd35](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/462cd35a62eacb36821160fe60840a2c69d41d60))
+
 # [2.102.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.101.1...v2.102.0) (2026-09-11)
 
 
