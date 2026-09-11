@@ -1,843 +1,843 @@
-import { mock } from "jest-mock-extended";
-import { IssueRepository } from "./adapter-interfaces/IssueRepository";
-import { ClearDependedIssueURLUseCase } from "./ClearDependedIssueURLUseCase";
-import { Project } from "../entities/Project";
-import { Issue } from "../entities/Issue";
-import { ICEBOX_STATUS_NAME } from "../entities/WorkflowStatus";
+import { mock } from 'jest-mock-extended';
+import { IssueRepository } from './adapter-interfaces/IssueRepository';
+import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
+import { Project } from '../entities/Project';
+import { Issue } from '../entities/Issue';
+import { ICEBOX_STATUS_NAME } from '../entities/WorkflowStatus';
 
-describe("ClearDependedIssueURLUseCase", () => {
-	jest.setTimeout(30 * 1000);
-	const mockIssueRepository = mock<IssueRepository>();
-	describe("run", () => {
-		const basicProject = {
-			...mock<Project>(),
-			dependedIssueUrlSeparatedByComma: {
-				name: "Depended Issue URL Separated By Comma",
-				fieldId: "fieldId",
-			},
-		};
-		const basicIssueOne = {
-			...mock<Issue>(),
-			url: "url1",
-			dependedIssueUrls: [],
-			isClosed: true,
-		};
-		const basicIssueTwo = {
-			...mock<Issue>(),
-			url: "url2",
-			dependedIssueUrls: ["url1"],
-			isClosed: false,
-		};
-		const basicIssueThree = {
-			...mock<Issue>(),
-			url: "url3",
-			dependedIssueUrls: ["url1", "url2"],
-			isClosed: false,
-		};
-		const testCases: {
-			name: string;
-			input: {
-				project: Project;
-				issues: Issue[];
-				cacheUsed: boolean;
-				allowedExternalRepoNameWithOwner?: string | null;
-			};
-			expectedIssueRepositoryClearProjectFieldCalls: [Project, string, Issue][];
-			expectedIssueRepositoryUpdateTextFieldCalls: [
-				Project,
-				string,
-				Issue,
-				string,
-			][];
-			expectedIssueRepositoryCreateCommentCalls: [Issue, string][];
-		}[] = [
-			{
-				name: "should not call clearProjectField and createComment when dependedIssueUrlSeparatedByComma is not set",
-				input: {
-					project: {
-						...basicProject,
-						dependedIssueUrlSeparatedByComma: null,
-					},
-					issues: [basicIssueOne, basicIssueTwo, basicIssueThree],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [],
-			},
-			{
-				name: "should not call clearProjectField and createComment when dependedIssueUrls is empty",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [],
-						},
-						{
-							...basicIssueThree,
-							dependedIssueUrls: [],
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [],
-			},
-			{
-				name: "should call clearProjectField and createComment with dependency removed message when dependedIssue is not found",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url4"],
-						},
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url5", "url6"],
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url4"],
-						},
-					],
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url5", "url6"],
-						},
-					],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{ ...basicIssueTwo, dependedIssueUrls: ["url4"] },
-						"Dependency removed:\n- url4",
-					],
-					[
-						{ ...basicIssueThree, dependedIssueUrls: ["url5", "url6"] },
-						"Dependency removed:\n- url5\n- url6",
-					],
-				],
-			},
-			{
-				name: "should call clearProjectField and two createComment calls when some deps are closed and some are removed",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url1", "url4"],
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url1", "url4"],
-						},
-					],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{ ...basicIssueThree, dependedIssueUrls: ["url1", "url4"] },
-						"Some depended issues are already closed, removed from dependency field:\n- url1",
-					],
-					[
-						{ ...basicIssueThree, dependedIssueUrls: ["url1", "url4"] },
-						"Dependency removed:\n- url4",
-					],
-				],
-			},
-			{
-				name: "should not call clearProjectField and createComment when dependedIssue is not closed",
-				input: {
-					project: basicProject,
-					issues: [
-						{
-							...basicIssueOne,
-							isClosed: false,
-						},
-						basicIssueTwo,
-						basicIssueThree,
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [],
-			},
-			{
-				name: "should call clearProjectField and createComment when dependedIssue is closed",
-				input: {
-					project: basicProject,
-					issues: [basicIssueOne, basicIssueTwo, basicIssueThree],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[basicProject, "fieldId", basicIssueTwo],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [
-					[basicProject, "fieldId", basicIssueThree, "url2"],
-				],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						basicIssueTwo,
-						"All depended issues are already closed, dependency field cleared:\n- url1",
-					],
-					[
-						basicIssueThree,
-						"Some depended issues are already closed, removed from dependency field:\n- url1",
-					],
-				],
-			},
-			{
-				name: "should call clearProjectField and createComment once for one closed dependedIssue",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						basicIssueTwo,
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url2"],
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[basicProject, "fieldId", basicIssueTwo],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						basicIssueTwo,
-						"All depended issues are already closed, dependency field cleared:\n- url1",
-					],
-				],
-			},
-			{
-				name: "should call clearProjectField and createComment twice for two closed dependedIssues",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueTwo,
-							isClosed: true,
-						},
-						basicIssueThree,
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[basicProject, "fieldId", basicIssueThree],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						basicIssueThree,
-						"All depended issues are already closed, dependency field cleared:\n- url1\n- url2",
-					],
-				],
-			},
-			{
-				name: "should call clearProjectField and createComment when dependedIssue is closed and the issue list came from the incremental cache",
-				input: {
-					project: basicProject,
-					issues: [basicIssueOne, basicIssueTwo, basicIssueThree],
-					cacheUsed: true,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[basicProject, "fieldId", basicIssueTwo],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [
-					[basicProject, "fieldId", basicIssueThree, "url2"],
-				],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						basicIssueTwo,
-						"All depended issues are already closed, dependency field cleared:\n- url1",
-					],
-					[
-						basicIssueThree,
-						"Some depended issues are already closed, removed from dependency field:\n- url1",
-					],
-				],
-			},
-			{
-				name: "should not call clearProjectField and createComment when dependedIssue is not found and the issue list came from the incremental cache",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url4"],
-						},
-					],
-					cacheUsed: true,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [],
-			},
-			{
-				name: "should keep a dependedIssue that is absent from the incremental cache and remove only the closed one",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url1", "url4"],
-						},
-					],
-					cacheUsed: true,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{ ...basicIssueThree, dependedIssueUrls: ["url1", "url4"] },
-						"url4",
-					],
-				],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{ ...basicIssueThree, dependedIssueUrls: ["url1", "url4"] },
-						"Some depended issues are already closed, removed from dependency field:\n- url1",
-					],
-				],
-			},
-			{
-				name: "should not call clearProjectField and createComment for a circular dependency when the issue list came from the incremental cache",
-				input: {
-					project: basicProject,
-					issues: [
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url3"],
-						},
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url2"],
-						},
-					],
-					cacheUsed: true,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [],
-			},
-			{
-				name: "should not call clearProjectField and createComment when target issue is closed",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueTwo,
-							isClosed: true,
-						},
-						{
-							...basicIssueThree,
-							isClosed: true,
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [],
-			},
-			{
-				name: "should call clearProjectField and createComment when dependedIssue depends on each other",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url3"],
-						},
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url2"],
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url3"],
-						},
-					],
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url2"],
-						},
-					],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url3"],
-						},
-						"Circular dependency removed:\n- url3",
-					],
-					[
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url2"],
-						},
-						"Circular dependency removed:\n- url2",
-					],
-				],
-			},
-			{
-				name: "should call clearProjectField and createComment when issue depends on own",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url2"],
-						},
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url3"],
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url2"],
-						},
-					],
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url3"],
-						},
-					],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url2"],
-						},
-						"Circular dependency removed:\n- url2",
-					],
-					[
-						{
-							...basicIssueThree,
-							dependedIssueUrls: ["url3"],
-						},
-						"Circular dependency removed:\n- url3",
-					],
-				],
-			},
-			{
-				name: "should call clearProjectField and createComment when issue depends circular",
-				input: {
-					project: basicProject,
-					issues: [
-						{ ...basicIssueOne, dependedIssueUrls: ["url3"], isClosed: false },
-						basicIssueTwo,
-						basicIssueThree,
-					],
+describe('ClearDependedIssueURLUseCase', () => {
+  jest.setTimeout(30 * 1000);
+  const mockIssueRepository = mock<IssueRepository>();
+  describe('run', () => {
+    const basicProject = {
+      ...mock<Project>(),
+      dependedIssueUrlSeparatedByComma: {
+        name: 'Depended Issue URL Separated By Comma',
+        fieldId: 'fieldId',
+      },
+    };
+    const basicIssueOne = {
+      ...mock<Issue>(),
+      url: 'url1',
+      dependedIssueUrls: [],
+      isClosed: true,
+    };
+    const basicIssueTwo = {
+      ...mock<Issue>(),
+      url: 'url2',
+      dependedIssueUrls: ['url1'],
+      isClosed: false,
+    };
+    const basicIssueThree = {
+      ...mock<Issue>(),
+      url: 'url3',
+      dependedIssueUrls: ['url1', 'url2'],
+      isClosed: false,
+    };
+    const testCases: {
+      name: string;
+      input: {
+        project: Project;
+        issues: Issue[];
+        cacheUsed: boolean;
+        allowedExternalRepoNameWithOwner?: string | null;
+      };
+      expectedIssueRepositoryClearProjectFieldCalls: [Project, string, Issue][];
+      expectedIssueRepositoryUpdateTextFieldCalls: [
+        Project,
+        string,
+        Issue,
+        string,
+      ][];
+      expectedIssueRepositoryCreateCommentCalls: [Issue, string][];
+    }[] = [
+      {
+        name: 'should not call clearProjectField and createComment when dependedIssueUrlSeparatedByComma is not set',
+        input: {
+          project: {
+            ...basicProject,
+            dependedIssueUrlSeparatedByComma: null,
+          },
+          issues: [basicIssueOne, basicIssueTwo, basicIssueThree],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should not call clearProjectField and createComment when dependedIssueUrls is empty',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [],
+            },
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: [],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should call clearProjectField and createComment with dependency removed message when dependedIssue is not found',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url4'],
+            },
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url5', 'url6'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url4'],
+            },
+          ],
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url5', 'url6'],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url4'] },
+            'Dependency removed:\n- url4',
+          ],
+          [
+            { ...basicIssueThree, dependedIssueUrls: ['url5', 'url6'] },
+            'Dependency removed:\n- url5\n- url6',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and two createComment calls when some deps are closed and some are removed',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url1', 'url4'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url1', 'url4'],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+          [
+            { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
+            'Dependency removed:\n- url4',
+          ],
+        ],
+      },
+      {
+        name: 'should not call clearProjectField and createComment when dependedIssue is not closed',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueOne,
+              isClosed: false,
+            },
+            basicIssueTwo,
+            basicIssueThree,
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should call clearProjectField and createComment when dependedIssue is closed',
+        input: {
+          project: basicProject,
+          issues: [basicIssueOne, basicIssueTwo, basicIssueThree],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [basicProject, 'fieldId', basicIssueTwo],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [basicProject, 'fieldId', basicIssueThree, 'url2'],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            basicIssueTwo,
+            'All depended issues are already closed, dependency field cleared:\n- url1',
+          ],
+          [
+            basicIssueThree,
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and createComment once for one closed dependedIssue',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            basicIssueTwo,
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url2'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [basicProject, 'fieldId', basicIssueTwo],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            basicIssueTwo,
+            'All depended issues are already closed, dependency field cleared:\n- url1',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and createComment twice for two closed dependedIssues',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              isClosed: true,
+            },
+            basicIssueThree,
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [basicProject, 'fieldId', basicIssueThree],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            basicIssueThree,
+            'All depended issues are already closed, dependency field cleared:\n- url1\n- url2',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and createComment when dependedIssue is closed and the issue list came from the incremental cache',
+        input: {
+          project: basicProject,
+          issues: [basicIssueOne, basicIssueTwo, basicIssueThree],
+          cacheUsed: true,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [basicProject, 'fieldId', basicIssueTwo],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [basicProject, 'fieldId', basicIssueThree, 'url2'],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            basicIssueTwo,
+            'All depended issues are already closed, dependency field cleared:\n- url1',
+          ],
+          [
+            basicIssueThree,
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+        ],
+      },
+      {
+        name: 'should not call clearProjectField and createComment when dependedIssue is not found and the issue list came from the incremental cache',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url4'],
+            },
+          ],
+          cacheUsed: true,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should keep a dependedIssue that is absent from the incremental cache and remove only the closed one',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url1', 'url4'],
+            },
+          ],
+          cacheUsed: true,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
+            'url4',
+          ],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueThree, dependedIssueUrls: ['url1', 'url4'] },
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+        ],
+      },
+      {
+        name: 'should not call clearProjectField and createComment for a circular dependency when the issue list came from the incremental cache',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url3'],
+            },
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url2'],
+            },
+          ],
+          cacheUsed: true,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should not call clearProjectField and createComment when target issue is closed',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              isClosed: true,
+            },
+            {
+              ...basicIssueThree,
+              isClosed: true,
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should call clearProjectField and createComment when dependedIssue depends on each other',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url3'],
+            },
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url2'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url3'],
+            },
+          ],
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url2'],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url3'],
+            },
+            'Circular dependency removed:\n- url3',
+          ],
+          [
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url2'],
+            },
+            'Circular dependency removed:\n- url2',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and createComment when issue depends on own',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url2'],
+            },
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url3'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url2'],
+            },
+          ],
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url3'],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url2'],
+            },
+            'Circular dependency removed:\n- url2',
+          ],
+          [
+            {
+              ...basicIssueThree,
+              dependedIssueUrls: ['url3'],
+            },
+            'Circular dependency removed:\n- url3',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and createComment when issue depends circular',
+        input: {
+          project: basicProject,
+          issues: [
+            { ...basicIssueOne, dependedIssueUrls: ['url3'], isClosed: false },
+            basicIssueTwo,
+            basicIssueThree,
+          ],
 
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueOne,
-							dependedIssueUrls: ["url3"],
-							isClosed: false,
-						},
-					],
-					[basicProject, "fieldId", basicIssueTwo],
-					[basicProject, "fieldId", basicIssueThree],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{
-							...basicIssueOne,
-							dependedIssueUrls: ["url3"],
-							isClosed: false,
-						},
-						"Circular dependency removed:\n- url3",
-					],
-					[basicIssueTwo, "Circular dependency removed:\n- url1"],
-					[basicIssueThree, "Circular dependency removed:\n- url1\n- url2"],
-				],
-			},
-			{
-				name: "should call clearProjectField and Icebox comment when depended issue is open and Icebox",
-				input: {
-					project: basicProject,
-					issues: [
-						{
-							...mock<Issue>(),
-							url: "url-icebox",
-							dependedIssueUrls: [],
-							isClosed: false,
-							status: ICEBOX_STATUS_NAME,
-						},
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url-icebox"],
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{ ...basicIssueTwo, dependedIssueUrls: ["url-icebox"] },
-					],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{ ...basicIssueTwo, dependedIssueUrls: ["url-icebox"] },
-						"All depended issues are in Icebox, dependency field cleared:\n- url-icebox",
-					],
-				],
-			},
-			{
-				name: "should call updateProjectTextField with remaining URL and Icebox comment when deps are mix of Icebox and open non-Icebox",
-				input: {
-					project: basicProject,
-					issues: [
-						{
-							...mock<Issue>(),
-							url: "url-icebox",
-							dependedIssueUrls: [],
-							isClosed: false,
-							status: ICEBOX_STATUS_NAME,
-						},
-						{
-							...mock<Issue>(),
-							url: "url-open",
-							dependedIssueUrls: [],
-							isClosed: false,
-							status: "In Progress",
-						},
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url-icebox", "url-open"],
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{ ...basicIssueTwo, dependedIssueUrls: ["url-icebox", "url-open"] },
-						"url-open",
-					],
-				],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{ ...basicIssueTwo, dependedIssueUrls: ["url-icebox", "url-open"] },
-						"Some depended issues are in Icebox, removed from dependency field:\n- url-icebox",
-					],
-				],
-			},
-			{
-				name: "should call clearProjectField and both closed and Icebox comments when deps are mix of closed and Icebox",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...mock<Issue>(),
-							url: "url-icebox",
-							dependedIssueUrls: [],
-							isClosed: false,
-							status: ICEBOX_STATUS_NAME,
-						},
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url1", "url-icebox"],
-						},
-					],
-					cacheUsed: false,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{ ...basicIssueTwo, dependedIssueUrls: ["url1", "url-icebox"] },
-					],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{ ...basicIssueTwo, dependedIssueUrls: ["url1", "url-icebox"] },
-						"Some depended issues are already closed, removed from dependency field:\n- url1",
-					],
-					[
-						{ ...basicIssueTwo, dependedIssueUrls: ["url1", "url-icebox"] },
-						"Some depended issues are in Icebox, removed from dependency field:\n- url-icebox",
-					],
-				],
-			},
-			{
-				name: "should call clearProjectField and Icebox comment when cacheUsed is true and depended issue is Icebox",
-				input: {
-					project: basicProject,
-					issues: [
-						{
-							...mock<Issue>(),
-							url: "url-icebox",
-							dependedIssueUrls: [],
-							isClosed: false,
-							status: ICEBOX_STATUS_NAME,
-						},
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: ["url-icebox"],
-						},
-					],
-					cacheUsed: true,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{ ...basicIssueTwo, dependedIssueUrls: ["url-icebox"] },
-					],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{ ...basicIssueTwo, dependedIssueUrls: ["url-icebox"] },
-						"All depended issues are in Icebox, dependency field cleared:\n- url-icebox",
-					],
-				],
-			},
-			{
-				name: "should not remove dependency URL from allowed external repo when absent from project issues",
-				input: {
-					project: basicProject,
-					issues: [
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"https://github.com/allowed-owner/allowed-repo/issues/99",
-							],
-						},
-					],
-					cacheUsed: false,
-					allowedExternalRepoNameWithOwner: "allowed-owner/allowed-repo",
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [],
-			},
-			{
-				name: "should still remove closed project issue URL when allowed external repo URL is also present",
-				input: {
-					project: basicProject,
-					issues: [
-						basicIssueOne,
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"url1",
-								"https://github.com/allowed-owner/allowed-repo/issues/99",
-							],
-						},
-					],
-					cacheUsed: false,
-					allowedExternalRepoNameWithOwner: "allowed-owner/allowed-repo",
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [],
-				expectedIssueRepositoryUpdateTextFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"url1",
-								"https://github.com/allowed-owner/allowed-repo/issues/99",
-							],
-						},
-						"https://github.com/allowed-owner/allowed-repo/issues/99",
-					],
-				],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"url1",
-								"https://github.com/allowed-owner/allowed-repo/issues/99",
-							],
-						},
-						"Some depended issues are already closed, removed from dependency field:\n- url1",
-					],
-				],
-			},
-			{
-				name: "should remove dependency URL from a different external repo even when allowedExternalRepoNameWithOwner is set",
-				input: {
-					project: basicProject,
-					issues: [
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"https://github.com/other-owner/other-repo/issues/99",
-							],
-						},
-					],
-					cacheUsed: false,
-					allowedExternalRepoNameWithOwner: "allowed-owner/allowed-repo",
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"https://github.com/other-owner/other-repo/issues/99",
-							],
-						},
-					],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"https://github.com/other-owner/other-repo/issues/99",
-							],
-						},
-						"Dependency removed:\n- https://github.com/other-owner/other-repo/issues/99",
-					],
-				],
-			},
-			{
-				name: "should not remove dependency URL from allowed external repo when cacheUsed is false and allowedExternalRepoNameWithOwner is null",
-				input: {
-					project: basicProject,
-					issues: [
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"https://github.com/allowed-owner/allowed-repo/issues/99",
-							],
-						},
-					],
-					cacheUsed: false,
-					allowedExternalRepoNameWithOwner: null,
-				},
-				expectedIssueRepositoryClearProjectFieldCalls: [
-					[
-						basicProject,
-						"fieldId",
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"https://github.com/allowed-owner/allowed-repo/issues/99",
-							],
-						},
-					],
-				],
-				expectedIssueRepositoryUpdateTextFieldCalls: [],
-				expectedIssueRepositoryCreateCommentCalls: [
-					[
-						{
-							...basicIssueTwo,
-							dependedIssueUrls: [
-								"https://github.com/allowed-owner/allowed-repo/issues/99",
-							],
-						},
-						"Dependency removed:\n- https://github.com/allowed-owner/allowed-repo/issues/99",
-					],
-				],
-			},
-		];
-		testCases.forEach(
-			({
-				name,
-				input,
-				expectedIssueRepositoryClearProjectFieldCalls,
-				expectedIssueRepositoryUpdateTextFieldCalls,
-				expectedIssueRepositoryCreateCommentCalls,
-			}) => {
-				it(name, async () => {
-					jest.clearAllMocks();
-					mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
-						[],
-					);
-					const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
-					await useCase.run(input);
-					expect(mockIssueRepository.clearProjectField.mock.calls).toEqual(
-						expectedIssueRepositoryClearProjectFieldCalls,
-					);
-					expect(mockIssueRepository.updateProjectTextField.mock.calls).toEqual(
-						expectedIssueRepositoryUpdateTextFieldCalls,
-					);
-					expect(mockIssueRepository.createComment.mock.calls).toEqual(
-						expectedIssueRepositoryCreateCommentCalls,
-					);
-				});
-			},
-		);
-	});
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueOne,
+              dependedIssueUrls: ['url3'],
+              isClosed: false,
+            },
+          ],
+          [basicProject, 'fieldId', basicIssueTwo],
+          [basicProject, 'fieldId', basicIssueThree],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueOne,
+              dependedIssueUrls: ['url3'],
+              isClosed: false,
+            },
+            'Circular dependency removed:\n- url3',
+          ],
+          [basicIssueTwo, 'Circular dependency removed:\n- url1'],
+          [basicIssueThree, 'Circular dependency removed:\n- url1\n- url2'],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and Icebox comment when depended issue is open and Icebox',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...mock<Issue>(),
+              url: 'url-icebox',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: ICEBOX_STATUS_NAME,
+            },
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url-icebox'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+            'All depended issues are in Icebox, dependency field cleared:\n- url-icebox',
+          ],
+        ],
+      },
+      {
+        name: 'should call updateProjectTextField with remaining URL and Icebox comment when deps are mix of Icebox and open non-Icebox',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...mock<Issue>(),
+              url: 'url-icebox',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: ICEBOX_STATUS_NAME,
+            },
+            {
+              ...mock<Issue>(),
+              url: 'url-open',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: 'In Progress',
+            },
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url-icebox', 'url-open'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox', 'url-open'] },
+            'url-open',
+          ],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox', 'url-open'] },
+            'Some depended issues are in Icebox, removed from dependency field:\n- url-icebox',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and both closed and Icebox comments when deps are mix of closed and Icebox',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...mock<Issue>(),
+              url: 'url-icebox',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: ICEBOX_STATUS_NAME,
+            },
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url1', 'url-icebox'],
+            },
+          ],
+          cacheUsed: false,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url1', 'url-icebox'] },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url1', 'url-icebox'] },
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url1', 'url-icebox'] },
+            'Some depended issues are in Icebox, removed from dependency field:\n- url-icebox',
+          ],
+        ],
+      },
+      {
+        name: 'should call clearProjectField and Icebox comment when cacheUsed is true and depended issue is Icebox',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...mock<Issue>(),
+              url: 'url-icebox',
+              dependedIssueUrls: [],
+              isClosed: false,
+              status: ICEBOX_STATUS_NAME,
+            },
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url-icebox'],
+            },
+          ],
+          cacheUsed: true,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            { ...basicIssueTwo, dependedIssueUrls: ['url-icebox'] },
+            'All depended issues are in Icebox, dependency field cleared:\n- url-icebox',
+          ],
+        ],
+      },
+      {
+        name: 'should not remove dependency URL from allowed external repo when absent from project issues',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+          ],
+          cacheUsed: false,
+          allowedExternalRepoNameWithOwner: 'allowed-owner/allowed-repo',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [],
+      },
+      {
+        name: 'should still remove closed project issue URL when allowed external repo URL is also present',
+        input: {
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'url1',
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+          ],
+          cacheUsed: false,
+          allowedExternalRepoNameWithOwner: 'allowed-owner/allowed-repo',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [],
+        expectedIssueRepositoryUpdateTextFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'url1',
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+            'https://github.com/allowed-owner/allowed-repo/issues/99',
+          ],
+        ],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'url1',
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+            'Some depended issues are already closed, removed from dependency field:\n- url1',
+          ],
+        ],
+      },
+      {
+        name: 'should remove dependency URL from a different external repo even when allowedExternalRepoNameWithOwner is set',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/other-owner/other-repo/issues/99',
+              ],
+            },
+          ],
+          cacheUsed: false,
+          allowedExternalRepoNameWithOwner: 'allowed-owner/allowed-repo',
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/other-owner/other-repo/issues/99',
+              ],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/other-owner/other-repo/issues/99',
+              ],
+            },
+            'Dependency removed:\n- https://github.com/other-owner/other-repo/issues/99',
+          ],
+        ],
+      },
+      {
+        name: 'should not remove dependency URL from allowed external repo when cacheUsed is false and allowedExternalRepoNameWithOwner is null',
+        input: {
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+          ],
+          cacheUsed: false,
+          allowedExternalRepoNameWithOwner: null,
+        },
+        expectedIssueRepositoryClearProjectFieldCalls: [
+          [
+            basicProject,
+            'fieldId',
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+          ],
+        ],
+        expectedIssueRepositoryUpdateTextFieldCalls: [],
+        expectedIssueRepositoryCreateCommentCalls: [
+          [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/allowed-owner/allowed-repo/issues/99',
+              ],
+            },
+            'Dependency removed:\n- https://github.com/allowed-owner/allowed-repo/issues/99',
+          ],
+        ],
+      },
+    ];
+    testCases.forEach(
+      ({
+        name,
+        input,
+        expectedIssueRepositoryClearProjectFieldCalls,
+        expectedIssueRepositoryUpdateTextFieldCalls,
+        expectedIssueRepositoryCreateCommentCalls,
+      }) => {
+        it(name, async () => {
+          jest.clearAllMocks();
+          mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+            [],
+          );
+          const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+          await useCase.run(input);
+          expect(mockIssueRepository.clearProjectField.mock.calls).toEqual(
+            expectedIssueRepositoryClearProjectFieldCalls,
+          );
+          expect(mockIssueRepository.updateProjectTextField.mock.calls).toEqual(
+            expectedIssueRepositoryUpdateTextFieldCalls,
+          );
+          expect(mockIssueRepository.createComment.mock.calls).toEqual(
+            expectedIssueRepositoryCreateCommentCalls,
+          );
+        });
+      },
+    );
+  });
 });
 
 // import { Issue } from '../entities/Issue';
