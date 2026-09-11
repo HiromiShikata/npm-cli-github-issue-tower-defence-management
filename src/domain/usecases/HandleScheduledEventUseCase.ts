@@ -9,7 +9,6 @@ import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepositor
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
 import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
-import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
@@ -122,7 +121,6 @@ export class HandleScheduledEventUseCase {
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
     readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase,
-    readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase,
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
     readonly setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase,
     readonly staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase,
@@ -563,18 +561,6 @@ ${JSON.stringify(e)}
       project,
       issues,
       cacheUsed,
-    });
-    await this.analyzeStoriesUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-      ...input,
-      manager: input.manager,
-      org: input.org,
-      repo: input.workingReport.repo,
-      storyObjectMap: storyObjectMap,
-      members: input.workingReport.members,
     });
     await this.clearDependedIssueURLUseCase.run({
       project,
