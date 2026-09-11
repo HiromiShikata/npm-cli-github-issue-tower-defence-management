@@ -452,4 +452,116 @@ describe('IssueCreateModalDialog', () => {
       );
     });
   });
+
+  describe('file attachment list', () => {
+    beforeEach(() => {
+      global.URL.createObjectURL = jest.fn(
+        (file: File) => `blob:mock-url-${file.name}`,
+      );
+      global.URL.revokeObjectURL = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('displays file name in list after file is selected', async () => {
+      render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const file = new File(['content'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+      });
+      expect(document.body.textContent).toContain('report.pdf');
+    });
+
+    it('removes a file from the list when its remove button is clicked', async () => {
+      const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const file = new File(['content'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+      });
+      expect(document.body.textContent).toContain('report.pdf');
+      fireEvent.click(getByRole('button', { name: /remove report\.pdf/i }));
+      expect(document.body.textContent).not.toContain('report.pdf');
+    });
+
+    it('calls onSubmit with remaining files after removing one', async () => {
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      );
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const file1 = new File(['c1'], 'file1.txt', { type: 'text/plain' });
+      const file2 = new File(['c2'], 'file2.txt', { type: 'text/plain' });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file1, file2] } });
+      });
+      fireEvent.click(getByRole('button', { name: /remove file1\.txt/i }));
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Test task' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({ files: [file2] }),
+        ),
+      );
+    });
+
+    it('shows a thumbnail for image files', async () => {
+      render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const imageFile = new File(['img'], 'photo.png', { type: 'image/png' });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [imageFile] } });
+      });
+      const thumbnail = document.body.querySelector('img[alt="photo.png"]');
+      expect(thumbnail).not.toBeNull();
+      expect(thumbnail?.getAttribute('src')).toBe('blob:mock-url-photo.png');
+    });
+
+    it('does not show a thumbnail for non-image files', async () => {
+      render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const pdfFile = new File(['pdf'], 'doc.pdf', {
+        type: 'application/pdf',
+      });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [pdfFile] } });
+      });
+      expect(document.body.querySelector('img')).toBeNull();
+    });
+
+    it('revokes blob URLs for image thumbnails when the file selection changes', async () => {
+      render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const imageFile = new File(['img'], 'photo.png', { type: 'image/png' });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [imageFile] } });
+      });
+      const imageFile2 = new File(['img2'], 'photo2.png', { type: 'image/png' });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [imageFile2] } });
+      });
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url-photo.png');
+    });
+  });
 });
