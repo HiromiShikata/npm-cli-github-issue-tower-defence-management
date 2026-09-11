@@ -495,7 +495,7 @@ describe('ConsolePage', () => {
       });
       expect(
         within(tabBar())
-          .getByText('Awaiting Quality Check')
+          .getByText('Awaiting Owner')
           .closest('a')
           ?.querySelector('.console-tab-badge')?.textContent,
       ).toBe('1');
@@ -505,9 +505,7 @@ describe('ConsolePage', () => {
       fireEvent.click(getByText('ok & Awaiting Workspace'));
 
       await waitFor(() => {
-        expect(
-          within(tabBar()).queryByText('Awaiting Quality Check'),
-        ).toBeNull();
+        expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
       });
     } finally {
       jest.useRealTimers();
