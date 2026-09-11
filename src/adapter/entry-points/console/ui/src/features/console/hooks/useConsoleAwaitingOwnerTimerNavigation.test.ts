@@ -150,7 +150,13 @@ describe('useConsoleAwaitingOwnerTimerNavigation', () => {
           { acme: 30, beta: 30, gamma: 30 },
           prsSnapshotFromCache,
         ),
-      { initialProps: { prsCount: 0, pjcode: 'beta', prsSnapshotFromCache: false } },
+      {
+        initialProps: {
+          prsCount: 0,
+          pjcode: 'beta',
+          prsSnapshotFromCache: false,
+        },
+      },
     );
     rerender({ prsCount: 3, pjcode: 'beta', prsSnapshotFromCache: true });
     rerender({ prsCount: 0, pjcode: 'beta', prsSnapshotFromCache: false });
@@ -176,7 +182,13 @@ describe('useConsoleAwaitingOwnerTimerNavigation', () => {
           { acme: 30, beta: 30, gamma: 30 },
           prsSnapshotFromCache,
         ),
-      { initialProps: { prsCount: 0, pjcode: 'beta', prsSnapshotFromCache: false } },
+      {
+        initialProps: {
+          prsCount: 0,
+          pjcode: 'beta',
+          prsSnapshotFromCache: false,
+        },
+      },
     );
     rerender({ prsCount: 3, pjcode: 'beta', prsSnapshotFromCache: true });
     rerender({ prsCount: 3, pjcode: 'beta', prsSnapshotFromCache: false });

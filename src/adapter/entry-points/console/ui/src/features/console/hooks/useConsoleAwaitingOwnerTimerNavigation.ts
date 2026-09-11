@@ -42,5 +42,12 @@ export const useConsoleAwaitingOwnerTimerNavigation = (
         navigatePush(`/projects/${nextPjcode}`);
       }
     }
-  }, [timerMode, prsCount, prsSnapshotFromCache, pjcode, pjcodes, projectMinutes]);
+  }, [
+    timerMode,
+    prsCount,
+    prsSnapshotFromCache,
+    pjcode,
+    pjcodes,
+    projectMinutes,
+  ]);
 };
