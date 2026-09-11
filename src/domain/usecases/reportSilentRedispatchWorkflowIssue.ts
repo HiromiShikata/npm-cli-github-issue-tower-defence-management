@@ -1,106 +1,106 @@
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { IssueRepository } from "./adapter-interfaces/IssueRepository";
+import { ProjectRepository } from "./adapter-interfaces/ProjectRepository";
+import { isDuplicateWithinWindow } from "../services/commentDeduplication";
 
 export type WorkflowIssueReporterSettings = {
-  owner: string;
-  repo: string;
-  projectUrl?: string | null;
+	owner: string;
+	repo: string;
+	projectUrl?: string | null;
 };
 
 export const reportSilentRedispatchWorkflowIssue = async (
-  agentName: string,
-  failingTaskUrl: string,
-  settings: WorkflowIssueReporterSettings,
-  issueRepository: Pick<
-    IssueRepository,
-    | 'searchIssue'
-    | 'createNewIssue'
-    | 'createCommentByUrl'
-    | 'getIssueOrPullRequestComments'
-    | 'addIssueToProject'
-    | 'updateStoryByProjectItemId'
-  >,
-  projectRepository: Pick<ProjectRepository, 'getByUrl'>,
+	agentName: string,
+	failingTaskUrl: string,
+	settings: WorkflowIssueReporterSettings,
+	issueRepository: Pick<
+		IssueRepository,
+		| "searchIssue"
+		| "createNewIssue"
+		| "createCommentByUrl"
+		| "getIssueOrPullRequestComments"
+		| "addIssueToProject"
+		| "updateStoryByProjectItemId"
+	>,
+	projectRepository: Pick<ProjectRepository, "getByUrl">,
 ): Promise<void> => {
-  const title = `TDPM agent not reporting: ${agentName}`;
-  try {
-    const existingIssues = await issueRepository.searchIssue({
-      owner: settings.owner,
-      repositoryName: settings.repo,
-      type: 'issue',
-      state: 'open',
-      title,
-    });
-    const existing = existingIssues.find((i) => i.title === title);
-    if (existing) {
-      const commentBody = `The TDPM preparation loop received no report from \`${agentName}\` again.\n\nFailing task: ${failingTaskUrl}`;
-      const existingComments =
-        await issueRepository.getIssueOrPullRequestComments(existing.url);
-      if (
-        !isDuplicateWithinWindow(
-          commentBody,
-          existingComments.map((c) => ({
-            text: c.body,
-            createdAt: c.createdAt,
-          })),
-          new Date(),
-        )
-      ) {
-        await issueRepository.createCommentByUrl(existing.url, commentBody);
-      }
-    } else {
-      const body = [
-        `The TDPM preparation loop dispatched \`${agentName}\` and received no report, which indicates a TDPM process-level problem rather than a task-specific one.`,
-        '',
-        `- Agent: \`${agentName}\``,
-        `- Failing task: ${failingTaskUrl}`,
-      ].join('\n');
-      const issueNumber = await issueRepository.createNewIssue(
-        settings.owner,
-        settings.repo,
-        title,
-        body,
-        [],
-        [],
-      );
-      const newIssueUrl = `https://github.com/${settings.owner}/${settings.repo}/issues/${issueNumber}`;
-      console.log(
-        `Created workflow issue #${issueNumber} for silent redispatch of ${agentName}: ${newIssueUrl}`,
-      );
-      if (settings.projectUrl) {
-        try {
-          const reporterProject = await projectRepository.getByUrl(
-            settings.projectUrl,
-          );
-          const projectItemId = await issueRepository.addIssueToProject(
-            reporterProject,
-            newIssueUrl,
-          );
-          if (reporterProject.story) {
-            const workflowBlockerStory = reporterProject.story.stories.find(
-              (s) => s.name.toLowerCase().includes('workflow blocker'),
-            );
-            if (workflowBlockerStory) {
-              await issueRepository.updateStoryByProjectItemId(
-                { ...reporterProject, story: reporterProject.story },
-                projectItemId,
-                workflowBlockerStory.id,
-              );
-            }
-          }
-        } catch (projectError) {
-          console.warn(
-            `Failed to add workflow issue ${newIssueUrl} to project ${settings.projectUrl}:`,
-            projectError,
-          );
-        }
-      }
-    }
-  } catch (error) {
-    console.warn(
-      `Failed to report silent redispatch workflow issue for ${agentName}:`,
-      error,
-    );
-  }
+	const title = `TDPM agent not reporting: ${agentName}`;
+	try {
+		const existingIssues = await issueRepository.searchIssue({
+			owner: settings.owner,
+			repositoryName: settings.repo,
+			type: "issue",
+			state: "open",
+			title,
+		});
+		const existing = existingIssues.find((i) => i.title === title);
+		if (existing) {
+			const commentBody = `The TDPM preparation loop received no report from \`${agentName}\` again.\n\nFailing task: ${failingTaskUrl}`;
+			const existingComments =
+				await issueRepository.getIssueOrPullRequestComments(existing.url);
+			if (
+				!isDuplicateWithinWindow(
+					commentBody,
+					existingComments.map((c) => ({
+						text: c.body,
+						createdAt: c.createdAt,
+					})),
+					new Date(),
+				)
+			) {
+				await issueRepository.createCommentByUrl(existing.url, commentBody);
+			}
+		} else {
+			const body = [
+				`The TDPM preparation loop dispatched \`${agentName}\` and received no report, which indicates a TDPM process-level problem rather than a task-specific one.`,
+				"",
+				`- Agent: \`${agentName}\``,
+				`- Failing task: ${failingTaskUrl}`,
+			].join("\n");
+			const issueNumber = await issueRepository.createNewIssue(
+				settings.owner,
+				settings.repo,
+				title,
+				body,
+				[],
+				[],
+			);
+			const newIssueUrl = `https://github.com/${settings.owner}/${settings.repo}/issues/${issueNumber}`;
+			console.log(
+				`Created workflow issue #${issueNumber} for silent redispatch of ${agentName}: ${newIssueUrl}`,
+			);
+			if (settings.projectUrl) {
+				try {
+					const reporterProject = await projectRepository.getByUrl(
+						settings.projectUrl,
+					);
+					const projectItemId = await issueRepository.addIssueToProject(
+						reporterProject,
+						newIssueUrl,
+					);
+					if (reporterProject.story) {
+						const workflowBlockerStory = reporterProject.story.stories.find(
+							(s) => s.name.toLowerCase().includes("workflow blocker"),
+						);
+						if (workflowBlockerStory) {
+							await issueRepository.updateStoryByProjectItemId(
+								{ ...reporterProject, story: reporterProject.story },
+								projectItemId,
+								workflowBlockerStory.id,
+							);
+						}
+					}
+				} catch (projectError) {
+					console.warn(
+						`Failed to add workflow issue ${newIssueUrl} to project ${settings.projectUrl}:`,
+						projectError,
+					);
+				}
+			}
+		}
+	} catch (error) {
+		console.warn(
+			`Failed to report silent redispatch workflow issue for ${agentName}:`,
+			error,
+		);
+	}
 };

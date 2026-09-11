@@ -1,353 +1,354 @@
-import { Issue } from '../entities/Issue';
-import { IssueRepository } from './adapter-interfaces/IssueRepository';
-import { Project } from '../entities/Project';
-import { StoryObjectMap } from '../entities/StoryObjectMap';
-import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
-import { Member } from '../entities/Member';
-import { DateRepository } from './adapter-interfaces/DateRepository';
-import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepository';
-import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
-import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
-import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
-import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
-import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
-import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
-import { CreateEstimationIssueUseCase } from './CreateEstimationIssueUseCase';
-import { ChangeStatusByStoryColorUseCase } from './ChangeStatusByStoryColorUseCase';
-import { SetNoStoryIssueToStoryUseCase } from './SetNoStoryIssueToStoryUseCase';
-import { CreateNewStoryByLabelUseCase } from './CreateNewStoryByLabelUseCase';
-import { AssignNoAssigneeIssueToManagerUseCase } from './AssignNoAssigneeIssueToManagerUseCase';
-import { UpdateIssueStatusByLabelUseCase } from './UpdateIssueStatusByLabelUseCase';
-import { IssueNoStatusUpdateUseCase } from './IssueNoStatusUpdateUseCase';
+import { Issue } from "../entities/Issue";
+import { IssueRepository } from "./adapter-interfaces/IssueRepository";
+import { Project } from "../entities/Project";
+import { StoryObjectMap } from "../entities/StoryObjectMap";
+import { ProjectRepository } from "./adapter-interfaces/ProjectRepository";
+import { Member } from "../entities/Member";
+import { DateRepository } from "./adapter-interfaces/DateRepository";
+import { SpreadsheetRepository } from "./adapter-interfaces/SpreadsheetRepository";
+import { ActionAnnouncementUseCase } from "./ActionAnnouncementUseCase";
+import { SetWorkflowManagementIssueToStoryUseCase } from "./SetWorkflowManagementIssueToStoryUseCase";
+import { ClearPastNextActionDateHourUseCase } from "./ClearPastNextActionDateHourUseCase";
+import { ClearDependedIssueURLUseCase } from "./ClearDependedIssueURLUseCase";
+import { SetDependedIssueUrlForOpenTaskPRsUseCase } from "./SetDependedIssueUrlForOpenTaskPRsUseCase";
+import { StaleTaskPullRequestCloseUseCase } from "./StaleTaskPullRequestCloseUseCase";
+import { CreateEstimationIssueUseCase } from "./CreateEstimationIssueUseCase";
+import { ChangeStatusByStoryColorUseCase } from "./ChangeStatusByStoryColorUseCase";
+import { SetNoStoryIssueToStoryUseCase } from "./SetNoStoryIssueToStoryUseCase";
+import { CreateNewStoryByLabelUseCase } from "./CreateNewStoryByLabelUseCase";
+import { AssignNoAssigneeIssueToManagerUseCase } from "./AssignNoAssigneeIssueToManagerUseCase";
+import { UpdateIssueStatusByLabelUseCase } from "./UpdateIssueStatusByLabelUseCase";
+import { IssueNoStatusUpdateUseCase } from "./IssueNoStatusUpdateUseCase";
 import {
-  RotationOrderEntry,
-  StartPreparationUseCase,
-} from './StartPreparationUseCase';
-import { AgentDesignationLabelAdoptUseCase } from './AgentDesignationLabelAdoptUseCase';
-import { RevertOrphanedPreparationUseCase } from './RevertOrphanedPreparationUseCase';
-import { RevertNotReadyReviewQueueIssueUseCase } from './RevertNotReadyReviewQueueIssueUseCase';
-import { isRecord } from './isRecord';
-import { resolveLabelsAsLlmAgentName } from './resolveLabelsAsLlmAgentName';
-import { resolveAllowedIssueAuthors } from './resolveAllowedIssueAuthors';
-import { ProjectRequiredFieldCreateUseCase } from './ProjectRequiredFieldCreateUseCase';
-import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
-import { UpdateRateLimitCacheUseCase } from './UpdateRateLimitCacheUseCase';
+	RotationOrderEntry,
+	StartPreparationUseCase,
+} from "./StartPreparationUseCase";
+import { AgentDesignationLabelAdoptUseCase } from "./AgentDesignationLabelAdoptUseCase";
+import { RevertOrphanedPreparationUseCase } from "./RevertOrphanedPreparationUseCase";
+import { RevertNotReadyReviewQueueIssueUseCase } from "./RevertNotReadyReviewQueueIssueUseCase";
+import { isRecord } from "./isRecord";
+import { resolveLabelsAsLlmAgentName } from "./resolveLabelsAsLlmAgentName";
+import { resolveAllowedIssueAuthors } from "./resolveAllowedIssueAuthors";
+import { ProjectRequiredFieldCreateUseCase } from "./ProjectRequiredFieldCreateUseCase";
+import { SetupTowerDefenceProjectUseCase } from "./SetupTowerDefenceProjectUseCase";
+import { UpdateRateLimitCacheUseCase } from "./UpdateRateLimitCacheUseCase";
 import {
-  DailySecurityScanConfig,
-  DailySecurityScanUseCase,
-} from './DailySecurityScanUseCase';
-import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
-import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
-import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
-import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
-import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+	DailySecurityScanConfig,
+	DailySecurityScanUseCase,
+} from "./DailySecurityScanUseCase";
+import { QualityCheckAdvanceUseCase } from "./QualityCheckAdvanceUseCase";
+import { ReopenedDoneIssueRevertUseCase } from "./ReopenedDoneIssueRevertUseCase";
+import { ConflictedIssueRevertUseCase } from "./ConflictedIssueRevertUseCase";
+import { WorkflowIssueReporterSettings } from "./reportSilentRedispatchWorkflowIssue";
+import { isDuplicateWithinWindow } from "../services/commentDeduplication";
 
 export class ProjectNotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ProjectNotFoundError';
-  }
+	constructor(message: string) {
+		super(message);
+		this.name = "ProjectNotFoundError";
+	}
 }
 
 const SLOW_SWEEP_INTERVAL_SECONDS = 600;
 const WORKFLOW_INCIDENT_ISSUE_TITLE =
-  'Error in HandleScheduledEvent / workflow incident';
+	"Error in HandleScheduledEvent / workflow incident";
 
 const isTransientApiError = (error: Error): boolean => {
-  const msg = error.message;
-  return (
-    /\b(401|403|429|500|502|503|504)\b/.test(msg) ||
-    /rate.?limit|RATE_LIMIT/i.test(msg) ||
-    /bad credentials/i.test(msg) ||
-    error.name === 'TimeoutError' ||
-    /request timed out/i.test(msg)
-  );
+	const msg = error.message;
+	return (
+		/\b(401|403|429|500|502|503|504)\b/.test(msg) ||
+		/rate.?limit|RATE_LIMIT/i.test(msg) ||
+		/bad credentials/i.test(msg) ||
+		error.name === "TimeoutError" ||
+		/request timed out/i.test(msg)
+	);
 };
 
 const TRANSIENT_NETWORK_ERROR_CODE_PATTERN =
-  /\b(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ERR_NETWORK|ERR_SOCKET_CONNECTION_TIMEOUT)\b/;
+	/\b(ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|ERR_NETWORK|ERR_SOCKET_CONNECTION_TIMEOUT)\b/;
 
 const extractHttpStatusFromError = (error: Error): number | null => {
-  if (!isRecord(error)) {
-    return null;
-  }
-  const response: unknown = error.response;
-  const values: unknown[] = [
-    error.status,
-    isRecord(response) ? response.status : null,
-    error.code,
-  ];
-  for (const value of values) {
-    if (typeof value === 'number' && Number.isInteger(value)) {
-      return value;
-    }
-    if (typeof value === 'string' && /^\d{3}$/.test(value)) {
-      return Number(value);
-    }
-  }
-  return null;
+	if (!isRecord(error)) {
+		return null;
+	}
+	const response: unknown = error.response;
+	const values: unknown[] = [
+		error.status,
+		isRecord(response) ? response.status : null,
+		error.code,
+	];
+	for (const value of values) {
+		if (typeof value === "number" && Number.isInteger(value)) {
+			return value;
+		}
+		if (typeof value === "string" && /^\d{3}$/.test(value)) {
+			return Number(value);
+		}
+	}
+	return null;
 };
 
 const isTransientSpreadsheetApiError = (error: Error): boolean => {
-  const status = extractHttpStatusFromError(error);
-  if (status !== null) {
-    return status === 429 || (status >= 500 && status <= 599);
-  }
-  if (
-    error.name === 'TimeoutError' ||
-    /request timed out/i.test(error.message)
-  ) {
-    return true;
-  }
-  const code: unknown = isRecord(error) ? error.code : null;
-  if (
-    typeof code === 'string' &&
-    TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(code)
-  ) {
-    return true;
-  }
-  return (
-    /\b(429|500|502|503|504)\b/.test(error.message) ||
-    /rate.?limit/i.test(error.message) ||
-    /internal error encountered/i.test(error.message) ||
-    /socket hang up/i.test(error.message) ||
-    TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(error.message)
-  );
+	const status = extractHttpStatusFromError(error);
+	if (status !== null) {
+		return status === 429 || (status >= 500 && status <= 599);
+	}
+	if (
+		error.name === "TimeoutError" ||
+		/request timed out/i.test(error.message)
+	) {
+		return true;
+	}
+	const code: unknown = isRecord(error) ? error.code : null;
+	if (
+		typeof code === "string" &&
+		TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(code)
+	) {
+		return true;
+	}
+	return (
+		/\b(429|500|502|503|504)\b/.test(error.message) ||
+		/rate.?limit/i.test(error.message) ||
+		/internal error encountered/i.test(error.message) ||
+		/socket hang up/i.test(error.message) ||
+		TRANSIENT_NETWORK_ERROR_CODE_PATTERN.test(error.message)
+	);
 };
 
 export class HandleScheduledEventUseCase {
-  constructor(
-    readonly projectRequiredFieldCreateUseCase: ProjectRequiredFieldCreateUseCase,
-    readonly setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase,
-    readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
-    readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
-    readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase,
-    readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
-    readonly setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase,
-    readonly staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase,
-    readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase,
-    readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase,
-    readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase,
-    readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase,
-    readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase,
-    readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
-    readonly issueNoStatusUpdateUseCase: IssueNoStatusUpdateUseCase,
-    readonly startPreparationUseCase: StartPreparationUseCase,
-    readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
-    readonly conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase,
-    readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
-    readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
-    readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
-    readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
-    readonly qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase,
-    readonly reopenedDoneIssueRevertUseCase: ReopenedDoneIssueRevertUseCase,
-    readonly dateRepository: DateRepository,
-    readonly spreadsheetRepository: SpreadsheetRepository,
-    readonly projectRepository: ProjectRepository,
-    readonly issueRepository: IssueRepository,
-  ) {}
+	constructor(
+		readonly projectRequiredFieldCreateUseCase: ProjectRequiredFieldCreateUseCase,
+		readonly setupTowerDefenceProjectUseCase: SetupTowerDefenceProjectUseCase,
+		readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
+		readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
+		readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase,
+		readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
+		readonly setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase,
+		readonly staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase,
+		readonly createEstimationIssueUseCase: CreateEstimationIssueUseCase,
+		readonly changeStatusByStoryColorUseCase: ChangeStatusByStoryColorUseCase,
+		readonly setNoStoryIssueToStoryUseCase: SetNoStoryIssueToStoryUseCase,
+		readonly createNewStoryByLabelUseCase: CreateNewStoryByLabelUseCase,
+		readonly assignNoAssigneeIssueToManagerUseCase: AssignNoAssigneeIssueToManagerUseCase,
+		readonly updateIssueStatusByLabelUseCase: UpdateIssueStatusByLabelUseCase,
+		readonly issueNoStatusUpdateUseCase: IssueNoStatusUpdateUseCase,
+		readonly startPreparationUseCase: StartPreparationUseCase,
+		readonly revertOrphanedPreparationUseCase: RevertOrphanedPreparationUseCase,
+		readonly conflictedIssueRevertUseCase: ConflictedIssueRevertUseCase,
+		readonly revertNotReadyReviewQueueIssueUseCase: RevertNotReadyReviewQueueIssueUseCase,
+		readonly agentDesignationLabelAdoptUseCase: AgentDesignationLabelAdoptUseCase,
+		readonly updateRateLimitCacheUseCase: UpdateRateLimitCacheUseCase | null,
+		readonly dailySecurityScanUseCase: DailySecurityScanUseCase | null,
+		readonly qualityCheckAdvanceUseCase: QualityCheckAdvanceUseCase,
+		readonly reopenedDoneIssueRevertUseCase: ReopenedDoneIssueRevertUseCase,
+		readonly dateRepository: DateRepository,
+		readonly spreadsheetRepository: SpreadsheetRepository,
+		readonly projectRepository: ProjectRepository,
+		readonly issueRepository: IssueRepository,
+	) {}
 
-  run = async (input: {
-    projectName: string;
-    org: string;
-    projectUrl: string;
-    manager: Member['name'];
-    workingReport: {
-      repo: string;
-      members: Member['name'][];
-      spreadsheetUrl: string;
-    };
-    urlOfStoryView: string;
-    disabled: boolean;
-    labelsAsLlmAgentName?: string[] | null;
-    labelsNotRequiringPullRequest?: string[] | null;
-    changeTargetPathAliases?: Record<string, string> | null;
-    allowedIssueAuthors?: string[] | null;
-    autoAssignManagerAuthors?: string[] | null;
-    agents?: string[] | null;
-    agentDesignationLabelsToKeep?: string[] | null;
-    startPreparation?: {
-      defaultAgentName: string;
-      defaultLlmModelName?: string | null;
-      fallbackLlmModelName?: string | null;
-      defaultLlmAgentName?: string | null;
-      configFilePath: string;
-      maximumPreparingIssuesCount: number | null;
-      utilizationPercentageThreshold?: number;
-      allowedIssueAuthors?: string[] | null;
-      preparationProcessCheckCommand?: string;
-      codexHomeCandidates?: string[] | null;
-      awLogDirectoryPath?: string;
-      awLogStaleThresholdMinutes?: number;
-      awaitingOwnerStatus?: string | null;
-      autoAdvanceQualityCheckEnabled?: boolean;
-      autoRevertReopenedDoneEnabled?: boolean;
-      labelsAsLlmAgentName?: string[] | null;
-    } | null;
-    thresholdForAutoReject?: number;
-    thresholdForDispatchLoop?: number;
-    queryToAddProjectEnabled?: boolean;
-    queryToAddProject?: string | null;
-    dailySecurityScan?: DailySecurityScanConfig | null;
-    developerAgentNames?: string[] | null;
-    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
-    allowedDependencyRepoNameWithOwner?: string | null;
-    afterIssuesFetched?:
-      ((project: Project, issues: Issue[]) => void | Promise<void>) | null;
-  }): Promise<{
-    project: Project;
-    issues: Issue[];
-    cacheUsed: boolean;
-    targetDateTimes: Date[];
-    storyIssues: StoryObjectMap;
-    rotationOrder: RotationOrderEntry[] | null;
-  } | null> => {
-    if (input.disabled) {
-      return null;
-    }
-    await this.projectRequiredFieldCreateUseCase.run({
-      projectUrl: input.projectUrl,
-      agents: input.agents ?? null,
-      defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
-    });
-    await this.setupTowerDefenceProjectUseCase.run({
-      projectUrl: input.projectUrl,
-    });
-    const projectId = await this.projectRepository.findProjectIdByUrl(
-      input.projectUrl,
-    );
-    if (!projectId) {
-      throw new ProjectNotFoundError(
-        `Project not found. projectUrl: ${input.projectUrl}`,
-      );
-    }
-    const now: Date = await this.dateRepository.now();
-    const {
-      issues,
-      project,
-      cacheUsed,
-    }: { issues: Issue[]; project: Project; cacheUsed: boolean } =
-      await this.issueRepository.getAllIssues(projectId);
-    const storyIssues: StoryObjectMap = await this.storyIssues({
-      project,
-      issues,
-    });
-    if (input.afterIssuesFetched) {
-      await input.afterIssuesFetched(project, issues);
-    }
-    for (const storyObject of storyIssues.values()) {
-      const projectStory = project.story;
-      if (!projectStory) {
-        break;
-      }
-      if (
-        storyObject.storyIssue ||
-        storyObject.story.name.startsWith('regular / ')
-      ) {
-        continue;
-      }
-      const hasClosedStoryIssue = issues.some(
-        (issue) =>
-          storyObject.story.name.startsWith(issue.title) &&
-          issue.isClosed &&
-          issue.labels.includes('story'),
-      );
-      if (hasClosedStoryIssue) {
-        continue;
-      }
-      const storyStartTime = Date.now();
-      console.log(
-        `[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}"`,
-      );
-      const issueNumber = await this.issueRepository.createNewIssue(
-        input.org,
-        input.workingReport.repo,
-        storyObject.story.name,
-        storyObject.story.description,
-        [input.manager],
-        ['story'],
-      );
-      const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
-      const projectItemId = await this.issueRepository.addIssueToProject(
-        project,
-        issueUrl,
-      );
-      await this.issueRepository.updateStoryByProjectItemId(
-        { ...project, story: projectStory },
-        projectItemId,
-        storyObject.story.id,
-      );
-      console.log(
-        `[HandleScheduledEvent] Waiting for story update: url=${issueUrl}`,
-      );
-      await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
-      const newIssue = await this.issueRepository.getIssueByUrl(issueUrl);
-      if (!newIssue) {
-        throw new Error(`Issue not found. URL: ${issueUrl}`);
-      }
-      storyObject.storyIssue = newIssue;
-      issues.push(newIssue);
-      storyObject.issues.push(newIssue);
-      console.log(
-        `[HandleScheduledEvent] Story issue created: story="${storyObject.story.name}" elapsed=${Date.now() - storyStartTime}ms`,
-      );
-    }
+	run = async (input: {
+		projectName: string;
+		org: string;
+		projectUrl: string;
+		manager: Member["name"];
+		workingReport: {
+			repo: string;
+			members: Member["name"][];
+			spreadsheetUrl: string;
+		};
+		urlOfStoryView: string;
+		disabled: boolean;
+		labelsAsLlmAgentName?: string[] | null;
+		labelsNotRequiringPullRequest?: string[] | null;
+		changeTargetPathAliases?: Record<string, string> | null;
+		allowedIssueAuthors?: string[] | null;
+		autoAssignManagerAuthors?: string[] | null;
+		agents?: string[] | null;
+		agentDesignationLabelsToKeep?: string[] | null;
+		startPreparation?: {
+			defaultAgentName: string;
+			defaultLlmModelName?: string | null;
+			fallbackLlmModelName?: string | null;
+			defaultLlmAgentName?: string | null;
+			configFilePath: string;
+			maximumPreparingIssuesCount: number | null;
+			utilizationPercentageThreshold?: number;
+			allowedIssueAuthors?: string[] | null;
+			preparationProcessCheckCommand?: string;
+			codexHomeCandidates?: string[] | null;
+			awLogDirectoryPath?: string;
+			awLogStaleThresholdMinutes?: number;
+			awaitingOwnerStatus?: string | null;
+			autoAdvanceQualityCheckEnabled?: boolean;
+			autoRevertReopenedDoneEnabled?: boolean;
+			labelsAsLlmAgentName?: string[] | null;
+		} | null;
+		thresholdForAutoReject?: number;
+		thresholdForDispatchLoop?: number;
+		queryToAddProjectEnabled?: boolean;
+		queryToAddProject?: string | null;
+		dailySecurityScan?: DailySecurityScanConfig | null;
+		developerAgentNames?: string[] | null;
+		workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
+		allowedDependencyRepoNameWithOwner?: string | null;
+		afterIssuesFetched?:
+			| ((project: Project, issues: Issue[]) => void | Promise<void>)
+			| null;
+	}): Promise<{
+		project: Project;
+		issues: Issue[];
+		cacheUsed: boolean;
+		targetDateTimes: Date[];
+		storyIssues: StoryObjectMap;
+		rotationOrder: RotationOrderEntry[] | null;
+	} | null> => {
+		if (input.disabled) {
+			return null;
+		}
+		await this.projectRequiredFieldCreateUseCase.run({
+			projectUrl: input.projectUrl,
+			agents: input.agents ?? null,
+			defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
+		});
+		await this.setupTowerDefenceProjectUseCase.run({
+			projectUrl: input.projectUrl,
+		});
+		const projectId = await this.projectRepository.findProjectIdByUrl(
+			input.projectUrl,
+		);
+		if (!projectId) {
+			throw new ProjectNotFoundError(
+				`Project not found. projectUrl: ${input.projectUrl}`,
+			);
+		}
+		const now: Date = await this.dateRepository.now();
+		const {
+			issues,
+			project,
+			cacheUsed,
+		}: { issues: Issue[]; project: Project; cacheUsed: boolean } =
+			await this.issueRepository.getAllIssues(projectId);
+		const storyIssues: StoryObjectMap = await this.storyIssues({
+			project,
+			issues,
+		});
+		if (input.afterIssuesFetched) {
+			await input.afterIssuesFetched(project, issues);
+		}
+		for (const storyObject of storyIssues.values()) {
+			const projectStory = project.story;
+			if (!projectStory) {
+				break;
+			}
+			if (
+				storyObject.storyIssue ||
+				storyObject.story.name.startsWith("regular / ")
+			) {
+				continue;
+			}
+			const hasClosedStoryIssue = issues.some(
+				(issue) =>
+					storyObject.story.name.startsWith(issue.title) &&
+					issue.isClosed &&
+					issue.labels.includes("story"),
+			);
+			if (hasClosedStoryIssue) {
+				continue;
+			}
+			const storyStartTime = Date.now();
+			console.log(
+				`[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}"`,
+			);
+			const issueNumber = await this.issueRepository.createNewIssue(
+				input.org,
+				input.workingReport.repo,
+				storyObject.story.name,
+				storyObject.story.description,
+				[input.manager],
+				["story"],
+			);
+			const issueUrl = `https://github.com/${input.org}/${input.workingReport.repo}/issues/${issueNumber}`;
+			const projectItemId = await this.issueRepository.addIssueToProject(
+				project,
+				issueUrl,
+			);
+			await this.issueRepository.updateStoryByProjectItemId(
+				{ ...project, story: projectStory },
+				projectItemId,
+				storyObject.story.id,
+			);
+			console.log(
+				`[HandleScheduledEvent] Waiting for story update: url=${issueUrl}`,
+			);
+			await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+			const newIssue = await this.issueRepository.getIssueByUrl(issueUrl);
+			if (!newIssue) {
+				throw new Error(`Issue not found. URL: ${issueUrl}`);
+			}
+			storyObject.storyIssue = newIssue;
+			issues.push(newIssue);
+			storyObject.issues.push(newIssue);
+			console.log(
+				`[HandleScheduledEvent] Story issue created: story="${storyObject.story.name}" elapsed=${Date.now() - storyStartTime}ms`,
+			);
+		}
 
-    let targetDateTimes: Date[] = [];
-    try {
-      targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(
-        input.workingReport.spreadsheetUrl,
-        now,
-        input.org,
-        input.workingReport.repo,
-        input.manager,
-      );
-    } catch (e) {
-      if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
-        throw e;
-      }
-      console.warn(
-        `[HandleScheduledEvent] Transient spreadsheet API error while updating last execution date time, skipping this spreadsheet operation and continuing the cycle: ${e.name}: ${e.message}`,
-      );
-    }
+		let targetDateTimes: Date[] = [];
+		try {
+			targetDateTimes = await this.findTargetDateAndUpdateLastExecutionDateTime(
+				input.workingReport.spreadsheetUrl,
+				now,
+				input.org,
+				input.workingReport.repo,
+				input.manager,
+			);
+		} catch (e) {
+			if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
+				throw e;
+			}
+			console.warn(
+				`[HandleScheduledEvent] Transient spreadsheet API error while updating last execution date time, skipping this spreadsheet operation and continuing the cycle: ${e.name}: ${e.message}`,
+			);
+		}
 
-    let runSlowSweep = false;
-    try {
-      runSlowSweep = await this.shouldRunSlowSweep(
-        input.workingReport.spreadsheetUrl,
-        now,
-        input.org,
-        input.workingReport.repo,
-        input.manager,
-      );
-    } catch (e) {
-      if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
-        throw e;
-      }
-      console.warn(
-        `[HandleScheduledEvent] Transient spreadsheet API error while checking slow sweep schedule, skipping slow sweep for this cycle: ${e.name}: ${e.message}`,
-      );
-    }
+		let runSlowSweep = false;
+		try {
+			runSlowSweep = await this.shouldRunSlowSweep(
+				input.workingReport.spreadsheetUrl,
+				now,
+				input.org,
+				input.workingReport.repo,
+				input.manager,
+			);
+		} catch (e) {
+			if (!(e instanceof Error) || !isTransientSpreadsheetApiError(e)) {
+				throw e;
+			}
+			console.warn(
+				`[HandleScheduledEvent] Transient spreadsheet API error while checking slow sweep schedule, skipping slow sweep for this cycle: ${e.name}: ${e.message}`,
+			);
+		}
 
-    let rotationOrder: RotationOrderEntry[] | null;
-    try {
-      const useCaseResult = await this.runEachUseCases(
-        input,
-        project,
-        issues,
-        cacheUsed,
-        targetDateTimes,
-        storyIssues,
-        runSlowSweep,
-        now,
-      );
-      rotationOrder = useCaseResult.rotationOrder;
-    } catch (e) {
-      if (!(e instanceof Error)) {
-        throw e;
-      }
-      if (!isTransientApiError(e)) {
-        const errorBody = `${e.message}
+		let rotationOrder: RotationOrderEntry[] | null;
+		try {
+			const useCaseResult = await this.runEachUseCases(
+				input,
+				project,
+				issues,
+				cacheUsed,
+				targetDateTimes,
+				storyIssues,
+				runSlowSweep,
+				now,
+			);
+			rotationOrder = useCaseResult.rotationOrder;
+		} catch (e) {
+			if (!(e instanceof Error)) {
+				throw e;
+			}
+			if (!isTransientApiError(e)) {
+				const errorBody = `${e.message}
 \`\`\`
 ${e.stack}
 \`\`\`
@@ -356,322 +357,322 @@ ${JSON.stringify(e)}
 \`\`\`
 
 `;
-        const existingIncidentIssues = await this.issueRepository.searchIssue({
-          owner: input.org,
-          repositoryName: input.workingReport.repo,
-          type: 'issue',
-          state: 'open',
-          title: WORKFLOW_INCIDENT_ISSUE_TITLE,
-        });
-        if (existingIncidentIssues.length > 0) {
-          const existingComments =
-            await this.issueRepository.getIssueOrPullRequestComments(
-              existingIncidentIssues[0].url,
-            );
-          if (
-            !isDuplicateWithinWindow(
-              errorBody,
-              existingComments.map((c) => ({
-                text: c.body,
-                createdAt: c.createdAt,
-              })),
-              new Date(),
-            )
-          ) {
-            await this.issueRepository.createCommentByUrl(
-              existingIncidentIssues[0].url,
-              errorBody,
-            );
-          }
-        } else {
-          await this.issueRepository.createNewIssue(
-            input.org,
-            input.workingReport.repo,
-            WORKFLOW_INCIDENT_ISSUE_TITLE,
-            errorBody,
-            [input.manager],
-            ['error'],
-          );
-        }
-      }
-      throw e;
-    }
+				const existingIncidentIssues = await this.issueRepository.searchIssue({
+					owner: input.org,
+					repositoryName: input.workingReport.repo,
+					type: "issue",
+					state: "open",
+					title: WORKFLOW_INCIDENT_ISSUE_TITLE,
+				});
+				if (existingIncidentIssues.length > 0) {
+					const existingComments =
+						await this.issueRepository.getIssueOrPullRequestComments(
+							existingIncidentIssues[0].url,
+						);
+					if (
+						!isDuplicateWithinWindow(
+							errorBody,
+							existingComments.map((c) => ({
+								text: c.body,
+								createdAt: c.createdAt,
+							})),
+							new Date(),
+						)
+					) {
+						await this.issueRepository.createCommentByUrl(
+							existingIncidentIssues[0].url,
+							errorBody,
+						);
+					}
+				} else {
+					await this.issueRepository.createNewIssue(
+						input.org,
+						input.workingReport.repo,
+						WORKFLOW_INCIDENT_ISSUE_TITLE,
+						errorBody,
+						[input.manager],
+						["error"],
+					);
+				}
+			}
+			throw e;
+		}
 
-    return {
-      project,
-      issues,
-      cacheUsed,
-      targetDateTimes,
-      storyIssues,
-      rotationOrder,
-    };
-  };
-  runEachUseCases = async (
-    input: Parameters<HandleScheduledEventUseCase['run']>[0],
-    project: Project,
-    issues: Issue[],
-    cacheUsed: boolean,
-    targetDateTimes: Date[],
-    storyObjectMap: StoryObjectMap,
-    runSlowSweep: boolean,
-    now: Date,
-  ): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
-    if (runSlowSweep) {
-      await this.runSlowSweepUseCases(
-        input,
-        project,
-        issues,
-        cacheUsed,
-        targetDateTimes,
-        storyObjectMap,
-      );
-    }
-    await this.createNewStoryByLabelUseCase.run({
-      project,
-      cacheUsed,
-      org: input.org,
-      repo: input.workingReport.repo,
-      storyObjectMap,
-      issues,
-    });
-    const labelsAsLlmAgentName = resolveLabelsAsLlmAgentName({
-      topLevel: input.labelsAsLlmAgentName,
-      startPreparation: input.startPreparation?.labelsAsLlmAgentName,
-    });
-    const allowedIssueAuthors = resolveAllowedIssueAuthors({
-      topLevel: input.allowedIssueAuthors,
-      startPreparation: input.startPreparation?.allowedIssueAuthors,
-    });
-    await this.agentDesignationLabelAdoptUseCase.run({
-      project,
-      issues,
-      agents: input.agents ?? null,
-      agentDesignationLabelsToKeep: input.agentDesignationLabelsToKeep ?? null,
-      defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
-    });
-    await this.conflictedIssueRevertUseCase.run({
-      projectUrl: input.projectUrl,
-    });
-    await this.revertNotReadyReviewQueueIssueUseCase.run({
-      projectUrl: input.projectUrl,
-      manager: input.manager,
-      labelsAsLlmAgentName,
-      labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
-      changeTargetPathAliases: input.changeTargetPathAliases,
-      allowedIssueAuthors,
-      developerAgentNames: input.developerAgentNames,
-      evaluatedAt: now,
-    });
-    if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
-      await this.dailySecurityScanUseCase.run({
-        targetDates: targetDateTimes,
-        org: input.org,
-        manager: input.manager,
-        dailySecurityScan: input.dailySecurityScan,
-      });
-    }
-    if (input.startPreparation) {
-      if (this.updateRateLimitCacheUseCase !== null) {
-        await this.updateRateLimitCacheUseCase.run({
-          nowEpochSeconds: Date.now() / 1000,
-        });
-      }
-      if (input.startPreparation.preparationProcessCheckCommand) {
-        await this.revertOrphanedPreparationUseCase.run({
-          projectUrl: input.projectUrl,
-          preparationProcessCheckCommand:
-            input.startPreparation.preparationProcessCheckCommand,
-          thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
-          thresholdForDispatchLoop: input.thresholdForDispatchLoop,
-          awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
-          awLogStaleThresholdMinutes:
-            input.startPreparation.awLogStaleThresholdMinutes,
-          awaitingOwnerStatus:
-            input.startPreparation.awaitingOwnerStatus ?? undefined,
-          labelsAsLlmAgentName,
-          labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
-          allowedIssueAuthors,
-          agents: input.agents ?? null,
-          workflowIssueReporterSettings:
-            input.workflowIssueReporterSettings ?? null,
-        });
-      }
-      if (input.startPreparation.autoRevertReopenedDoneEnabled) {
-        try {
-          await this.reopenedDoneIssueRevertUseCase.run({ project, issues });
-        } catch (revertError) {
-          console.error(
-            `[HandleScheduledEvent] Failed to revert reopened Done issues for project ${project.url}: ${revertError instanceof Error ? revertError.message : String(revertError)}`,
-            revertError,
-          );
-        }
-      }
-      if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
-        try {
-          await this.qualityCheckAdvanceUseCase.run({
-            project,
-            issues,
-            awaitingOwnerStatusName:
-              input.startPreparation.awaitingOwnerStatus ?? undefined,
-            evaluatedAt: now,
-          });
-        } catch (advanceError) {
-          console.error(
-            `[HandleScheduledEvent] Failed to advance quality check items for project ${project.url}: ${advanceError instanceof Error ? advanceError.message : String(advanceError)}`,
-            advanceError,
-          );
-        }
-      }
-      await this.issueNoStatusUpdateUseCase.run({ project, issues });
-      const preparationResult = await this.startPreparationUseCase.run({
-        projectUrl: input.projectUrl,
-        defaultAgentName: input.startPreparation.defaultAgentName,
-        defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
-        fallbackLlmModelName:
-          input.startPreparation.fallbackLlmModelName ?? null,
-        defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
-        configFilePath: input.startPreparation.configFilePath,
-        maximumPreparingIssuesCount:
-          input.startPreparation.maximumPreparingIssuesCount,
-        utilizationPercentageThreshold:
-          input.startPreparation.utilizationPercentageThreshold ?? 90,
-        allowedIssueAuthors,
-        manager: input.manager,
-        codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
-        labelsAsLlmAgentName,
-        agents: input.agents ?? null,
-      });
-      return { rotationOrder: preparationResult.rotationOrder };
-    }
-    return { rotationOrder: null };
-  };
-  runSlowSweepUseCases = async (
-    input: Parameters<HandleScheduledEventUseCase['run']>[0],
-    project: Project,
-    issues: Issue[],
-    cacheUsed: boolean,
-    targetDateTimes: Date[],
-    storyObjectMap: StoryObjectMap,
-  ): Promise<void> => {
-    await this.setWorkflowManagementIssueToStoryUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-    });
-    await this.setNoStoryIssueToStoryUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-    });
-    await this.actionAnnouncementUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-      members: input.workingReport.members,
-      manager: input.manager,
-    });
-    await this.clearPastNextActionUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-    });
-    await this.clearDependedIssueURLUseCase.run({
-      project,
-      issues,
-      cacheUsed,
-      allowedExternalRepoNameWithOwner:
-        input.allowedDependencyRepoNameWithOwner ?? null,
-    });
-    await this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
-      project,
-      issues,
-    });
-    await this.staleTaskPullRequestCloseUseCase.run({
-      issues,
-    });
-    await this.createEstimationIssueUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-      manager: input.manager,
-      org: input.org,
-      repo: input.workingReport.repo,
-      urlOfStoryView: input.urlOfStoryView,
-      storyObjectMap: storyObjectMap,
-    });
-    await this.changeStatusByStoryColorUseCase.run({
-      project,
-      cacheUsed,
-      org: input.org,
-      repo: input.workingReport.repo,
-      storyObjectMap: storyObjectMap,
-      manager: input.manager,
-    });
-    await this.assignNoAssigneeIssueToManagerUseCase.run({
-      issues,
-      manager: input.manager,
-      cacheUsed,
-      autoAssignManagerAuthors: input.autoAssignManagerAuthors ?? null,
-      projectToAddSearchedIssues: project,
-      queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
-      queryToAddProject: input.queryToAddProject ?? null,
-    });
-    await this.updateIssueStatusByLabelUseCase.run({
-      project,
-      issues,
-    });
-  };
-  static createTargetDateTimes = (from: Date, to: Date): Date[] => {
-    const targetDateTimes: Date[] = [];
-    if (from.getTime() > to.getTime()) {
-      const targetDate = new Date(to);
-      targetDate.setUTCSeconds(0);
-      targetDate.setUTCMilliseconds(0);
-      return [targetDate];
-    }
-    const targetDate = new Date(from);
-    targetDate.setTime(targetDate.getTime() + 60 * 1000);
-    targetDate.setUTCSeconds(0);
-    targetDate.setUTCMilliseconds(0);
-    while (
-      targetDate.getTime() <= to.getTime() &&
-      targetDateTimes.length < 300
-    ) {
-      targetDateTimes.push(new Date(targetDate));
-      targetDate.setUTCMinutes(targetDate.getUTCMinutes() + 1);
-    }
-    return targetDateTimes;
-  };
-  runSpreadsheetOperation = async <T>(
-    operation: 'read' | 'write',
-    spreadsheetUrl: string,
-    org: string,
-    repo: string,
-    manager: Member['name'],
-    action: () => Promise<T>,
-  ): Promise<T> => {
-    try {
-      return await action();
-    } catch (e) {
-      if (!(e instanceof Error)) {
-        throw e;
-      }
-      if (isTransientSpreadsheetApiError(e)) {
-        console.warn(
-          `[HandleScheduledEvent] Transient spreadsheet API error on ${operation} (${spreadsheetUrl}): ${e.name}: ${e.message}`,
-        );
-        throw e;
-      }
-      await this.issueRepository.createNewIssue(
-        org,
-        repo,
-        `Error in HandleScheduledEvent / spreadsheet ${operation} failure`,
-        `Spreadsheet URL: ${spreadsheetUrl}
+		return {
+			project,
+			issues,
+			cacheUsed,
+			targetDateTimes,
+			storyIssues,
+			rotationOrder,
+		};
+	};
+	runEachUseCases = async (
+		input: Parameters<HandleScheduledEventUseCase["run"]>[0],
+		project: Project,
+		issues: Issue[],
+		cacheUsed: boolean,
+		targetDateTimes: Date[],
+		storyObjectMap: StoryObjectMap,
+		runSlowSweep: boolean,
+		now: Date,
+	): Promise<{ rotationOrder: RotationOrderEntry[] | null }> => {
+		if (runSlowSweep) {
+			await this.runSlowSweepUseCases(
+				input,
+				project,
+				issues,
+				cacheUsed,
+				targetDateTimes,
+				storyObjectMap,
+			);
+		}
+		await this.createNewStoryByLabelUseCase.run({
+			project,
+			cacheUsed,
+			org: input.org,
+			repo: input.workingReport.repo,
+			storyObjectMap,
+			issues,
+		});
+		const labelsAsLlmAgentName = resolveLabelsAsLlmAgentName({
+			topLevel: input.labelsAsLlmAgentName,
+			startPreparation: input.startPreparation?.labelsAsLlmAgentName,
+		});
+		const allowedIssueAuthors = resolveAllowedIssueAuthors({
+			topLevel: input.allowedIssueAuthors,
+			startPreparation: input.startPreparation?.allowedIssueAuthors,
+		});
+		await this.agentDesignationLabelAdoptUseCase.run({
+			project,
+			issues,
+			agents: input.agents ?? null,
+			agentDesignationLabelsToKeep: input.agentDesignationLabelsToKeep ?? null,
+			defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
+		});
+		await this.conflictedIssueRevertUseCase.run({
+			projectUrl: input.projectUrl,
+		});
+		await this.revertNotReadyReviewQueueIssueUseCase.run({
+			projectUrl: input.projectUrl,
+			manager: input.manager,
+			labelsAsLlmAgentName,
+			labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
+			changeTargetPathAliases: input.changeTargetPathAliases,
+			allowedIssueAuthors,
+			developerAgentNames: input.developerAgentNames,
+			evaluatedAt: now,
+		});
+		if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
+			await this.dailySecurityScanUseCase.run({
+				targetDates: targetDateTimes,
+				org: input.org,
+				manager: input.manager,
+				dailySecurityScan: input.dailySecurityScan,
+			});
+		}
+		if (input.startPreparation) {
+			if (this.updateRateLimitCacheUseCase !== null) {
+				await this.updateRateLimitCacheUseCase.run({
+					nowEpochSeconds: Date.now() / 1000,
+				});
+			}
+			if (input.startPreparation.preparationProcessCheckCommand) {
+				await this.revertOrphanedPreparationUseCase.run({
+					projectUrl: input.projectUrl,
+					preparationProcessCheckCommand:
+						input.startPreparation.preparationProcessCheckCommand,
+					thresholdForAutoReject: input.thresholdForAutoReject ?? 3,
+					thresholdForDispatchLoop: input.thresholdForDispatchLoop,
+					awLogDirectoryPath: input.startPreparation.awLogDirectoryPath,
+					awLogStaleThresholdMinutes:
+						input.startPreparation.awLogStaleThresholdMinutes,
+					awaitingOwnerStatus:
+						input.startPreparation.awaitingOwnerStatus ?? undefined,
+					labelsAsLlmAgentName,
+					labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
+					allowedIssueAuthors,
+					agents: input.agents ?? null,
+					workflowIssueReporterSettings:
+						input.workflowIssueReporterSettings ?? null,
+				});
+			}
+			if (input.startPreparation.autoRevertReopenedDoneEnabled) {
+				try {
+					await this.reopenedDoneIssueRevertUseCase.run({ project, issues });
+				} catch (revertError) {
+					console.error(
+						`[HandleScheduledEvent] Failed to revert reopened Done issues for project ${project.url}: ${revertError instanceof Error ? revertError.message : String(revertError)}`,
+						revertError,
+					);
+				}
+			}
+			if (input.startPreparation.autoAdvanceQualityCheckEnabled) {
+				try {
+					await this.qualityCheckAdvanceUseCase.run({
+						project,
+						issues,
+						awaitingOwnerStatusName:
+							input.startPreparation.awaitingOwnerStatus ?? undefined,
+						evaluatedAt: now,
+					});
+				} catch (advanceError) {
+					console.error(
+						`[HandleScheduledEvent] Failed to advance quality check items for project ${project.url}: ${advanceError instanceof Error ? advanceError.message : String(advanceError)}`,
+						advanceError,
+					);
+				}
+			}
+			await this.issueNoStatusUpdateUseCase.run({ project, issues });
+			const preparationResult = await this.startPreparationUseCase.run({
+				projectUrl: input.projectUrl,
+				defaultAgentName: input.startPreparation.defaultAgentName,
+				defaultLlmModelName: input.startPreparation.defaultLlmModelName ?? null,
+				fallbackLlmModelName:
+					input.startPreparation.fallbackLlmModelName ?? null,
+				defaultLlmAgentName: input.startPreparation.defaultLlmAgentName ?? null,
+				configFilePath: input.startPreparation.configFilePath,
+				maximumPreparingIssuesCount:
+					input.startPreparation.maximumPreparingIssuesCount,
+				utilizationPercentageThreshold:
+					input.startPreparation.utilizationPercentageThreshold ?? 90,
+				allowedIssueAuthors,
+				manager: input.manager,
+				codexHomeCandidates: input.startPreparation.codexHomeCandidates ?? null,
+				labelsAsLlmAgentName,
+				agents: input.agents ?? null,
+			});
+			return { rotationOrder: preparationResult.rotationOrder };
+		}
+		return { rotationOrder: null };
+	};
+	runSlowSweepUseCases = async (
+		input: Parameters<HandleScheduledEventUseCase["run"]>[0],
+		project: Project,
+		issues: Issue[],
+		cacheUsed: boolean,
+		targetDateTimes: Date[],
+		storyObjectMap: StoryObjectMap,
+	): Promise<void> => {
+		await this.setWorkflowManagementIssueToStoryUseCase.run({
+			targetDates: targetDateTimes,
+			project,
+			issues,
+			cacheUsed,
+		});
+		await this.setNoStoryIssueToStoryUseCase.run({
+			targetDates: targetDateTimes,
+			project,
+			issues,
+			cacheUsed,
+		});
+		await this.actionAnnouncementUseCase.run({
+			targetDates: targetDateTimes,
+			project,
+			issues,
+			cacheUsed,
+			members: input.workingReport.members,
+			manager: input.manager,
+		});
+		await this.clearPastNextActionUseCase.run({
+			targetDates: targetDateTimes,
+			project,
+			issues,
+			cacheUsed,
+		});
+		await this.clearDependedIssueURLUseCase.run({
+			project,
+			issues,
+			cacheUsed,
+			allowedExternalRepoNameWithOwner:
+				input.allowedDependencyRepoNameWithOwner ?? null,
+		});
+		await this.setDependedIssueUrlForOpenTaskPRsUseCase.run({
+			project,
+			issues,
+		});
+		await this.staleTaskPullRequestCloseUseCase.run({
+			issues,
+		});
+		await this.createEstimationIssueUseCase.run({
+			targetDates: targetDateTimes,
+			project,
+			issues,
+			cacheUsed,
+			manager: input.manager,
+			org: input.org,
+			repo: input.workingReport.repo,
+			urlOfStoryView: input.urlOfStoryView,
+			storyObjectMap: storyObjectMap,
+		});
+		await this.changeStatusByStoryColorUseCase.run({
+			project,
+			cacheUsed,
+			org: input.org,
+			repo: input.workingReport.repo,
+			storyObjectMap: storyObjectMap,
+			manager: input.manager,
+		});
+		await this.assignNoAssigneeIssueToManagerUseCase.run({
+			issues,
+			manager: input.manager,
+			cacheUsed,
+			autoAssignManagerAuthors: input.autoAssignManagerAuthors ?? null,
+			projectToAddSearchedIssues: project,
+			queryToAddProjectEnabled: input.queryToAddProjectEnabled ?? false,
+			queryToAddProject: input.queryToAddProject ?? null,
+		});
+		await this.updateIssueStatusByLabelUseCase.run({
+			project,
+			issues,
+		});
+	};
+	static createTargetDateTimes = (from: Date, to: Date): Date[] => {
+		const targetDateTimes: Date[] = [];
+		if (from.getTime() > to.getTime()) {
+			const targetDate = new Date(to);
+			targetDate.setUTCSeconds(0);
+			targetDate.setUTCMilliseconds(0);
+			return [targetDate];
+		}
+		const targetDate = new Date(from);
+		targetDate.setTime(targetDate.getTime() + 60 * 1000);
+		targetDate.setUTCSeconds(0);
+		targetDate.setUTCMilliseconds(0);
+		while (
+			targetDate.getTime() <= to.getTime() &&
+			targetDateTimes.length < 300
+		) {
+			targetDateTimes.push(new Date(targetDate));
+			targetDate.setUTCMinutes(targetDate.getUTCMinutes() + 1);
+		}
+		return targetDateTimes;
+	};
+	runSpreadsheetOperation = async <T>(
+		operation: "read" | "write",
+		spreadsheetUrl: string,
+		org: string,
+		repo: string,
+		manager: Member["name"],
+		action: () => Promise<T>,
+	): Promise<T> => {
+		try {
+			return await action();
+		} catch (e) {
+			if (!(e instanceof Error)) {
+				throw e;
+			}
+			if (isTransientSpreadsheetApiError(e)) {
+				console.warn(
+					`[HandleScheduledEvent] Transient spreadsheet API error on ${operation} (${spreadsheetUrl}): ${e.name}: ${e.message}`,
+				);
+				throw e;
+			}
+			await this.issueRepository.createNewIssue(
+				org,
+				repo,
+				`Error in HandleScheduledEvent / spreadsheet ${operation} failure`,
+				`Spreadsheet URL: ${spreadsheetUrl}
 Operation: ${operation}
 
 ${e.message}
@@ -683,162 +684,162 @@ ${JSON.stringify(e)}
 \`\`\`
 
 `,
-        [manager],
-        ['error'],
-      );
-      throw e;
-    }
-  };
-  findTargetDateAndUpdateLastExecutionDateTime = async (
-    spreadsheetUrl: string,
-    now: Date,
-    org: string,
-    repo: string,
-    manager: Member['name'],
-  ): Promise<Date[]> => {
-    const sheetValues = await this.runSpreadsheetOperation(
-      'read',
-      spreadsheetUrl,
-      org,
-      repo,
-      manager,
-      () =>
-        this.spreadsheetRepository.getSheet(
-          spreadsheetUrl,
-          'HandleScheduledEvent',
-        ),
-    );
-    if (!sheetValues) {
-      await this.runSpreadsheetOperation(
-        'write',
-        spreadsheetUrl,
-        org,
-        repo,
-        manager,
-        () =>
-          this.spreadsheetRepository.updateCell(
-            spreadsheetUrl,
-            'HandleScheduledEvent',
-            1,
-            1,
-            'LastExecutionDateTime',
-          ),
-      );
-    }
-    const lastExecutionDateTime =
-      sheetValues && sheetValues[1][2] ? new Date(sheetValues[1][2]) : null;
+				[manager],
+				["error"],
+			);
+			throw e;
+		}
+	};
+	findTargetDateAndUpdateLastExecutionDateTime = async (
+		spreadsheetUrl: string,
+		now: Date,
+		org: string,
+		repo: string,
+		manager: Member["name"],
+	): Promise<Date[]> => {
+		const sheetValues = await this.runSpreadsheetOperation(
+			"read",
+			spreadsheetUrl,
+			org,
+			repo,
+			manager,
+			() =>
+				this.spreadsheetRepository.getSheet(
+					spreadsheetUrl,
+					"HandleScheduledEvent",
+				),
+		);
+		if (!sheetValues) {
+			await this.runSpreadsheetOperation(
+				"write",
+				spreadsheetUrl,
+				org,
+				repo,
+				manager,
+				() =>
+					this.spreadsheetRepository.updateCell(
+						spreadsheetUrl,
+						"HandleScheduledEvent",
+						1,
+						1,
+						"LastExecutionDateTime",
+					),
+			);
+		}
+		const lastExecutionDateTime =
+			sheetValues && sheetValues[1][2] ? new Date(sheetValues[1][2]) : null;
 
-    const targetDateTimes: Date[] = lastExecutionDateTime
-      ? HandleScheduledEventUseCase.createTargetDateTimes(
-          lastExecutionDateTime,
-          now,
-        )
-      : [now];
+		const targetDateTimes: Date[] = lastExecutionDateTime
+			? HandleScheduledEventUseCase.createTargetDateTimes(
+					lastExecutionDateTime,
+					now,
+				)
+			: [now];
 
-    if (targetDateTimes.length === 0) {
-      return targetDateTimes;
-    }
+		if (targetDateTimes.length === 0) {
+			return targetDateTimes;
+		}
 
-    await this.runSpreadsheetOperation(
-      'write',
-      spreadsheetUrl,
-      org,
-      repo,
-      manager,
-      () =>
-        this.spreadsheetRepository.updateCell(
-          spreadsheetUrl,
-          'HandleScheduledEvent',
-          1,
-          2,
-          targetDateTimes[targetDateTimes.length - 1].toISOString(),
-        ),
-    );
-    return targetDateTimes;
-  };
-  shouldRunSlowSweep = async (
-    spreadsheetUrl: string,
-    now: Date,
-    org: string,
-    repo: string,
-    manager: Member['name'],
-  ): Promise<boolean> => {
-    const sheetValues = await this.runSpreadsheetOperation(
-      'read',
-      spreadsheetUrl,
-      org,
-      repo,
-      manager,
-      () =>
-        this.spreadsheetRepository.getSheet(
-          spreadsheetUrl,
-          'HandleScheduledEvent',
-        ),
-    );
-    const lastSlowSweepDateTime =
-      sheetValues && sheetValues[1] && sheetValues[1][4]
-        ? new Date(sheetValues[1][4])
-        : null;
-    const elapsedSeconds = lastSlowSweepDateTime
-      ? (now.getTime() - lastSlowSweepDateTime.getTime()) / 1000
-      : Infinity;
-    if (elapsedSeconds < SLOW_SWEEP_INTERVAL_SECONDS) {
-      return false;
-    }
-    await this.runSpreadsheetOperation(
-      'write',
-      spreadsheetUrl,
-      org,
-      repo,
-      manager,
-      () =>
-        this.spreadsheetRepository.updateCell(
-          spreadsheetUrl,
-          'HandleScheduledEvent',
-          1,
-          3,
-          'LastSlowSweepDateTime',
-        ),
-    );
-    await this.runSpreadsheetOperation(
-      'write',
-      spreadsheetUrl,
-      org,
-      repo,
-      manager,
-      () =>
-        this.spreadsheetRepository.updateCell(
-          spreadsheetUrl,
-          'HandleScheduledEvent',
-          1,
-          4,
-          now.toISOString(),
-        ),
-    );
-    return true;
-  };
-  storyIssues = async (input: {
-    project: Project;
-    issues: Issue[];
-  }): Promise<StoryObjectMap> => {
-    const summaryStoryIssue: StoryObjectMap = new Map();
-    const targetStory = input.project.story?.stories || [];
-    for (const story of targetStory) {
-      const storyIssue = input.issues.find(
-        (issue) => story.name.startsWith(issue.title) && !issue.isClosed,
-      );
-      summaryStoryIssue.set(story.name, {
-        story,
-        storyIssue: storyIssue || null,
-        issues: [],
-      });
-      for (const issue of input.issues) {
-        if (issue.story !== story.name) {
-          continue;
-        }
-        summaryStoryIssue.get(story.name)?.issues.push(issue);
-      }
-    }
-    return summaryStoryIssue;
-  };
+		await this.runSpreadsheetOperation(
+			"write",
+			spreadsheetUrl,
+			org,
+			repo,
+			manager,
+			() =>
+				this.spreadsheetRepository.updateCell(
+					spreadsheetUrl,
+					"HandleScheduledEvent",
+					1,
+					2,
+					targetDateTimes[targetDateTimes.length - 1].toISOString(),
+				),
+		);
+		return targetDateTimes;
+	};
+	shouldRunSlowSweep = async (
+		spreadsheetUrl: string,
+		now: Date,
+		org: string,
+		repo: string,
+		manager: Member["name"],
+	): Promise<boolean> => {
+		const sheetValues = await this.runSpreadsheetOperation(
+			"read",
+			spreadsheetUrl,
+			org,
+			repo,
+			manager,
+			() =>
+				this.spreadsheetRepository.getSheet(
+					spreadsheetUrl,
+					"HandleScheduledEvent",
+				),
+		);
+		const lastSlowSweepDateTime =
+			sheetValues && sheetValues[1] && sheetValues[1][4]
+				? new Date(sheetValues[1][4])
+				: null;
+		const elapsedSeconds = lastSlowSweepDateTime
+			? (now.getTime() - lastSlowSweepDateTime.getTime()) / 1000
+			: Infinity;
+		if (elapsedSeconds < SLOW_SWEEP_INTERVAL_SECONDS) {
+			return false;
+		}
+		await this.runSpreadsheetOperation(
+			"write",
+			spreadsheetUrl,
+			org,
+			repo,
+			manager,
+			() =>
+				this.spreadsheetRepository.updateCell(
+					spreadsheetUrl,
+					"HandleScheduledEvent",
+					1,
+					3,
+					"LastSlowSweepDateTime",
+				),
+		);
+		await this.runSpreadsheetOperation(
+			"write",
+			spreadsheetUrl,
+			org,
+			repo,
+			manager,
+			() =>
+				this.spreadsheetRepository.updateCell(
+					spreadsheetUrl,
+					"HandleScheduledEvent",
+					1,
+					4,
+					now.toISOString(),
+				),
+		);
+		return true;
+	};
+	storyIssues = async (input: {
+		project: Project;
+		issues: Issue[];
+	}): Promise<StoryObjectMap> => {
+		const summaryStoryIssue: StoryObjectMap = new Map();
+		const targetStory = input.project.story?.stories || [];
+		for (const story of targetStory) {
+			const storyIssue = input.issues.find(
+				(issue) => story.name.startsWith(issue.title) && !issue.isClosed,
+			);
+			summaryStoryIssue.set(story.name, {
+				story,
+				storyIssue: storyIssue || null,
+				issues: [],
+			});
+			for (const issue of input.issues) {
+				if (issue.story !== story.name) {
+					continue;
+				}
+				summaryStoryIssue.get(story.name)?.issues.push(issue);
+			}
+		}
+		return summaryStoryIssue;
+	};
 }
