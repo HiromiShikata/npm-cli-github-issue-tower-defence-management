@@ -2342,6 +2342,62 @@ body {
   font-size: 0.8125rem;
 }
 
+.console-task-create-dialog-file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.console-task-create-dialog-file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+}
+
+.console-task-create-dialog-file-thumbnail {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.console-task-create-dialog-file-name {
+  flex: 1;
+  color: #c9d1d9;
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-task-create-dialog-file-remove {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.console-task-create-dialog-file-remove:hover {
+  color: #f85149;
+}
+
+.console-task-create-dialog-file-remove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .console-task-create-dialog-actions {
   display: flex;
   gap: 8px;

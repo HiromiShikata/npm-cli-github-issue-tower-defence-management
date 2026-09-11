@@ -77,3 +77,18 @@ export const WithFleetTaskCreateUrl: Story = {
     fleetTaskCreateUrl: 'https://github.com/HiromiShikata/secretary/issues/new',
   },
 };
+
+export const WithFileAttachments: Story = {
+  play: async ({ canvasElement }) => {
+    const { userEvent } = await import('@storybook/test');
+    const fileInput = canvasElement.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement | null;
+    if (fileInput === null) return;
+    const imageFile = new File(['img'], 'screenshot.png', {
+      type: 'image/png',
+    });
+    const docFile = new File(['doc'], 'notes.txt', { type: 'text/plain' });
+    await userEvent.upload(fileInput, [imageFile, docFile]);
+  },
+};

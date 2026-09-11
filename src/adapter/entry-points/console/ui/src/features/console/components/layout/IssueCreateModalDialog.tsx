@@ -47,10 +47,16 @@ export const IssueCreateModalDialog = ({
   >(initialDraft?.agentOptionId ?? null);
   const [titleValue, setTitleValue] = useState(initialDraft?.title ?? '');
   const [bodyValue, setBodyValue] = useState(initialDraft?.body ?? '');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<
+    Array<{ id: string; file: File }>
+  >([]);
+  const [thumbnailUrls, setThumbnailUrls] = useState<ReadonlyMap<string, string>>(
+    new Map(),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const onDraftChangeRef = useRef(onDraftChange);
   onDraftChangeRef.current = onDraftChange;
 
@@ -66,6 +72,21 @@ export const IssueCreateModalDialog = ({
       agentOptionId: selectedAgentOptionId,
     });
   }, [titleValue, bodyValue, selectedStoryName, selectedAgentOptionId]);
+
+  useEffect(() => {
+    const urls = new Map<string, string>();
+    for (const entry of selectedFiles) {
+      if (entry.file.type.startsWith('image/')) {
+        urls.set(entry.id, URL.createObjectURL(entry.file));
+      }
+    }
+    setThumbnailUrls(urls);
+    return () => {
+      for (const url of urls.values()) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [selectedFiles]);
 
   const handleSubmit = async (): Promise<void> => {
     const trimmedTitle = titleValue.trim();
@@ -86,7 +107,7 @@ export const IssueCreateModalDialog = ({
         agentOptionId: selectedAgentOptionId,
         title: trimmedTitle,
         body: trimmedBody.length > 0 ? trimmedBody : null,
-        files: selectedFiles,
+        files: selectedFiles.map((entry) => entry.file),
       });
       onClose();
     } catch (err) {
@@ -158,12 +179,60 @@ export const IssueCreateModalDialog = ({
             Attachments
           </span>
           <input
+            ref={fileInputRef}
             type="file"
             multiple
             className="console-task-create-dialog-file-input"
             disabled={submitting}
-            onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
+            onChange={(e) => {
+              const newEntries = Array.from(e.target.files ?? []).map(
+                (file) => ({ id: crypto.randomUUID(), file }),
+              );
+              setSelectedFiles((prev) => [...prev, ...newEntries]);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+            }}
           />
+          {selectedFiles.length > 0 && (
+            <ul className="console-task-create-dialog-file-list">
+              {selectedFiles.map((entry) => {
+                const rawThumb = thumbnailUrls.get(entry.id);
+                const thumbnailSrc =
+                  rawThumb?.startsWith('blob:') === true ? rawThumb : null;
+                return (
+                  <li
+                    key={entry.id}
+                    className="console-task-create-dialog-file-item"
+                  >
+                    {thumbnailSrc !== null && (
+                      <img
+                        src={thumbnailSrc}
+                        alt={entry.file.name}
+                        className="console-task-create-dialog-file-thumbnail"
+                      />
+                    )}
+                    <span className="console-task-create-dialog-file-name">
+                      {entry.file.name}
+                    </span>
+                    <button
+                      type="button"
+                      className="console-task-create-dialog-file-remove"
+                      aria-label={`Remove ${entry.file.name}`}
+                      onClick={() =>
+                        setSelectedFiles((prev) =>
+                          prev.filter((e) => e.id !== entry.id),
+                        )
+                      }
+                      disabled={submitting}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
           <span className="console-task-create-dialog-section-label">
             Story
