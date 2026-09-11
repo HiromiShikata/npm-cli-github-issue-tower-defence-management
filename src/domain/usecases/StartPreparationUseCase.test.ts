@@ -1330,6 +1330,96 @@ describe('StartPreparationUseCase', () => {
     );
     consoleWarnSpy.mockRestore();
   });
+  it('should not post duplicate-PR comments when identical comments already exist within dedup window', async () => {
+    const issueUrl = 'https://github.com/user/repo/issues/1';
+    const olderPrUrl = 'https://github.com/user/repo/pull/42';
+    const newerPrUrl = 'https://github.com/user/repo/pull/43';
+    const awaitingIssues: Issue[] = [
+      createMockIssue({
+        url: issueUrl,
+        title: 'Issue 1',
+        labels: ['category:impl'],
+        status: 'Awaiting Workspace',
+      }),
+    ];
+    const olderPR: RelatedPullRequest = {
+      url: olderPrUrl,
+      branchName: 'i1',
+      createdAt: new Date('2024-01-01T00:00:00Z'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    };
+    const newerPR: RelatedPullRequest = {
+      url: newerPrUrl,
+      branchName: 'i1-fix',
+      createdAt: new Date('2024-01-02T00:00:00Z'),
+      isDraft: false,
+      isConflicted: false,
+      mergeable: null,
+      isPassedAllCiJob: false,
+      isCiStateSuccess: false,
+      isResolvedAllReviewComments: false,
+      isBranchOutOfDate: false,
+      missingRequiredCheckNames: [],
+      reviewDecision: null,
+    };
+    const olderPrIssue = createMockIssue({
+      url: olderPrUrl,
+      number: 42,
+      isPr: true,
+      isClosed: false,
+      closingIssueReferenceUrls: [issueUrl],
+    });
+    const newerPrIssue = createMockIssue({
+      url: newerPrUrl,
+      number: 43,
+      isPr: true,
+      isClosed: false,
+      closingIssueReferenceUrls: [issueUrl],
+    });
+    const withinWindow = new Date(Date.now() - 30 * 60 * 1000);
+    const prDedupComment = `This PR was automatically closed to resolve multiple-open-PR ambiguity for issue ${issueUrl}. The adopted canonical PR is ${olderPrUrl}.`;
+    const issueDedupComment = `1 duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${newerPrUrl}\nAdopted PR: ${olderPrUrl}`;
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([...awaitingIssues, olderPrIssue, newerPrIssue]),
+    );
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([olderPR, newerPR]);
+    mockIssueRepository.getIssueOrPullRequestComments.mockImplementation(
+      async (url: string) => {
+        const body = url === newerPrUrl ? prDedupComment : issueDedupComment;
+        return [{ author: 'bot', body, createdAt: withinWindow, url: `${url}#issuecomment-1` }];
+      },
+    );
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+    expect(mockIssueRepository.closePullRequest).toHaveBeenCalledWith(newerPrUrl);
+    expect(mockIssueRepository.createCommentByUrl).not.toHaveBeenCalled();
+  });
   it('should skip and not call wrapper when issue has one related open PR with null branchName', async () => {
     const awaitingIssues: Issue[] = [
       createMockIssue({
