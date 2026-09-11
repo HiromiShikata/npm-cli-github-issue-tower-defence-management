@@ -68,9 +68,19 @@ describe('findNextNonEmptyTabToRight', () => {
       findNextNonEmptyTabToRight('todo-by-agent', counts({ prs: 35 })),
     ).toBeNull();
   });
+
+  it('returns null when Stories is the only tab to the right with items', () => {
+    expect(
+      findNextNonEmptyTabToRight('queued', counts({ stories: 5 })),
+    ).toBeNull();
+  });
 });
 
 describe('resolveDefaultActiveTab', () => {
+  it('does not navigate to Stories tab even when it is the only non-empty tab', () => {
+    expect(resolveDefaultActiveTab(counts({ stories: 5 }))).toBe('prs');
+  });
+
   it('returns the left-most tab when every tab is non-empty', () => {
     expect(
       resolveDefaultActiveTab(
