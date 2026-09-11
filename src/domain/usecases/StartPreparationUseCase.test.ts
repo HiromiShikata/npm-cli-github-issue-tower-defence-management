@@ -5762,7 +5762,7 @@ describe('StartPreparationUseCase', () => {
       },
     });
 
-    it('dispatches to defaultAgentName and does not overwrite the Agent field when story is NO STORY and agent field is set', async () => {
+    it('dispatches the Agent field value and does not overwrite the Agent field when story is NO STORY and agent field is set', async () => {
       const project = projectWithAgentOption(
         'agent-option-systems-analyst',
         'systems-analyst',
@@ -5804,7 +5804,49 @@ describe('StartPreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
       expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'agent1',
+        'systems-analyst',
+      );
+    });
+
+    it('dispatches the explicitly designated agent even when story is NO STORY', async () => {
+      const project = projectWithAgentOption('agent-option-liaison', 'liaison');
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          createMockIssue({
+            url: 'url1',
+            status: 'Awaiting Workspace',
+            labels: [],
+            story:
+              "regular / NO STORY; DON'T WORK ON THIS STORY, NEED TO SET STORY FIELD",
+            agent: 'liaison',
+          }),
+        ]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'agent1',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents: [],
+      });
+
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'liaison',
       );
     });
 

@@ -656,9 +656,10 @@ export class StartPreparationUseCase {
       const isNoStory =
         issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
       const agent =
-        (isNoStory || issue.agent === null
+        (isNoStory && issue.agent === null
           ? null
-          : agentNameFromDesignation(issue.agent)) || params.defaultAgentName;
+          : agentNameFromDesignation(issue.agent ?? '')) ||
+        params.defaultAgentName;
       const labelModelName = issue.labels
         .find((label: string) => label.startsWith('llm-model:'))
         ?.replace('llm-model:', '')
