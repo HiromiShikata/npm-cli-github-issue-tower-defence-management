@@ -1,3 +1,10 @@
+# [2.104.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.103.0...v2.104.0) (2026-09-11)
+
+
+### Features
+
+* **console:** make max settings cross-project and always visible ([#2283](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2283)) ([8852b5c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8852b5c74353eedcebadcd243c4efaf384cde393)), closes [HiromiShikata/umino-corporait-operation#31637](https://github.com/HiromiShikata/umino-corporait-operation/issues/31637)
+
 # [2.103.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.4...v2.103.0) (2026-09-11)
 
 
