@@ -1024,7 +1024,7 @@ describe("ConflictedIssueRevertUseCase", () => {
 		});
 
 		it("should not post conflict comment when conflict comment exists within window even if a later different comment also exists", async () => {
-			const issue = buildConflictedScenario();
+			buildConflictedScenario();
 			const withinWindow = new Date(Date.now() - 30 * 60 * 1000);
 			mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
 				{ author: "bot", content: "conflict", createdAt: withinWindow },
