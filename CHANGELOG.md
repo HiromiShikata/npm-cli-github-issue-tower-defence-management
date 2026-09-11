@@ -1,3 +1,10 @@
+## [2.107.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.2...v2.107.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** add test for isDuplicateWithinWindow true path in duplicate-PR resolution ([#2303](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2303)) ([e55a793](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e55a7934ac9ebd0f9e375d436ae61d5ef863724d)), closes [#2302](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2302)
+
 ## [2.107.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.1...v2.107.2) (2026-09-11)
 
 
