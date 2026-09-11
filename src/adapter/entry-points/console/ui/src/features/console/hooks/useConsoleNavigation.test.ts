@@ -168,6 +168,17 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
     );
     expect(result.current.activeTab).toBe('todo-by-human');
   });
+
+  it('does not switch away from the active tab when a higher-priority tab gains a count', () => {
+    const { result, rerender } = renderHook(
+      ({ tabCounts }: { tabCounts: Record<ConsoleTabName, number> }) =>
+        useConsoleNavigation('acme', tabCounts),
+      { initialProps: { tabCounts: counts({ 'todo-by-human': 3 }) } },
+    );
+    expect(result.current.activeTab).toBe('todo-by-human');
+    rerender({ tabCounts: counts({ 'todo-by-human': 3, prs: 1 }) });
+    expect(result.current.activeTab).toBe('todo-by-human');
+  });
 });
 
 describe('useConsoleNavigation project switch', () => {
