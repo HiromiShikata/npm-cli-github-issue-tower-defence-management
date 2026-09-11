@@ -1,3 +1,10 @@
+## [2.102.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.1...v2.102.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* **consoleOperationApi:** auto-assign authenticated user on new task creation ([#2281](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2281)) ([5884f7b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5884f7bc6a39780a50419bb53acbf26ca2e8f98f))
+
 ## [2.102.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.0...v2.102.1) (2026-09-11)
 
 
