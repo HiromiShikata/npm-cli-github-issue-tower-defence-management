@@ -537,13 +537,15 @@ test('restores draft title when the create-task dialog is cancelled and reopened
     .fill('Draft title to restore');
 
   await page.getByRole('button', { name: /^cancel$/i }).click();
-  await expect(page.getByRole('dialog', { name: /create new task/i })).toHaveCount(0);
+  await expect(
+    page.getByRole('dialog', { name: /create new task/i }),
+  ).toHaveCount(0);
 
   await newTaskButton.click();
 
-  await expect(
-    page.getByRole('textbox', { name: /title/i }),
-  ).toHaveValue('Draft title to restore');
+  await expect(page.getByRole('textbox', { name: /title/i })).toHaveValue(
+    'Draft title to restore',
+  );
 });
 
 test('creates a new story when the add-story button and form are used', async ({
