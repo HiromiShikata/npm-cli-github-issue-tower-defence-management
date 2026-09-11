@@ -621,6 +621,34 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
+  it('should skip posting rejection comment when identical comment already exists within dedup window', async () => {
+    const issue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      status: 'In Tmux by agent',
+    });
+
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.get.mockResolvedValue(issue);
+    mockIssueCommentRepository.getCommentsFromIssue
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        createMockComment({
+          content: 'Auto Status Check: REJECTED\n- NO_REPORT_FROM_AGENT_BOT',
+          createdAt: new Date(Date.now() - 30 * 60 * 1000),
+        }),
+      ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/users/user/projects/1',
+      issueUrl: 'https://github.com/user/repo/issues/1',
+      thresholdForAutoReject: 3,
+      workflowBlockerResolvedWebhookUrl: null,
+      allowedIssueAuthors: ['test-user'],
+    });
+
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
   it('should set status to Awaiting Workspace when issue has dependent issue URLs', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
