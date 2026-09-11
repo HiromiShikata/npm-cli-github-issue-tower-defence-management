@@ -52,7 +52,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     >,
     private readonly issueCommentRepository: Pick<
       IssueCommentRepository,
-      'createComment' | 'getCommentsFromIssue'
+      'createComment'
     >,
   ) {
     this.issueRejectionEvaluator = new IssueRejectionEvaluator(issueRepository);
