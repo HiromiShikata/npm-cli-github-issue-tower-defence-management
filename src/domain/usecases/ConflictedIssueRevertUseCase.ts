@@ -122,7 +122,10 @@ export class ConflictedIssueRevertUseCase {
       if (
         isDuplicateWithinWindow(
           'conflict',
-          existingComments.map((c) => ({ text: c.content, createdAt: c.createdAt })),
+          existingComments.map((c) => ({
+            text: c.content,
+            createdAt: c.createdAt,
+          })),
           new Date(),
         )
       ) {

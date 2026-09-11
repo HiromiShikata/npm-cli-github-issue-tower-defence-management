@@ -62,7 +62,10 @@ export class SubscriptionDisabledIssueUseCase {
       if (
         !isDuplicateWithinWindow(
           commentBody,
-          existingComments.map((c) => ({ text: c.body, createdAt: c.createdAt })),
+          existingComments.map((c) => ({
+            text: c.body,
+            createdAt: c.createdAt,
+          })),
           new Date(),
         )
       ) {

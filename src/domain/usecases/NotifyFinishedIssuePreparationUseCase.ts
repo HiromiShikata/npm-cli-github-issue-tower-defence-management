@@ -469,10 +469,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         failedPreparationStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.createCommentWithDedup(
-        issue,
-        repetition.comment,
-      );
+      await this.createCommentWithDedup(issue, repetition.comment);
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
         params.workflowBlockerResolvedWebhookUrl,
@@ -501,10 +498,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingOwnerStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.createCommentWithDedup(
-        issue,
-        repetition.comment,
-      );
+      await this.createCommentWithDedup(issue, repetition.comment);
       return;
     }
     if (repetition.type === 'escalateDispatchLoop' && nextStepAgent === null) {
@@ -516,10 +510,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         failedPreparationStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.createCommentWithDedup(
-        issue,
-        repetition.comment,
-      );
+      await this.createCommentWithDedup(issue, repetition.comment);
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
         params.workflowBlockerResolvedWebhookUrl,
@@ -566,19 +557,13 @@ export class NotifyFinishedIssuePreparationUseCase {
           params.issueUrl,
           project,
         );
-        await this.createCommentWithDedup(
-          issue,
-          rejectionStatusMessage,
-        );
+        await this.createCommentWithDedup(issue, rejectionStatusMessage);
       }
       if (
         repetition.type === 'dispatchAgain' ||
         repetition.type === 'storyUnset'
       ) {
-        await this.createCommentWithDedup(
-          issue,
-          repetition.comment,
-        );
+        await this.createCommentWithDedup(issue, repetition.comment);
       }
       return;
     }
@@ -625,10 +610,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       project,
     );
 
-    await this.createCommentWithDedup(
-      issue,
-      rejectionStatusMessage,
-    );
+    await this.createCommentWithDedup(issue, rejectionStatusMessage);
   };
 
   private handleTransientFailureDeferral = async (

@@ -15,7 +15,6 @@ jest.mock('./issue/githubSecondaryRateLimitBreaker', () => ({
 
 import { GitHubIssueCommentRepository } from './GitHubIssueCommentRepository';
 import { Issue } from '../../domain/entities/Issue';
-import { GitHubRateLimitError } from './issue/githubRateLimitRetry';
 
 const buildIssue = (url: string): Issue => ({
   url,
@@ -812,14 +811,12 @@ describe('GitHubIssueCommentRepository', () => {
 
   describe('createComment', () => {
     it('posts to the correct REST endpoint with correct headers and body for an issue', async () => {
-      const fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ id: 1 }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        );
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 1 }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/42',
@@ -841,14 +838,12 @@ describe('GitHubIssueCommentRepository', () => {
     });
 
     it('posts to the correct REST endpoint for a pull request', async () => {
-      const fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ id: 2 }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        );
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 2 }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/pull/10',
@@ -881,14 +876,12 @@ describe('GitHubIssueCommentRepository', () => {
     });
 
     it('issues exactly one POST per call without a preflight GET', async () => {
-      const fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ id: 3 }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        );
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 3 }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/5',
@@ -899,14 +892,12 @@ describe('GitHubIssueCommentRepository', () => {
     });
 
     it('does not call the GraphQL endpoint', async () => {
-      const fetchSpy = jest
-        .spyOn(global, 'fetch')
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ id: 4 }), {
-            status: 201,
-            headers: { 'Content-Type': 'application/json' },
-          }),
-        );
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 4 }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
 
       const issue = buildIssue(
         'https://github.com/HiromiShikata/test-repository/issues/7',
@@ -982,6 +973,5 @@ describe('GitHubIssueCommentRepository', () => {
         expect(mockWriteSecondaryRateLimitState).toHaveBeenCalledTimes(1);
       });
     });
-
   });
 });

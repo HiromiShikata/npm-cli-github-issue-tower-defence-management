@@ -367,7 +367,6 @@ describe('RestIssueRepository', () => {
         expect(mockWriteSecondaryRateLimitState).toHaveBeenCalledTimes(1);
       });
     });
-
   });
   describe('createNewIssue', () => {
     it('should create a new issue', async () => {

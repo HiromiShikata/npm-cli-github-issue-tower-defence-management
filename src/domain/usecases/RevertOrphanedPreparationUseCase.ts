@@ -195,10 +195,7 @@ export class RevertOrphanedPreparationUseCase {
           issue,
           failedPreparationStatusOption.id,
         );
-        await this.createCommentWithDedup(
-          issue,
-          repetition.comment,
-        );
+        await this.createCommentWithDedup(issue, repetition.comment);
         if (nextStepAgent !== null && params.workflowIssueReporterSettings) {
           await reportSilentRedispatchWorkflowIssue(
             nextStepAgent,
@@ -221,10 +218,7 @@ export class RevertOrphanedPreparationUseCase {
             awaitingOwnerStatusOption.id,
           );
         }
-        await this.createCommentWithDedup(
-          issue,
-          repetition.comment,
-        );
+        await this.createCommentWithDedup(issue, repetition.comment);
         continue;
       }
       if (
@@ -238,10 +232,7 @@ export class RevertOrphanedPreparationUseCase {
             failedPreparationStatusOption.id,
           );
         }
-        await this.createCommentWithDedup(
-          issue,
-          repetition.comment,
-        );
+        await this.createCommentWithDedup(issue, repetition.comment);
         continue;
       }
       if (nextStepAgent !== null) {
@@ -263,10 +254,7 @@ export class RevertOrphanedPreparationUseCase {
           awaitingWorkspaceStatusOption.id,
         );
         if (repetition.type !== 'notRepeated') {
-          await this.createCommentWithDedup(
-            issue,
-            repetition.comment,
-          );
+          await this.createCommentWithDedup(issue, repetition.comment);
         }
         continue;
       }

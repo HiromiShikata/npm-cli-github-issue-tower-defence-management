@@ -6,7 +6,9 @@ export class StaleTaskPullRequestCloseUseCase {
   constructor(
     readonly issueRepository: Pick<
       IssueRepository,
-      'closePullRequest' | 'createCommentByUrl' | 'getIssueOrPullRequestComments'
+      | 'closePullRequest'
+      | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
     >,
   ) {}
 

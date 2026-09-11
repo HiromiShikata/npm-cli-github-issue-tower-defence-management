@@ -735,9 +735,7 @@ export class StartPreparationUseCase {
           const removedPrUrls = duplicatePRs.map((pr) => pr.url).join(', ');
           const issueCommentBody = `${duplicatePRs.length} duplicate PR(s) were automatically closed to resolve multiple-open-PR ambiguity.\n\nRemoved PRs: ${removedPrUrls}\nAdopted PR: ${canonicalPR.url}`;
           const issueExistingComments =
-            await this.issueRepository.getIssueOrPullRequestComments(
-              issue.url,
-            );
+            await this.issueRepository.getIssueOrPullRequestComments(issue.url);
           if (
             !isDuplicateWithinWindow(
               issueCommentBody,

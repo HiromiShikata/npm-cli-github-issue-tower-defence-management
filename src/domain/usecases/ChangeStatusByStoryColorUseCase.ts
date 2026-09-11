@@ -84,8 +84,9 @@ export class ChangeStatusByStoryColorUseCase {
     issue: Issue,
     commentBody: string,
   ): Promise<void> => {
-    const existing =
-      await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+    const existing = await this.issueRepository.getIssueOrPullRequestComments(
+      issue.url,
+    );
     if (
       isDuplicateWithinWindow(
         commentBody,
