@@ -3021,6 +3021,36 @@ describe('consoleOperationApi', () => {
       await response.backgroundTask;
       expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
+
+    it('assigns the authenticated user as assignee when creating an issue', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      issueRepository.getAuthenticatedUserLogin.mockResolvedValue(
+        'authenticated-user',
+      );
+
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      await response.backgroundTask;
+
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        '',
+        ['authenticated-user'],
+        [],
+      );
+    });
   });
 
   describe('handleReorderStory', () => {
