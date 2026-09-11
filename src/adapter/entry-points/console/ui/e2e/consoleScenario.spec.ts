@@ -523,6 +523,31 @@ test('opens a fullscreen-overlay modal when the console header new-task button i
   expect(harness.createIssueCalls.at(-1)?.body).toBe('E2E body description');
 });
 
+test('restores draft title when the create-task dialog is cancelled and reopened', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  const newTaskButton = page.locator('.console-task-create-button');
+  await expect(newTaskButton).toBeVisible();
+  await newTaskButton.click();
+
+  await page
+    .getByRole('textbox', { name: /title/i })
+    .fill('Draft title to restore');
+
+  await page.getByRole('button', { name: /^cancel$/i }).click();
+  await expect(
+    page.getByRole('dialog', { name: /create new task/i }),
+  ).toHaveCount(0);
+
+  await newTaskButton.click();
+
+  await expect(page.getByRole('textbox', { name: /title/i })).toHaveValue(
+    'Draft title to restore',
+  );
+});
+
 test('creates a new story when the add-story button and form are used', async ({
   page,
 }) => {

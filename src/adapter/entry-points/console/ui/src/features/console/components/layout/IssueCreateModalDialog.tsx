@@ -11,12 +11,21 @@ export type IssueCreateParams = {
   files: File[];
 };
 
+export type IssueCreateDraft = {
+  title: string;
+  body: string;
+  storyName: string | null;
+  agentOptionId: string | null;
+};
+
 export type IssueCreateModalDialogProps = {
   storyEntries: ConsoleStoryEntry[];
   agentOptions: ConsoleFieldOption[];
   onSubmit: (params: IssueCreateParams) => Promise<void>;
   onClose: () => void;
   fleetTaskCreateUrl?: string | null;
+  initialDraft?: IssueCreateDraft | null;
+  onDraftChange?: (draft: IssueCreateDraft) => void;
 };
 
 export const IssueCreateModalDialog = ({
@@ -25,23 +34,38 @@ export const IssueCreateModalDialog = ({
   onSubmit,
   onClose,
   fleetTaskCreateUrl = null,
+  initialDraft,
+  onDraftChange,
 }: IssueCreateModalDialogProps) => {
   const [selectedStoryName, setSelectedStoryName] = useState<string | null>(
-    storyEntries[0]?.storyName ?? null,
+    initialDraft != null
+      ? initialDraft.storyName
+      : (storyEntries[0]?.storyName ?? null),
   );
   const [selectedAgentOptionId, setSelectedAgentOptionId] = useState<
     string | null
-  >(null);
-  const [titleValue, setTitleValue] = useState('');
-  const [bodyValue, setBodyValue] = useState('');
+  >(initialDraft?.agentOptionId ?? null);
+  const [titleValue, setTitleValue] = useState(initialDraft?.title ?? '');
+  const [bodyValue, setBodyValue] = useState(initialDraft?.body ?? '');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const onDraftChangeRef = useRef(onDraftChange);
+  onDraftChangeRef.current = onDraftChange;
 
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    onDraftChangeRef.current?.({
+      title: titleValue,
+      body: bodyValue,
+      storyName: selectedStoryName,
+      agentOptionId: selectedAgentOptionId,
+    });
+  }, [titleValue, bodyValue, selectedStoryName, selectedAgentOptionId]);
 
   const handleSubmit = async (): Promise<void> => {
     const trimmedTitle = titleValue.trim();

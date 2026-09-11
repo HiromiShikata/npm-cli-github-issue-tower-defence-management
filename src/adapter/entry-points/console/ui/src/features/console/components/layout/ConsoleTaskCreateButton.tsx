@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 import {
+  type IssueCreateDraft,
   IssueCreateModalDialog,
   type IssueCreateParams,
 } from './IssueCreateModalDialog';
@@ -25,13 +26,19 @@ export const ConsoleTaskCreateButton = ({
   fleetTaskCreateUrl = null,
 }: ConsoleTaskCreateButtonProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [draft, setDraft] = useState<IssueCreateDraft | null>(null);
 
   const disabled = defaultNameWithOwner === null || storyEntries.length === 0;
 
   const handleSubmit = async (params: IssueCreateParams): Promise<void> => {
     await onCreateIssue(params);
+    setDraft(null);
     setIsDialogOpen(false);
   };
+
+  const handleDraftChange = useCallback((updatedDraft: IssueCreateDraft) => {
+    setDraft(updatedDraft);
+  }, []);
 
   return (
     <>
@@ -51,6 +58,8 @@ export const ConsoleTaskCreateButton = ({
           onSubmit={handleSubmit}
           onClose={() => setIsDialogOpen(false)}
           fleetTaskCreateUrl={fleetTaskCreateUrl}
+          initialDraft={draft}
+          onDraftChange={handleDraftChange}
         />
       )}
     </>
