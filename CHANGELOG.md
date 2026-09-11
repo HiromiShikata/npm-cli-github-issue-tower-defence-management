@@ -1,3 +1,15 @@
+# [2.101.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.100.2...v2.101.0) (2026-09-11)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** stop story progress issue auto-generation ([#2279](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2279)) ([9dc1590](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9dc1590baa2f62d4af2d751bfe5ba2706c72955d)), closes [#2227](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2227) [#2227](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2227)
+
+
+### Features
+
+* **IssueCreateModalDialog:** add open-in-new-tab link to left of close button in Create New Task dialog ([#2276](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2276)) ([1039ecd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1039ecde130015307979158a1e4fddd2530bf246)), closes [HiromiShikata/umino-corporait-operation#31619](https://github.com/HiromiShikata/umino-corporait-operation/issues/31619)
+
 ## [2.100.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.100.1...v2.100.2) (2026-09-10)
 
 
