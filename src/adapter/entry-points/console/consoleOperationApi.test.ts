@@ -2572,7 +2572,7 @@ describe('consoleOperationApi', () => {
         'portal',
         'New task title',
         '',
-        [],
+        ['authenticated-user'],
         [],
       );
       await response.backgroundTask;
@@ -2822,7 +2822,7 @@ describe('consoleOperationApi', () => {
         'portal',
         'New task title',
         'Task body content here',
-        [],
+        ['authenticated-user'],
         [],
       );
     });
@@ -2849,7 +2849,7 @@ describe('consoleOperationApi', () => {
         'portal',
         'New task title',
         'Task body content here\n\nRelated: https://github.com/owner/repo/issues/99',
-        [],
+        ['authenticated-user'],
         [],
       );
     });
@@ -2875,7 +2875,7 @@ describe('consoleOperationApi', () => {
         'portal',
         'New task title',
         '',
-        [],
+        ['authenticated-user'],
         [],
       );
     });
@@ -2901,7 +2901,7 @@ describe('consoleOperationApi', () => {
         'portal',
         'New task title',
         'Related: https://github.com/owner/repo/issues/99',
-        [],
+        ['authenticated-user'],
         [],
       );
     });
@@ -2926,7 +2926,7 @@ describe('consoleOperationApi', () => {
         'portal',
         'New task title',
         '',
-        [],
+        ['authenticated-user'],
         [],
       );
     });
