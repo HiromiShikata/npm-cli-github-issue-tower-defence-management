@@ -280,7 +280,6 @@ describe('RestIssueRepository', () => {
       const fetchSpy = jest.spyOn(global, 'fetch');
       const issueUrl =
         'https://github.com/HiromiShikata/test-repository/issues/507';
-      const recentTs = new Date(Date.now() - 30 * 60 * 1000).toISOString();
       mockPost.mockReturnValue(
         mockJsonResponse({
           user: { login: 'bot' },
@@ -299,8 +298,6 @@ describe('RestIssueRepository', () => {
       expect(mockPost).toHaveBeenCalledTimes(1);
       expect(typeof result.url).toBe('string');
       expect(result.url).not.toBeNull();
-
-      void recentTs;
     });
 
     describe('circuit breaker', () => {
@@ -756,6 +753,89 @@ describe('RestIssueRepository', () => {
       expect(thrownError).toMatchObject({
         rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
       });
+    });
+  });
+
+  describe('getIssueOrPullRequestComments', () => {
+    const issueUrl =
+      'https://github.com/HiromiShikata/test-repository/issues/40';
+
+    it('returns empty array when first page has no comments', async () => {
+      mockGet.mockReturnValueOnce(mockJsonResponse([]));
+
+      const result =
+        await restIssueRepository.getIssueOrPullRequestComments(issueUrl);
+
+      expect(result).toEqual([]);
+      expect(mockGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns comments from a single page when response has fewer than 100 items', async () => {
+      const created = '2026-09-01T00:00:00Z';
+      mockGet.mockReturnValueOnce(
+        mockJsonResponse([
+          {
+            user: { login: 'alice' },
+            body: 'hello',
+            created_at: created,
+            html_url: `${issueUrl}#issuecomment-1`,
+          },
+        ]),
+      );
+
+      const result =
+        await restIssueRepository.getIssueOrPullRequestComments(issueUrl);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        author: 'alice',
+        body: 'hello',
+        createdAt: new Date(created),
+        url: `${issueUrl}#issuecomment-1`,
+      });
+      expect(mockGet).toHaveBeenCalledTimes(1);
+    });
+
+    it('fetches subsequent pages until the page is smaller than 100 items', async () => {
+      const makePage = (
+        n: number,
+        startId: number,
+      ): Array<{
+        user: { login: string };
+        body: string;
+        created_at: string;
+        html_url: string;
+      }> =>
+        Array.from({ length: n }, (_, i) => ({
+          user: { login: 'bot' },
+          body: `comment ${startId + i}`,
+          created_at: '2026-09-01T00:00:00Z',
+          html_url: `${issueUrl}#issuecomment-${startId + i}`,
+        }));
+
+      mockGet
+        .mockReturnValueOnce(mockJsonResponse(makePage(100, 1)))
+        .mockReturnValueOnce(mockJsonResponse(makePage(3, 101)));
+
+      const result =
+        await restIssueRepository.getIssueOrPullRequestComments(issueUrl);
+
+      expect(result).toHaveLength(103);
+      expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(mockGet).toHaveBeenNthCalledWith(
+        1,
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/40/comments?per_page=100&page=1',
+        expect.objectContaining({
+          headers: { Authorization: 'token dummy-token' },
+        }),
+      );
+      expect(mockGet).toHaveBeenNthCalledWith(
+        2,
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/40/comments?per_page=100&page=2',
+        expect.objectContaining({
+          headers: { Authorization: 'token dummy-token' },
+        }),
+      );
     });
   });
 });
