@@ -298,6 +298,75 @@ describe('AgentDesignationLabelAdoptUseCase', () => {
     expect(issue.labels).not.toContain('chore');
   });
 
+  it('should set the Agent field to defaultAgentName when no label matches and issue agent is null', async () => {
+    const project = createProject([{ id: 'option-chore-id', name: 'chore' }]);
+    const issue = createIssue({
+      labels: ['bug', 'feature'],
+      agent: null,
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+
+    await useCase.run({
+      project,
+      issues: [issue],
+      agents: ['chore'],
+      defaultAgentName: 'chore',
+    });
+
+    expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+      issue.url,
+      project,
+      'option-chore-id',
+    );
+    expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    expect(issue.agent).toBe('chore');
+  });
+
+  it('should set the Agent field to defaultAgentName even when agents list is null', async () => {
+    const project = createProject([{ id: 'option-chore-id', name: 'chore' }]);
+    const issue = createIssue({
+      labels: [],
+      agent: null,
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+
+    await useCase.run({
+      project,
+      issues: [issue],
+      agents: null,
+      defaultAgentName: 'chore',
+    });
+
+    expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+      issue.url,
+      project,
+      'option-chore-id',
+    );
+    expect(mockIssueRepository.removeLabel).not.toHaveBeenCalled();
+    expect(issue.agent).toBe('chore');
+  });
+
+  it('should not override existing agent with defaultAgentName when issue already has an agent set', async () => {
+    const project = createProject([
+      { id: 'option-chore-id', name: 'chore' },
+      { id: 'option-developer-id', name: 'developer' },
+    ]);
+    const issue = createIssue({
+      labels: [],
+      agent: 'developer',
+    });
+
+    await useCase.run({
+      project,
+      issues: [issue],
+      agents: null,
+      defaultAgentName: 'chore',
+    });
+
+    expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    expect(issue.agent).toBe('developer');
+  });
+
   it('should process all items in the list and adopt each matching label', async () => {
     const project = createProject([
       { id: 'option-chore-id', name: 'chore' },

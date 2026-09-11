@@ -14,11 +14,31 @@ export const adoptIssueAgentDesignationLabel = async (
   >,
   issueRepository: Pick<IssueRepository, 'setIssueAgentField' | 'removeLabel'>,
   agentDesignationLabelsToKeep?: string[] | null,
+  defaultAgentName?: string | null,
 ): Promise<void> => {
   const agentLabel = issue.labels.find((label) =>
     configuredAgentNames.includes(label),
   );
   if (agentLabel === undefined) {
+    if (defaultAgentName && issue.agent === null) {
+      const agentOptionId = await ensureAgentOptionAndGetId(
+        projectRepository,
+        project,
+        defaultAgentName,
+      );
+      if (agentOptionId === null) {
+        console.warn(
+          `Default agent field option '${defaultAgentName}' could not be resolved for ${issue.url}. Keeping the agent unset.`,
+        );
+        return;
+      }
+      await issueRepository.setIssueAgentField(
+        issue.url,
+        project,
+        agentOptionId,
+      );
+      issue.agent = defaultAgentName;
+    }
     return;
   }
   if (issue.agent === agentLabel) {
@@ -61,8 +81,10 @@ export class AgentDesignationLabelAdoptUseCase {
     issues: Issue[];
     agents: string[] | null;
     agentDesignationLabelsToKeep?: string[] | null;
+    defaultAgentName?: string | null;
   }): Promise<void> => {
-    if (!params.agents || params.agents.length === 0) {
+    const hasAgents = params.agents && params.agents.length > 0;
+    if (!hasAgents && !params.defaultAgentName) {
       return;
     }
     for (const issue of params.issues) {
@@ -72,10 +94,11 @@ export class AgentDesignationLabelAdoptUseCase {
       await adoptIssueAgentDesignationLabel(
         issue,
         params.project,
-        params.agents,
+        params.agents ?? [],
         this.projectRepository,
         this.issueRepository,
         params.agentDesignationLabelsToKeep,
+        params.defaultAgentName,
       );
     }
   };

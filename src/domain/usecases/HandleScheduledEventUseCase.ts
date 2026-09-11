@@ -431,6 +431,7 @@ ${JSON.stringify(e)}
       issues,
       agents: input.agents ?? null,
       agentDesignationLabelsToKeep: input.agentDesignationLabelsToKeep ?? null,
+      defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
     });
     await this.conflictedIssueRevertUseCase.run({
       projectUrl: input.projectUrl,
