@@ -1,3 +1,10 @@
+## [2.107.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.0...v2.107.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **consoleTabData:** defer loading state to async cache check to prevent loading flash on project switch ([#2300](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2300)) ([74520d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/74520d16f24bcdc990257671672dad5e26c3ac83)), closes [HiromiShikata/umino-corporait-operation#31665](https://github.com/HiromiShikata/umino-corporait-operation/issues/31665)
+
 # [2.107.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.106.1...v2.107.0) (2026-09-11)
 
 
