@@ -5762,7 +5762,7 @@ describe('StartPreparationUseCase', () => {
       },
     });
 
-    it('dispatches to defaultAgentName and does not overwrite the Agent field when story is NO STORY and agent field is set', async () => {
+    it('dispatches the Agent field value and does not overwrite the Agent field when story is NO STORY and agent field is set', async () => {
       const project = projectWithAgentOption(
         'agent-option-systems-analyst',
         'systems-analyst',
@@ -5804,7 +5804,7 @@ describe('StartPreparationUseCase', () => {
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
       expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
-        'agent1',
+        'systems-analyst',
       );
     });
 
