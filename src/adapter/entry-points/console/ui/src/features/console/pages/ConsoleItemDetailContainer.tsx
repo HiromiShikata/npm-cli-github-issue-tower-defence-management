@@ -291,6 +291,11 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
         commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
+        onAdvance: () =>
+          operations.patchItemOverlay(item, true, {
+            name: option.name,
+            color: option.color,
+          }),
       });
     },
     onDeleteAllComments: () => {
