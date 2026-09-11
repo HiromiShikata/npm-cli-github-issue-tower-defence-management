@@ -5316,13 +5316,25 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(502);
     });
 
-    it('returns 400 when maximumPreparingIssuesCount is not a positive integer', async () => {
+    it('returns 200 when maximumPreparingIssuesCount is 0', async () => {
       const response = await handleProjectMaxPreparingUpdate(
         context,
         () => 'token',
         {
           pjcode: 'acme',
           maximumPreparingIssuesCount: 0,
+        },
+      );
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('returns 400 when maximumPreparingIssuesCount is a negative integer', async () => {
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        () => 'token',
+        {
+          pjcode: 'acme',
+          maximumPreparingIssuesCount: -1,
         },
       );
       expect(response.statusCode).toBe(400);

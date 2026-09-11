@@ -47,6 +47,24 @@ describe('ConsoleProjectSettingsModalScreen', () => {
     expect(onSave).toHaveBeenCalledWith(8);
   });
 
+  it('enables Save when value is 0', () => {
+    render(<ConsoleProjectSettingsModalScreen {...baseProps} value="0" />);
+    expect(screen.getByLabelText('Save settings')).not.toBeDisabled();
+  });
+
+  it('calls onSave with 0 when value is 0', () => {
+    const onSave = jest.fn();
+    render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        value="0"
+        onSave={onSave}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Save settings'));
+    expect(onSave).toHaveBeenCalledWith(0);
+  });
+
   it('disables Save when the value is empty', () => {
     render(<ConsoleProjectSettingsModalScreen {...baseProps} value="" />);
     expect(screen.getByLabelText('Save settings')).toBeDisabled();

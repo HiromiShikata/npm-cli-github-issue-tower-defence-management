@@ -18,7 +18,7 @@ export const ConsoleProjectSettingsModalScreen = ({
   onClose,
 }: ConsoleProjectSettingsModalScreenProps) => {
   const parsedValue = parseInt(value, 10);
-  const isValid = !Number.isNaN(parsedValue) && parsedValue >= 1;
+  const isValid = !Number.isNaN(parsedValue) && parsedValue >= 0;
 
   const handleSave = () => {
     if (!isValid) {
@@ -59,7 +59,7 @@ export const ConsoleProjectSettingsModalScreen = ({
             <input
               id="max-preparing-count"
               type="number"
-              min={1}
+              min={0}
               step={1}
               className="console-settings-modal-input"
               value={value}
