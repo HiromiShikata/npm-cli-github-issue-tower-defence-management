@@ -44,7 +44,10 @@ function loadDefinedCssClasses(cssContent: string): Set<string> {
   );
 }
 
-function extractCssRuleBlock(cssContent: string, selector: string): string | null {
+function extractCssRuleBlock(
+  cssContent: string,
+  selector: string,
+): string | null {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = cssContent.match(new RegExp(`${escaped}\\s*\\{([^}]+)\\}`));
   return match ? match[1] : null;
@@ -53,7 +56,10 @@ function extractCssRuleBlock(cssContent: string, selector: string): string | nul
 describe('console CSS class contract', () => {
   it('sets min-height: 0 on console-task-create-dialog-body to enable overflow-y scrolling when dialog is height-constrained in landscape orientation', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
-    const ruleBlock = extractCssRuleBlock(css, '.console-task-create-dialog-body');
+    const ruleBlock = extractCssRuleBlock(
+      css,
+      '.console-task-create-dialog-body',
+    );
     expect(ruleBlock).not.toBeNull();
     expect(ruleBlock).toContain('min-height: 0');
   });

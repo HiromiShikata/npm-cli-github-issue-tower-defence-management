@@ -1625,6 +1625,9 @@ test('Create new task dialog body is scrollable in landscape orientation', async
 
   const { scrollHeight, clientHeight } = await page
     .locator('.console-task-create-dialog-body')
-    .evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }));
+    .evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }));
   expect(scrollHeight).toBeGreaterThan(clientHeight);
 });
