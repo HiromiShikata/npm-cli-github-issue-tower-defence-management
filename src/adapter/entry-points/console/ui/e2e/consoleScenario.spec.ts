@@ -1,1616 +1,1616 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from '@playwright/test';
 import {
-	CONSOLE_E2E_AWAITING_OWNER_PR_URL,
-	CONSOLE_E2E_COMMENT_URL,
-	CONSOLE_E2E_PJCODE,
-	CONSOLE_E2E_REFERENCE_LINK_URL,
-	type ConsoleE2eHarness,
-	startConsoleE2eHarness,
-} from "./consoleTestHarness";
+  CONSOLE_E2E_AWAITING_OWNER_PR_URL,
+  CONSOLE_E2E_COMMENT_URL,
+  CONSOLE_E2E_PJCODE,
+  CONSOLE_E2E_REFERENCE_LINK_URL,
+  type ConsoleE2eHarness,
+  startConsoleE2eHarness,
+} from './consoleTestHarness';
 
 let harness: ConsoleE2eHarness;
 
 test.beforeAll(async () => {
-	harness = await startConsoleE2eHarness();
+  harness = await startConsoleE2eHarness();
 });
 
 test.afterAll(async () => {
-	if (harness !== undefined) {
-		await harness.stop();
-	}
+  if (harness !== undefined) {
+    await harness.stop();
+  }
 });
 
 const activeTabLabel = (page: Page) =>
-	page.locator('.console-tab[data-active="true"] .console-tab-label');
+  page.locator('.console-tab[data-active="true"] .console-tab-label');
 
 const tabByLabel = (page: Page, label: string) =>
-	page.locator(".console-tab", { hasText: label });
+  page.locator('.console-tab', { hasText: label });
 
 const tabBadge = (page: Page, label: string) =>
-	tabByLabel(page, label).locator(".console-tab-badge");
+  tabByLabel(page, label).locator('.console-tab-badge');
 
 const itemRowByText = (page: Page, text: string) =>
-	page.locator(".console-item-row", { hasText: text });
+  page.locator('.console-item-row', { hasText: text });
 
-test("shows CI and conflict badges in the directly opened PR detail header", async ({
-	page,
+test('shows CI and conflict badges in the directly opened PR detail header', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Awaiting Owner").click();
-	await itemRowByText(
-		page,
-		"Serve the committed console UI bundle from serveConsole",
-	).click();
+  await tabByLabel(page, 'Awaiting Owner').click();
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
 
-	const title = page.locator(".console-detail-title");
-	await expect(title.getByText("CI failing")).toHaveCount(0);
+  const title = page.locator('.console-detail-title');
+  await expect(title.getByText('CI failing')).toHaveCount(0);
 
-	await expect(title.getByText("Conflict")).toHaveCount(0);
-	await expect(
-		page.locator(".console-detail-topline").getByText("Conflict"),
-	).toBeVisible();
+  await expect(title.getByText('Conflict')).toHaveCount(0);
+  await expect(
+    page.locator('.console-detail-topline').getByText('Conflict'),
+  ).toBeVisible();
 
-	const topline = page.locator(".console-detail-topline");
-	await expect(topline.getByText("CI failing")).toBeVisible();
-	await expect(topline.getByText(/missing: build, test/)).toBeVisible();
-	await expect(topline.getByText("Out of date")).toBeVisible();
+  const topline = page.locator('.console-detail-topline');
+  await expect(topline.getByText('CI failing')).toBeVisible();
+  await expect(topline.getByText(/missing: build, test/)).toBeVisible();
+  await expect(topline.getByText('Out of date')).toBeVisible();
 
-	await page.locator(".console-detail").screenshot({
-		path: "/tmp/after-pr-detail-header.png",
-	});
+  await page.locator('.console-detail').screenshot({
+    path: '/tmp/after-pr-detail-header.png',
+  });
 });
 
-test("processing tabs drives auto-advance and keeps emptied badges at zero", async ({
-	page,
+test('processing tabs drives auto-advance and keeps emptied badges at zero', async ({
+  page,
 }) => {
-	await page.goto(harness.appUrl);
+  await page.goto(harness.appUrl);
 
-	await expect(activeTabLabel(page)).toHaveText("Awaiting Owner");
-	await expect(tabBadge(page, "Awaiting Owner")).toHaveText("2");
-	await expect(tabBadge(page, "Failed Preparation")).toHaveText("1");
-	await expect(tabBadge(page, "Todo by human")).toHaveText("1");
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
+  await expect(tabBadge(page, 'Awaiting Owner')).toHaveText('2');
+  await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
+  await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
-	await itemRowByText(
-		page,
-		"Serve the committed console UI bundle from serveConsole",
-	).click();
-	const approveButton = page
-		.locator(".console-op-button", { hasText: "Approve" })
-		.first();
-	await expect(approveButton).toBeVisible();
-	await approveButton.click();
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+  const approveButton = page
+    .locator('.console-op-button', { hasText: 'Approve' })
+    .first();
+  await expect(approveButton).toBeVisible();
+  await approveButton.click();
 
-	await expect(activeTabLabel(page)).toHaveText("Awaiting Owner");
-	await expect(approveButton).toBeVisible({ timeout: 8000 });
-	await approveButton.click();
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
+  await expect(approveButton).toBeVisible({ timeout: 8000 });
+  await approveButton.click();
 
-	await expect(activeTabLabel(page)).toHaveText("Failed Preparation", {
-		timeout: 8000,
-	});
-	await expect(tabByLabel(page, "Awaiting Owner")).toHaveCount(0, {
-		timeout: 8000,
-	});
+  await expect(activeTabLabel(page)).toHaveText('Failed Preparation', {
+    timeout: 8000,
+  });
+  await expect(tabByLabel(page, 'Awaiting Owner')).toHaveCount(0, {
+    timeout: 8000,
+  });
 
-	await tabByLabel(page, "Todo by human").click();
-	await expect(activeTabLabel(page)).toHaveText("Todo by human");
-	await expect(tabByLabel(page, "Awaiting Owner")).toHaveCount(0);
-	await expect(tabBadge(page, "Todo by human")).toHaveText("1");
+  await tabByLabel(page, 'Todo by human').click();
+  await expect(activeTabLabel(page)).toHaveText('Todo by human');
+  await expect(tabByLabel(page, 'Awaiting Owner')).toHaveCount(0);
+  await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
-	await tabByLabel(page, "Failed Preparation").click();
-	await expect(activeTabLabel(page)).toHaveText("Failed Preparation");
-	await expect(tabByLabel(page, "Awaiting Owner")).toHaveCount(0);
-	await expect(tabBadge(page, "Failed Preparation")).toHaveText("1");
+  await tabByLabel(page, 'Failed Preparation').click();
+  await expect(activeTabLabel(page)).toHaveText('Failed Preparation');
+  await expect(tabByLabel(page, 'Awaiting Owner')).toHaveCount(0);
+  await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
 });
 
-test("renders the Workflow Blocker tab immediately right of Todo by human and shows its detail operations", async ({
-	page,
+test('renders the Workflow Blocker tab immediately right of Todo by human and shows its detail operations', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Workflow Blocker").click();
+  await tabByLabel(page, 'Workflow Blocker').click();
 
-	await expect(activeTabLabel(page)).toHaveText("Workflow Blocker");
-	await expect(tabBadge(page, "Workflow Blocker")).toHaveText("1");
+  await expect(activeTabLabel(page)).toHaveText('Workflow Blocker');
+  await expect(tabBadge(page, 'Workflow Blocker')).toHaveText('1');
 
-	const labels = page.locator(".console-tab .console-tab-label");
-	const labelsText = await labels.allTextContents();
-	const blockerIdx = labelsText.indexOf("Workflow Blocker");
-	const todoByHumanIdx = labelsText.indexOf("Todo by human");
-	expect(blockerIdx).toBeGreaterThanOrEqual(0);
-	expect(todoByHumanIdx).toBe(blockerIdx - 1);
+  const labels = page.locator('.console-tab .console-tab-label');
+  const labelsText = await labels.allTextContents();
+  const blockerIdx = labelsText.indexOf('Workflow Blocker');
+  const todoByHumanIdx = labelsText.indexOf('Todo by human');
+  expect(blockerIdx).toBeGreaterThanOrEqual(0);
+  expect(todoByHumanIdx).toBe(blockerIdx - 1);
 
-	await expect(page.locator(".console-tab-count-heading")).toHaveCount(0);
+  await expect(page.locator('.console-tab-count-heading')).toHaveCount(0);
 
-	await itemRowByText(
-		page,
-		"Resolve the shared GitHub token rate-limit exhaustion blocker",
-	).click();
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
 
-	await expect(
-		page.locator(".console-op-button", { hasText: /^Awaiting Workspace$/ }),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "Close as not planned" }),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "+1 hour" }),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "+3 hours" }),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "+6 hours" }),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "+1 day" }),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "+2 days" }),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "+3 days" }),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "+5 days" }),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "+1 month" }),
-	).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: /^Awaiting Workspace$/ }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: 'Close as not planned' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+1 hour' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+3 hours' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+6 hours' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+1 day' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+2 days' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+3 days' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+5 days' }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: '+1 month' }),
+  ).toBeVisible();
 });
 
-test("shows CI, conflict and out-of-date badges in the related PR header", async ({
-	page,
+test('shows CI, conflict and out-of-date badges in the related PR header', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Failed Preparation").click();
-	await itemRowByText(
-		page,
-		"Add inline review comments on the related pull request diff",
-	).click();
+  await tabByLabel(page, 'Failed Preparation').click();
+  await itemRowByText(
+    page,
+    'Add inline review comments on the related pull request diff',
+  ).click();
 
-	const prHeader = page.locator(".console-pr-header").first();
-	await expect(prHeader.getByText("CI failing")).toBeVisible();
-	await expect(prHeader.getByText(/missing: build, test/)).toBeVisible();
-	await expect(prHeader.getByText("Conflict")).toBeVisible();
-	await expect(prHeader.getByText("Out of date")).toBeVisible();
+  const prHeader = page.locator('.console-pr-header').first();
+  await expect(prHeader.getByText('CI failing')).toBeVisible();
+  await expect(prHeader.getByText(/missing: build, test/)).toBeVisible();
+  await expect(prHeader.getByText('Conflict')).toBeVisible();
+  await expect(prHeader.getByText('Out of date')).toBeVisible();
 
-	const openPullRequestLink = prHeader.getByRole("link", { name: "open" });
-	await expect(openPullRequestLink).toBeVisible();
-	await expect(openPullRequestLink).toHaveAttribute(
-		"href",
-		/\/pull\/\d+(\/|$)/,
-	);
+  const openPullRequestLink = prHeader.getByRole('link', { name: 'open' });
+  await expect(openPullRequestLink).toBeVisible();
+  await expect(openPullRequestLink).toHaveAttribute(
+    'href',
+    /\/pull\/\d+(\/|$)/,
+  );
 
-	await prHeader.screenshot({
-		path: "/tmp/after-related-pr-header.png",
-	});
+  await prHeader.screenshot({
+    path: '/tmp/after-related-pr-header.png',
+  });
 });
 
-test("collects an inline comment on a related pull request diff without hover on a touch viewport, enabling Reject and submitting it as request-changes", async ({
-	browser,
+test('collects an inline comment on a related pull request diff without hover on a touch viewport, enabling Reject and submitting it as request-changes', async ({
+  browser,
 }) => {
-	const touchContext = await browser.newContext({
-		viewport: { width: 390, height: 844 },
-		hasTouch: true,
-		isMobile: true,
-	});
-	const page = await touchContext.newPage();
+  const touchContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await touchContext.newPage();
 
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Failed Preparation").click();
-	await itemRowByText(
-		page,
-		"Add inline review comments on the related pull request diff",
-	).click();
+  await tabByLabel(page, 'Failed Preparation').click();
+  await itemRowByText(
+    page,
+    'Add inline review comments on the related pull request diff',
+  ).click();
 
-	const changedFile = page
-		.locator(".console-file-row", {
-			hasText: "index.css",
-		})
-		.first();
-	await expect(changedFile).toBeVisible();
-	await changedFile.click();
+  const changedFile = page
+    .locator('.console-file-row', {
+      hasText: 'index.css',
+    })
+    .first();
+  await expect(changedFile).toBeVisible();
+  await changedFile.click();
 
-	const commentButton = page.locator(".console-diff-comment-button").first();
-	await expect(commentButton).toBeVisible();
-	const opacity = await commentButton.evaluate(
-		(element) => window.getComputedStyle(element).opacity,
-	);
-	expect(Number(opacity)).toBeGreaterThan(0);
+  const commentButton = page.locator('.console-diff-comment-button').first();
+  await expect(commentButton).toBeVisible();
+  const opacity = await commentButton.evaluate(
+    (element) => window.getComputedStyle(element).opacity,
+  );
+  expect(Number(opacity)).toBeGreaterThan(0);
 
-	const rejectButton = page
-		.locator(".console-op-button", { hasText: "Reject" })
-		.first();
-	await expect(rejectButton).toBeDisabled();
+  const rejectButton = page
+    .locator('.console-op-button', { hasText: 'Reject' })
+    .first();
+  await expect(rejectButton).toBeDisabled();
 
-	await commentButton.click();
-	await page
-		.locator(".console-diff-composer-input")
-		.fill("Please verify this opacity change on touch devices.");
-	await page.locator(".console-diff-composer-submit").click();
+  await commentButton.click();
+  await page
+    .locator('.console-diff-composer-input')
+    .fill('Please verify this opacity change on touch devices.');
+  await page.locator('.console-diff-composer-submit').click();
 
-	await expect(page.locator(".console-diff-composer-posted")).toHaveText(
-		"Comment saved.",
-	);
+  await expect(page.locator('.console-diff-composer-posted')).toHaveText(
+    'Comment saved.',
+  );
 
-	expect(harness.reviewCommentCalls).toHaveLength(0);
+  expect(harness.reviewCommentCalls).toHaveLength(0);
 
-	await expect(rejectButton).toBeEnabled();
-	await rejectButton.click();
+  await expect(rejectButton).toBeEnabled();
+  await rejectButton.click();
 
-	await expect
-		.poll(() => harness.requestChangesCalls.length, { timeout: 10000 })
-		.toBe(1);
-	expect(harness.requestChangesCalls[0].url).toBe(
-		"https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/912",
-	);
-	expect(harness.requestChangesCalls[0].body).toContain(
-		"Please verify this opacity change on touch devices.",
-	);
-	expect(harness.requestChangesCalls[0].body.length).toBeGreaterThan(0);
+  await expect
+    .poll(() => harness.requestChangesCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.requestChangesCalls[0].url).toBe(
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/pull/912',
+  );
+  expect(harness.requestChangesCalls[0].body).toContain(
+    'Please verify this opacity change on touch devices.',
+  );
+  expect(harness.requestChangesCalls[0].body.length).toBeGreaterThan(0);
 
-	await touchContext.close();
+  await touchContext.close();
 });
 
-test("lists a still-open item and keeps its tab visible when the browser overlay marked it done before the served snapshot was generated", async ({
-	page,
+test('lists a still-open item and keeps its tab visible when the browser overlay marked it done before the served snapshot was generated', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await expect(tabByLabel(page, "Todo by human")).toBeVisible();
+  await expect(tabByLabel(page, 'Todo by human')).toBeVisible();
 
-	await page.evaluate(() => {
-		localStorage.setItem(
-			"pv_overlay_acme",
-			JSON.stringify({
-				PVTI_lADOABCD1234zgTODO00869: {
-					done: true,
-					ts: Date.parse("2026-06-18T00:30:00.000Z"),
-					mode: "todo-by-human",
-				},
-			}),
-		);
-	});
-	await page.reload();
-	await page.locator(".console-tabbar").screenshot({
-		path: "/tmp/console-tabbar-after-regeneration.png",
-	});
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'pv_overlay_acme',
+      JSON.stringify({
+        PVTI_lADOABCD1234zgTODO00869: {
+          done: true,
+          ts: Date.parse('2026-06-18T00:30:00.000Z'),
+          mode: 'todo-by-human',
+        },
+      }),
+    );
+  });
+  await page.reload();
+  await page.locator('.console-tabbar').screenshot({
+    path: '/tmp/console-tabbar-after-regeneration.png',
+  });
 
-	await expect(tabByLabel(page, "Todo by human")).toBeVisible();
-	await expect(tabBadge(page, "Todo by human")).toHaveText("1");
+  await expect(tabByLabel(page, 'Todo by human')).toBeVisible();
+  await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
-	await tabByLabel(page, "Todo by human").click();
-	await expect(
-		itemRowByText(
-			page,
-			"Auto-advance to the next non-empty console tab when one empties",
-		),
-	).toBeVisible();
+  await tabByLabel(page, 'Todo by human').click();
+  await expect(
+    itemRowByText(
+      page,
+      'Auto-advance to the next non-empty console tab when one empties',
+    ),
+  ).toBeVisible();
 });
 
-test("opens the comment input with the item detail, keeps it on screen while the item body scrolls, and gives the height back when it is closed", async ({
-	page,
+test('opens the comment input with the item detail, keeps it on screen while the item body scrolls, and gives the height back when it is closed', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Workflow Blocker").click();
-	await itemRowByText(
-		page,
-		"Resolve the shared GitHub token rate-limit exhaustion blocker",
-	).click();
+  await tabByLabel(page, 'Workflow Blocker').click();
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
 
-	const composerToggle = page.locator(".console-composer-toggle");
-	await expect(composerToggle).toBeInViewport();
-	await expect(page.locator(".console-composer-input")).toBeInViewport();
+  const composerToggle = page.locator('.console-composer-toggle');
+  await expect(composerToggle).toBeInViewport();
+  await expect(page.locator('.console-composer-input')).toBeInViewport();
 
-	const dockBox = await page.locator(".console-detail-dock").boundingBox();
-	const toggleBox = await composerToggle.boundingBox();
-	if (dockBox === null || toggleBox === null) {
-		throw new Error("the dock and its comment control must both be laid out");
-	}
-	expect(toggleBox.x).toBeGreaterThan(dockBox.x + dockBox.width / 2);
-	expect(
-		dockBox.x + dockBox.width - (toggleBox.x + toggleBox.width),
-	).toBeLessThan(32);
+  const dockBox = await page.locator('.console-detail-dock').boundingBox();
+  const toggleBox = await composerToggle.boundingBox();
+  if (dockBox === null || toggleBox === null) {
+    throw new Error('the dock and its comment control must both be laid out');
+  }
+  expect(toggleBox.x).toBeGreaterThan(dockBox.x + dockBox.width / 2);
+  expect(
+    dockBox.x + dockBox.width - (toggleBox.x + toggleBox.width),
+  ).toBeLessThan(32);
 
-	await composerToggle.click();
-	await expect(page.locator(".console-composer-input")).toHaveCount(0);
-	await expect(composerToggle).toBeInViewport();
+  await composerToggle.click();
+  await expect(page.locator('.console-composer-input')).toHaveCount(0);
+  await expect(composerToggle).toBeInViewport();
 
-	await composerToggle.click();
-	await expect(page.locator(".console-composer-input")).toBeInViewport();
+  await composerToggle.click();
+  await expect(page.locator('.console-composer-input')).toBeInViewport();
 
-	const dockHeightBeforePosting = (
-		await page.locator(".console-detail-dock").boundingBox()
-	)?.height;
-	await page
-		.locator(".console-composer-input")
-		.fill("The dock must not grow with every comment.");
-	await page.getByRole("button", { name: "Comment", exact: true }).click();
+  const dockHeightBeforePosting = (
+    await page.locator('.console-detail-dock').boundingBox()
+  )?.height;
+  await page
+    .locator('.console-composer-input')
+    .fill('The dock must not grow with every comment.');
+  await page.getByRole('button', { name: 'Comment', exact: true }).click();
 
-	const postedComment = page.locator(".console-comment", {
-		hasText: "The dock must not grow with every comment.",
-	});
-	await expect(postedComment).toHaveCount(1);
-	await expect(
-		page.locator(".console-detail-dock .console-comment"),
-	).toHaveCount(0);
-	await expect(page.locator(".console-comment-list")).toContainText(
-		"The dock must not grow with every comment.",
-	);
-	const dockHeightAfterPosting = (
-		await page.locator(".console-detail-dock").boundingBox()
-	)?.height;
-	expect(dockHeightAfterPosting).toBe(dockHeightBeforePosting);
+  const postedComment = page.locator('.console-comment', {
+    hasText: 'The dock must not grow with every comment.',
+  });
+  await expect(postedComment).toHaveCount(1);
+  await expect(
+    page.locator('.console-detail-dock .console-comment'),
+  ).toHaveCount(0);
+  await expect(page.locator('.console-comment-list')).toContainText(
+    'The dock must not grow with every comment.',
+  );
+  const dockHeightAfterPosting = (
+    await page.locator('.console-detail-dock').boundingBox()
+  )?.height;
+  expect(dockHeightAfterPosting).toBe(dockHeightBeforePosting);
 });
 
-test("renders the stories tab with non-gray stories, their open item counts, and an add-task button", async ({
-	page,
+test('renders the stories tab with non-gray stories, their open item counts, and an add-task button', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Stories").click();
-	await expect(activeTabLabel(page)).toHaveText("Stories");
+  await tabByLabel(page, 'Stories').click();
+  await expect(activeTabLabel(page)).toHaveText('Stories');
 
-	const tdpmRow = page.locator(".console-story-list-row", {
-		hasText: "TDPM Console port",
-	});
-	await expect(tdpmRow.locator(".console-story-count")).toHaveText("4");
-	await expect(
-		tdpmRow.locator(".console-op-button", { hasText: "Add task" }),
-	).toBeVisible();
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow.locator('.console-story-count')).toHaveText('4');
+  await expect(
+    tdpmRow.locator('.console-op-button', { hasText: 'Add task' }),
+  ).toBeVisible();
 
-	const tdpmLink = tdpmRow.locator("a.console-storytag");
-	await expect(tdpmLink).toBeVisible();
-	await expect(tdpmLink).toHaveAttribute(
-		"href",
-		"https://github.com/orgs/HiromiShikata/projects/6/views/1?sliceBy%5Bvalue%5D=TDPM%20Console%20port",
-	);
+  const tdpmLink = tdpmRow.locator('a.console-storytag');
+  await expect(tdpmLink).toBeVisible();
+  await expect(tdpmLink).toHaveAttribute(
+    'href',
+    'https://github.com/orgs/HiromiShikata/projects/6/views/1?sliceBy%5Bvalue%5D=TDPM%20Console%20port',
+  );
 
-	const publishRow = page.locator(".console-story-list-row", {
-		hasText: "Publish product documentation site",
-	});
-	await expect(publishRow.locator(".console-story-count")).toHaveText("1");
-	await expect(publishRow.locator("a.console-storytag")).toHaveCount(0);
-	await expect(publishRow.locator("span.console-storytag")).toBeVisible();
+  const publishRow = page.locator('.console-story-list-row', {
+    hasText: 'Publish product documentation site',
+  });
+  await expect(publishRow.locator('.console-story-count')).toHaveText('1');
+  await expect(publishRow.locator('a.console-storytag')).toHaveCount(0);
+  await expect(publishRow.locator('span.console-storytag')).toBeVisible();
 
-	await expect(
-		page.locator(".console-story-list-row", {
-			hasText: "regular / workflow improvement",
-		}),
-	).toHaveCount(0);
+  await expect(
+    page.locator('.console-story-list-row', {
+      hasText: 'regular / workflow improvement',
+    }),
+  ).toHaveCount(0);
 });
 
-test("shows and hides gray stories with the Show archived toggle button on the stories tab", async ({
-	page,
+test('shows and hides gray stories with the Show archived toggle button on the stories tab', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Stories").click();
-	await expect(activeTabLabel(page)).toHaveText("Stories");
+  await tabByLabel(page, 'Stories').click();
+  await expect(activeTabLabel(page)).toHaveText('Stories');
 
-	await expect(
-		page.locator(".console-op-button", { hasText: "Show archived" }),
-	).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: 'Show archived' }),
+  ).toBeVisible();
 
-	await expect(
-		page.locator(".console-story-list-row", {
-			hasText: "regular / workflow improvement",
-		}),
-	).toHaveCount(0);
+  await expect(
+    page.locator('.console-story-list-row', {
+      hasText: 'regular / workflow improvement',
+    }),
+  ).toHaveCount(0);
 
-	await page
-		.locator(".console-op-button", { hasText: "Show archived" })
-		.click();
+  await page
+    .locator('.console-op-button', { hasText: 'Show archived' })
+    .click();
 
-	await expect(
-		page.locator(".console-story-list-row", {
-			hasText: "regular / workflow improvement",
-		}),
-	).toBeVisible();
-	await expect(
-		page.locator(".console-op-button", { hasText: "Hide archived" }),
-	).toBeVisible();
+  await expect(
+    page.locator('.console-story-list-row', {
+      hasText: 'regular / workflow improvement',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.locator('.console-op-button', { hasText: 'Hide archived' }),
+  ).toBeVisible();
 
-	await page
-		.locator(".console-op-button", { hasText: "Hide archived" })
-		.click();
+  await page
+    .locator('.console-op-button', { hasText: 'Hide archived' })
+    .click();
 
-	await expect(
-		page.locator(".console-story-list-row", {
-			hasText: "regular / workflow improvement",
-		}),
-	).toHaveCount(0);
-	await expect(
-		page.locator(".console-op-button", { hasText: "Show archived" }),
-	).toBeVisible();
+  await expect(
+    page.locator('.console-story-list-row', {
+      hasText: 'regular / workflow improvement',
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('.console-op-button', { hasText: 'Show archived' }),
+  ).toBeVisible();
 });
 
-test("shows the agent label and value in the list row and the agent chip in the detail view", async ({
-	page,
+test('shows the agent label and value in the list row and the agent chip in the detail view', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Todo by agent").click();
+  await tabByLabel(page, 'Todo by agent').click();
 
-	const agentItemRow = itemRowByText(
-		page,
-		"Route console items into the Todo by agent manual triage bucket",
-	);
-	await expect(
-		agentItemRow.locator(".console-item-field-label", { hasText: "Agent" }),
-	).toBeVisible();
-	await expect(
-		agentItemRow.locator(".console-item-field", { hasText: "developer" }),
-	).toBeVisible();
+  const agentItemRow = itemRowByText(
+    page,
+    'Route console items into the Todo by agent manual triage bucket',
+  );
+  await expect(
+    agentItemRow.locator('.console-item-field-label', { hasText: 'Agent' }),
+  ).toBeVisible();
+  await expect(
+    agentItemRow.locator('.console-item-field', { hasText: 'developer' }),
+  ).toBeVisible();
 
-	await agentItemRow.click();
+  await agentItemRow.click();
 
-	await expect(page.locator(".console-detail-agent-chip")).toBeVisible();
-	await expect(page.locator(".console-detail-agent-chip")).toHaveText(
-		"developer",
-	);
+  await expect(page.locator('.console-detail-agent-chip')).toBeVisible();
+  await expect(page.locator('.console-detail-agent-chip')).toHaveText(
+    'developer',
+  );
 });
 
-test("creates an issue for a story when the add-task button and form are used", async ({
-	page,
+test('creates an issue for a story when the add-task button and form are used', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Stories").click();
+  await tabByLabel(page, 'Stories').click();
 
-	const tdpmRow = page.locator(".console-story-list-row", {
-		hasText: "TDPM Console port",
-	});
-	await tdpmRow.locator(".console-op-button", { hasText: "Add task" }).click();
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await tdpmRow.locator('.console-op-button', { hasText: 'Add task' }).click();
 
-	await page
-		.locator(".console-inline-input-form-input")
-		.fill("New task for TDPM Console port");
-	await page
-		.locator(".console-inline-input-form .console-op-button", {
-			hasText: "Create",
-		})
-		.click();
+  await page
+    .locator('.console-inline-input-form-input')
+    .fill('New task for TDPM Console port');
+  await page
+    .locator('.console-inline-input-form .console-op-button', {
+      hasText: 'Create',
+    })
+    .click();
 
-	await expect
-		.poll(() => harness.createIssueCalls.length, { timeout: 10000 })
-		.toBe(1);
-	expect(harness.createIssueCalls[0].title).toBe(
-		"New task for TDPM Console port",
-	);
-	expect(harness.createIssueCalls[0].org).toBe("HiromiShikata");
-	expect(harness.createIssueCalls[0].repo).toBe(
-		"npm-cli-github-issue-tower-defence-management",
-	);
-	expect(harness.createIssueCalls[0].assignees).toContain("test-user");
+  await expect
+    .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.createIssueCalls[0].title).toBe(
+    'New task for TDPM Console port',
+  );
+  expect(harness.createIssueCalls[0].org).toBe('HiromiShikata');
+  expect(harness.createIssueCalls[0].repo).toBe(
+    'npm-cli-github-issue-tower-defence-management',
+  );
+  expect(harness.createIssueCalls[0].assignees).toContain('test-user');
 });
 
-test("opens a fullscreen-overlay modal when the console header new-task button is clicked", async ({
-	page,
+test('opens a fullscreen-overlay modal when the console header new-task button is clicked', async ({
+  page,
 }) => {
-	await page.goto(harness.appUrl);
+  await page.goto(harness.appUrl);
 
-	const initialCreateCount = harness.createIssueCalls.length;
+  const initialCreateCount = harness.createIssueCalls.length;
 
-	const newTaskButton = page.locator(".console-task-create-button");
-	await expect(newTaskButton).toBeVisible();
-	await newTaskButton.click();
+  const newTaskButton = page.locator('.console-task-create-button');
+  await expect(newTaskButton).toBeVisible();
+  await newTaskButton.click();
 
-	const overlayPosition = await page.evaluate(() => {
-		const el = document.querySelector(".console-task-create-dialog-overlay");
-		if (el === null) return null;
-		return window.getComputedStyle(el).position;
-	});
-	expect(overlayPosition).toBe("fixed");
+  const overlayPosition = await page.evaluate(() => {
+    const el = document.querySelector('.console-task-create-dialog-overlay');
+    if (el === null) return null;
+    return window.getComputedStyle(el).position;
+  });
+  expect(overlayPosition).toBe('fixed');
 
-	await page
-		.getByRole("textbox", { name: /title/i })
-		.fill("My console header task");
+  await page
+    .getByRole('textbox', { name: /title/i })
+    .fill('My console header task');
 
-	const bodyTextarea = page.getByRole("textbox", { name: /body/i });
-	await expect(bodyTextarea).toBeVisible();
-	await bodyTextarea.fill("E2E body description");
+  const bodyTextarea = page.getByRole('textbox', { name: /body/i });
+  await expect(bodyTextarea).toBeVisible();
+  await bodyTextarea.fill('E2E body description');
 
-	await page.getByRole("button", { name: /^create$/i }).click();
+  await page.getByRole('button', { name: /^create$/i }).click();
 
-	await expect
-		.poll(() => harness.createIssueCalls.length, { timeout: 10000 })
-		.toBe(initialCreateCount + 1);
-	expect(harness.createIssueCalls.at(-1)?.title).toBe("My console header task");
-	expect(harness.createIssueCalls.at(-1)?.body).toBe("E2E body description");
+  await expect
+    .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
+    .toBe(initialCreateCount + 1);
+  expect(harness.createIssueCalls.at(-1)?.title).toBe('My console header task');
+  expect(harness.createIssueCalls.at(-1)?.body).toBe('E2E body description');
 });
 
-test("restores draft title when the create-task dialog is cancelled and reopened", async ({
-	page,
+test('restores draft title when the create-task dialog is cancelled and reopened', async ({
+  page,
 }) => {
-	await page.goto(harness.appUrl);
+  await page.goto(harness.appUrl);
 
-	const newTaskButton = page.locator(".console-task-create-button");
-	await expect(newTaskButton).toBeVisible();
-	await newTaskButton.click();
+  const newTaskButton = page.locator('.console-task-create-button');
+  await expect(newTaskButton).toBeVisible();
+  await newTaskButton.click();
 
-	await page
-		.getByRole("textbox", { name: /title/i })
-		.fill("Draft title to restore");
+  await page
+    .getByRole('textbox', { name: /title/i })
+    .fill('Draft title to restore');
 
-	await page.getByRole("button", { name: /^cancel$/i }).click();
-	await expect(
-		page.getByRole("dialog", { name: /create new task/i }),
-	).toHaveCount(0);
+  await page.getByRole('button', { name: /^cancel$/i }).click();
+  await expect(
+    page.getByRole('dialog', { name: /create new task/i }),
+  ).toHaveCount(0);
 
-	await newTaskButton.click();
+  await newTaskButton.click();
 
-	await expect(page.getByRole("textbox", { name: /title/i })).toHaveValue(
-		"Draft title to restore",
-	);
+  await expect(page.getByRole('textbox', { name: /title/i })).toHaveValue(
+    'Draft title to restore',
+  );
 });
 
-test("creates a new story when the add-story button and form are used", async ({
-	page,
+test('creates a new story when the add-story button and form are used', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Stories").click();
+  await tabByLabel(page, 'Stories').click();
 
-	await page
-		.locator(".console-add-story-section .console-op-button", {
-			hasText: "Add story",
-		})
-		.click();
+  await page
+    .locator('.console-add-story-section .console-op-button', {
+      hasText: 'Add story',
+    })
+    .click();
 
-	await page
-		.locator(".console-add-story-section .console-inline-input-form-input")
-		.fill("My new story");
-	await page
-		.locator(
-			".console-add-story-section .console-inline-input-form .console-op-button",
-			{
-				hasText: "Create",
-			},
-		)
-		.click();
+  await page
+    .locator('.console-add-story-section .console-inline-input-form-input')
+    .fill('My new story');
+  await page
+    .locator(
+      '.console-add-story-section .console-inline-input-form .console-op-button',
+      {
+        hasText: 'Create',
+      },
+    )
+    .click();
 
-	await expect
-		.poll(() => harness.addStoryCalls.length, { timeout: 10000 })
-		.toBe(1);
-	expect(harness.addStoryCalls[0].storyName).toBe("My new story");
+  await expect
+    .poll(() => harness.addStoryCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.addStoryCalls[0].storyName).toBe('My new story');
 
-	await expect(
-		page.locator(".console-add-story-section .console-inline-input-form"),
-	).toHaveCount(0);
+  await expect(
+    page.locator('.console-add-story-section .console-inline-input-form'),
+  ).toHaveCount(0);
 });
 
-test("changes the color of a story row via the color palette in the stories tab", async ({
-	page,
+test('changes the color of a story row via the color palette in the stories tab', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Stories").click();
+  await tabByLabel(page, 'Stories').click();
 
-	const tdpmRow = page.locator(".console-story-list-row", {
-		hasText: "TDPM Console port",
-	});
-	await expect(tdpmRow).toBeVisible();
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow).toBeVisible();
 
-	const changeColorButton = tdpmRow.locator(".console-op-button", {
-		hasText: "Change color",
-	});
-	await expect(changeColorButton).toBeVisible();
+  const changeColorButton = tdpmRow.locator('.console-op-button', {
+    hasText: 'Change color',
+  });
+  await expect(changeColorButton).toBeVisible();
 
-	await changeColorButton.click();
+  await changeColorButton.click();
 
-	const palette = tdpmRow.locator(".console-story-color-palette");
-	await expect(palette).toBeVisible();
+  const palette = tdpmRow.locator('.console-story-color-palette');
+  await expect(palette).toBeVisible();
 
-	const swatches = palette.locator(".console-story-color-swatch");
-	await expect(swatches).toHaveCount(8);
+  const swatches = palette.locator('.console-story-color-swatch');
+  await expect(swatches).toHaveCount(8);
 
-	const graySwatch = swatches.filter({ hasText: "disable" });
-	await expect(graySwatch).toHaveCount(1);
+  const graySwatch = swatches.filter({ hasText: 'disable' });
+  await expect(graySwatch).toHaveCount(1);
 
-	const greenSwatch = palette.locator('[aria-label="GREEN"]');
-	await greenSwatch.click();
+  const greenSwatch = palette.locator('[aria-label="GREEN"]');
+  await greenSwatch.click();
 
-	await expect
-		.poll(() => harness.storyColorCalls.length, { timeout: 10000 })
-		.toBe(1);
-	expect(harness.storyColorCalls[0].storyOptionId).toBe("1491051e");
-	expect(harness.storyColorCalls[0].newColor).toBe("GREEN");
+  await expect
+    .poll(() => harness.storyColorCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.storyColorCalls[0].storyOptionId).toBe('1491051e');
+  expect(harness.storyColorCalls[0].newColor).toBe('GREEN');
 
-	await expect(palette).toHaveCount(0);
+  await expect(palette).toHaveCount(0);
 });
 
-test("shows queued items grouped by story with colored status badges and navigates to detail on row click", async ({
-	page,
+test('shows queued items grouped by story with colored status badges and navigates to detail on row click', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Queued").click();
-	await expect(activeTabLabel(page)).toHaveText("Queued");
-	await expect(tabBadge(page, "Queued")).toHaveText("2");
+  await tabByLabel(page, 'Queued').click();
+  await expect(activeTabLabel(page)).toHaveText('Queued');
+  await expect(tabBadge(page, 'Queued')).toHaveText('2');
 
-	const awaitingRow = itemRowByText(
-		page,
-		"Add telemetry to the TDPM cost dashboard",
-	);
-	const prepRow = itemRowByText(
-		page,
-		"Migrate the rate-limit store to a shared Redis backend",
-	);
-	await expect(awaitingRow).toBeVisible();
-	await expect(prepRow).toBeVisible();
+  const awaitingRow = itemRowByText(
+    page,
+    'Add telemetry to the TDPM cost dashboard',
+  );
+  const prepRow = itemRowByText(
+    page,
+    'Migrate the rate-limit store to a shared Redis backend',
+  );
+  await expect(awaitingRow).toBeVisible();
+  await expect(prepRow).toBeVisible();
 
-	const awaitingStatusBadge = awaitingRow
-		.locator(".console-queued-item-badge")
-		.first();
-	await expect(awaitingStatusBadge).toHaveText("Awaiting Workspace");
-	const awaitingStyle = await awaitingStatusBadge.getAttribute("style");
-	expect(awaitingStyle).toContain("rgba(56, 139, 253");
+  const awaitingStatusBadge = awaitingRow
+    .locator('.console-queued-item-badge')
+    .first();
+  await expect(awaitingStatusBadge).toHaveText('Awaiting Workspace');
+  const awaitingStyle = await awaitingStatusBadge.getAttribute('style');
+  expect(awaitingStyle).toContain('rgba(56, 139, 253');
 
-	const prepStatusBadge = prepRow.locator(".console-queued-item-badge").first();
-	await expect(prepStatusBadge).toHaveText("Preparation");
-	const prepStyle = await prepStatusBadge.getAttribute("style");
-	expect(prepStyle).toContain("rgba(187, 128, 9");
+  const prepStatusBadge = prepRow.locator('.console-queued-item-badge').first();
+  await expect(prepStatusBadge).toHaveText('Preparation');
+  const prepStyle = await prepStatusBadge.getAttribute('style');
+  expect(prepStyle).toContain('rgba(187, 128, 9');
 
-	const prepAgentBadge = prepRow.locator(".console-queued-item-badge").nth(1);
-	await expect(prepAgentBadge).toHaveText("developer");
+  const prepAgentBadge = prepRow.locator('.console-queued-item-badge').nth(1);
+  await expect(prepAgentBadge).toHaveText('developer');
 
-	await awaitingRow.click();
-	await expect(page).toHaveURL(/PVTI_lADOABCD1234zgQUE00930/, {
-		timeout: 3000,
-	});
+  await awaitingRow.click();
+  await expect(page).toHaveURL(/PVTI_lADOABCD1234zgQUE00930/, {
+    timeout: 3000,
+  });
 });
 
-test("moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaiting Workspace button without opening the detail view", async ({
-	page,
+test('moves a prs-tab item to Awaiting Workspace via the list-level ok & Awaiting Workspace button without opening the detail view', async ({
+  page,
 }) => {
-	await page.goto(harness.appUrl);
+  await page.goto(harness.appUrl);
 
-	await expect(activeTabLabel(page)).toHaveText("Awaiting Owner");
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
 
-	const listLevelButton = page
-		.locator(".console-list .console-op-button", {
-			hasText: "ok & Awaiting Workspace",
-		})
-		.first();
-	await expect(listLevelButton).toBeVisible();
+  const listLevelButton = page
+    .locator('.console-list .console-op-button', {
+      hasText: 'ok & Awaiting Workspace',
+    })
+    .first();
+  await expect(listLevelButton).toBeVisible();
 
-	await expect(page.locator(".console-detail")).toHaveCount(0);
+  await expect(page.locator('.console-detail')).toHaveCount(0);
 
-	await listLevelButton.click();
+  await listLevelButton.click();
 
-	await expect
-		.poll(
-			() =>
-				harness.commentCalls.some(
-					(c) => c.url === CONSOLE_E2E_AWAITING_OWNER_PR_URL && c.body === "ok",
-				),
-			{ timeout: 10000 },
-		)
-		.toBe(true);
+  await expect
+    .poll(
+      () =>
+        harness.commentCalls.some(
+          (c) => c.url === CONSOLE_E2E_AWAITING_OWNER_PR_URL && c.body === 'ok',
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
 });
 
-test("removes the list item immediately when ok & Awaiting Workspace is clicked from the list", async ({
-	page,
+test('removes the list item immediately when ok & Awaiting Workspace is clicked from the list', async ({
+  page,
 }) => {
-	await page.goto(harness.appUrl);
+  await page.goto(harness.appUrl);
 
-	const listButtons = page.locator(".console-list .console-op-button", {
-		hasText: "ok & Awaiting Workspace",
-	});
-	await expect(listButtons).toHaveCount(2);
+  const listButtons = page.locator('.console-list .console-op-button', {
+    hasText: 'ok & Awaiting Workspace',
+  });
+  await expect(listButtons).toHaveCount(2);
 
-	await listButtons.first().click();
+  await listButtons.first().click();
 
-	await expect(listButtons).toHaveCount(1);
+  await expect(listButtons).toHaveCount(1);
 });
 
-test("posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked", async ({
-	page,
+test('posts a comment and moves the item to Awaiting Workspace when the Comment & Awaiting Workspace button is clicked', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Workflow Blocker").click();
-	await itemRowByText(
-		page,
-		"Resolve the shared GitHub token rate-limit exhaustion blocker",
-	).click();
+  await tabByLabel(page, 'Workflow Blocker').click();
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
 
-	await expect(page.locator(".console-composer-input")).toBeInViewport();
-	await page
-		.locator(".console-composer-input")
-		.fill("handing off to awaiting workspace");
+  await expect(page.locator('.console-composer-input')).toBeInViewport();
+  await page
+    .locator('.console-composer-input')
+    .fill('handing off to awaiting workspace');
 
-	await page
-		.getByRole("button", { name: "Comment & Awaiting Workspace", exact: true })
-		.click();
+  await page
+    .getByRole('button', { name: 'Comment & Awaiting Workspace', exact: true })
+    .click();
 
-	await expect
-		.poll(
-			() =>
-				harness.commentCalls.some(
-					(c) => c.body === "handing off to awaiting workspace",
-				),
-			{ timeout: 10000 },
-		)
-		.toBe(true);
+  await expect
+    .poll(
+      () =>
+        harness.commentCalls.some(
+          (c) => c.body === 'handing off to awaiting workspace',
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
 
-	await expect(tabByLabel(page, "Workflow Blocker")).toHaveCount(0, {
-		timeout: 8000,
-	});
+  await expect(tabByLabel(page, 'Workflow Blocker')).toHaveCount(0, {
+    timeout: 8000,
+  });
 });
 
-test("posts an ok comment and moves the item to Awaiting Workspace when the ok & Awaiting Workspace button is clicked", async ({
-	page,
+test('posts an ok comment and moves the item to Awaiting Workspace when the ok & Awaiting Workspace button is clicked', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Workflow Blocker").click();
-	await itemRowByText(
-		page,
-		"Resolve the shared GitHub token rate-limit exhaustion blocker",
-	).click();
+  await tabByLabel(page, 'Workflow Blocker').click();
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
 
-	await expect(page.locator(".console-composer-input")).toBeInViewport();
+  await expect(page.locator('.console-composer-input')).toBeInViewport();
 
-	await page
-		.getByRole("button", { name: "ok & Awaiting Workspace", exact: true })
-		.click();
+  await page
+    .getByRole('button', { name: 'ok & Awaiting Workspace', exact: true })
+    .click();
 
-	await expect
-		.poll(
-			() =>
-				harness.commentCalls.some(
-					(c) =>
-						c.url ===
-							"https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720" &&
-						c.body === "ok",
-				),
-			{ timeout: 10000 },
-		)
-		.toBe(true);
+  await expect
+    .poll(
+      () =>
+        harness.commentCalls.some(
+          (c) =>
+            c.url ===
+              'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720' &&
+            c.body === 'ok',
+        ),
+      { timeout: 10000 },
+    )
+    .toBe(true);
 
-	await expect(tabByLabel(page, "Workflow Blocker")).toHaveCount(0, {
-		timeout: 8000,
-	});
+  await expect(tabByLabel(page, 'Workflow Blocker')).toHaveCount(0, {
+    timeout: 8000,
+  });
 });
 
-test("project switcher appears at the left end of the tab bar and opens a dropdown on click", async ({
-	page,
+test('project switcher appears at the left end of the tab bar and opens a dropdown on click', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	const nav = page.locator("nav.console-tabbar");
-	const topRow = nav.locator(".console-tabbar-top");
-	await expect(topRow).toBeVisible();
+  const nav = page.locator('nav.console-tabbar');
+  const topRow = nav.locator('.console-tabbar-top');
+  await expect(topRow).toBeVisible();
 
-	const pjnameDiv = topRow.locator(".console-tab-pjname");
-	await expect(pjnameDiv).toBeVisible();
+  const pjnameDiv = topRow.locator('.console-tab-pjname');
+  await expect(pjnameDiv).toBeVisible();
 
-	const firstTopChild = topRow.locator(":scope > *").first();
-	await expect(firstTopChild).toHaveClass(/console-tab-pjname/);
+  const firstTopChild = topRow.locator(':scope > *').first();
+  await expect(firstTopChild).toHaveClass(/console-tab-pjname/);
 
-	await expect(page.locator(".console-tab-pjname-dropdown")).toHaveCount(0);
+  await expect(page.locator('.console-tab-pjname-dropdown')).toHaveCount(0);
 
-	await pjnameDiv.locator("button").click();
+  await pjnameDiv.locator('button').click();
 
-	await expect(page.locator(".console-tab-pjname-dropdown")).toBeVisible();
+  await expect(page.locator('.console-tab-pjname-dropdown')).toBeVisible();
 });
 
-test("project switcher dropdown options have adequate touch target height of at least 40px", async ({
-	page,
+test('project switcher dropdown options have adequate touch target height of at least 40px', async ({
+  page,
 }) => {
-	await page.route("**/api/projects", async (route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify({
-				pjcodes: ["acme", "beta", "gamma"],
-				projectUrls: null,
-				workflowImprovementIssueUrl: null,
-				fleetTaskCreateUrl: null,
-			}),
-		});
-	});
+  await page.route('**/api/projects', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        pjcodes: ['acme', 'beta', 'gamma'],
+        projectUrls: null,
+        workflowImprovementIssueUrl: null,
+        fleetTaskCreateUrl: null,
+      }),
+    });
+  });
 
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	const pjnameDiv = page.locator(".console-tab-pjname");
-	await pjnameDiv.locator("button").click();
+  const pjnameDiv = page.locator('.console-tab-pjname');
+  await pjnameDiv.locator('button').click();
 
-	const dropdown = page.locator(".console-tab-pjname-dropdown");
-	await expect(dropdown).toBeVisible();
+  const dropdown = page.locator('.console-tab-pjname-dropdown');
+  await expect(dropdown).toBeVisible();
 
-	const firstOption = page.locator(".console-tab-pjname-option").first();
-	await expect(firstOption).toBeVisible();
+  const firstOption = page.locator('.console-tab-pjname-option').first();
+  await expect(firstOption).toBeVisible();
 
-	const box = await firstOption.boundingBox();
-	if (box === null) {
-		throw new Error(".console-tab-pjname-option must be laid out");
-	}
-	expect(box.height).toBeGreaterThanOrEqual(40);
+  const box = await firstOption.boundingBox();
+  if (box === null) {
+    throw new Error('.console-tab-pjname-option must be laid out');
+  }
+  expect(box.height).toBeGreaterThanOrEqual(40);
 });
 
-test("deletes all comments when the dangerous actions panel is opened and the delete button is clicked", async ({
-	page,
+test('deletes all comments when the dangerous actions panel is opened and the delete button is clicked', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Workflow Blocker").click();
-	await itemRowByText(
-		page,
-		"Resolve the shared GitHub token rate-limit exhaustion blocker",
-	).click();
+  await tabByLabel(page, 'Workflow Blocker').click();
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
 
-	const dangerToggle = page.locator(".console-op-button", { hasText: "⚠" });
-	await expect(dangerToggle).toBeVisible();
+  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
+  await expect(dangerToggle).toBeVisible();
 
-	await dangerToggle.click();
+  await dangerToggle.click();
 
-	const deleteButton = page.locator(".console-op-button", {
-		hasText: "Delete All Comments",
-	});
-	await expect(deleteButton).toBeVisible();
+  const deleteButton = page.locator('.console-op-button', {
+    hasText: 'Delete All Comments',
+  });
+  await expect(deleteButton).toBeVisible();
 
-	await deleteButton.click();
+  await deleteButton.click();
 
-	await expect(deleteButton).toHaveCount(0);
+  await expect(deleteButton).toHaveCount(0);
 
-	await expect
-		.poll(() => harness.deleteAllCommentsCalls.length, { timeout: 10000 })
-		.toBe(1);
+  await expect
+    .poll(() => harness.deleteAllCommentsCalls.length, { timeout: 10000 })
+    .toBe(1);
 
-	expect(harness.deleteAllCommentsCalls[0].issueUrl).toContain("/issues/720");
+  expect(harness.deleteAllCommentsCalls[0].issueUrl).toContain('/issues/720');
 });
 
-test("shows the workflow improvement link when workflowImprovementIssueUrl is configured", async ({
-	browser,
+test('shows the workflow improvement link when workflowImprovementIssueUrl is configured', async ({
+  browser,
 }) => {
-	const workflowUrl =
-		"https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata";
-	const localHarness = await startConsoleE2eHarness({
-		workflowImprovementIssueUrl: workflowUrl,
-	});
-	const ctx = await browser.newContext();
-	const page = await ctx.newPage();
-	try {
-		await page.goto(localHarness.appRootUrl);
-		const link = page.locator(".console-tab-workflow-improvement-link");
-		await expect(link).toBeVisible();
-		await expect(link).toHaveAttribute("href", workflowUrl);
-		await expect(link).toHaveAttribute("target", "_blank");
-		await expect(link).toHaveAttribute("rel", "noreferrer");
-	} finally {
-		await ctx.close();
-		await localHarness.stop();
-	}
+  const workflowUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
+  const localHarness = await startConsoleE2eHarness({
+    workflowImprovementIssueUrl: workflowUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    const link = page.locator('.console-tab-workflow-improvement-link');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', workflowUrl);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noreferrer');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
-test("does not show the workflow improvement link when workflowImprovementIssueUrl is not configured", async ({
-	page,
+test('does not show the workflow improvement link when workflowImprovementIssueUrl is not configured', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
-	await expect(
-		page.locator(".console-tab-workflow-improvement-link"),
-	).toHaveCount(0);
+  await page.goto(harness.appRootUrl);
+  await expect(
+    page.locator('.console-tab-workflow-improvement-link'),
+  ).toHaveCount(0);
 });
 
-test("shows the fleet task create link when fleetTaskCreateUrl is configured", async ({
-	browser,
+test('shows the fleet task create link when fleetTaskCreateUrl is configured', async ({
+  browser,
 }) => {
-	const fleetUrl =
-		"https://github.com/HiromiShikata/umino-corporait-operation/issues/new";
-	const localHarness = await startConsoleE2eHarness({
-		fleetTaskCreateUrl: fleetUrl,
-	});
-	const ctx = await browser.newContext();
-	const page = await ctx.newPage();
-	try {
-		await page.goto(localHarness.appRootUrl);
-		const link = page.locator(".console-tab-fleet-task-create-link");
-		await expect(link).toBeVisible();
-		await expect(link).toHaveAttribute("href", fleetUrl);
-		await expect(link).toHaveAttribute("target", "_blank");
-		await expect(link).toHaveAttribute("rel", "noreferrer");
-	} finally {
-		await ctx.close();
-		await localHarness.stop();
-	}
+  const fleetUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new';
+  const localHarness = await startConsoleE2eHarness({
+    fleetTaskCreateUrl: fleetUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    const link = page.locator('.console-tab-fleet-task-create-link');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', fleetUrl);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noreferrer');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
-test("does not show the fleet task create link when fleetTaskCreateUrl is not configured", async ({
-	page,
+test('does not show the fleet task create link when fleetTaskCreateUrl is not configured', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
-	await expect(page.locator(".console-tab-fleet-task-create-link")).toHaveCount(
-		0,
-	);
+  await page.goto(harness.appRootUrl);
+  await expect(page.locator('.console-tab-fleet-task-create-link')).toHaveCount(
+    0,
+  );
 });
 
-test("shows the open-in-new-tab link in the Create New Task dialog when fleetTaskCreateUrl is configured", async ({
-	browser,
+test('shows the open-in-new-tab link in the Create New Task dialog when fleetTaskCreateUrl is configured', async ({
+  browser,
 }) => {
-	const fleetUrl =
-		"https://github.com/HiromiShikata/umino-corporait-operation/issues/new";
-	const localHarness = await startConsoleE2eHarness({
-		fleetTaskCreateUrl: fleetUrl,
-	});
-	const ctx = await browser.newContext();
-	const page = await ctx.newPage();
-	try {
-		await page.goto(localHarness.appUrl);
-		await page.locator(".console-task-create-button").click();
-		const link = page.locator(".console-task-create-dialog-open-link");
-		await expect(link).toBeVisible();
-		await expect(link).toHaveAttribute("href", fleetUrl);
-		await expect(link).toHaveAttribute("target", "_blank");
-		await expect(link).toHaveAttribute("rel", "noreferrer");
-	} finally {
-		await ctx.close();
-		await localHarness.stop();
-	}
+  const fleetUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new';
+  const localHarness = await startConsoleE2eHarness({
+    fleetTaskCreateUrl: fleetUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appUrl);
+    await page.locator('.console-task-create-button').click();
+    const link = page.locator('.console-task-create-dialog-open-link');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', fleetUrl);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noreferrer');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
-test("does not show the open-in-new-tab link in the Create New Task dialog when fleetTaskCreateUrl is not configured", async ({
-	page,
+test('does not show the open-in-new-tab link in the Create New Task dialog when fleetTaskCreateUrl is not configured', async ({
+  page,
 }) => {
-	await page.goto(harness.appUrl);
-	await page.locator(".console-task-create-button").click();
-	await expect(
-		page.locator(".console-task-create-dialog-open-link"),
-	).toHaveCount(0);
+  await page.goto(harness.appUrl);
+  await page.locator('.console-task-create-button').click();
+  await expect(
+    page.locator('.console-task-create-dialog-open-link'),
+  ).toHaveCount(0);
 });
 
-test("shows the task-level workflow incident report link in the detail subbar when workflowImprovementIssueUrl is configured", async ({
-	browser,
+test('shows the task-level workflow incident report link in the detail subbar when workflowImprovementIssueUrl is configured', async ({
+  browser,
 }) => {
-	const workflowUrl =
-		"https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata";
-	const localHarness = await startConsoleE2eHarness({
-		workflowImprovementIssueUrl: workflowUrl,
-	});
-	const ctx = await browser.newContext();
-	const page = await ctx.newPage();
-	try {
-		await page.goto(localHarness.appRootUrl);
-		await tabByLabel(page, "Workflow Blocker").click();
-		await itemRowByText(
-			page,
-			"Resolve the shared GitHub token rate-limit exhaustion blocker",
-		).click();
-		const link = page.locator(".console-detail-report-link");
-		await expect(link).toBeVisible();
-		const href = await link.getAttribute("href");
-		expect(href).toContain(workflowUrl);
-		expect(href).toContain("body=");
-	} finally {
-		await ctx.close();
-		await localHarness.stop();
-	}
+  const workflowUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
+  const localHarness = await startConsoleE2eHarness({
+    workflowImprovementIssueUrl: workflowUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    const link = page.locator('.console-detail-report-link');
+    await expect(link).toBeVisible();
+    const href = await link.getAttribute('href');
+    expect(href).toContain(workflowUrl);
+    expect(href).toContain('body=');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
-test("shows per-comment workflow incident report links when workflowImprovementIssueUrl is configured", async ({
-	browser,
+test('shows per-comment workflow incident report links when workflowImprovementIssueUrl is configured', async ({
+  browser,
 }) => {
-	const workflowUrl =
-		"https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata";
-	const localHarness = await startConsoleE2eHarness({
-		workflowImprovementIssueUrl: workflowUrl,
-	});
-	const ctx = await browser.newContext();
-	const page = await ctx.newPage();
-	try {
-		await page.goto(localHarness.appRootUrl);
-		await tabByLabel(page, "Workflow Blocker").click();
-		await itemRowByText(
-			page,
-			"Resolve the shared GitHub token rate-limit exhaustion blocker",
-		).click();
-		const link = page.locator(".console-comment-report-link").first();
-		await expect(link).toBeVisible({ timeout: 10000 });
-		const href = await link.getAttribute("href");
-		expect(href).toContain(workflowUrl);
-		expect(href).toContain(encodeURIComponent(CONSOLE_E2E_COMMENT_URL));
-	} finally {
-		await ctx.close();
-		await localHarness.stop();
-	}
+  const workflowUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
+  const localHarness = await startConsoleE2eHarness({
+    workflowImprovementIssueUrl: workflowUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    const link = page.locator('.console-comment-report-link').first();
+    await expect(link).toBeVisible({ timeout: 10000 });
+    const href = await link.getAttribute('href');
+    expect(href).toContain(workflowUrl);
+    expect(href).toContain(encodeURIComponent(CONSOLE_E2E_COMMENT_URL));
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
 });
 
-test("renames a story option in the GitHub custom field via the rename form", async ({
-	page,
+test('renames a story option in the GitHub custom field via the rename form', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Stories").click();
+  await tabByLabel(page, 'Stories').click();
 
-	const tdpmRow = page.locator(".console-story-list-row", {
-		hasText: "TDPM Console port",
-	});
-	await expect(tdpmRow).toBeVisible();
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow).toBeVisible();
 
-	await tdpmRow.getByRole("button", { name: "Rename story" }).click();
+  await tdpmRow.getByRole('button', { name: 'Rename story' }).click();
 
-	const input = page.locator(".console-inline-input-form-input");
-	await expect(input).toBeVisible();
-	await expect(input).toHaveValue("TDPM Console port");
+  const input = page.locator('.console-inline-input-form-input');
+  await expect(input).toBeVisible();
+  await expect(input).toHaveValue('TDPM Console port');
 
-	await input.fill("TDPM Console port v2");
-	await page
-		.locator(".console-inline-input-form .console-op-button", {
-			hasText: "Rename",
-		})
-		.click();
+  await input.fill('TDPM Console port v2');
+  await page
+    .locator('.console-inline-input-form .console-op-button', {
+      hasText: 'Rename',
+    })
+    .click();
 
-	await expect
-		.poll(() => harness.renameStoryCalls.length, { timeout: 10000 })
-		.toBe(1);
-	expect(harness.renameStoryCalls[0].storyOptionId).toBe("1491051e");
-	expect(harness.renameStoryCalls[0].newName).toBe("TDPM Console port v2");
+  await expect
+    .poll(() => harness.renameStoryCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.renameStoryCalls[0].storyOptionId).toBe('1491051e');
+  expect(harness.renameStoryCalls[0].newName).toBe('TDPM Console port v2');
 
-	await expect(tdpmRow.locator(".console-inline-input-form")).toHaveCount(0);
-	await expect(
-		page.locator(".console-story-list-row", {
-			hasText: "TDPM Console port v2",
-		}),
-	).toBeVisible();
+  await expect(tdpmRow.locator('.console-inline-input-form')).toHaveCount(0);
+  await expect(
+    page.locator('.console-story-list-row', {
+      hasText: 'TDPM Console port v2',
+    }),
+  ).toBeVisible();
 });
 
-test("deletes a story option from the GitHub custom field when confirmed via the dialog", async ({
-	page,
+test('deletes a story option from the GitHub custom field when confirmed via the dialog', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Stories").click();
+  await tabByLabel(page, 'Stories').click();
 
-	const tdpmRow = page.locator(".console-story-list-row", {
-		hasText: "TDPM Console port",
-	});
-	await expect(tdpmRow).toBeVisible();
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
+  await expect(tdpmRow).toBeVisible();
 
-	const deleteButton = tdpmRow.getByRole("button", { name: "Delete story" });
-	await expect(deleteButton).toBeVisible();
+  const deleteButton = tdpmRow.getByRole('button', { name: 'Delete story' });
+  await expect(deleteButton).toBeVisible();
 
-	await deleteButton.click();
+  await deleteButton.click();
 
-	const dialog = page.getByRole("dialog");
-	await expect(dialog).toBeVisible();
-	await expect(dialog).toContainText("TDPM Console port");
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('TDPM Console port');
 
-	await dialog.getByRole("button", { name: "Delete" }).click();
+  await dialog.getByRole('button', { name: 'Delete' }).click();
 
-	await expect
-		.poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
-		.toBe(1);
-	expect(harness.deleteStoryCalls[0].storyOptionId).toBe("1491051e");
+  await expect
+    .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.deleteStoryCalls[0].storyOptionId).toBe('1491051e');
 
-	await expect
-		.poll(() => harness.closeIssueCalls.length, { timeout: 10000 })
-		.toBe(1);
-	expect(harness.closeIssueCalls[0]).toBe(
-		"https://github.com/example/example/issues/1491051e",
-	);
+  await expect
+    .poll(() => harness.closeIssueCalls.length, { timeout: 10000 })
+    .toBe(1);
+  expect(harness.closeIssueCalls[0]).toBe(
+    'https://github.com/example/example/issues/1491051e',
+  );
 
-	await expect(dialog).toHaveCount(0);
-	await expect(
-		page.locator(".console-story-list-row", { hasText: "TDPM Console port" }),
-	).toHaveCount(0);
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.locator('.console-story-list-row', { hasText: 'TDPM Console port' }),
+  ).toHaveCount(0);
 });
 
-test("shows issue number after resolved title in reference links inside item body", async ({
-	page,
+test('shows issue number after resolved title in reference links inside item body', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Workflow Blocker").click();
-	await itemRowByText(
-		page,
-		"Resolve the shared GitHub token rate-limit exhaustion blocker",
-	).click();
+  await tabByLabel(page, 'Workflow Blocker').click();
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
 
-	// Wait for comments to render (they collapse the description), then expand description
-	await expect(page.locator(".console-comment")).toBeVisible({
-		timeout: 10000,
-	});
-	const descriptionToggle = page.locator(".console-panel-toggle", {
-		hasText: "Description",
-	});
-	await descriptionToggle.click();
+  // Wait for comments to render (they collapse the description), then expand description
+  await expect(page.locator('.console-comment')).toBeVisible({
+    timeout: 10000,
+  });
+  const descriptionToggle = page.locator('.console-panel-toggle', {
+    hasText: 'Description',
+  });
+  await descriptionToggle.click();
 
-	const referenceNumber = page.locator(".console-markdown-reference-number");
-	await expect(referenceNumber).toBeVisible();
-	const urlSegments = CONSOLE_E2E_REFERENCE_LINK_URL.split("/");
-	const expectedNumber = `#${urlSegments[urlSegments.length - 1]}`;
-	await expect(referenceNumber).toHaveText(expectedNumber);
+  const referenceNumber = page.locator('.console-markdown-reference-number');
+  await expect(referenceNumber).toBeVisible();
+  const urlSegments = CONSOLE_E2E_REFERENCE_LINK_URL.split('/');
+  const expectedNumber = `#${urlSegments[urlSegments.length - 1]}`;
+  await expect(referenceNumber).toHaveText(expectedNumber);
 });
 
-test("project timer bar shows remaining time when active and Move to next project when expired", async ({
-	page,
+test('project timer bar shows remaining time when active and Move to next project when expired', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
-	await expect(page.locator(".console-project-timer-bar")).toHaveCount(0);
+  await page.goto(harness.appRootUrl);
+  await expect(page.locator('.console-project-timer-bar')).toHaveCount(0);
 
-	harness.setProjectTimer(1800);
-	try {
-		await page.reload();
-		await expect(page.locator(".console-project-timer-bar")).toBeVisible();
-		await expect(page.getByRole("progressbar")).toBeVisible();
-		const label = page.locator(".console-project-timer-bar-label");
-		const text = await label.textContent();
-		expect(text).toMatch(/^\d{2}:\d{2}$/);
+  harness.setProjectTimer(1800);
+  try {
+    await page.reload();
+    await expect(page.locator('.console-project-timer-bar')).toBeVisible();
+    await expect(page.getByRole('progressbar')).toBeVisible();
+    const label = page.locator('.console-project-timer-bar-label');
+    const text = await label.textContent();
+    expect(text).toMatch(/^\d{2}:\d{2}$/);
 
-		harness.expireProjectTimer();
-		await page.reload();
-		await expect(page.locator(".console-project-timer-bar-label")).toHaveText(
-			"Move to next project",
-		);
-	} finally {
-		harness.clearProjectTimer();
-	}
+    harness.expireProjectTimer();
+    await page.reload();
+    await expect(page.locator('.console-project-timer-bar-label')).toHaveText(
+      'Move to next project',
+    );
+  } finally {
+    harness.clearProjectTimer();
+  }
 });
 
-test("rare actions toggle is in the bottom row left pair alongside the dangerous actions toggle and expands the depended issue URL input", async ({
-	page,
+test('rare actions toggle is in the bottom row left pair alongside the dangerous actions toggle and expands the depended issue URL input', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Workflow Blocker").click();
-	await itemRowByText(
-		page,
-		"Resolve the shared GitHub token rate-limit exhaustion blocker",
-	).click();
+  await tabByLabel(page, 'Workflow Blocker').click();
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
 
-	const rareToggle = page.getByTitle("Rare actions");
-	await expect(rareToggle).toBeVisible();
+  const rareToggle = page.getByTitle('Rare actions');
+  await expect(rareToggle).toBeVisible();
 
-	const dangerToggle = page.locator(".console-op-button", { hasText: "⚠" });
-	await expect(dangerToggle).toBeVisible();
+  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
+  await expect(dangerToggle).toBeVisible();
 
-	const leftPair = page.locator(".console-op-group-left-pair");
-	await expect(leftPair.locator(rareToggle)).toBeVisible();
-	await expect(leftPair.locator(dangerToggle)).toBeVisible();
+  const leftPair = page.locator('.console-op-group-left-pair');
+  await expect(leftPair.locator(rareToggle)).toBeVisible();
+  await expect(leftPair.locator(dangerToggle)).toBeVisible();
 
-	await rareToggle.click();
+  await rareToggle.click();
 
-	const urlInput = page.getByPlaceholder("Depended issue URL");
-	await expect(urlInput).toBeVisible();
+  const urlInput = page.getByPlaceholder('Depended issue URL');
+  await expect(urlInput).toBeVisible();
 });
 
-test("prs agent filter shows counts, hides zero-task agents, narrows the list, and navigation respects the filter", async ({
-	page,
+test('prs agent filter shows counts, hides zero-task agents, narrows the list, and navigation respects the filter', async ({
+  page,
 }) => {
-	await page.goto(harness.appUrl);
-	await expect(activeTabLabel(page)).toHaveText("Awaiting Owner");
+  await page.goto(harness.appUrl);
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
 
-	const select = page.getByRole("combobox", { name: "Filter by agent" });
-	await expect(select).toBeVisible();
+  const select = page.getByRole('combobox', { name: 'Filter by agent' });
+  await expect(select).toBeVisible();
 
-	const nonAllOptions = select.locator('option:not([value=""])');
-	await expect(nonAllOptions).toHaveCount(2);
-	await expect(nonAllOptions.nth(0)).toHaveText("developer (1)");
-	await expect(nonAllOptions.nth(1)).toHaveText("chore (1)");
+  const nonAllOptions = select.locator('option:not([value=""])');
+  await expect(nonAllOptions).toHaveCount(2);
+  await expect(nonAllOptions.nth(0)).toHaveText('developer (1)');
+  await expect(nonAllOptions.nth(1)).toHaveText('chore (1)');
 
-	await expect(
-		itemRowByText(
-			page,
-			"Serve the committed console UI bundle from serveConsole",
-		),
-	).toBeVisible();
-	await expect(
-		itemRowByText(page, "Clean up stale console UI test fixtures"),
-	).toBeVisible();
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible();
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).toBeVisible();
 
-	await select.selectOption("developer");
-	await expect(
-		itemRowByText(
-			page,
-			"Serve the committed console UI bundle from serveConsole",
-		),
-	).toBeVisible();
-	await expect(
-		itemRowByText(page, "Clean up stale console UI test fixtures"),
-	).not.toBeVisible({ timeout: 2000 });
+  await select.selectOption('developer');
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible();
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).not.toBeVisible({ timeout: 2000 });
 
-	await itemRowByText(
-		page,
-		"Serve the committed console UI bundle from serveConsole",
-	).click();
-	const approveButton = page
-		.locator(".console-op-button", { hasText: "Approve" })
-		.first();
-	await expect(approveButton).toBeVisible();
-	await approveButton.click();
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+  const approveButton = page
+    .locator('.console-op-button', { hasText: 'Approve' })
+    .first();
+  await expect(approveButton).toBeVisible();
+  await approveButton.click();
 
-	await expect(activeTabLabel(page)).toHaveText("Awaiting Owner");
-	await expect(
-		itemRowByText(page, "Clean up stale console UI test fixtures"),
-	).toBeVisible({ timeout: 8000 });
+  await expect(activeTabLabel(page)).toHaveText('Awaiting Owner');
+  await expect(
+    itemRowByText(page, 'Clean up stale console UI test fixtures'),
+  ).toBeVisible({ timeout: 8000 });
 });
 
-test("shows Delete Story in the danger zone of a story-labeled item detail page, confirms deletion, and closes the panel", async ({
-	page,
+test('shows Delete Story in the danger zone of a story-labeled item detail page, confirms deletion, and closes the panel', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Todo by agent").click();
-	await itemRowByText(
-		page,
-		"Publish product documentation site story issue",
-	).click();
+  await tabByLabel(page, 'Todo by agent').click();
+  await itemRowByText(
+    page,
+    'Publish product documentation site story issue',
+  ).click();
 
-	const dangerToggle = page.locator(".console-op-button", { hasText: "⚠" });
-	await expect(dangerToggle).toBeVisible();
-	await dangerToggle.click();
+  const dangerToggle = page.locator('.console-op-button', { hasText: '⚠' });
+  await expect(dangerToggle).toBeVisible();
+  await dangerToggle.click();
 
-	const deleteStoryButton = page.locator(".console-op-button", {
-		hasText: "Delete Story",
-	});
-	await expect(deleteStoryButton).toBeVisible();
-	await deleteStoryButton.click();
+  const deleteStoryButton = page.locator('.console-op-button', {
+    hasText: 'Delete Story',
+  });
+  await expect(deleteStoryButton).toBeVisible();
+  await deleteStoryButton.click();
 
-	const dialog = page.getByRole("dialog", { name: "Confirm story deletion" });
-	await expect(dialog).toBeVisible();
-	await expect(dialog).toContainText("Publish product documentation site");
+  const dialog = page.getByRole('dialog', { name: 'Confirm story deletion' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Publish product documentation site');
 
-	const previousDeleteCount = harness.deleteStoryCalls.length;
-	await dialog.getByRole("button", { name: "Delete" }).click();
+  const previousDeleteCount = harness.deleteStoryCalls.length;
+  await dialog.getByRole('button', { name: 'Delete' }).click();
 
-	await expect
-		.poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
-		.toBe(previousDeleteCount + 1);
-	expect(
-		harness.deleteStoryCalls[harness.deleteStoryCalls.length - 1].storyOptionId,
-	).toBe("f7cd5cbc");
+  await expect
+    .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
+    .toBe(previousDeleteCount + 1);
+  expect(
+    harness.deleteStoryCalls[harness.deleteStoryCalls.length - 1].storyOptionId,
+  ).toBe('f7cd5cbc');
 
-	await expect(page.locator(".console-detail")).toHaveCount(0, {
-		timeout: 8000,
-	});
+  await expect(page.locator('.console-detail')).toHaveCount(0, {
+    timeout: 8000,
+  });
 });
 
-test("error toast renders with background styling when a merge operation fails", async ({
-	page,
+test('error toast renders with background styling when a merge operation fails', async ({
+  page,
 }) => {
-	const failHarness = await startConsoleE2eHarness({
-		mergePullRequest: async () => {
-			throw new Error("merge failed: simulated error for CSS test");
-		},
-	});
-	try {
-		await page.goto(failHarness.appUrl);
+  const failHarness = await startConsoleE2eHarness({
+    mergePullRequest: async () => {
+      throw new Error('merge failed: simulated error for CSS test');
+    },
+  });
+  try {
+    await page.goto(failHarness.appUrl);
 
-		await tabByLabel(page, "Awaiting Owner").click();
-		await itemRowByText(
-			page,
-			"Serve the committed console UI bundle from serveConsole",
-		).click();
+    await tabByLabel(page, 'Awaiting Owner').click();
+    await itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ).click();
 
-		const approveButton = page
-			.locator(".console-op-button", { hasText: "Approve" })
-			.first();
-		await expect(approveButton).toBeVisible();
-		await approveButton.click();
+    const approveButton = page
+      .locator('.console-op-button', { hasText: 'Approve' })
+      .first();
+    await expect(approveButton).toBeVisible();
+    await approveButton.click();
 
-		const errorToast = page.locator(".console-error-toast");
-		await expect(errorToast).toBeVisible({ timeout: 8000 });
-		await expect(errorToast).toHaveCSS("background-color", "rgb(58, 21, 24)");
-		await expect(errorToast).toHaveCSS("position", "fixed");
-	} finally {
-		await failHarness.stop();
-	}
+    const errorToast = page.locator('.console-error-toast');
+    await expect(errorToast).toBeVisible({ timeout: 8000 });
+    await expect(errorToast).toHaveCSS('background-color', 'rgb(58, 21, 24)');
+    await expect(errorToast).toHaveCSS('position', 'fixed');
+  } finally {
+    await failHarness.stop();
+  }
 });
 
-test("immediately shows item in Queued tab after moving to Awaiting Workspace without waiting for the polling cycle", async ({
-	page,
+test('immediately shows item in Queued tab after moving to Awaiting Workspace without waiting for the polling cycle', async ({
+  page,
 }) => {
-	const queuedPath = `/projects/${CONSOLE_E2E_PJCODE}/queued/list.json`;
-	let firstQueuedRequestDone = false;
+  const queuedPath = `/projects/${CONSOLE_E2E_PJCODE}/queued/list.json`;
+  let firstQueuedRequestDone = false;
 
-	await page.route(`**${queuedPath}`, async (route) => {
-		if (!firstQueuedRequestDone) {
-			firstQueuedRequestDone = true;
-			await route.continue();
-			return;
-		}
-		await route.fulfill({
-			status: 200,
-			contentType: "application/json",
-			body: JSON.stringify({
-				pjcode: CONSOLE_E2E_PJCODE,
-				generatedAt: new Date().toISOString(),
-				statusOptions: [],
-				agentOptions: [],
-				storyOptions: [],
-				storyColors: {},
-				storyOrder: [],
-				items: [
-					{
-						number: 867,
-						title: "Serve the committed console UI bundle from serveConsole",
-						url: CONSOLE_E2E_AWAITING_OWNER_PR_URL,
-						repo: "HiromiShikata/npm-cli-github-issue-tower-defence-management",
-						nameWithOwner:
-							"HiromiShikata/npm-cli-github-issue-tower-defence-management",
-						projectItemId: "PVTI_lADOABCD1234zgPRS00867",
-						itemId: "PVTI_lADOABCD1234zgPRS00867",
-						isPr: true,
-						relatedOpenPullRequestUrls: [],
-						story: "TDPM Console port",
-						status: "Awaiting Workspace",
-						agent: "developer",
-						nextActionDate: null,
-						nextActionHour: null,
-						dependedIssueUrls: [],
-						labels: ["claude"],
-						createdAt: "2026-06-17T23:41:08.000Z",
-					},
-				],
-			}),
-		});
-	});
+  await page.route(`**${queuedPath}`, async (route) => {
+    if (!firstQueuedRequestDone) {
+      firstQueuedRequestDone = true;
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        pjcode: CONSOLE_E2E_PJCODE,
+        generatedAt: new Date().toISOString(),
+        statusOptions: [],
+        agentOptions: [],
+        storyOptions: [],
+        storyColors: {},
+        storyOrder: [],
+        items: [
+          {
+            number: 867,
+            title: 'Serve the committed console UI bundle from serveConsole',
+            url: CONSOLE_E2E_AWAITING_OWNER_PR_URL,
+            repo: 'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+            nameWithOwner:
+              'HiromiShikata/npm-cli-github-issue-tower-defence-management',
+            projectItemId: 'PVTI_lADOABCD1234zgPRS00867',
+            itemId: 'PVTI_lADOABCD1234zgPRS00867',
+            isPr: true,
+            relatedOpenPullRequestUrls: [],
+            story: 'TDPM Console port',
+            status: 'Awaiting Workspace',
+            agent: 'developer',
+            nextActionDate: null,
+            nextActionHour: null,
+            dependedIssueUrls: [],
+            labels: ['claude'],
+            createdAt: '2026-06-17T23:41:08.000Z',
+          },
+        ],
+      }),
+    });
+  });
 
-	await page.goto(harness.appUrl);
-	await expect(
-		itemRowByText(
-			page,
-			"Serve the committed console UI bundle from serveConsole",
-		),
-	).toBeVisible({ timeout: 5000 });
+  await page.goto(harness.appUrl);
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible({ timeout: 5000 });
 
-	const listLevelButton = page
-		.locator(".console-list .console-op-button", {
-			hasText: "ok & Awaiting Workspace",
-		})
-		.first();
+  const listLevelButton = page
+    .locator('.console-list .console-op-button', {
+      hasText: 'ok & Awaiting Workspace',
+    })
+    .first();
 
-	await Promise.all([
-		page.waitForResponse(
-			(resp) => resp.url().includes(queuedPath) && firstQueuedRequestDone,
-			{ timeout: 12000 },
-		),
-		listLevelButton.click(),
-	]);
+  await Promise.all([
+    page.waitForResponse(
+      (resp) => resp.url().includes(queuedPath) && firstQueuedRequestDone,
+      { timeout: 12000 },
+    ),
+    listLevelButton.click(),
+  ]);
 
-	await tabByLabel(page, "Queued").click();
-	await expect(activeTabLabel(page)).toHaveText("Queued");
-	await expect(
-		itemRowByText(
-			page,
-			"Serve the committed console UI bundle from serveConsole",
-		),
-	).toBeVisible({ timeout: 3000 });
+  await tabByLabel(page, 'Queued').click();
+  await expect(activeTabLabel(page)).toHaveText('Queued');
+  await expect(
+    itemRowByText(
+      page,
+      'Serve the committed console UI bundle from serveConsole',
+    ),
+  ).toBeVisible({ timeout: 3000 });
 });
 
-test("offline pending actions panel renders with correct styling when a network error queues an action", async ({
-	page,
+test('offline pending actions panel renders with correct styling when a network error queues an action', async ({
+  page,
 }) => {
-	await page.clock.install();
-	await page.goto(harness.appUrl);
+  await page.clock.install();
+  await page.goto(harness.appUrl);
 
-	await tabByLabel(page, "Awaiting Owner").click();
-	await itemRowByText(
-		page,
-		"Serve the committed console UI bundle from serveConsole",
-	).click();
+  await tabByLabel(page, 'Awaiting Owner').click();
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
 
-	const approveButton = page
-		.locator(".console-op-button", { hasText: "Approve" })
-		.first();
-	await expect(approveButton).toBeVisible();
+  const approveButton = page
+    .locator('.console-op-button', { hasText: 'Approve' })
+    .first();
+  await expect(approveButton).toBeVisible();
 
-	await page.route("**/api/review", (route) => route.abort("failed"));
+  await page.route('**/api/review', (route) => route.abort('failed'));
 
-	await approveButton.click();
-	await page.clock.runFor(6000);
+  await approveButton.click();
+  await page.clock.runFor(6000);
 
-	const offlinePanel = page.locator(".console-offline-panel");
-	await expect(offlinePanel).toBeVisible();
-	await expect(offlinePanel).toContainText("1 action held");
-	const offlineItem = offlinePanel.locator(".console-offline-panel-item-green");
-	await expect(offlineItem).toBeVisible();
-	await expect(offlineItem).toHaveCSS("border-left-color", "rgb(46, 160, 67)");
+  const offlinePanel = page.locator('.console-offline-panel');
+  await expect(offlinePanel).toBeVisible();
+  await expect(offlinePanel).toContainText('1 action held');
+  const offlineItem = offlinePanel.locator('.console-offline-panel-item-green');
+  await expect(offlineItem).toBeVisible();
+  await expect(offlineItem).toHaveCSS('border-left-color', 'rgb(46, 160, 67)');
 });
 
-test("story select in task detail shows current story pre-selected and fires set_story triage call when selection changes", async ({
-	page,
+test('story select in task detail shows current story pre-selected and fires set_story triage call when selection changes', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Todo by human").click();
-	await itemRowByText(
-		page,
-		"Auto-advance to the next non-empty console tab when one empties",
-	).click();
+  await tabByLabel(page, 'Todo by human').click();
+  await itemRowByText(
+    page,
+    'Auto-advance to the next non-empty console tab when one empties',
+  ).click();
 
-	await page.getByTitle("Change agent or story").click();
+  await page.getByTitle('Change agent or story').click();
 
-	const storySelect = page.getByRole("combobox", { name: "Set story" });
-	await expect(storySelect).toBeVisible();
-	await expect(storySelect).toHaveValue("1491051e");
+  const storySelect = page.getByRole('combobox', { name: 'Set story' });
+  await expect(storySelect).toBeVisible();
+  await expect(storySelect).toHaveValue('1491051e');
 
-	await storySelect.selectOption("28415d6c");
+  await storySelect.selectOption('28415d6c');
 
-	await expect
-		.poll(
-			() =>
-				harness.setStoryCalls.filter((c) => c.storyOptionId === "28415d6c")
-					.length,
-			{ timeout: 10000 },
-		)
-		.toBe(1);
+  await expect
+    .poll(
+      () =>
+        harness.setStoryCalls.filter((c) => c.storyOptionId === '28415d6c')
+          .length,
+      { timeout: 10000 },
+    )
+    .toBe(1);
 });
 
-test("shows latest comment expanded and non-latest as preview in summary mode, expands all after show-all", async ({
-	page,
+test('shows latest comment expanded and non-latest as preview in summary mode, expands all after show-all', async ({
+  page,
 }) => {
-	const multiCommentHarness = await startConsoleE2eHarness({
-		getIssueOrPullRequestComments: async () => [
-			{
-				author: "reviewer",
-				body: "First review comment.\n\nSecond paragraph detail.",
-				createdAt: new Date("2026-06-17T06:12:40.000Z"),
-				url: null,
-			},
-			{
-				author: "HiromiShikata",
-				body: "Acknowledged.",
-				createdAt: new Date("2026-06-17T09:00:00.000Z"),
-				url: null,
-			},
-		],
-	});
-	try {
-		await page.goto(multiCommentHarness.appRootUrl);
-		await tabByLabel(page, "Workflow Blocker").click();
-		await itemRowByText(
-			page,
-			"Resolve the shared GitHub token rate-limit exhaustion blocker",
-		).click();
-		await expect(page.locator(".console-comment-body-preview")).toHaveCount(1);
-		await expect(
-			page.locator(".console-comment-body-preview").first(),
-		).toContainText("First review comment.");
-		await expect(page.locator(".console-comment-body-expanded")).toHaveCount(1);
-		await expect(page.getByText("Acknowledged.")).toBeVisible();
-		await expect(page.getByText("Second paragraph detail.")).not.toBeVisible();
-		await page.getByRole("button", { name: "Show all 2" }).click();
-		await expect(page.locator(".console-comment-body-preview")).toHaveCount(0);
-		await expect(page.locator(".console-comment-body-expanded")).toHaveCount(2);
-		await expect(page.getByText("First review comment.")).toBeVisible();
-		await expect(page.getByText("Second paragraph detail.")).toBeVisible();
-		await expect(page.getByText("Acknowledged.")).toBeVisible();
-	} finally {
-		await multiCommentHarness.stop();
-	}
+  const multiCommentHarness = await startConsoleE2eHarness({
+    getIssueOrPullRequestComments: async () => [
+      {
+        author: 'reviewer',
+        body: 'First review comment.\n\nSecond paragraph detail.',
+        createdAt: new Date('2026-06-17T06:12:40.000Z'),
+        url: null,
+      },
+      {
+        author: 'HiromiShikata',
+        body: 'Acknowledged.',
+        createdAt: new Date('2026-06-17T09:00:00.000Z'),
+        url: null,
+      },
+    ],
+  });
+  try {
+    await page.goto(multiCommentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    await expect(page.locator('.console-comment-body-preview')).toHaveCount(1);
+    await expect(
+      page.locator('.console-comment-body-preview').first(),
+    ).toContainText('First review comment.');
+    await expect(page.locator('.console-comment-body-expanded')).toHaveCount(1);
+    await expect(page.getByText('Acknowledged.')).toBeVisible();
+    await expect(page.getByText('Second paragraph detail.')).not.toBeVisible();
+    await page.getByRole('button', { name: 'Show all 2' }).click();
+    await expect(page.locator('.console-comment-body-preview')).toHaveCount(0);
+    await expect(page.locator('.console-comment-body-expanded')).toHaveCount(2);
+    await expect(page.getByText('First review comment.')).toBeVisible();
+    await expect(page.getByText('Second paragraph detail.')).toBeVisible();
+    await expect(page.getByText('Acknowledged.')).toBeVisible();
+  } finally {
+    await multiCommentHarness.stop();
+  }
 });
 
-test("shows and hides task rows when Show tasks and Hide tasks are clicked on a story row", async ({
-	page,
+test('shows and hides task rows when Show tasks and Hide tasks are clicked on a story row', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	await tabByLabel(page, "Stories").click();
-	await expect(activeTabLabel(page)).toHaveText("Stories");
+  await tabByLabel(page, 'Stories').click();
+  await expect(activeTabLabel(page)).toHaveText('Stories');
 
-	const tdpmRow = page.locator(".console-story-list-row", {
-		hasText: "TDPM Console port",
-	});
+  const tdpmRow = page.locator('.console-story-list-row', {
+    hasText: 'TDPM Console port',
+  });
 
-	await expect(tdpmRow.locator(".console-story-task-row")).toHaveCount(0);
+  await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
 
-	await tdpmRow
-		.locator(".console-op-button", { hasText: "Show tasks" })
-		.click();
+  await tdpmRow
+    .locator('.console-op-button', { hasText: 'Show tasks' })
+    .click();
 
-	await expect(
-		tdpmRow.locator(".console-story-task-title", {
-			hasText: "Serve the committed console UI bundle from serveConsole",
-		}),
-	).toBeVisible();
-	await expect(
-		tdpmRow.locator(".console-story-task-title", {
-			hasText:
-				"Auto-advance to the next non-empty console tab when one empties",
-		}),
-	).toBeVisible();
+  await expect(
+    tdpmRow.locator('.console-story-task-title', {
+      hasText: 'Serve the committed console UI bundle from serveConsole',
+    }),
+  ).toBeVisible();
+  await expect(
+    tdpmRow.locator('.console-story-task-title', {
+      hasText:
+        'Auto-advance to the next non-empty console tab when one empties',
+    }),
+  ).toBeVisible();
 
-	const pr867Row = tdpmRow.locator(".console-story-task-row").first();
-	await expect(pr867Row.locator(".console-story-task-agent")).toContainText(
-		"developer",
-	);
-	await expect(
-		pr867Row.locator(".console-story-task-next-action-date"),
-	).toContainText("2026-06-20");
-	await expect(
-		pr867Row.locator(".console-story-task-next-action-hour"),
-	).toContainText("9");
-	await expect(
-		pr867Row.locator(".console-story-task-depended-urls"),
-	).toContainText(
-		"https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845",
-	);
+  const pr867Row = tdpmRow.locator('.console-story-task-row').first();
+  await expect(pr867Row.locator('.console-story-task-agent')).toContainText(
+    'developer',
+  );
+  await expect(
+    pr867Row.locator('.console-story-task-next-action-date'),
+  ).toContainText('2026-06-20');
+  await expect(
+    pr867Row.locator('.console-story-task-next-action-hour'),
+  ).toContainText('9');
+  await expect(
+    pr867Row.locator('.console-story-task-depended-urls'),
+  ).toContainText(
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/845',
+  );
 
-	await tdpmRow
-		.locator(".console-op-button", { hasText: "Hide tasks" })
-		.click();
+  await tdpmRow
+    .locator('.console-op-button', { hasText: 'Hide tasks' })
+    .click();
 
-	await expect(tdpmRow.locator(".console-story-task-row")).toHaveCount(0);
+  await expect(tdpmRow.locator('.console-story-task-row')).toHaveCount(0);
 });
 
-test.describe("expanded comment body renders github images through the image proxy", () => {
-	let commentHarness: ConsoleE2eHarness;
+test.describe('expanded comment body renders github images through the image proxy', () => {
+  let commentHarness: ConsoleE2eHarness;
 
-	test.beforeAll(async () => {
-		commentHarness = await startConsoleE2eHarness({
-			getIssueOrPullRequestComments: async () => [
-				{
-					author: "HiromiShikata",
-					body: "![Screenshot](https://github.com/user-attachments/assets/test-e2e-proxy-fixture)",
-					createdAt: new Date("2026-09-06T12:00:00.000Z"),
-					url: null,
-				},
-			],
-		});
-	});
+  test.beforeAll(async () => {
+    commentHarness = await startConsoleE2eHarness({
+      getIssueOrPullRequestComments: async () => [
+        {
+          author: 'HiromiShikata',
+          body: '![Screenshot](https://github.com/user-attachments/assets/test-e2e-proxy-fixture)',
+          createdAt: new Date('2026-09-06T12:00:00.000Z'),
+          url: null,
+        },
+      ],
+    });
+  });
 
-	test.afterAll(async () => {
-		if (commentHarness !== undefined) {
-			await commentHarness.stop();
-		}
-	});
+  test.afterAll(async () => {
+    if (commentHarness !== undefined) {
+      await commentHarness.stop();
+    }
+  });
 
-	test("clicking a comment expands console-comment-body-expanded and rewrites github image src through the api/img proxy", async ({
-		page,
-	}) => {
-		await page.goto(commentHarness.appRootUrl);
-		await tabByLabel(page, "Workflow Blocker").click();
-		await itemRowByText(
-			page,
-			"Resolve the shared GitHub token rate-limit exhaustion blocker",
-		).click();
-		await expect(page.locator(".console-comment")).toBeVisible();
-		await page.locator(".console-comment").click();
-		await expect(page.locator(".console-comment-body-expanded")).toBeVisible();
-		const img = page.locator(".console-comment-body-expanded img");
-		const src = await img.getAttribute("src");
-		expect(src).toMatch(/^\/api\/img\?url=/);
-		expect(src).toContain(
-			encodeURIComponent(
-				"https://github.com/user-attachments/assets/test-e2e-proxy-fixture",
-			),
-		);
-	});
+  test('clicking a comment expands console-comment-body-expanded and rewrites github image src through the api/img proxy', async ({
+    page,
+  }) => {
+    await page.goto(commentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    await expect(page.locator('.console-comment')).toBeVisible();
+    await page.locator('.console-comment').click();
+    await expect(page.locator('.console-comment-body-expanded')).toBeVisible();
+    const img = page.locator('.console-comment-body-expanded img');
+    const src = await img.getAttribute('src');
+    expect(src).toMatch(/^\/api\/img\?url=/);
+    expect(src).toContain(
+      encodeURIComponent(
+        'https://github.com/user-attachments/assets/test-e2e-proxy-fixture',
+      ),
+    );
+  });
 
-	test("clicking inside expanded comment body does not collapse the comment", async ({
-		page,
-	}) => {
-		await page.goto(commentHarness.appRootUrl);
-		await tabByLabel(page, "Workflow Blocker").click();
-		await itemRowByText(
-			page,
-			"Resolve the shared GitHub token rate-limit exhaustion blocker",
-		).click();
-		await expect(page.locator(".console-comment-body-expanded")).toBeVisible();
-		await page.locator(".console-comment-body-expanded").click();
-		await expect(page.locator(".console-comment-body-expanded")).toBeVisible();
-	});
+  test('clicking inside expanded comment body does not collapse the comment', async ({
+    page,
+  }) => {
+    await page.goto(commentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+    await expect(page.locator('.console-comment-body-expanded')).toBeVisible();
+    await page.locator('.console-comment-body-expanded').click();
+    await expect(page.locator('.console-comment-body-expanded')).toBeVisible();
+  });
 });
 
-test("max settings button is always visible and opens the Max settings modal", async ({
-	page,
+test('max settings button is always visible and opens the Max settings modal', async ({
+  page,
 }) => {
-	await page.goto(harness.appRootUrl);
+  await page.goto(harness.appRootUrl);
 
-	const maxSettingsButton = page.getByRole("button", {
-		name: "Open max settings",
-	});
-	await expect(maxSettingsButton).toBeVisible();
+  const maxSettingsButton = page.getByRole('button', {
+    name: 'Open max settings',
+  });
+  await expect(maxSettingsButton).toBeVisible();
 
-	await maxSettingsButton.click();
+  await maxSettingsButton.click();
 
-	const modal = page.getByRole("dialog", { name: "Max settings" });
-	await expect(modal).toBeVisible();
+  const modal = page.getByRole('dialog', { name: 'Max settings' });
+  await expect(modal).toBeVisible();
 });
