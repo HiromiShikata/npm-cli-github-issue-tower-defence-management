@@ -1,3 +1,10 @@
+# [2.105.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.104.1...v2.105.0) (2026-09-11)
+
+
+### Features
+
+* **console:** clear comment expanded states when switching projects ([#2287](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2287)) ([2e3fa86](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2e3fa8698e864a0199faf66c73145f8b4422041e)), closes [HiromiShikata/umino-corporait-operation#31646](https://github.com/HiromiShikata/umino-corporait-operation/issues/31646)
+
 ## [2.104.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.104.0...v2.104.1) (2026-09-11)
 
 
