@@ -1,3 +1,10 @@
+## [2.106.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.106.0...v2.106.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **tabAdvance:** exclude Stories tab from automatic tab navigation ([#2290](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2290)) ([1ef58d3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1ef58d3ec946163596ef1dccf186a252b05d022f))
+
 # [2.106.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.105.0...v2.106.0) (2026-09-11)
 
 
