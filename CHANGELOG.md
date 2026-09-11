@@ -1,3 +1,10 @@
+# [2.102.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.101.1...v2.102.0) (2026-09-11)
+
+
+### Features
+
+* **console:** preserve create-new-task dialog draft and prevent backdrop dismiss ([#2278](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2278)) ([77644ac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/77644ac0397fe88a30ef11694e3849d5193158bb)), closes [HiromiShikata/umino-corporait-operation#31621](https://github.com/HiromiShikata/umino-corporait-operation/issues/31621)
+
 ## [2.101.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.101.0...v2.101.1) (2026-09-11)
 
 
