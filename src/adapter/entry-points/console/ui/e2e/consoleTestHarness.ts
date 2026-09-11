@@ -51,6 +51,7 @@ export type ConsoleE2eCreateIssueCall = {
   repo: string;
   title: string;
   body: string;
+  assignees: string[];
 };
 
 export type ConsoleE2eStoryColorCall = {
@@ -609,8 +610,9 @@ const createStubIssueRepository = (
     repo: string,
     title: string,
     body: string,
+    assignees: string[],
   ): Promise<number> => {
-    createIssueCalls.push({ org, repo, title, body });
+    createIssueCalls.push({ org, repo, title, body, assignees });
     return 9001;
   },
   searchIssue: () => notImplemented('searchIssue'),
