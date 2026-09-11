@@ -18,7 +18,6 @@ import {
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { extractWaitingForOwner } from './extractWaitingForOwner';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
@@ -145,23 +144,6 @@ export class RevertOrphanedPreparationUseCase {
           params.allowedIssueAuthors,
         ),
       );
-      const waitingForOwner = lastAgentReport
-        ? extractWaitingForOwner(lastAgentReport.content)
-        : false;
-      if (waitingForOwner) {
-        if (awaitingOwnerStatusOption) {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            awaitingOwnerStatusOption.id,
-          );
-        } else {
-          console.warn(
-            `Awaiting owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project`,
-          );
-        }
-        continue;
-      }
       const nextStepAgent = lastAgentReport
         ? extractNextStepAgent(lastAgentReport.content)
         : null;

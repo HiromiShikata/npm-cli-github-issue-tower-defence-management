@@ -29,7 +29,6 @@ import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
-import { extractWaitingForOwner } from './extractWaitingForOwner';
 import { findLastAgentReport } from './findLastAgentReport';
 
 import {
@@ -346,22 +345,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         reportingTarget,
         params.projectName ?? null,
       );
-      return;
-    }
-
-    const waitingForOwner = lastAgentReport
-      ? extractWaitingForOwner(lastAgentReport.content)
-      : false;
-    if (waitingForOwner) {
-      issue.status = AWAITING_OWNER_STATUS_NAME;
-      await this.issueRepository.update(issue, project);
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingOwnerStatusOption.id,
-      );
-      await this.patchConsoleTab(issue);
-      console.log('Auto Status Check: AWAITING_OWNER');
       return;
     }
 
