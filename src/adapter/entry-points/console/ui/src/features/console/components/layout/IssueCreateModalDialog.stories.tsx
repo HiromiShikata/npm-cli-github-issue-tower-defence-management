@@ -80,7 +80,7 @@ export const WithFleetTaskCreateUrl: Story = {
 
 export const WithFileAttachments: Story = {
   play: async ({ canvasElement }) => {
-    const { userEvent } = await import('@storybook/test');
+    const { userEvent } = await import('storybook/test');
     const fileInput = canvasElement.querySelector(
       'input[type="file"]',
     ) as HTMLInputElement | null;
