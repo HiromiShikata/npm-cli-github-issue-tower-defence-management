@@ -688,10 +688,14 @@ describe('useConsoleTabData', () => {
   it('displays cached data immediately on project switch without waiting for the network response', async () => {
     const cachedPayload = makeTabPayload({
       generatedAt: '2026-01-01T00:00:00.000Z',
-      items: [{ number: 10, itemId: 'PVTI_CACHE', projectItemId: 'PVTI_CACHE' }],
+      items: [
+        { number: 10, itemId: 'PVTI_CACHE', projectItemId: 'PVTI_CACHE' },
+      ],
     });
     installMockCaches({ json: jest.fn(async () => cachedPayload) });
-    global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
+    global.fetch = jest.fn(
+      () => new Promise(() => {}),
+    ) as unknown as typeof fetch;
 
     const { result } = renderHook(() => useConsoleTabData('acme'));
 
@@ -708,12 +712,19 @@ describe('useConsoleTabData', () => {
     const cachedGeneratedAt = '2026-01-01T00:00:00.000Z';
     const networkGeneratedAt = '2026-06-01T00:00:00.000Z';
     installMockCaches({
-      json: jest.fn(async () => makeTabPayload({ generatedAt: cachedGeneratedAt })),
+      json: jest.fn(async () =>
+        makeTabPayload({ generatedAt: cachedGeneratedAt }),
+      ),
     });
-    type FetchResponse = { ok: boolean; status: number; json: () => Promise<unknown> };
+    type FetchResponse = {
+      ok: boolean;
+      status: number;
+      json: () => Promise<unknown>;
+    };
     const networkResolvers: Array<(v: FetchResponse) => void> = [];
     global.fetch = jest.fn(
-      () => new Promise<FetchResponse>((resolve) => networkResolvers.push(resolve)),
+      () =>
+        new Promise<FetchResponse>((resolve) => networkResolvers.push(resolve)),
     ) as unknown as typeof fetch;
 
     const { result } = renderHook(() => useConsoleTabData('acme'));
@@ -733,7 +744,9 @@ describe('useConsoleTabData', () => {
 
     await waitFor(() => {
       expect(result.current.snapshots.prs?.fromCache).toBe(false);
-      expect(result.current.snapshots.prs?.generatedAt).toBe(networkGeneratedAt);
+      expect(result.current.snapshots.prs?.generatedAt).toBe(
+        networkGeneratedAt,
+      );
     });
   });
 
@@ -743,7 +756,8 @@ describe('useConsoleTabData', () => {
     const networkPayload = makeTabPayload({ generatedAt: networkGeneratedAt });
     const cachedPayload = makeTabPayload({ generatedAt: cachedGeneratedAt });
 
-    const cacheMatchResolvers: Array<(v: MockCacheEntry | undefined) => void> = [];
+    const cacheMatchResolvers: Array<(v: MockCacheEntry | undefined) => void> =
+      [];
     const mockCacheDeferred: MockCache = {
       match: jest.fn(
         () =>
@@ -769,7 +783,9 @@ describe('useConsoleTabData', () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.snapshots.prs?.fromCache).toBe(false);
-      expect(result.current.snapshots.prs?.generatedAt).toBe(networkGeneratedAt);
+      expect(result.current.snapshots.prs?.generatedAt).toBe(
+        networkGeneratedAt,
+      );
     });
 
     await act(async () => {
@@ -786,10 +802,15 @@ describe('useConsoleTabData', () => {
 
   it('keeps isLoading true when no cache entry exists until the network responds', async () => {
     installMockCaches(undefined);
-    type FetchResponse = { ok: boolean; status: number; json: () => Promise<unknown> };
+    type FetchResponse = {
+      ok: boolean;
+      status: number;
+      json: () => Promise<unknown>;
+    };
     const networkResolvers: Array<(v: FetchResponse) => void> = [];
     global.fetch = jest.fn(
-      () => new Promise<FetchResponse>((resolve) => networkResolvers.push(resolve)),
+      () =>
+        new Promise<FetchResponse>((resolve) => networkResolvers.push(resolve)),
     ) as unknown as typeof fetch;
 
     const { result } = renderHook(() => useConsoleTabData('acme'));
@@ -814,7 +835,9 @@ describe('useConsoleTabData', () => {
   });
 
   it('retains cached display and reports no error when the network fails after cache data is shown', async () => {
-    const cachedPayload = makeTabPayload({ generatedAt: '2026-01-01T00:00:00.000Z' });
+    const cachedPayload = makeTabPayload({
+      generatedAt: '2026-01-01T00:00:00.000Z',
+    });
     installMockCaches({ json: jest.fn(async () => cachedPayload) });
     global.fetch = jest
       .fn()
