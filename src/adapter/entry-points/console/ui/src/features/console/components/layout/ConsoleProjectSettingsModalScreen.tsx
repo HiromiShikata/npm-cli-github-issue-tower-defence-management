@@ -1,45 +1,45 @@
 export type ConsoleProjectSettingsModalScreenProps = {
-  value: string;
-  onChange: (v: string) => void;
+  pjcodes: string[];
+  inputValues: Record<string, string>;
+  onChangeInput: (pjcode: string, value: string) => void;
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
-  onSave: (count: number) => void;
+  onSave: () => void;
   onClose: () => void;
 };
 
 export const ConsoleProjectSettingsModalScreen = ({
-  value,
-  onChange,
+  pjcodes,
+  inputValues,
+  onChangeInput,
   isLoading,
   isSaving,
   error,
   onSave,
   onClose,
 }: ConsoleProjectSettingsModalScreenProps) => {
-  const parsedValue = parseInt(value, 10);
-  const isValid = !Number.isNaN(parsedValue) && parsedValue >= 0;
-
-  const handleSave = () => {
-    if (!isValid) {
-      return;
-    }
-    onSave(parsedValue);
-  };
+  const isSaveDisabled =
+    isSaving ||
+    pjcodes.every((pjcode) => {
+      const v = inputValues[pjcode] ?? '';
+      const parsed = parseInt(v, 10);
+      return v === '' || Number.isNaN(parsed) || parsed < 1;
+    });
 
   return (
     <div
       className="console-settings-modal"
       role="dialog"
       aria-modal="true"
-      aria-label="Project settings"
+      aria-label="Max settings"
     >
       <div className="console-settings-modal-bar">
-        <span className="console-settings-modal-title">Project settings</span>
+        <span className="console-settings-modal-title">Max settings</span>
         <button
           type="button"
           className="console-settings-modal-close"
-          aria-label="Close project settings"
+          aria-label="Close max settings"
           onClick={onClose}
         >
           ✕
@@ -49,25 +49,29 @@ export const ConsoleProjectSettingsModalScreen = ({
         {isLoading ? (
           <p className="console-settings-modal-loading">Loading…</p>
         ) : (
-          <div className="console-settings-modal-field">
-            <label
-              htmlFor="max-preparing-count"
-              className="console-settings-modal-label"
-            >
-              Maximum preparing issues count
-            </label>
-            <input
-              id="max-preparing-count"
-              type="number"
-              min={0}
-              step={1}
-              className="console-settings-modal-input"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              disabled={isSaving}
-              aria-label="Maximum preparing issues count"
-            />
-          </div>
+          <ul className="console-settings-modal-project-list">
+            {pjcodes.map((pjcode) => (
+              <li key={pjcode} className="console-settings-modal-project-row">
+                <label
+                  htmlFor={`max-preparing-count-${pjcode}`}
+                  className="console-settings-modal-label"
+                >
+                  {pjcode}
+                </label>
+                <input
+                  id={`max-preparing-count-${pjcode}`}
+                  type="number"
+                  min={1}
+                  step={1}
+                  className="console-settings-modal-input"
+                  value={inputValues[pjcode] ?? ''}
+                  onChange={(e) => onChangeInput(pjcode, e.target.value)}
+                  disabled={isSaving}
+                  aria-label={`Maximum preparing issues count for ${pjcode}`}
+                />
+              </li>
+            ))}
+          </ul>
         )}
         {error !== null && (
           <p className="console-settings-modal-error" role="alert">
@@ -79,9 +83,9 @@ export const ConsoleProjectSettingsModalScreen = ({
             <button
               type="button"
               className="console-settings-modal-save"
-              onClick={handleSave}
-              disabled={!isValid || isSaving}
-              aria-label="Save settings"
+              onClick={onSave}
+              disabled={isSaveDisabled}
+              aria-label="Save max settings"
             >
               {isSaving ? 'Saving…' : 'Save'}
             </button>

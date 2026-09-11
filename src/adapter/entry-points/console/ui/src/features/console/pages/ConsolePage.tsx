@@ -127,7 +127,7 @@ export const ConsolePage = () => {
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
   const overlayState = useConsoleOverlay(pjcode ?? OVERLAY_NAMESPACE_FALLBACK);
 
-  const projectSettings = useConsoleProjectSettings(pjcode);
+  const projectSettings = useConsoleProjectSettings(pjcodes);
 
   const counts = useMemo(() => {
     const result = emptyCounts();
@@ -849,8 +849,9 @@ export const ConsolePage = () => {
       />
       {projectSettings.isOpen && (
         <ConsoleProjectSettingsModalScreen
-          value={projectSettings.inputValue}
-          onChange={projectSettings.changeInput}
+          pjcodes={pjcodes}
+          inputValues={projectSettings.inputValues}
+          onChangeInput={projectSettings.changeInput}
           isLoading={projectSettings.isLoading}
           isSaving={projectSettings.isSaving}
           error={projectSettings.error}
@@ -883,25 +884,23 @@ export const ConsolePage = () => {
               onSave={saveSettings}
               onClose={closeSettings}
             />
+            <button
+              type="button"
+              className="console-tab-settings-button"
+              aria-label="Open max settings"
+              onClick={projectSettings.open}
+            >
+              ⬆
+            </button>
             {pjcode !== null && (
-              <>
-                <button
-                  type="button"
-                  className="console-tab-settings-button"
-                  aria-label="Open project settings"
-                  onClick={projectSettings.open}
-                >
-                  ⚙
-                </button>
-                <ConsoleTaskCreateButton
-                  pjcode={pjcode}
-                  storyEntries={storyEntries}
-                  agentOptions={agentOptions}
-                  defaultNameWithOwner={defaultNameWithOwner}
-                  onCreateIssue={handleCreateIssueFromDialog}
-                  fleetTaskCreateUrl={fleetTaskCreateUrl}
-                />
-              </>
+              <ConsoleTaskCreateButton
+                pjcode={pjcode}
+                storyEntries={storyEntries}
+                agentOptions={agentOptions}
+                defaultNameWithOwner={defaultNameWithOwner}
+                onCreateIssue={handleCreateIssueFromDialog}
+                fleetTaskCreateUrl={fleetTaskCreateUrl}
+              />
             )}
           </>
         }
