@@ -886,12 +886,13 @@ export const handleCreateIssue = async (
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
+  const authenticatedUser = await issueRepository.getAuthenticatedUserLogin();
   const issueNumber = await issueRepository.createNewIssue(
     org,
     repo,
     title,
     issueBody,
-    [],
+    [authenticatedUser],
     [],
   );
   const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;

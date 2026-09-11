@@ -486,6 +486,7 @@ test('creates an issue for a story when the add-task button and form are used', 
   expect(harness.createIssueCalls[0].repo).toBe(
     'npm-cli-github-issue-tower-defence-management',
   );
+  expect(harness.createIssueCalls[0].assignees).toContain('test-user');
 });
 
 test('opens a fullscreen-overlay modal when the console header new-task button is clicked', async ({
