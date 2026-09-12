@@ -797,6 +797,16 @@ export class ApiV3CheerioRestIssueRepository
       issue.itemId,
       { singleSelectOptionId: statusId },
     );
+    const memoized = this.getAllIssuesRefreshMemo.get(project.id);
+    if (memoized) {
+      const memoIssue = memoized.issues.find((i) => i.itemId === issue.itemId);
+      if (memoIssue) {
+        const statusOption = project.status.statuses.find(
+          (s) => s.id === statusId,
+        );
+        memoIssue.status = statusOption?.name ?? null;
+      }
+    }
   };
 
   convertProjectItemToIssue = (item: ProjectItem): Issue => {
