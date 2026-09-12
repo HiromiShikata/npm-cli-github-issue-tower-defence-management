@@ -1268,12 +1268,24 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           name: 'Status',
           fieldId: 'f-status',
           statuses: [
-            { id: 'aw-id', name: 'Awaiting Workspace', color: 'GRAY' as const, description: '' },
-            { id: 'prep-id', name: 'Preparation', color: 'YELLOW' as const, description: '' },
+            {
+              id: 'aw-id',
+              name: 'Awaiting Workspace',
+              color: 'GRAY' as const,
+              description: '',
+            },
+            {
+              id: 'prep-id',
+              name: 'Preparation',
+              color: 'YELLOW' as const,
+              description: '',
+            },
           ],
         },
       };
-      dateRepository.now.mockResolvedValue(new Date('2026-01-01T00:00:00.000Z'));
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-01-01T00:00:00.000Z'),
+      );
       localStorageCacheRepository.getSingle.mockResolvedValue(null);
       projectRepository.getProject.mockResolvedValue(project);
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
@@ -1294,7 +1306,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       const secondResult = await repository.getAllIssues('proj-1');
       expect(secondResult.issues[0].status).toBe('Preparation');
-      expect(graphqlProjectItemRepository.fetchProjectItems).toHaveBeenCalledTimes(1);
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledTimes(1);
     });
   });
 
