@@ -1253,6 +1253,47 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       );
     });
+
+    it('updates the in-memory memo so a subsequent getAllIssues call returns the new status', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project = {
+        ...buildTestProject('p-cache-test'),
+        status: {
+          name: 'Status',
+          fieldId: 'f-status',
+          statuses: [
+            { id: 'aw-id', name: 'Awaiting Workspace', color: 'GRAY' as const, description: '' },
+            { id: 'prep-id', name: 'Preparation', color: 'YELLOW' as const, description: '' },
+          ],
+        },
+      };
+      dateRepository.now.mockResolvedValue(new Date('2026-07-07T00:00:00Z'));
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem('https://github.com/o/r/issues/99', 'cached-issue'),
+          id: 'item-cached-issue',
+          customFields: [{ name: 'Status', value: 'Awaiting Workspace' }],
+        },
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+
+      const firstResult = await repository.getAllIssues('p-cache-test');
+      expect(firstResult.issues[0].status).toBe('Awaiting Workspace');
+
+      await repository.updateStatus(project, firstResult.issues[0], 'prep-id');
+
+      const secondResult = await repository.getAllIssues('p-cache-test');
+      expect(secondResult.issues[0].status).toBe('Preparation');
+    });
   });
 
   describe('getCachedProject', () => {
