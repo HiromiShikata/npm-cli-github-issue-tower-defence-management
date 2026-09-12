@@ -1268,8 +1268,18 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           name: 'Status',
           fieldId: 'f-status',
           statuses: [
-            { id: 'aw-id', name: 'Awaiting Workspace', color: 'GRAY' as const, description: '' },
-            { id: 'prep-id', name: 'Preparation', color: 'YELLOW' as const, description: '' },
+            {
+              id: 'aw-id',
+              name: 'Awaiting Workspace',
+              color: 'GRAY' as const,
+              description: '',
+            },
+            {
+              id: 'prep-id',
+              name: 'Preparation',
+              color: 'YELLOW' as const,
+              description: '',
+            },
           ],
         },
       };
@@ -1278,7 +1288,10 @@ describe('ApiV3CheerioRestIssueRepository', () => {
       projectRepository.getProject.mockResolvedValue(project);
       graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
         {
-          ...buildProjectItem('https://github.com/o/r/issues/99', 'cached-issue'),
+          ...buildProjectItem(
+            'https://github.com/o/r/issues/99',
+            'cached-issue',
+          ),
           id: 'item-cached-issue',
           customFields: [{ name: 'Status', value: 'Awaiting Workspace' }],
         },

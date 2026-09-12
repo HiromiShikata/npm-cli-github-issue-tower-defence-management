@@ -7473,7 +7473,12 @@ describe('StartPreparationUseCase', () => {
     });
     const storyObjectMap: StoryObjectMap = new Map();
     storyObjectMap.set('Default Story', {
-      story: { id: 'story-1', name: 'Default Story', color: 'GRAY', description: '' },
+      story: {
+        id: 'story-1',
+        name: 'Default Story',
+        color: 'GRAY',
+        description: '',
+      },
       storyIssue: null,
       issues: [issue],
     });
