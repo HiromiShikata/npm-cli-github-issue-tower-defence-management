@@ -2262,3 +2262,112 @@ describe('ConsolePage task creation action queue', () => {
     }
   });
 });
+
+describe('ConsolePage workflow task creation', () => {
+  const installFetchWithWorkflowIssueUrl = (
+    workflowImprovementIssueUrl: string,
+  ): jest.Mock => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            pjcodes: ['acme'],
+            workflowImprovementIssueUrl,
+          }),
+        };
+      }
+      if (url === '/api/createworkflowissue') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            issueUrl: 'https://github.com/HiromiShikata/secretary/issues/100',
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+  });
+
+  it('extracts nameWithOwner from workflowImprovementIssueUrl and calls the API', async () => {
+    const fetchMock = installFetchWithWorkflowIssueUrl(
+      'https://github.com/HiromiShikata/secretary/issues/42',
+    );
+
+    const { getByTitle, getByPlaceholderText, getByText } = render(
+      <ConsolePage />,
+    );
+
+    await waitFor(() =>
+      expect(
+        getByTitle('Create workflow improvement task'),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(getByTitle('Create workflow improvement task'));
+    fireEvent.change(getByPlaceholderText('Task title'), {
+      target: { value: 'Improve the pipeline' },
+    });
+    fireEvent.click(getByText('Create'));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/createworkflowissue',
+        expect.objectContaining({
+          body: JSON.stringify({
+            nameWithOwner: 'HiromiShikata/secretary',
+            title: 'Improve the pipeline',
+          }),
+        }),
+      ),
+    );
+  });
+
+  it('shows an error when workflowImprovementIssueUrl cannot be parsed', async () => {
+    installFetchWithWorkflowIssueUrl(
+      'https://github.com/HiromiShikata/secretary',
+    );
+
+    const { getByTitle, getByPlaceholderText, getByText } = render(
+      <ConsolePage />,
+    );
+
+    await waitFor(() =>
+      expect(
+        getByTitle('Create workflow improvement task'),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(getByTitle('Create workflow improvement task'));
+    fireEvent.change(getByPlaceholderText('Task title'), {
+      target: { value: 'Improve the pipeline' },
+    });
+    fireEvent.click(getByText('Create'));
+
+    await waitFor(() =>
+      expect(
+        getByText(
+          'Could not parse repository from workflowImprovementIssueUrl.',
+        ),
+      ).toBeInTheDocument(),
+    );
+  });
+});
