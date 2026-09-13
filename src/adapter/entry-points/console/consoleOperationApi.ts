@@ -34,6 +34,7 @@ import { removeItemFromConsoleLists } from '../handlers/FileSystemConsoleTabsRep
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
+export const GITHUB_ISSUE_TITLE_MAX_CHARS = 256;
 export const CONFLICT_RETURNED_MESSAGE =
   'Auto Status Check: CONFLICT\nThis pull request has a merge conflict and has been returned to Awaiting Workspace.';
 export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
@@ -884,14 +885,25 @@ export const handleCreateIssue = async (
     issueBody = `Related: ${referenceUrl}`;
   }
 
+  const effectiveTitle =
+    title.length > GITHUB_ISSUE_TITLE_MAX_CHARS
+      ? title.slice(0, GITHUB_ISSUE_TITLE_MAX_CHARS)
+      : title;
+  const effectiveBody =
+    title.length > GITHUB_ISSUE_TITLE_MAX_CHARS
+      ? issueBody.length > 0
+        ? `${title}\n\n${issueBody}`
+        : title
+      : issueBody;
+
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
   const authenticatedUser = await issueRepository.getAuthenticatedUserLogin();
   const issueNumber = await issueRepository.createNewIssue(
     org,
     repo,
-    title,
-    issueBody,
+    effectiveTitle,
+    effectiveBody,
     [authenticatedUser],
     [],
   );
