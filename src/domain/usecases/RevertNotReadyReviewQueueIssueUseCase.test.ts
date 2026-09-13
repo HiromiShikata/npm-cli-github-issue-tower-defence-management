@@ -2478,7 +2478,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       const silentRedispatchComment = (count: number) => ({
         author: 'owner',
-        content: `Next step agent dispatch repeated: developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
+        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
         createdAt: new Date(),
       });
       // The agent report is placed before the human comment so it is outside
@@ -2580,7 +2580,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       const silentRedispatchComment = (count: number) => ({
         author: 'owner',
-        content: `Next step agent dispatch repeated: developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
+        content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
         createdAt: new Date(),
       });
       const humanComment = {

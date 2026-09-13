@@ -1225,7 +1225,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('Next step agent dispatch repeated: accounting'),
+      expect.stringContaining('Auto Status Check: DISPATCH_AGAIN accounting'),
     );
   });
 
@@ -1319,7 +1319,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('Next step agent dispatch repeated: accounting'),
+      expect.stringContaining('Auto Status Check: DISPATCH_AGAIN accounting'),
     );
   });
 
@@ -1339,10 +1339,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           'From: :robot: triager\n```json\n{"nextStepAgent": "accounting", "nextStep": null}\n```',
       }),
       createMockComment({
-        content: 'Next step agent dispatch repeated: accounting',
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
       }),
       createMockComment({
-        content: 'Next step agent dispatch repeated: accounting',
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
       }),
     ]);
 
@@ -1384,10 +1384,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           'From: :robot: triager\n```json\n{"nextStepAgent": "developer", "nextStep": null}\n```',
       }),
       createMockComment({
-        content: 'Next step agent dispatch repeated: developer',
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
       }),
       createMockComment({
-        content: 'Next step agent dispatch repeated: developer',
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
       }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
@@ -1419,14 +1419,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       createMockComment({
-        content: 'Next step agent dispatch repeated: accounting',
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
       }),
       createMockComment({
         content:
           'From: :robot: accounting\n```json\n{"nextStepAgent": "accounting"}\n```',
       }),
       createMockComment({
-        content: 'Next step agent dispatch repeated: accounting',
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
       }),
     ]);
 
@@ -6555,10 +6555,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           'From: :robot: triager\n```json\n{"nextStepAgent": "accounting", "nextStep": null}\n```',
       }),
       createMockComment({
-        content: 'Next step agent dispatch repeated: accounting',
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
       }),
       createMockComment({
-        content: 'Next step agent dispatch repeated: accounting',
+        content: 'Auto Status Check: DISPATCH_AGAIN accounting',
       }),
     ];
 

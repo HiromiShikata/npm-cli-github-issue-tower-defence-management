@@ -363,12 +363,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
       },
       {
         author: 'bot',
-        content: 'Next step agent dispatch repeated: developer',
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T01:00:00Z'),
       },
       {
         author: 'bot',
-        content: 'Next step agent dispatch repeated: developer',
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T02:00:00Z'),
       },
     ]);
@@ -427,7 +427,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       },
       {
         author: 'bot',
-        content: 'Next step agent dispatch repeated: developer',
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T01:00:00Z'),
       },
       {
@@ -437,7 +437,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       },
       {
         author: 'bot',
-        content: 'Next step agent dispatch repeated: developer',
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T02:00:00Z'),
       },
     ]);
@@ -497,12 +497,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
       },
       {
         author: 'bot',
-        content: 'Next step agent dispatch repeated: developer',
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T01:00:00Z'),
       },
       {
         author: 'bot',
-        content: 'Next step agent dispatch repeated: developer',
+        content: 'Auto Status Check: DISPATCH_AGAIN developer',
         createdAt: new Date('2024-01-02T02:00:00Z'),
       },
     ]);
@@ -516,7 +516,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('Next step agent dispatch repeated: developer'),
+      expect.stringContaining('Auto Status Check: SILENT_REDISPATCH_ESCALATED developer'),
     );
   });
 
@@ -2494,12 +2494,12 @@ describe('RevertOrphanedPreparationUseCase', () => {
         },
         {
           author: 'bot',
-          content: `Next step agent dispatch repeated: ${agent}`,
+          content: `Auto Status Check: DISPATCH_AGAIN ${agent}`,
           createdAt: new Date('2024-01-02T01:00:00Z'),
         },
         {
           author: 'bot',
-          content: `Next step agent dispatch repeated: ${agent}`,
+          content: `Auto Status Check: DISPATCH_AGAIN ${agent}`,
           createdAt: new Date('2024-01-02T02:00:00Z'),
         },
       ]);
