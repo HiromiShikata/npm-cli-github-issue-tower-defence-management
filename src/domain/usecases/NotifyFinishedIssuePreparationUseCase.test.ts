@@ -6705,7 +6705,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it('should waive PULL_REQUEST_NOT_FOUND when defaultAgentName matches the next step agent in the report', async () => {
-      const issue = createMockIssue({ status: 'Preparation', agent: 'developer' });
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'developer',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
