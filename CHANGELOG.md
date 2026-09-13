@@ -1,3 +1,10 @@
+## [2.111.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.2...v2.111.3) (2026-09-13)
+
+
+### Bug Fixes
+
+* **console:** truncate over-limit title into body on issue creation ([#2340](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2340)) ([dbab130](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dbab130ffa0270e7b0b9b06d81c16832ed6aaa9f))
+
 ## [2.111.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.1...v2.111.2) (2026-09-13)
 
 
