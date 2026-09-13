@@ -10,7 +10,8 @@ import {
 } from './dependencyNotificationCommentHeads';
 import { isAgentReportBody } from './isAgentReportBody';
 
-const LEGACY_DISPATCH_REPEATED_COMMENT_HEAD = 'Next step agent dispatch repeated:';
+const LEGACY_DISPATCH_REPEATED_COMMENT_HEAD =
+  'Next step agent dispatch repeated:';
 
 const MACHINE_GENERATED_COMMENT_HEADS = [
   AUTO_STATUS_CHECK_MESSAGE_HEAD,
