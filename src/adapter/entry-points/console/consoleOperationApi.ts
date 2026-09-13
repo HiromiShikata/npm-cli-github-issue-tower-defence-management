@@ -885,16 +885,15 @@ export const handleCreateIssue = async (
     issueBody = `Related: ${referenceUrl}`;
   }
 
-  const effectiveTitle =
-    title.length > GITHUB_ISSUE_TITLE_MAX_CHARS
-      ? title.slice(0, GITHUB_ISSUE_TITLE_MAX_CHARS)
-      : title;
-  const effectiveBody =
-    title.length > GITHUB_ISSUE_TITLE_MAX_CHARS
-      ? issueBody.length > 0
-        ? `${title}\n\n${issueBody}`
-        : title
-      : issueBody;
+  const titleExceedsLimit = title.length > GITHUB_ISSUE_TITLE_MAX_CHARS;
+  const effectiveTitle = titleExceedsLimit
+    ? title.slice(0, GITHUB_ISSUE_TITLE_MAX_CHARS)
+    : title;
+  const effectiveBody = titleExceedsLimit
+    ? issueBody.length > 0
+      ? `${title}\n\n${issueBody}`
+      : title
+    : issueBody;
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
