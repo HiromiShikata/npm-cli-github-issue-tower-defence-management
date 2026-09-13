@@ -230,6 +230,10 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('escalateReportingLoop');
+      const comment =
+        result.type === 'escalateReportingLoop' ? result.comment : '';
+      expect(comment).not.toContain('Failed to receive a report');
+      expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
 
     it('escalates to escalateReportingLoop when the agent has reported in the cycle', () => {
