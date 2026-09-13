@@ -1,3 +1,10 @@
+## [2.111.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.0...v2.111.1) (2026-09-13)
+
+
+### Bug Fixes
+
+* **RateLimitCache:** track HTTP 401 auth failures to stop re-selecting expired OAuth tokens ([#2338](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2338)) ([a3ae285](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a3ae285ebcf0c54307d2b633e4910dd7228a23da))
+
 # [2.111.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.110.2...v2.111.0) (2026-09-13)
 
 
