@@ -500,8 +500,8 @@ body {
 
 .console-settings-modal-project-row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
 }
 
 .console-settings-modal-label {
