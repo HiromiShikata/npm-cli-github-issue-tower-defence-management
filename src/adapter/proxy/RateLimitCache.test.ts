@@ -612,7 +612,9 @@ describe('RateLimitCache', () => {
       const after = Date.now() / 1000;
       const snapshot = readRateLimit(token);
       expect(snapshot).not.toBeNull();
-      expect(snapshot?.blockedUntilEpoch).toBeGreaterThanOrEqual(before + 86400);
+      expect(snapshot?.blockedUntilEpoch).toBeGreaterThanOrEqual(
+        before + 86400,
+      );
       expect(snapshot?.blockedUntilEpoch).toBeLessThanOrEqual(after + 86400);
     });
 
