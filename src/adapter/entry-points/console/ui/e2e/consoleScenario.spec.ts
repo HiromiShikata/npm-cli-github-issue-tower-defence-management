@@ -899,6 +899,37 @@ test('does not show the workflow improvement link when workflowImprovementIssueU
   ).toHaveCount(0);
 });
 
+test('creates a workflow improvement issue when the workflow task button is used', async ({
+  browser,
+}) => {
+  const localHarness = await startConsoleE2eHarness({
+    workflowImprovementIssueUrl:
+      'https://github.com/HiromiShikata/secretary/issues/42',
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appUrl);
+
+    const toggleButton = page.getByTitle('Create workflow improvement task');
+    await expect(toggleButton).toBeVisible();
+    await toggleButton.click();
+
+    await page.getByPlaceholder('Task title').fill('My workflow task');
+    await page.getByRole('button', { name: 'Create', exact: true }).click();
+
+    await expect
+      .poll(() => localHarness.createIssueCalls.length, { timeout: 10000 })
+      .toBe(1);
+    expect(localHarness.createIssueCalls[0].org).toBe('HiromiShikata');
+    expect(localHarness.createIssueCalls[0].repo).toBe('secretary');
+    expect(localHarness.createIssueCalls[0].title).toBe('My workflow task');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
+});
+
 test('shows the fleet task create link when fleetTaskCreateUrl is configured', async ({
   browser,
 }) => {
