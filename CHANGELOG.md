@@ -1,3 +1,10 @@
+## [2.108.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.108.0...v2.108.1) (2026-09-13)
+
+
+### Bug Fixes
+
+* count re-dispatches on the Auto Status Check reject and conflict revert paths ([#2323](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2323)) ([4d9b036](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4d9b036a7aae8a348396f1d6158b613ee91ef9ad))
+
 # [2.108.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.7...v2.108.0) (2026-09-13)
 
 
