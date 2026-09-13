@@ -331,10 +331,19 @@ export class NotifyFinishedIssuePreparationUseCase {
     let storyName = lastAgentReport
       ? extractStory(lastAgentReport.content)
       : null;
+    const reportingAgentNameMatch =
+      lastAgentReport?.content.match(/^From: :robot: (\S+)/);
+    const reportingAgentName = reportingAgentNameMatch
+      ? reportingAgentNameMatch[1]
+      : '';
     if (
       issue.agent === null ||
       lastAgentReport === null ||
-      !isAgentReportBodyFromAgent(lastAgentReport.content, issue.agent)
+      !isAgentReportBodyFromAgent(
+        lastAgentReport.content,
+        reportingAgentName,
+        issue.agent,
+      )
     ) {
       storyName = null;
     }
