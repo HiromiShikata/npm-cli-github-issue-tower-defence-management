@@ -513,4 +513,32 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     expect(output.selectedName).toBeNull();
     expect(output.diagnostics.join('\n')).toContain('No eligible token');
   });
+
+  it('excludes an auth-failed token (blockedUntilEpoch in the future) in favour of a healthy token', () => {
+    writeTokenList([
+      { name: 'authFailed', token: 'fake-auth-failed' },
+      { name: 'active', token: 'fake-active' },
+    ]);
+    fs.writeFileSync(
+      path.join(cacheDirectory, `${hashToken('fake-auth-failed')}.json`),
+      JSON.stringify({ blockedUntilEpoch: NOW + DAY }),
+    );
+    writeCache('fake-active', {
+      fiveHourUtilization: 0.1,
+      fiveHourReset: NOW + HOUR,
+      sevenDayUtilization: 0.1,
+      sevenDayReset: NOW + DAY,
+    });
+
+    const handler = buildHandler([]);
+    const output = handler.handle({
+      tokenListJsonPath: tokenListPath,
+      cacheDirectory,
+      nowEpochSeconds: NOW,
+      selectionSettings: DEFAULT_LIVE_SESSION_OAUTH_TOKEN_SELECTION_SETTINGS,
+    });
+
+    expect(output.selectedName).toBe('active');
+    expect(output.diagnostics.join('\n')).toContain('auth failure');
+  });
 });
