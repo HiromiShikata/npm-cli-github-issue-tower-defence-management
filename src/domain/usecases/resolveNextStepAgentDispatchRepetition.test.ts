@@ -56,7 +56,7 @@ const reportingEscalationComment = (
 The agent has been reporting every cycle but cannot advance — it has been dispatched 3 times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
 });
 
-const bareLegacyRepetitionComment = (
+const bareRepetitionComment = (
   nextStepAgent: string,
   author = 'bot',
 ): TestComment => ({
@@ -453,13 +453,13 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('escalateReportingLoop');
     });
 
-    it('does not treat bare legacy repetition comments as escalation resets', () => {
+    it('does not treat bare repetition comments as escalation resets', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
-          bareLegacyRepetitionComment('chore'),
-          bareLegacyRepetitionComment('chore'),
+          bareRepetitionComment('chore'),
+          bareRepetitionComment('chore'),
           report('chore'),
         ],
         isTrustedAuthor: trustAll,
