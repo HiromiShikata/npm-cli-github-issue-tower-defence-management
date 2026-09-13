@@ -3336,7 +3336,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         'Auto Status Check: AWAITING_OWNER',
       );
     });
-
   });
 
   it('should continue and not enrich dependedIssueUrls when getStoryObjectMap throws', async () => {
