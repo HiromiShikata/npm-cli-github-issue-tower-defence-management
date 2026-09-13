@@ -390,7 +390,7 @@ describe('StartPreparationUseCase', () => {
     });
   });
 
-  describe('spawns with defaultAgentName when the issue has no agent configured, without setting the Agent field', () => {
+  describe('writes resolved defaultAgentName to the Agent field when the issue has no agent configured', () => {
     const projectWithAgentOption = (
       optionId: string,
       optionName: string,
@@ -405,7 +405,7 @@ describe('StartPreparationUseCase', () => {
       },
     });
 
-    it('does not set the Agent field even when the project has a matching agent option and the issue has no agent configured', async () => {
+    it('sets the Agent field to the matching option when the project has a matching agent option and the issue has no agent configured', async () => {
       const project = projectWithAgentOption('agent-option-agent1', 'agent1');
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
@@ -440,9 +440,63 @@ describe('StartPreparationUseCase', () => {
         agents: [],
       });
 
-      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'url1',
+        project,
+        'agent-option-agent1',
+      );
       expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
         'agent1',
+      );
+    });
+
+    it('writes the resolved agent name to the Agent field before spawning the worker', async () => {
+      const project = projectWithAgentOption('agent-option-developer', 'developer');
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+        createMockStoryObjectMap([
+          createMockIssue({
+            url: 'url1',
+            status: 'Awaiting Workspace',
+            labels: [],
+            agent: null,
+          }),
+        ]),
+      );
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 0,
+      });
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        defaultAgentName: 'developer',
+        defaultLlmModelName: 'claude-opus',
+        fallbackLlmModelName: null,
+        defaultLlmAgentName: null,
+        configFilePath: '/path/to/config.yml',
+        maximumPreparingIssuesCount: null,
+        utilizationPercentageThreshold: 90,
+        allowedIssueAuthors: ['testuser'],
+        manager: 'manager-user',
+        codexHomeCandidates: null,
+        labelsAsLlmAgentName: null,
+        agents: [],
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'url1',
+        project,
+        'agent-option-developer',
+      );
+      expect(
+        mockIssueRepository.setIssueAgentField.mock.invocationCallOrder[0],
+      ).toBeLessThan(
+        mockLocalCommandRunner.runCommand.mock.invocationCallOrder[0],
+      );
+      expect(mockLocalCommandRunner.runCommand.mock.calls[0][1][1]).toBe(
+        'developer',
       );
     });
   });
