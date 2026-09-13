@@ -12,7 +12,9 @@ describe('isAgentReportBody', () => {
   });
 
   it('accepts a body containing a fenced json block with nextStep null', () => {
-    expect(isAgentReportBody('```json\n{ "nextStep": null }\n```\n')).toBe(true);
+    expect(isAgentReportBody('```json\n{ "nextStep": null }\n```\n')).toBe(
+      true,
+    );
   });
 
   it('accepts a body where the json block appears after prose text', () => {
