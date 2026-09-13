@@ -178,4 +178,20 @@ describe('writeRotationOrderFile', () => {
 
     delete process.env.XDG_CACHE_HOME;
   });
+
+  it('uses a process-unique temp file path to prevent rename race condition when invoked concurrently', () => {
+    process.env.XDG_CACHE_HOME = '/cache';
+
+    writeRotationOrderFile([]);
+
+    const writeArgs = jest.mocked(fs.writeFileSync).mock.calls[0];
+    const tmpPath = writeArgs[0] as string;
+    expect(tmpPath).toBe(`/cache/tdpm/rotation-order.json.${process.pid}.tmp`);
+
+    const renameArgs = jest.mocked(fs.renameSync).mock.calls[0];
+    expect(renameArgs[0]).toBe(`/cache/tdpm/rotation-order.json.${process.pid}.tmp`);
+    expect(renameArgs[1]).toBe('/cache/tdpm/rotation-order.json');
+
+    delete process.env.XDG_CACHE_HOME;
+  });
 });
