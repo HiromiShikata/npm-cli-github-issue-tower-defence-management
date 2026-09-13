@@ -150,7 +150,9 @@ const countDispatchesInCurrentCycle = <
     (found, comment, index) => {
       if (!params.isTrustedAuthor(comment.author)) return found;
       if (!comment.content.startsWith(DISPATCH_REPETITION_PREFIX)) return found;
-      const afterHead = comment.content.slice(DISPATCH_REPETITION_PREFIX.length);
+      const afterHead = comment.content.slice(
+        DISPATCH_REPETITION_PREFIX.length,
+      );
       const keyword = afterHead.split(/[ \n]/)[0];
       if (!DISPATCH_REPETITION_KEYWORDS.has(keyword)) return found;
       if (!isEscalationDispatchComment(comment.content)) return found;

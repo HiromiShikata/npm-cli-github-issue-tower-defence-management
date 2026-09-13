@@ -64,7 +64,8 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content: 'Next step agent dispatch repeated: developer\n\nDispatching it again.',
+          content:
+            'Next step agent dispatch repeated: developer\n\nDispatching it again.',
         },
         trustAll,
       ),

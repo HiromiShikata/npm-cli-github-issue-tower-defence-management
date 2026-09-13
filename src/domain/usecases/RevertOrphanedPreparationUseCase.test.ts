@@ -516,7 +516,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('Auto Status Check: SILENT_REDISPATCH_ESCALATED developer'),
+      expect.stringContaining(
+        'Auto Status Check: SILENT_REDISPATCH_ESCALATED developer',
+      ),
     );
   });
 
