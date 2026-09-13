@@ -19,6 +19,7 @@ import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUse
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 
 export const NORMAL_CONCURRENT_LIMIT = 6;
 const SEVEN_DAY_THROTTLE_START_THRESHOLD = 0.8;
@@ -660,6 +661,20 @@ export class StartPreparationUseCase {
           ? null
           : agentNameFromDesignation(issue.agent ?? '')) ||
         params.defaultAgentName;
+      if (issue.agent === null && !isNoStory) {
+        const agentOptionId = await ensureAgentOptionAndGetId(
+          this.projectRepository,
+          project,
+          agent,
+        );
+        if (agentOptionId !== null) {
+          await this.issueRepository.setIssueAgentField(
+            issue.url,
+            project,
+            agentOptionId,
+          );
+        }
+      }
       const labelModelName = issue.labels
         .find((label: string) => label.startsWith('llm-model:'))
         ?.replace('llm-model:', '')
