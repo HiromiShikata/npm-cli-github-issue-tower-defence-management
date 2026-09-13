@@ -6882,7 +6882,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('calls updateStory with the resolved storyOptionId when the routing JSON contains a story key matching a project story', async () => {
       const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({ status: 'Preparation', agent: 'triager' });
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'triager',
+      });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
