@@ -1,5 +1,4 @@
 import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
-import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
 import {
   resolveNextStepAgentDispatchRepetition,
   SILENT_CRASH_ESCALATION_PHRASE,
@@ -32,7 +31,7 @@ const repetitionComment = (
   author = 'bot',
 ): TestComment => ({
   author,
-  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+  content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_AGAIN ${nextStepAgent}
 
 Dispatching it again.`,
 });
@@ -42,7 +41,7 @@ const escalationComment = (
   author = 'bot',
 ): TestComment => ({
   author,
-  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+  content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} SILENT_REDISPATCH_ESCALATED ${nextStepAgent}
 
 Failed to receive a report from the dispatched agent for 3 consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
 });
@@ -52,17 +51,17 @@ const reportingEscalationComment = (
   author = 'bot',
 ): TestComment => ({
   author,
-  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+  content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} REPORTING_LOOP_ESCALATED ${nextStepAgent}
 
 The agent has been reporting every cycle but cannot advance — it has been dispatched 3 times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
 });
 
-const bareLegacyRepetitionComment = (
+const bareRepetitionComment = (
   nextStepAgent: string,
   author = 'bot',
 ): TestComment => ({
   author,
-  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}`,
+  content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_AGAIN ${nextStepAgent}`,
 });
 
 const dispatchLoopEscalationComment = (
@@ -70,7 +69,7 @@ const dispatchLoopEscalationComment = (
   author = 'bot',
 ): TestComment => ({
   author,
-  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${nextStepAgent}
+  content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_LOOP_ESCALATED ${nextStepAgent}
 
 This agent has been dispatched 3 times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
 });
@@ -93,7 +92,7 @@ Report body.`,
 
 const nullDispatchLoopEscalationComment = (author = 'bot'): TestComment => ({
   author,
-  content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} (no next-step agent)
+  content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_LOOP_ESCALATED (no next-step agent)
 
 This no-next-step-agent task has been dispatched 3 times since the last human comment without advancing, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`,
 });
@@ -454,13 +453,13 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('escalateReportingLoop');
     });
 
-    it('does not treat bare legacy repetition comments as escalation resets', () => {
+    it('does not treat bare repetition comments as escalation resets', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
-          bareLegacyRepetitionComment('chore'),
-          bareLegacyRepetitionComment('chore'),
+          bareRepetitionComment('chore'),
+          bareRepetitionComment('chore'),
           report('chore'),
         ],
         isTrustedAuthor: trustAll,

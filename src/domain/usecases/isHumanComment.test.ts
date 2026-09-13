@@ -9,7 +9,6 @@ import {
   SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD,
 } from './dependencyNotificationCommentHeads';
 import { isHumanComment } from './isHumanComment';
-import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
 
 const trustAll = (): boolean => true;
 
@@ -53,7 +52,20 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} developer\n\nDispatching it again.`,
+          content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} DISPATCH_AGAIN developer\n\nDispatching it again.`,
+        },
+        trustAll,
+      ),
+    ).toBe(false);
+  });
+
+  it('treats a legacy dispatch repetition comment as machine generated', () => {
+    expect(
+      isHumanComment(
+        {
+          author: 'bot',
+          content:
+            'Next step agent dispatch repeated: developer\n\nDispatching it again.',
         },
         trustAll,
       ),

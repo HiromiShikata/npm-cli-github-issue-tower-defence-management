@@ -1,10 +1,8 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
+import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { isAgentReportBody } from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
-import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
-
-export { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD };
 
 export const SILENT_CRASH_ESCALATION_PHRASE =
   'The agent may have crashed or stopped silently';
@@ -25,6 +23,19 @@ export type NextStepAgentDispatchRepetition =
 
 type SilentRedispatch = { count: number; hasReportsInCycle: boolean };
 
+const DISPATCH_REPETITION_PREFIX = `${AUTO_STATUS_CHECK_MESSAGE_HEAD} `;
+const DISPATCH_AGAIN_KEYWORD = 'DISPATCH_AGAIN';
+const SILENT_REDISPATCH_ESCALATED_KEYWORD = 'SILENT_REDISPATCH_ESCALATED';
+const REPORTING_LOOP_ESCALATED_KEYWORD = 'REPORTING_LOOP_ESCALATED';
+const DISPATCH_LOOP_ESCALATED_KEYWORD = 'DISPATCH_LOOP_ESCALATED';
+
+const DISPATCH_REPETITION_KEYWORDS = new Set([
+  DISPATCH_AGAIN_KEYWORD,
+  SILENT_REDISPATCH_ESCALATED_KEYWORD,
+  REPORTING_LOOP_ESCALATED_KEYWORD,
+  DISPATCH_LOOP_ESCALATED_KEYWORD,
+]);
+
 const findLastHumanCommentIndex = <
   CommentLike extends { author: string; content: string },
 >(
@@ -41,13 +52,16 @@ const isSilentRedispatchCommentForAgent = (
   content: string,
   nextStepAgent: string,
 ): boolean => {
-  if (!content.startsWith(NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD)) {
+  if (!content.startsWith(DISPATCH_REPETITION_PREFIX)) {
     return false;
   }
-  const agentNameInComment = content
-    .slice(NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD.length + 1)
-    .split('\n')[0]
-    .trim();
+  const afterHead = content.slice(DISPATCH_REPETITION_PREFIX.length);
+  const firstLine = afterHead.split('\n')[0];
+  const parts = firstLine.split(' ');
+  if (!DISPATCH_REPETITION_KEYWORDS.has(parts[0])) {
+    return false;
+  }
+  const agentNameInComment = parts.slice(1).join(' ').trim();
   return (
     normalizeProjectFieldName(agentNameInComment) ===
     normalizeProjectFieldName(nextStepAgent)
@@ -133,14 +147,17 @@ const countDispatchesInCurrentCycle = <
     params.isTrustedAuthor,
   );
   const lastEscalationCommentIndex = params.comments.reduce(
-    (found, comment, index) =>
-      params.isTrustedAuthor(comment.author) &&
-      comment.content.startsWith(
-        NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD,
-      ) &&
-      isEscalationDispatchComment(comment.content)
-        ? index
-        : found,
+    (found, comment, index) => {
+      if (!params.isTrustedAuthor(comment.author)) return found;
+      if (!comment.content.startsWith(DISPATCH_REPETITION_PREFIX)) return found;
+      const afterHead = comment.content.slice(
+        DISPATCH_REPETITION_PREFIX.length,
+      );
+      const keyword = afterHead.split(/[ \n]/)[0];
+      if (!DISPATCH_REPETITION_KEYWORDS.has(keyword)) return found;
+      if (!isEscalationDispatchComment(comment.content)) return found;
+      return index;
+    },
     -1,
   );
   const cycleStart = Math.max(
@@ -197,14 +214,14 @@ export const resolveNextStepAgentDispatchRepetition = <
     if (silentRedispatches.hasReportsInCycle) {
       return {
         type: 'escalateReportingLoop',
-        comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+        comment: `${DISPATCH_REPETITION_PREFIX}${REPORTING_LOOP_ESCALATED_KEYWORD} ${params.nextStepAgent}
 
 The agent has been reporting every cycle but cannot advance — it has been dispatched ${params.thresholdForAutoReject} times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
       };
     }
     return {
       type: 'escalateSilentRedispatch',
-      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+      comment: `${DISPATCH_REPETITION_PREFIX}${SILENT_REDISPATCH_ESCALATED_KEYWORD} ${params.nextStepAgent}
 
 Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
     };
@@ -218,7 +235,7 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
         : `This agent has been dispatched ${params.thresholdForDispatchLoop} times since the last human comment on this issue and the task has not moved past it, so ${DISPATCH_LOOP_ESCALATION_PHRASE} instead of being dispatched again.`;
     return {
       type: 'escalateDispatchLoop',
-      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${agentLabel}
+      comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_LOOP_ESCALATED_KEYWORD} ${agentLabel}
 
 ${dispatchLoopBody}`,
     };
@@ -233,7 +250,7 @@ ${dispatchLoopBody}`,
   ) {
     return {
       type: 'escalateReportingLoop',
-      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+      comment: `${DISPATCH_REPETITION_PREFIX}${REPORTING_LOOP_ESCALATED_KEYWORD} ${params.nextStepAgent}
 
 The agent has been reporting every cycle but cannot advance — it has been dispatched again after its report without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
     };
@@ -241,7 +258,7 @@ The agent has been reporting every cycle but cannot advance — it has been disp
   if (silentRedispatches !== null && silentRedispatches.count > 1) {
     return {
       type: 'dispatchAgain',
-      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+      comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${params.nextStepAgent}
 
 No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`,
     };
@@ -249,17 +266,17 @@ No report has been received from the dispatched agent since the last human comme
   if (dispatchesInCycle > 1) {
     return {
       type: 'dispatchAgain',
-      comment: `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+      comment: `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${params.nextStepAgent}
 
 The latest agent report names this agent as the next step and it has already been dispatched on this issue since the last human comment. Dispatching it again (${dispatchesInCycle}/${params.thresholdForDispatchLoop}).`,
     };
   }
   if (silentRedispatches !== null) {
     const comment = silentRedispatches.hasReportsInCycle
-      ? `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+      ? `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${params.nextStepAgent}
 
 The agent posted a report and nominated itself as the next step without resolving the blocker. Dispatching again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`
-      : `${NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD} ${params.nextStepAgent}
+      : `${DISPATCH_REPETITION_PREFIX}${DISPATCH_AGAIN_KEYWORD} ${params.nextStepAgent}
 
 No report has been received from the dispatched agent since the last human comment. Dispatching it again (${silentRedispatches.count}/${params.thresholdForAutoReject}).`;
     return { type: 'dispatchAgain', comment };
