@@ -1,3 +1,10 @@
+# [2.110.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.109.0...v2.110.0) (2026-09-13)
+
+
+### Features
+
+* **console:** add workflow task creation to TDPM console ([#2273](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2273)) ([6d3fb3b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6d3fb3b8b090159e6adef41de2f700b20df85771)), closes [HiromiShikata/umino-corporait-operation#31595](https://github.com/HiromiShikata/umino-corporait-operation/issues/31595)
+
 # [2.109.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.108.1...v2.109.0) (2026-09-13)
 
 
