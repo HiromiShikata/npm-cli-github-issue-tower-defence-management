@@ -35,11 +35,11 @@ describe('writeRotationOrderFile', () => {
     writeRotationOrderFile(entries);
 
     expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-      '/custom/cache/tdpm/rotation-order.json.tmp',
+      `/custom/cache/tdpm/rotation-order.json.${process.pid}.tmp`,
       expect.any(String),
     );
     expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
-      '/custom/cache/tdpm/rotation-order.json.tmp',
+      `/custom/cache/tdpm/rotation-order.json.${process.pid}.tmp`,
       '/custom/cache/tdpm/rotation-order.json',
     );
 
@@ -61,7 +61,7 @@ describe('writeRotationOrderFile', () => {
     writeRotationOrderFile([]);
 
     expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
-      `${expectedPath}.tmp`,
+      `${expectedPath}.${process.pid}.tmp`,
       expectedPath,
     );
 
@@ -184,13 +184,14 @@ describe('writeRotationOrderFile', () => {
 
     writeRotationOrderFile([]);
 
-    const writeArgs = jest.mocked(fs.writeFileSync).mock.calls[0];
-    const tmpPath = writeArgs[0] as string;
-    expect(tmpPath).toBe(`/cache/tdpm/rotation-order.json.${process.pid}.tmp`);
-
-    const renameArgs = jest.mocked(fs.renameSync).mock.calls[0];
-    expect(renameArgs[0]).toBe(`/cache/tdpm/rotation-order.json.${process.pid}.tmp`);
-    expect(renameArgs[1]).toBe('/cache/tdpm/rotation-order.json');
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      `/cache/tdpm/rotation-order.json.${process.pid}.tmp`,
+      expect.any(String),
+    );
+    expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
+      `/cache/tdpm/rotation-order.json.${process.pid}.tmp`,
+      '/cache/tdpm/rotation-order.json',
+    );
 
     delete process.env.XDG_CACHE_HOME;
   });
