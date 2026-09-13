@@ -32,6 +32,7 @@ import { extractStory } from './extractStory';
 import { findLastAgentReport } from './findLastAgentReport';
 
 import {
+  extractAgentNameFromReportBody,
   isAgentReportBody,
   isAgentReportBodyFromAgent,
 } from './isAgentReportBody';
@@ -331,17 +332,17 @@ export class NotifyFinishedIssuePreparationUseCase {
     let storyName = lastAgentReport
       ? extractStory(lastAgentReport.content)
       : null;
-    const reportingAgentNameMatch =
-      lastAgentReport?.content.match(/^From: :robot: (\S+)/);
-    const reportingAgentName = reportingAgentNameMatch
-      ? reportingAgentNameMatch[1]
-      : '';
+    const reporterName =
+      lastAgentReport !== null
+        ? extractAgentNameFromReportBody(lastAgentReport.content)
+        : null;
     if (
       issue.agent === null ||
       lastAgentReport === null ||
+      reporterName === null ||
       !isAgentReportBodyFromAgent(
         lastAgentReport.content,
-        reportingAgentName,
+        reporterName,
         issue.agent,
       )
     ) {
