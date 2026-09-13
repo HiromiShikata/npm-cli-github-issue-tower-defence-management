@@ -9,12 +9,18 @@ import { IssueCommentRepository } from './adapter-interfaces/IssueCommentReposit
 import { IssueRejectionEvaluator } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
+import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { issueReactivationTriggerIsPending } from './issueReactivationTriggerIsPending';
 import {
   AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
+  FAILED_PREPARATION_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import {
+  DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+  resolveNextStepAgentDispatchRepetition,
+} from './resolveNextStepAgentDispatchRepetition';
 
 // GitHub rejects field mutations against archived project items with
 // "The item is archived and cannot be updated". Such a failure is specific to
@@ -71,6 +77,8 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     allowedIssueAuthors?: string[] | null;
     developerAgentNames?: string[] | null;
     evaluatedAt?: Date;
+    thresholdForAutoReject?: number;
+    thresholdForDispatchLoop?: number;
   }): Promise<void> => {
     const allowedIssueAuthors = params.allowedIssueAuthors ?? null;
     const evaluatedAt = params.evaluatedAt ?? new Date();
@@ -93,6 +101,14 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     if (!awaitingWorkspaceStatusOption) {
       return;
     }
+
+    const failedPreparationStatusOption = project.status.statuses.find(
+      (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
+    );
+
+    const awaitingOwnerStatusOption = project.status.statuses.find(
+      (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+    );
 
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
@@ -180,6 +196,62 @@ export class RevertNotReadyReviewQueueIssueUseCase {
         if (rejections.length > 0) {
           if (!issue.assignees.includes(params.manager)) {
             continue;
+          }
+          if (params.thresholdForAutoReject !== undefined) {
+            const comments =
+              await this.issueCommentRepository.getCommentsFromIssue(issue);
+            const nextStepAgent = extractNextStepAgentFromComments(
+              comments,
+              (author) =>
+                isAuthorAuthorizedForAutoStatusCheck(
+                  author,
+                  allowedIssueAuthors,
+                ),
+            );
+            if (nextStepAgent !== null) {
+              const repetition = resolveNextStepAgentDispatchRepetition({
+                agentFieldValue: issue.agent,
+                nextStepAgent,
+                comments,
+                isTrustedAuthor: (author) =>
+                  isAuthorAuthorizedForAutoStatusCheck(
+                    author,
+                    allowedIssueAuthors,
+                  ),
+                thresholdForAutoReject: params.thresholdForAutoReject,
+                thresholdForDispatchLoop:
+                  params.thresholdForDispatchLoop ??
+                  DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+              });
+              if (repetition.type === 'escalateSilentRedispatch') {
+                await this.issueRepository.updateStatus(
+                  project,
+                  issue,
+                  (
+                    failedPreparationStatusOption ??
+                    awaitingWorkspaceStatusOption
+                  ).id,
+                );
+                await this.createCommentWithDedup(issue, repetition.comment);
+                continue;
+              }
+              if (
+                repetition.type === 'escalateReportingLoop' ||
+                repetition.type === 'escalateDispatchLoop'
+              ) {
+                await this.issueRepository.updateStatus(
+                  project,
+                  issue,
+                  (
+                    awaitingOwnerStatusOption ??
+                    failedPreparationStatusOption ??
+                    awaitingWorkspaceStatusOption
+                  ).id,
+                );
+                await this.createCommentWithDedup(issue, repetition.comment);
+                continue;
+              }
+            }
           }
           try {
             await this.issueRepository.updateStatus(
