@@ -3119,7 +3119,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should send webhook unconditionally for non-blocker issues moving to Awaiting Owner', async () => {
+    it('should not send webhook for non-blocker issues', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -3154,7 +3154,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       });
 
-      expect(mockWebhookRepository.sendGetRequest).toHaveBeenCalled();
+      expect(mockWebhookRepository.sendGetRequest).not.toHaveBeenCalled();
     });
 
     it('should not send webhook when URL is null', async () => {
@@ -3298,7 +3298,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should create comment and send notification unconditionally when moving to Awaiting Owner with no rejections and no next-step agent', async () => {
+    it('should not post Auto Status Check: AWAITING_OWNER comment when moving to Awaiting Owner', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -3331,16 +3331,12 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       });
 
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({
-          url: 'https://github.com/user/repo/issues/1',
-        }),
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
         'Auto Status Check: AWAITING_OWNER',
       );
-      expect(mockWebhookRepository.sendGetRequest).toHaveBeenCalledWith(
-        `https://example.com/webhook?url=${encodeURIComponent('https://github.com/user/repo/issues/1')}&msg=${encodeURIComponent('Workflow blocker resolved: https://github.com/user/repo/issues/1')}`,
-      );
     });
+
   });
 
   it('should continue and not enrich dependedIssueUrls when getStoryObjectMap throws', async () => {

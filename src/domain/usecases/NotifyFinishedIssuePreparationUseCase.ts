@@ -607,15 +607,10 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.issueUrl,
         project,
       );
-      await this.createCommentWithDedup(
-        issue,
-        'Auto Status Check: AWAITING_OWNER',
-      );
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
         params.workflowBlockerResolvedWebhookUrl,
         project,
-        true,
       );
       return;
     }
@@ -954,26 +949,22 @@ export class NotifyFinishedIssuePreparationUseCase {
     issueUrl: string,
     webhookUrlTemplate: string | null,
     project: Parameters<IssueRepository['getStoryObjectMap']>[0],
-    unconditional?: boolean,
   ): Promise<void> => {
     if (webhookUrlTemplate === null) {
       return;
     }
 
     try {
-      let shouldSend = unconditional ?? false;
-      if (!shouldSend) {
-        const storyObjectMap =
-          await this.issueRepository.getStoryObjectMap(project);
+      const storyObjectMap =
+        await this.issueRepository.getStoryObjectMap(project);
 
-        shouldSend = Array.from(storyObjectMap.entries()).some(
-          ([storyName, storyObject]) =>
-            storyName.toLowerCase().includes('workflow blocker') &&
-            storyObject.issues.some((issue) => issue.url === issueUrl),
-        );
-      }
+      const isWorkflowBlocker = Array.from(storyObjectMap.entries()).some(
+        ([storyName, storyObject]) =>
+          storyName.toLowerCase().includes('workflow blocker') &&
+          storyObject.issues.some((issue) => issue.url === issueUrl),
+      );
 
-      if (!shouldSend) {
+      if (!isWorkflowBlocker) {
         return;
       }
 
