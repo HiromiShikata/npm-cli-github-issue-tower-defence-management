@@ -377,7 +377,10 @@ export class NotifyFinishedIssuePreparationUseCase {
           : null;
       const agentOptionId =
         firstDeveloperAgentName !== null
-          ? await this.ensureAgentOptionAndGetId(project, firstDeveloperAgentName)
+          ? await this.ensureAgentOptionAndGetId(
+              project,
+              firstDeveloperAgentName,
+            )
           : null;
       if (agentOptionId !== null) {
         await this.issueRepository.setIssueAgentField(

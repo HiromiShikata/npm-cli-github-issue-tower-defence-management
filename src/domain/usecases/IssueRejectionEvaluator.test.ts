@@ -562,7 +562,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/7'], developerAgentNames: ['developer'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/7'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -605,7 +608,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/9'], developerAgentNames: ['developer'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/9'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -687,7 +693,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/3'], developerAgentNames: ['developer'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/3'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(result.rejections).toHaveLength(1);
@@ -730,7 +739,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/999'], developerAgentNames: ['developer'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/999'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -850,7 +862,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/8'], developerAgentNames: ['developer'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/8'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(warnSpy).toHaveBeenCalledTimes(1);

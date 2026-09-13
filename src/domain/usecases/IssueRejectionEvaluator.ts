@@ -241,8 +241,7 @@ export class IssueRejectionEvaluator {
     );
     const effectiveDeveloperAgentNames = developerAgentNames ?? [];
     const isDeveloperAgent =
-      issue.agent != null &&
-      effectiveDeveloperAgentNames.includes(issue.agent);
+      issue.agent != null && effectiveDeveloperAgentNames.includes(issue.agent);
     const hasLabelNotRequiringPullRequest = issue.labels.some(
       (label) =>
         labelsNotRequiringPullRequest.includes(label) &&
