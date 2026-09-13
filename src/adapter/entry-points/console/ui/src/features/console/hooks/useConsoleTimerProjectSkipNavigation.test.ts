@@ -249,13 +249,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
 
   it('resets skip counter and navigates again when arriving at a project with items', () => {
     const { rerender } = renderHook(
-      ({
-        pjcode,
-        prsCount,
-      }: {
-        pjcode: string;
-        prsCount: number;
-      }) =>
+      ({ pjcode, prsCount }: { pjcode: string; prsCount: number }) =>
         useConsoleTimerProjectSkipNavigation(
           true,
           prsCount,

@@ -48,7 +48,11 @@ export const useConsoleTimerProjectSkipNavigation = (
     }
 
     skipCountRef.current += 1;
-    const nextPjcode = findNextPjcodeWithMinutes(pjcodes, pjcode, projectMinutes);
+    const nextPjcode = findNextPjcodeWithMinutes(
+      pjcodes,
+      pjcode,
+      projectMinutes,
+    );
     if (nextPjcode !== null) {
       navigatePush(`/projects/${nextPjcode}`);
     } else {
