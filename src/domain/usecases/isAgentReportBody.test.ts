@@ -1,8 +1,37 @@
 import {
+  extractAgentNameFromReportBody,
   isAgentReportBody,
   isAgentReportBodyFromAgent,
   stripLeadingFencedBlocks,
 } from './isAgentReportBody';
+
+describe('extractAgentNameFromReportBody', () => {
+  it('extracts the agent name from a standard From: :robot: prefix', () => {
+    expect(
+      extractAgentNameFromReportBody(
+        'From: :robot: developer (claude-sonnet-4-6)\n\nSome body',
+      ),
+    ).toBe('developer');
+  });
+
+  it('extracts a hyphenated agent name', () => {
+    expect(
+      extractAgentNameFromReportBody(
+        'From: :robot: pr-reviewer (model)\n\n```json\n{ "nextStep": null }\n```\n',
+      ),
+    ).toBe('pr-reviewer');
+  });
+
+  it('returns null when there is no From: :robot: prefix', () => {
+    expect(
+      extractAgentNameFromReportBody('Some body without prefix'),
+    ).toBeNull();
+  });
+
+  it('returns null for an empty body', () => {
+    expect(extractAgentNameFromReportBody('')).toBeNull();
+  });
+});
 
 describe('isAgentReportBody', () => {
   it('accepts a body containing only a fenced json block with a JSON object', () => {
