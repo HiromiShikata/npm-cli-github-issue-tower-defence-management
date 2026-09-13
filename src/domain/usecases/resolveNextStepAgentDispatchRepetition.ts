@@ -232,7 +232,7 @@ ${dispatchLoopBody}`,
   }
   if (
     silentRedispatches !== null &&
-    silentRedispatches.count >= 2 &&
+    silentRedispatches.count >= 3 &&
     silentRedispatches.hasReportsInCycle
   ) {
     return {
