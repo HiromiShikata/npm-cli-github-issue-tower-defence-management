@@ -1,3 +1,11 @@
+## [2.110.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.110.1...v2.110.2) (2026-09-13)
+
+
+### Bug Fixes
+
+* **githubGraphqlClient:** catch EPIPE error when output pipe is broken ([#2325](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2325)) ([631c97d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/631c97d1b35432aa358d30b05f3fb381680f6104))
+* **resolveNextStepAgentDispatchRepetition:** raise escalateReportingLoop inner threshold from 2 to 3 ([#2330](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2330)) ([1be1ed2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1be1ed26e892b8bcea9d4f2bad8481c90ed8a70f))
+
 ## [2.110.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.110.0...v2.110.1) (2026-09-13)
 
 
