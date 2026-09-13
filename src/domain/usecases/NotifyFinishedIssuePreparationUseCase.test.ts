@@ -3153,7 +3153,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('should not send webhook for non-blocker issues', async () => {
+    it('should send webhook unconditionally for non-blocker issues moving to Awaiting Owner', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'Preparation',
@@ -3188,7 +3188,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       });
 
-      expect(mockWebhookRepository.sendGetRequest).not.toHaveBeenCalled();
+      expect(mockWebhookRepository.sendGetRequest).toHaveBeenCalled();
     });
 
     it('should not send webhook when URL is null', async () => {
@@ -3329,6 +3329,48 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.stringContaining(
           encodeURIComponent('Workflow blocker resolved:'),
         ),
+      );
+    });
+
+    it('should create comment and send notification unconditionally when moving to Awaiting Owner with no rejections and no next-step agent', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: 'From: :robot: Test report' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/1',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+      mockIssueRepository.getStoryObjectMap.mockResolvedValue(new Map());
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl:
+          'https://example.com/webhook?url={URL}&msg={MESSAGE}',
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+        'Auto Status Check: AWAITING_OWNER',
+      );
+      expect(mockWebhookRepository.sendGetRequest).toHaveBeenCalledWith(
+        `https://example.com/webhook?url=${encodeURIComponent('https://github.com/user/repo/issues/1')}&msg=${encodeURIComponent('Workflow blocker resolved: https://github.com/user/repo/issues/1')}`,
       );
     });
   });
