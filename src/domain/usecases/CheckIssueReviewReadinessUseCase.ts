@@ -5,7 +5,6 @@ import {
   PrRejectedReasonType,
 } from './IssueRejectionEvaluator';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { normalizeReportBody } from './normalizeReportBody';
 import {
   isAgentReportBody,
   isAgentReportBodyFromAgent,
@@ -15,10 +14,7 @@ import { findLastAgentReport } from './findLastAgentReport';
 import { TRIAGER_AGENT_NAME } from './triagerAgentName';
 
 type RejectedReasonType =
-  | 'ISSUE_NOT_FOUND'
-  | 'NO_REPORT_FROM_AGENT_BOT'
-  | 'REPORT_HAS_NEXT_STEP'
-  | PrRejectedReasonType;
+  'ISSUE_NOT_FOUND' | 'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
 
 export type IssueReviewReadinessResult = {
   reviewReady: boolean;
@@ -84,11 +80,6 @@ export class CheckIssueReviewReadinessUseCase {
         type: 'NO_REPORT_FROM_AGENT_BOT',
         detail: 'NO_REPORT_FROM_AGENT_BOT',
       });
-    } else if (this.reportBodyHasNextStep(lastComment.content)) {
-      rejections.push({
-        type: 'REPORT_HAS_NEXT_STEP',
-        detail: 'REPORT_HAS_NEXT_STEP',
-      });
     }
 
     const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
@@ -121,32 +112,5 @@ export class CheckIssueReviewReadinessUseCase {
       reviewReady: allRejections.length === 0,
       rejections: allRejections,
     };
-  };
-
-  private reportBodyHasNextStep = (body: string): boolean => {
-    const reportMatch = normalizeReportBody(body).match(
-      /```json\n([\s\S]*?)\n```/,
-    );
-    if (!reportMatch || reportMatch.length < 2) {
-      return false;
-    }
-    let reportJson: unknown;
-    try {
-      reportJson = JSON.parse(reportMatch[1]);
-    } catch (error) {
-      console.warn(
-        'Invalid JSON in report body while checking nextStep:',
-        error,
-      );
-      return false;
-    }
-    if (typeof reportJson !== 'object' || reportJson === null) {
-      return false;
-    }
-    if (!('nextStep' in reportJson)) {
-      return false;
-    }
-    const nextStepValue = Reflect.get(reportJson, 'nextStep');
-    return nextStepValue !== null && nextStepValue !== undefined;
   };
 }

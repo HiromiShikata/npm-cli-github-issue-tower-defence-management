@@ -21,7 +21,6 @@ import { extractNextStepAgent } from './extractNextStepAgent';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
-import { normalizeReportBody } from './normalizeReportBody';
 import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
@@ -442,9 +441,6 @@ export class RevertOrphanedPreparationUseCase {
     if (!lastComment || !isAgentReportBody(lastComment.content)) {
       return { outcome: 'reject', comments };
     }
-    if (this.reportBodyHasNextStep(lastComment.content)) {
-      return { outcome: 'reject', comments };
-    }
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
     );
@@ -504,33 +500,6 @@ export class RevertOrphanedPreparationUseCase {
       return [];
     }
     return [pr];
-  };
-
-  private reportBodyHasNextStep = (body: string): boolean => {
-    const reportMatch = normalizeReportBody(body).match(
-      /```json\n([\s\S]*?)\n```/,
-    );
-    if (!reportMatch || reportMatch.length < 2) {
-      return false;
-    }
-    let reportJson: unknown;
-    try {
-      reportJson = JSON.parse(reportMatch[1]);
-    } catch (error) {
-      console.warn(
-        'Invalid JSON in report body while checking nextStep:',
-        error,
-      );
-      return false;
-    }
-    if (typeof reportJson !== 'object' || reportJson === null) {
-      return false;
-    }
-    if (!('nextStep' in reportJson)) {
-      return false;
-    }
-    const nextStepValue = Reflect.get(reportJson, 'nextStep');
-    return nextStepValue !== null && nextStepValue !== undefined;
   };
 
   private isOrphanedIssue = async (
