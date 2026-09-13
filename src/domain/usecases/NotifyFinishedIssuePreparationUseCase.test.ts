@@ -6913,7 +6913,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('does not call updateStory when the routing JSON has no story key', async () => {
       const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({ status: 'Preparation' });
+      const issue = createMockIssue({ status: 'Preparation', agent: 'triager' });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
@@ -6937,7 +6937,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('does not call updateStory when the project has no story field', async () => {
       const project = createMockProject({ story: null });
-      const issue = createMockIssue({ status: 'Preparation' });
+      const issue = createMockIssue({ status: 'Preparation', agent: 'triager' });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
@@ -6961,7 +6961,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('does not call updateStory when the story name does not match any project story option', async () => {
       const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({ status: 'Preparation' });
+      const issue = createMockIssue({ status: 'Preparation', agent: 'triager' });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
