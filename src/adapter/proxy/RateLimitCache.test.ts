@@ -635,6 +635,26 @@ describe('RateLimitCache', () => {
       expect(snapshot?.fiveHourReset).toBe(1700000000);
       expect(snapshot?.blockedUntilEpoch).toBeGreaterThan(Date.now() / 1000);
     });
+
+    it('should keep the auth-failure block active when a subsequent response with rate-limit headers arrives', () => {
+      const token = '401-then-headers-token';
+      writeRateLimit(token, {}, 401);
+      const blocked = readRateLimit(token);
+      expect(blocked?.blockedUntilEpoch).toBeGreaterThan(Date.now() / 1000);
+
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '42',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '17',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.fiveHourUtilization).toBe(42);
+      expect(snapshot?.blockedUntilEpoch).toBeGreaterThan(Date.now() / 1000);
+    });
   });
 
   describe('parseModelRateLimitsFromBody', () => {

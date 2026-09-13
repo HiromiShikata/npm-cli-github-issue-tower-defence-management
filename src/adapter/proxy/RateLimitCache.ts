@@ -98,6 +98,16 @@ const readSubscriptionDisabledEpoch = (
   return {};
 };
 
+const readAuthFailureBlockedUntilEpoch = (
+  payload: Record<string, unknown>,
+): { authFailureBlockedUntilEpoch: number } | Record<string, never> => {
+  const stored = payload.authFailureBlockedUntilEpoch;
+  if (typeof stored === 'number') {
+    return { authFailureBlockedUntilEpoch: stored };
+  }
+  return {};
+};
+
 const cooldownEndFromRetryAfter = (
   retryAfterSeconds: number | null,
   nowEpochSeconds: number,
@@ -136,11 +146,11 @@ export const writeRateLimit = (
         fs.mkdirSync(dir, { recursive: true });
       }
       const existing = readPayload(filePath);
-      const blockedUntilEpoch =
+      const authFailureBlockedUntilEpoch =
         Date.now() / 1000 + AUTH_FAILURE_COOLDOWN_SECONDS;
       fs.writeFileSync(
         filePath,
-        JSON.stringify({ ...existing, blockedUntilEpoch }),
+        JSON.stringify({ ...existing, authFailureBlockedUntilEpoch }),
       );
       return;
     }
@@ -173,6 +183,7 @@ export const writeRateLimit = (
   const existing = readPayload(filePath);
   const payload = {
     ...readSubscriptionDisabledEpoch(existing),
+    ...readAuthFailureBlockedUntilEpoch(existing),
     ts: Date.now() / 1000,
     headers: rateLimitHeaders,
     modelWeeklyLimits: readModelWeeklyLimits(existing),
@@ -359,8 +370,13 @@ export const readRateLimit = (
     const storedTs = parsed.ts;
     const lastUpdatedEpoch = typeof storedTs === 'number' ? storedTs : 0;
     const storedBlockedUntil = parsed.blockedUntilEpoch;
-    const blockedUntilEpoch =
-      typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0;
+    const storedAuthFailureBlockedUntil = parsed.authFailureBlockedUntilEpoch;
+    const blockedUntilEpoch = Math.max(
+      typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0,
+      typeof storedAuthFailureBlockedUntil === 'number'
+        ? storedAuthFailureBlockedUntil
+        : 0,
+    );
     const storedSubscriptionDisabledEpoch = parsed.subscriptionDisabledEpoch;
     const subscriptionDisabledEpoch =
       typeof storedSubscriptionDisabledEpoch === 'number'
