@@ -132,6 +132,7 @@ body {
 .console-tab-pjname {
   align-self: center;
   padding: 0 8px;
+  margin-left: 4rem;
 }
 
 .console-tab-pjname-button {
