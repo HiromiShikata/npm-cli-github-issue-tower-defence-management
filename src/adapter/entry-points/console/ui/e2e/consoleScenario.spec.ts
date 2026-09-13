@@ -4,6 +4,8 @@ import {
   CONSOLE_E2E_COMMENT_URL,
   CONSOLE_E2E_PJCODE,
   CONSOLE_E2E_REFERENCE_LINK_URL,
+  CONSOLE_E2E_SECOND_PJCODE,
+  CONSOLE_E2E_TOKEN,
   type ConsoleE2eHarness,
   startConsoleE2eHarness,
 } from './consoleTestHarness';
@@ -1671,4 +1673,29 @@ test('Create new task dialog body is scrollable in landscape orientation', async
       clientHeight: el.clientHeight,
     }));
   expect(scrollHeight).toBeGreaterThan(clientHeight);
+});
+
+test('in timer mode, automatically navigates away from a project with zero prs and zero todo-by-human items', async ({
+  page,
+}) => {
+  const timerSettings = JSON.stringify({
+    timerMode: true,
+    projectMinutes: {
+      [CONSOLE_E2E_PJCODE]: 30,
+      [CONSOLE_E2E_SECOND_PJCODE]: 30,
+    },
+  });
+  await page.addInitScript((settings) => {
+    localStorage.setItem('tdpm-timer-settings', settings);
+  }, timerSettings);
+
+  await page.goto(
+    `${harness.baseUrl}/projects/${CONSOLE_E2E_SECOND_PJCODE}?k=${CONSOLE_E2E_TOKEN}`,
+  );
+
+  await page.waitForURL(
+    (url) => url.pathname.includes(`/projects/${CONSOLE_E2E_PJCODE}`),
+    { timeout: 5000 },
+  );
+  expect(page.url()).toContain(`/projects/${CONSOLE_E2E_PJCODE}`);
 });

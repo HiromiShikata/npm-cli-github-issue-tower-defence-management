@@ -3341,7 +3341,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        createMockComment({ content: 'From: :robot: Test report' }),
+        createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         {
