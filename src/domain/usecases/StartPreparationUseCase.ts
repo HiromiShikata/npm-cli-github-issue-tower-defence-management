@@ -668,7 +668,11 @@ export class StartPreparationUseCase {
           agent,
         );
         if (agentOptionId !== null) {
-          await this.issueRepository.setIssueAgentField(issue.url, project, agentOptionId);
+          await this.issueRepository.setIssueAgentField(
+            issue.url,
+            project,
+            agentOptionId,
+          );
         }
       }
       const labelModelName = issue.labels

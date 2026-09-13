@@ -451,7 +451,10 @@ describe('StartPreparationUseCase', () => {
     });
 
     it('writes the resolved agent name to the Agent field before spawning the worker', async () => {
-      const project = projectWithAgentOption('agent-option-developer', 'developer');
+      const project = projectWithAgentOption(
+        'agent-option-developer',
+        'developer',
+      );
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.getStoryObjectMap.mockResolvedValue(
         createMockStoryObjectMap([
