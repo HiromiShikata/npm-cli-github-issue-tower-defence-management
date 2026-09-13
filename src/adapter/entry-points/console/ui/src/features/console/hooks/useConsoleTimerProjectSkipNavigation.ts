@@ -1,0 +1,69 @@
+import { useEffect, useRef } from 'react';
+import { navigatePush } from '../lib/navigation';
+import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
+
+export const useConsoleTimerProjectSkipNavigation = (
+  timerMode: boolean,
+  prsCount: number,
+  todoByHumanCount: number,
+  pjcode: string | null,
+  pjcodes: string[],
+  projectMinutes: Record<string, number>,
+  prsSnapshotLoaded: boolean,
+  todoByHumanSnapshotLoaded: boolean,
+  prsSnapshotFromCache: boolean,
+  todoByHumanSnapshotFromCache: boolean,
+): void => {
+  const skipCountRef = useRef(0);
+  const evaluatedPjcodeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!timerMode || pjcode === null) {
+      skipCountRef.current = 0;
+      evaluatedPjcodeRef.current = null;
+      return;
+    }
+    if (!prsSnapshotLoaded || !todoByHumanSnapshotLoaded) {
+      return;
+    }
+    if (prsSnapshotFromCache || todoByHumanSnapshotFromCache) {
+      return;
+    }
+    if (evaluatedPjcodeRef.current === pjcode) {
+      return;
+    }
+    evaluatedPjcodeRef.current = pjcode;
+
+    if (prsCount > 0 || todoByHumanCount > 0) {
+      skipCountRef.current = 0;
+      return;
+    }
+
+    const pjcodesWithMinutes = pjcodes.filter(
+      (code) => (projectMinutes[code] ?? 0) > 0,
+    );
+    if (skipCountRef.current >= pjcodesWithMinutes.length - 1) {
+      skipCountRef.current = 0;
+      return;
+    }
+
+    skipCountRef.current += 1;
+    const nextPjcode = findNextPjcodeWithMinutes(pjcodes, pjcode, projectMinutes);
+    if (nextPjcode !== null) {
+      navigatePush(`/projects/${nextPjcode}`);
+    } else {
+      skipCountRef.current = 0;
+    }
+  }, [
+    timerMode,
+    prsCount,
+    todoByHumanCount,
+    pjcode,
+    pjcodes,
+    projectMinutes,
+    prsSnapshotLoaded,
+    todoByHumanSnapshotLoaded,
+    prsSnapshotFromCache,
+    todoByHumanSnapshotFromCache,
+  ]);
+};
