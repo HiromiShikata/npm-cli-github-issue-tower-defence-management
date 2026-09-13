@@ -278,6 +278,35 @@ describe('OauthTokenSelectUseCase', () => {
     expect(fableOut?.exclusionReason).toContain('fable weekly limit exhausted');
   });
 
+  it('excludes a token whose blockedUntilEpoch is in the future', () => {
+    const result = useCase.run(
+      [
+        {
+          ...candidate('auth-failed', snapshot({})),
+          blockedUntilEpoch: NOW + 1,
+        },
+        candidate('active', snapshot({})),
+      ],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('active');
+    const authFailed = result.metrics.find((m) => m.name === 'auth-failed');
+    expect(authFailed?.eligible).toBe(false);
+    expect(authFailed?.exclusionReason).toContain('token auth failure');
+  });
+
+  it('treats a token whose blockedUntilEpoch equals nowEpochSeconds as eligible', () => {
+    const result = useCase.run(
+      [{ ...candidate('exactly', snapshot({})), blockedUntilEpoch: NOW }],
+      NOW,
+    );
+
+    expect(result.selected?.name).toBe('exactly');
+    const exactly = result.metrics.find((m) => m.name === 'exactly');
+    expect(exactly?.eligible).toBe(true);
+  });
+
   it('treats a token without a fable marker as eligible for fable selection', () => {
     const result = useCase.run([candidate('alive', snapshot({}))], NOW);
 
