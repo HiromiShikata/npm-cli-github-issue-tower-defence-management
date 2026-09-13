@@ -830,6 +830,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       projectUrl: 'https://github.com/user/repo',
       preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
       thresholdForAutoReject: 3,
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
@@ -2107,6 +2108,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
         thresholdForAutoReject: 3,
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([
@@ -2237,6 +2239,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
         thresholdForAutoReject: 3,
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toHaveLength(0);
@@ -2378,7 +2381,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
     });
 
-    it('should reassign to the configured developerAgentName when chore agent has a failing CI PR', async () => {
+    it('should reassign to the configured developerAgentNames when chore agent has a failing CI PR', async () => {
       const projectWithCustomDeveloper =
         makeProjectWithDeveloper('custom-developer');
       mockProjectRepository.findProjectIdByUrl.mockResolvedValue('project-1');
@@ -2431,7 +2434,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
         projectUrl: 'https://github.com/user/repo',
         preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
         thresholdForAutoReject: 3,
-        developerAgentName: 'custom-developer',
+        developerAgentNames: ['custom-developer'],
       });
 
       expect(mockIssueRepository.setIssueAgentField.mock.calls).toEqual([

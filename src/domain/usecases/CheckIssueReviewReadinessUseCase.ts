@@ -11,7 +11,6 @@ import {
 } from './isAgentReportBody';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { findLastAgentReport } from './findLastAgentReport';
-import { TRIAGER_AGENT_NAME } from './triagerAgentName';
 
 type RejectedReasonType =
   'ISSUE_NOT_FOUND' | 'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
@@ -47,6 +46,7 @@ export class CheckIssueReviewReadinessUseCase {
     labelsAsLlmAgentName?: string[] | null;
     labelsNotRequiringPullRequest?: string[] | null;
     developerAgentNames?: string[] | null;
+    defaultAgentName?: string | null;
   }): Promise<IssueReviewReadinessResult> => {
     const issue = await this.issueRepository.getIssueByUrl(params.issueUrl);
 
@@ -83,11 +83,12 @@ export class CheckIssueReviewReadinessUseCase {
     }
 
     const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
-    const lastReportIsFromTriager =
+    const lastReportIsFromDefaultAgent =
       lastAgentReport !== null &&
+      params.defaultAgentName != null &&
       isAgentReportBodyFromAgent(
         lastAgentReport.content,
-        TRIAGER_AGENT_NAME,
+        params.defaultAgentName,
         issue.agent,
       );
 
@@ -100,7 +101,7 @@ export class CheckIssueReviewReadinessUseCase {
         },
       );
 
-    const requiredPrRejections = lastReportIsFromTriager
+    const requiredPrRejections = lastReportIsFromDefaultAgent
       ? prRejections.filter(
           (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
         )

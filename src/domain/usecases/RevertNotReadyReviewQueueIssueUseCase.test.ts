@@ -234,6 +234,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -256,6 +257,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -275,6 +277,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -299,6 +302,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -337,6 +341,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -364,6 +369,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -391,6 +397,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -421,6 +428,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -444,6 +452,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -465,6 +474,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         labelsAsLlmAgentName: ['story', 'chore', 'accounting'],
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -488,6 +498,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         labelsAsLlmAgentName: ['chore', 'accounting'],
         labelsNotRequiringPullRequest: ['story'],
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -510,6 +521,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         labelsAsLlmAgentName: ['story', 'chore'],
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -531,6 +543,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -560,6 +573,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         labelsAsLlmAgentName: null,
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -579,6 +593,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -597,6 +612,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -630,6 +646,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -659,6 +676,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -688,6 +706,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -718,6 +737,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -752,6 +772,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -816,6 +837,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
         });
 
         expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -862,6 +884,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
         });
 
         expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
@@ -895,6 +918,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
         });
 
         expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
@@ -940,6 +964,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
         });
 
         expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
@@ -979,6 +1004,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
         });
 
       it('should resolve every uncovered issue in one batched lookup instead of one per-issue timeline query', async () => {
@@ -1112,6 +1138,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
         });
 
       it('should not approve PR when issue has no change-target label', async () => {
@@ -1313,6 +1340,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
           changeTargetPathAliases: {
             adapters: 'src/domain/usecases/adapter-interfaces',
           },
@@ -1333,6 +1361,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
           changeTargetPathAliases: {
             adapters: 'src/domain/usecases/adapter-interfaces',
           },
@@ -1385,6 +1414,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1428,6 +1458,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
         }),
       ).rejects.toThrow('Something went wrong');
 
@@ -1476,6 +1507,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1535,6 +1567,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
         }),
       ).rejects.toThrow('Something went wrong');
 
@@ -1591,6 +1624,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1645,6 +1679,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -1696,6 +1731,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1744,6 +1780,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
           manager: 'manager-user',
           projectUrl: 'https://github.com/users/user/projects/1',
           allowedIssueAuthors: ['owner'],
+          developerAgentNames: ['developer'],
         }),
       ).rejects.toThrow('Something went wrong');
     });
@@ -1765,6 +1802,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -1786,6 +1824,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1825,6 +1864,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -1858,6 +1898,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1887,6 +1928,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         evaluatedAt,
       });
 
@@ -1917,6 +1959,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         evaluatedAt,
       });
 
@@ -1943,6 +1986,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         evaluatedAt,
       });
 
@@ -1962,6 +2006,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -1986,6 +2031,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
@@ -2047,6 +2093,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl,
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(1);
@@ -2078,6 +2125,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl,
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledTimes(1);
@@ -2102,6 +2150,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl,
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.getOpenPullRequest).not.toHaveBeenCalled();
@@ -2133,6 +2182,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl,
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledWith(
@@ -2171,6 +2221,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl,
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       const allPassedUrls =
@@ -2208,6 +2259,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl,
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(2);
@@ -2245,6 +2297,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl,
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.getOpenPullRequests).toHaveBeenCalledTimes(1);
@@ -2268,6 +2321,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         manager: 'manager-user',
         projectUrl: 'https://github.com/users/user/projects/1',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
@@ -2363,6 +2417,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         thresholdForAutoReject: 5,
         thresholdForDispatchLoop: 3,
       });
@@ -2417,6 +2472,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         thresholdForAutoReject: 5,
         thresholdForDispatchLoop: 3,
       });
@@ -2448,6 +2504,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         thresholdForAutoReject: 5,
         thresholdForDispatchLoop: 3,
       });
@@ -2502,6 +2559,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         thresholdForAutoReject: 3,
         thresholdForDispatchLoop: 6,
       });
@@ -2547,6 +2605,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         thresholdForAutoReject: 5,
         thresholdForDispatchLoop: 3,
       });
@@ -2602,6 +2661,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         thresholdForAutoReject: 2,
         thresholdForDispatchLoop: 6,
       });
@@ -2655,6 +2715,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         projectUrl: 'https://github.com/users/user/projects/1',
         manager: 'manager-user',
         allowedIssueAuthors: ['owner'],
+        developerAgentNames: ['developer'],
         thresholdForAutoReject: 5,
         thresholdForDispatchLoop: 3,
       });

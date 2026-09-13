@@ -81,7 +81,7 @@ export class RevertOrphanedPreparationUseCase {
     labelsNotRequiringPullRequest?: string[] | null;
     allowedIssueAuthors?: string[] | null;
     agents?: string[] | null;
-    developerAgentName?: string | null;
+    developerAgentNames?: string[] | null;
     workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
@@ -128,7 +128,7 @@ export class RevertOrphanedPreparationUseCase {
         issue,
         resolveLabelsNotRequiringPullRequest(params),
         params.allowedIssueAuthors,
-        params.developerAgentName,
+        params.developerAgentNames,
       );
       const isStillInPreparation = await this.isStillInStatus(
         issue,
@@ -259,13 +259,19 @@ export class RevertOrphanedPreparationUseCase {
       }
 
       if (outcome === 'reassignToDeveloper' && ciFailingPrUrl) {
-        const effectiveDeveloperAgentName =
-          params.developerAgentName ?? 'developer';
-        const agentOptionId = await ensureAgentOptionAndGetId(
-          this.projectRepository,
-          project,
-          effectiveDeveloperAgentName,
-        );
+        const firstDeveloperAgentName =
+          params.developerAgentNames?.length != null &&
+          params.developerAgentNames.length > 0
+            ? params.developerAgentNames[0]
+            : null;
+        const agentOptionId =
+          firstDeveloperAgentName !== null
+            ? await ensureAgentOptionAndGetId(
+                this.projectRepository,
+                project,
+                firstDeveloperAgentName,
+              )
+            : null;
         if (agentOptionId !== null) {
           await this.issueRepository.setIssueAgentField(
             issue.url,
@@ -418,7 +424,7 @@ export class RevertOrphanedPreparationUseCase {
     issue: Issue,
     labelsNotRequiringPullRequest: string[],
     allowedIssueAuthors: string[] | null | undefined,
-    developerAgentName?: string | null,
+    developerAgentNames?: string[] | null,
   ): Promise<{
     outcome: OrphanedPreparationOutcome;
     comments: Comment[];
@@ -444,9 +450,10 @@ export class RevertOrphanedPreparationUseCase {
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
     );
-    const effectiveDeveloperName = developerAgentName ?? 'developer';
+    const effectiveDeveloperAgentNames = developerAgentNames ?? [];
     const isNonDeveloperAgent =
-      issue.agent != null && issue.agent !== effectiveDeveloperName;
+      issue.agent != null &&
+      !effectiveDeveloperAgentNames.includes(issue.agent);
     const hasLabelNotRequiringPullRequest = issue.labels.some((label) =>
       labelsNotRequiringPullRequest.includes(label),
     );
@@ -461,7 +468,7 @@ export class RevertOrphanedPreparationUseCase {
       if (prsToCheck.some((pr) => pr.isConflicted)) {
         return { outcome: 'reject', comments };
       }
-      if (isNonDeveloperAgent && issue.agent !== 'pr-reviewer') {
+      if (isNonDeveloperAgent && effectiveDeveloperAgentNames.length > 0) {
         if (prsToCheck.length === 1 && !prsToCheck[0].isPassedAllCiJob) {
           return {
             outcome: 'reassignToDeveloper',

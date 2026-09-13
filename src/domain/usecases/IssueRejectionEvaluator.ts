@@ -35,7 +35,7 @@ export type EvaluateOptions = {
   // distinguishes an unknown state from an absent pull request.
   resolvedOpenPrByUrl?: ReadonlyMap<string, RelatedPullRequest | null> | null;
   // The agent names treated as developer agents for PR/CI/conflict checks.
-  // When null, undefined, or empty, defaults to ['developer'].
+  // When null or empty, no issue is treated as a developer agent issue.
   developerAgentNames?: string[] | null;
   detectConflictEvenIfEvaluationSkipped?: boolean;
 };
@@ -239,13 +239,10 @@ export class IssueRejectionEvaluator {
     const categoryLabels = issue.labels.filter((label) =>
       label.startsWith('category:'),
     );
-    const effectiveDeveloperAgentNames = developerAgentNames?.length
-      ? developerAgentNames
-      : ['developer'];
+    const effectiveDeveloperAgentNames = developerAgentNames ?? [];
     const isDeveloperAgent =
       issue.agent != null &&
-      (effectiveDeveloperAgentNames.includes(issue.agent) ||
-        issue.agent === 'pr-reviewer');
+      effectiveDeveloperAgentNames.includes(issue.agent);
     const hasLabelNotRequiringPullRequest = issue.labels.some(
       (label) =>
         labelsNotRequiringPullRequest.includes(label) &&
