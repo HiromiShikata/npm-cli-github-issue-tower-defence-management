@@ -486,6 +486,32 @@ describe('ConsolePage', () => {
     }
   });
 
+  it('hides a processed item from the list immediately when ok & Awaiting Workspace is clicked, without waiting for the 5-second commit', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      expect(
+        within(tabBar())
+          .getByText('Awaiting Owner')
+          .closest('a')
+          ?.querySelector('.console-tab-badge')?.textContent,
+      ).toBe('1');
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('ok & Awaiting Workspace')).toBeInTheDocument();
+      fireEvent.click(getByText('ok & Awaiting Workspace'));
+
+      await waitFor(() => {
+        expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('cancels the command and keeps the item pending when Undo is clicked', async () => {
     jest.useFakeTimers();
     try {
