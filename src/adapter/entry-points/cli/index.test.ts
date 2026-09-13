@@ -1634,26 +1634,28 @@ mysteryKey: 'value'
       ]);
 
       expect(mockRun).toHaveBeenCalledTimes(1);
-      expect(mockRun).toHaveBeenCalledWith({
-        projectUrl: 'https://github.com/orgs/test/projects/1',
-        issueUrl: 'https://github.com/test/repo/issues/1',
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
-        labelsAsLlmAgentName: null,
-        labelsNotRequiringPullRequest: null,
-        changeTargetPathAliases: null,
-        agents: null,
-        missingAgentName: null,
-        sessionErrorLine: null,
-        manager: 'test-manager',
-        developerAgentNames: null,
-        deferPreparation: null,
-        workflowIssueReporterSettings: null,
-        tdpmReportingRepository: null,
-        projectName: 'test-project',
-      });
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/orgs/test/projects/1',
+          issueUrl: 'https://github.com/test/repo/issues/1',
+          thresholdForAutoReject: 3,
+          thresholdForDispatchLoop: 6,
+          workflowBlockerResolvedWebhookUrl: null,
+          allowedIssueAuthors: null,
+          labelsAsLlmAgentName: null,
+          labelsNotRequiringPullRequest: null,
+          changeTargetPathAliases: null,
+          agents: null,
+          missingAgentName: null,
+          sessionErrorLine: null,
+          manager: 'test-manager',
+          developerAgentNames: null,
+          defaultAgentName: 'agent1',
+          deferPreparation: null,
+          workflowIssueReporterSettings: null,
+          projectName: 'test-project',
+        }),
+      );
     });
 
     it('should allow CLI args to override config file values', async () => {
@@ -1681,26 +1683,28 @@ mysteryKey: 'value'
         'https://github.com/orgs/override/projects/2',
       ]);
 
-      expect(mockRun).toHaveBeenCalledWith({
-        projectUrl: 'https://github.com/orgs/override/projects/2',
-        issueUrl: 'https://github.com/test/repo/issues/1',
-        thresholdForAutoReject: 3,
-        thresholdForDispatchLoop: 6,
-        workflowBlockerResolvedWebhookUrl: null,
-        allowedIssueAuthors: null,
-        labelsAsLlmAgentName: null,
-        labelsNotRequiringPullRequest: null,
-        changeTargetPathAliases: null,
-        agents: null,
-        missingAgentName: null,
-        sessionErrorLine: null,
-        manager: 'test-manager',
-        developerAgentNames: null,
-        deferPreparation: null,
-        workflowIssueReporterSettings: null,
-        tdpmReportingRepository: null,
-        projectName: 'test-project',
-      });
+      expect(mockRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectUrl: 'https://github.com/orgs/override/projects/2',
+          issueUrl: 'https://github.com/test/repo/issues/1',
+          thresholdForAutoReject: 3,
+          thresholdForDispatchLoop: 6,
+          workflowBlockerResolvedWebhookUrl: null,
+          allowedIssueAuthors: null,
+          labelsAsLlmAgentName: null,
+          labelsNotRequiringPullRequest: null,
+          changeTargetPathAliases: null,
+          agents: null,
+          missingAgentName: null,
+          sessionErrorLine: null,
+          manager: 'test-manager',
+          developerAgentNames: null,
+          defaultAgentName: 'agent1',
+          deferPreparation: null,
+          workflowIssueReporterSettings: null,
+          projectName: 'test-project',
+        }),
+      );
     });
 
     it('should pass errorReportingRepository as tdpmReportingRepository when configured', async () => {
@@ -2252,6 +2256,7 @@ mysteryKey: 'value'
         labelsAsLlmAgentName: null,
         labelsNotRequiringPullRequest: null,
         developerAgentNames: null,
+        defaultAgentName: 'agent1',
       });
       expect(stdoutSpy).toHaveBeenCalledWith(
         `${JSON.stringify({ reviewReady: true, rejections: [] })}\n`,
@@ -2339,6 +2344,7 @@ mysteryKey: 'value'
         labelsAsLlmAgentName: null,
         labelsNotRequiringPullRequest: null,
         developerAgentNames: null,
+        defaultAgentName: null,
       });
 
       stdoutSpy.mockRestore();

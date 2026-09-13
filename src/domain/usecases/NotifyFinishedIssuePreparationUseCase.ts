@@ -921,6 +921,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     const effectiveDeveloperAgentNames = developerAgentNames ?? [];
     if (
       issue.agent === null ||
+      effectiveDeveloperAgentNames.length === 0 ||
       effectiveDeveloperAgentNames.includes(issue.agent)
     ) {
       return null;

@@ -6,8 +6,8 @@ import {
 } from './IssueRejectionEvaluator';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import {
+  extractAgentNameFromReportBody,
   isAgentReportBody,
-  isAgentReportBodyFromAgent,
 } from './isAgentReportBody';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { findLastAgentReport } from './findLastAgentReport';
@@ -83,14 +83,13 @@ export class CheckIssueReviewReadinessUseCase {
     }
 
     const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
+    const reportingAgentName = lastAgentReport
+      ? extractAgentNameFromReportBody(lastAgentReport.content)
+      : null;
     const lastReportIsFromDefaultAgent =
-      lastAgentReport !== null &&
+      reportingAgentName !== null &&
       params.defaultAgentName != null &&
-      isAgentReportBodyFromAgent(
-        lastAgentReport.content,
-        params.defaultAgentName,
-        issue.agent,
-      );
+      reportingAgentName === params.defaultAgentName;
 
     const { rejections: prRejections } =
       await this.issueRejectionEvaluator.evaluate(

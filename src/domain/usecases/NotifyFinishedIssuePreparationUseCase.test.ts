@@ -2241,6 +2241,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2393,6 +2394,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -6283,6 +6285,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -6408,6 +6411,50 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      );
+    });
+
+    it('should not reject issue when developerAgentNames is null even when agent has a failing CI PR', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'pr-reviewer',
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        developerAgentNames: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      );
     });
 
     it('should not trigger the new path when chore agent has two failing CI linked PRs', async () => {
