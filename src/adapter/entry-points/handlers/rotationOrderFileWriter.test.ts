@@ -35,11 +35,11 @@ describe('writeRotationOrderFile', () => {
     writeRotationOrderFile(entries);
 
     expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
-      '/custom/cache/tdpm/rotation-order.json.tmp',
+      `/custom/cache/tdpm/rotation-order.json.${process.pid}.tmp`,
       expect.any(String),
     );
     expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
-      '/custom/cache/tdpm/rotation-order.json.tmp',
+      `/custom/cache/tdpm/rotation-order.json.${process.pid}.tmp`,
       '/custom/cache/tdpm/rotation-order.json',
     );
 
@@ -61,7 +61,7 @@ describe('writeRotationOrderFile', () => {
     writeRotationOrderFile([]);
 
     expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
-      `${expectedPath}.tmp`,
+      `${expectedPath}.${process.pid}.tmp`,
       expectedPath,
     );
 
@@ -174,6 +174,23 @@ describe('writeRotationOrderFile', () => {
     expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
       expect.any(String),
       '[]',
+    );
+
+    delete process.env.XDG_CACHE_HOME;
+  });
+
+  it('uses a process-unique temp file path to prevent rename race condition when invoked concurrently', () => {
+    process.env.XDG_CACHE_HOME = '/cache';
+
+    writeRotationOrderFile([]);
+
+    expect(jest.mocked(fs.writeFileSync)).toHaveBeenCalledWith(
+      `/cache/tdpm/rotation-order.json.${process.pid}.tmp`,
+      expect.any(String),
+    );
+    expect(jest.mocked(fs.renameSync)).toHaveBeenCalledWith(
+      `/cache/tdpm/rotation-order.json.${process.pid}.tmp`,
+      '/cache/tdpm/rotation-order.json',
     );
 
     delete process.env.XDG_CACHE_HOME;

@@ -12,7 +12,7 @@ export const writeRotationOrderFile = (
   const filePath = rotationOrderFilePath();
   const dir = path.dirname(filePath);
   fs.mkdirSync(dir, { recursive: true });
-  const tmpPath = `${filePath}.tmp`;
+  const tmpPath = `${filePath}.${process.pid}.tmp`;
   fs.writeFileSync(tmpPath, JSON.stringify(rotationOrder));
   fs.renameSync(tmpPath, filePath);
 };
