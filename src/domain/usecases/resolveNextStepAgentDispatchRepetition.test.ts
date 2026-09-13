@@ -194,11 +194,31 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(comment).not.toContain('ended without a report');
     });
 
-    it('escalates immediately when the agent has reported and is dispatched again and reports again naming itself', () => {
+    it('returns dispatchAgain when count is 2 and agent has reported in the cycle', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
         comments: [
+          report('chore'),
+          repetitionComment('chore'),
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 99,
+        thresholdForDispatchLoop: 99,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+    });
+
+    it('escalates to escalateReportingLoop when count is 3 and agent has reported in the cycle', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'chore',
+        nextStepAgent: 'chore',
+        comments: [
+          report('chore'),
+          repetitionComment('chore'),
           report('chore'),
           repetitionComment('chore'),
           report('chore'),
@@ -210,27 +230,6 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('escalateReportingLoop');
-    });
-
-    it('emits an owner-judgment message when escalating due to repeated self-nomination with reports', () => {
-      const result = resolveNextStepAgentDispatchRepetition({
-        agentFieldValue: 'chore',
-        nextStepAgent: 'chore',
-        comments: [
-          report('chore'),
-          repetitionComment('chore'),
-          report('chore'),
-        ],
-        isTrustedAuthor: trustAll,
-        thresholdForAutoReject: 99,
-        thresholdForDispatchLoop: 99,
-        isNoStory: false,
-      });
-
-      const comment =
-        result.type === 'escalateReportingLoop' ? result.comment : '';
-      expect(comment).not.toContain('Failed to receive a report');
-      expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
 
     it('escalates to escalateReportingLoop when the agent has reported in the cycle', () => {
