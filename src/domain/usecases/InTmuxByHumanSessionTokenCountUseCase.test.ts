@@ -14,6 +14,7 @@ const candidate = (name: string): OauthTokenCandidate => ({
   subscriptionDisabled: false,
   unifiedRejected: false,
   fableRejected: false,
+  blockedUntilEpoch: 0,
 });
 
 const session = (

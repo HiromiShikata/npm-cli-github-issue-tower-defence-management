@@ -34,6 +34,7 @@ const candidate = (
   subscriptionDisabled,
   unifiedRejected,
   fableRejected,
+  blockedUntilEpoch: 0,
 });
 
 describe('OauthTokenSelectUseCase', () => {

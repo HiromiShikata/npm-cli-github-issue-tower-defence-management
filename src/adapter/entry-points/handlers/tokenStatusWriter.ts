@@ -205,6 +205,7 @@ export const writeTokenStatus = (params: TokenStatusWriterParams): void => {
     subscriptionDisabled: false,
     unifiedRejected: false,
     fableRejected: false,
+    blockedUntilEpoch: 0,
   }));
   const machineWideInTmuxByHumanIssues: Issue[] = [
     ...machineWideInTmuxByHumanUrls,

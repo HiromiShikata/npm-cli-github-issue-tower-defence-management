@@ -110,6 +110,7 @@ export class OauthTokenSelectHandler {
           subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
           unifiedRejected: snapshot?.unifiedRejected ?? false,
           fableRejected,
+          blockedUntilEpoch: snapshot?.blockedUntilEpoch ?? 0,
           selectionWeight: selectionWeight ?? DEFAULT_SELECTION_WEIGHT,
         };
       },

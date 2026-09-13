@@ -38,6 +38,8 @@ export const HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
 
 export const PERMISSION_DISABLED_COOLDOWN_SECONDS = 3600;
 
+export const AUTH_FAILURE_COOLDOWN_SECONDS = 86400;
+
 const FIVE_HOUR_STATUS_HEADER = 'anthropic-ratelimit-unified-5h-status';
 
 const SEVEN_DAY_STATUS_HEADER = 'anthropic-ratelimit-unified-7d-status';
@@ -129,6 +131,19 @@ export const writeRateLimit = (
   const dir = cacheDir();
   const filePath = path.join(dir, `${hashToken(token)}.json`);
   if (Object.keys(rateLimitHeaders).length === 0) {
+    if (statusCode === 401) {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const existing = readPayload(filePath);
+      const blockedUntilEpoch =
+        Date.now() / 1000 + AUTH_FAILURE_COOLDOWN_SECONDS;
+      fs.writeFileSync(
+        filePath,
+        JSON.stringify({ ...existing, blockedUntilEpoch }),
+      );
+      return;
+    }
     if (statusCode !== 429) {
       return;
     }

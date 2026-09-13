@@ -1094,6 +1094,7 @@ describe('RateLimitCache', () => {
             subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
             unifiedRejected: snapshot?.unifiedRejected ?? false,
             fableRejected: false,
+            blockedUntilEpoch: 0,
           },
         ],
         Date.now() / 1000,
