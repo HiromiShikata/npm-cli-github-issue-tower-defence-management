@@ -297,6 +297,27 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       expect(result.rejections).toEqual([]);
     });
 
+    it('should return reviewReady=true when last comment has non-null nextStep in JSON', async () => {
+      const issue = createMockIssue();
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content: '```json\n{"nextStep": "fix the bug", "nextStepAgent": "developer"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        createReadyPr(),
+      ]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
+      });
+
+      expect(result.reviewReady).toBe(true);
+      expect(result.rejections).toEqual([]);
+    });
+
     it('should return reviewReady=false with ANY_CI_JOB_FAILED_OR_IN_PROGRESS when PR CI is failing', async () => {
       const issue = createMockIssue({ agent: 'developer' });
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
