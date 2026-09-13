@@ -3,7 +3,6 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import {
-  AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -70,10 +69,12 @@ export class ConflictedIssueRevertUseCase {
     const failedPreparationStatusOption = project.status.statuses.find(
       (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
     );
-
-    const awaitingOwnerStatusOption = project.status.statuses.find(
-      (s) => s.name === AWAITING_OWNER_STATUS_NAME,
-    );
+    if (!failedPreparationStatusOption) {
+      console.error(
+        `Failed preparation status option '${FAILED_PREPARATION_STATUS_NAME}' not found in project. projectUrl: ${params.projectUrl}`,
+      );
+      return;
+    }
 
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
@@ -162,8 +163,7 @@ export class ConflictedIssueRevertUseCase {
             await this.issueRepository.updateStatus(
               project,
               issue,
-              (failedPreparationStatusOption ?? awaitingWorkspaceStatusOption)
-                .id,
+              failedPreparationStatusOption.id,
             );
             await this.issueCommentRepository.createComment(
               issue,
@@ -178,11 +178,7 @@ export class ConflictedIssueRevertUseCase {
             await this.issueRepository.updateStatus(
               project,
               issue,
-              (
-                awaitingOwnerStatusOption ??
-                failedPreparationStatusOption ??
-                awaitingWorkspaceStatusOption
-              ).id,
+              failedPreparationStatusOption.id,
             );
             await this.issueCommentRepository.createComment(
               issue,

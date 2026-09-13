@@ -105,10 +105,12 @@ export class RevertNotReadyReviewQueueIssueUseCase {
     const failedPreparationStatusOption = project.status.statuses.find(
       (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
     );
-
-    const awaitingOwnerStatusOption = project.status.statuses.find(
-      (s) => s.name === AWAITING_OWNER_STATUS_NAME,
-    );
+    if (!failedPreparationStatusOption) {
+      console.error(
+        `Failed preparation status option '${FAILED_PREPARATION_STATUS_NAME}' not found in project. projectUrl: ${params.projectUrl}`,
+      );
+      return;
+    }
 
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
@@ -227,10 +229,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 await this.issueRepository.updateStatus(
                   project,
                   issue,
-                  (
-                    failedPreparationStatusOption ??
-                    awaitingWorkspaceStatusOption
-                  ).id,
+                  failedPreparationStatusOption.id,
                 );
                 await this.createCommentWithDedup(issue, repetition.comment);
                 continue;
@@ -242,11 +241,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 await this.issueRepository.updateStatus(
                   project,
                   issue,
-                  (
-                    awaitingOwnerStatusOption ??
-                    failedPreparationStatusOption ??
-                    awaitingWorkspaceStatusOption
-                  ).id,
+                  failedPreparationStatusOption.id,
                 );
                 await this.createCommentWithDedup(issue, repetition.comment);
                 continue;
