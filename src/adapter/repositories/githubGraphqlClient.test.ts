@@ -313,6 +313,21 @@ describe('githubGraphqlClient', () => {
       });
       expect(consoleLogSpy).not.toHaveBeenCalled();
     });
+
+    it('does not propagate an EPIPE error when the output pipe is broken', () => {
+      const epipeError = Object.assign(new Error('write EPIPE'), {
+        code: 'EPIPE',
+      });
+      consoleLogSpy.mockImplementation(() => {
+        throw epipeError;
+      });
+      expect(() =>
+        logGithubGraphqlCost({
+          query: 'query GetProjectItems { x }',
+          responseBody: { data: { rateLimit: { cost: 3, remaining: 4200 } } },
+        }),
+      ).not.toThrow();
+    });
   });
 
   describe('isTransientGraphqlResponse', () => {

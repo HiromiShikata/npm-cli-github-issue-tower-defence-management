@@ -99,9 +99,21 @@ export const logGithubGraphqlCost = (params: {
   }
   const now = params.now ?? (() => new Date());
   const callSite = params.callSite ?? UNKNOWN_GRAPHQL_CALL_SITE;
-  console.log(
-    `${now().toISOString()} githubGraphqlClient: query=${extractGraphqlOperationName(params.query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining} caller=${callSite}`,
-  );
+  try {
+    console.log(
+      `${now().toISOString()} githubGraphqlClient: query=${extractGraphqlOperationName(params.query)} cost=${rateLimit.cost} remaining=${rateLimit.remaining} caller=${callSite}`,
+    );
+  } catch (error: unknown) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'EPIPE'
+    ) {
+      return;
+    }
+    throw error;
+  }
 };
 
 export const GRAPHQL_RETRY_LIMIT = 2;
