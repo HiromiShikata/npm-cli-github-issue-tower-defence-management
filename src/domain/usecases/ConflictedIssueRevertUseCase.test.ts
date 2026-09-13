@@ -1063,6 +1063,33 @@ describe('ConflictedIssueRevertUseCase', () => {
       },
     });
 
+    const projectWithAllEscalationStatuses = createMockProject({
+      status: {
+        name: 'Status',
+        fieldId: 'field-1',
+        statuses: [
+          {
+            id: 'awaiting-workspace-id',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          {
+            id: 'awaiting-owner-id',
+            name: 'Awaiting Owner',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'failed-preparation-id',
+            name: 'Failed Preparation',
+            color: 'RED',
+            description: '',
+          },
+        ],
+      },
+    });
+
     const agentReport = (nextStepAgent: string) => ({
       author: 'owner',
       content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
@@ -1183,6 +1210,65 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
         expect.stringContaining('Failed to receive a report'),
+      );
+    });
+
+    const silentRedispatchComment = (count: number) => ({
+      author: 'owner',
+      content: `Next step agent dispatch repeated: developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
+      createdAt: new Date(),
+    });
+
+    it('escalates to Awaiting Owner when agent has been reporting every cycle but cannot advance (escalateReportingLoop)', async () => {
+      const issue = buildConflictedIssueWithLinkedPr(
+        projectWithAllEscalationStatuses,
+      );
+      issue.agent = 'developer';
+
+      const humanComment = {
+        author: 'owner',
+        content: 'please continue',
+        createdAt: new Date(),
+      };
+
+      // One silent-redispatch comment in cycle → count = 2 >= threshold = 2.
+      // agentReport in cycle → hasReportsInCycle = true.
+      // Together → escalateReportingLoop, not escalateSilentRedispatch.
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        humanComment,
+        silentRedispatchComment(1),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 2,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithAllEscalationStatuses,
+        issue,
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Owner judgment is required to break the loop'),
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        issue,
+        'conflict',
       );
     });
 

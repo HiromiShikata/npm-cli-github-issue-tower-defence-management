@@ -106,6 +106,10 @@ export class RevertNotReadyReviewQueueIssueUseCase {
       (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
     );
 
+    const awaitingOwnerStatusOption = project.status.statuses.find(
+      (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+    );
+
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
     const awaitingOwnerIssues = issues.filter(
@@ -219,14 +223,27 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                   params.thresholdForDispatchLoop ??
                   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
               });
+              if (repetition.type === 'escalateSilentRedispatch') {
+                await this.issueRepository.updateStatus(
+                  project,
+                  issue,
+                  (
+                    failedPreparationStatusOption ??
+                    awaitingWorkspaceStatusOption
+                  ).id,
+                );
+                await this.createCommentWithDedup(issue, repetition.comment);
+                continue;
+              }
               if (
-                repetition.type === 'escalateSilentRedispatch' ||
+                repetition.type === 'escalateReportingLoop' ||
                 repetition.type === 'escalateDispatchLoop'
               ) {
                 await this.issueRepository.updateStatus(
                   project,
                   issue,
                   (
+                    awaitingOwnerStatusOption ??
                     failedPreparationStatusOption ??
                     awaitingWorkspaceStatusOption
                   ).id,

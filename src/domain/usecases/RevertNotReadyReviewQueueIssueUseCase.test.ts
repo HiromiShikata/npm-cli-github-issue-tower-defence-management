@@ -2308,7 +2308,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       createdAt: new Date(),
     });
 
-    it('escalates to Failed Preparation instead of reverting when dispatch loop threshold is reached', async () => {
+    it('escalates to Awaiting Owner instead of reverting when dispatch loop threshold is reached', async () => {
       mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
 
       const issue = createMockIssue({
@@ -2346,7 +2346,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         projectWithFailedPrep,
         issue,
-        'failed-preparation-id',
+        'awaiting-owner-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
@@ -2453,6 +2453,71 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
         expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+    });
+
+    it('escalates to Awaiting Owner when agent has been reporting every cycle but cannot advance (escalateReportingLoop)', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      const silentRedispatchComment = (count: number) => ({
+        author: 'owner',
+        content: `Next step agent dispatch repeated: developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
+        createdAt: new Date(),
+      });
+      const humanComment = {
+        author: 'owner',
+        content: 'please continue',
+        createdAt: new Date(),
+      };
+
+      // One silent-redispatch comment in cycle → count = 2 >= threshold = 2.
+      // agentReport in cycle → hasReportsInCycle = true.
+      // Together → escalateReportingLoop, not escalateSilentRedispatch.
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        humanComment,
+        silentRedispatchComment(1),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 2,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Owner judgment is required to break the loop'),
       );
     });
   });

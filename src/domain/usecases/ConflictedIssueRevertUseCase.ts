@@ -3,6 +3,7 @@ import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueCommentRepository } from './adapter-interfaces/IssueCommentRepository';
 import {
+  AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
@@ -68,6 +69,10 @@ export class ConflictedIssueRevertUseCase {
 
     const failedPreparationStatusOption = project.status.statuses.find(
       (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
+    );
+
+    const awaitingOwnerStatusOption = project.status.statuses.find(
+      (s) => s.name === AWAITING_OWNER_STATUS_NAME,
     );
 
     const { issues } = await this.issueRepository.getAllIssues(projectId);
@@ -153,15 +158,31 @@ export class ConflictedIssueRevertUseCase {
               params.thresholdForDispatchLoop ??
               DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
           });
-          if (
-            repetition.type === 'escalateSilentRedispatch' ||
-            repetition.type === 'escalateDispatchLoop'
-          ) {
+          if (repetition.type === 'escalateSilentRedispatch') {
             await this.issueRepository.updateStatus(
               project,
               issue,
               (failedPreparationStatusOption ?? awaitingWorkspaceStatusOption)
                 .id,
+            );
+            await this.issueCommentRepository.createComment(
+              issue,
+              repetition.comment,
+            );
+            continue;
+          }
+          if (
+            repetition.type === 'escalateReportingLoop' ||
+            repetition.type === 'escalateDispatchLoop'
+          ) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              (
+                awaitingOwnerStatusOption ??
+                failedPreparationStatusOption ??
+                awaitingWorkspaceStatusOption
+              ).id,
             );
             await this.issueCommentRepository.createComment(
               issue,
