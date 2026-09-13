@@ -39,7 +39,6 @@ import {
   issueReactivationTriggerIsPending,
   issueReactivationTriggerStartOfTomorrow,
 } from './issueReactivationTriggerIsPending';
-import { normalizeReportBody } from './normalizeReportBody';
 import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
@@ -72,7 +71,7 @@ export class IllegalIssueStatusError extends Error {
   }
 }
 type RejectedReasonType =
-  'NO_REPORT_FROM_AGENT_BOT' | 'REPORT_HAS_NEXT_STEP' | PrRejectedReasonType;
+  'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
 
 const parseOrgRepo = (
   repository: string | null,
@@ -848,11 +847,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         type: 'NO_REPORT_FROM_AGENT_BOT',
         detail: 'NO_REPORT_FROM_AGENT_BOT',
       });
-    } else if (this.reportBodyHasNextStep(lastComment.content)) {
-      rejections.push({
-        type: 'REPORT_HAS_NEXT_STEP',
-        detail: 'REPORT_HAS_NEXT_STEP',
-      });
     }
 
     const { rejections: prRejections, approvedPrUrl } =
@@ -880,33 +874,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       rejections: [...rejections, ...requiredPrRejections],
       approvedPrUrl,
     };
-  };
-
-  private reportBodyHasNextStep = (body: string): boolean => {
-    const reportMatch = normalizeReportBody(body).match(
-      /```json\n([\s\S]*?)\n```/,
-    );
-    if (!reportMatch || reportMatch.length < 2) {
-      return false;
-    }
-    let reportJson: unknown;
-    try {
-      reportJson = JSON.parse(reportMatch[1]);
-    } catch (error) {
-      console.warn(
-        'Invalid JSON in report body while checking nextStep:',
-        error,
-      );
-      return false;
-    }
-    if (typeof reportJson !== 'object' || reportJson === null) {
-      return false;
-    }
-    if (!('nextStep' in reportJson)) {
-      return false;
-    }
-    const nextStepValue = Reflect.get(reportJson, 'nextStep');
-    return nextStepValue !== null && nextStepValue !== undefined;
   };
 
   private setDependedIssueUrlForAllOpenPRs = async (

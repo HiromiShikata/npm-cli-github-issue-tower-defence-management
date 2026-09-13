@@ -1064,40 +1064,6 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
   });
 
-  it('should revert orphaned issue to Awaiting Workspace when report has nextStep set', async () => {
-    const stuckIssue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/10',
-      status: 'Preparation',
-    });
-    mockIssueRepository.getAllIssues.mockResolvedValue({
-      project: mockProject,
-      issues: [stuckIssue],
-      cacheUsed: false,
-    });
-    mockLocalCommandRunner.runCommand.mockResolvedValue({
-      stdout: '',
-      stderr: '',
-      exitCode: 1,
-    });
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      {
-        author: 'bot',
-        content:
-          'From: :robot: agent report\n```json\n{"nextStep": "do something"}\n```',
-        createdAt: new Date(),
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/user/repo',
-      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
-      thresholdForAutoReject: 3,
-    });
-
-    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
-  });
-
   it('should revert orphaned issue to Awaiting Workspace when last comment is a cross-issue notification starting with From: :warning:', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',

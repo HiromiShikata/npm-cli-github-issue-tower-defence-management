@@ -168,32 +168,6 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       });
     });
 
-    it('should return reviewReady=false with REPORT_HAS_NEXT_STEP when last comment has nextStep in JSON', async () => {
-      const issue = createMockIssue();
-      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
-      const commentWithNextStep = createMockComment({
-        content:
-          'From: :robot: Agent report\n```json\n{"nextStep": "fix the bug"}\n```',
-      });
-      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        commentWithNextStep,
-      ]);
-      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        createReadyPr(),
-      ]);
-
-      const result = await useCase.run({
-        issueUrl: 'https://github.com/user/repo/issues/1',
-        allowedIssueAuthors: ['agent-bot'],
-      });
-
-      expect(result.reviewReady).toBe(false);
-      expect(result.rejections).toContainEqual({
-        type: 'REPORT_HAS_NEXT_STEP',
-        detail: 'REPORT_HAS_NEXT_STEP',
-      });
-    });
-
     it('should return reviewReady=false with PULL_REQUEST_NOT_FOUND when no related PR exists', async () => {
       const issue = createMockIssue({ agent: 'developer' });
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);

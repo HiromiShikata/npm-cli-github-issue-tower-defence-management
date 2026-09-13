@@ -1074,50 +1074,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalled();
   });
 
-  it('should reject when last comment has REPORT_HAS_NEXT_STEP', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: agent (model)\n```json\n{"nextStep": "Fix the tests"}\n```',
-      }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      {
-        url: 'https://github.com/user/repo/pull/1',
-        isConflicted: false,
-        isPassedAllCiJob: true,
-        isCiStateSuccess: true,
-        isResolvedAllReviewComments: true,
-        isBranchOutOfDate: false,
-        missingRequiredCheckNames: [],
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Workspace' }),
-      mockProject,
-    );
-    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
-      expect.stringContaining('REPORT_HAS_NEXT_STEP'),
-    );
-  });
-
   it('should not reject when last comment has nextStep set to null', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
