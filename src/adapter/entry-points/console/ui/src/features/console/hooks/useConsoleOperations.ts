@@ -27,6 +27,7 @@ import type {
   ConsoleComment,
   ConsoleFieldOption,
   ConsoleListItem,
+  ConsoleOverlayStatus,
   ConsoleTabName,
 } from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
@@ -85,6 +86,11 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     dependedIssueUrl: string,
   ) => Promise<void>;
+  patchItemOverlay: (
+    item: ConsoleListItem,
+    done: boolean,
+    status?: ConsoleOverlayStatus,
+  ) => void;
 };
 
 export const reviewRequest = (
@@ -429,6 +435,21 @@ export const useConsoleOperations = (
     [pjcode],
   );
 
+  const patchItemOverlay = useCallback(
+    (
+      item: ConsoleListItem,
+      done: boolean,
+      status?: ConsoleOverlayStatus,
+    ): void => {
+      patchOverlay(
+        overlayKeyForItem(item),
+        { done, ...(status !== undefined ? { status } : {}) },
+        mode,
+      );
+    },
+    [patchOverlay, mode],
+  );
+
   const addInlineReviewComment = useCallback(
     async (
       prUrl: string,
@@ -488,5 +509,6 @@ export const useConsoleOperations = (
     addInlineReviewComment,
     deleteAllComments,
     setDependedIssueUrl,
+    patchItemOverlay,
   };
 };
