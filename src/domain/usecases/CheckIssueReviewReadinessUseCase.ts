@@ -14,9 +14,7 @@ import { findLastAgentReport } from './findLastAgentReport';
 import { TRIAGER_AGENT_NAME } from './triagerAgentName';
 
 type RejectedReasonType =
-  | 'ISSUE_NOT_FOUND'
-  | 'NO_REPORT_FROM_AGENT_BOT'
-  | PrRejectedReasonType;
+  'ISSUE_NOT_FOUND' | 'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
 
 export type IssueReviewReadinessResult = {
   reviewReady: boolean;
@@ -115,5 +113,4 @@ export class CheckIssueReviewReadinessUseCase {
       rejections: allRejections,
     };
   };
-
 }

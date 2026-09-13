@@ -70,8 +70,7 @@ export class IllegalIssueStatusError extends Error {
     this.name = 'IllegalIssueStatusError';
   }
 }
-type RejectedReasonType =
-  'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
+type RejectedReasonType = 'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
 
 const parseOrgRepo = (
   repository: string | null,
