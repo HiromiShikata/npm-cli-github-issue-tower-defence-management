@@ -1,3 +1,10 @@
+## [2.110.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.110.0...v2.110.1) (2026-09-13)
+
+
+### Bug Fixes
+
+* **rotationOrderFileWriter:** prevent ENOENT race on concurrent schedule invocations ([#2327](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2327)) ([1151d2e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1151d2eeb6df38d2f4ee617a50d0102072b9116a)), closes [HiromiShikata/secretary#6087](https://github.com/HiromiShikata/secretary/issues/6087)
+
 # [2.110.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.109.0...v2.110.0) (2026-09-13)
 
 
