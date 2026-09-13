@@ -1,3 +1,10 @@
+## [2.107.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.6...v2.107.7) (2026-09-13)
+
+
+### Bug Fixes
+
+* **console:** patch overlay immediately on ok & Awaiting Workspace ([#2296](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2296)) ([8a585fe](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8a585feeaed6719569c2d9570da38f57fb93296c))
+
 ## [2.107.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.5...v2.107.6) (2026-09-13)
 
 
