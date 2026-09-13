@@ -19,7 +19,7 @@ import {
 } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isTriagerAgentName, PR_REVIEWER_AGENT_NAME } from './triagerAgentName';
+import { isTriagerAgentName } from './triagerAgentName';
 import {
   ConsoleListItem,
   ConsoleTabName,
@@ -396,7 +396,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       resolveLabelsNotRequiringPullRequest(params),
       nextStepAgent,
       params.developerAgentNames,
-      params.agents,
     );
 
     const rejectionStatusMessage =
@@ -820,7 +819,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     labelsNotRequiringPullRequest: string[],
     nextStepAgent: string | null,
     developerAgentNames?: string[] | null,
-    agents?: string[] | null,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -854,19 +852,13 @@ export class NotifyFinishedIssuePreparationUseCase {
     const effectiveDeveloperAgentNames = developerAgentNames?.length
       ? developerAgentNames
       : ['developer'];
-    const lastReportIsFromKnownNonDeveloperAgent =
+    const lastReportIsFromDeveloperAgent =
       lastAgentReport !== null &&
-      agents != null &&
-      agents.length > 0 &&
-      agents.some((name) =>
-        isAgentReportBodyFromAgent(lastAgentReport.content, name),
-      ) &&
-      ![...effectiveDeveloperAgentNames, PR_REVIEWER_AGENT_NAME].some((name) =>
+      effectiveDeveloperAgentNames.some((name) =>
         isAgentReportBodyFromAgent(lastAgentReport.content, name),
       );
     const requiredPrRejections =
-      isTriagerAgentName(nextStepAgent) ||
-      lastReportIsFromKnownNonDeveloperAgent
+      isTriagerAgentName(nextStepAgent) || !lastReportIsFromDeveloperAgent
         ? prRejections.filter(
             (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
           )

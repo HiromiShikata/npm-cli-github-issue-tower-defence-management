@@ -2014,7 +2014,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: :robot: Test report' }),
+      createMockComment({
+        content:
+          'From: :robot: developer (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nTask complete.',
+      }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
@@ -2123,7 +2126,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(issue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: :robot: Test report' }),
+      createMockComment({
+        content:
+          'From: :robot: my-agent (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nTask complete.',
+      }),
     ]);
     mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
@@ -3387,7 +3393,10 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
     mockIssueRepository.get.mockResolvedValue(prIssue);
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({ content: 'From: :robot: agent (model)' }),
+      createMockComment({
+        content:
+          'From: :robot: developer (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nTask complete.',
+      }),
     ]);
     mockIssueRepository.getOpenPullRequest.mockResolvedValue(null);
 
@@ -5755,7 +5764,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('rejects with PULL_REQUEST_NOT_FOUND when agents is not configured, triager posted nextStep:null, and no PR exists', async () => {
+    it('does not reject with PULL_REQUEST_NOT_FOUND when agents is not configured and triager posted nextStep:null with no PR', async () => {
       const issue = createMockIssue({
         url: issueUrl,
         status: 'Preparation',
@@ -5779,9 +5788,17 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       });
 
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: issueUrl }),
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
         expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({
+          url: issueUrl,
+          status: 'Awaiting Owner',
+        }),
+        'awaiting-owner-id',
       );
     });
 
@@ -5924,7 +5941,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('still rejects with PULL_REQUEST_NOT_FOUND when pr-reviewer agent posted nextStep:null and no PR exists', async () => {
+    it('does not reject with PULL_REQUEST_NOT_FOUND when pr-reviewer agent posted nextStep:null and no PR exists', async () => {
       const issue = createMockIssue({
         url: issueUrl,
         status: 'Preparation',
@@ -5949,13 +5966,86 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         agents: ['developer', 'pr-reviewer'],
       });
 
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: issueUrl }),
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
         expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
       );
-      expect(mockIssueRepository.update).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Workspace' }),
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
+        expect.objectContaining({
+          url: issueUrl,
+          status: 'Awaiting Owner',
+        }),
+        'awaiting-owner-id',
+      );
+    });
+
+    it('does not reject with PULL_REQUEST_NOT_FOUND when newly added agent absent from agents config posted nextStep:null and no PR exists', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        agent: 'developer',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: new-functional-agent (claude-sonnet-4-6)\n```json\n{"nextStep": null}\n```\n\nInvestigation complete.',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['triager', 'developer', 'pr-reviewer'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        mockProject,
+        expect.objectContaining({
+          url: issueUrl,
+          status: 'Awaiting Owner',
+        }),
+        'awaiting-owner-id',
+      );
+    });
+
+    it('does not reject with PULL_REQUEST_NOT_FOUND when there is no prior agent report and no PR exists', async () => {
+      const issue = createMockIssue({
+        url: issueUrl,
+        status: 'Preparation',
+        agent: 'developer',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl,
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        agents: ['triager', 'developer', 'pr-reviewer'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({ url: issueUrl }),
+        expect.stringContaining('NO_REPORT_FROM_AGENT_BOT'),
       );
     });
   });
@@ -6433,7 +6523,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
           content:
-            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "impl"}\n```',
+            'From: :robot: developer (model)\n```json\n{"nextStepAgent": "impl"}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
