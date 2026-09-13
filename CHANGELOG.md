@@ -1,3 +1,19 @@
+# [2.111.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.110.2...v2.111.0) (2026-09-13)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparation:** post comment and send notification on Awaiting Owner transition ([#2336](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2336)) ([2919892](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/29198924679162a55c547e5c5a750488be6267ff)), closes [#2316](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2316)
+* **NotifyFinishedIssuePreparation:** restrict story field update to designated agent reports ([#2331](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2331)) ([2979e11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2979e11b9526cdf37a4030c565973bbc3163e713)), closes [#2315](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2315)
+* **resolveNextStepAgentDispatchRepetition:** replace Next step agent dispatch repeated prefix with Auto Status Check format ([#2332](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2332)) ([ceef467](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ceef467baae38f823c26c5ef780c26731c50e657)), closes [#2317](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2317)
+* **StartPreparationUseCase:** write resolved agent name to the Agent field before spawning the worker ([#2335](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2335)) ([a0625ac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a0625accd43fde161daf670123291bea84263bd9)), closes [#2314](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2314)
+* **usecases:** remove nextStep key check and REPORT_HAS_NEXT_STEP rejection ([#2329](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2329)) ([f299c75](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f299c75d621e549f543db9f5f8dae75dc4d71aa7)), closes [#2318](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2318)
+
+
+### Features
+
+* **console:** auto-skip empty projects in timer mode ([#2337](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2337)) ([f4d1e71](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f4d1e713abc7c8ac99ff552303f4f78d048d10aa)), closes [HiromiShikata/umino-corporait-operation#31710](https://github.com/HiromiShikata/umino-corporait-operation/issues/31710)
+
 ## [2.110.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.110.1...v2.110.2) (2026-09-13)
 
 
