@@ -12,6 +12,7 @@ import { isAgentReportBody } from './isAgentReportBody';
 
 const MACHINE_GENERATED_COMMENT_HEADS = [
   AUTO_STATUS_CHECK_MESSAGE_HEAD,
+  'Next step agent dispatch repeated:', // legacy prefix, superseded by AUTO_STATUS_CHECK_MESSAGE_HEAD
   DEPENDED_ISSUE_URLS_COMMENT_HEAD,
   ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD,
   SOME_DEPENDED_CLOSED_REMOVED_COMMENT_HEAD,

@@ -59,6 +59,18 @@ describe('isHumanComment', () => {
     ).toBe(false);
   });
 
+  it('treats a legacy dispatch repetition comment as machine generated', () => {
+    expect(
+      isHumanComment(
+        {
+          author: 'bot',
+          content: 'Next step agent dispatch repeated: developer\n\nDispatching it again.',
+        },
+        trustAll,
+      ),
+    ).toBe(false);
+  });
+
   it('treats an auto status check comment as machine generated', () => {
     expect(
       isHumanComment(
