@@ -48,6 +48,7 @@ import {
 } from '../console/consoleGithubTokenResolver';
 import { buildReadIssueRepositoryResolver } from '../console/readOnlyTokenRotator';
 import { mintReadOnlyTokensFromKeyPaths } from './githubAppTokenMinter';
+import { unresumableSessionArchive } from './unresumableSessionArchive';
 import {
   buildPjcodeToProjectUrl,
   createConsoleProjectLoader,
@@ -213,6 +214,12 @@ type KillTmuxSessionOptions = {
 
 type AttachOrCreateOptions = {
   issueUrl: string;
+};
+
+type ArchiveUnresumableSessionOptions = {
+  logFile: string;
+  sessionDir: string;
+  archiveDir: string;
 };
 
 const resolveScopeLibPath = (): string | null => {
@@ -1507,6 +1514,40 @@ program
       options.issueUrl,
       scopeLibPath,
     );
+  });
+
+program
+  .command('archive-unresumable-session')
+  .description(
+    'Move aside the conversation record of a session that ended because its prompt exceeded the model context limit, so the next launch for that task starts a fresh conversation instead of resuming a record that can never load. Reads the finished run stream-json log, and acts only when it holds a terminal result record whose is_error is true and whose result is "Prompt is too long"; a usage limit termination does not match. Writes "no-op" to stdout and changes nothing when no such record is present, and "archived <destination path>" when the record is moved. The conversation record is moved, never deleted, so it stays recoverable. Exits 1 naming the expected source path when the record the log points at is absent.',
+  )
+  .requiredOption(
+    '--log-file <path>',
+    'Path to the finished run stream-json log',
+  )
+  .requiredOption(
+    '--session-dir <path>',
+    'Directory holding conversation records named <session-id>.jsonl',
+  )
+  .requiredOption(
+    '--archive-dir <path>',
+    'Destination directory the conversation record is moved into; created when it does not exist',
+  )
+  .action((options: ArchiveUnresumableSessionOptions) => {
+    const output = unresumableSessionArchive({
+      logFilePath: options.logFile,
+      sessionDir: options.sessionDir,
+      archiveDir: options.archiveDir,
+    });
+    if (output.stdout !== null) {
+      console.log(output.stdout);
+    }
+    if (output.stderr !== null) {
+      console.error(output.stderr);
+    }
+    if (output.exitCode !== 0) {
+      return process.exit(output.exitCode);
+    }
   });
 
 export const reportFatalErrorAndExit = (error: unknown): void => {
