@@ -451,6 +451,9 @@ ${JSON.stringify(e)}
     });
     await this.conflictedIssueRevertUseCase.run({
       projectUrl: input.projectUrl,
+      allowedIssueAuthors,
+      thresholdForAutoReject: input.thresholdForAutoReject,
+      thresholdForDispatchLoop: input.thresholdForDispatchLoop,
     });
     await this.revertNotReadyReviewQueueIssueUseCase.run({
       projectUrl: input.projectUrl,
@@ -461,6 +464,8 @@ ${JSON.stringify(e)}
       allowedIssueAuthors,
       developerAgentNames: input.developerAgentNames,
       evaluatedAt: now,
+      thresholdForAutoReject: input.thresholdForAutoReject,
+      thresholdForDispatchLoop: input.thresholdForDispatchLoop,
     });
     if (this.dailySecurityScanUseCase !== null && input.dailySecurityScan) {
       await this.dailySecurityScanUseCase.run({

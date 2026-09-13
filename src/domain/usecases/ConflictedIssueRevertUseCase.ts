@@ -9,6 +9,12 @@ import {
   ICEBOX_STATUS_NAME,
   IN_TMUX_STATUS_NAME,
 } from '../entities/WorkflowStatus';
+import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
+import { extractNextStepAgentFromComments } from './extractNextStepAgentFromComments';
+import {
+  DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+  resolveNextStepAgentDispatchRepetition,
+} from './resolveNextStepAgentDispatchRepetition';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 const EXCLUDED_STATUSES = new Set([
@@ -34,7 +40,12 @@ export class ConflictedIssueRevertUseCase {
     >,
   ) {}
 
-  run = async (params: { projectUrl: string }): Promise<void> => {
+  run = async (params: {
+    projectUrl: string;
+    allowedIssueAuthors?: string[] | null;
+    thresholdForAutoReject?: number;
+    thresholdForDispatchLoop?: number;
+  }): Promise<void> => {
     const projectId = await this.projectRepository.findProjectIdByUrl(
       params.projectUrl,
     );
@@ -54,6 +65,10 @@ export class ConflictedIssueRevertUseCase {
     if (!awaitingWorkspaceStatusOption) {
       return;
     }
+
+    const failedPreparationStatusOption = project.status.statuses.find(
+      (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
+    );
 
     const { issues } = await this.issueRepository.getAllIssues(projectId);
 
@@ -112,13 +127,55 @@ export class ConflictedIssueRevertUseCase {
         continue;
       }
 
+      const existingComments =
+        await this.issueCommentRepository.getCommentsFromIssue(issue);
+      if (params.thresholdForAutoReject !== undefined) {
+        const nextStepAgent = extractNextStepAgentFromComments(
+          existingComments,
+          (author) =>
+            isAuthorAuthorizedForAutoStatusCheck(
+              author,
+              params.allowedIssueAuthors,
+            ),
+        );
+        if (nextStepAgent !== null) {
+          const repetition = resolveNextStepAgentDispatchRepetition({
+            agentFieldValue: issue.agent,
+            nextStepAgent,
+            comments: existingComments,
+            isTrustedAuthor: (author) =>
+              isAuthorAuthorizedForAutoStatusCheck(
+                author,
+                params.allowedIssueAuthors,
+              ),
+            thresholdForAutoReject: params.thresholdForAutoReject,
+            thresholdForDispatchLoop:
+              params.thresholdForDispatchLoop ??
+              DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+          });
+          if (
+            repetition.type === 'escalateSilentRedispatch' ||
+            repetition.type === 'escalateDispatchLoop'
+          ) {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              (failedPreparationStatusOption ?? awaitingWorkspaceStatusOption)
+                .id,
+            );
+            await this.issueCommentRepository.createComment(
+              issue,
+              repetition.comment,
+            );
+            continue;
+          }
+        }
+      }
       await this.issueRepository.updateStatus(
         project,
         issue,
         awaitingWorkspaceStatusOption.id,
       );
-      const existingComments =
-        await this.issueCommentRepository.getCommentsFromIssue(issue);
       if (
         isDuplicateWithinWindow(
           'conflict',
