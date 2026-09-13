@@ -1,3 +1,10 @@
+## [2.111.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.1...v2.111.2) (2026-09-13)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparationUseCase:** pass reporter name to isAgentReportBodyFromAgent for story guard ([e0e84c7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e0e84c76e51897313780d785f3993fc8a17aead3)), closes [#2341](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2341)
+
 ## [2.111.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.0...v2.111.1) (2026-09-13)
 
 
