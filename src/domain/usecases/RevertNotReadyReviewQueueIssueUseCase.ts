@@ -199,7 +199,10 @@ export class RevertNotReadyReviewQueueIssueUseCase {
             const nextStepAgent = extractNextStepAgentFromComments(
               comments,
               (author) =>
-                isAuthorAuthorizedForAutoStatusCheck(author, allowedIssueAuthors),
+                isAuthorAuthorizedForAutoStatusCheck(
+                  author,
+                  allowedIssueAuthors,
+                ),
             );
             if (nextStepAgent !== null) {
               const repetition = resolveNextStepAgentDispatchRepetition({
@@ -224,7 +227,8 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                   project,
                   issue,
                   (
-                    failedPreparationStatusOption ?? awaitingWorkspaceStatusOption
+                    failedPreparationStatusOption ??
+                    awaitingWorkspaceStatusOption
                   ).id,
                 );
                 await this.createCommentWithDedup(issue, repetition.comment);
