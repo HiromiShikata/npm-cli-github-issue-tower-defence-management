@@ -1,3 +1,10 @@
+## [2.111.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.3...v2.111.4) (2026-09-13)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparation:** stop posting Auto Status Check: AWAITING_OWNER comment re-introduced by PR 2336 ([#2344](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2344)) ([c6356b0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c6356b04a125cbb69aba9bcef7a2104c96633910)), closes [#2182](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2182) [#2343](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2343)
+
 ## [2.111.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.2...v2.111.3) (2026-09-13)
 
 
