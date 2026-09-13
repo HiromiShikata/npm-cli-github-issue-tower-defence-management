@@ -328,6 +328,19 @@ describe('githubGraphqlClient', () => {
         }),
       ).not.toThrow();
     });
+
+    it('re-throws errors that are not EPIPE', () => {
+      const otherError = new Error('disk full');
+      consoleLogSpy.mockImplementation(() => {
+        throw otherError;
+      });
+      expect(() =>
+        logGithubGraphqlCost({
+          query: 'query GetProjectItems { x }',
+          responseBody: { data: { rateLimit: { cost: 3, remaining: 4200 } } },
+        }),
+      ).toThrow(otherError);
+    });
   });
 
   describe('isTransientGraphqlResponse', () => {
