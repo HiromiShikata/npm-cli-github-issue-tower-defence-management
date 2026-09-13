@@ -1,4 +1,5 @@
-import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
+import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
+import { extractFencedJsonBlocks } from './extractFencedJsonBlocks';
 import { normalizeReportBody } from './normalizeReportBody';
 
 const FENCE_OPENING = /^ {0,3}(`{3,}|~{3,})/;
@@ -41,12 +42,17 @@ export const stripLeadingFencedBlocks = (body: string): string => {
 };
 
 export const isAgentReportBody = (body: string): boolean =>
-  stripLeadingFencedBlocks(body).startsWith(AGENT_REPORT_PREFIX);
+  extractFencedJsonBlocks(body, 'isAgentReportBody').some(
+    (block) =>
+      typeof block === 'object' && block !== null && !Array.isArray(block),
+  );
 
 export const isAgentReportBodyFromAgent = (
   body: string,
   agentName: string,
+  agentFieldValue: string | null | undefined,
 ): boolean =>
-  stripLeadingFencedBlocks(body).startsWith(
-    `${AGENT_REPORT_PREFIX} ${agentName}`,
-  );
+  agentFieldValue != null &&
+  isAgentReportBody(body) &&
+  normalizeProjectFieldName(agentFieldValue) ===
+    normalizeProjectFieldName(agentName);

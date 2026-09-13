@@ -28,7 +28,7 @@ describe('isHumanComment', () => {
       isHumanComment(
         {
           author: 'bot',
-          content: 'From: :robot: agent (model)\n\nReport body.',
+          content: '```json\n{"nextStep": null}\n```\n\nReport body.',
         },
         trustAll,
       ),

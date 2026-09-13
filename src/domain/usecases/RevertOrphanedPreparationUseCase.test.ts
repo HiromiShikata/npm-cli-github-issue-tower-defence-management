@@ -422,14 +422,18 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content:
-          'From: :robot: developer\n\n```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
+        content: '```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
         createdAt: new Date('2024-01-02T00:00:00Z'),
       },
       {
         author: 'bot',
         content: 'Next step agent dispatch repeated: developer',
         createdAt: new Date('2024-01-02T01:00:00Z'),
+      },
+      {
+        author: 'bot',
+        content: '```json\n{"nextStep":null,"nextStepAgent":"developer"}\n```',
+        createdAt: new Date('2024-01-02T01:30:00Z'),
       },
       {
         author: 'bot',
@@ -581,7 +585,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -617,7 +621,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -656,7 +660,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -690,7 +694,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'agent-bot',
-        content: 'From: :robot: agent report of an earlier session',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
       {
@@ -736,7 +740,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -772,7 +776,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -814,7 +818,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -849,7 +853,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -885,7 +889,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -922,7 +926,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -965,7 +969,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -1000,7 +1004,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -1042,7 +1046,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -1754,7 +1758,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
       {
         author: 'bot',
-        content: 'From: :robot: agent report',
+        content: '```json\n{"nextStep": null}\n```',
         createdAt: new Date(),
       },
     ]);
@@ -1903,7 +1907,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       arrangeSnapshotSaysPreparation('Awaiting Workspace', [
         {
           author: 'bot',
-          content: 'From: :robot: agent',
+          content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
         },
       ]);
@@ -2082,7 +2086,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'bot',
-          content: 'From: :robot: agent report',
+          content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
         },
       ]);
@@ -2137,7 +2141,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'bot',
-          content: 'From: :robot: agent report',
+          content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
         },
       ]);
@@ -2176,7 +2180,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'bot',
-          content: 'From: :robot: agent report',
+          content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
         },
       ]);
@@ -2213,7 +2217,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'bot',
-          content: 'From: :robot: agent report',
+          content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
         },
       ]);
@@ -2256,7 +2260,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'bot',
-          content: 'From: :robot: agent report',
+          content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
         },
       ]);
@@ -2299,7 +2303,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'bot',
-          content: 'From: :robot: agent report',
+          content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
         },
       ]);
@@ -2342,7 +2346,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'bot',
-          content: 'From: :robot: agent report',
+          content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
         },
       ]);
@@ -2406,7 +2410,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         {
           author: 'bot',
-          content: 'From: :robot: agent report',
+          content: '```json\n{"nextStep": null}\n```',
           createdAt: new Date(),
         },
       ]);
