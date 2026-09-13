@@ -1,3 +1,10 @@
+## [2.107.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.5...v2.107.6) (2026-09-13)
+
+
+### Bug Fixes
+
+* produce PULL_REQUEST_NOT_FOUND only for designated developer agents ([#2310](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2310)) ([cb7813e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cb7813ed93802768b9134c225766a1fbb31891fc))
+
 ## [2.107.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.4...v2.107.5) (2026-09-13)
 
 
