@@ -44,7 +44,7 @@ export const ConsoleTaskCreateButton = ({
     <>
       <button
         type="button"
-        className="console-tab-settings-button"
+        className="console-task-create-button"
         disabled={disabled}
         onClick={() => setIsDialogOpen(true)}
         aria-label="Create new task"
