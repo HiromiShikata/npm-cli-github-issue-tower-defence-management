@@ -27,6 +27,7 @@ import {
   RATE_LIMIT_MAX_RETRIES,
   callWithRateLimitRetry,
 } from './GraphqlProjectItemRepository';
+import { GRAPHQL_RETRY_LIMIT } from '../githubGraphqlClient';
 import { LocalStorageRepository } from '../LocalStorageRepository';
 
 const mockJsonResponse = <T>(data: T) => ({
@@ -44,7 +45,18 @@ const makeHttpError = (
   const request = new Request('https://api.github.com/graphql');
   const normalizedOptions: ConstructorParameters<typeof HTTPError>[2] = {
     method: 'post',
-    retry: {},
+    headers: new Headers(),
+    retry: {
+      limit: 0,
+      methods: [],
+      statusCodes: [],
+      afterStatusCodes: [],
+      maxRetryAfter: Number.POSITIVE_INFINITY,
+      backoffLimit: Number.POSITIVE_INFINITY,
+      delay: () => 0,
+      jitter: false,
+      retryOnTimeout: false,
+    },
     prefix: '',
     onDownloadProgress: undefined,
     onUploadProgress: undefined,
@@ -2490,6 +2502,252 @@ describe('GraphqlProjectItemRepository', () => {
       } finally {
         consoleSpy.mockRestore();
       }
+    });
+  });
+
+  describe('updateProjectField', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      mockPost.mockClear();
+      jest.useRealTimers();
+    });
+
+    it('resolves without retrying when the mutation succeeds on the first attempt', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          data: {
+            updateProjectV2ItemFieldValue: { clientMutationId: null },
+          },
+        }),
+      );
+
+      await expect(
+        repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+          singleSelectOptionId: 'opt-id',
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws immediately without retrying for non-transient GraphQL errors', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [{ message: 'UNAUTHORIZED' }],
+        }),
+      );
+
+      await expect(
+        repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+          text: 'value',
+        }),
+      ).rejects.toThrow('UNAUTHORIZED');
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries and succeeds when GitHub returns a transient internal error on the first attempt', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            errors: [
+              {
+                message:
+                  'Something went wrong while executing your query on 2026-09-08T23:00:00Z.',
+              },
+            ],
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              updateProjectV2ItemFieldValue: { clientMutationId: null },
+            },
+          }),
+        );
+
+      const resultPromise = repository.updateProjectField(
+        'proj-id',
+        'field-id',
+        'item-id',
+        { text: 'value' },
+      );
+      await jest.runAllTimersAsync();
+
+      await expect(resultPromise).resolves.toBeUndefined();
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('throws after postGithubGraphqlJson exhausts its transient retries', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              message:
+                'Something went wrong while executing your query on 2026-09-08T23:00:00Z.',
+            },
+          ],
+        }),
+      );
+
+      const resultPromise = repository
+        .updateProjectField('proj-id', 'field-id', 'item-id', { text: 'v' })
+        .catch((e: unknown) => e);
+      await jest.runAllTimersAsync();
+
+      const caught = await resultPromise;
+      expect(caught).toBeInstanceOf(Error);
+      expect(extractErrorMessage(caught)).toContain(
+        'Something went wrong while executing your query',
+      );
+      expect(mockPost).toHaveBeenCalledTimes(GRAPHQL_RETRY_LIMIT + 1);
+    });
+  });
+
+  describe('addIssueToProject', () => {
+    afterEach(() => {
+      mockPost.mockReset();
+    });
+
+    it('returns the new item id when the mutation succeeds', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              repository: {
+                issueOrPullRequest: { id: 'content-node-id' },
+              },
+            },
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              addProjectV2ItemById: { item: { id: 'new-item-id' } },
+            },
+          }),
+        );
+
+      const result = await repository.addIssueToProject(
+        'proj-id',
+        'https://github.com/owner/repo/issues/1',
+      );
+
+      expect(result).toBe('new-item-id');
+      expect(mockPost).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns the existing item id when the issue is already in the project', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              repository: {
+                issueOrPullRequest: { id: 'content-node-id' },
+              },
+            },
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            errors: [{ message: 'Content already exists in this project' }],
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              repository: {
+                issue: {
+                  projectItems: {
+                    nodes: [
+                      { id: 'existing-item-id', project: { id: 'proj-id' } },
+                    ],
+                  },
+                },
+              },
+            },
+          }),
+        );
+
+      const result = await repository.addIssueToProject(
+        'proj-id',
+        'https://github.com/owner/repo/issues/1',
+      );
+
+      expect(result).toBe('existing-item-id');
+      expect(mockPost).toHaveBeenCalledTimes(3);
+    });
+
+    it('throws when a non-duplicate error is returned from the mutation', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              repository: {
+                issueOrPullRequest: { id: 'content-node-id' },
+              },
+            },
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            errors: [{ message: 'UNAUTHORIZED' }],
+          }),
+        );
+
+      await expect(
+        repository.addIssueToProject(
+          'proj-id',
+          'https://github.com/owner/repo/issues/1',
+        ),
+      ).rejects.toThrow('UNAUTHORIZED');
+
+      expect(mockPost).toHaveBeenCalledTimes(2);
     });
   });
 });

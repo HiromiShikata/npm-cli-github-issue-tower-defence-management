@@ -174,6 +174,22 @@ const loadListSnapshotFromCache = async (
   }
 };
 
+const loadAllSnapshotsFromCache = async (
+  pjcode: string,
+): Promise<Record<ConsoleTabName, ConsoleTabSnapshot | null>> => {
+  const results = await Promise.all(
+    CONSOLE_TABS.map(async (tab) => ({
+      tabName: tab.name,
+      snapshot: await loadListSnapshotFromCache(buildListUrl(pjcode, tab.name)),
+    })),
+  );
+  const cached = emptySnapshots();
+  for (const { tabName, snapshot } of results) {
+    cached[tabName] = snapshot;
+  }
+  return cached;
+};
+
 const fetchSingleSnapshot = async (
   pjcode: string,
   tabName: ConsoleTabName,
@@ -260,7 +276,7 @@ export const useConsoleTabData = (
     }
 
     let cancelled = false;
-    setIsLoading(true);
+    let freshDataReceived = false;
     setError(null);
 
     if (pjcode === null) {
@@ -272,12 +288,25 @@ export const useConsoleTabData = (
       };
     }
 
+    loadAllSnapshotsFromCache(pjcode).then((cached) => {
+      if (cancelled) return;
+      const hasAny = Object.values(cached).some((s) => s !== null);
+      if (hasAny && !freshDataReceived) {
+        setSnapshots(cached);
+        setIsLoading(false);
+      } else if (!hasAny && !freshDataReceived) {
+        setIsLoading(true);
+        setSnapshots(emptySnapshots());
+      }
+    });
+
     const load = (): void => {
       fetchSnapshots(pjcode)
         .then(({ snapshots: next, firstError }) => {
           if (cancelled) {
             return;
           }
+          freshDataReceived = true;
           setSnapshots(next);
           setError(firstError !== null ? firstError.message : null);
           setIsLoading(false);
@@ -286,6 +315,7 @@ export const useConsoleTabData = (
           if (cancelled) {
             return;
           }
+          freshDataReceived = true;
           setError(cause instanceof Error ? cause.message : String(cause));
           setIsLoading(false);
         });

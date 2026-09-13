@@ -50,6 +50,8 @@ export type ConsoleE2eCreateIssueCall = {
   org: string;
   repo: string;
   title: string;
+  body: string;
+  assignees: string[];
 };
 
 export type ConsoleE2eStoryColorCall = {
@@ -607,8 +609,10 @@ const createStubIssueRepository = (
     org: string,
     repo: string,
     title: string,
+    body: string,
+    assignees: string[],
   ): Promise<number> => {
-    createIssueCalls.push({ org, repo, title });
+    createIssueCalls.push({ org, repo, title, body, assignees });
     return 9001;
   },
   searchIssue: () => notImplemented('searchIssue'),
@@ -715,7 +719,7 @@ const createStubIssueRepository = (
     body: string,
   ): Promise<IssueComment> => {
     commentCalls.push({ url, body });
-    return { author: '', body, createdAt: new Date(0), url: null };
+    return { author: '', body, createdAt: new Date(0), url };
   },
   getAllOpened: () => notImplemented('getAllOpened'),
   getStoryObjectMap: async (project): Promise<StoryObjectMap> => {
@@ -882,6 +886,7 @@ export type ConsoleE2eHarness = {
 
 export const startConsoleE2eHarness = async (options?: {
   workflowImprovementIssueUrl?: string | null;
+  fleetTaskCreateUrl?: string | null;
   mergePullRequest?: () => Promise<void>;
   getIssueOrPullRequestComments?: () => Promise<IssueComment[]>;
 }): Promise<ConsoleE2eHarness> => {
@@ -992,6 +997,7 @@ export const startConsoleE2eHarness = async (options?: {
     dashboardDataDir: null,
     dashboardProjectNames: [CONSOLE_E2E_PJCODE],
     workflowImprovementIssueUrl: options?.workflowImprovementIssueUrl ?? null,
+    fleetTaskCreateUrl: options?.fleetTaskCreateUrl ?? null,
     port: 0,
   });
 

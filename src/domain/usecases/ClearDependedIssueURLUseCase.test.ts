@@ -820,6 +820,9 @@ describe('ClearDependedIssueURLUseCase', () => {
       }) => {
         it(name, async () => {
           jest.clearAllMocks();
+          mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue(
+            [],
+          );
           const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
           await useCase.run(input);
           expect(mockIssueRepository.clearProjectField.mock.calls).toEqual(

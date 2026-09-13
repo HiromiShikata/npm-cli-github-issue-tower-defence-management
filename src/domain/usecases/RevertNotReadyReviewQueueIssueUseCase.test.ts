@@ -167,6 +167,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
   };
   let mockIssueCommentRepository: {
     createComment: jest.Mock;
+    getCommentsFromIssue: jest.Mock;
   };
   let mockProject: Project;
   let useCase: RevertNotReadyReviewQueueIssueUseCase;
@@ -200,6 +201,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
     mockIssueCommentRepository = {
       createComment: jest.fn().mockResolvedValue(undefined),
+      getCommentsFromIssue: jest.fn().mockResolvedValue([]),
     };
 
     useCase = new RevertNotReadyReviewQueueIssueUseCase(

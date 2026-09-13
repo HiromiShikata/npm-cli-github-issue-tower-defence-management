@@ -1,7 +1,7 @@
 import type { ConsoleComment } from './types';
 
 const EXECUTIVE_SUMMARY_HEADING =
-  /##\s+エグゼクティブサマリ(?:\s*\/\s*Executive\s+Summary)?\s*\n/i;
+  /##\s+(?:エグゼクティブサマリ(?:\s*\/\s*Executive\s+Summary)?|Executive\s+Summary)\s*\n/i;
 const FROM_LINE = /^From:\s+:robot:/m;
 const NEXT_SECTION_HEADING = /^##\s/m;
 

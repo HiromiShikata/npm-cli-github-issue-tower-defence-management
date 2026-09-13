@@ -797,6 +797,16 @@ export class ApiV3CheerioRestIssueRepository
       issue.itemId,
       { singleSelectOptionId: statusId },
     );
+    const memoized = this.getAllIssuesRefreshMemo.get(project.id);
+    if (memoized) {
+      const memoIssue = memoized.issues.find((i) => i.itemId === issue.itemId);
+      if (memoIssue) {
+        const statusOption = project.status.statuses.find(
+          (s) => s.id === statusId,
+        );
+        memoIssue.status = statusOption?.name ?? null;
+      }
+    }
   };
 
   convertProjectItemToIssue = (item: ProjectItem): Issue => {
@@ -3572,6 +3582,12 @@ export class ApiV3CheerioRestIssueRepository
       return false;
     }
     const reason = await this.formatGitHubErrorWithStatus(response);
+    if (response.status >= 500) {
+      console.warn(
+        `ApiV3CheerioRestIssueRepository: transient error updating branch for PR ${prUrl}, treating as not updated. reason: ${reason}`,
+      );
+      return false;
+    }
     throw new Error(`Failed to update branch for PR ${prUrl}: ${reason}`);
   };
 

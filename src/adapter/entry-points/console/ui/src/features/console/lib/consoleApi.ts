@@ -449,9 +449,10 @@ export const CREATE_ISSUE_OPERATION_PATH = '/api/createissue';
 export type ConsoleCreateIssueRequest = {
   pjcode: string;
   title: string;
-  storyOptionId: string;
+  storyName: string;
   nameWithOwner: string;
   agentOptionId?: string | null;
+  body?: string | null;
   referenceUrl?: string | null;
 };
 
@@ -578,9 +579,32 @@ export const postConsoleRenameStory = async (
   }
 };
 
+export const UPDATE_STORY_DESCRIPTION_PATH = '/api/storydescription';
+
+export type ConsoleUpdateStoryDescriptionRequest = {
+  pjcode: string;
+  storyOptionId: string;
+  description: string;
+};
+
+export const postConsoleUpdateStoryDescription = async (
+  request: ConsoleUpdateStoryDescriptionRequest,
+): Promise<void> => {
+  const response = await fetch(UPDATE_STORY_DESCRIPTION_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw new Error(await readOperationErrorReason(response));
+  }
+};
+
 export type ProjectListResponse = {
   pjcodes: string[];
+  projectUrls: Record<string, string> | null;
   workflowImprovementIssueUrl: string | null;
+  fleetTaskCreateUrl: string | null;
 };
 
 export const fetchProjectList = async (): Promise<ProjectListResponse> => {
@@ -594,7 +618,12 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
     typeof payload !== 'object' ||
     Array.isArray(payload)
   ) {
-    return { pjcodes: [], workflowImprovementIssueUrl: null };
+    return {
+      pjcodes: [],
+      projectUrls: null,
+      workflowImprovementIssueUrl: null,
+      fleetTaskCreateUrl: null,
+    };
   }
   const record = payload as Record<string, unknown>;
   const pjcodes = Array.isArray(record.pjcodes)
@@ -602,11 +631,30 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
         (entry): entry is string => typeof entry === 'string',
       )
     : [];
+  const projectUrls =
+    record.projectUrls !== null &&
+    typeof record.projectUrls === 'object' &&
+    !Array.isArray(record.projectUrls)
+      ? Object.fromEntries(
+          Object.entries(record.projectUrls as Record<string, unknown>).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        )
+      : null;
   const workflowImprovementIssueUrl =
     typeof record.workflowImprovementIssueUrl === 'string'
       ? record.workflowImprovementIssueUrl
       : null;
-  return { pjcodes, workflowImprovementIssueUrl };
+  const fleetTaskCreateUrl =
+    typeof record.fleetTaskCreateUrl === 'string'
+      ? record.fleetTaskCreateUrl
+      : null;
+  return {
+    pjcodes,
+    projectUrls,
+    workflowImprovementIssueUrl,
+    fleetTaskCreateUrl,
+  };
 };
 
 export const PROJECT_README_CONFIG_PATH = '/api/projectreadmeconfig';

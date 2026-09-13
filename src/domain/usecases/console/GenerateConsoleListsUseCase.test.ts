@@ -745,6 +745,36 @@ describe('GenerateConsoleListsUseCase', () => {
       expect(result.stories.defaultNameWithOwner).toBeNull();
     });
 
+    it('uses defaultTaskNameWithOwner from input when provided, ignoring issue heuristic', () => {
+      const result = usecase.run({
+        project: projectWithStory,
+        issues: [makeIssue({ nameWithOwner: 'demo/repo' })],
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        generatedAt,
+        workflowBlockerStoryName: null,
+        urlOfStoryView: null,
+        now: NOW,
+        defaultTaskNameWithOwner: 'config/repo',
+      });
+      expect(result.stories.defaultNameWithOwner).toBe('config/repo');
+    });
+
+    it('falls back to issue heuristic when defaultTaskNameWithOwner is null', () => {
+      const result = usecase.run({
+        project: projectWithStory,
+        issues: [makeIssue({ nameWithOwner: 'demo/repo' })],
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        generatedAt,
+        workflowBlockerStoryName: null,
+        urlOfStoryView: null,
+        now: NOW,
+        defaultTaskNameWithOwner: null,
+      });
+      expect(result.stories.defaultNameWithOwner).toBe('demo/repo');
+    });
+
     it('preserves the storyOrder in the stories tab', () => {
       const result = run([]);
       expect(result.stories.storyOrder).toEqual([

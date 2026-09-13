@@ -81,6 +81,23 @@ describe('extractExecutiveSummary', () => {
     const result = extractExecutiveSummary(body);
     expect(result).toBe('タスクのゴール: goal');
   });
+
+  it('detects English-only ## Executive Summary heading', () => {
+    const body = `## Executive Summary\nTask goal: fix the detection bug\nFrom: :robot: agent (model)`;
+    const result = extractExecutiveSummary(body);
+    expect(result).toBe('Task goal: fix the detection bug');
+  });
+
+  it('returns null when English-only Executive Summary section exists but body is empty', () => {
+    const body = `## Executive Summary\nFrom: :robot: agent (model)`;
+    expect(extractExecutiveSummary(body)).toBeNull();
+  });
+
+  it('stops at the next ## heading when English-only ## Executive Summary heading is used', () => {
+    const body = `## Executive Summary\nTask goal: fix the detection bug\n## Loaded skills\nskill1, skill2`;
+    const result = extractExecutiveSummary(body);
+    expect(result).toBe('Task goal: fix the detection bug');
+  });
 });
 
 describe('extractLastCommentDisplayText', () => {

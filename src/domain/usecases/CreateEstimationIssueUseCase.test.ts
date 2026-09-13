@@ -38,6 +38,7 @@ describe('CreateEstimationIssueUseCase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
     useCase = new CreateEstimationIssueUseCase(
       mockIssueRepository,
       mockDateRepository,

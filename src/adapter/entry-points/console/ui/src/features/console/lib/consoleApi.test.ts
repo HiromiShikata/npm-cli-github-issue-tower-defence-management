@@ -2,6 +2,7 @@ import {
   ADD_STORY_OPERATION_PATH,
   createConsoleApiClient,
   DELETE_STORY_OPERATION_PATH,
+  fetchProjectList,
   fetchProjectReadmeConfig,
   postConsoleAddStory,
   postConsoleComment,
@@ -676,6 +677,63 @@ describe('postConsoleComment', () => {
       posted: false,
       error: 'comment was not returned',
       rateLimitResetAt: null,
+    });
+  });
+});
+
+describe('fetchProjectList', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('parses a valid projectUrls map from the response', async () => {
+    mockFetchOnce({
+      pjcodes: ['acme'],
+      projectUrls: {
+        acme: 'https://github.com/users/owner/projects/1',
+        beta: 'https://github.com/users/owner/projects/2',
+      },
+    });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toEqual({
+      acme: 'https://github.com/users/owner/projects/1',
+      beta: 'https://github.com/users/owner/projects/2',
+    });
+  });
+
+  it('returns null projectUrls when the field is null', async () => {
+    mockFetchOnce({ pjcodes: ['acme'], projectUrls: null });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toBeNull();
+  });
+
+  it('returns null projectUrls when the field is an array', async () => {
+    mockFetchOnce({
+      pjcodes: ['acme'],
+      projectUrls: ['https://github.com/users/owner/projects/1'],
+    });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toBeNull();
+  });
+
+  it('returns null projectUrls when the field is a non-object primitive', async () => {
+    mockFetchOnce({ pjcodes: ['acme'], projectUrls: 42 });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toBeNull();
+  });
+
+  it('filters out non-string values from the projectUrls map', async () => {
+    mockFetchOnce({
+      pjcodes: ['acme'],
+      projectUrls: {
+        acme: 'https://github.com/users/owner/projects/1',
+        beta: 99,
+        gamma: null,
+      },
+    });
+    const result = await fetchProjectList();
+    expect(result.projectUrls).toEqual({
+      acme: 'https://github.com/users/owner/projects/1',
     });
   });
 });

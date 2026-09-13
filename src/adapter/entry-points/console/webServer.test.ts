@@ -772,7 +772,7 @@ describe('webServer new routes integration', () => {
       author: 'HiromiShikata',
       body: 'Thanks, this resolves the parity gap.',
       createdAt: new Date('2026-06-18T03:21:00.000Z'),
-      url: null,
+      url: 'https://github.com/o/r/issues/1#issuecomment-1',
     });
     const server = await startWebServer({
       accessToken: testToken,
@@ -2896,7 +2896,9 @@ describe('webServer GET /api/projects', () => {
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body)).toEqual({
         pjcodes: ['alpha', 'beta', 'gamma'],
+        projectUrls: null,
         workflowImprovementIssueUrl: null,
+        fleetTaskCreateUrl: null,
       });
     } finally {
       await closeServer(server);
@@ -2927,8 +2929,80 @@ describe('webServer GET /api/projects', () => {
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body)).toEqual({
         pjcodes: ['alpha'],
+        projectUrls: null,
         workflowImprovementIssueUrl:
           'https://github.com/owner/repo/issues/new?assignees=someone',
+        fleetTaskCreateUrl: null,
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns the fleetTaskCreateUrl when configured', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: ['alpha'],
+      fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({
+        pjcodes: ['alpha'],
+        projectUrls: null,
+        workflowImprovementIssueUrl: null,
+        fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns the projectUrls map when dashboardProjectUrls is configured', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: ['alpha', 'beta'],
+      dashboardProjectUrls: {
+        alpha: 'https://github.com/users/owner/projects/1',
+        beta: 'https://github.com/orgs/org/projects/2',
+      },
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({
+        pjcodes: ['alpha', 'beta'],
+        projectUrls: {
+          alpha: 'https://github.com/users/owner/projects/1',
+          beta: 'https://github.com/orgs/org/projects/2',
+        },
+        workflowImprovementIssueUrl: null,
+        fleetTaskCreateUrl: null,
       });
     } finally {
       await closeServer(server);

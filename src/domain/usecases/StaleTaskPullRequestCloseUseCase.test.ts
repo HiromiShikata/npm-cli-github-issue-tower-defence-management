@@ -91,6 +91,7 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
   });
 
   it('should close an open pull request whose every closing issue reference is a closed task issue', async () => {
@@ -183,7 +184,12 @@ describe('StaleTaskPullRequestCloseUseCase', () => {
     const callOrder: string[] = [];
     mockIssueRepository.createCommentByUrl.mockImplementation(async () => {
       callOrder.push('comment');
-      return { author: '', body: '', createdAt: new Date(), url: null };
+      return {
+        author: '',
+        body: '',
+        createdAt: new Date(),
+        url: 'https://github.com/o/r/pull/1#issuecomment-1',
+      };
     });
     mockIssueRepository.closePullRequest.mockImplementation(async () => {
       callOrder.push('close');

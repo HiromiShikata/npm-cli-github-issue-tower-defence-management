@@ -12,10 +12,13 @@ const counts: Record<ConsoleTabName, number> = {
   stories: 0,
 };
 
+const GENERATED_AT = '2026-06-19T08:42:11.000Z';
+const NOW_30S_LATER = Date.parse('2026-06-19T08:42:41.000Z');
+
 const baseProps = {
   pjcode: 'acme',
   pjcodes: ['acme', 'beta', 'gamma', 'delta', 'epsilon'],
-  generatedAt: '2026-06-19T08:42:11.000Z',
+  generatedAt: GENERATED_AT,
   fromCache: false,
   tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
   onSelectTab: () => {},
@@ -27,6 +30,7 @@ const baseProps = {
   airplaneModeFailures: [],
   onAirplaneModeStartSync: () => {},
   onAirplaneModeTurnOff: () => {},
+  now: NOW_30S_LATER,
 };
 
 describe('ConsoleTabList', () => {
@@ -90,7 +94,7 @@ describe('ConsoleTabList', () => {
     expect(bottomRow?.querySelector('.console-tab-pjname')).toBeNull();
   });
 
-  it('renders the Workflow Blocker tab immediately left of Awaiting Owner', () => {
+  it('renders the Workflow Blocker tab immediately right of Todo by human', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
@@ -99,17 +103,25 @@ describe('ConsoleTabList', () => {
       tabBar?.querySelectorAll('.console-tab-label') ?? [],
     ).map((node) => node.textContent);
     const blockerIndex = labels.indexOf('Workflow Blocker');
-    const prsIndex = labels.indexOf('Awaiting Owner');
+    const todoByHumanIndex = labels.indexOf('Todo by human');
     expect(blockerIndex).toBeGreaterThanOrEqual(0);
-    expect(prsIndex).toBe(blockerIndex + 1);
+    expect(todoByHumanIndex).toBe(blockerIndex - 1);
   });
 
-  it('renders the project code and snapshot time', () => {
+  it('renders the project code and snapshot age as relative time', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
     expect(getByText('acme')).toBeInTheDocument();
-    expect(getByText('snapshot: 2026-06-19T08:42:11.000Z')).toBeInTheDocument();
+    expect(getByText('snapshot: 30s ago')).toBeInTheDocument();
+  });
+
+  it('exposes the absolute timestamp in the title attribute of the snapshot info', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    const genInfo = container.querySelector('.console-tab-geninfo');
+    expect(genInfo).toHaveAttribute('title', GENERATED_AT);
   });
 
   it('uses the exact lowercase Todo by human label', () => {
@@ -146,7 +158,7 @@ describe('ConsoleTabList', () => {
         fromCache={true}
       />,
     );
-    const genInfo = getByText('(cached) snapshot: 2026-06-19T08:42:11.000Z');
+    const genInfo = getByText('(cached) snapshot: 30s ago');
     expect(genInfo).toBeInTheDocument();
     expect(genInfo).toHaveAttribute('data-from-cache', 'true');
   });
@@ -160,10 +172,8 @@ describe('ConsoleTabList', () => {
         fromCache={false}
       />,
     );
-    expect(getByText('snapshot: 2026-06-19T08:42:11.000Z')).toBeInTheDocument();
-    expect(
-      queryByText('(cached) snapshot: 2026-06-19T08:42:11.000Z'),
-    ).toBeNull();
+    expect(getByText('snapshot: 30s ago')).toBeInTheDocument();
+    expect(queryByText('(cached) snapshot: 30s ago')).toBeNull();
     expect(document.querySelector('[data-from-cache]')).toBeNull();
   });
 
@@ -324,5 +334,94 @@ describe('ConsoleTabList', () => {
     expect(
       container.querySelector('.console-tab-workflow-improvement-link'),
     ).toBeNull();
+  });
+
+  it('renders a fleet task create link that opens in a new tab when fleetTaskCreateUrl is set', () => {
+    const url = 'https://github.com/myorg/myrepo/issues/new';
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        fleetTaskCreateUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /create fleet task/i });
+    expect(link).toHaveAttribute('href', url);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('does not render the fleet task create link when fleetTaskCreateUrl is null', () => {
+    const { container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        fleetTaskCreateUrl={null}
+      />,
+    );
+    expect(
+      container.querySelector('.console-tab-fleet-task-create-link'),
+    ).toBeNull();
+  });
+
+  it('does not render the fleet task create link when fleetTaskCreateUrl is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(
+      container.querySelector('.console-tab-fleet-task-create-link'),
+    ).toBeNull();
+  });
+
+  it('renders a project link that opens in a new tab when projectUrl is set', () => {
+    const url = 'https://github.com/users/HiromiShikata/projects/48';
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        projectUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /open github project/i });
+    expect(link).toHaveAttribute('href', url);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('renders the project link at the top-bar level, outside the pjname container', () => {
+    const url = 'https://github.com/users/HiromiShikata/projects/48';
+    const { getByRole, container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        projectUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /open github project/i });
+    expect(link.closest('.console-tab-pjname')).toBeNull();
+    expect(container.querySelector('.console-tab-project-link')).toBe(link);
+  });
+
+  it('does not render the project link when projectUrl is null', () => {
+    const { container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        projectUrl={null}
+      />,
+    );
+    expect(container.querySelector('.console-tab-project-link')).toBeNull();
+  });
+
+  it('does not render the project link when projectUrl is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(container.querySelector('.console-tab-project-link')).toBeNull();
   });
 });

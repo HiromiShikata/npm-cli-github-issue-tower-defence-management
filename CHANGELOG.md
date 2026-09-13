@@ -1,3 +1,374 @@
+# [2.108.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.7...v2.108.0) (2026-09-13)
+
+
+### Features
+
+* **console:** add left margin to project selector equal to its own approximate width ([#2324](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2324)) ([403b297](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/403b2972a71ca264bdd2af386621c4fa615da844)), closes [HiromiShikata/umino-corporait-operation#31702](https://github.com/HiromiShikata/umino-corporait-operation/issues/31702)
+
+## [2.107.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.6...v2.107.7) (2026-09-13)
+
+
+### Bug Fixes
+
+* **console:** patch overlay immediately on ok & Awaiting Workspace ([#2296](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2296)) ([8a585fe](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8a585feeaed6719569c2d9570da38f57fb93296c))
+
+## [2.107.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.5...v2.107.6) (2026-09-13)
+
+
+### Bug Fixes
+
+* produce PULL_REQUEST_NOT_FOUND only for designated developer agents ([#2310](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2310)) ([cb7813e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cb7813ed93802768b9134c225766a1fbb31891fc))
+
+## [2.107.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.4...v2.107.5) (2026-09-13)
+
+
+### Bug Fixes
+
+* update getAllIssues memo in updateStatus and remove shallow copy in StartPreparationUseCase ([#2308](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2308)) ([7a7abd6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7a7abd6938181a5f2cb6b0dc28c1f01331413afc))
+
+## [2.107.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.3...v2.107.4) (2026-09-11)
+
+
+### Bug Fixes
+
+* prevent spurious timer navigation during stale-to-fresh cache transition ([#2298](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2298)) ([76a12b9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/76a12b917721de2df0de21595b2a4e25c1f48a3f)), closes [HiromiShikata/umino-corporait-operation#31657](https://github.com/HiromiShikata/umino-corporait-operation/issues/31657)
+
+## [2.107.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.2...v2.107.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **StartPreparationUseCase:** add test for isDuplicateWithinWindow true path in duplicate-PR resolution ([#2303](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2303)) ([e55a793](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e55a7934ac9ebd0f9e375d436ae61d5ef863724d)), closes [#2302](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2302)
+
+## [2.107.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.1...v2.107.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* **useConsoleNavigation:** introduce pjcodeRef to prevent automatic tab switching ([#2301](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2301)) ([5d8587d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5d8587df9106e15eed99dba1d34be62ae98ea6fd))
+
+## [2.107.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.0...v2.107.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **consoleTabData:** defer loading state to async cache check to prevent loading flash on project switch ([#2300](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2300)) ([74520d1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/74520d16f24bcdc990257671672dad5e26c3ac83)), closes [HiromiShikata/umino-corporait-operation#31665](https://github.com/HiromiShikata/umino-corporait-operation/issues/31665)
+
+# [2.107.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.106.1...v2.107.0) (2026-09-11)
+
+
+### Features
+
+* **consoleTabData:** implement stale-while-revalidate pattern for console tab list cache display ([#2295](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2295)) ([e1fb62c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e1fb62ceeb5ed386fbcaf3803d184149f136e692)), closes [#2292](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2292)
+
+## [2.106.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.106.0...v2.106.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **tabAdvance:** exclude Stories tab from automatic tab navigation ([#2290](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2290)) ([1ef58d3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1ef58d3ec946163596ef1dccf186a252b05d022f))
+
+# [2.106.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.105.0...v2.106.0) (2026-09-11)
+
+
+### Features
+
+* **ConsolePage:** enqueue task creation in actionQueue for immediate dialog close and undo support ([#2291](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2291)) ([55c6614](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/55c66141f664731267b444e45c7aac435d2da35c)), closes [#2289](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2289)
+
+# [2.105.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.104.1...v2.105.0) (2026-09-11)
+
+
+### Features
+
+* **console:** clear comment expanded states when switching projects ([#2287](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2287)) ([2e3fa86](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2e3fa8698e864a0199faf66c73145f8b4422041e)), closes [HiromiShikata/umino-corporait-operation#31646](https://github.com/HiromiShikata/umino-corporait-operation/issues/31646)
+
+## [2.104.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.104.0...v2.104.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **console-ui:** Create new task dialog cannot scroll in landscape orientation ([#2286](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2286)) ([3169d80](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3169d80360a457b30c2f1cfc499db0519a4a5fdc)), closes [HiromiShikata/umino-corporait-operation#31644](https://github.com/HiromiShikata/umino-corporait-operation/issues/31644)
+
+# [2.104.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.103.0...v2.104.0) (2026-09-11)
+
+
+### Features
+
+* **console:** make max settings cross-project and always visible ([#2283](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2283)) ([8852b5c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8852b5c74353eedcebadcd243c4efaf384cde393)), closes [HiromiShikata/umino-corporait-operation#31637](https://github.com/HiromiShikata/umino-corporait-operation/issues/31637)
+
+# [2.103.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.4...v2.103.0) (2026-09-11)
+
+
+### Features
+
+* **ConsoleTimerSettingsModalDialog:** move timer mode toggle above save button and display empty for 0-minute inputs ([#2284](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2284)) ([796724c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/796724c5e57826ee36172dc16e0f5b79f0af5f0d)), closes [HiromiShikata/umino-corporait-operation#31635](https://github.com/HiromiShikata/umino-corporait-operation/issues/31635)
+
+## [2.102.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.3...v2.102.4) (2026-09-11)
+
+
+### Bug Fixes
+
+* allow maximumPreparingIssuesCount to be set to 0 ([#2285](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2285)) ([42e4877](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/42e4877b51bc6f019eec33b226d7eda3e4294a66)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#31636](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31636)
+
+## [2.102.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.2...v2.102.3) (2026-09-11)
+
+
+### Bug Fixes
+
+* **AgentDesignationLabelAdoptUseCase:** set default agent on issues with no agent label ([#2282](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2282)) ([a708b5c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a708b5c594f83096eaf601abc54d83d308b03ba1)), closes [HiromiShikata/umino-corporait-operation#31634](https://github.com/HiromiShikata/umino-corporait-operation/issues/31634)
+
+## [2.102.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.1...v2.102.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* **consoleOperationApi:** auto-assign authenticated user on new task creation ([#2281](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2281)) ([5884f7b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5884f7bc6a39780a50419bb53acbf26ca2e8f98f))
+
+## [2.102.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.102.0...v2.102.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **IssueCreateModalDialog:** allow removing attached files and show image thumbnails ([#2277](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2277)) ([462cd35](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/462cd35a62eacb36821160fe60840a2c69d41d60))
+
+# [2.102.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.101.1...v2.102.0) (2026-09-11)
+
+
+### Features
+
+* **console:** preserve create-new-task dialog draft and prevent backdrop dismiss ([#2278](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2278)) ([77644ac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/77644ac0397fe88a30ef11694e3849d5193158bb)), closes [HiromiShikata/umino-corporait-operation#31621](https://github.com/HiromiShikata/umino-corporait-operation/issues/31621)
+
+## [2.101.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.101.0...v2.101.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **StartPreparation:** dispatch explicitly designated agent when story is NO STORY ([#2280](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2280)) ([f9f52b5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f9f52b5ac0da492f8351ad0df41e50c18eee086b))
+
+# [2.101.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.100.2...v2.101.0) (2026-09-11)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** stop story progress issue auto-generation ([#2279](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2279)) ([9dc1590](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9dc1590baa2f62d4af2d751bfe5ba2706c72955d)), closes [#2227](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2227) [#2227](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2227)
+
+
+### Features
+
+* **IssueCreateModalDialog:** add open-in-new-tab link to left of close button in Create New Task dialog ([#2276](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2276)) ([1039ecd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1039ecde130015307979158a1e4fddd2530bf246)), closes [HiromiShikata/umino-corporait-operation#31619](https://github.com/HiromiShikata/umino-corporait-operation/issues/31619)
+
+## [2.100.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.100.1...v2.100.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* **useConsoleAwaitingOwnerTimerNavigation:** prevent spurious navigation after project selector navigation ([#2275](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2275)) ([2d12213](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2d12213ac18ef2d4f936ab03b58b2758951b2b98)), closes [HiromiShikata/umino-corporait-operation#31616](https://github.com/HiromiShikata/umino-corporait-operation/issues/31616)
+
+## [2.100.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.100.0...v2.100.1) (2026-09-10)
+
+
+### Bug Fixes
+
+* **RevertNotReadyReviewQueueIssueUseCase:** prevent redispatch of waitingForOwner issues when PR not found ([#2274](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2274)) ([8d7ab31](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8d7ab3166b1a0a6918bbce0bebd1dd577de88ba9)), closes [HiromiShikata/secretary#5992](https://github.com/HiromiShikata/secretary/issues/5992)
+
+# [2.100.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.99.0...v2.100.0) (2026-09-10)
+
+
+### Features
+
+* run issue setup (addIssueToProject, updateStory) in background after createNewIssue ([#2272](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2272)) ([065861b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/065861b29a6a89b5aa8461e71a4b676fad04d3a4)), closes [HiromiShikata/umino-corporait-operation#31596](https://github.com/HiromiShikata/umino-corporait-operation/issues/31596)
+
+# [2.99.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.98.2...v2.99.0) (2026-09-10)
+
+
+### Features
+
+* **console:** add safe-area padding, highlight current project, show snapshot as relative time ([#2270](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2270)) ([da3a02e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/da3a02e06a7f5eb74621b57673b3e63f15bed510)), closes [#e6edf3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/e6edf3) [HiromiShikata/umino-corporait-operation#31594](https://github.com/HiromiShikata/umino-corporait-operation/issues/31594)
+* **console:** move file attachments below body in task creation dialog ([#2271](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2271)) ([d7e8962](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d7e89625b3d25d08596cce4a36ca828c20f5eb7f)), closes [HiromiShikata/umino-corporait-operation#31597](https://github.com/HiromiShikata/umino-corporait-operation/issues/31597)
+
+## [2.98.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.98.1...v2.98.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* use fresh ProjectV2 field IDs when creating TDPM console tasks ([#2269](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2269)) ([09b75f1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/09b75f13ead2f5e957c4334e7822df9d5616d5f6)), closes [HiromiShikata/umino-corporait-operation#31590](https://github.com/HiromiShikata/umino-corporait-operation/issues/31590)
+
+## [2.98.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.98.0...v2.98.1) (2026-09-10)
+
+
+### Bug Fixes
+
+* **ConsoleTabList:** increase project selector item padding for mobile touch targets ([#2268](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2268)) ([b4d7373](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b4d7373155a20ba4a001530982c82d74ef600f15)), closes [HiromiShikata/umino-corporait-operation#31589](https://github.com/HiromiShikata/umino-corporait-operation/issues/31589)
+
+# [2.98.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.97.2...v2.98.0) (2026-09-10)
+
+
+### Features
+
+* **ConsoleTabList:** move GitHub project link icon to header icon row ([#2267](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2267)) ([197bcdc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/197bcdc69d2a3a80b0ce2176f0c71e2689f9b847)), closes [#2266](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2266)
+
+## [2.97.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.97.1...v2.97.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* **CliErrorReportUseCase:** suppress GitHub GraphQL transient errors to prevent premature secretary issues ([#2265](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2265)) ([cb27392](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cb27392ebc95c775845790e3e7272719f57ee87f))
+
+## [2.97.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.97.0...v2.97.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **handleTriage:** retry set_story with fresh project data on stale field id ([#2263](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2263)) ([9d076dc](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9d076dc8f9d3ca623f37747e967964466d83d8ae)), closes [HiromiShikata/umino-corporait-operation#31580](https://github.com/HiromiShikata/umino-corporait-operation/issues/31580)
+
+# [2.97.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.96.1...v2.97.0) (2026-09-09)
+
+
+### Features
+
+* navigate to next project in timer mode when awaiting owner items reach zero ([#2264](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2264)) ([438519e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/438519e807d3e2faaa4fe7ee03a212c5a52d47d0))
+
+## [2.96.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.96.0...v2.96.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **handleCreateIssue:** resolve story option by name using fresh GitHub data ([#2262](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2262)) ([56ebe74](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/56ebe74159820fe4a1ade49b99846518f93cc570)), closes [HiromiShikata/umino-corporait-operation#31577](https://github.com/HiromiShikata/umino-corporait-operation/issues/31577)
+
+# [2.96.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.95.0...v2.96.0) (2026-09-09)
+
+
+### Bug Fixes
+
+* **console:** prevent attachment upload failure for newly created issue URLs ([#2261](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2261)) ([5bc2b6d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5bc2b6d97bf5c26b76a9d54f0221d4fe67c29c70))
+* **dashboard:** restore single-line rendering for configured disks when they fit within budget ([#2260](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2260)) ([b3cab73](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b3cab734a2e8f49c4a729b66faf567e1ff7dcdb7)), closes [#2192](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2192) [#2211](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2211) [#2192](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2192) [HiromiShikata/umino-corporait-operation#31575](https://github.com/HiromiShikata/umino-corporait-operation/issues/31575)
+
+
+### Features
+
+* add story color dots and remove Reference URL field from create task dialog ([#2259](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2259)) ([544d790](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/544d790b93f79b27bb4664b48da796dc9d34bb2b))
+
+# [2.95.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.94.1...v2.95.0) (2026-09-09)
+
+
+### Features
+
+* **cli:** remove doraMetrics command and report task generation ([#2258](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2258)) ([a3103e0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a3103e0ecd5982d0102e4b7cc9fe41738a16348e)), closes [HiromiShikata/umino-corporait-operation#31570](https://github.com/HiromiShikata/umino-corporait-operation/issues/31570)
+
+## [2.94.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.94.0...v2.94.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **console:** clear stale snapshots immediately when pjcode changes ([#2257](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2257)) ([874a88d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/874a88d3ae811dbdac4c97846ff19b84ca685b5d)), closes [#2233](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2233) [HiromiShikata/umino-corporait-operation#31565](https://github.com/HiromiShikata/umino-corporait-operation/issues/31565)
+
+# [2.94.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.93.0...v2.94.0) (2026-09-09)
+
+
+### Features
+
+* **console:** replace timer mode checkbox with toggle switch UI ([#2255](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2255)) ([0c57d22](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0c57d22494f5381d8c963592add47793f091ff6d)), closes [HiromiShikata/umino-corporait-operation#31566](https://github.com/HiromiShikata/umino-corporait-operation/issues/31566)
+
+# [2.93.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.92.0...v2.93.0) (2026-09-09)
+
+
+### Features
+
+* **console:** add body textarea to task creation dialog and fix story option overflow ([#2253](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2253)) ([4ac30a2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4ac30a2fd8daebc4cd51f78102c56551263c2ba6)), closes [HiromiShikata/umino-corporait-operation#31559](https://github.com/HiromiShikata/umino-corporait-operation/issues/31559) [#31559](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31559)
+
+# [2.92.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.4...v2.92.0) (2026-09-09)
+
+
+### Features
+
+* add GitHub project URL links to TDPM console project switcher ([#2254](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2254)) ([269428b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/269428b93974b8f1383ac320b80952116382b302)), closes [HiromiShikata/umino-corporait-operation#31562](https://github.com/HiromiShikata/umino-corporait-operation/issues/31562)
+
+## [2.91.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.3...v2.91.4) (2026-09-09)
+
+
+### Bug Fixes
+
+* **getCommentsFromIssue:** retry on transient 404 and 5xx responses ([#2250](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2250)) ([0e0af23](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0e0af236944b68c2785c28bacf3bfd50c85084f0))
+
+## [2.91.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.2...v2.91.3) (2026-09-09)
+
+
+### Bug Fixes
+
+* **GraphqlProjectItemRepository:** return existing item id when issue already in project ([#2249](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2249)) ([2ec6721](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2ec6721c3abeab434e9b65a68f3083da4cb9d77b)), closes [HiromiShikata/secretary#5920](https://github.com/HiromiShikata/secretary/issues/5920)
+* **handleReorderStory:** return 400 when target option deleted server-side ([#1967](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1967)) ([d6be774](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d6be7745f2e85d76b7666cb5eebf9156d185fe1b))
+* **HandleScheduledEventUseCase:** stop story issue recreation loop when closed issue exists ([#2251](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2251)) ([342cc21](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/342cc21d73fdc76ff7f54110dc17e1cca8552f8d)), closes [HiromiShikata/secretary#5914](https://github.com/HiromiShikata/secretary/issues/5914)
+
+## [2.91.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.1...v2.91.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* **token-exhaustion:** kill and relaunch bare-name leaders immediately without sending a handover message ([#1960](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1960)) ([cfa36c5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cfa36c5ec9542408e2a3bf8d3fa4acceb738dd9a))
+
+## [2.91.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.91.0...v2.91.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **console:** add missing CSS for IssueCreateModalDialog overlay and form ([#2247](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2247)) ([8ce39c4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8ce39c42c382eff7efdae0d84c3ef13bab40e628)), closes [#2231](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2231) [HiromiShikata/umino-corporait-operation#31552](https://github.com/HiromiShikata/umino-corporait-operation/issues/31552)
+
+# [2.91.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.90.0...v2.91.0) (2026-09-09)
+
+
+### Features
+
+* **dashboard:** merge load average onto stats line and keep disk partitions on subsequent lines ([#2192](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2192)) ([03f252f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/03f252fda577d94e9eac97b6acc8760390e27104))
+
+# [2.90.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.89.1...v2.90.0) (2026-09-09)
+
+
+### Bug Fixes
+
+* **console:** clamp timer settings dialog position to stay within viewport ([#2240](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2240)) ([7c4cd1e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7c4cd1e60d84d2d5bb3d646c98f50560d2ee6f76)), closes [HiromiShikata/umino-corporait-operation#31545](https://github.com/HiromiShikata/umino-corporait-operation/issues/31545)
+* **graphql-client:** retry on transient GitHub GraphQL errors ([#2245](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2245)) ([c5f1f65](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c5f1f65f0bf9e3d67f7e7e0a265e7b2e39aa237f)), closes [HiromiShikata/secretary#5901](https://github.com/HiromiShikata/secretary/issues/5901)
+* retry transient GitHub GraphQL internal errors in updateProjectField ([#2243](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2243)) ([7431b1a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7431b1a312833fa0afd3aa9f8c02fc3eb0d88c9b)), closes [HiromiShikata/umino-corporait-operation#31549](https://github.com/HiromiShikata/umino-corporait-operation/issues/31549)
+* **updateBranch:** return false on HTTP 5xx instead of throwing ([#2244](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2244)) ([3cd14d0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3cd14d063b1762e90e569700ee5809ea19298f3c)), closes [HiromiShikata/secretary#5903](https://github.com/HiromiShikata/secretary/issues/5903) [HiromiShikata/secretary#5903](https://github.com/HiromiShikata/secretary/issues/5903)
+* **updateProjectField:** remove redundant transient retry duplicated by postGithubGraphqlJson ([#2246](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2246)) ([2c2abbb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2c2abbb74934b767c41db0a8f579092b1dc0ff12)), closes [#2243](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2243) [#2245](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2245) [HiromiShikata/secretary#5904](https://github.com/HiromiShikata/secretary/issues/5904)
+
+
+### Features
+
+* **console:** rebuild Story tab with description field and status column ([#2242](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2242)) ([9a7067b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9a7067b25148000e43d0187e27bc77a207ceb7ac)), closes [HiromiShikata/umino-corporait-operation#31548](https://github.com/HiromiShikata/umino-corporait-operation/issues/31548)
+
+## [2.89.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.89.0...v2.89.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* compose loadFleetTaskCreateUrl from loadWorkflowIssueReporterSettings and add e2e tests ([#2241](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2241)) ([65bd304](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/65bd304d2ae0acf6810073fd22adef0921a06eac))
+
+# [2.89.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.88.1...v2.89.0) (2026-09-08)
+
+
+### Features
+
+* add fleet task create link to console tab bar ([#2237](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2237)) ([1f5bab0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1f5bab040e6e6ec53ce11b0221f95658f4223e04)), closes [HiromiShikata/umino-corporait-operation#31541](https://github.com/HiromiShikata/umino-corporait-operation/issues/31541)
+
+## [2.88.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.88.0...v2.88.1) (2026-09-08)
+
+
+### Bug Fixes
+
+* **console:** detect English-only '## Executive Summary' heading in console display ([#2235](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2235)) ([6f0cf3f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6f0cf3fb5266e6f540ba55bb7580b34dbf3d39bd)), closes [#2234](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2234)
+
+# [2.88.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.87.0...v2.88.0) (2026-09-08)
+
+
+### Bug Fixes
+
+* **console:** switch projects without page reload in timer mode ([#2233](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2233)) ([f6c9434](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f6c94345e659dcccb4301a67eb66383f2f038b5c)), closes [HiromiShikata/umino-corporait-operation#31533](https://github.com/HiromiShikata/umino-corporait-operation/issues/31533)
+
+
+### Features
+
+* **console:** move workflow-blocker tab to the right of todo-by-human ([#2232](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2232)) ([8bb3c25](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8bb3c2589c7bada8b66b71506635c9997fbf425c)), closes [HiromiShikata/umino-corporait-operation#31532](https://github.com/HiromiShikata/umino-corporait-operation/issues/31532)
+
 # [2.87.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.86.0...v2.87.0) (2026-09-08)
 
 

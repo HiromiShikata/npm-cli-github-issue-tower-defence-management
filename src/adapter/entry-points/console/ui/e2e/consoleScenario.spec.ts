@@ -103,16 +103,22 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
 });
 
-test('renders the Workflow Blocker tab leftmost and shows its detail operations', async ({
+test('renders the Workflow Blocker tab immediately right of Todo by human and shows its detail operations', async ({
   page,
 }) => {
   await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Workflow Blocker').click();
 
   await expect(activeTabLabel(page)).toHaveText('Workflow Blocker');
   await expect(tabBadge(page, 'Workflow Blocker')).toHaveText('1');
 
   const labels = page.locator('.console-tab .console-tab-label');
-  await expect(labels.nth(0)).toHaveText('Workflow Blocker');
+  const labelsText = await labels.allTextContents();
+  const blockerIdx = labelsText.indexOf('Workflow Blocker');
+  const todoByHumanIdx = labelsText.indexOf('Todo by human');
+  expect(blockerIdx).toBeGreaterThanOrEqual(0);
+  expect(todoByHumanIdx).toBe(blockerIdx - 1);
 
   await expect(page.locator('.console-tab-count-heading')).toHaveCount(0);
 
@@ -290,6 +296,7 @@ test('opens the comment input with the item detail, keeps it on screen while the
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -479,6 +486,67 @@ test('creates an issue for a story when the add-task button and form are used', 
   expect(harness.createIssueCalls[0].repo).toBe(
     'npm-cli-github-issue-tower-defence-management',
   );
+  expect(harness.createIssueCalls[0].assignees).toContain('test-user');
+});
+
+test('opens a fullscreen-overlay modal when the console header new-task button is clicked', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  const initialCreateCount = harness.createIssueCalls.length;
+
+  const newTaskButton = page.locator('.console-task-create-button');
+  await expect(newTaskButton).toBeVisible();
+  await newTaskButton.click();
+
+  const overlayPosition = await page.evaluate(() => {
+    const el = document.querySelector('.console-task-create-dialog-overlay');
+    if (el === null) return null;
+    return window.getComputedStyle(el).position;
+  });
+  expect(overlayPosition).toBe('fixed');
+
+  await page
+    .getByRole('textbox', { name: /title/i })
+    .fill('My console header task');
+
+  const bodyTextarea = page.getByRole('textbox', { name: /body/i });
+  await expect(bodyTextarea).toBeVisible();
+  await bodyTextarea.fill('E2E body description');
+
+  await page.getByRole('button', { name: /^create$/i }).click();
+
+  await expect
+    .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
+    .toBe(initialCreateCount + 1);
+  expect(harness.createIssueCalls.at(-1)?.title).toBe('My console header task');
+  expect(harness.createIssueCalls.at(-1)?.body).toBe('E2E body description');
+});
+
+test('restores draft title when the create-task dialog is cancelled and reopened', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  const newTaskButton = page.locator('.console-task-create-button');
+  await expect(newTaskButton).toBeVisible();
+  await newTaskButton.click();
+
+  await page
+    .getByRole('textbox', { name: /title/i })
+    .fill('Draft title to restore');
+
+  await page.getByRole('button', { name: /^cancel$/i }).click();
+  await expect(
+    page.getByRole('dialog', { name: /create new task/i }),
+  ).toHaveCount(0);
+
+  await newTaskButton.click();
+
+  await expect(page.getByRole('textbox', { name: /title/i })).toHaveValue(
+    'Draft title to restore',
+  );
 });
 
 test('creates a new story when the add-story button and form are used', async ({
@@ -646,6 +714,7 @@ test('posts a comment and moves the item to Awaiting Workspace when the Comment 
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -680,6 +749,7 @@ test('posts an ok comment and moves the item to Awaiting Workspace when the ok &
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -731,11 +801,46 @@ test('project switcher appears at the left end of the tab bar and opens a dropdo
   await expect(page.locator('.console-tab-pjname-dropdown')).toBeVisible();
 });
 
+test('project switcher dropdown options have adequate touch target height of at least 40px', async ({
+  page,
+}) => {
+  await page.route('**/api/projects', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        pjcodes: ['acme', 'beta', 'gamma'],
+        projectUrls: null,
+        workflowImprovementIssueUrl: null,
+        fleetTaskCreateUrl: null,
+      }),
+    });
+  });
+
+  await page.goto(harness.appRootUrl);
+
+  const pjnameDiv = page.locator('.console-tab-pjname');
+  await pjnameDiv.locator('button').click();
+
+  const dropdown = page.locator('.console-tab-pjname-dropdown');
+  await expect(dropdown).toBeVisible();
+
+  const firstOption = page.locator('.console-tab-pjname-option').first();
+  await expect(firstOption).toBeVisible();
+
+  const box = await firstOption.boundingBox();
+  if (box === null) {
+    throw new Error('.console-tab-pjname-option must be laid out');
+  }
+  expect(box.height).toBeGreaterThanOrEqual(40);
+});
+
 test('deletes all comments when the dangerous actions panel is opened and the delete button is clicked', async ({
   page,
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -791,6 +896,72 @@ test('does not show the workflow improvement link when workflowImprovementIssueU
   await page.goto(harness.appRootUrl);
   await expect(
     page.locator('.console-tab-workflow-improvement-link'),
+  ).toHaveCount(0);
+});
+
+test('shows the fleet task create link when fleetTaskCreateUrl is configured', async ({
+  browser,
+}) => {
+  const fleetUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new';
+  const localHarness = await startConsoleE2eHarness({
+    fleetTaskCreateUrl: fleetUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+    const link = page.locator('.console-tab-fleet-task-create-link');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', fleetUrl);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noreferrer');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
+});
+
+test('does not show the fleet task create link when fleetTaskCreateUrl is not configured', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+  await expect(page.locator('.console-tab-fleet-task-create-link')).toHaveCount(
+    0,
+  );
+});
+
+test('shows the open-in-new-tab link in the Create New Task dialog when fleetTaskCreateUrl is configured', async ({
+  browser,
+}) => {
+  const fleetUrl =
+    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new';
+  const localHarness = await startConsoleE2eHarness({
+    fleetTaskCreateUrl: fleetUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appUrl);
+    await page.locator('.console-task-create-button').click();
+    const link = page.locator('.console-task-create-dialog-open-link');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', fleetUrl);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noreferrer');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
+});
+
+test('does not show the open-in-new-tab link in the Create New Task dialog when fleetTaskCreateUrl is not configured', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+  await page.locator('.console-task-create-button').click();
+  await expect(
+    page.locator('.console-task-create-dialog-open-link'),
   ).toHaveCount(0);
 });
 
@@ -935,6 +1106,7 @@ test('shows issue number after resolved title in reference links inside item bod
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -986,6 +1158,7 @@ test('rare actions toggle is in the bottom row left pair alongside the dangerous
 }) => {
   await page.goto(harness.appRootUrl);
 
+  await tabByLabel(page, 'Workflow Blocker').click();
   await itemRowByText(
     page,
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -1279,18 +1452,19 @@ test('shows latest comment expanded and non-latest as preview in summary mode, e
         author: 'reviewer',
         body: 'First review comment.\n\nSecond paragraph detail.',
         createdAt: new Date('2026-06-17T06:12:40.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-1',
       },
       {
         author: 'HiromiShikata',
         body: 'Acknowledged.',
         createdAt: new Date('2026-06-17T09:00:00.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-2',
       },
     ],
   });
   try {
     await page.goto(multiCommentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
     await itemRowByText(
       page,
       'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -1376,7 +1550,7 @@ test.describe('expanded comment body renders github images through the image pro
           author: 'HiromiShikata',
           body: '![Screenshot](https://github.com/user-attachments/assets/test-e2e-proxy-fixture)',
           createdAt: new Date('2026-09-06T12:00:00.000Z'),
-          url: null,
+          url: 'https://github.com/o/r/issues/1#issuecomment-3',
         },
       ],
     });
@@ -1392,6 +1566,7 @@ test.describe('expanded comment body renders github images through the image pro
     page,
   }) => {
     await page.goto(commentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
     await itemRowByText(
       page,
       'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -1413,6 +1588,7 @@ test.describe('expanded comment body renders github images through the image pro
     page,
   }) => {
     await page.goto(commentHarness.appRootUrl);
+    await tabByLabel(page, 'Workflow Blocker').click();
     await itemRowByText(
       page,
       'Resolve the shared GitHub token rate-limit exhaustion blocker',
@@ -1447,4 +1623,21 @@ test('max settings button is always visible and cross-project settings modal lis
 
   const saveButton = page.getByLabel('Save max settings');
   await expect(saveButton).toBeEnabled();
+});
+
+test('Create new task dialog body is scrollable in landscape orientation', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.goto(harness.appUrl);
+
+  await page.getByRole('button', { name: 'Create new task' }).click();
+
+  const { scrollHeight, clientHeight } = await page
+    .locator('.console-task-create-dialog-body')
+    .evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }));
+  expect(scrollHeight).toBeGreaterThan(clientHeight);
 });

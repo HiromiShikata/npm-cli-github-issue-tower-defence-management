@@ -36,7 +36,7 @@ export type IssueComment = {
   author: string;
   body: string;
   createdAt: Date;
-  url: string | null;
+  url: string;
 };
 
 export type PullRequestFile = {

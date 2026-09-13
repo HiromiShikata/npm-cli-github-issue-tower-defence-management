@@ -23,6 +23,7 @@ const meta: Meta<typeof ConsoleTabList> = {
     airplaneModeFailures: [],
     onAirplaneModeStartSync: () => {},
     onAirplaneModeTurnOff: () => {},
+    now: Date.parse('2026-06-19T08:42:41.000Z'),
   },
 };
 
@@ -203,5 +204,31 @@ export const WithoutWorkflowImprovementLink: Story = {
     activeTab: 'prs',
     counts,
     workflowImprovementIssueUrl: null,
+  },
+};
+
+export const WithFleetTaskCreateLink: Story = {
+  args: {
+    activeTab: 'prs',
+    counts: {
+      'workflow-blocker': 0,
+      prs: 35,
+      'failed-preparation': 0,
+      'todo-by-human': 0,
+      'todo-by-agent': 0,
+      queued: 0,
+      stories: 0,
+    },
+    pjcodes: [],
+    fleetTaskCreateUrl:
+      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
+  },
+};
+
+export const WithProjectUrl: Story = {
+  args: {
+    activeTab: 'prs',
+    counts,
+    projectUrl: 'https://github.com/users/HiromiShikata/projects/48',
   },
 };

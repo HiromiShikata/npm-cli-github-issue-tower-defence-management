@@ -321,7 +321,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     });
   });
 
-  it('sends the bare-name leader checkpoint message on first detection', async () => {
+  it('kills and relaunches a bare-name leader immediately on first detection without sending a message', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       bareNameLeaderSession(),
     ]);
@@ -330,12 +330,16 @@ describe('TokenExhaustionHandoverUseCase', () => {
       snapshot(TOKEN_FRESH),
     ]);
 
-    await useCase.run(defaultInput());
+    const result = await useCase.run(defaultInput());
 
-    expect(tmuxSessionRepository.sendKeys).toHaveBeenCalledWith(
-      BARE_NAME,
-      DEFAULT_TOKEN_EXHAUSTION_HANDOVER_MESSAGE_BARE_NAME_LEADER,
-    );
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+    expect(tmuxSessionRepository.killSession).toHaveBeenCalledWith(BARE_NAME);
+    expect(
+      tmuxSessionRepository.launchBareNameLeaderSession,
+    ).toHaveBeenCalledWith(BARE_NAME);
+    expect(result.killedSessionNames).toEqual([BARE_NAME]);
+    expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
+    expect(result.state.entries[BARE_NAME]).toBeUndefined();
   });
 
   it('posts a checkpoint comment to the task issue on first detection of an impl subagent with a known issue URL', async () => {
@@ -563,7 +567,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(result.state.entries[ISSUE_URL_SESSION]).toBeUndefined();
   });
 
-  it('kills and relaunches a bare-name leader after the grace period', async () => {
+  it('kills and relaunches a bare-name leader immediately even when a stale state entry exists', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       bareNameLeaderSession(),
     ]);
@@ -571,7 +575,6 @@ describe('TokenExhaustionHandoverUseCase', () => {
       snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
       snapshot(TOKEN_FRESH),
     ]);
-    tmuxSessionRepository.listLiveSessionNames.mockResolvedValue([BARE_NAME]);
 
     const result = await useCase.run(
       defaultInput({
@@ -595,6 +598,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     ).toHaveBeenCalledWith(BARE_NAME);
     expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
     expect(result.killedSessionNames).toEqual([BARE_NAME]);
+    expect(result.state.entries[BARE_NAME]).toBeUndefined();
   });
 
   it('SIGTERMs then SIGKILLs an impl subagent that is still alive after the grace period', async () => {
@@ -635,7 +639,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(result.terminatedPids).toEqual([IMPL_PID]);
   });
 
-  it('clears state and relaunches a bare-name leader that already exited after handover', async () => {
+  it('relaunches a bare-name leader immediately even when killSession throws because the session already exited', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       bareNameLeaderSession(),
     ]);
@@ -643,28 +647,16 @@ describe('TokenExhaustionHandoverUseCase', () => {
       snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
       snapshot(TOKEN_FRESH),
     ]);
-    tmuxSessionRepository.listLiveSessionNames.mockResolvedValue([]);
-
-    const result = await useCase.run(
-      defaultInput({
-        state: {
-          entries: {
-            [BARE_NAME]: {
-              signaledAtEpoch:
-                nowEpochSeconds -
-                DEFAULT_TOKEN_EXHAUSTION_GRACE_PERIOD_SECONDS -
-                1,
-              pid: LEADER_PID,
-            },
-          },
-        },
-      }),
+    tmuxSessionRepository.killSession.mockRejectedValue(
+      new Error('no session with name app'),
     );
 
-    expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
+    const result = await useCase.run(defaultInput());
+
     expect(
       tmuxSessionRepository.launchBareNameLeaderSession,
     ).toHaveBeenCalledWith(BARE_NAME);
+    expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
     expect(result.state.entries[BARE_NAME]).toBeUndefined();
   });
 
@@ -721,6 +713,26 @@ describe('TokenExhaustionHandoverUseCase', () => {
     });
   });
 
+  it('does not kill or relaunch a bare-name leader in dry-run mode', async () => {
+    handoverSessionRepository.listHandoverSessions.mockReturnValue([
+      bareNameLeaderSession(),
+    ]);
+    snapshotRepository.listSnapshots.mockReturnValue([
+      snapshot(TOKEN_EXHAUSTED, { fiveHourUtilization: 0.95 }),
+      snapshot(TOKEN_FRESH),
+    ]);
+
+    const result = await useCase.run(defaultInput({ enabled: false }));
+
+    expect(tmuxSessionRepository.sendKeys).not.toHaveBeenCalled();
+    expect(tmuxSessionRepository.killSession).not.toHaveBeenCalled();
+    expect(
+      tmuxSessionRepository.launchBareNameLeaderSession,
+    ).not.toHaveBeenCalled();
+    expect(result.killedSessionNames).toEqual([]);
+    expect(result.relaunchedLeaderNames).toEqual([]);
+  });
+
   it('does not kill or claim a kill in dry-run mode after the grace period elapses', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       issueUrlLeaderSession(),
@@ -756,7 +768,7 @@ describe('TokenExhaustionHandoverUseCase', () => {
     expect(result.terminatedPids).toEqual([]);
   });
 
-  it('preserves other sessions grace state when one session throws', async () => {
+  it('kills and relaunches bare-name leader immediately when issue-url leader message send fails', async () => {
     handoverSessionRepository.listHandoverSessions.mockReturnValue([
       issueUrlLeaderSession(),
       bareNameLeaderSession(),
@@ -776,11 +788,10 @@ describe('TokenExhaustionHandoverUseCase', () => {
     const result = await useCase.run(defaultInput());
 
     expect(result.state.entries[ISSUE_URL_SESSION]).toBeUndefined();
-    expect(result.state.entries[BARE_NAME]).toEqual({
-      signaledAtEpoch: nowEpochSeconds,
-      pid: LEADER_PID,
-    });
-    expect(result.newlyHandoverSentSessionNames).toEqual([BARE_NAME]);
+    expect(result.state.entries[BARE_NAME]).toBeUndefined();
+    expect(result.newlyHandoverSentSessionNames).toEqual([]);
+    expect(result.killedSessionNames).toEqual([BARE_NAME]);
+    expect(result.relaunchedLeaderNames).toEqual([BARE_NAME]);
   });
 
   it('uses a custom issue-URL leader message when provided', async () => {

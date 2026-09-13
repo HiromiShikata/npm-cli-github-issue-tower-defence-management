@@ -20,12 +20,15 @@ import {
   GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
   GRAPHQL_RETRY_LIMIT,
   GRAPHQL_RETRY_STATUS_CODES,
+  GRAPHQL_TRANSIENT_ERROR_BACKOFF_MS,
+  GRAPHQL_TRANSIENT_ERROR_PATTERN,
   RATE_LIMIT_SELECTION,
   extractGraphqlCallSite,
   extractGraphqlOperationName,
   fetchGithubGraphql,
   injectRateLimitSelection,
   isMutationOperation,
+  isTransientGraphqlResponse,
   logGithubGraphqlCost,
   postGithubGraphqlJson,
 } from './githubGraphqlClient';
@@ -312,6 +315,47 @@ describe('githubGraphqlClient', () => {
     });
   });
 
+  describe('isTransientGraphqlResponse', () => {
+    it('returns true for the exact GitHub "Something went wrong" message observed in production', () => {
+      expect(
+        isTransientGraphqlResponse({
+          errors: [
+            {
+              message:
+                'Something went wrong while executing your query on 2026-09-08T23:27:21Z. Please include `C23E:3E293E:46B7C4:E24689:6AA099D3` when reporting this issue.',
+            },
+          ],
+        }),
+      ).toBe(true);
+    });
+
+    it('matches case-insensitively via GRAPHQL_TRANSIENT_ERROR_PATTERN', () => {
+      expect(GRAPHQL_TRANSIENT_ERROR_PATTERN.test('something went wrong')).toBe(
+        true,
+      );
+      expect(GRAPHQL_TRANSIENT_ERROR_PATTERN.test('SOMETHING WENT WRONG')).toBe(
+        true,
+      );
+    });
+
+    it('returns false for non-transient GraphQL errors', () => {
+      expect(
+        isTransientGraphqlResponse({
+          errors: [{ message: 'Field does not exist on type' }],
+        }),
+      ).toBe(false);
+    });
+
+    it('returns false when errors is absent', () => {
+      expect(isTransientGraphqlResponse({ data: { node: null } })).toBe(false);
+    });
+
+    it('returns false for non-object input', () => {
+      expect(isTransientGraphqlResponse(null)).toBe(false);
+      expect(isTransientGraphqlResponse('error')).toBe(false);
+    });
+  });
+
   describe('postGithubGraphqlJson', () => {
     it('sends the query with the injected rateLimit selection and logs the cost', async () => {
       mockPost.mockReturnValue({
@@ -377,6 +421,91 @@ describe('githubGraphqlClient', () => {
       const call = getMockCallArguments(mockPost, 0);
       const options = expectRecord(call[1]);
       expect(options.timeout).toBe(GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS);
+    });
+
+    it('retries when GitHub returns a transient "Something went wrong" error and succeeds on the second attempt', async () => {
+      const transientMsg =
+        'Something went wrong while executing your query on 2026-09-08T23:27:21Z. Please include `C23E:3E293E:46B7C4:E24689:6AA099D3` when reporting this issue.';
+      const successBody = {
+        data: { updateProjectV2ItemFieldValue: { clientMutationId: null } },
+      };
+      mockPost
+        .mockReturnValueOnce({
+          json: jest
+            .fn()
+            .mockResolvedValue({ errors: [{ message: transientMsg }] }),
+        })
+        .mockReturnValue({ json: jest.fn().mockResolvedValue(successBody) });
+      const sleepMock = jest.fn().mockResolvedValue(undefined);
+      const result = await postGithubGraphqlJson(
+        {
+          ghToken: 'token-a',
+          query:
+            'mutation UpdateField { updateProjectV2ItemFieldValue(input: {}) { clientMutationId } }',
+        },
+        sleepMock,
+      );
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(sleepMock).toHaveBeenCalledTimes(1);
+      expect(sleepMock).toHaveBeenCalledWith(
+        GRAPHQL_TRANSIENT_ERROR_BACKOFF_MS,
+      );
+      expect(result).toEqual(successBody);
+    });
+
+    it('returns the transient error response after exhausting all retries', async () => {
+      const transientMsg = 'Something went wrong while executing your query.';
+      const transientBody = { errors: [{ message: transientMsg }] };
+      mockPost.mockReturnValue({
+        json: jest.fn().mockResolvedValue(transientBody),
+      });
+      const sleepMock = jest.fn().mockResolvedValue(undefined);
+      const result = await postGithubGraphqlJson(
+        { ghToken: 'token-a', query: 'mutation Foo { bar { id } }' },
+        sleepMock,
+      );
+      expect(mockPost).toHaveBeenCalledTimes(GRAPHQL_RETRY_LIMIT + 1);
+      expect(sleepMock).toHaveBeenCalledTimes(GRAPHQL_RETRY_LIMIT);
+      expect(result).toEqual(transientBody);
+    });
+
+    it('does not retry on non-transient GraphQL errors', async () => {
+      const errorBody = {
+        errors: [{ message: 'Field does not exist on type' }],
+      };
+      mockPost.mockReturnValue({
+        json: jest.fn().mockResolvedValue(errorBody),
+      });
+      const sleepMock = jest.fn().mockResolvedValue(undefined);
+      const result = await postGithubGraphqlJson(
+        { ghToken: 'token-a', query: 'mutation Foo { bar { id } }' },
+        sleepMock,
+      );
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(sleepMock).not.toHaveBeenCalled();
+      expect(result).toEqual(errorBody);
+    });
+
+    it('does not retry queries that contain a transient error because queries use their own halving-fallback retry', async () => {
+      const transientBody = {
+        errors: [
+          { message: 'Something went wrong while executing your query.' },
+        ],
+      };
+      mockPost.mockReturnValue({
+        json: jest.fn().mockResolvedValue(transientBody),
+      });
+      const sleepMock = jest.fn().mockResolvedValue(undefined);
+      const result = await postGithubGraphqlJson(
+        {
+          ghToken: 'token-a',
+          query: 'query GetProjectItems($id: ID!) { node(id: $id) { id } }',
+        },
+        sleepMock,
+      );
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(sleepMock).not.toHaveBeenCalled();
+      expect(result).toEqual(transientBody);
     });
 
     it('configures retry for POST requests on transient 5xx errors so a 504 is retried automatically', async () => {

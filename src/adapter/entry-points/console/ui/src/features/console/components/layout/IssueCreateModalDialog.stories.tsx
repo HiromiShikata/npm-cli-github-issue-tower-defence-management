@@ -7,6 +7,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyName: 'regular / workflow improvement',
     storyOptionId: 'opt-workflow-improvement',
     color: 'BLUE',
+    description: '',
     openItemCount: 3,
     storyViewUrl:
       'https://github.com/users/HiromiShikata/projects/48/views/1?filterQuery=story%3A%22regular+%2F+workflow+improvement%22',
@@ -16,6 +17,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyName: 'regular / tdpm dashboard & console improvement',
     storyOptionId: 'opt-tdpm-console',
     color: 'GREEN',
+    description: '',
     openItemCount: 5,
     storyViewUrl:
       'https://github.com/users/HiromiShikata/projects/48/views/1?filterQuery=story%3A%22regular+%2F+tdpm+dashboard+%26+console+improvement%22',
@@ -25,6 +27,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyName: 'regular / infrastructure maintenance',
     storyOptionId: 'opt-infra',
     color: 'YELLOW',
+    description: '',
     openItemCount: 1,
     storyViewUrl: null,
     items: [],
@@ -66,5 +69,26 @@ export const NoAgentOptions: Story = {
 export const SingleStory: Story = {
   args: {
     storyEntries: [storyEntries[0]],
+  },
+};
+
+export const WithFleetTaskCreateUrl: Story = {
+  args: {
+    fleetTaskCreateUrl: 'https://github.com/HiromiShikata/secretary/issues/new',
+  },
+};
+
+export const WithFileAttachments: Story = {
+  play: async ({ canvasElement }) => {
+    const { userEvent } = await import('storybook/test');
+    const fileInput = canvasElement.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement | null;
+    if (fileInput === null) return;
+    const imageFile = new File(['img'], 'screenshot.png', {
+      type: 'image/png',
+    });
+    const docFile = new File(['doc'], 'notes.txt', { type: 'text/plain' });
+    await userEvent.upload(fileInput, [imageFile, docFile]);
   },
 };

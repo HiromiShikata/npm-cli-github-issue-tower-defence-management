@@ -19,6 +19,7 @@ import {
 } from '../components/operations/ConsoleUndoToast';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
+import { useConsoleAwaitingOwnerTimerNavigation } from '../hooks/useConsoleAwaitingOwnerTimerNavigation';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
 import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
@@ -27,6 +28,7 @@ import { useConsoleOperations } from '../hooks/useConsoleOperations';
 import { useConsoleOverlay } from '../hooks/useConsoleOverlay';
 import { useConsolePjcode } from '../hooks/useConsolePjcode';
 import { useConsoleProjectList } from '../hooks/useConsoleProjectList';
+import { useConsoleProjectSelectHandler } from '../hooks/useConsoleProjectSelectHandler';
 import { useConsoleProjectSettings } from '../hooks/useConsoleProjectSettings';
 import { useConsoleProjectTimer } from '../hooks/useConsoleProjectTimer';
 import { useConsolePrsTabSummaries } from '../hooks/useConsolePrsTabSummaries';
@@ -44,6 +46,7 @@ import {
   postConsoleRenameStory,
   postConsoleReorderStory,
   postConsoleStoryColor,
+  postConsoleUpdateStoryDescription,
 } from '../lib/consoleApi';
 import { navigatePush, navigateReplaceState } from '../lib/navigation';
 import {
@@ -117,7 +120,9 @@ export const ConsolePage = () => {
   } = useConsoleTimerSettings();
   const {
     pjcodes,
+    projectUrls,
     workflowImprovementIssueUrl,
+    fleetTaskCreateUrl,
     isLoading: isLoadingPjcodes,
   } = useConsoleProjectList();
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
@@ -150,9 +155,23 @@ export const ConsolePage = () => {
     return result;
   }, [snapshots, overlayState.overlay]);
 
+  useConsoleAwaitingOwnerTimerNavigation(
+    timerMode,
+    counts.prs,
+    pjcode,
+    pjcodes,
+    projectMinutes,
+    snapshots.prs?.fromCache ?? false,
+  );
+
   const navigation = useConsoleNavigation(pjcode, counts);
   const { activeTab, selectedItemKey, openItem, closeItem } = navigation;
   const selectTab = useConsoleTabSelectHandler(navigation.selectTab);
+  const navigateToProject = useCallback(
+    (code: string) => navigatePush(`/projects/${code}`),
+    [],
+  );
+  const selectProject = useConsoleProjectSelectHandler(navigateToProject);
 
   const commentDrafts = useRef(new Map<string, string>());
   const handleCommentDraftChange = useCallback(
@@ -565,7 +584,7 @@ export const ConsolePage = () => {
   }, [selectedItem, storyEntries]);
 
   const handleCreateIssue = useCallback(
-    async (storyOptionId: string, title: string): Promise<void> => {
+    async (storyName: string, title: string): Promise<void> => {
       if (pjcode === null) {
         throw new Error('No project specified in the URL path.');
       }
@@ -575,7 +594,7 @@ export const ConsolePage = () => {
       await postConsoleCreateIssue({
         pjcode,
         title,
-        storyOptionId,
+        storyName,
         nameWithOwner: defaultNameWithOwner,
       });
     },
@@ -583,42 +602,56 @@ export const ConsolePage = () => {
   );
 
   const handleCreateIssueFromDialog = useCallback(
-    async (params: IssueCreateParams): Promise<void> => {
+    (params: IssueCreateParams): Promise<void> => {
       if (pjcode === null) {
-        throw new Error('No project specified in the URL path.');
+        return Promise.reject(
+          new Error('No project specified in the URL path.'),
+        );
       }
       if (defaultNameWithOwner === null) {
-        throw new Error('No repository configured for this project.');
+        return Promise.reject(
+          new Error('No repository configured for this project.'),
+        );
       }
-      const issueUrl = await postConsoleCreateIssue({
-        pjcode,
-        title: params.title,
-        storyOptionId: params.storyOptionId,
-        agentOptionId: params.agentOptionId,
-        referenceUrl: params.referenceUrl,
-        nameWithOwner: defaultNameWithOwner,
-      });
-      if (params.files.length > 0) {
-        const markdownParts: string[] = [];
-        for (const file of params.files) {
-          const bytes = new Uint8Array(await file.arrayBuffer());
-          const contentBase64 = encodeAttachmentContent(bytes);
-          const markdown = await postConsoleAttachment({
-            pjcode,
-            url: issueUrl,
-            fileName: file.name,
-            contentBase64,
+      const capturedPjcode = pjcode;
+      const capturedNameWithOwner = defaultNameWithOwner;
+      actionQueue.enqueue({
+        message: `Task created — "${params.title}"`,
+        color: 'blue',
+        commit: async () => {
+          const issueUrl = await postConsoleCreateIssue({
+            pjcode: capturedPjcode,
+            title: params.title,
+            storyName: params.storyName,
+            agentOptionId: params.agentOptionId,
+            body: params.body,
+            nameWithOwner: capturedNameWithOwner,
           });
-          markdownParts.push(markdown);
-        }
-        await postConsoleComment({
-          pjcode,
-          url: issueUrl,
-          body: markdownParts.join('\n\n'),
-        });
-      }
+          if (params.files.length > 0) {
+            const markdownParts: string[] = [];
+            for (const file of params.files) {
+              const bytes = new Uint8Array(await file.arrayBuffer());
+              const contentBase64 = encodeAttachmentContent(bytes);
+              const markdown = await postConsoleAttachment({
+                pjcode: capturedPjcode,
+                url: issueUrl,
+                fileName: file.name,
+                contentBase64,
+              });
+              markdownParts.push(markdown);
+            }
+            await postConsoleComment({
+              pjcode: capturedPjcode,
+              url: issueUrl,
+              body: markdownParts.join('\n\n'),
+            });
+          }
+        },
+        advance: () => {},
+      });
+      return Promise.resolve();
     },
-    [pjcode, defaultNameWithOwner],
+    [pjcode, defaultNameWithOwner, actionQueue],
   );
 
   const handleReorderStory = useCallback(
@@ -755,6 +788,29 @@ export const ConsolePage = () => {
     [pjcode, storyEntries, storiesSnapshot?.generatedAt],
   );
 
+  const handleStoryUpdateDescription = useCallback(
+    async (storyOptionId: string, newDescription: string): Promise<void> => {
+      if (pjcode === null) {
+        throw new Error('No project specified in the URL path.');
+      }
+      await postConsoleUpdateStoryDescription({
+        pjcode,
+        storyOptionId,
+        description: newDescription,
+      });
+      const updatedEntries = storyEntries.map((e) =>
+        e.storyOptionId === storyOptionId
+          ? { ...e, description: newDescription }
+          : e,
+      );
+      setLocalStoryEntriesOverride({
+        generatedAt: storiesSnapshot?.generatedAt,
+        stories: updatedEntries,
+      });
+    },
+    [pjcode, storyEntries, storiesSnapshot?.generatedAt],
+  );
+
   const prsTabSummaries = useConsolePrsTabSummaries(
     pendingItems,
     caches.comments,
@@ -833,7 +889,7 @@ export const ConsolePage = () => {
         fromCache={fromCache}
         tabHref={navigation.tabHref}
         onSelectTab={selectTab}
-        onSelectProject={(code) => navigatePush(`/projects/${code}`)}
+        onSelectProject={selectProject}
         settingsButton={
           <>
             <ConsoleTimerSettingsModalDialog
@@ -864,6 +920,7 @@ export const ConsolePage = () => {
                 agentOptions={agentOptions}
                 defaultNameWithOwner={defaultNameWithOwner}
                 onCreateIssue={handleCreateIssueFromDialog}
+                fleetTaskCreateUrl={fleetTaskCreateUrl}
               />
             )}
           </>
@@ -875,7 +932,10 @@ export const ConsolePage = () => {
         airplaneModeFailures={airplaneMode.failures}
         onAirplaneModeStartSync={airplaneMode.startSync}
         onAirplaneModeTurnOff={airplaneMode.turnOff}
+        projectUrl={pjcode !== null ? (projectUrls?.[pjcode] ?? null) : null}
         workflowImprovementIssueUrl={workflowImprovementIssueUrl}
+        fleetTaskCreateUrl={fleetTaskCreateUrl}
+        now={now}
       />
       <ConsoleProjectTimerBar
         timerEndsAt={activeSnapshot?.timerEndsAt ?? null}
@@ -896,6 +956,7 @@ export const ConsolePage = () => {
             onReorderStory={handleReorderStory}
             onDeleteStory={handleStoryDelete}
             onRenameStory={handleStoryRename}
+            onUpdateDescription={handleStoryUpdateDescription}
             optimisticColors={storyOptimisticColors}
             colorChangeInFlight={storyColorChangeInFlight}
             colorErrors={storyColorErrors}

@@ -4,6 +4,7 @@ import type {
   AirplaneModeStatus,
   AirplaneSyncProgress,
 } from '../../hooks/useAirplaneMode';
+import { formatSnapshotAge } from '../../logic/relativeTime';
 import { CONSOLE_TABS, type ConsoleTabName } from '../../logic/types';
 import { ConsoleAirplaneModeButton } from './ConsoleAirplaneModeButton';
 
@@ -25,7 +26,10 @@ export type ConsoleTabBarProps = {
   airplaneModeFailures: string[];
   onAirplaneModeStartSync: () => void;
   onAirplaneModeTurnOff: () => void;
+  projectUrl?: string | null;
   workflowImprovementIssueUrl?: string | null;
+  fleetTaskCreateUrl?: string | null;
+  now: number;
 };
 
 export const ConsoleTabList = ({
@@ -46,7 +50,10 @@ export const ConsoleTabList = ({
   airplaneModeFailures,
   onAirplaneModeStartSync,
   onAirplaneModeTurnOff,
+  projectUrl = null,
   workflowImprovementIssueUrl = null,
+  fleetTaskCreateUrl = null,
+  now,
 }: ConsoleTabBarProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{
@@ -137,6 +144,17 @@ export const ConsoleTabList = ({
               )}
           </div>
         )}
+        {projectUrl !== null && (
+          <a
+            href={projectUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="console-tab-project-link"
+            aria-label="Open GitHub project"
+          >
+            ↗
+          </a>
+        )}
         {settingsButton !== undefined && (
           <span className="console-tab-settings">{settingsButton}</span>
         )}
@@ -151,12 +169,25 @@ export const ConsoleTabList = ({
             ⚡
           </a>
         )}
+        {fleetTaskCreateUrl !== null && (
+          <a
+            href={fleetTaskCreateUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="console-tab-fleet-task-create-link"
+            aria-label="Create fleet task"
+          >
+            +
+          </a>
+        )}
         {generatedAt !== null && airplaneModeStatus !== 'on' && (
           <span
             className="console-tab-geninfo"
             data-from-cache={fromCache ? 'true' : undefined}
+            title={generatedAt}
           >
-            {fromCache ? '(cached) ' : ''}snapshot: {generatedAt}
+            {fromCache ? '(cached) ' : ''}snapshot:{' '}
+            {formatSnapshotAge(generatedAt, now)}
           </span>
         )}
         {airplaneModeEnabled && (

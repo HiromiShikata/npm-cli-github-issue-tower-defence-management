@@ -11,6 +11,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyName: 'regular / workflow improvement',
     storyOptionId: 'opt-workflow-improvement',
     color: 'BLUE',
+    description: '',
     openItemCount: 3,
     storyViewUrl: null,
     items: [],
@@ -19,6 +20,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyName: 'regular / tdpm dashboard & console improvement',
     storyOptionId: 'opt-tdpm-console',
     color: 'GREEN',
+    description: '',
     openItemCount: 5,
     storyViewUrl: null,
     items: [],
@@ -88,10 +90,10 @@ describe('ConsoleTaskCreateButton', () => {
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
       expect(onCreateIssue).toHaveBeenCalledWith<[IssueCreateParams]>({
-        storyOptionId: 'opt-workflow-improvement',
+        storyName: 'regular / workflow improvement',
         agentOptionId: null,
         title: 'Fix the bug',
-        referenceUrl: null,
+        body: null,
         files: [],
       }),
     );
@@ -111,5 +113,73 @@ describe('ConsoleTaskCreateButton', () => {
       expect(queryByRole('dialog', { name: /create new task/i })).toBeNull(),
     );
     expect(getByRole('button', { name: /new task/i })).not.toBeNull();
+  });
+
+  it('shows the open-in-new-tab link in the dialog when fleetTaskCreateUrl is provided', () => {
+    const url = 'https://github.com/HiromiShikata/secretary/issues/new';
+    const { getByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} fleetTaskCreateUrl={url} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    const link = getByRole('link', { name: /open in new tab/i });
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe(url);
+  });
+
+  it('does not show the open-in-new-tab link in the dialog when fleetTaskCreateUrl is not provided', () => {
+    const { getByRole, queryByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    expect(queryByRole('link', { name: /open in new tab/i })).toBeNull();
+  });
+
+  it('restores draft title when dialog is closed via Cancel and reopened', () => {
+    const { getByRole, queryByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'My draft title' },
+    });
+    fireEvent.click(getByRole('button', { name: /^cancel$/i }));
+    expect(queryByRole('dialog', { name: /create new task/i })).toBeNull();
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue(
+      'My draft title',
+    );
+  });
+
+  it('restores draft body when dialog is closed via Cancel and reopened', () => {
+    const { getByRole, queryByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    fireEvent.change(getByRole('textbox', { name: /body/i }), {
+      target: { value: 'My draft body' },
+    });
+    fireEvent.click(getByRole('button', { name: /^cancel$/i }));
+    expect(queryByRole('dialog', { name: /create new task/i })).toBeNull();
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    expect(getByRole('textbox', { name: /body/i })).toHaveValue(
+      'My draft body',
+    );
+  });
+
+  it('clears draft after successful submission', async () => {
+    const onCreateIssue = jest.fn().mockResolvedValue(undefined);
+    const { getByRole, queryByRole } = render(
+      <ConsoleTaskCreateButton {...baseProps} onCreateIssue={onCreateIssue} />,
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Task to submit' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(queryByRole('dialog', { name: /create new task/i })).toBeNull(),
+    );
+    fireEvent.click(getByRole('button', { name: /new task/i }));
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue('');
   });
 });

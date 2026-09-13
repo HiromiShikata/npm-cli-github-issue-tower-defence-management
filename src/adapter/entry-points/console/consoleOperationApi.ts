@@ -21,7 +21,6 @@ import {
 import { appendCloseEvent } from './consoleCloseEventStore';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
 import { extractProjectOwner } from './consoleGithubTokenResolver';
-import { findConsoleItemUrl } from './consoleItemUrlLookup';
 import {
   deleteProjectTimer,
   writeProjectTimer,
@@ -101,6 +100,10 @@ const badGateway = (message: string): ConsoleOperationResponse => ({
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0;
+
+const isStaleNodeIdError = (error: unknown): boolean =>
+  error instanceof Error &&
+  error.message.includes('Could not resolve to a node with the global id');
 
 const isPullRequestUrl = (url: string): boolean =>
   /github\.com\/[^/]+\/[^/]+\/pull\/\d+/.test(url);
@@ -592,13 +595,40 @@ export const handleTriage = async (
     if (project.story === null) {
       return badRequest('project does not have a story field');
     }
-    await context
-      .resolveIssueRepository(issueUrl)
-      .updateStory(
+    const issueRepo = context.resolveIssueRepository(issueUrl);
+    try {
+      await issueRepo.updateStory(
         { ...project, story: project.story },
         projectItemReference(issueUrl, projectItemId),
         storyOptionId,
       );
+    } catch (error) {
+      if (
+        !isStaleNodeIdError(error) ||
+        context.resolveProjectRepository === null
+      ) {
+        throw error;
+      }
+      const projectRepository = context.resolveProjectRepository(project.url);
+      const freshProject = await projectRepository.getProject(project.id);
+      if (freshProject === null || freshProject.story === null) {
+        throw error;
+      }
+      const staleName = project.story.stories.find(
+        (s) => s.id === storyOptionId,
+      )?.name;
+      const freshOptionId =
+        staleName === undefined
+          ? storyOptionId
+          : (freshProject.story.stories.find((s) => s.name === staleName)?.id ??
+            storyOptionId);
+      await issueRepo.updateStory(
+        { ...freshProject, story: freshProject.story },
+        projectItemReference(issueUrl, projectItemId),
+        freshOptionId,
+      );
+      context.updateProjectCacheEntry?.(pjcode, freshProject);
+    }
     recordDoneForStoryChange(context, pjcode, projectItemId);
     return ok();
   }
@@ -776,22 +806,11 @@ export const handleAttachmentUpload = async (
   if (typeof pjcodeResult !== 'string') {
     return pjcodeResult;
   }
-  if (context.consoleDataOutputDir === null) {
-    return badGateway('console data output dir is not configured');
-  }
-  const knownUrl = findConsoleItemUrl(
-    context.consoleDataOutputDir,
-    pjcodeResult,
-    url,
-  );
-  if (knownUrl === null) {
-    return badRequest('url is not a console item of this project');
-  }
   if (context.issueAttachmentRepository === null) {
     return badGateway('attachment upload is not configured');
   }
   const markdown = await context.issueAttachmentRepository.uploadAttachment({
-    issueOrPullRequestUrl: knownUrl,
+    issueOrPullRequestUrl: url,
     fileName,
     content: Buffer.from(contentBase64, 'base64'),
   });
@@ -806,13 +825,13 @@ export const handleCreateIssue = async (
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
   const title = body.title;
-  const storyOptionId = body.storyOptionId;
+  const storyName = body.storyName;
   const nameWithOwner = body.nameWithOwner;
   if (!isNonEmptyString(title)) {
     return badRequest('title is required');
   }
-  if (!isNonEmptyString(storyOptionId)) {
-    return badRequest('storyOptionId is required');
+  if (!isNonEmptyString(storyName)) {
+    return badRequest('storyName is required');
   }
   if (!isNonEmptyString(nameWithOwner)) {
     return badRequest('nameWithOwner is required');
@@ -833,9 +852,13 @@ export const handleCreateIssue = async (
   if (project.story === null) {
     return badRequest('project does not have a story field');
   }
-  const storyOption = project.story.stories.find((s) => s.id === storyOptionId);
-  if (storyOption === undefined) {
-    return badRequest(`story option "${storyOptionId}" not found in project`);
+
+  const cachedProjectStory = project.story;
+  const cachedStoryOption = cachedProjectStory.stories.find(
+    (s) => s.name === storyName,
+  );
+  if (cachedStoryOption === undefined) {
+    return badRequest(`story option "${storyName}" not found in project`);
   }
 
   const agentOptionId =
@@ -843,45 +866,73 @@ export const handleCreateIssue = async (
     body.agentOptionId.trim().length > 0
       ? body.agentOptionId.trim()
       : null;
+  const rawBodyText = typeof body.body === 'string' ? body.body.trim() : null;
+  const bodyText =
+    rawBodyText !== null && rawBodyText.length > 0 ? rawBodyText : null;
   const rawReferenceUrl =
     typeof body.referenceUrl === 'string' ? body.referenceUrl.trim() : null;
   const referenceUrl =
     rawReferenceUrl !== null && rawReferenceUrl.length > 0
       ? rawReferenceUrl
       : null;
-  const issueBody = referenceUrl !== null ? `Related: ${referenceUrl}` : '';
+  let issueBody = '';
+  if (bodyText !== null && referenceUrl !== null) {
+    issueBody = `${bodyText}\n\nRelated: ${referenceUrl}`;
+  } else if (bodyText !== null) {
+    issueBody = bodyText;
+  } else if (referenceUrl !== null) {
+    issueBody = `Related: ${referenceUrl}`;
+  }
 
   const proxyUrl = `https://github.com/${nameWithOwner}/issues/0`;
   const issueRepository = context.resolveIssueRepository(proxyUrl);
+  const authenticatedUser = await issueRepository.getAuthenticatedUserLogin();
   const issueNumber = await issueRepository.createNewIssue(
     org,
     repo,
     title,
     issueBody,
-    [],
+    [authenticatedUser],
     [],
   );
   const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
 
-  await issueRepository.addIssueToProject(project, issueUrl);
-
-  const addedIssue = await issueRepository.get(issueUrl, project);
-  if (addedIssue !== null) {
-    await issueRepository.updateStory(
-      { ...project, story: project.story },
-      addedIssue,
-      storyOptionId,
-    );
-    if (agentOptionId !== null && project.agent !== null) {
-      await issueRepository.setIssueAgentField(
-        issueUrl,
-        project,
-        agentOptionId,
+  const backgroundTask = (async () => {
+    await issueRepository.addIssueToProject(project, issueUrl);
+    const addedIssue = await issueRepository.get(issueUrl, project);
+    if (addedIssue !== null) {
+      const projectRepository =
+        context.resolveProjectRepository !== null
+          ? context.resolveProjectRepository(project.url)
+          : null;
+      const freshProject =
+        projectRepository !== null
+          ? await projectRepository.getProject(project.id)
+          : null;
+      const effectiveProject = freshProject ?? project;
+      const effectiveStory = freshProject?.story ?? cachedProjectStory;
+      const storyOption =
+        effectiveStory.stories.find((s) => s.name === storyName) ??
+        cachedStoryOption;
+      await issueRepository.updateStory(
+        { ...effectiveProject, story: effectiveStory },
+        addedIssue,
+        storyOption.id,
       );
+      if (agentOptionId !== null && effectiveProject.agent !== null) {
+        await issueRepository.setIssueAgentField(
+          issueUrl,
+          effectiveProject,
+          agentOptionId,
+        );
+      }
     }
-  }
+  })();
+  backgroundTask.catch((e) =>
+    console.error('Background issue setup failed:', e),
+  );
 
-  return { statusCode: 200, body: { ok: true, issueUrl } };
+  return { statusCode: 200, body: { ok: true, issueUrl }, backgroundTask };
 };
 
 export const handleReviewComment = async (
@@ -1063,8 +1114,12 @@ export const handleReorderStory = async (
   }
   const projectRepository = context.resolveProjectRepository(project.url);
   const freshProject = await projectRepository.getProject(project.id);
-  const stories = freshProject?.story?.stories ?? cachedStories;
+  const freshStories = freshProject?.story?.stories;
+  const stories = freshStories ?? cachedStories;
   const index = stories.findIndex((s) => s.id === storyOptionId);
+  if (index === -1 && freshStories !== undefined) {
+    return badRequest('story option not found');
+  }
   const targetIndex = index !== -1 ? index : cachedIndex;
   const swapIndex = targetIndex + (direction === 'up' ? -1 : 1);
   const reordered = [...stories];
@@ -1299,6 +1354,44 @@ export const handleStoryRename = async (
   return ok();
 };
 
+export const handleStoryUpdateDescription = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  if (context.resolveProjectRepository === null) {
+    return badGateway('project repository is not configured');
+  }
+  const storyOptionId = body.storyOptionId;
+  const description = body.description;
+  if (!isNonEmptyString(storyOptionId)) {
+    return badRequest('storyOptionId is required');
+  }
+  if (typeof description !== 'string') {
+    return badRequest('description is required');
+  }
+  const binding = await resolveBinding(context, body);
+  if (isOperationResponse(binding)) {
+    return binding;
+  }
+  const { pjcode, project } = binding;
+  if (project.story === null) {
+    return badRequest('project does not have a story field');
+  }
+  const projectRepository = context.resolveProjectRepository(project.url);
+  const freshProject = await projectRepository.getProject(project.id);
+  const freshStories = freshProject?.story?.stories ?? project.story.stories;
+  const storyOption = freshStories.find((s) => s.id === storyOptionId);
+  if (storyOption === undefined) {
+    return badRequest(`story option "${storyOptionId}" not found in project`);
+  }
+  const updatedStories = freshStories.map((s) =>
+    s.id === storyOptionId ? { ...s, description } : s,
+  );
+  await projectRepository.updateStoryList(project, updatedStories);
+  context.invalidateProject?.(pjcode);
+  return ok();
+};
+
 export const handleTimer = (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
@@ -1342,8 +1435,10 @@ export const handleProjectMaxPreparingUpdate = async (
     return badGateway('github token is not configured');
   }
   const count = body.maximumPreparingIssuesCount;
-  if (typeof count !== 'number' || !Number.isInteger(count) || count < 1) {
-    return badRequest('maximumPreparingIssuesCount must be a positive integer');
+  if (typeof count !== 'number' || !Number.isInteger(count) || count < 0) {
+    return badRequest(
+      'maximumPreparingIssuesCount must be a non-negative integer',
+    );
   }
   const binding = await resolveBinding(context, body);
   if (isOperationResponse(binding)) {

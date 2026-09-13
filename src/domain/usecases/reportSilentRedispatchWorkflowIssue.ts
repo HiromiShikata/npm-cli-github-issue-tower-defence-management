@@ -1,5 +1,6 @@
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export type WorkflowIssueReporterSettings = {
   owner: string;
@@ -16,6 +17,7 @@ export const reportSilentRedispatchWorkflowIssue = async (
     | 'searchIssue'
     | 'createNewIssue'
     | 'createCommentByUrl'
+    | 'getIssueOrPullRequestComments'
     | 'addIssueToProject'
     | 'updateStoryByProjectItemId'
   >,
@@ -32,10 +34,21 @@ export const reportSilentRedispatchWorkflowIssue = async (
     });
     const existing = existingIssues.find((i) => i.title === title);
     if (existing) {
-      await issueRepository.createCommentByUrl(
-        existing.url,
-        `The TDPM preparation loop received no report from \`${agentName}\` again.\n\nFailing task: ${failingTaskUrl}`,
-      );
+      const commentBody = `The TDPM preparation loop received no report from \`${agentName}\` again.\n\nFailing task: ${failingTaskUrl}`;
+      const existingComments =
+        await issueRepository.getIssueOrPullRequestComments(existing.url);
+      if (
+        !isDuplicateWithinWindow(
+          commentBody,
+          existingComments.map((c) => ({
+            text: c.body,
+            createdAt: c.createdAt,
+          })),
+          new Date(),
+        )
+      ) {
+        await issueRepository.createCommentByUrl(existing.url, commentBody);
+      }
     } else {
       const body = [
         `The TDPM preparation loop dispatched \`${agentName}\` and received no report, which indicates a TDPM process-level problem rather than a task-specific one.`,

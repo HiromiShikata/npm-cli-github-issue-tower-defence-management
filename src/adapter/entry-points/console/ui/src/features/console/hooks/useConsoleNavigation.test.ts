@@ -132,7 +132,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
         }),
       ),
     );
-    expect(result.current.activeTab).toBe('workflow-blocker');
+    expect(result.current.activeTab).toBe('prs');
   });
 
   it('skips the empty left-most tab and lands on the next non-empty tab', () => {
@@ -147,7 +147,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
 
   it('falls back to the first tab when every tab is empty', () => {
     const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
-    expect(result.current.activeTab).toBe('workflow-blocker');
+    expect(result.current.activeTab).toBe('prs');
   });
 
   it('updates the default tab when counts arrive after the initial render', () => {
@@ -156,7 +156,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
         useConsoleNavigation('acme', tabCounts),
       { initialProps: { tabCounts: counts() } },
     );
-    expect(result.current.activeTab).toBe('workflow-blocker');
+    expect(result.current.activeTab).toBe('prs');
     rerender({ tabCounts: counts({ 'failed-preparation': 6 }) });
     expect(result.current.activeTab).toBe('failed-preparation');
   });
@@ -166,6 +166,17 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
     const { result } = renderHook(() =>
       useConsoleNavigation('acme', counts({ 'todo-by-human': 6 })),
     );
+    expect(result.current.activeTab).toBe('todo-by-human');
+  });
+
+  it('does not switch away from the active tab when a higher-priority tab gains a count', () => {
+    const { result, rerender } = renderHook(
+      ({ tabCounts }: { tabCounts: Record<ConsoleTabName, number> }) =>
+        useConsoleNavigation('acme', tabCounts),
+      { initialProps: { tabCounts: counts({ 'todo-by-human': 3 }) } },
+    );
+    expect(result.current.activeTab).toBe('todo-by-human');
+    rerender({ tabCounts: counts({ 'todo-by-human': 3, prs: 1 }) });
     expect(result.current.activeTab).toBe('todo-by-human');
   });
 });

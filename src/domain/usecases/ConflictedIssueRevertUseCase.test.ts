@@ -1022,5 +1022,22 @@ describe('ConflictedIssueRevertUseCase', () => {
         'conflict',
       );
     });
+
+    it('should not post conflict comment when conflict comment exists within window even if a later different comment also exists', async () => {
+      buildConflictedScenario();
+      const withinWindow = new Date(Date.now() - 30 * 60 * 1000);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        { author: 'bot', content: 'conflict', createdAt: withinWindow },
+        {
+          author: 'developer',
+          content: 'I will fix this',
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({ projectUrl });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1,7 +1,10 @@
 import ky, { HTTPError } from 'ky';
 import { BaseGitHubRepository } from '../BaseGitHubRepository';
 import { Issue } from '../../../domain/entities/Issue';
-import { IssueRepository } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import {
+  IssueComment,
+  IssueRepository,
+} from '../../../domain/usecases/adapter-interfaces/IssueRepository';
 import { Member } from '../../../domain/entities/Member';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import {
@@ -16,29 +19,6 @@ import {
   secondaryRateLimitStateFilePath,
   writeSecondaryRateLimitState,
 } from './githubSecondaryRateLimitBreaker';
-import {
-  isDuplicateWithinWindow,
-  DUPLICATE_COMMENT_WINDOW_MS,
-} from '../commentDeduplication';
-
-type RestIssueCommentsResponseItem = {
-  body: string | null;
-  created_at: string;
-};
-
-function isStringRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isRestIssueCommentsResponse(
-  value: unknown,
-): value is RestIssueCommentsResponseItem[] {
-  if (!Array.isArray(value)) return false;
-  return value.every(
-    (item: unknown) =>
-      isStringRecord(item) && typeof item['created_at'] === 'string',
-  );
-}
 
 type SearchIssuesResponseItem = {
   html_url: string;
@@ -55,64 +35,14 @@ type SearchIssuesResponse = {
 export class RestIssueRepository
   extends BaseGitHubRepository
   implements
-    Pick<IssueRepository, 'updateAssigneeList' | 'removeLabel' | 'searchIssues'>
+    Pick<
+      IssueRepository,
+      | 'updateAssigneeList'
+      | 'removeLabel'
+      | 'searchIssues'
+      | 'getIssueOrPullRequestComments'
+    >
 {
-  private async fetchCommentsForDedupCheck(
-    owner: string,
-    repo: string,
-    issueNumber: number,
-  ): Promise<ReadonlyArray<{ text: string; createdAt: Date }> | null> {
-    const since = new Date(
-      Date.now() - DUPLICATE_COMMENT_WINDOW_MS,
-    ).toISOString();
-    const comments: Array<{ text: string; createdAt: Date }> = [];
-    const headers: Record<string, string> = {
-      Authorization: `token ${this.ghToken}`,
-      Accept: 'application/vnd.github+json',
-    };
-
-    let url: string | null =
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments?per_page=100&since=${encodeURIComponent(since)}`;
-
-    while (url !== null) {
-      let response: Response;
-      try {
-        response = await fetch(url, { headers });
-      } catch {
-        return null;
-      }
-
-      if (!response.ok) {
-        const bodyText = await response.text().catch(() => '');
-        if (hasRateLimitSignals(response.status, response.headers, bodyText)) {
-          throw new GitHubRateLimitError(
-            `GitHub API rate limit during dedup preflight: HTTP ${response.status}`,
-            computeRateLimitResetIso(response.headers),
-          );
-        }
-        return null;
-      }
-
-      const body: unknown = await response.json();
-      if (!isRestIssueCommentsResponse(body)) {
-        return null;
-      }
-
-      for (const item of body) {
-        comments.push({
-          text: item.body ?? '',
-          createdAt: new Date(item.created_at),
-        });
-      }
-
-      const linkHeader = response.headers.get('Link') ?? '';
-      const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-      url = nextMatch?.[1] ?? null;
-    }
-
-    return comments;
-  }
-
   private get stateFilePath(): string {
     return secondaryRateLimitStateFilePath();
   }
@@ -165,24 +95,9 @@ export class RestIssueRepository
     author: string;
     body: string;
     createdAt: Date;
-    url: string | null;
+    url: string;
   }> => {
     const { owner, repo, issueNumber } = this.extractIssueFromUrl(issueUrl);
-
-    const existingComments = await this.fetchCommentsForDedupCheck(
-      owner,
-      repo,
-      issueNumber,
-    );
-    if (existingComments !== null) {
-      const now = new Date();
-      if (isDuplicateWithinWindow(comment, existingComments, now)) {
-        console.warn(
-          `RestIssueRepository: skipping duplicate comment within ${DUPLICATE_COMMENT_WINDOW_MS / 60000} minutes on ${issueUrl}`,
-        );
-        return { author: '', body: comment, createdAt: now, url: null };
-      }
-    }
 
     this.checkBreakerOrThrow();
 
@@ -480,6 +395,45 @@ export class RestIssueRepository
       }
     }
     return searchedIssues;
+  };
+
+  getIssueOrPullRequestComments = async (
+    url: string,
+  ): Promise<IssueComment[]> => {
+    const { owner, repo, issueNumber } = this.extractIssueFromUrl(url);
+    const perPage = 100;
+    const collected: IssueComment[] = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const commentsUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues/${issueNumber}/comments?per_page=${perPage}&page=${page}`;
+      const body = await ky
+        .get(commentsUrl, {
+          headers: { Authorization: `token ${this.ghToken}` },
+        })
+        .json<
+          Array<{
+            user: { login: string } | null;
+            body: string | null;
+            created_at: string;
+            html_url: string;
+          }>
+        >();
+      for (const comment of body) {
+        collected.push({
+          author: comment.user?.login ?? '',
+          body: comment.body ?? '',
+          createdAt: new Date(comment.created_at),
+          url: comment.html_url,
+        });
+      }
+      if (body.length < perPage) {
+        hasMore = false;
+      } else {
+        page += 1;
+      }
+    }
+    return collected;
   };
 
   private parseSearchedIssue = (

@@ -9,7 +9,6 @@ import { SpreadsheetRepository } from './adapter-interfaces/SpreadsheetRepositor
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
 import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
-import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
@@ -41,6 +40,7 @@ import { QualityCheckAdvanceUseCase } from './QualityCheckAdvanceUseCase';
 import { ReopenedDoneIssueRevertUseCase } from './ReopenedDoneIssueRevertUseCase';
 import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { WorkflowIssueReporterSettings } from './reportSilentRedispatchWorkflowIssue';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export class ProjectNotFoundError extends Error {
   constructor(message: string) {
@@ -122,7 +122,6 @@ export class HandleScheduledEventUseCase {
     readonly actionAnnouncementUseCase: ActionAnnouncementUseCase,
     readonly setWorkflowManagementIssueToStoryUseCase: SetWorkflowManagementIssueToStoryUseCase,
     readonly clearPastNextActionUseCase: ClearPastNextActionDateHourUseCase,
-    readonly analyzeStoriesUseCase: AnalyzeStoriesUseCase,
     readonly clearDependedIssueURLUseCase: ClearDependedIssueURLUseCase,
     readonly setDependedIssueUrlForOpenTaskPRsUseCase: SetDependedIssueUrlForOpenTaskPRsUseCase,
     readonly staleTaskPullRequestCloseUseCase: StaleTaskPullRequestCloseUseCase,
@@ -247,6 +246,15 @@ export class HandleScheduledEventUseCase {
       ) {
         continue;
       }
+      const hasClosedStoryIssue = issues.some(
+        (issue) =>
+          storyObject.story.name.startsWith(issue.title) &&
+          issue.isClosed &&
+          issue.labels.includes('story'),
+      );
+      if (hasClosedStoryIssue) {
+        continue;
+      }
       const storyStartTime = Date.now();
       console.log(
         `[HandleScheduledEvent] Creating story issue: story="${storyObject.story.name}"`,
@@ -356,10 +364,25 @@ ${JSON.stringify(e)}
           title: WORKFLOW_INCIDENT_ISSUE_TITLE,
         });
         if (existingIncidentIssues.length > 0) {
-          await this.issueRepository.createCommentByUrl(
-            existingIncidentIssues[0].url,
-            errorBody,
-          );
+          const existingComments =
+            await this.issueRepository.getIssueOrPullRequestComments(
+              existingIncidentIssues[0].url,
+            );
+          if (
+            !isDuplicateWithinWindow(
+              errorBody,
+              existingComments.map((c) => ({
+                text: c.body,
+                createdAt: c.createdAt,
+              })),
+              new Date(),
+            )
+          ) {
+            await this.issueRepository.createCommentByUrl(
+              existingIncidentIssues[0].url,
+              errorBody,
+            );
+          }
         } else {
           await this.issueRepository.createNewIssue(
             input.org,
@@ -424,6 +447,7 @@ ${JSON.stringify(e)}
       issues,
       agents: input.agents ?? null,
       agentDesignationLabelsToKeep: input.agentDesignationLabelsToKeep ?? null,
+      defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
     });
     await this.conflictedIssueRevertUseCase.run({
       projectUrl: input.projectUrl,
@@ -554,18 +578,6 @@ ${JSON.stringify(e)}
       project,
       issues,
       cacheUsed,
-    });
-    await this.analyzeStoriesUseCase.run({
-      targetDates: targetDateTimes,
-      project,
-      issues,
-      cacheUsed,
-      ...input,
-      manager: input.manager,
-      org: input.org,
-      repo: input.workingReport.repo,
-      storyObjectMap: storyObjectMap,
-      members: input.workingReport.members,
     });
     await this.clearDependedIssueURLUseCase.run({
       project,

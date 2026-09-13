@@ -42,6 +42,7 @@ import {
   handleSetDependedIssueUrl,
   handleStoryColor,
   handleStoryRename,
+  handleStoryUpdateDescription,
   handleTimer,
   handleTriage,
 } from './consoleOperationApi';
@@ -239,7 +240,9 @@ export type WebServerOptions = {
   dashboardDir: string | null;
   dashboardDataDir: string | null;
   dashboardProjectNames: string[];
+  dashboardProjectUrls?: Record<string, string> | null;
   workflowImprovementIssueUrl?: string | null;
+  fleetTaskCreateUrl?: string | null;
   resolveGithubToken?: ConsoleGithubTokenResolver | null;
   imageFetcher?: ImageFetcher | null;
   issueRepository?: IssueRepository | null;
@@ -487,8 +490,10 @@ const handleReadApi = async (
       statusCode: 200,
       body: {
         pjcodes: options.dashboardProjectNames,
+        projectUrls: options.dashboardProjectUrls ?? null,
         workflowImprovementIssueUrl:
           options.workflowImprovementIssueUrl ?? null,
+        fleetTaskCreateUrl: options.fleetTaskCreateUrl ?? null,
       },
     };
   }
@@ -575,6 +580,8 @@ const dispatchOperation = (
       return handleDeleteStory(context, body);
     case '/api/renamestory':
       return handleStoryRename(context, body);
+    case '/api/storydescription':
+      return handleStoryUpdateDescription(context, body);
     case '/api/timer':
       return Promise.resolve(handleTimer(context, body));
     case '/api/projectsettings':

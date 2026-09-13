@@ -31,12 +31,14 @@ import {
   handleStoryAdd,
   handleStoryColor,
   handleStoryRename,
+  handleStoryUpdateDescription,
   handleTimer,
   handleTriage,
 } from './consoleOperationApi';
 import * as projectConfig from '../cli/projectConfig';
 import { readProjectTimer } from './consoleProjectTimerStore';
 import { GitHubRateLimitError } from '../../repositories/issue/githubRateLimitRetry';
+import { createConsoleProjectResolver } from './consoleProjectResolver';
 
 describe('consoleOperationApi', () => {
   let baseDir: string;
@@ -1329,6 +1331,216 @@ describe('consoleOperationApi', () => {
       );
     });
 
+    it('retries set_story with fresh project data when updateStory throws a stale node id error', async () => {
+      const cachedStoryOption = {
+        id: 'stale_opt',
+        name: 'My story',
+        color: 'BLUE' as const,
+        description: '',
+      };
+      const cachedProject: Project = {
+        ...project,
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [cachedStoryOption],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'fresh_opt',
+              name: 'My story',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const staleError = new Error(
+        "Could not resolve to a node with the global id of 'stale_field_id'.",
+      );
+      issueRepository.updateStory
+        .mockRejectedValueOnce(staleError)
+        .mockResolvedValue(undefined);
+      const getProject = jest.fn().mockResolvedValue(freshProject);
+      const invalidateProject = jest.fn();
+      const updateProjectCacheEntry = jest.fn();
+      const contextWithFreshProject: ConsoleOperationContext = {
+        ...contextForProject(cachedProject),
+        resolveProjectRepository: () => ({
+          getProject,
+          updateStoryList: jest.fn(),
+        }),
+        invalidateProject,
+        updateProjectCacheEntry,
+      };
+
+      const response = await handleTriage(contextWithFreshProject, {
+        pjcode: 'acme',
+        action: 'set_story',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_h',
+        storyOptionId: 'stale_opt',
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(getProject).toHaveBeenCalledWith('PVT_1');
+      expect(issueRepository.updateStory).toHaveBeenCalledTimes(2);
+      const [retryProjectArg, retryItemArg, retryOptionId] =
+        issueRepository.updateStory.mock.calls[1];
+      expect(retryProjectArg.story?.fieldId).toBe('fresh_field_id');
+      expect(retryItemArg.itemId).toBe('PVTI_h');
+      expect(retryOptionId).toBe('fresh_opt');
+      expect(invalidateProject).not.toHaveBeenCalled();
+      expect(updateProjectCacheEntry).toHaveBeenCalledWith(
+        'acme',
+        freshProject,
+      );
+    });
+
+    it('re-throws from set_story when error is not a stale node id error', async () => {
+      const cachedProject: Project = {
+        ...project,
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          stories: [],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const networkError = new Error('Network timeout');
+      issueRepository.updateStory.mockRejectedValueOnce(networkError);
+      const contextWithProjectRepo: ConsoleOperationContext = {
+        ...contextForProject(cachedProject),
+        resolveProjectRepository: () => ({
+          getProject: jest.fn(),
+          updateStoryList: jest.fn(),
+        }),
+      };
+
+      await expect(
+        handleTriage(contextWithProjectRepo, {
+          pjcode: 'acme',
+          action: 'set_story',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_h',
+          storyOptionId: 'story_opt_1',
+        }),
+      ).rejects.toThrow('Network timeout');
+    });
+
+    it('re-throws from set_story when resolveProjectRepository is null on stale node id error', async () => {
+      const cachedProject: Project = {
+        ...project,
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          stories: [],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const staleError = new Error(
+        "Could not resolve to a node with the global id of 'storyField'.",
+      );
+      issueRepository.updateStory.mockRejectedValueOnce(staleError);
+
+      await expect(
+        handleTriage(contextForProject(cachedProject), {
+          pjcode: 'acme',
+          action: 'set_story',
+          issueUrl: 'https://github.com/o/r/issues/1',
+          projectItemId: 'PVTI_h',
+          storyOptionId: 'story_opt_1',
+        }),
+      ).rejects.toThrow(
+        "Could not resolve to a node with the global id of 'storyField'.",
+      );
+    });
+
+    it('updates the in-memory cache with freshProject after stale-id retry without emptying it', async () => {
+      const cachedStoryOption = {
+        id: 'stale_opt',
+        name: 'My story',
+        color: 'BLUE' as const,
+        description: '',
+      };
+      const cachedProject: Project = {
+        ...project,
+        story: {
+          name: 'Story',
+          fieldId: 'stale_field_id',
+          databaseId: 1,
+          stories: [cachedStoryOption],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          name: 'Story',
+          fieldId: 'fresh_field_id',
+          databaseId: 1,
+          stories: [
+            {
+              id: 'fresh_opt',
+              name: 'My story',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+        },
+      };
+      const staleError = new Error(
+        "Could not resolve to a node with the global id of 'stale_field_id'.",
+      );
+      issueRepository.updateStory
+        .mockRejectedValueOnce(staleError)
+        .mockResolvedValue(undefined);
+      const loadProject = jest.fn().mockResolvedValue(cachedProject);
+      const resolver = createConsoleProjectResolver(
+        { acme: 'https://github.com/orgs/acme/projects/1' },
+        loadProject,
+      );
+      await resolver.resolve('acme');
+
+      const getProject = jest.fn().mockResolvedValue(freshProject);
+      const contextWithRealResolver: ConsoleOperationContext = {
+        ...context,
+        resolveProject: resolver.resolve,
+        invalidateProject: resolver.invalidate,
+        updateProjectCacheEntry: resolver.updateEntry,
+        resolveProjectRepository: () => ({
+          getProject,
+          updateStoryList: jest.fn(),
+        }),
+      };
+
+      const response = await handleTriage(contextWithRealResolver, {
+        pjcode: 'acme',
+        action: 'set_story',
+        issueUrl: 'https://github.com/o/r/issues/1',
+        projectItemId: 'PVTI_h',
+        storyOptionId: 'stale_opt',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const cachedBinding = await resolver.resolve('acme');
+      expect(cachedBinding?.project.story?.fieldId).toBe('fresh_field_id');
+      expect(loadProject).toHaveBeenCalledTimes(1);
+    });
+
     it('rejects set_agent without an agentOptionId', async () => {
       const response = await handleTriage(context, {
         pjcode: 'acme',
@@ -1781,7 +1993,7 @@ describe('consoleOperationApi', () => {
         author: 'HiromiShikata',
         body: 'Please rebase onto the latest main branch.',
         createdAt: new Date('2026-06-17T09:03:27.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-1',
       });
       const response = await handleComment(context, {
         pjcode: 'acme',
@@ -1811,7 +2023,7 @@ describe('consoleOperationApi', () => {
         author: 'github-actions',
         body: 'A first comment on this issue.',
         createdAt: new Date('2026-06-17T08:00:00.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-2',
       });
       const response = await handleComment(context, {
         pjcode: 'acme',
@@ -1902,7 +2114,7 @@ describe('consoleOperationApi', () => {
         author: 'bot',
         body: 'ok',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
-        url: null,
+        url: 'https://github.com/o/r/issues/1#issuecomment-3',
       });
       const response = await handleComment(context, {
         url: 'https://github.com/o/r/issues/1',
@@ -2013,21 +2225,6 @@ describe('consoleOperationApi', () => {
   });
 
   describe('handleAttachmentUpload', () => {
-    const listItemUrl = 'https://github.com/o/r/issues/1';
-
-    const writeListWithItem = (url: string): void => {
-      const dir = path.join(baseDir, 'acme', 'prs');
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(
-        path.join(dir, 'list.json'),
-        JSON.stringify({ items: [{ url }] }),
-      );
-    };
-
-    beforeEach(() => {
-      writeListWithItem(listItemUrl);
-    });
-
     const uploadContext = (
       uploadAttachment: (request: {
         issueOrPullRequestUrl: string;
@@ -2145,20 +2342,35 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('rejects a url that is not listed as a console item of the project', async () => {
+    it('accepts a valid github url for a newly created issue not yet in the console list files', async () => {
+      const received: {
+        issueOrPullRequestUrl: string;
+        fileName: string;
+        content: Uint8Array;
+      }[] = [];
       const response = await handleAttachmentUpload(
-        uploadContext(async () => 'unused'),
+        uploadContext(async (request) => {
+          received.push(request);
+          return '![shot](https://github.com/user-attachments/assets/new)';
+        }),
         {
           pjcode: 'acme',
           url: 'https://github.com/o/r/issues/9999',
           fileName: 'shot.png',
-          contentBase64: 'AAEC',
+          contentBase64: Buffer.from([1, 2, 3]).toString('base64'),
         },
       );
       expect(response).toEqual({
-        statusCode: 400,
-        body: { error: 'url is not a console item of this project' },
+        statusCode: 200,
+        body: {
+          ok: true,
+          markdown: '![shot](https://github.com/user-attachments/assets/new)',
+        },
       });
+      expect(received).toHaveLength(1);
+      expect(received[0].issueOrPullRequestUrl).toBe(
+        'https://github.com/o/r/issues/9999',
+      );
     });
   });
 
@@ -2187,9 +2399,145 @@ describe('consoleOperationApi', () => {
       },
     });
 
+    const contextWithCreateIssueProjectRepository = (
+      resolveProjectRepository: ConsoleOperationContext['resolveProjectRepository'],
+      baseProject: Project = projectWithStory(),
+    ): ConsoleOperationContext => ({
+      ...contextForProject(baseProject),
+      resolveProjectRepository,
+    });
+
     beforeEach(() => {
       issueRepository.createNewIssue.mockResolvedValue(42);
       issueRepository.addIssueToProject.mockResolvedValue('');
+    });
+
+    it('uses the fresh story option id from GitHub when the cached option id is stale', async () => {
+      const cachedProject = projectWithStory();
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          name: 'Story',
+          fieldId: 'storyField',
+          databaseId: 1,
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+          stories: [
+            {
+              id: 'fresh_id',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_new',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(freshProject),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      await response.backgroundTask;
+      expect(issueRepository.updateStory).toHaveBeenCalledWith(
+        expect.anything(),
+        createdIssue,
+        'fresh_id',
+      );
+    });
+
+    it('uses the fresh story fieldId when the cached fieldId is stale', async () => {
+      const cachedProject: Project = {
+        ...projectWithStory(),
+        story: {
+          name: 'Story',
+          fieldId: 'PVTSSF_stale',
+          databaseId: 1,
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+          stories: [
+            {
+              id: 'opt_blue',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          name: 'Story',
+          fieldId: 'PVTSSF_fresh',
+          databaseId: 1,
+          workflowManagementStory: { id: 'wms', name: 'workflow' },
+          stories: [
+            {
+              id: 'opt_blue',
+              name: 'Portal redesign',
+              color: 'BLUE',
+              description: '',
+            },
+          ],
+        },
+      };
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_new',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(
+          () => ({
+            getProject: jest.fn().mockResolvedValue(freshProject),
+            updateStoryList: jest.fn(),
+          }),
+          cachedProject,
+        ),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      await response.backgroundTask;
+
+      const expectedFreshStory = {
+        name: 'Story',
+        fieldId: 'PVTSSF_fresh',
+        databaseId: 1,
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+        stories: [
+          {
+            id: 'opt_blue',
+            name: 'Portal redesign',
+            color: 'BLUE' as const,
+            description: '',
+          },
+        ],
+      };
+      expect(issueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: expectedFreshStory }),
+        createdIssue,
+        'opt_blue',
+      );
     });
 
     it('creates the issue, adds it to the project, and sets the story', async () => {
@@ -2202,11 +2550,14 @@ describe('consoleOperationApi', () => {
       issueRepository.get.mockResolvedValue(createdIssue);
 
       const response = await handleCreateIssue(
-        contextForProject(storyProject),
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(storyProject),
+          updateStoryList: jest.fn(),
+        })),
         {
           pjcode: 'acme',
           title: 'New task title',
-          storyOptionId: 'opt_blue',
+          storyName: 'Portal redesign',
           nameWithOwner: 'acme-labs/portal',
         },
       );
@@ -2221,9 +2572,10 @@ describe('consoleOperationApi', () => {
         'portal',
         'New task title',
         '',
-        [],
+        ['authenticated-user'],
         [],
       );
+      await response.backgroundTask;
       expect(issueRepository.addIssueToProject).toHaveBeenCalledWith(
         storyProject,
         'https://github.com/acme-labs/portal/issues/42',
@@ -2238,7 +2590,10 @@ describe('consoleOperationApi', () => {
     it('resolves the issue repository from a proxy url of the target repo', async () => {
       const resolvedUrls: string[] = [];
       const recordingContext: ConsoleOperationContext = {
-        ...contextForProject(projectWithStory()),
+        ...contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
         resolveIssueRepository: (url: string) => {
           resolvedUrls.push(url);
           return issueRepository;
@@ -2246,12 +2601,13 @@ describe('consoleOperationApi', () => {
       };
       issueRepository.get.mockResolvedValue(null);
 
-      await handleCreateIssue(recordingContext, {
+      const response = await handleCreateIssue(recordingContext, {
         pjcode: 'acme',
         title: 'Task',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
         nameWithOwner: 'acme-labs/portal',
       });
+      await response.backgroundTask;
 
       expect(resolvedUrls).toContain(
         'https://github.com/acme-labs/portal/issues/0',
@@ -2262,23 +2618,27 @@ describe('consoleOperationApi', () => {
       issueRepository.get.mockResolvedValue(null);
 
       const response = await handleCreateIssue(
-        contextForProject(projectWithStory()),
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
         {
           pjcode: 'acme',
           title: 'Task without project item',
-          storyOptionId: 'opt_green',
+          storyName: 'Move to Okinawa',
           nameWithOwner: 'acme-labs/portal',
         },
       );
 
       expect(response.statusCode).toBe(200);
+      await response.backgroundTask;
       expect(issueRepository.updateStory).not.toHaveBeenCalled();
     });
 
     it('rejects when title is missing', async () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'acme',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
         nameWithOwner: 'acme-labs/portal',
       });
       expect(response).toEqual({
@@ -2287,7 +2647,7 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('rejects when storyOptionId is missing', async () => {
+    it('rejects when storyName is missing', async () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'acme',
         title: 'Task',
@@ -2295,7 +2655,7 @@ describe('consoleOperationApi', () => {
       });
       expect(response).toEqual({
         statusCode: 400,
-        body: { error: 'storyOptionId is required' },
+        body: { error: 'storyName is required' },
       });
     });
 
@@ -2303,7 +2663,7 @@ describe('consoleOperationApi', () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'acme',
         title: 'Task',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
       });
       expect(response).toEqual({
         statusCode: 400,
@@ -2315,7 +2675,7 @@ describe('consoleOperationApi', () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'acme',
         title: 'Task',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
         nameWithOwner: 'noslash',
       });
       expect(response).toEqual({
@@ -2328,7 +2688,7 @@ describe('consoleOperationApi', () => {
       const response = await handleCreateIssue(context, {
         pjcode: 'unknown',
         title: 'Task',
-        storyOptionId: 'opt_blue',
+        storyName: 'Portal redesign',
         nameWithOwner: 'acme-labs/portal',
       });
       expect(response).toEqual({
@@ -2345,7 +2705,7 @@ describe('consoleOperationApi', () => {
         {
           pjcode: 'acme',
           title: 'Task',
-          storyOptionId: 'opt_blue',
+          storyName: 'Portal redesign',
           nameWithOwner: 'acme-labs/portal',
         },
       );
@@ -2355,55 +2715,218 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('rejects when the storyOptionId is not found in the project', async () => {
+    it('returns response immediately before addIssueToProject completes', async () => {
+      let resolveAddToProject!: () => void;
+      issueRepository.addIssueToProject.mockReturnValue(
+        new Promise<string>((resolve) => {
+          resolveAddToProject = () => resolve('');
+        }),
+      );
+
       const response = await handleCreateIssue(
-        contextForProject(projectWithStory()),
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({
+        ok: true,
+        issueUrl: 'https://github.com/acme-labs/portal/issues/42',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalled();
+
+      resolveAddToProject();
+      await response.backgroundTask;
+      expect(issueRepository.addIssueToProject).toHaveBeenCalled();
+    });
+
+    it('creates issue and runs background setup using cached data when resolveProjectRepository is null', async () => {
+      const storyProject = projectWithStory();
+      const createdIssue: Issue = {
+        ...mock<Issue>(),
+        url: 'https://github.com/acme-labs/portal/issues/42',
+        itemId: 'PVTI_new',
+      };
+      issueRepository.get.mockResolvedValue(createdIssue);
+
+      const response = await handleCreateIssue(
+        contextForProject(storyProject),
         {
           pjcode: 'acme',
           title: 'Task',
-          storyOptionId: 'nonexistent',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({
+        ok: true,
+        issueUrl: 'https://github.com/acme-labs/portal/issues/42',
+      });
+      await response.backgroundTask;
+      expect(issueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: storyProject.story }),
+        createdIssue,
+        'opt_blue',
+      );
+    });
+
+    it('rejects when the storyName is not found in the project', async () => {
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'Task',
+          storyName: 'Nonexistent story',
           nameWithOwner: 'acme-labs/portal',
         },
       );
       expect(response).toEqual({
         statusCode: 400,
-        body: { error: 'story option "nonexistent" not found in project' },
+        body: {
+          error: 'story option "Nonexistent story" not found in project',
+        },
       });
+    });
+
+    it('creates issue with provided body text when body is given', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          body: 'Task body content here',
+        },
+      );
+      await response.backgroundTask;
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        'Task body content here',
+        ['authenticated-user'],
+        [],
+      );
+    });
+
+    it('combines body and referenceUrl when both are provided', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          body: 'Task body content here',
+          referenceUrl: 'https://github.com/owner/repo/issues/99',
+        },
+      );
+      await response.backgroundTask;
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        'Task body content here\n\nRelated: https://github.com/owner/repo/issues/99',
+        ['authenticated-user'],
+        [],
+      );
+    });
+
+    it('treats whitespace-only body as absent and uses empty body', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          body: '   ',
+        },
+      );
+      await response.backgroundTask;
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        '',
+        ['authenticated-user'],
+        [],
+      );
     });
 
     it('creates issue with body containing referenceUrl when referenceUrl is provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStory()), {
-        pjcode: 'acme',
-        title: 'New task title',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-        referenceUrl: 'https://github.com/owner/repo/issues/99',
-      });
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          referenceUrl: 'https://github.com/owner/repo/issues/99',
+        },
+      );
+      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
         'New task title',
         'Related: https://github.com/owner/repo/issues/99',
-        [],
+        ['authenticated-user'],
         [],
       );
     });
 
     it('creates issue with empty body when referenceUrl is not provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStory()), {
-        pjcode: 'acme',
-        title: 'New task title',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-      });
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
         'New task title',
         '',
-        [],
+        ['authenticated-user'],
         [],
       );
     });
@@ -2431,13 +2954,23 @@ describe('consoleOperationApi', () => {
         itemId: 'PVTI_new',
       };
       issueRepository.get.mockResolvedValue(createdIssue);
-      await handleCreateIssue(contextForProject(projectWithStoryAndAgent()), {
-        pjcode: 'acme',
-        title: 'Task with agent',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-        agentOptionId: 'agent_opt_developer',
-      });
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(
+          () => ({
+            getProject: jest.fn().mockResolvedValue(projectWithStoryAndAgent()),
+            updateStoryList: jest.fn(),
+          }),
+          projectWithStoryAndAgent(),
+        ),
+        {
+          pjcode: 'acme',
+          title: 'Task with agent',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          agentOptionId: 'agent_opt_developer',
+        },
+      );
+      await response.backgroundTask;
       expect(issueRepository.setIssueAgentField).toHaveBeenCalledWith(
         'https://github.com/acme-labs/portal/issues/42',
         expect.objectContaining({ agent: agentField }),
@@ -2447,12 +2980,19 @@ describe('consoleOperationApi', () => {
 
     it('skips setting agent when agentOptionId is not provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStory()), {
-        pjcode: 'acme',
-        title: 'Task without agent',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-      });
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'Task without agent',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      await response.backgroundTask;
       expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
 
@@ -2462,14 +3002,54 @@ describe('consoleOperationApi', () => {
         agent: null,
       });
       issueRepository.get.mockResolvedValue(null);
-      await handleCreateIssue(contextForProject(projectWithStoryNoAgent()), {
-        pjcode: 'acme',
-        title: 'Task',
-        storyOptionId: 'opt_blue',
-        nameWithOwner: 'acme-labs/portal',
-        agentOptionId: 'agent_opt_developer',
-      });
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(
+          () => ({
+            getProject: jest.fn().mockResolvedValue(projectWithStoryNoAgent()),
+            updateStoryList: jest.fn(),
+          }),
+          projectWithStoryNoAgent(),
+        ),
+        {
+          pjcode: 'acme',
+          title: 'Task',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          agentOptionId: 'agent_opt_developer',
+        },
+      );
+      await response.backgroundTask;
       expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
+    });
+
+    it('assigns the authenticated user as assignee when creating an issue', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      issueRepository.getAuthenticatedUserLogin.mockResolvedValue(
+        'authenticated-user',
+      );
+
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'New task title',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      await response.backgroundTask;
+
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'New task title',
+        '',
+        ['authenticated-user'],
+        [],
+      );
     });
   });
 
@@ -2858,6 +3438,32 @@ describe('consoleOperationApi', () => {
         body: { error: 'cannot move in that direction' },
       });
       expect(updateStoryList).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 when the target option has been deleted server-side', async () => {
+      const cachedProject = projectWithOrderedStories();
+      const cachedStory = cachedProject.story;
+      if (cachedStory === null) throw new Error('cachedStory must not be null');
+      const freshProject: Project = {
+        ...cachedProject,
+        story: {
+          ...cachedStory,
+          stories: cachedStory.stories.filter((s) => s.id !== 'opt_b'),
+        },
+      };
+      const localUpdateStoryList = jest.fn().mockResolvedValue([]);
+      const response = await handleReorderStory(
+        contextWithProjectRepository(() => ({
+          updateStoryList: localUpdateStoryList,
+          getProject: jest.fn().mockResolvedValue(freshProject),
+        })),
+        { pjcode: 'acme', storyOptionId: 'opt_b', direction: 'up' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'story option not found' },
+      });
+      expect(localUpdateStoryList).not.toHaveBeenCalled();
     });
   });
 
@@ -4426,6 +5032,189 @@ describe('consoleOperationApi', () => {
     });
   });
 
+  describe('handleStoryUpdateDescription', () => {
+    const projectWithStoriesToUpdateDescription = (): Project => ({
+      ...project,
+      url: 'https://github.com/orgs/acme-labs/projects/1',
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'opt_alpha',
+            name: 'Alpha story',
+            color: 'BLUE',
+            description: 'Original description',
+          },
+          {
+            id: 'opt_beta',
+            name: 'Beta story',
+            color: 'GREEN',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    });
+
+    const updateDescriptionStoryList = jest.fn();
+    const descGetProject = jest.fn();
+    const descProjectRepositoryResolver = jest.fn(() => ({
+      updateStoryList: updateDescriptionStoryList,
+      getProject: descGetProject,
+    }));
+
+    const descriptionContext = (p: Project): ConsoleOperationContext => ({
+      ...contextForProject(p),
+      resolveProjectRepository: descProjectRepositoryResolver,
+    });
+
+    beforeEach(() => {
+      updateDescriptionStoryList.mockResolvedValue([]);
+      descGetProject.mockResolvedValue(null);
+      descProjectRepositoryResolver.mockReturnValue({
+        updateStoryList: updateDescriptionStoryList,
+        getProject: descGetProject,
+      });
+    });
+
+    it('calls updateStoryList with the updated description and returns 200', async () => {
+      const p = projectWithStoriesToUpdateDescription();
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(p),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: 'Updated description',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true });
+      expect(updateDescriptionStoryList).toHaveBeenCalledWith(p, [
+        {
+          id: 'opt_alpha',
+          name: 'Alpha story',
+          color: 'BLUE',
+          description: 'Updated description',
+        },
+        {
+          id: 'opt_beta',
+          name: 'Beta story',
+          color: 'GREEN',
+          description: '',
+        },
+      ]);
+    });
+
+    it('allows clearing a description to empty string', async () => {
+      const p = projectWithStoriesToUpdateDescription();
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(p),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: '',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(updateDescriptionStoryList).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'opt_alpha', description: '' }),
+        ]),
+      );
+    });
+
+    it('calls invalidateProject after a successful update', async () => {
+      const p = projectWithStoriesToUpdateDescription();
+      const invalidateProject = jest.fn();
+      const ctx: ConsoleOperationContext = {
+        ...descriptionContext(p),
+        invalidateProject,
+      };
+      await handleStoryUpdateDescription(ctx, {
+        pjcode: 'acme',
+        storyOptionId: 'opt_alpha',
+        description: 'New description',
+      });
+      expect(invalidateProject).toHaveBeenCalledWith('acme');
+    });
+
+    it('returns 502 when resolveProjectRepository is null', async () => {
+      const response = await handleStoryUpdateDescription(
+        contextForProject(projectWithStoriesToUpdateDescription()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: 'New description',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 502,
+        body: { error: 'project repository is not configured' },
+      });
+    });
+
+    it('returns 400 when storyOptionId is missing', async () => {
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(projectWithStoriesToUpdateDescription()),
+        { pjcode: 'acme', description: 'New description' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'storyOptionId is required' },
+      });
+    });
+
+    it('returns 400 when description is not a string', async () => {
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(projectWithStoriesToUpdateDescription()),
+        { pjcode: 'acme', storyOptionId: 'opt_alpha' },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'description is required' },
+      });
+    });
+
+    it('returns 400 when the project has no story field', async () => {
+      const projectWithoutStory: Project = {
+        ...projectWithStoriesToUpdateDescription(),
+        story: null,
+      };
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(projectWithoutStory),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_alpha',
+          description: 'New description',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: { error: 'project does not have a story field' },
+      });
+    });
+
+    it('returns 400 when the story option is not found', async () => {
+      const response = await handleStoryUpdateDescription(
+        descriptionContext(projectWithStoriesToUpdateDescription()),
+        {
+          pjcode: 'acme',
+          storyOptionId: 'opt_nonexistent',
+          description: 'New description',
+        },
+      );
+      expect(response).toEqual({
+        statusCode: 400,
+        body: {
+          error: 'story option "opt_nonexistent" not found in project',
+        },
+      });
+    });
+  });
+
   describe('handleTimer', () => {
     it('returns 400 when pjcode is missing', () => {
       expect(handleTimer(context, {})).toEqual({
@@ -4527,13 +5316,25 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(502);
     });
 
-    it('returns 400 when maximumPreparingIssuesCount is not a positive integer', async () => {
+    it('returns 200 when maximumPreparingIssuesCount is 0', async () => {
       const response = await handleProjectMaxPreparingUpdate(
         context,
         () => 'token',
         {
           pjcode: 'acme',
           maximumPreparingIssuesCount: 0,
+        },
+      );
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('returns 400 when maximumPreparingIssuesCount is a negative integer', async () => {
+      const response = await handleProjectMaxPreparingUpdate(
+        context,
+        () => 'token',
+        {
+          pjcode: 'acme',
+          maximumPreparingIssuesCount: -1,
         },
       );
       expect(response.statusCode).toBe(400);

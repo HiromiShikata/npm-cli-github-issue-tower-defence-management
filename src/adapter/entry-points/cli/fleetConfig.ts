@@ -333,6 +333,16 @@ export const loadWorkflowImprovementIssueUrl = (
   return value;
 };
 
+export const loadFleetTaskCreateUrl = (
+  fleetConfigFilePath: string | null,
+): string | null => {
+  const settings = loadWorkflowIssueReporterSettings(fleetConfigFilePath);
+  if (settings === null) {
+    return null;
+  }
+  return `https://github.com/${settings.owner}/${settings.repo}/issues/new`;
+};
+
 export const ERROR_REPORTING_REPOSITORY_KEY = 'errorReportingRepository';
 
 export const loadErrorReportingRepository = (

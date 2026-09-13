@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { ConsoleTimerSettingsModalDialog } from './ConsoleTimerSettingsModalDialog';
 
 const baseProps = {
@@ -16,8 +16,19 @@ const baseProps = {
 };
 
 describe('ConsoleTimerSettingsModalDialog', () => {
+  let originalInnerWidth: number;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    originalInnerWidth = window.innerWidth;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: originalInnerWidth,
+    });
   });
 
   it('renders the timer button when the dialog is closed', () => {
@@ -111,7 +122,37 @@ describe('ConsoleTimerSettingsModalDialog', () => {
       />,
     );
     expect(getByLabelText('alpha')).toHaveValue(5);
-    expect(getByLabelText('beta')).toHaveValue(0);
+    expect(getByLabelText('beta')).toHaveValue(null);
+  });
+
+  it('displays empty input for projects with 0 minutes so users can type without deleting a zero first', () => {
+    const { getByLabelText } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha', 'beta']}
+        projectMinutes={{ alpha: 10, beta: 0 }}
+      />,
+    );
+    expect(getByLabelText('alpha')).toHaveValue(10);
+    expect(getByLabelText('beta')).toHaveValue(null);
+  });
+
+  it('renders the timer mode toggle after the project list', () => {
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{ alpha: 5 }}
+      />,
+    );
+    const timerSwitch = getByRole('switch', { name: 'Timer Mode' });
+    const projectList = getByRole('list');
+    expect(
+      projectList.compareDocumentPosition(timerSwitch) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('shows "Skip" label for projects with 0 minutes', () => {
@@ -140,9 +181,9 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     expect(onSave).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onToggleTimerMode when the timer mode checkbox is changed', () => {
+  it('calls onToggleTimerMode when the timer mode switch is clicked', () => {
     const onToggleTimerMode = jest.fn();
-    const { getByLabelText } = render(
+    const { getByRole } = render(
       <ConsoleTimerSettingsModalDialog
         {...baseProps}
         isOpen={true}
@@ -150,7 +191,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
         onToggleTimerMode={onToggleTimerMode}
       />,
     );
-    fireEvent.click(getByLabelText('Timer Mode'));
+    fireEvent.click(getByRole('switch', { name: 'Timer Mode' }));
     expect(onToggleTimerMode).toHaveBeenCalledWith(true);
   });
 
@@ -180,5 +221,46 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     );
     fireEvent.click(getByRole('button', { name: 'Close settings' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('clamps dialog right position so dialog stays within viewport when button is near the left edge', async () => {
+    const testViewportWidth = 500;
+    const buttonRight = 35;
+    const cssDialogMinWidth = 280;
+    const edgeMargin = 8;
+    const maxAllowedRight = testViewportWidth - cssDialogMinWidth - edgeMargin;
+
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: testViewportWidth,
+    });
+
+    const { getByRole, rerender } = render(
+      <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={false} />,
+    );
+
+    const settingsButton = getByRole('button', { name: 'Console Settings' });
+    jest.spyOn(settingsButton, 'getBoundingClientRect').mockReturnValue({
+      right: buttonRight,
+      bottom: 40,
+      top: 10,
+      left: 5,
+      width: 30,
+      height: 30,
+      x: 5,
+      y: 10,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    await act(async () => {
+      rerender(
+        <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={true} />,
+      );
+    });
+
+    const dialog = getByRole('dialog');
+    const rightValue = parseFloat((dialog as HTMLElement).style.right);
+    expect(rightValue).toBeLessThanOrEqual(maxAllowedRight);
   });
 });

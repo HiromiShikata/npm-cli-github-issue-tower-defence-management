@@ -15,6 +15,7 @@ describe('useConsoleProjectList', () => {
     expect(result.current.isLoading).toBe(true);
     expect(result.current.pjcodes).toEqual([]);
     expect(result.current.workflowImprovementIssueUrl).toBeNull();
+    expect(result.current.fleetTaskCreateUrl).toBeNull();
     expect(result.current.error).toBeNull();
   });
 
@@ -31,6 +32,7 @@ describe('useConsoleProjectList', () => {
     });
     expect(result.current.pjcodes).toEqual(['acme', 'beta']);
     expect(result.current.workflowImprovementIssueUrl).toBeNull();
+    expect(result.current.fleetTaskCreateUrl).toBeNull();
     expect(result.current.error).toBeNull();
   });
 
@@ -55,6 +57,27 @@ describe('useConsoleProjectList', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('populates fleetTaskCreateUrl when the server returns it', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcodes: ['acme'],
+        fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
+      }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList());
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.pjcodes).toEqual(['acme']);
+    expect(result.current.fleetTaskCreateUrl).toBe(
+      'https://github.com/myorg/myrepo/issues/new',
+    );
+    expect(result.current.error).toBeNull();
+  });
+
   it('sets error and clears loading state when fetchProjectList rejects', async () => {
     global.fetch = jest.fn(async () => ({
       ok: false,
@@ -69,6 +92,26 @@ describe('useConsoleProjectList', () => {
     expect(result.current.error).toBeInstanceOf(Error);
     expect(result.current.error?.message).toBe('HTTP 401');
     expect(result.current.pjcodes).toEqual([]);
+  });
+
+  it('populates projectUrls when the server returns a project URL map', async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        pjcodes: ['acme'],
+        projectUrls: { acme: 'https://github.com/users/owner/projects/1' },
+      }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useConsoleProjectList());
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.projectUrls).toEqual({
+      acme: 'https://github.com/users/owner/projects/1',
+    });
+    expect(result.current.error).toBeNull();
   });
 
   it('skips state update when component unmounts before fetch resolves', async () => {

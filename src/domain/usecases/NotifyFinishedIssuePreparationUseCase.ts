@@ -19,7 +19,7 @@ import {
 } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isTriagerAgentName, PR_REVIEWER_AGENT_NAME } from './triagerAgentName';
+import { isTriagerAgentName } from './triagerAgentName';
 import {
   ConsoleListItem,
   ConsoleTabName,
@@ -29,7 +29,6 @@ import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
-import { extractWaitingForOwner } from './extractWaitingForOwner';
 import { findLastAgentReport } from './findLastAgentReport';
 
 import {
@@ -52,6 +51,7 @@ import {
   WorkflowIssueReporterSettings,
 } from './reportSilentRedispatchWorkflowIssue';
 import { DEPENDED_ISSUE_URLS_COMMENT_HEAD } from './dependencyNotificationCommentHeads';
+import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 
 export class IssueNotFoundError extends Error {
   constructor(issueUrl: string) {
@@ -120,6 +120,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       | 'searchIssue'
       | 'createNewIssue'
       | 'createCommentByUrl'
+      | 'getIssueOrPullRequestComments'
       | 'updateNextActionDate'
       | 'updateStory'
       | 'addIssueToProject'
@@ -295,7 +296,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         `${DEPENDED_ISSUE_URLS_COMMENT_HEAD}\n${issue.dependedIssueUrls.map((url) => `- ${url}`).join('\n')}`,
       );
@@ -312,7 +313,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingWorkspaceStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         `Reactivation trigger not yet reached: nextActionDate=${issue.nextActionDate?.toISOString() ?? 'null'}, nextActionHour=${issue.nextActionHour ?? 'null'}`,
       );
@@ -349,22 +350,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       return;
     }
 
-    const waitingForOwner = lastAgentReport
-      ? extractWaitingForOwner(lastAgentReport.content)
-      : false;
-    if (waitingForOwner) {
-      issue.status = AWAITING_OWNER_STATUS_NAME;
-      await this.issueRepository.update(issue, project);
-      await this.issueRepository.updateStatus(
-        project,
-        issue,
-        awaitingOwnerStatusOption.id,
-      );
-      await this.patchConsoleTab(issue);
-      console.log('Auto Status Check: AWAITING_OWNER');
-      return;
-    }
-
     const ciFailingPrUrl = await this.resolveLinkedPrWithCiFailure(
       issue,
       params.developerAgentNames ?? null,
@@ -397,7 +382,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.issueUrl,
         project,
       );
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         `Auto Status Check: REJECTED\n- ANY_CI_JOB_FAILED_OR_IN_PROGRESS: ${ciFailingPrUrl}`,
       );
@@ -411,7 +396,6 @@ export class NotifyFinishedIssuePreparationUseCase {
       resolveLabelsNotRequiringPullRequest(params),
       nextStepAgent,
       params.developerAgentNames,
-      params.agents,
     );
 
     const rejectionStatusMessage =
@@ -450,7 +434,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.issueUrl,
         project,
       );
-      await this.issueCommentRepository.createComment(
+      await this.createCommentWithDedup(
         issue,
         `${rejectionStatusMessage}\n\nFailed to pass the check automatically for ${params.thresholdForAutoReject} times`,
       );
@@ -484,10 +468,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         failedPreparationStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
-        issue,
-        repetition.comment,
-      );
+      await this.createCommentWithDedup(issue, repetition.comment);
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
         params.workflowBlockerResolvedWebhookUrl,
@@ -516,10 +497,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingOwnerStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
-        issue,
-        repetition.comment,
-      );
+      await this.createCommentWithDedup(issue, repetition.comment);
       return;
     }
     if (repetition.type === 'escalateDispatchLoop' && nextStepAgent === null) {
@@ -531,10 +509,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         failedPreparationStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.issueCommentRepository.createComment(
-        issue,
-        repetition.comment,
-      );
+      await this.createCommentWithDedup(issue, repetition.comment);
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
         params.workflowBlockerResolvedWebhookUrl,
@@ -581,19 +556,13 @@ export class NotifyFinishedIssuePreparationUseCase {
           params.issueUrl,
           project,
         );
-        await this.issueCommentRepository.createComment(
-          issue,
-          rejectionStatusMessage,
-        );
+        await this.createCommentWithDedup(issue, rejectionStatusMessage);
       }
       if (
         repetition.type === 'dispatchAgain' ||
         repetition.type === 'storyUnset'
       ) {
-        await this.issueCommentRepository.createComment(
-          issue,
-          repetition.comment,
-        );
+        await this.createCommentWithDedup(issue, repetition.comment);
       }
       return;
     }
@@ -640,10 +609,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       project,
     );
 
-    await this.issueCommentRepository.createComment(
-      issue,
-      rejectionStatusMessage,
-    );
+    await this.createCommentWithDedup(issue, rejectionStatusMessage);
   };
 
   private handleTransientFailureDeferral = async (
@@ -666,7 +632,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       awaitingWorkspaceStatusOption.id,
     );
     await this.patchConsoleTab(issue);
-    await this.issueCommentRepository.createComment(
+    await this.createCommentWithDedup(
       issue,
       `Preparation deferred due to transient failure; item reactivates from ${tomorrow.toISOString().split('T')[0]}\nSession stop reason: ${sessionErrorLine ?? '(not captured)'}`,
     );
@@ -746,7 +712,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       awaitingWorkspaceStatusOption.id,
     );
     await this.patchConsoleTab(issue);
-    await this.issueCommentRepository.createComment(
+    await this.createCommentWithDedup(
       issue,
       `Session ended: agent definition \`${missingAgentName}\` was not found.\nItem blocked until the following task issue is resolved:\n${taskIssueUrl}`,
     );
@@ -835,7 +801,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       awaitingWorkspaceStatusOption.id,
     );
     await this.patchConsoleTab(issue);
-    await this.issueCommentRepository.createComment(
+    await this.createCommentWithDedup(
       issue,
       `nextStepAgent \`${nextStepAgent}\` is not in the configured agents list. Created workflow blocker task:\n${blockerIssueUrl}`,
     );
@@ -853,7 +819,6 @@ export class NotifyFinishedIssuePreparationUseCase {
     labelsNotRequiringPullRequest: string[],
     nextStepAgent: string | null,
     developerAgentNames?: string[] | null,
-    agents?: string[] | null,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -887,19 +852,13 @@ export class NotifyFinishedIssuePreparationUseCase {
     const effectiveDeveloperAgentNames = developerAgentNames?.length
       ? developerAgentNames
       : ['developer'];
-    const lastReportIsFromKnownNonDeveloperAgent =
+    const lastReportIsFromDeveloperAgent =
       lastAgentReport !== null &&
-      agents != null &&
-      agents.length > 0 &&
-      agents.some((name) =>
-        isAgentReportBodyFromAgent(lastAgentReport.content, name),
-      ) &&
-      ![...effectiveDeveloperAgentNames, PR_REVIEWER_AGENT_NAME].some((name) =>
+      effectiveDeveloperAgentNames.some((name) =>
         isAgentReportBodyFromAgent(lastAgentReport.content, name),
       );
     const requiredPrRejections =
-      isTriagerAgentName(nextStepAgent) ||
-      lastReportIsFromKnownNonDeveloperAgent
+      isTriagerAgentName(nextStepAgent) || !lastReportIsFromDeveloperAgent
         ? prRejections.filter(
             (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
           )
@@ -1081,5 +1040,23 @@ export class NotifyFinishedIssuePreparationUseCase {
       item,
       targetTabName,
     });
+  };
+
+  private createCommentWithDedup = async (
+    issue: Issue,
+    body: string,
+  ): Promise<void> => {
+    const existing =
+      await this.issueCommentRepository.getCommentsFromIssue(issue);
+    if (
+      isDuplicateWithinWindow(
+        body,
+        existing.map((c) => ({ text: c.content, createdAt: c.createdAt })),
+        new Date(),
+      )
+    ) {
+      return;
+    }
+    await this.issueCommentRepository.createComment(issue, body);
   };
 }

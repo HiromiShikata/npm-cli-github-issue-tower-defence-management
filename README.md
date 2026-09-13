@@ -29,7 +29,6 @@ Commands:
   attachOrCreate [options]              Attach to an existing registered tmux session for the issue URL, or create a new one
   ownerCallFileAppend [options]         Append one owner call to the per-session owner call file (writes nothing to stdout)
   ownerCallFileDelete [options]         Delete the per-session owner call file (writes nothing to stdout; an already absent file is not an error)
-  doraMetrics [options]                 Measure DORA metrics for configured projects and create a weekly report issue
   help [command]                        display help for command
 
 Options for schedule:
@@ -78,7 +77,7 @@ Options for serveWeb (and its deprecated alias serveConsole):
   --dashboardDir <path>                            Directory containing the static dashboard HTML fragment tdpm.txt served at /tdpm.txt when compose mode is not active (default: the jsonpub directory)
   --dashboardDataDir <path>                        Directory containing the dashboard data files (projects/<projectName>.json, machine-status.json, token-status.json); when set and every required file is present the server composes the /tdpm.txt fragment from them, otherwise it falls back to serving the static tdpm.txt from --dashboardDir (unset when not configured)
   --dashboardProjectNames <names>                  Comma-separated project names, in display order, for the dashboard project grid; the display label of each project is its first 2 characters, which must be unique across the listed names
-  --fleetConfigFilePath <path>                     Path to the fleet-wide YAML config file; falls back to the TDPM_FLEET_CONFIG environment variable. When the file contains a top-level `workflowImprovementIssueUrl` string, the console tab bar displays a link that opens that URL in a new browser tab.
+  --fleetConfigFilePath <path>                     Path to the fleet-wide YAML config file; falls back to the TDPM_FLEET_CONFIG environment variable. When the file contains a top-level `workflowImprovementIssueUrl` string, the console tab bar displays a link that opens that URL in a new browser tab. When the file contains a `workflowIssueReporter` section with `owner` and `repo` fields, the console tab bar displays a + link that opens `https://github.com/{owner}/{repo}/issues/new` in a new browser tab for creating fleet-level tasks.
 
 Options for selectOauthToken:
   --tokenListJsonPath <path>                       Path to the JSON array of { name, token, selectionWeight? } records; selectionWeight is an optional positive number (default 1) that biases how often a token is chosen among eligible candidates (falls back to the CLAUDE_CODE_OAUTH_TOKEN_LIST_JSON_PATH environment variable)
@@ -246,22 +245,13 @@ TOKEN=$(npx github-issue-tower-defence-management selectLiveSessionOauthToken --
 npx github-issue-tower-defence-management countInTmuxByHumanSessionsPerToken --configFilePath ./preparator-config.yml --tokenListJsonPath ./claudeCodeOauthTokenList.json
 ```
 
-```
-npx github-issue-tower-defence-management doraMetrics --configFilePath ./dora-metrics.yml
-```
-
-Options for doraMetrics:
--c, --configFilePath <path> Path to DORA metrics YAML config file (required)
---since <date> Start of measurement period (ISO 8601 UTC, default: 7 days before --until)
---until <date> End of measurement period (ISO 8601 UTC, default: now)
-
 ## Config
 
 ### Schedule Command Config
 
 The `config.yaml` for the `schedule` command must match the input type of `HandleScheduledEventUseCase.run()`. Below is the structure:
 
-Workflow status names (`Unread`, `Awaiting Workspace`, `Awaiting Owner`, `Preparation`, `Failed Preparation`, `Todo by human`, `Todo by agent`, `In Tmux by human`, `In Tmux by agent`, `Done`, `Icebox`) are fixed code constants and cannot be overridden from CLI options, config files, or project README. The `schedule` command automatically creates any missing required statuses on the target project on each run via `SetupTowerDefenceProjectUseCase`. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated to `Todo by human` and `In Tmux by human` respectively by reusing the existing option IDs so that task associations are preserved. The legacy `PC Todo` status is removed from the required list and excluded from the project status list on the next setup run. The legacy `Awaiting Task Breakdown` status is removed from the required list; any project items in that status are automatically moved to `Todo by human` and the status option is removed on the next setup run. The `Awaiting Owner` status is a required workflow status; when an agent posts a report with `waitingForOwner: true`, the issue is moved to `Awaiting Owner` and held there until the owner responds without being redispatched.
+Workflow status names (`Unread`, `Awaiting Workspace`, `Awaiting Owner`, `Preparation`, `Failed Preparation`, `Todo by human`, `Todo by agent`, `In Tmux by human`, `In Tmux by agent`, `Done`, `Icebox`) are fixed code constants and cannot be overridden from CLI options, config files, or project README. The `schedule` command automatically creates any missing required statuses on the target project on each run via `SetupTowerDefenceProjectUseCase`. Projects with the legacy `Todo` and `In Tmux` status names are automatically migrated to `Todo by human` and `In Tmux by human` respectively by reusing the existing option IDs so that task associations are preserved. The legacy `PC Todo` status is removed from the required list and excluded from the project status list on the next setup run. The legacy `Awaiting Task Breakdown` status is removed from the required list; any project items in that status are automatically moved to `Todo by human` and the status option is removed on the next setup run. The `Awaiting Owner` status is a required workflow status.
 
 The two tmux-related statuses have distinct meanings. `In Tmux by human` means a task being handled in a live tmux session together with the human owner, who attends the session and converses with it; the owner does look at these tasks. `In Tmux by agent` means a task managed by an agent in tmux that the human owner does not look at. A task launched into a live, owner-attended session therefore belongs to `In Tmux by human`, and setting such a task to `In Tmux by agent` would remove it from the owner's view.
 
@@ -363,55 +353,6 @@ dailySecurityScan:
   kevReportRepo: 'security-reports'
 ```
 
-### doraMetrics Config
-
-The YAML config file passed to `--configFilePath` must contain the following structure:
-
-```yaml
-reportOwner: string # GitHub owner (user or org) of the repository where the weekly report issue is created (required)
-reportRepo: string # Repository name where the weekly report issue is created (required)
-projects: # Array of projects to measure (required)
-  - name: string # Display name of the project used in the report (required)
-    owner: string # GitHub owner of the project repository (required)
-    repo: string # GitHub repository name of the project (required)
-    deployWorkflowFiles: # Workflow file names (e.g. deploy.yml) that represent a production deployment. When non-empty, deploy frequency = count of workflow runs; when empty, deploy frequency = count of merged pull requests
-      - string
-    deployBranch: string | null # Branch filter for workflow run queries (null = all branches)
-    prBaseBranch: string | null # Base branch filter for pull request queries (null = all branches)
-    mttrLabels: # Issue labels used to identify incidents for MTTR calculation. When empty, MTTR is null
-      - string
-    ghTokenEnvVar: string | null # Name of an environment variable holding a GitHub token for this project's owner. When null, the default GH_TOKEN is used
-```
-
-Example:
-
-```yaml
-reportOwner: my-org
-reportRepo: dora-reports
-projects:
-  - name: My App
-    owner: my-org
-    repo: my-app
-    deployWorkflowFiles:
-      - deploy.yml
-    deployBranch: main
-    prBaseBranch: main
-    mttrLabels:
-      - incident
-      - hotfix
-    ghTokenEnvVar: null
-  - name: Partner Service
-    owner: partner-org
-    repo: partner-service
-    deployWorkflowFiles: []
-    deployBranch: null
-    prBaseBranch: main
-    mttrLabels: []
-    ghTokenEnvVar: GH_PARTNER_TOKEN
-```
-
-`GH_TOKEN` must be set in the environment. When `ghTokenEnvVar` is non-null for a project, that environment variable must also be set; the CLI exits with code 1 if it is absent.
-
 ### startDaemon and notifyFinishedIssuePreparation Commands Config
 
 The config YAML for `startDaemon` and `notifyFinishedIssuePreparation` commands:
@@ -445,6 +386,7 @@ consoleGithubTokens?: Record<string, string> # Optional: Inline map of pjcode to
 consoleGithubTokenFileDir?: string # Deprecated: Previously used to read per-project tokens from files named tdpm-github-token-{pjcode}.txt. No longer used; set consoleGithubTokens instead.
 githubAppPrivateKeyPaths?: string[] # Optional: Array of filesystem paths to GitHub App private key PEM files. At runtime, TDPM mints a short-lived read-only installation access token from each key path in order and uses them for read-only GitHub API calls (REST reads via RestIssueRepository and RestProjectRepository, non-mutation GraphQL queries via GraphqlProjectRepository, and Console HTTP server reads). Each path must point to a PEM file, and the corresponding JSON config file (same directory, same name with -private-key.pem replaced by .json) must contain a client_id field. Paths are tried in order; paths whose App has no installation for the target account are skipped. Write operations always use the manager token from GH_TOKEN. When unset or empty, the manager token is used for all calls.
 workflowBlockerStoryName?: string # Optional: Story field name that the Console "workflow-blocker" tab matches (case-insensitive). Every non-closed issue with this story is listed regardless of status or reactivation-trigger fields. When unset, the workflow-blocker list is always empty
+defaultTaskNameWithOwner?: string # Optional: Default `owner/repo` used when the Console "Create task" dialog opens. When set, this value overrides the heuristic that picks the nameWithOwner of the first issue on the board. When unset, the heuristic applies.
 inTmuxDataOutputDir?: string # Optional: Base output directory for the in-tmux-by-human per-project and index JSON files written each schedule cycle. When unset, in-tmux-by-human generation is skipped
 inTmuxConsoleBaseUrl?: string # Optional: Console base URL used to build the tdpmConsoleUrl in the v3/v4 in-tmux-by-human files (for example https://console.example.com). When unset, the v3 and v4 files are skipped
 inTmuxConsoleToken?: string # Optional: Token embedded in the ?k= query string of the v4 in-tmux-by-human files. When unset, the v4 per-project file and index.v4.json are skipped
@@ -805,13 +747,11 @@ The following use cases execute on every `schedule` trigger (cadence is determin
 
 The following use cases run only when at least 600 seconds have elapsed since the last slow sweep:
 
-- `AnalyzeStoriesUseCase`
 - `CreateNewStoryByLabelUseCase`
 - `ChangeStatusByStoryColorUseCase`
 - `UpdateIssueStatusByLabelUseCase`
 - `SetWorkflowManagementIssueToStoryUseCase`
 - `SetNoStoryIssueToStoryUseCase`
-- `AnalyzeProblemByIssueUseCase`
 - `ActionAnnouncementUseCase`
 - `ClearPastNextActionDateHourUseCase`
 - `ClearDependedIssueURLUseCase`

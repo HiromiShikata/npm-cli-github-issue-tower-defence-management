@@ -126,7 +126,7 @@ export const useConsoleProjectSettings = (
         Object.entries(inputValues)
           .filter(([, value]) => {
             const parsed = parseInt(value, 10);
-            return !Number.isNaN(parsed) && parsed >= 1;
+            return !Number.isNaN(parsed) && parsed >= 0;
           })
           .map(([pjcode, value]) =>
             postProjectMaxPreparingUpdate({

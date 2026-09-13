@@ -3,7 +3,6 @@ import { mock } from 'jest-mock-extended';
 import { ActionAnnouncementUseCase } from './ActionAnnouncementUseCase';
 import { SetWorkflowManagementIssueToStoryUseCase } from './SetWorkflowManagementIssueToStoryUseCase';
 import { ClearPastNextActionDateHourUseCase } from './ClearPastNextActionDateHourUseCase';
-import { AnalyzeStoriesUseCase } from './AnalyzeStoriesUseCase';
 import { ClearDependedIssueURLUseCase } from './ClearDependedIssueURLUseCase';
 import { SetDependedIssueUrlForOpenTaskPRsUseCase } from './SetDependedIssueUrlForOpenTaskPRsUseCase';
 import { StaleTaskPullRequestCloseUseCase } from './StaleTaskPullRequestCloseUseCase';
@@ -98,7 +97,6 @@ describe('HandleScheduledEventUseCase', () => {
       mock<SetWorkflowManagementIssueToStoryUseCase>();
     const mockClearPastNextActionDateHourUseCase =
       mock<ClearPastNextActionDateHourUseCase>();
-    const mockAnalyzeStoriesUseCase = mock<AnalyzeStoriesUseCase>();
     const mockClearDependedIssueURLUseCase =
       mock<ClearDependedIssueURLUseCase>();
     const mockSetDependedIssueUrlForOpenTaskPRsUseCase =
@@ -143,7 +141,6 @@ describe('HandleScheduledEventUseCase', () => {
       mockActionAnnouncementUseCase,
       mockSetWorkflowManagementIssueToStoryUseCase,
       mockClearPastNextActionDateHourUseCase,
-      mockAnalyzeStoriesUseCase,
       mockClearDependedIssueURLUseCase,
       mockSetDependedIssueUrlForOpenTaskPRsUseCase,
       mockStaleTaskPullRequestCloseUseCase,
@@ -181,6 +178,7 @@ describe('HandleScheduledEventUseCase', () => {
         project: mock<Project>(),
         cacheUsed: false,
       });
+      mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
       mockSpreadsheetRepository.getSheet.mockResolvedValue([
         ['LastExecutionDateTime'],
         ['2024-01-01T00:00:00Z'],
@@ -243,6 +241,67 @@ describe('HandleScheduledEventUseCase', () => {
       expect(mockAgentDesignationLabelAdoptUseCase.run).toHaveBeenCalledWith(
         expect.objectContaining({
           agentDesignationLabelsToKeep: ['story'],
+        }),
+      );
+    });
+
+    it('should pass defaultAgentName from startPreparation to agentDesignationLabelAdoptUseCase', async () => {
+      const mockProject = mock<Project>();
+      const mockIssues = [mock<Issue>()];
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: mockIssues,
+        project: mockProject,
+        cacheUsed: false,
+      });
+      await useCase.run({
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+        startPreparation: {
+          defaultAgentName: 'chore',
+          configFilePath: '/path/to/config.yml',
+          maximumPreparingIssuesCount: null,
+        },
+      });
+      expect(mockAgentDesignationLabelAdoptUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultAgentName: 'chore',
+        }),
+      );
+    });
+
+    it('should pass null defaultAgentName to agentDesignationLabelAdoptUseCase when startPreparation is not configured', async () => {
+      const mockProject = mock<Project>();
+      const mockIssues = [mock<Issue>()];
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        issues: mockIssues,
+        project: mockProject,
+        cacheUsed: false,
+      });
+      await useCase.run({
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      });
+      expect(mockAgentDesignationLabelAdoptUseCase.run).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultAgentName: null,
         }),
       );
     });
@@ -816,6 +875,52 @@ describe('HandleScheduledEventUseCase', () => {
         );
         expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
       });
+
+      it('should not create a new story issue when a closed story issue already exists', async () => {
+        const closedStoryIssue: Issue = {
+          nameWithOwner: 'test-org/test-repo',
+          number: 50,
+          title: 'feature / StoryOne',
+          state: 'CLOSED',
+          status: 'Done',
+          story: null,
+          nextActionDate: null,
+          nextActionHour: null,
+          estimationMinutes: null,
+          dependedIssueUrls: [],
+          completionDate50PercentConfidence: null,
+          url: 'https://github.com/test-org/test-repo/issues/50',
+          assignees: [],
+          labels: ['story'],
+          org: 'test-org',
+          repo: 'test-repo',
+          body: '',
+          itemId: 'item-50',
+          isPr: false,
+          isInProgress: false,
+          isClosed: true,
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          author: '',
+          closingIssueReferenceUrls: [],
+          agent: null,
+          stateReason: 'COMPLETED',
+        };
+        mockIssueRepository.getAllIssues.mockResolvedValue({
+          issues: [closedStoryIssue],
+          project: storyProject,
+          cacheUsed: false,
+        });
+
+        const runPromise = useCase.run(storyInput);
+        await jest.runAllTimersAsync();
+        await runPromise;
+
+        const storyIssueCalls =
+          mockIssueRepository.createNewIssue.mock.calls.filter(
+            (call) => Array.isArray(call[5]) && call[5].includes('story'),
+          );
+        expect(storyIssueCalls).toHaveLength(0);
+      });
     });
 
     describe('slow sweep cadence', () => {
@@ -851,7 +956,6 @@ describe('HandleScheduledEventUseCase', () => {
 
         await useCase.run(baseInput);
 
-        expect(mockAnalyzeStoriesUseCase.run).toHaveBeenCalled();
         expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
         expect(mockChangeStatusByStoryColorUseCase.run).toHaveBeenCalled();
         expect(mockCreateNewStoryByLabelUseCase.run).toHaveBeenCalled();
@@ -876,7 +980,6 @@ describe('HandleScheduledEventUseCase', () => {
 
         await useCase.run(baseInput);
 
-        expect(mockAnalyzeStoriesUseCase.run).not.toHaveBeenCalled();
         expect(mockUpdateIssueStatusByLabelUseCase.run).not.toHaveBeenCalled();
         expect(mockChangeStatusByStoryColorUseCase.run).not.toHaveBeenCalled();
       });
@@ -901,7 +1004,6 @@ describe('HandleScheduledEventUseCase', () => {
         await useCase.run(baseInput);
 
         expect(mockCreateNewStoryByLabelUseCase.run).toHaveBeenCalledTimes(1);
-        expect(mockAnalyzeStoriesUseCase.run).not.toHaveBeenCalled();
       });
 
       it('should still run preparation use cases even when slow sweep is skipped', async () => {
@@ -945,7 +1047,6 @@ describe('HandleScheduledEventUseCase', () => {
 
         await useCase.run(baseInput);
 
-        expect(mockAnalyzeStoriesUseCase.run).toHaveBeenCalled();
         expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
       });
 
@@ -1802,7 +1903,6 @@ describe('HandleScheduledEventUseCase', () => {
       mock<ActionAnnouncementUseCase>(),
       mock<SetWorkflowManagementIssueToStoryUseCase>(),
       mock<ClearPastNextActionDateHourUseCase>(),
-      mock<AnalyzeStoriesUseCase>(),
       mock<ClearDependedIssueURLUseCase>(),
       mock<SetDependedIssueUrlForOpenTaskPRsUseCase>(),
       mock<StaleTaskPullRequestCloseUseCase>(),

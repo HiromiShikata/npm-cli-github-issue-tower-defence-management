@@ -10,9 +10,12 @@ export const findNextNonEmptyTabToRight = (
     return null;
   }
   for (let index = activeIndex + 1; index < CONSOLE_TABS.length; index += 1) {
-    const candidate = CONSOLE_TABS[index].name;
-    if ((counts[candidate] ?? 0) > 0) {
-      return candidate;
+    const tab = CONSOLE_TABS[index];
+    if (tab.isNavigable === false) {
+      continue;
+    }
+    if ((counts[tab.name] ?? 0) > 0) {
+      return tab.name;
     }
   }
   return null;
@@ -21,10 +24,11 @@ export const findNextNonEmptyTabToRight = (
 export const resolveDefaultActiveTab = (
   counts: Record<ConsoleTabName, number>,
 ): ConsoleTabName => {
-  for (const tab of CONSOLE_TABS) {
+  const navigableTabs = CONSOLE_TABS.filter((tab) => tab.isNavigable !== false);
+  for (const tab of navigableTabs) {
     if ((counts[tab.name] ?? 0) > 0) {
       return tab.name;
     }
   }
-  return CONSOLE_TABS[0].name;
+  return navigableTabs[0].name;
 };

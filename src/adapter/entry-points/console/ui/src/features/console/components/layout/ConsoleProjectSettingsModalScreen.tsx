@@ -24,7 +24,7 @@ export const ConsoleProjectSettingsModalScreen = ({
     pjcodes.every((pjcode) => {
       const v = inputValues[pjcode] ?? '';
       const parsed = parseInt(v, 10);
-      return v === '' || Number.isNaN(parsed) || parsed < 1;
+      return v === '' || Number.isNaN(parsed) || parsed < 0;
     });
 
   return (
@@ -61,7 +61,7 @@ export const ConsoleProjectSettingsModalScreen = ({
                 <input
                   id={`max-preparing-count-${pjcode}`}
                   type="number"
-                  min={1}
+                  min={0}
                   step={1}
                   className="console-settings-modal-input"
                   value={inputValues[pjcode] ?? ''}

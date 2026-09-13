@@ -448,7 +448,10 @@ describe('ConsolePage', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     expect(container.querySelector('.console-tab-count-heading')).toBeNull();
-    expect(getByText('snapshot: 2026-06-19T00:00:00.000Z')).toBeInTheDocument();
+    const genInfo = container.querySelector('.console-tab-geninfo');
+    expect(genInfo).toBeInTheDocument();
+    expect(genInfo?.getAttribute('title')).toBe('2026-06-19T00:00:00.000Z');
+    expect(genInfo?.textContent).toMatch(/^snapshot: \d+[smhd] ago$/);
   });
 
   it('shows a cancellable toast and only drives the tab to zero after the five second window', async () => {
@@ -481,6 +484,32 @@ describe('ConsolePage', () => {
       act(() => {
         jest.advanceTimersByTime(5100);
       });
+
+      await waitFor(() => {
+        expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('hides a processed item from the list immediately when ok & Awaiting Workspace is clicked, without waiting for the 5-second commit', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      expect(
+        within(tabBar())
+          .getByText('Awaiting Owner')
+          .closest('a')
+          ?.querySelector('.console-tab-badge')?.textContent,
+      ).toBe('1');
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('ok & Awaiting Workspace')).toBeInTheDocument();
+      fireEvent.click(getByText('ok & Awaiting Workspace'));
 
       await waitFor(() => {
         expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
@@ -785,11 +814,13 @@ describe('ConsolePage', () => {
 
   it('renders reorder buttons in the Stories tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
-    const { getAllByRole, getByText } = render(<ConsolePage />);
+    const { getAllByRole, container } = render(<ConsolePage />);
     await waitFor(() => {
       expect(
-        getByText('snapshot: 2026-06-19T00:00:00.000Z'),
-      ).toBeInTheDocument();
+        container.querySelector(
+          '.console-tab-geninfo[title="2026-06-19T00:00:00.000Z"]',
+        ),
+      ).not.toBeNull();
     });
     expect(getAllByRole('button', { name: 'Move up' }).length).toBeGreaterThan(
       0,
@@ -798,11 +829,13 @@ describe('ConsolePage', () => {
 
   it('does not render reorder buttons in the Triage tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/triage?k=token');
-    const { queryAllByRole, getByText } = render(<ConsolePage />);
+    const { queryAllByRole, container } = render(<ConsolePage />);
     await waitFor(() => {
       expect(
-        getByText('snapshot: 2026-06-19T00:00:00.000Z'),
-      ).toBeInTheDocument();
+        container.querySelector(
+          '.console-tab-geninfo[title="2026-06-19T00:00:00.000Z"]',
+        ),
+      ).not.toBeNull();
     });
     expect(queryAllByRole('button', { name: 'Move up' })).toHaveLength(0);
   });
@@ -1659,6 +1692,56 @@ describe('ConsolePage auto-advance tab', () => {
     expect(localStorage.getItem('console-story-show-gray')).toBe('true');
   });
 
+  it('navigates to the next project when the awaiting owner tab becomes empty in timer mode', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: { acme: 30, beta: 30 },
+      }),
+    );
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve & Merge'));
+      act(() => {
+        jest.advanceTimersByTime(5100);
+      });
+      await waitFor(() => {
+        expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('navigates to the next project when a completing action fires after the project timer elapses', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
@@ -1983,5 +2066,238 @@ describe('ConsolePage story-labeled item Delete Story button', () => {
     });
     fireEvent.click(getByText('⚠'));
     expect(queryByText('Delete Story')).toBeNull();
+  });
+});
+
+describe('ConsolePage task creation action queue', () => {
+  const storiesTabPayload = () => ({
+    ...listPayload('stories'),
+    defaultNameWithOwner: 'o/r',
+  });
+
+  const installFetchWithBlockingCreate = (): jest.Mock => {
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme'] }),
+        };
+      }
+      if (url === '/api/createissue') {
+        return new Promise<never>(() => {});
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    return fetchMock;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+  });
+
+  it('closes the create-task dialog immediately when Create is pressed, before postConsoleCreateIssue resolves', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithBlockingCreate();
+      const { queryByRole, getByRole, getByLabelText } = render(
+        <ConsolePage />,
+      );
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'My new task' },
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+
+      await waitFor(() => {
+        expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows a task-created undo toast immediately after Create is pressed', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithBlockingCreate();
+      const { queryByText, getByRole, getByLabelText } = render(
+        <ConsolePage />,
+      );
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'My new task' },
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+
+      await waitFor(() => {
+        expect(queryByText(/Task created — "My new task"/)).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not call postConsoleCreateIssue when Undo is clicked within 5 seconds', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = installFetchWithBlockingCreate();
+      const { getByRole, getByLabelText } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'My new task' },
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Undo' }));
+
+      act(() => {
+        jest.advanceTimersByTime(6000);
+      });
+
+      const createIssueCalls = fetchMock.mock.calls.filter(
+        ([url]: [string]) => url === '/api/createissue',
+      );
+      expect(createIssueCalls.length).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('calls postConsoleCreateIssue once after 5 seconds elapse without Undo', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url === '/api/createissue') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              issueUrl: 'https://github.com/o/r/issues/100',
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByRole, getByLabelText } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'My new task' },
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+
+      act(() => {
+        jest.advanceTimersByTime(4900);
+      });
+
+      const createCallsBefore = fetchMock.mock.calls.filter(
+        ([url]: [string]) => url === '/api/createissue',
+      );
+      expect(createCallsBefore.length).toBe(0);
+
+      await act(async () => {
+        jest.advanceTimersByTime(200);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const createCallsAfter = fetchMock.mock.calls.filter(
+        ([url]: [string]) => url === '/api/createissue',
+      );
+      expect(createCallsAfter.length).toBe(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

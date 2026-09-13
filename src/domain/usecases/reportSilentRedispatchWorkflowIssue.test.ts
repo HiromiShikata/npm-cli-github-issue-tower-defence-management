@@ -9,6 +9,7 @@ type MockIssueRepository = jest.Mocked<
     | 'searchIssue'
     | 'createNewIssue'
     | 'createCommentByUrl'
+    | 'getIssueOrPullRequestComments'
     | 'addIssueToProject'
     | 'updateStoryByProjectItemId'
   >
@@ -48,6 +49,7 @@ describe('reportSilentRedispatchWorkflowIssue', () => {
       searchIssue: jest.fn().mockResolvedValue([]),
       createNewIssue: jest.fn().mockResolvedValue(99),
       createCommentByUrl: jest.fn().mockResolvedValue(undefined),
+      getIssueOrPullRequestComments: jest.fn().mockResolvedValue([]),
       addIssueToProject: jest.fn().mockResolvedValue(''),
       updateStoryByProjectItemId: jest.fn().mockResolvedValue(undefined),
     };

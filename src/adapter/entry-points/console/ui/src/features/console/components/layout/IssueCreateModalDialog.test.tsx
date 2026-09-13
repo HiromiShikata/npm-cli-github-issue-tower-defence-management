@@ -1,6 +1,7 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 import {
+  type IssueCreateDraft,
   IssueCreateModalDialog,
   type IssueCreateModalDialogProps,
   type IssueCreateParams,
@@ -11,6 +12,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyName: 'regular / workflow improvement',
     storyOptionId: 'opt-workflow-improvement',
     color: 'BLUE',
+    description: '',
     openItemCount: 3,
     storyViewUrl: null,
     items: [],
@@ -19,6 +21,7 @@ const storyEntries: ConsoleStoryEntry[] = [
     storyName: 'regular / tdpm dashboard & console improvement',
     storyOptionId: 'opt-tdpm-console',
     color: 'GREEN',
+    description: '',
     openItemCount: 5,
     storyViewUrl: null,
     items: [],
@@ -110,6 +113,65 @@ describe('IssueCreateModalDialog', () => {
     );
   });
 
+  it('renders a body textarea', () => {
+    const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+    expect(getByRole('textbox', { name: /body/i })).not.toBeNull();
+  });
+
+  it('calls onSubmit with body: null when body textarea is empty', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'My new task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({ body: null }),
+      ),
+    );
+  });
+
+  it('calls onSubmit with body: null when body textarea contains only whitespace', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'My new task' },
+    });
+    fireEvent.change(getByRole('textbox', { name: /body/i }), {
+      target: { value: '   ' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({ body: null }),
+      ),
+    );
+  });
+
+  it('calls onSubmit with body text when body textarea is filled', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'My new task' },
+    });
+    fireEvent.change(getByRole('textbox', { name: /body/i }), {
+      target: { value: 'Detailed description here' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({ body: 'Detailed description here' }),
+      ),
+    );
+  });
+
   it('calls onSubmit with correct params when the form is valid', async () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
@@ -120,10 +182,10 @@ describe('IssueCreateModalDialog', () => {
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>({
-        storyOptionId: 'opt-workflow-improvement',
+        storyName: 'regular / workflow improvement',
         agentOptionId: null,
         title: 'My new task',
-        referenceUrl: null,
+        body: null,
         files: [],
       }),
     );
@@ -146,29 +208,37 @@ describe('IssueCreateModalDialog', () => {
     );
   });
 
-  it('calls onSubmit with referenceUrl when reference URL is filled in', async () => {
-    const onSubmit = jest.fn().mockResolvedValue(undefined);
-    const { getByRole, getByPlaceholderText } = render(
-      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+  it('renders color dot for each story entry', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const dots = document.body.querySelectorAll('.console-story-dot');
+    expect(dots.length).toBe(storyEntries.length);
+    const firstDot = dots[0] as HTMLElement;
+    expect(firstDot.style.backgroundColor).toBeTruthy();
+  });
+
+  it('does not render a Reference URL input', () => {
+    const { queryByPlaceholderText } = render(
+      <IssueCreateModalDialog {...baseProps} />,
     );
-    fireEvent.change(getByRole('textbox', { name: /title/i }), {
-      target: { value: 'Task with ref' },
-    });
-    fireEvent.change(getByPlaceholderText(/paste current task url/i), {
-      target: {
-        value:
-          'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
-      },
-    });
-    fireEvent.click(getByRole('button', { name: /^create$/i }));
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
-        expect.objectContaining({
-          referenceUrl:
-            'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
-        }),
+    expect(queryByPlaceholderText(/paste current task url/i)).toBeNull();
+  });
+
+  it('renders file input directly after body textarea and before story buttons', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const allElements = Array.from(
+      document.body.querySelectorAll(
+        'input[type="file"], .console-task-create-dialog-option-button',
       ),
     );
+    const fileInputIndex = allElements.findIndex(
+      (el) => el.tagName === 'INPUT',
+    );
+    const firstStoryButtonIndex = allElements.findIndex(
+      (el) => el.tagName === 'BUTTON',
+    );
+    expect(fileInputIndex).not.toBe(-1);
+    expect(firstStoryButtonIndex).not.toBe(-1);
+    expect(fileInputIndex).toBeLessThan(firstStoryButtonIndex);
   });
 
   it('calls onClose when Cancel is clicked', () => {
@@ -232,5 +302,270 @@ describe('IssueCreateModalDialog', () => {
     );
     fireEvent.click(getByRole('button', { name: /close/i }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('renders an open-in-new-tab link to the left of the close button when fleetTaskCreateUrl is provided', () => {
+    const url = 'https://github.com/HiromiShikata/secretary/issues/new';
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} fleetTaskCreateUrl={url} />,
+    );
+    const link = getByRole('link', { name: /open in new tab/i });
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe(url);
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noreferrer');
+  });
+
+  it('does not render the open-in-new-tab link when fleetTaskCreateUrl is null', () => {
+    const { queryByRole } = render(
+      <IssueCreateModalDialog {...baseProps} fleetTaskCreateUrl={null} />,
+    );
+    expect(queryByRole('link', { name: /open in new tab/i })).toBeNull();
+  });
+
+  it('does not render the open-in-new-tab link when fleetTaskCreateUrl is not provided', () => {
+    const { queryByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+    expect(queryByRole('link', { name: /open in new tab/i })).toBeNull();
+  });
+
+  it('renders the open-in-new-tab link to the left of the close button', () => {
+    const url = 'https://github.com/HiromiShikata/secretary/issues/new';
+    render(<IssueCreateModalDialog {...baseProps} fleetTaskCreateUrl={url} />);
+    const bar = document.body.querySelector(
+      '.console-task-create-dialog-bar-actions',
+    );
+    expect(bar).not.toBeNull();
+    const children = Array.from(bar?.children ?? []);
+    const linkIndex = children.findIndex(
+      (el) => el.tagName === 'A' && el.getAttribute('href') === url,
+    );
+    const closeIndex = children.findIndex(
+      (el) =>
+        el.tagName === 'BUTTON' && el.getAttribute('aria-label') === 'Close',
+    );
+    expect(linkIndex).not.toBe(-1);
+    expect(closeIndex).not.toBe(-1);
+    expect(linkIndex).toBeLessThan(closeIndex);
+  });
+
+  it('does not close when clicking the overlay outside the dialog', () => {
+    const onClose = jest.fn();
+    render(<IssueCreateModalDialog {...baseProps} onClose={onClose} />);
+    const overlay = document.body.querySelector(
+      '.console-task-create-dialog-overlay',
+    ) as HTMLElement;
+    fireEvent.click(overlay);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  describe('initialDraft and onDraftChange', () => {
+    it('initializes title from initialDraft when provided', () => {
+      const draft: IssueCreateDraft = {
+        title: 'Saved title',
+        body: 'Saved body',
+        storyName: storyEntries[0].storyName,
+        agentOptionId: null,
+      };
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
+      );
+      expect(getByRole('textbox', { name: /title/i })).toHaveValue(
+        'Saved title',
+      );
+    });
+
+    it('initializes body from initialDraft when provided', () => {
+      const draft: IssueCreateDraft = {
+        title: '',
+        body: 'Saved body',
+        storyName: storyEntries[0].storyName,
+        agentOptionId: null,
+      };
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
+      );
+      expect(getByRole('textbox', { name: /body/i })).toHaveValue('Saved body');
+    });
+
+    it('initializes story selection from initialDraft when provided', () => {
+      const draft: IssueCreateDraft = {
+        title: '',
+        body: '',
+        storyName: storyEntries[1].storyName,
+        agentOptionId: null,
+      };
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
+      );
+      expect(
+        getByRole('button', {
+          name: /regular \/ tdpm dashboard & console improvement/i,
+        }).getAttribute('aria-pressed'),
+      ).toBe('true');
+      expect(
+        getByRole('button', {
+          name: /regular \/ workflow improvement/i,
+        }).getAttribute('aria-pressed'),
+      ).toBe('false');
+    });
+
+    it('initializes agent selection from initialDraft when provided', () => {
+      const draft: IssueCreateDraft = {
+        title: '',
+        body: '',
+        storyName: storyEntries[0].storyName,
+        agentOptionId: 'agent-developer',
+      };
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} initialDraft={draft} />,
+      );
+      expect(
+        getByRole('button', { name: /developer/i }).getAttribute(
+          'aria-pressed',
+        ),
+      ).toBe('true');
+    });
+
+    it('calls onDraftChange when title changes', () => {
+      const onDraftChange = jest.fn();
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} onDraftChange={onDraftChange} />,
+      );
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'New title' },
+      });
+      expect(onDraftChange).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'New title' }),
+      );
+    });
+
+    it('calls onDraftChange when body changes', () => {
+      const onDraftChange = jest.fn();
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} onDraftChange={onDraftChange} />,
+      );
+      fireEvent.change(getByRole('textbox', { name: /body/i }), {
+        target: { value: 'New body' },
+      });
+      expect(onDraftChange).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'New body' }),
+      );
+    });
+  });
+
+  describe('file attachment list', () => {
+    beforeEach(() => {
+      global.URL.createObjectURL = jest.fn(
+        (file: File) => `blob:mock-url-${file.name}`,
+      );
+      global.URL.revokeObjectURL = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('displays file name in list after file is selected', async () => {
+      render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const file = new File(['content'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+      });
+      expect(document.body.textContent).toContain('report.pdf');
+    });
+
+    it('removes a file from the list when its remove button is clicked', async () => {
+      const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const file = new File(['content'], 'report.pdf', {
+        type: 'application/pdf',
+      });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file] } });
+      });
+      expect(document.body.textContent).toContain('report.pdf');
+      fireEvent.click(getByRole('button', { name: /remove report\.pdf/i }));
+      expect(document.body.textContent).not.toContain('report.pdf');
+    });
+
+    it('calls onSubmit with remaining files after removing one', async () => {
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      const { getByRole } = render(
+        <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+      );
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const file1 = new File(['c1'], 'file1.txt', { type: 'text/plain' });
+      const file2 = new File(['c2'], 'file2.txt', { type: 'text/plain' });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [file1, file2] } });
+      });
+      fireEvent.click(getByRole('button', { name: /remove file1\.txt/i }));
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Test task' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({ files: [file2] }),
+        ),
+      );
+    });
+
+    it('shows a thumbnail for image files', async () => {
+      render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const imageFile = new File(['img'], 'photo.png', { type: 'image/png' });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [imageFile] } });
+      });
+      const thumbnail = document.body.querySelector('img[alt="photo.png"]');
+      expect(thumbnail).not.toBeNull();
+      expect(thumbnail?.getAttribute('src')).toBe('blob:mock-url-photo.png');
+    });
+
+    it('does not show a thumbnail for non-image files', async () => {
+      render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const pdfFile = new File(['pdf'], 'doc.pdf', {
+        type: 'application/pdf',
+      });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [pdfFile] } });
+      });
+      expect(document.body.querySelector('img')).toBeNull();
+    });
+
+    it('revokes blob URLs for image thumbnails when the file selection changes', async () => {
+      render(<IssueCreateModalDialog {...baseProps} />);
+      const fileInput = document.body.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const imageFile = new File(['img'], 'photo.png', { type: 'image/png' });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [imageFile] } });
+      });
+      const imageFile2 = new File(['img2'], 'photo2.png', {
+        type: 'image/png',
+      });
+      await act(async () => {
+        fireEvent.change(fileInput, { target: { files: [imageFile2] } });
+      });
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith(
+        'blob:mock-url-photo.png',
+      );
+    });
   });
 });

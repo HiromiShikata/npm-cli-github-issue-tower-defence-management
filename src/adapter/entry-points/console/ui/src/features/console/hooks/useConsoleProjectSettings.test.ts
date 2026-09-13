@@ -226,6 +226,28 @@ describe('useConsoleProjectSettings', () => {
     });
   });
 
+  it('save includes projects with value 0 (to disable auto-preparation)', async () => {
+    fetchMock.mockResolvedValue({ maximumPreparingIssuesCount: null });
+    const { result } = renderHook(() =>
+      useConsoleProjectSettings(['acme', 'beta']),
+    );
+    act(() => {
+      result.current.open();
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    act(() => {
+      result.current.changeInput('acme', '0');
+    });
+    await act(async () => {
+      await result.current.save();
+    });
+    expect(postMock).toHaveBeenCalledTimes(1);
+    expect(postMock).toHaveBeenCalledWith({
+      pjcode: 'acme',
+      maximumPreparingIssuesCount: 0,
+    });
+  });
+
   it('save sets error when post fails', async () => {
     fetchMock.mockResolvedValue({ maximumPreparingIssuesCount: 3 });
     postMock.mockRejectedValue(new Error('save failed'));

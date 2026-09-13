@@ -82,6 +82,16 @@ describe('ConsoleProjectSettingsModalScreen', () => {
     expect(screen.getByLabelText('Save max settings')).not.toBeDisabled();
   });
 
+  it('enables Save when a project has value 0 (to disable auto-preparation)', () => {
+    render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        inputValues={{ acme: '0', beta: '' }}
+      />,
+    );
+    expect(screen.getByLabelText('Save max settings')).not.toBeDisabled();
+  });
+
   it('disables Save when isSaving is true', () => {
     render(
       <ConsoleProjectSettingsModalScreen {...baseProps} isSaving={true} />,
@@ -99,14 +109,14 @@ describe('ConsoleProjectSettingsModalScreen', () => {
     ).toBeNull();
   });
 
-  it('displays the error message when an error is present', () => {
+  it('shows an error message when error is set', () => {
     render(
       <ConsoleProjectSettingsModalScreen
         {...baseProps}
-        error="Failed to save"
+        error="Something went wrong"
       />,
     );
-    expect(screen.getByRole('alert')).toHaveTextContent('Failed to save');
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong');
   });
 
   it('calls onClose when the close button is clicked', () => {

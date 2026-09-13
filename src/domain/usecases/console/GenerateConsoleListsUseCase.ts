@@ -76,6 +76,7 @@ export type ConsoleStoryEntry = {
   storyName: string;
   storyOptionId: string;
   color: ConsoleColor;
+  description: string;
   openItemCount: number;
   storyViewUrl: string | null;
   items: ConsoleListItem[];
@@ -109,6 +110,7 @@ export type GenerateConsoleListsInput = {
   workflowBlockerStoryName: string | null;
   urlOfStoryView: string | null;
   now: Date;
+  defaultTaskNameWithOwner?: string | null;
 };
 
 const UNKNOWN_STORY_SORT_INDEX = 999999;
@@ -124,6 +126,7 @@ export class GenerateConsoleListsUseCase {
       workflowBlockerStoryName,
       urlOfStoryView,
       now,
+      defaultTaskNameWithOwner,
     } = input;
 
     const storyOptions = project.story ? project.story.stories : [];
@@ -200,12 +203,16 @@ export class GenerateConsoleListsUseCase {
     }
 
     const defaultNameWithOwner =
-      issues.find((issue) => issue.nameWithOwner !== '')?.nameWithOwner ?? null;
+      defaultTaskNameWithOwner != null
+        ? defaultTaskNameWithOwner
+        : (issues.find((issue) => issue.nameWithOwner !== '')?.nameWithOwner ??
+          null);
 
     const storyEntries: ConsoleStoryEntry[] = storyOptions.map((option) => ({
       storyName: option.name,
       storyOptionId: option.id,
       color: option.color,
+      description: option.description,
       openItemCount: openItemCountByStory.get(option.name) ?? 0,
       storyViewUrl: urlOfStoryView
         ? `${urlOfStoryView}?sliceBy%5Bvalue%5D=${encodeForURI(option.name)}`

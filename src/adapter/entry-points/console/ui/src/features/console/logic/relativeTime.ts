@@ -37,6 +37,31 @@ export const formatRelativeTime = (iso: string, now: number): string => {
   });
 };
 
+export const formatSnapshotAge = (iso: string, now: number): string => {
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) {
+    return '';
+  }
+  const diff = now - then;
+  if (diff < 0) {
+    return '0s ago';
+  }
+  if (diff < MS_PER_MINUTE) {
+    const seconds = Math.floor(diff / MS_PER_SECOND);
+    return `${seconds}s ago`;
+  }
+  if (diff < MS_PER_HOUR) {
+    const minutes = Math.floor(diff / MS_PER_MINUTE);
+    return `${minutes}m ago`;
+  }
+  if (diff < MS_PER_DAY) {
+    const hours = Math.floor(diff / MS_PER_HOUR);
+    return `${hours}h ago`;
+  }
+  const days = Math.floor(diff / MS_PER_DAY);
+  return `${days}d ago`;
+};
+
 export const formatFullTimestamp = (iso: string): string => {
   const then = Date.parse(iso);
   if (Number.isNaN(then)) {

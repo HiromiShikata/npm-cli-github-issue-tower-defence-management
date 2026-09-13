@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { colorFromEnum } from '../../logic/colors';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 
 export type IssueCreateParams = {
-  storyOptionId: string;
+  storyName: string;
   agentOptionId: string | null;
   title: string;
-  referenceUrl: string | null;
+  body: string | null;
   files: File[];
+};
+
+export type IssueCreateDraft = {
+  title: string;
+  body: string;
+  storyName: string | null;
+  agentOptionId: string | null;
 };
 
 export type IssueCreateModalDialogProps = {
@@ -15,6 +23,9 @@ export type IssueCreateModalDialogProps = {
   agentOptions: ConsoleFieldOption[];
   onSubmit: (params: IssueCreateParams) => Promise<void>;
   onClose: () => void;
+  fleetTaskCreateUrl?: string | null;
+  initialDraft?: IssueCreateDraft | null;
+  onDraftChange?: (draft: IssueCreateDraft) => void;
 };
 
 export const IssueCreateModalDialog = ({
@@ -22,23 +33,60 @@ export const IssueCreateModalDialog = ({
   agentOptions,
   onSubmit,
   onClose,
+  fleetTaskCreateUrl = null,
+  initialDraft,
+  onDraftChange,
 }: IssueCreateModalDialogProps) => {
-  const [selectedStoryOptionId, setSelectedStoryOptionId] = useState<
-    string | null
-  >(storyEntries[0]?.storyOptionId ?? null);
+  const [selectedStoryName, setSelectedStoryName] = useState<string | null>(
+    initialDraft != null
+      ? initialDraft.storyName
+      : (storyEntries[0]?.storyName ?? null),
+  );
   const [selectedAgentOptionId, setSelectedAgentOptionId] = useState<
     string | null
-  >(null);
-  const [titleValue, setTitleValue] = useState('');
-  const [referenceUrlValue, setReferenceUrlValue] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  >(initialDraft?.agentOptionId ?? null);
+  const [titleValue, setTitleValue] = useState(initialDraft?.title ?? '');
+  const [bodyValue, setBodyValue] = useState(initialDraft?.body ?? '');
+  const [selectedFiles, setSelectedFiles] = useState<
+    Array<{ id: string; file: File }>
+  >([]);
+  const [thumbnailUrls, setThumbnailUrls] = useState<
+    ReadonlyMap<string, string>
+  >(new Map());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const onDraftChangeRef = useRef(onDraftChange);
+  onDraftChangeRef.current = onDraftChange;
 
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    onDraftChangeRef.current?.({
+      title: titleValue,
+      body: bodyValue,
+      storyName: selectedStoryName,
+      agentOptionId: selectedAgentOptionId,
+    });
+  }, [titleValue, bodyValue, selectedStoryName, selectedAgentOptionId]);
+
+  useEffect(() => {
+    const urls = new Map<string, string>();
+    for (const entry of selectedFiles) {
+      if (entry.file.type.startsWith('image/')) {
+        urls.set(entry.id, URL.createObjectURL(entry.file));
+      }
+    }
+    setThumbnailUrls(urls);
+    return () => {
+      for (const url of urls.values()) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [selectedFiles]);
 
   const handleSubmit = async (): Promise<void> => {
     const trimmedTitle = titleValue.trim();
@@ -46,20 +94,20 @@ export const IssueCreateModalDialog = ({
       setSubmitError('Title is required.');
       return;
     }
-    if (selectedStoryOptionId === null) {
+    if (selectedStoryName === null) {
       setSubmitError('Please select a story.');
       return;
     }
-    const trimmedUrl = referenceUrlValue.trim();
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const trimmedBody = bodyValue.trim();
       await onSubmit({
-        storyOptionId: selectedStoryOptionId,
+        storyName: selectedStoryName,
         agentOptionId: selectedAgentOptionId,
         title: trimmedTitle,
-        referenceUrl: trimmedUrl.length > 0 ? trimmedUrl : null,
-        files: selectedFiles,
+        body: trimmedBody.length > 0 ? trimmedBody : null,
+        files: selectedFiles.map((entry) => entry.file),
       });
       onClose();
     } catch (err) {
@@ -81,14 +129,27 @@ export const IssueCreateModalDialog = ({
           <span className="console-task-create-dialog-title">
             Create new task
           </span>
-          <button
-            type="button"
-            className="console-task-create-dialog-close"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            ✕
-          </button>
+          <div className="console-task-create-dialog-bar-actions">
+            {fleetTaskCreateUrl !== null && (
+              <a
+                href={fleetTaskCreateUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="console-task-create-dialog-open-link"
+                aria-label="Open in new tab"
+              >
+                ↗
+              </a>
+            )}
+            <button
+              type="button"
+              className="console-task-create-dialog-close"
+              aria-label="Close"
+              onClick={onClose}
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div className="console-task-create-dialog-body">
           <span className="console-task-create-dialog-section-label">
@@ -104,6 +165,75 @@ export const IssueCreateModalDialog = ({
             rows={3}
           />
 
+          <span className="console-task-create-dialog-section-label">Body</span>
+          <textarea
+            className="console-task-create-dialog-textarea"
+            aria-label="Body"
+            value={bodyValue}
+            onChange={(e) => setBodyValue(e.target.value)}
+            disabled={submitting}
+            rows={4}
+          />
+
+          <span className="console-task-create-dialog-section-label">
+            Attachments
+          </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="console-task-create-dialog-file-input"
+            disabled={submitting}
+            onChange={(e) => {
+              const newEntries = Array.from(e.target.files ?? []).map(
+                (file) => ({ id: crypto.randomUUID(), file }),
+              );
+              setSelectedFiles((prev) => [...prev, ...newEntries]);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+            }}
+          />
+          {selectedFiles.length > 0 && (
+            <ul className="console-task-create-dialog-file-list">
+              {selectedFiles.map((entry) => {
+                const rawThumb = thumbnailUrls.get(entry.id);
+                const thumbnailSrc =
+                  rawThumb?.startsWith('blob:') === true ? rawThumb : null;
+                return (
+                  <li
+                    key={entry.id}
+                    className="console-task-create-dialog-file-item"
+                  >
+                    {thumbnailSrc !== null && (
+                      <img
+                        src={thumbnailSrc}
+                        alt={entry.file.name}
+                        className="console-task-create-dialog-file-thumbnail"
+                      />
+                    )}
+                    <span className="console-task-create-dialog-file-name">
+                      {entry.file.name}
+                    </span>
+                    <button
+                      type="button"
+                      className="console-task-create-dialog-file-remove"
+                      aria-label={`Remove ${entry.file.name}`}
+                      onClick={() =>
+                        setSelectedFiles((prev) =>
+                          prev.filter((e) => e.id !== entry.id),
+                        )
+                      }
+                      disabled={submitting}
+                    >
+                      ✕
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
           <span className="console-task-create-dialog-section-label">
             Story
           </span>
@@ -112,11 +242,17 @@ export const IssueCreateModalDialog = ({
               <button
                 key={entry.storyOptionId}
                 type="button"
-                className={`console-task-create-dialog-option-button${selectedStoryOptionId === entry.storyOptionId ? ' console-task-create-dialog-option-button--selected' : ''}`}
-                aria-pressed={selectedStoryOptionId === entry.storyOptionId}
-                onClick={() => setSelectedStoryOptionId(entry.storyOptionId)}
+                className={`console-task-create-dialog-option-button${selectedStoryName === entry.storyName ? ' console-task-create-dialog-option-button--selected' : ''}`}
+                aria-pressed={selectedStoryName === entry.storyName}
+                onClick={() => setSelectedStoryName(entry.storyName)}
                 disabled={submitting}
               >
+                <span
+                  className="console-story-dot"
+                  style={{
+                    backgroundColor: colorFromEnum(entry.color).dot,
+                  }}
+                />
                 {entry.storyName}
               </button>
             ))}
@@ -147,29 +283,6 @@ export const IssueCreateModalDialog = ({
               </div>
             </>
           )}
-
-          <span className="console-task-create-dialog-section-label">
-            Reference URL
-          </span>
-          <input
-            type="url"
-            className="console-task-create-dialog-input"
-            placeholder="Paste current task URL here"
-            value={referenceUrlValue}
-            onChange={(e) => setReferenceUrlValue(e.target.value)}
-            disabled={submitting}
-          />
-
-          <span className="console-task-create-dialog-section-label">
-            Attachments
-          </span>
-          <input
-            type="file"
-            multiple
-            className="console-task-create-dialog-file-input"
-            disabled={submitting}
-            onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
-          />
 
           {submitError !== null && (
             <p role="alert" className="console-list-error">

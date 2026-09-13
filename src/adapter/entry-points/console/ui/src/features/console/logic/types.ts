@@ -150,6 +150,7 @@ export type ConsoleStoryEntry = {
   storyName: string;
   storyOptionId: string;
   color: ConsoleColor;
+  description: string;
   openItemCount: number;
   storyViewUrl: string | null;
   items: ConsoleListItem[];
@@ -158,14 +159,15 @@ export type ConsoleStoryEntry = {
 export type ConsoleTab = {
   name: ConsoleTabName;
   label: string;
+  isNavigable?: boolean;
 };
 
 export const CONSOLE_TABS: ConsoleTab[] = [
-  { name: 'workflow-blocker', label: 'Workflow Blocker' },
   { name: 'prs', label: 'Awaiting Owner' },
   { name: 'failed-preparation', label: 'Failed Preparation' },
   { name: 'todo-by-human', label: 'Todo by human' },
+  { name: 'workflow-blocker', label: 'Workflow Blocker' },
   { name: 'todo-by-agent', label: 'Todo by agent' },
   { name: 'queued', label: 'Queued' },
-  { name: 'stories', label: 'Stories' },
+  { name: 'stories', label: 'Stories', isNavigable: false },
 ];
