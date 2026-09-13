@@ -24,6 +24,12 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
         color: 'BLUE',
         description: '',
       },
+      {
+        id: 'failed-preparation-id',
+        name: 'Failed Preparation',
+        color: 'RED',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -166,7 +172,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     requestChangesWithInlineComment: jest.Mock;
   };
   let mockIssueCommentRepository: {
-    createComment: jest.Mock;
+    createComment: jest.Mock<Promise<void>, [Issue, string]>;
     getCommentsFromIssue: jest.Mock;
   };
   let mockProject: Project;
@@ -200,7 +206,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
     };
 
     mockIssueCommentRepository = {
-      createComment: jest.fn().mockResolvedValue(undefined),
+      createComment: jest
+        .fn<Promise<void>, [Issue, string]>()
+        .mockResolvedValue(undefined),
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
     };
 
@@ -2271,6 +2279,388 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         issue,
         expect.stringContaining('REVIEW_DECISION_CHANGES_REQUESTED'),
       );
+    });
+  });
+
+  describe('dispatch repetition escalation', () => {
+    const projectWithFailedPrep = createMockProject({
+      status: {
+        name: 'Status',
+        fieldId: 'field-1',
+        statuses: [
+          {
+            id: 'awaiting-workspace-id',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          {
+            id: 'awaiting-owner-id',
+            name: 'Awaiting Owner',
+            color: 'BLUE',
+            description: '',
+          },
+          {
+            id: 'failed-preparation-id',
+            name: 'Failed Preparation',
+            color: 'RED',
+            description: '',
+          },
+        ],
+      },
+    });
+
+    const projectWithoutFailedPreparation = createMockProject({
+      status: {
+        name: 'Status',
+        fieldId: 'field-1',
+        statuses: [
+          {
+            id: 'awaiting-workspace-id',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          {
+            id: 'awaiting-owner-id',
+            name: 'Awaiting Owner',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+      },
+    });
+
+    const agentReport = (nextStepAgent: string) => ({
+      author: 'owner',
+      content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
+      createdAt: new Date(),
+    });
+
+    it('escalates to Failed Preparation instead of reverting when dispatch loop threshold is reached', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        agentReport('developer'),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('dispatched 3 times'),
+      );
+    });
+
+    it('keeps an escalateDispatchLoop issue out of the Awaiting Owner target set on the following cycle', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      const firstRunComments = [
+        agentReport('developer'),
+        agentReport('developer'),
+        agentReport('developer'),
+      ];
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+        firstRunComments,
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'failed-preparation-id',
+      );
+      const lastCreateCommentCall =
+        mockIssueCommentRepository.createComment.mock.calls[
+          mockIssueCommentRepository.createComment.mock.calls.length - 1
+        ];
+      const escalationCommentBody = lastCreateCommentCall[1];
+
+      mockIssueRepository.updateStatus.mockClear();
+      mockIssueCommentRepository.createComment.mockClear();
+      issue.status = 'Failed Preparation';
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ...firstRunComments,
+        {
+          author: 'owner',
+          content: escalationCommentBody,
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
+    it('escalates to Failed Preparation instead of reverting when silent redispatch threshold is reached', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      const silentRedispatchComment = (count: number) => ({
+        author: 'owner',
+        content: `Next step agent dispatch repeated: developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
+        createdAt: new Date(),
+      });
+      // The agent report is placed before the human comment so it is outside
+      // the current cycle. Silent-redispatch comments inside the cycle with
+      // no agent report in the cycle → hasReportsInCycle = false →
+      // escalateSilentRedispatch (not escalateReportingLoop).
+      const humanComment = {
+        author: 'owner',
+        content: 'please continue',
+        createdAt: new Date(),
+      };
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        humanComment,
+        silentRedispatchComment(1),
+        silentRedispatchComment(2),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Failed to receive a report'),
+      );
+    });
+
+    it('reverts normally to Awaiting Workspace when dispatch count is below threshold', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Auto Status Check: REJECTED'),
+      );
+    });
+
+    it('escalates to Failed Preparation when agent has been reporting every cycle but cannot advance (escalateReportingLoop)', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
+
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithFailedPrep,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      const silentRedispatchComment = (count: number) => ({
+        author: 'owner',
+        content: `Next step agent dispatch repeated: developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/2).`,
+        createdAt: new Date(),
+      });
+      const humanComment = {
+        author: 'owner',
+        content: 'please continue',
+        createdAt: new Date(),
+      };
+
+      // One silent-redispatch comment in cycle → count = 2 >= threshold = 2.
+      // agentReport in cycle → hasReportsInCycle = true.
+      // Together → escalateReportingLoop, not escalateSilentRedispatch.
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        humanComment,
+        silentRedispatchComment(1),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 2,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        issue,
+        expect.stringContaining('Owner judgment is required to break the loop'),
+      );
+    });
+
+    it('does not update any status or post a comment for the escalating issue when the project defines no Failed Preparation status option', async () => {
+      mockProjectRepository.getProject.mockResolvedValue(
+        projectWithoutFailedPreparation,
+      );
+
+      const issue = createMockIssue({
+        status: 'Awaiting Owner',
+        author: 'owner',
+        assignees: ['manager-user'],
+        agent: 'developer',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithoutFailedPreparation,
+        issues: [issue],
+        cacheUsed: false,
+      });
+      mockIssueRepository.getOpenPullRequests.mockResolvedValue(new Map());
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        agentReport('developer'),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        manager: 'manager-user',
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
   });
 });
