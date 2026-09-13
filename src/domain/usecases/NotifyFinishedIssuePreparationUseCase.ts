@@ -813,6 +813,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       labels: string[];
       isPr: boolean;
       body?: string | null;
+      agent: string | null;
     },
     comments: { author: string; content: string }[],
     isTrustedAuthor: (author: string) => boolean,
@@ -855,7 +856,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     const lastReportIsFromDeveloperAgent =
       lastAgentReport !== null &&
       effectiveDeveloperAgentNames.some((name) =>
-        isAgentReportBodyFromAgent(lastAgentReport.content, name),
+        isAgentReportBodyFromAgent(lastAgentReport.content, name, issue.agent),
       );
     const requiredPrRejections =
       isTriagerAgentName(nextStepAgent) || !lastReportIsFromDeveloperAgent

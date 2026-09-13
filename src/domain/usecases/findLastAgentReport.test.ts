@@ -41,18 +41,18 @@ describe('findLastAgentReport', () => {
     ).toBe(withoutDeclaration);
   });
 
-  it('returns the most recent agent report even when it carries no report json block', () => {
-    const withoutReportJson =
+  it('returns the earlier agent report when the latest trusted comment carries no json object block', () => {
+    const withoutJsonBlock =
       'From: :robot: agent (model)\n\n## PR URL\nhttps://e/p/1';
     expect(
       findLastAgentReport(
         [
           { author: 'bot', content: report('impl') },
-          { author: 'bot', content: withoutReportJson },
+          { author: 'bot', content: withoutJsonBlock },
         ],
         trustEveryAuthor,
       )?.content,
-    ).toBe(withoutReportJson);
+    ).toBe(report('impl'));
   });
 
   it('returns the most recent agent report whose prefix follows a leading fenced json block', () => {

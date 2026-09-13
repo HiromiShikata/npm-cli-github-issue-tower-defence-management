@@ -233,11 +233,31 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
     });
 
-    it('escalates to escalateReportingLoop when the agent has reported in the cycle', () => {
+    it('escalates to escalateSilentRedispatch when the agent reported only before the first re-dispatch but not after', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
         comments: [
+          report('accounting'),
+          repetitionComment('accounting'),
+          repetitionComment('accounting'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
+    });
+
+    it('escalates to escalateReportingLoop when the agent reports again after being re-dispatched and threshold is reached', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'accounting',
+        nextStepAgent: 'accounting',
+        comments: [
+          report('accounting'),
+          repetitionComment('accounting'),
           report('accounting'),
           repetitionComment('accounting'),
           repetitionComment('accounting'),
@@ -268,7 +288,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('escalateSilentRedispatch');
     });
 
-    it('emits a stuck-agent message when reports are present at escalation', () => {
+    it('emits a no-report message when the agent reported only before the first re-dispatch', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
@@ -283,11 +303,10 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateReportingLoop');
+      expect(result.type).toBe('escalateSilentRedispatch');
       const comment =
-        result.type === 'escalateReportingLoop' ? result.comment : '';
-      expect(comment).not.toContain('Failed to receive a report');
-      expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
+        result.type === 'escalateSilentRedispatch' ? result.comment : '';
+      expect(comment).toContain('Failed to receive a report');
     });
 
     it('emits a no-report message when no reports are present at escalation', () => {
@@ -749,7 +768,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(comment).not.toContain('silently');
     });
 
-    it('still escalates (not storyUnset) when story is set and the cycle count reaches the threshold with reports', () => {
+    it('still escalates (not storyUnset) when story is set and the cycle count reaches the threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
@@ -764,7 +783,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateReportingLoop');
+      expect(result.type).toBe('escalateSilentRedispatch');
     });
   });
 
