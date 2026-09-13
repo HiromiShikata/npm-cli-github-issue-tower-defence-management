@@ -3499,7 +3499,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should not reject REPORT_HAS_NEXT_STEP when report JSON has no nextStep property', async () => {
+  it('should advance to Awaiting Owner when report JSON has no nextStep property', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
