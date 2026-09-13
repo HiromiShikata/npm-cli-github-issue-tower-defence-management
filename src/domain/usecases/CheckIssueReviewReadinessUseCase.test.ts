@@ -302,7 +302,8 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
-          content: '```json\n{"nextStep": "fix the bug", "nextStepAgent": "developer"}\n```',
+          content:
+            '```json\n{"nextStep": "fix the bug", "nextStepAgent": "developer"}\n```',
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
