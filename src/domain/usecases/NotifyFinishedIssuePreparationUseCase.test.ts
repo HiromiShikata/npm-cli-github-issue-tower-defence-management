@@ -6705,7 +6705,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
 
     it('should waive PULL_REQUEST_NOT_FOUND when defaultAgentName matches the next step agent in the report', async () => {
-      const issue = createMockIssue({ status: 'Preparation' });
+      const issue = createMockIssue({ status: 'Preparation', agent: 'developer' });
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
@@ -6723,6 +6723,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
         defaultAgentName: 'custom-triage',
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
