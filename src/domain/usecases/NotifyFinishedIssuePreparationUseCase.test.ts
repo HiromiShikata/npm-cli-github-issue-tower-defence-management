@@ -3366,7 +3366,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
-        expect.objectContaining({ url: 'https://github.com/user/repo/issues/1' }),
+        expect.objectContaining({
+          url: 'https://github.com/user/repo/issues/1',
+        }),
         'Auto Status Check: AWAITING_OWNER',
       );
       expect(mockWebhookRepository.sendGetRequest).toHaveBeenCalledWith(
