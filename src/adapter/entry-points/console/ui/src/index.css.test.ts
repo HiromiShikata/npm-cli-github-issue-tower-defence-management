@@ -54,6 +54,13 @@ function extractCssRuleBlock(
 }
 
 describe('console CSS class contract', () => {
+  it('sets margin-left: 4rem on console-tab-pjname to add visual breathing room to the left of the project selector equal to its own approximate width', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(css, '.console-tab-pjname');
+    expect(ruleBlock).not.toBeNull();
+    expect(ruleBlock).toContain('margin-left: 4rem');
+  });
+
   it('sets min-height: 0 on console-task-create-dialog-body to enable overflow-y scrolling when dialog is height-constrained in landscape orientation', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
     const ruleBlock = extractCssRuleBlock(
