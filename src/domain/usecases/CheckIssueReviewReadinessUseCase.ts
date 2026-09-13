@@ -6,12 +6,11 @@ import {
 } from './IssueRejectionEvaluator';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import {
+  extractAgentNameFromReportBody,
   isAgentReportBody,
-  isAgentReportBodyFromAgent,
 } from './isAgentReportBody';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { findLastAgentReport } from './findLastAgentReport';
-import { TRIAGER_AGENT_NAME } from './triagerAgentName';
 
 type RejectedReasonType =
   'ISSUE_NOT_FOUND' | 'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
@@ -47,6 +46,7 @@ export class CheckIssueReviewReadinessUseCase {
     labelsAsLlmAgentName?: string[] | null;
     labelsNotRequiringPullRequest?: string[] | null;
     developerAgentNames?: string[] | null;
+    defaultAgentName?: string | null;
   }): Promise<IssueReviewReadinessResult> => {
     const issue = await this.issueRepository.getIssueByUrl(params.issueUrl);
 
@@ -83,13 +83,13 @@ export class CheckIssueReviewReadinessUseCase {
     }
 
     const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
-    const lastReportIsFromTriager =
-      lastAgentReport !== null &&
-      isAgentReportBodyFromAgent(
-        lastAgentReport.content,
-        TRIAGER_AGENT_NAME,
-        issue.agent,
-      );
+    const reportingAgentName = lastAgentReport
+      ? extractAgentNameFromReportBody(lastAgentReport.content)
+      : null;
+    const lastReportIsFromDefaultAgent =
+      reportingAgentName !== null &&
+      params.defaultAgentName != null &&
+      reportingAgentName === params.defaultAgentName;
 
     const { rejections: prRejections } =
       await this.issueRejectionEvaluator.evaluate(
@@ -100,7 +100,7 @@ export class CheckIssueReviewReadinessUseCase {
         },
       );
 
-    const requiredPrRejections = lastReportIsFromTriager
+    const requiredPrRejections = lastReportIsFromDefaultAgent
       ? prRejections.filter(
           (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
         )

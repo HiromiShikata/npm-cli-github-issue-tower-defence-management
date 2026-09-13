@@ -1983,6 +1983,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2032,6 +2033,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -2145,6 +2147,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2191,6 +2194,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2237,6 +2241,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2283,6 +2288,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2335,6 +2341,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2387,6 +2394,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -2427,6 +2435,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -2474,6 +2483,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -3406,6 +3416,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       thresholdForAutoReject: 3,
       workflowBlockerResolvedWebhookUrl: null,
       allowedIssueAuthors: ['test-user'],
+      developerAgentNames: ['developer'],
     });
 
     expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
@@ -3968,6 +3979,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(
@@ -3995,6 +4007,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(
@@ -4022,6 +4035,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
@@ -4082,6 +4096,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
@@ -4099,6 +4114,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(
@@ -4146,6 +4162,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
@@ -4165,6 +4182,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.approvePullRequest).toHaveBeenCalledWith(
@@ -4184,6 +4202,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
         changeTargetPathAliases: {
           adapters: 'src/domain/usecases/adapter-interfaces',
         },
@@ -5792,6 +5811,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -6141,6 +6161,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -6264,6 +6285,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: null,
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueRepository.update).toHaveBeenCalledWith(
@@ -6389,6 +6411,100 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      );
+    });
+
+    it('should not reject issue when developerAgentNames is null even when agent has a failing CI PR', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'pr-reviewer',
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        developerAgentNames: null,
+      });
+
+      expect(mockIssueRepository.setIssueAgentField).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      );
+    });
+
+    it('should trigger CI failure path and reassign to developer when pr-reviewer agent has a failing CI PR and developerAgentNames is set', async () => {
+      const issue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/1',
+        status: 'Preparation',
+        agent: 'pr-reviewer',
+      });
+      const projectWithDeveloper = makeProjectWithDeveloper();
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithDeveloper);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({ content: '```json\n{"nextStep": null}\n```' }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        {
+          url: 'https://github.com/user/repo/pull/99',
+          isConflicted: false,
+          isPassedAllCiJob: false,
+          isCiStateSuccess: false,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: null,
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        projectWithDeveloper,
+      );
+      expect(mockIssueRepository.setIssueAgentField).toHaveBeenCalledWith(
+        'https://github.com/user/repo/issues/1',
+        projectWithDeveloper,
+        'opt-developer',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'https://github.com/user/repo/issues/1',
+        }),
+        expect.stringContaining('ANY_CI_JOB_FAILED_OR_IN_PROGRESS'),
+      );
     });
 
     it('should not trigger the new path when chore agent has two failing CI linked PRs', async () => {
@@ -6574,6 +6690,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         thresholdForAutoReject: 3,
         workflowBlockerResolvedWebhookUrl: null,
         allowedIssueAuthors: ['test-user'],
+        developerAgentNames: ['developer'],
       });
 
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
@@ -6584,6 +6701,41 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.anything(),
         expect.anything(),
         'awaiting-workspace-id',
+      );
+    });
+
+    it('should waive PULL_REQUEST_NOT_FOUND when defaultAgentName matches the next step agent in the report', async () => {
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'developer',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAgent());
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "custom-triage"}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+        defaultAgentName: 'custom-triage',
+        developerAgentNames: ['developer'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('PULL_REQUEST_NOT_FOUND'),
+      );
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        expect.anything(),
       );
     });
   });

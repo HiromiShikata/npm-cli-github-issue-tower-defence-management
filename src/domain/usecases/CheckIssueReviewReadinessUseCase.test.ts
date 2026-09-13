@@ -178,6 +178,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
 
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
+        developerAgentNames: ['developer'],
       });
 
       expect(result.reviewReady).toBe(false);
@@ -188,7 +189,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
     });
 
     it('should return reviewReady=true when the last report is from the triager and no related PR exists', async () => {
-      const issue = createMockIssue();
+      const issue = createMockIssue({ agent: 'developer' });
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -201,6 +202,8 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
         allowedIssueAuthors: ['agent-bot'],
+        defaultAgentName: 'triager',
+        developerAgentNames: ['developer'],
       });
 
       expect(result.rejections).toEqual([]);
@@ -221,6 +224,8 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
         allowedIssueAuthors: ['agent-bot'],
+        defaultAgentName: 'triager',
+        developerAgentNames: ['developer'],
       });
 
       expect(result.rejections).toEqual([]);
@@ -240,6 +245,8 @@ describe('CheckIssueReviewReadinessUseCase', () => {
 
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
+        defaultAgentName: 'triager',
+        developerAgentNames: ['developer'],
       });
 
       expect(result.reviewReady).toBe(false);
@@ -265,6 +272,8 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
         allowedIssueAuthors: ['agent-bot'],
+        defaultAgentName: 'triager',
+        developerAgentNames: ['developer'],
       });
 
       expect(result.reviewReady).toBe(false);
@@ -276,6 +285,28 @@ describe('CheckIssueReviewReadinessUseCase', () => {
         type: 'PULL_REQUEST_NOT_FOUND',
         detail: 'PULL_REQUEST_NOT_FOUND',
       });
+    });
+
+    it('should use defaultAgentName to skip PULL_REQUEST_NOT_FOUND when last report is from the configured default agent', async () => {
+      const issue = createMockIssue({ agent: 'my-developer' });
+      mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: custom-triage-agent (claude-sonnet-4-6)\n```json\n{"nextStepAgent": "my-developer", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      const result = await useCase.run({
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        allowedIssueAuthors: ['agent-bot'],
+        defaultAgentName: 'custom-triage-agent',
+        developerAgentNames: ['my-developer'],
+      });
+
+      expect(result.rejections).toEqual([]);
+      expect(result.reviewReady).toBe(true);
     });
 
     it('should return reviewReady=true with empty rejections when all checks pass', async () => {
@@ -335,6 +366,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       const result = await useCase.run({
         issueUrl: 'https://github.com/user/repo/issues/1',
         allowedIssueAuthors: ['agent-bot'],
+        developerAgentNames: ['developer'],
       });
 
       expect(result.reviewReady).toBe(false);

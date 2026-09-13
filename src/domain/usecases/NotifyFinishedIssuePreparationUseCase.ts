@@ -19,7 +19,6 @@ import {
 } from './IssueRejectionEvaluator';
 import { ChangeTargetPullRequestApprover } from './ChangeTargetPullRequestApprover';
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
-import { isTriagerAgentName } from './triagerAgentName';
 import {
   ConsoleListItem,
   ConsoleTabName,
@@ -157,6 +156,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     sessionErrorLine?: string | null;
     manager?: string | null;
     developerAgentNames?: string[] | null;
+    defaultAgentName?: string | null;
     deferPreparation?: boolean | null;
     workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
     tdpmReportingRepository?: string | null;
@@ -370,13 +370,18 @@ export class NotifyFinishedIssuePreparationUseCase {
       params.developerAgentNames ?? null,
     );
     if (ciFailingPrUrl !== null) {
-      const effectiveDeveloperAgentNames = params.developerAgentNames?.length
-        ? params.developerAgentNames
-        : ['developer'];
-      const agentOptionId = await this.ensureAgentOptionAndGetId(
-        project,
-        effectiveDeveloperAgentNames[0],
-      );
+      const firstDeveloperAgentName =
+        params.developerAgentNames?.length != null &&
+        params.developerAgentNames.length > 0
+          ? params.developerAgentNames[0]
+          : null;
+      const agentOptionId =
+        firstDeveloperAgentName !== null
+          ? await this.ensureAgentOptionAndGetId(
+              project,
+              firstDeveloperAgentName,
+            )
+          : null;
       if (agentOptionId !== null) {
         await this.issueRepository.setIssueAgentField(
           params.issueUrl,
@@ -411,6 +416,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       resolveLabelsNotRequiringPullRequest(params),
       nextStepAgent,
       params.developerAgentNames,
+      params.defaultAgentName,
     );
 
     const rejectionStatusMessage =
@@ -840,6 +846,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     labelsNotRequiringPullRequest: string[],
     nextStepAgent: string | null,
     developerAgentNames?: string[] | null,
+    defaultAgentName?: string | null,
   ): Promise<{
     rejections: { type: RejectedReasonType; detail: string }[];
     approvedPrUrl: string | null;
@@ -865,16 +872,16 @@ export class NotifyFinishedIssuePreparationUseCase {
         { developerAgentNames },
       );
     const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
-    const effectiveDeveloperAgentNames = developerAgentNames?.length
-      ? developerAgentNames
-      : ['developer'];
+    const effectiveDeveloperAgentNames = developerAgentNames ?? [];
     const lastReportIsFromDeveloperAgent =
       lastAgentReport !== null &&
       effectiveDeveloperAgentNames.some((name) =>
         isAgentReportBodyFromAgent(lastAgentReport.content, name, issue.agent),
       );
+    const nextStepIsDefaultAgent =
+      defaultAgentName != null && nextStepAgent === defaultAgentName;
     const requiredPrRejections =
-      isTriagerAgentName(nextStepAgent) || !lastReportIsFromDeveloperAgent
+      nextStepIsDefaultAgent || !lastReportIsFromDeveloperAgent
         ? prRejections.filter(
             (rejection) => rejection.type !== 'PULL_REQUEST_NOT_FOUND',
           )
@@ -911,13 +918,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     issue: { url: string; agent: string | null; isPr: boolean },
     developerAgentNames: string[] | null,
   ): Promise<string | null> => {
-    const effectiveDeveloperAgentNames = developerAgentNames?.length
-      ? developerAgentNames
-      : ['developer'];
+    const effectiveDeveloperAgentNames = developerAgentNames ?? [];
     if (
       issue.agent === null ||
-      effectiveDeveloperAgentNames.includes(issue.agent) ||
-      issue.agent === 'pr-reviewer'
+      effectiveDeveloperAgentNames.length === 0 ||
+      effectiveDeveloperAgentNames.includes(issue.agent)
     ) {
       return null;
     }

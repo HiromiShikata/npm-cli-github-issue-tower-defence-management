@@ -48,12 +48,16 @@ describe('IssueRejectionEvaluator', () => {
         createReadyPr(),
       ]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: [],
-        isPr: false,
-        agent: 'developer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        },
+        [],
+        { developerAgentNames: ['developer'] },
+      );
 
       expect(result.rejections).toHaveLength(0);
       expect(result.approvedPrUrl).toBe('https://github.com/user/repo/pull/1');
@@ -64,12 +68,16 @@ describe('IssueRejectionEvaluator', () => {
         createReadyPr('https://github.com/user/repo/pull/1', { isDraft: true }),
       ]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: [],
-        isPr: false,
-        agent: 'developer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        },
+        [],
+        { developerAgentNames: ['developer'] },
+      );
 
       expect(result.rejections).toHaveLength(1);
       expect(result.rejections[0].type).toBe('PULL_REQUEST_IS_DRAFT');
@@ -85,12 +93,16 @@ describe('IssueRejectionEvaluator', () => {
         createReadyPr('https://github.com/user/repo/pull/1', { isDraft: true }),
       ]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: [],
-        isPr: false,
-        agent: 'developer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        },
+        [],
+        { developerAgentNames: ['developer'] },
+      );
 
       expect(result.approvedPrUrl).toBeNull();
     });
@@ -103,12 +115,16 @@ describe('IssueRejectionEvaluator', () => {
         }),
       ]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: [],
-        isPr: false,
-        agent: 'developer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        },
+        [],
+        { developerAgentNames: ['developer'] },
+      );
 
       const rejectionTypes = result.rejections.map((r) => r.type);
       expect(rejectionTypes).toContain('PULL_REQUEST_IS_DRAFT');
@@ -123,12 +139,16 @@ describe('IssueRejectionEvaluator', () => {
         }),
       );
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/pull/10',
-        labels: [],
-        isPr: true,
-        agent: 'developer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/pull/10',
+          labels: [],
+          isPr: true,
+          agent: 'developer',
+        },
+        [],
+        { developerAgentNames: ['developer'] },
+      );
 
       expect(mockIssueRepository.getOpenPullRequest).toHaveBeenCalledWith(
         'https://github.com/user/repo/pull/10',
@@ -154,12 +174,16 @@ describe('IssueRejectionEvaluator', () => {
     it('should require PR evaluation when issue has agent field set to developer', async () => {
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: [],
-        isPr: false,
-        agent: 'developer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        },
+        [],
+        { developerAgentNames: ['developer'] },
+      );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
       expect(result.rejections).toHaveLength(1);
@@ -182,12 +206,16 @@ describe('IssueRejectionEvaluator', () => {
     it('should require PR evaluation when issue has agent field set to developer even with llm-agent:developer label', async () => {
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: ['llm-agent:developer'],
-        isPr: false,
-        agent: 'developer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: ['llm-agent:developer'],
+          isPr: false,
+          agent: 'developer',
+        },
+        [],
+        { developerAgentNames: ['developer'] },
+      );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
       expect(result.rejections).toHaveLength(1);
@@ -243,7 +271,7 @@ describe('IssueRejectionEvaluator', () => {
       expect(result.approvedPrUrl).toBeNull();
     });
 
-    it('should default to developer when developerAgentNames is null', async () => {
+    it('should not evaluate PR when developerAgentNames is null', async () => {
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
       const result = await evaluator.evaluate(
@@ -257,9 +285,9 @@ describe('IssueRejectionEvaluator', () => {
         { developerAgentNames: null },
       );
 
-      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
-      expect(result.rejections).toHaveLength(1);
-      expect(result.rejections[0].type).toBe('PULL_REQUEST_NOT_FOUND');
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(0);
+      expect(result.approvedPrUrl).toBeNull();
     });
 
     it('should require PR evaluation when issue agent matches any of multiple developer agent names', async () => {
@@ -306,12 +334,16 @@ describe('IssueRejectionEvaluator', () => {
         }),
       ]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: [],
-        isPr: false,
-        agent: 'pr-reviewer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'pr-reviewer',
+        },
+        [],
+        { developerAgentNames: ['pr-reviewer'] },
+      );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
       expect(result.rejections.map((r) => r.type)).toContain(
@@ -319,19 +351,23 @@ describe('IssueRejectionEvaluator', () => {
       );
     });
 
-    it('should require PR evaluation and reject conflict when issue agent is pr-reviewer', async () => {
+    it('should require PR evaluation and reject conflict when issue agent is pr-reviewer and pr-reviewer is in developerAgentNames', async () => {
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         createReadyPr('https://github.com/user/repo/pull/10', {
           isConflicted: true,
         }),
       ]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: [],
-        isPr: false,
-        agent: 'pr-reviewer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'pr-reviewer',
+        },
+        [],
+        { developerAgentNames: ['pr-reviewer'] },
+      );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
       expect(result.rejections.map((r) => r.type)).toContain(
@@ -339,24 +375,28 @@ describe('IssueRejectionEvaluator', () => {
       );
     });
 
-    it('should require PR evaluation and approve when issue agent is pr-reviewer with passing CI and no conflict', async () => {
+    it('should require PR evaluation and approve when issue agent is pr-reviewer and pr-reviewer is in developerAgentNames', async () => {
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         createReadyPr('https://github.com/user/repo/pull/10'),
       ]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: [],
-        isPr: false,
-        agent: 'pr-reviewer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'pr-reviewer',
+        },
+        [],
+        { developerAgentNames: ['pr-reviewer'] },
+      );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
       expect(result.rejections).toHaveLength(0);
       expect(result.approvedPrUrl).toBe('https://github.com/user/repo/pull/10');
     });
 
-    it('should still require PR evaluation for pr-reviewer when custom developerAgentNames is set', async () => {
+    it('should not require PR evaluation for pr-reviewer when it is not in developerAgentNames', async () => {
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
         createReadyPr('https://github.com/user/repo/pull/10', {
           isPassedAllCiJob: false,
@@ -375,10 +415,8 @@ describe('IssueRejectionEvaluator', () => {
         { developerAgentNames: ['my-developer'] },
       );
 
-      expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalled();
-      expect(result.rejections.map((r) => r.type)).toContain(
-        'ANY_CI_JOB_FAILED_OR_IN_PROGRESS',
-      );
+      expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
+      expect(result.rejections).toHaveLength(0);
     });
 
     it('should not reject for draft state when issue has non-e2e category label', async () => {
@@ -396,12 +434,16 @@ describe('IssueRejectionEvaluator', () => {
     it('should reject with PULL_REQUEST_NOT_FOUND when a normal issue has no related PR', async () => {
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
-      const result = await evaluator.evaluate({
-        url: 'https://github.com/user/repo/issues/1',
-        labels: [],
-        isPr: false,
-        agent: 'developer',
-      });
+      const result = await evaluator.evaluate(
+        {
+          url: 'https://github.com/user/repo/issues/1',
+          labels: [],
+          isPr: false,
+          agent: 'developer',
+        },
+        [],
+        { developerAgentNames: ['developer'] },
+      );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
         'https://github.com/user/repo/issues/1',
@@ -438,6 +480,7 @@ describe('IssueRejectionEvaluator', () => {
           agent: 'developer',
         },
         ['bug'],
+        { developerAgentNames: ['developer'] },
       );
 
       expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
@@ -519,7 +562,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/7'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/7'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -541,7 +587,7 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: [] },
+          { relatedOpenPrUrls: [], developerAgentNames: ['developer'] },
         );
 
         expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -562,7 +608,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/9'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/9'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -591,6 +640,7 @@ describe('IssueRejectionEvaluator', () => {
               'https://github.com/user/repo/pull/1',
               'https://github.com/user/repo/pull/2',
             ],
+            developerAgentNames: ['developer'],
           },
         );
 
@@ -617,6 +667,7 @@ describe('IssueRejectionEvaluator', () => {
               'https://github.com/user/repo/pull/5',
               'https://github.com/user/repo/pull/5',
             ],
+            developerAgentNames: ['developer'],
           },
         );
 
@@ -642,7 +693,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/3'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/3'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(result.rejections).toHaveLength(1);
@@ -655,12 +709,16 @@ describe('IssueRejectionEvaluator', () => {
           createReadyPr(),
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: [],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(mockIssueRepository.findRelatedOpenPRs).toHaveBeenCalledWith(
           'https://github.com/user/repo/issues/1',
@@ -681,7 +739,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/999'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/999'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
@@ -729,12 +790,16 @@ describe('IssueRejectionEvaluator', () => {
           new Error('Something went wrong while executing your query'),
         );
 
-        await evaluator.evaluate({
-          url: 'https://github.com/user/repo/pull/10',
-          labels: [],
-          isPr: true,
-          agent: 'developer',
-        });
+        await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/pull/10',
+            labels: [],
+            isPr: true,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
         expect(warnSpy).toHaveBeenCalledWith(
@@ -770,6 +835,7 @@ describe('IssueRejectionEvaluator', () => {
               'https://github.com/user/repo/pull/8',
               'https://github.com/user/repo/pull/9',
             ],
+            developerAgentNames: ['developer'],
           },
         );
 
@@ -796,7 +862,10 @@ describe('IssueRejectionEvaluator', () => {
             agent: 'developer',
           },
           [],
-          { relatedOpenPrUrls: ['https://github.com/user/repo/pull/8'] },
+          {
+            relatedOpenPrUrls: ['https://github.com/user/repo/pull/8'],
+            developerAgentNames: ['developer'],
+          },
         );
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
@@ -827,6 +896,7 @@ describe('IssueRejectionEvaluator', () => {
               'https://github.com/user/repo/pull/8',
               'https://github.com/user/repo/pull/9',
             ],
+            developerAgentNames: ['developer'],
           },
         );
 
@@ -840,12 +910,16 @@ describe('IssueRejectionEvaluator', () => {
           'string failure',
         );
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/pull/10',
-          labels: [],
-          agent: 'developer',
-          isPr: true,
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/pull/10',
+            labels: [],
+            agent: 'developer',
+            isPr: true,
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(warnSpy).toHaveBeenCalledTimes(1);
         expect(warnSpy).toHaveBeenCalledWith(
@@ -1071,12 +1145,16 @@ describe('IssueRejectionEvaluator', () => {
           'src/adapter/Bar.ts',
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: ['change-target-must:src/domain'],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: ['change-target-must:src/domain'],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(0);
         expect(result.approvedPrUrl).toBe(prUrl);
@@ -1093,12 +1171,16 @@ describe('IssueRejectionEvaluator', () => {
           'src/adapter/Bar.ts',
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: ['change-target-must:src/domain'],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: ['change-target-must:src/domain'],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(1);
         expect(result.rejections[0].type).toBe(
@@ -1123,12 +1205,16 @@ describe('IssueRejectionEvaluator', () => {
           [],
         );
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: ['change-target-must:src/domain'],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: ['change-target-must:src/domain'],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(1);
         expect(result.rejections[0].type).toBe(
@@ -1147,12 +1233,16 @@ describe('IssueRejectionEvaluator', () => {
           'foobar/baz.ts',
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: ['change-target-must:foo'],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: ['change-target-must:foo'],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(1);
         expect(result.rejections[0].type).toBe(
@@ -1171,12 +1261,16 @@ describe('IssueRejectionEvaluator', () => {
           'foo',
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: ['change-target-must:foo'],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: ['change-target-must:foo'],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(0);
         expect(result.approvedPrUrl).toBe(prUrl);
@@ -1190,12 +1284,16 @@ describe('IssueRejectionEvaluator', () => {
           'src/domain/entities/Foo.ts',
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: ['change-target-must:src/domain'],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: ['change-target-must:src/domain'],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(0);
         expect(result.approvedPrUrl).toBe(prUrl);
@@ -1209,12 +1307,16 @@ describe('IssueRejectionEvaluator', () => {
           'src/domain/entities/Foo.ts',
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: ['change-target-must:/src/domain'],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: ['change-target-must:/src/domain'],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(0);
         expect(result.approvedPrUrl).toBe(prUrl);
@@ -1258,12 +1360,16 @@ describe('IssueRejectionEvaluator', () => {
       it('should produce PULL_REQUEST_NOT_FOUND when Agent field is pr-reviewer and no open PR exists', async () => {
         mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: [],
-          isPr: false,
-          agent: 'pr-reviewer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'pr-reviewer',
+          },
+          [],
+          { developerAgentNames: ['pr-reviewer'] },
+        );
 
         expect(
           result.rejections.some((r) => r.type === 'PULL_REQUEST_NOT_FOUND'),
@@ -1279,12 +1385,16 @@ describe('IssueRejectionEvaluator', () => {
           }),
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: [],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(1);
         expect(result.rejections[0].type).toBe(
@@ -1306,12 +1416,16 @@ describe('IssueRejectionEvaluator', () => {
           }),
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: [],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(0);
         expect(result.approvedPrUrl).toBe(
@@ -1326,12 +1440,16 @@ describe('IssueRejectionEvaluator', () => {
           }),
         ]);
 
-        const result = await evaluator.evaluate({
-          url: 'https://github.com/user/repo/issues/1',
-          labels: [],
-          isPr: false,
-          agent: 'developer',
-        });
+        const result = await evaluator.evaluate(
+          {
+            url: 'https://github.com/user/repo/issues/1',
+            labels: [],
+            isPr: false,
+            agent: 'developer',
+          },
+          [],
+          { developerAgentNames: ['developer'] },
+        );
 
         expect(result.rejections).toHaveLength(0);
         expect(result.approvedPrUrl).toBe(

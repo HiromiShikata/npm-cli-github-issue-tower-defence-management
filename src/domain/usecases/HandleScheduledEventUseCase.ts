@@ -497,6 +497,7 @@ ${JSON.stringify(e)}
           labelsNotRequiringPullRequest: input.labelsNotRequiringPullRequest,
           allowedIssueAuthors,
           agents: input.agents ?? null,
+          developerAgentNames: input.developerAgentNames ?? null,
           workflowIssueReporterSettings:
             input.workflowIssueReporterSettings ?? null,
         });

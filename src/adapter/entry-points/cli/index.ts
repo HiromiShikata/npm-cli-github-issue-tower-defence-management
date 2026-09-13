@@ -778,6 +778,7 @@ program
         sessionErrorLine: options.sessionErrorLine ?? null,
         manager: config.manager ?? null,
         developerAgentNames: config.developerAgentNames ?? null,
+        defaultAgentName: config.defaultAgentName ?? null,
         deferPreparation: options.deferPreparation ?? null,
         workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
           notifyFleetConfigFilePath,
@@ -908,6 +909,7 @@ program
       labelsNotRequiringPullRequest:
         config.labelsNotRequiringPullRequest ?? null,
       developerAgentNames: config.developerAgentNames ?? null,
+      defaultAgentName: config.defaultAgentName ?? null,
     });
 
     process.stdout.write(`${JSON.stringify(result)}\n`);
