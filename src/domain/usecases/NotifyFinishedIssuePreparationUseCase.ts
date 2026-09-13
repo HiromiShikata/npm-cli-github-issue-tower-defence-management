@@ -330,9 +330,16 @@ export class NotifyFinishedIssuePreparationUseCase {
     const nextStepAgent = lastAgentReport
       ? extractNextStepAgent(lastAgentReport.content)
       : null;
-    const storyName = lastAgentReport
+    let storyName = lastAgentReport
       ? extractStory(lastAgentReport.content)
       : null;
+    if (
+      issue.agent === null ||
+      lastAgentReport === null ||
+      !isAgentReportBodyFromAgent(lastAgentReport.content, issue.agent)
+    ) {
+      storyName = null;
+    }
     if (
       nextStepAgent !== null &&
       params.agents &&

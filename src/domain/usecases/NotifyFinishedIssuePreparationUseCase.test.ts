@@ -6882,7 +6882,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('calls updateStory with the resolved storyOptionId when the routing JSON contains a story key matching a project story', async () => {
       const project = projectWithStoryAndAgent();
-      const issue = createMockIssue({ status: 'Preparation' });
+      const issue = createMockIssue({ status: 'Preparation', agent: 'triager' });
       mockProjectRepository.getByUrl.mockResolvedValue(project);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
@@ -7005,6 +7005,37 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       });
 
       expect(mockIssueRepository.updateStory).not.toHaveBeenCalled();
+    });
+
+    it('calls updateStory when reporting agent matches issue agent field', async () => {
+      const project = projectWithStoryAndAgent();
+      const issue = createMockIssue({
+        status: 'Preparation',
+        agent: 'triager',
+      });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: triager (model)\n```json\n{"nextStepAgent": "developer", "story": "regular / workflow improvement", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.updateStory).toHaveBeenCalledWith(
+        expect.objectContaining({ story: project.story }),
+        issue,
+        'story-opt-wf',
+      );
     });
   });
 
