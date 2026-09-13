@@ -1,3 +1,10 @@
+# [2.108.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.7...v2.108.0) (2026-09-13)
+
+
+### Features
+
+* **console:** add left margin to project selector equal to its own approximate width ([#2324](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2324)) ([403b297](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/403b2972a71ca264bdd2af386621c4fa615da844)), closes [HiromiShikata/umino-corporait-operation#31702](https://github.com/HiromiShikata/umino-corporait-operation/issues/31702)
+
 ## [2.107.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.6...v2.107.7) (2026-09-13)
 
 
