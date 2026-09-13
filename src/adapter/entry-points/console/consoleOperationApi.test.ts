@@ -3052,6 +3052,85 @@ describe('consoleOperationApi', () => {
         [],
       );
     });
+
+    it('truncates title to 256 characters and prepends full title to body when title exceeds limit', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      const longTitle = 'A'.repeat(257);
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: longTitle,
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      await response.backgroundTask;
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'A'.repeat(256),
+        longTitle,
+        ['authenticated-user'],
+        [],
+      );
+    });
+
+    it('prepends full title before existing body when title exceeds limit and body is provided', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      const longTitle = 'B'.repeat(257);
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: longTitle,
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+          body: 'existing body',
+        },
+      );
+      await response.backgroundTask;
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        'B'.repeat(256),
+        `${'B'.repeat(257)}\n\nexisting body`,
+        ['authenticated-user'],
+        [],
+      );
+    });
+
+    it('passes title unchanged when title is exactly 256 characters', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      const exactTitle = 'C'.repeat(256);
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: exactTitle,
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      await response.backgroundTask;
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'acme-labs',
+        'portal',
+        exactTitle,
+        '',
+        ['authenticated-user'],
+        [],
+      );
+    });
   });
 
   describe('handleReorderStory', () => {
