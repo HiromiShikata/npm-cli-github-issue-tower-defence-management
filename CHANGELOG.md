@@ -1,3 +1,10 @@
+# [2.109.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.108.1...v2.109.0) (2026-09-13)
+
+
+### Features
+
+* make max settings cross-project and always-visible ([#2230](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2230)) ([cd31c6f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cd31c6f5e0d59a113b9a155aead2abe6d3f83a90)), closes [#31531](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31531)
+
 ## [2.108.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.108.0...v2.108.1) (2026-09-13)
 
 
