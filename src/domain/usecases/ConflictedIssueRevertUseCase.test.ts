@@ -18,6 +18,12 @@ const createMockProject = (overrides: Partial<Project> = {}): Project => ({
         color: 'GRAY',
         description: '',
       },
+      {
+        id: 'failed-preparation-id',
+        name: 'Failed Preparation',
+        color: 'RED',
+        description: '',
+      },
     ],
   },
   nextActionDate: null,
@@ -102,7 +108,7 @@ describe('ConflictedIssueRevertUseCase', () => {
   };
   let mockIssueCommentRepository: {
     getCommentsFromIssue: jest.Mock;
-    createComment: jest.Mock;
+    createComment: jest.Mock<Promise<void>, [Issue, string]>;
   };
   let mockProject: Project;
   let useCase: ConflictedIssueRevertUseCase;
@@ -130,7 +136,9 @@ describe('ConflictedIssueRevertUseCase', () => {
 
     mockIssueCommentRepository = {
       getCommentsFromIssue: jest.fn().mockResolvedValue([]),
-      createComment: jest.fn().mockResolvedValue(undefined),
+      createComment: jest
+        .fn<Promise<void>, [Issue, string]>()
+        .mockResolvedValue(undefined),
     };
 
     useCase = new ConflictedIssueRevertUseCase(
@@ -1090,6 +1098,21 @@ describe('ConflictedIssueRevertUseCase', () => {
       },
     });
 
+    const projectWithoutFailedPreparation = createMockProject({
+      status: {
+        name: 'Status',
+        fieldId: 'field-1',
+        statuses: [
+          {
+            id: 'awaiting-workspace-id',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+        ],
+      },
+    });
+
     const agentReport = (nextStepAgent: string) => ({
       author: 'owner',
       content: `From: :robot: developer (model-id)\n\n## Summary\n\`\`\`json\n{ "nextStepAgent": "${nextStepAgent}" }\n\`\`\``,
@@ -1162,6 +1185,65 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
+    it('keeps an escalateDispatchLoop issue out of the conflict target set on the following cycle', async () => {
+      const issue = buildConflictedIssueWithLinkedPr(
+        projectWithAllEscalationStatuses,
+      );
+
+      const firstRunComments = [
+        agentReport('developer'),
+        agentReport('developer'),
+        agentReport('developer'),
+      ];
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue(
+        firstRunComments,
+      );
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithAllEscalationStatuses,
+        issue,
+        'failed-preparation-id',
+      );
+      const lastCreateCommentCall =
+        mockIssueCommentRepository.createComment.mock.calls[
+          mockIssueCommentRepository.createComment.mock.calls.length - 1
+        ];
+      const escalationCommentBody = lastCreateCommentCall[1];
+
+      mockIssueRepository.updateStatus.mockClear();
+      mockIssueCommentRepository.createComment.mockClear();
+      issue.status = 'Failed Preparation';
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        ...firstRunComments,
+        {
+          author: 'owner',
+          content: escalationCommentBody,
+          createdAt: new Date(),
+        },
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-workspace-id',
+      );
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+    });
+
     it('escalates to Failed Preparation when silent redispatch threshold is reached on conflict path', async () => {
       const issue = buildConflictedIssueWithLinkedPr(
         projectWithEscalationStatuses,
@@ -1219,7 +1301,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       createdAt: new Date(),
     });
 
-    it('escalates to Awaiting Owner when agent has been reporting every cycle but cannot advance (escalateReportingLoop)', async () => {
+    it('escalates to Failed Preparation when agent has been reporting every cycle but cannot advance (escalateReportingLoop)', async () => {
       const issue = buildConflictedIssueWithLinkedPr(
         projectWithAllEscalationStatuses,
       );
@@ -1255,12 +1337,12 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
-        'failed-preparation-id',
+        'awaiting-owner-id',
       );
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         projectWithAllEscalationStatuses,
         issue,
-        'awaiting-owner-id',
+        'failed-preparation-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
@@ -1298,6 +1380,26 @@ describe('ConflictedIssueRevertUseCase', () => {
         issue,
         'conflict',
       );
+    });
+
+    it('does not update any status or post a comment for the escalating issue when the project defines no Failed Preparation status option', async () => {
+      buildConflictedIssueWithLinkedPr(projectWithoutFailedPreparation);
+
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        agentReport('developer'),
+        agentReport('developer'),
+        agentReport('developer'),
+      ]);
+
+      await useCase.run({
+        projectUrl,
+        allowedIssueAuthors: ['owner'],
+        thresholdForAutoReject: 5,
+        thresholdForDispatchLoop: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
     });
   });
 });
