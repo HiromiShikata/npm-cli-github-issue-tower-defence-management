@@ -1,3 +1,10 @@
+## [2.107.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.4...v2.107.5) (2026-09-13)
+
+
+### Bug Fixes
+
+* update getAllIssues memo in updateStatus and remove shallow copy in StartPreparationUseCase ([#2308](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2308)) ([7a7abd6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7a7abd6938181a5f2cb6b0dc28c1f01331413afc))
+
 ## [2.107.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.107.3...v2.107.4) (2026-09-11)
 
 
