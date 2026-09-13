@@ -7462,6 +7462,54 @@ describe('StartPreparationUseCase', () => {
 
     expect(mockIssueRepository.findRelatedOpenPRs).not.toHaveBeenCalled();
   });
+
+  it('mutates the original issue object status rather than a shallow copy so the in-memory cache reflects the new status', async () => {
+    const originalIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/1',
+      number: 1,
+      status: 'Awaiting Workspace',
+      story: 'Default Story',
+      author: 'testuser',
+      assignees: ['manager-user'],
+    });
+    const storyObjectMap: import('../entities/StoryObjectMap').StoryObjectMap =
+      new Map();
+    storyObjectMap.set('Default Story', {
+      story: {
+        id: 'story-1',
+        name: 'Default Story',
+        color: 'GRAY',
+        description: '',
+      },
+      storyIssue: null,
+      issues: [originalIssue],
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(storyObjectMap);
+    mockIssueRepository.getAllOpened.mockResolvedValue([]);
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0,
+    });
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(originalIssue.status).toBe('Preparation');
+  });
 });
 
 describe('StartPreparationUseCase.buildRotationOrder', () => {

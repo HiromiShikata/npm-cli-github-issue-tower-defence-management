@@ -1253,6 +1253,63 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         },
       );
     });
+
+    it('updates the in-memory getAllIssues memo so subsequent getAllIssues calls reflect the new status', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project = {
+        ...buildTestProject('proj-1'),
+        status: {
+          name: 'Status',
+          fieldId: 'f-status',
+          statuses: [
+            {
+              id: 'aw-id',
+              name: 'Awaiting Workspace',
+              color: 'GRAY' as const,
+              description: '',
+            },
+            {
+              id: 'prep-id',
+              name: 'Preparation',
+              color: 'YELLOW' as const,
+              description: '',
+            },
+          ],
+        },
+      };
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-01-01T00:00:00.000Z'),
+      );
+      localStorageCacheRepository.getSingle.mockResolvedValue(null);
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItems.mockResolvedValue([
+        {
+          ...buildProjectItem('https://github.com/o/r/issues/1', 'Issue 1'),
+          id: 'item-1',
+          customFields: [{ name: 'status', value: 'Awaiting Workspace' }],
+        },
+      ]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockResolvedValue();
+
+      const firstResult = await repository.getAllIssues('proj-1');
+      expect(firstResult.issues[0].status).toBe('Awaiting Workspace');
+
+      const issue = firstResult.issues[0];
+      await repository.updateStatus(project, issue, 'prep-id');
+
+      const secondResult = await repository.getAllIssues('proj-1');
+      expect(secondResult.issues[0].status).toBe('Preparation');
+      expect(
+        graphqlProjectItemRepository.fetchProjectItems,
+      ).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('getCachedProject', () => {

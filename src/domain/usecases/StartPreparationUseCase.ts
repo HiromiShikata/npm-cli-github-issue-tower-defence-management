@@ -522,12 +522,10 @@ export class StartPreparationUseCase {
     const runningIssueUrls = new Set(
       this.takeOwnershipSpawnRepository.listRunningIssueUrls(),
     );
-    const awaitingWorkspaceIssues = allOpenedIssues
-      .filter(
-        (issue) =>
-          issue.status === AWAITING_WORKSPACE_STATUS_NAME && !issue.isClosed,
-      )
-      .map((issue) => ({ ...issue }));
+    const awaitingWorkspaceIssues = allOpenedIssues.filter(
+      (issue) =>
+        issue.status === AWAITING_WORKSPACE_STATUS_NAME && !issue.isClosed,
+    );
     const allProjectOpenIssues =
       await this.issueRepository.getAllOpened(project);
     const storyUnsetAwaitingWorkspaceIssueUrls = allProjectOpenIssues
