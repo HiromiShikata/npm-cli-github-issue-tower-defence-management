@@ -464,7 +464,11 @@ const writeFixtureData = (consoleDataOutputDir: string): void => {
     'queued',
   ] as const;
   for (const tab of emptyTabs) {
-    const tabDir = path.join(consoleDataOutputDir, CONSOLE_E2E_SECOND_PJCODE, tab);
+    const tabDir = path.join(
+      consoleDataOutputDir,
+      CONSOLE_E2E_SECOND_PJCODE,
+      tab,
+    );
     fs.mkdirSync(tabDir, { recursive: true });
     const agentOptions = tab === 'queued' || tab === 'prs' ? AGENT_OPTIONS : [];
     const storyOrder = tab === 'queued' ? QUEUED_STORY_ORDER : [];
@@ -481,7 +485,11 @@ const writeFixtureData = (consoleDataOutputDir: string): void => {
   fs.mkdirSync(secondStoriesTabDir, { recursive: true });
   fs.writeFileSync(
     path.join(secondStoriesTabDir, 'list.json'),
-    JSON.stringify({ ...CONSOLE_E2E_STORIES_SNAPSHOT, pjcode: CONSOLE_E2E_SECOND_PJCODE, stories: [] }),
+    JSON.stringify({
+      ...CONSOLE_E2E_STORIES_SNAPSHOT,
+      pjcode: CONSOLE_E2E_SECOND_PJCODE,
+      stories: [],
+    }),
   );
 };
 
