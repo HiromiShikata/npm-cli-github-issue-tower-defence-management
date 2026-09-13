@@ -23,7 +23,9 @@ describe('extractAgentNameFromReportBody', () => {
   });
 
   it('returns null when there is no From: :robot: prefix', () => {
-    expect(extractAgentNameFromReportBody('Some body without prefix')).toBeNull();
+    expect(
+      extractAgentNameFromReportBody('Some body without prefix'),
+    ).toBeNull();
   });
 
   it('returns null for an empty body', () => {
