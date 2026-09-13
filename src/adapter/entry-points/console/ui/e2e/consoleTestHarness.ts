@@ -29,6 +29,7 @@ import {
 import { startWebServer } from '../../webServer';
 
 export const CONSOLE_E2E_PJCODE = 'acme';
+export const CONSOLE_E2E_SECOND_PJCODE = 'beta';
 export const CONSOLE_E2E_TOKEN = 'console-e2e-fixture-token-3f9c1a';
 
 export type ConsoleE2eReviewCommentCall = {
@@ -452,6 +453,35 @@ const writeFixtureData = (consoleDataOutputDir: string): void => {
   fs.writeFileSync(
     path.join(storiesTabDir, 'list.json'),
     JSON.stringify(CONSOLE_E2E_STORIES_SNAPSHOT),
+  );
+
+  const emptyTabs = [
+    'workflow-blocker',
+    'prs',
+    'failed-preparation',
+    'todo-by-human',
+    'todo-by-agent',
+    'queued',
+  ] as const;
+  for (const tab of emptyTabs) {
+    const tabDir = path.join(consoleDataOutputDir, CONSOLE_E2E_SECOND_PJCODE, tab);
+    fs.mkdirSync(tabDir, { recursive: true });
+    const agentOptions = tab === 'queued' || tab === 'prs' ? AGENT_OPTIONS : [];
+    const storyOrder = tab === 'queued' ? QUEUED_STORY_ORDER : [];
+    fs.writeFileSync(
+      path.join(tabDir, 'list.json'),
+      JSON.stringify(buildSnapshot([], agentOptions, storyOrder)),
+    );
+  }
+  const secondStoriesTabDir = path.join(
+    consoleDataOutputDir,
+    CONSOLE_E2E_SECOND_PJCODE,
+    'stories',
+  );
+  fs.mkdirSync(secondStoriesTabDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(secondStoriesTabDir, 'list.json'),
+    JSON.stringify({ ...CONSOLE_E2E_STORIES_SNAPSHOT, pjcode: CONSOLE_E2E_SECOND_PJCODE, stories: [] }),
   );
 };
 
@@ -900,9 +930,11 @@ export const startConsoleE2eHarness = async (options?: {
   const resolveProject = async (
     pjcode: string,
   ): Promise<ConsoleProjectBinding | null> =>
-    pjcode === CONSOLE_E2E_PJCODE ? { pjcode, project } : null;
+    pjcode === CONSOLE_E2E_PJCODE || pjcode === CONSOLE_E2E_SECOND_PJCODE
+      ? { pjcode, project }
+      : null;
   const isPjcodeConfigured = (pjcode: string): boolean =>
-    pjcode === CONSOLE_E2E_PJCODE;
+    pjcode === CONSOLE_E2E_PJCODE || pjcode === CONSOLE_E2E_SECOND_PJCODE;
 
   const reviewCommentCalls: ConsoleE2eReviewCommentCall[] = [];
   const requestChangesCalls: ConsoleE2eRequestChangesCall[] = [];
@@ -995,7 +1027,7 @@ export const startConsoleE2eHarness = async (options?: {
     inTmuxDataDir: null,
     dashboardDir: null,
     dashboardDataDir: null,
-    dashboardProjectNames: [CONSOLE_E2E_PJCODE],
+    dashboardProjectNames: [CONSOLE_E2E_PJCODE, CONSOLE_E2E_SECOND_PJCODE],
     workflowImprovementIssueUrl: options?.workflowImprovementIssueUrl ?? null,
     fleetTaskCreateUrl: options?.fleetTaskCreateUrl ?? null,
     port: 0,
