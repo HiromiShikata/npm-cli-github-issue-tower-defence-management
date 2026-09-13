@@ -604,6 +604,59 @@ describe('RateLimitCache', () => {
     });
   });
 
+  describe('writeRateLimit records an auth-failure cooldown on a 401 response', () => {
+    it('should set blockedUntilEpoch to 24 hours from now when no prior cache exists', () => {
+      const token = '401-no-prior-cache-token';
+      const before = Date.now() / 1000;
+      writeRateLimit(token, {}, 401);
+      const after = Date.now() / 1000;
+      const snapshot = readRateLimit(token);
+      expect(snapshot).not.toBeNull();
+      expect(snapshot?.blockedUntilEpoch).toBeGreaterThanOrEqual(
+        before + 86400,
+      );
+      expect(snapshot?.blockedUntilEpoch).toBeLessThanOrEqual(after + 86400);
+    });
+
+    it('should preserve the previous last-good snapshot while adding the auth-failure cooldown', () => {
+      const token = '401-preserve-snapshot-token';
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '42',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '17',
+      });
+      writeRateLimit(token, {}, 401);
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.fiveHourUtilization).toBe(42);
+      expect(snapshot?.fiveHourReset).toBe(1700000000);
+      expect(snapshot?.blockedUntilEpoch).toBeGreaterThan(Date.now() / 1000);
+    });
+
+    it('should keep the auth-failure block active when a subsequent response with rate-limit headers arrives', () => {
+      const token = '401-then-headers-token';
+      writeRateLimit(token, {}, 401);
+      const blocked = readRateLimit(token);
+      expect(blocked?.blockedUntilEpoch).toBeGreaterThan(Date.now() / 1000);
+
+      writeRateLimit(token, {
+        'anthropic-ratelimit-unified-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-status': 'allowed',
+        'anthropic-ratelimit-unified-5h-reset': '1700000000',
+        'anthropic-ratelimit-unified-5h-utilization': '42',
+        'anthropic-ratelimit-unified-7d-status': 'allowed',
+        'anthropic-ratelimit-unified-7d-reset': '1700100000',
+        'anthropic-ratelimit-unified-7d-utilization': '17',
+      });
+      const snapshot = readRateLimit(token);
+      expect(snapshot?.fiveHourUtilization).toBe(42);
+      expect(snapshot?.blockedUntilEpoch).toBeGreaterThan(Date.now() / 1000);
+    });
+  });
+
   describe('parseModelRateLimitsFromBody', () => {
     it('should extract a rejected seven_day_sonnet limit from a rate_limit event body', () => {
       const body =
@@ -1063,6 +1116,7 @@ describe('RateLimitCache', () => {
             subscriptionDisabled: snapshot?.subscriptionDisabled ?? false,
             unifiedRejected: snapshot?.unifiedRejected ?? false,
             fableRejected: false,
+            blockedUntilEpoch: 0,
           },
         ],
         Date.now() / 1000,

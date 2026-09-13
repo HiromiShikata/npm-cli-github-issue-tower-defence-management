@@ -53,6 +53,7 @@ export class InTmuxByHumanSessionTokenCountHandler {
         subscriptionDisabled: false,
         unifiedRejected: false,
         fableRejected: false,
+        blockedUntilEpoch: 0,
       }),
     );
 

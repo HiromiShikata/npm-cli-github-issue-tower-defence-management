@@ -38,6 +38,8 @@ export const HEADERLESS_429_MAX_COOLDOWN_SECONDS = 600;
 
 export const PERMISSION_DISABLED_COOLDOWN_SECONDS = 3600;
 
+export const AUTH_FAILURE_COOLDOWN_SECONDS = 86400;
+
 const FIVE_HOUR_STATUS_HEADER = 'anthropic-ratelimit-unified-5h-status';
 
 const SEVEN_DAY_STATUS_HEADER = 'anthropic-ratelimit-unified-7d-status';
@@ -96,6 +98,16 @@ const readSubscriptionDisabledEpoch = (
   return {};
 };
 
+const readAuthFailureBlockedUntilEpoch = (
+  payload: Record<string, unknown>,
+): { authFailureBlockedUntilEpoch: number } | Record<string, never> => {
+  const stored = payload.authFailureBlockedUntilEpoch;
+  if (typeof stored === 'number') {
+    return { authFailureBlockedUntilEpoch: stored };
+  }
+  return {};
+};
+
 const cooldownEndFromRetryAfter = (
   retryAfterSeconds: number | null,
   nowEpochSeconds: number,
@@ -129,6 +141,19 @@ export const writeRateLimit = (
   const dir = cacheDir();
   const filePath = path.join(dir, `${hashToken(token)}.json`);
   if (Object.keys(rateLimitHeaders).length === 0) {
+    if (statusCode === 401) {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const existing = readPayload(filePath);
+      const authFailureBlockedUntilEpoch =
+        Date.now() / 1000 + AUTH_FAILURE_COOLDOWN_SECONDS;
+      fs.writeFileSync(
+        filePath,
+        JSON.stringify({ ...existing, authFailureBlockedUntilEpoch }),
+      );
+      return;
+    }
     if (statusCode !== 429) {
       return;
     }
@@ -158,6 +183,7 @@ export const writeRateLimit = (
   const existing = readPayload(filePath);
   const payload = {
     ...readSubscriptionDisabledEpoch(existing),
+    ...readAuthFailureBlockedUntilEpoch(existing),
     ts: Date.now() / 1000,
     headers: rateLimitHeaders,
     modelWeeklyLimits: readModelWeeklyLimits(existing),
@@ -344,8 +370,13 @@ export const readRateLimit = (
     const storedTs = parsed.ts;
     const lastUpdatedEpoch = typeof storedTs === 'number' ? storedTs : 0;
     const storedBlockedUntil = parsed.blockedUntilEpoch;
-    const blockedUntilEpoch =
-      typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0;
+    const storedAuthFailureBlockedUntil = parsed.authFailureBlockedUntilEpoch;
+    const blockedUntilEpoch = Math.max(
+      typeof storedBlockedUntil === 'number' ? storedBlockedUntil : 0,
+      typeof storedAuthFailureBlockedUntil === 'number'
+        ? storedAuthFailureBlockedUntil
+        : 0,
+    );
     const storedSubscriptionDisabledEpoch = parsed.subscriptionDisabledEpoch;
     const subscriptionDisabledEpoch =
       typeof storedSubscriptionDisabledEpoch === 'number'

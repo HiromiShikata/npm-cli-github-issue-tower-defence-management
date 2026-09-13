@@ -12,6 +12,7 @@ export type OauthTokenCandidate = {
   subscriptionDisabled: boolean;
   unifiedRejected: boolean;
   fableRejected: boolean;
+  blockedUntilEpoch: number;
   selectionWeight?: number;
 };
 
@@ -194,11 +195,13 @@ export class OauthTokenSelectUseCase {
       candidate.subscriptionDisabled,
       candidate.unifiedRejected,
       candidate.fableRejected,
+      candidate.blockedUntilEpoch,
       fiveHourFreeRatio,
       sevenDayFreeRatio,
       thresholds,
       fiveHourDeadlinePassed,
       sevenDayDeadlinePassed,
+      nowEpochSeconds,
     );
 
     return {
@@ -215,11 +218,13 @@ export class OauthTokenSelectUseCase {
     subscriptionDisabled: boolean,
     unifiedRejected: boolean,
     fableRejected: boolean,
+    blockedUntilEpoch: number,
     fiveHourFreeRatio: number,
     sevenDayFreeRatio: number,
     thresholds: OauthTokenSelectionThresholds,
     fiveHourDeadlinePassed: boolean,
     sevenDayDeadlinePassed: boolean,
+    nowEpochSeconds: number,
   ): string | null => {
     if (subscriptionDisabled) {
       return 'organization has disabled Claude subscription access for Claude Code';
@@ -229,6 +234,9 @@ export class OauthTokenSelectUseCase {
     }
     if (fableRejected) {
       return 'fable weekly limit exhausted (a fable request was rejected with HTTP 429)';
+    }
+    if (blockedUntilEpoch > nowEpochSeconds) {
+      return 'token auth failure (HTTP 401 received; token may be expired or revoked)';
     }
     if (
       !fiveHourDeadlinePassed &&

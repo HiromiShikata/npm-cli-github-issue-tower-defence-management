@@ -44,6 +44,7 @@ const candidate = (
   subscriptionDisabled,
   unifiedRejected,
   fableRejected,
+  blockedUntilEpoch: 0,
 });
 
 const session = (name: string, sessionKey: string): ClaudeLiveSession => ({
