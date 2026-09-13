@@ -32,6 +32,7 @@ import {
   handleAttachmentUpload,
   handleComment,
   handleCreateIssue,
+  handleCreateWorkflowIssue,
   handleDeleteAllComments,
   handleDeleteStory,
   handleIntmux,
@@ -597,6 +598,28 @@ const handleOperationApi = async (
   body: Record<string, unknown>,
 ): Promise<{ statusCode: number; body: unknown } | null> => {
   const issueRepository = options.issueRepository ?? null;
+  if (requestPath === '/api/createworkflowissue') {
+    if (issueRepository === null) {
+      return null;
+    }
+    try {
+      return await handleCreateWorkflowIssue(issueRepository, body);
+    } catch (error) {
+      console.error('console operation failed', error);
+      if (options.consoleErrorReporter != null) {
+        void options.consoleErrorReporter(error, requestPath);
+      }
+      return {
+        statusCode: 502,
+        body: {
+          error:
+            error instanceof Error && error.message.length > 0
+              ? error.message
+              : String(error),
+        },
+      };
+    }
+  }
   const resolveProject = options.resolveProject ?? null;
   const isPjcodeConfigured = options.isPjcodeConfigured ?? null;
   if (

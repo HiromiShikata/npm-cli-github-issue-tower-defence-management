@@ -48,8 +48,9 @@ export const ConsoleTaskCreateButton = ({
         disabled={disabled}
         onClick={() => setIsDialogOpen(true)}
         aria-label="Create new task"
+        title="Create new task"
       >
-        + New task
+        +
       </button>
       {isDialogOpen && (
         <IssueCreateModalDialog
