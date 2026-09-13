@@ -31,9 +31,9 @@ describe('FileSystemSessionRecordArchiver', () => {
     const logFilePath = path.join(workingDirectory, 'run.jsonl');
     fs.writeFileSync(logFilePath, 'first\nsecond\nthird\n', 'utf8');
 
-    expect(new FileSystemSessionRecordArchiver().readLogLines(logFilePath)).toEqual(
-      ['first', 'second', 'third', ''],
-    );
+    expect(
+      new FileSystemSessionRecordArchiver().readLogLines(logFilePath),
+    ).toEqual(['first', 'second', 'third', '']);
   });
 
   it('returns no lines when the log file is absent', () => {
@@ -64,11 +64,12 @@ describe('FileSystemSessionRecordArchiver', () => {
   it('moves the session record into the archive directory', () => {
     const sourcePath = writeSessionRecord('session-a', 'conversation body');
 
-    const destinationPath = new FileSystemSessionRecordArchiver().archiveSessionRecord(
-      sessionDir,
-      archiveDir,
-      'session-a',
-    );
+    const destinationPath =
+      new FileSystemSessionRecordArchiver().archiveSessionRecord(
+        sessionDir,
+        archiveDir,
+        'session-a',
+      );
 
     expect(destinationPath).toBe(path.join(archiveDir, 'session-a.jsonl'));
     expect(fs.existsSync(sourcePath)).toBe(false);
@@ -80,11 +81,12 @@ describe('FileSystemSessionRecordArchiver', () => {
     writeSessionRecord('session-a', 'conversation body');
     expect(fs.existsSync(archiveDir)).toBe(false);
 
-    const destinationPath = new FileSystemSessionRecordArchiver().archiveSessionRecord(
-      sessionDir,
-      archiveDir,
-      'session-a',
-    );
+    const destinationPath =
+      new FileSystemSessionRecordArchiver().archiveSessionRecord(
+        sessionDir,
+        archiveDir,
+        'session-a',
+      );
 
     expect(fs.existsSync(archiveDir)).toBe(true);
     expect(fs.readFileSync(destinationPath, 'utf8')).toBe('conversation body');
