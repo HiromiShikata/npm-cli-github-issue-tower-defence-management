@@ -35,7 +35,7 @@ const createMockIssue = (overrides: Partial<Issue> = {}): Issue => ({
 
 const createMockComment = (overrides: Partial<Comment> = {}): Comment => ({
   author: 'agent-bot',
-  content: 'From: :robot: Agent report',
+  content: '```json\n{"nextStep": null}\n```',
   createdAt: new Date('2000-01-01T00:00:00Z'),
   ...overrides,
 });
@@ -147,7 +147,7 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       });
     });
 
-    it('should return reviewReady=false with NO_REPORT_FROM_AGENT_BOT when last comment does not start with From: :robot:', async () => {
+    it('should return reviewReady=false with NO_REPORT_FROM_AGENT_BOT when last comment contains no fenced JSON block', async () => {
       const issue = createMockIssue();
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
@@ -233,8 +233,8 @@ describe('CheckIssueReviewReadinessUseCase', () => {
       expect(result.reviewReady).toBe(true);
     });
 
-    it('should return reviewReady=true when the triager routes to developer and the issue agent is developer and no related PR exists', async () => {
-      const issue = createMockIssue({ agent: 'developer' });
+    it('should return reviewReady=true when the triager routes to developer and the issue agent is still triager and no related PR exists', async () => {
+      const issue = createMockIssue({ agent: 'triager' });
       mockIssueRepository.getIssueByUrl.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({

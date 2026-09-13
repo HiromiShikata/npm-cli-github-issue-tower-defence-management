@@ -1,12 +1,8 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import {
-  isAgentReportBody,
-  stripLeadingFencedBlocks,
-} from './isAgentReportBody';
+import { isAgentReportBody } from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
 import { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD } from './nextStepAgentDispatchRepeatedMessage';
-import { AGENT_REPORT_PREFIX } from './agentReportPrefix';
 
 export { NEXT_STEP_AGENT_DISPATCH_REPEATED_MESSAGE_HEAD };
 
@@ -108,20 +104,20 @@ const countSilentRedispatches = <
         params.isTrustedAuthor(comment.author) &&
         isSilentRedispatchCommentForAgent(comment.content, nextStepAgent),
     ).length + 1;
-  const hasReportsInCycle = commentsAfterLastEscalation.some((comment) => {
-    if (!params.isTrustedAuthor(comment.author)) return false;
-    const cleaned = stripLeadingFencedBlocks(comment.content);
-    if (!cleaned.startsWith(AGENT_REPORT_PREFIX)) return false;
-    const reportingAgent = cleaned
-      .slice(AGENT_REPORT_PREFIX.length)
-      .trimStart()
-      .split(/[\n(]/)[0]
-      .trim();
-    return (
-      normalizeProjectFieldName(reportingAgent) ===
-      normalizeProjectFieldName(nextStepAgent)
-    );
-  });
+  const firstRedispatchIndex = commentsAfterLastEscalation.findIndex(
+    (comment) =>
+      params.isTrustedAuthor(comment.author) &&
+      isSilentRedispatchCommentForAgent(comment.content, nextStepAgent),
+  );
+  const hasReportsInCycle =
+    firstRedispatchIndex >= 0 &&
+    commentsAfterLastEscalation
+      .slice(firstRedispatchIndex + 1)
+      .some(
+        (comment) =>
+          params.isTrustedAuthor(comment.author) &&
+          isAgentReportBody(comment.content),
+      );
   return { count, hasReportsInCycle };
 };
 

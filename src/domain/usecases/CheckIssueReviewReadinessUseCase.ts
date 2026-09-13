@@ -94,7 +94,11 @@ export class CheckIssueReviewReadinessUseCase {
     const lastAgentReport = findLastAgentReport(comments, isTrustedAuthor);
     const lastReportIsFromTriager =
       lastAgentReport !== null &&
-      isAgentReportBodyFromAgent(lastAgentReport.content, TRIAGER_AGENT_NAME);
+      isAgentReportBodyFromAgent(
+        lastAgentReport.content,
+        TRIAGER_AGENT_NAME,
+        issue.agent,
+      );
 
     const { rejections: prRejections } =
       await this.issueRejectionEvaluator.evaluate(
