@@ -2484,6 +2484,28 @@ describe('ConsolePage workflow task creation', () => {
       '!',
     );
   });
+
+  it('renders the workflow improvement task button before the create new task button in the header', async () => {
+    installFetchWithWorkflowIssueUrl(
+      'https://github.com/HiromiShikata/secretary/issues/42',
+    );
+
+    const { getByTitle, getByRole } = render(<ConsolePage />);
+
+    await waitFor(() =>
+      expect(
+        getByTitle('Create workflow improvement task'),
+      ).toBeInTheDocument(),
+    );
+
+    const workflowBtn = getByTitle('Create workflow improvement task');
+    const createTaskBtn = getByRole('button', { name: 'Create new task' });
+
+    expect(
+      workflowBtn.compareDocumentPosition(createTaskBtn) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });
 
 describe('ConsolePage story selection auto-reset', () => {

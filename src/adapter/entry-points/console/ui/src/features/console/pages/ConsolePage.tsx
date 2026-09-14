@@ -936,6 +936,11 @@ export const ConsolePage = () => {
             >
               ⚙
             </button>
+            {workflowImprovementIssueUrl !== null && (
+              <ConsoleCreateWorkflowTaskButton
+                onCreateWorkflowTask={handleCreateWorkflowTask}
+              />
+            )}
             {pjcode !== null && (
               <>
                 <button
@@ -961,11 +966,6 @@ export const ConsolePage = () => {
                   />
                 )}
               </>
-            )}
-            {workflowImprovementIssueUrl !== null && (
-              <ConsoleCreateWorkflowTaskButton
-                onCreateWorkflowTask={handleCreateWorkflowTask}
-              />
             )}
           </>
         }
