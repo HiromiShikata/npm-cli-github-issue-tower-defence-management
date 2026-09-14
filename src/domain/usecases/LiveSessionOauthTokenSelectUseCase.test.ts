@@ -291,7 +291,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       [
         candidate(
           'narrowFiveHour',
-          snapshot({ fiveHourUtilization: 0.6, sevenDayReset: NOW + 216 * HOUR }),
+          snapshot({
+            fiveHourUtilization: 0.6,
+            sevenDayReset: NOW + 216 * HOUR,
+          }),
         ),
       ],
       [],
