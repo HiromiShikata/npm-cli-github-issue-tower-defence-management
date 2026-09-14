@@ -639,11 +639,14 @@ export const ConsolePage = () => {
                 });
               }),
             );
-            await postConsoleComment({
+            const commentResult = await postConsoleComment({
               pjcode: capturedPjcode,
               url: issueUrl,
               body: markdownParts.join('\n\n'),
             });
+            if (!commentResult.posted) {
+              throw new Error(commentResult.error);
+            }
           }
         },
         advance: () => {},

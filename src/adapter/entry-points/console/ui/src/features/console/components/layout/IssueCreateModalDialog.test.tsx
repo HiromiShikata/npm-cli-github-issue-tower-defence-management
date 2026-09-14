@@ -371,4 +371,79 @@ describe('IssueCreateModalDialog', () => {
     const firstDot = dots[0] as HTMLElement;
     expect(firstDot.style.backgroundColor).toBeTruthy();
   });
+
+  it('renders the file input for attachments', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const fileInput = document.body.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    expect(fileInput).not.toBeNull();
+    expect(fileInput.multiple).toBe(true);
+  });
+
+  it('shows file names after files are selected via the file input', () => {
+    const { getByText } = render(<IssueCreateModalDialog {...baseProps} />);
+    const fileInput = document.body.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const mockFile = new File(['hello'], 'hello.txt', { type: 'text/plain' });
+    fireEvent.change(fileInput, { target: { files: [mockFile] } });
+    expect(getByText('hello.txt')).not.toBeNull();
+  });
+
+  it('removes a file when its remove button is clicked', () => {
+    const { queryByText } = render(<IssueCreateModalDialog {...baseProps} />);
+    const fileInput = document.body.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const mockFile = new File(['hello'], 'remove-me.txt', {
+      type: 'text/plain',
+    });
+    fireEvent.change(fileInput, { target: { files: [mockFile] } });
+    const removeButton = document.body.querySelector(
+      '[aria-label="Remove remove-me.txt"]',
+    ) as HTMLElement;
+    expect(removeButton).not.toBeNull();
+    fireEvent.click(removeButton);
+    expect(queryByText('remove-me.txt')).toBeNull();
+  });
+
+  it('calls onSubmit with the selected files array', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Task with files' },
+    });
+    const fileInput = document.body.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const mockFile = new File(['data'], 'attachment.png', {
+      type: 'image/png',
+    });
+    fireEvent.change(fileInput, { target: { files: [mockFile] } });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({ files: [mockFile] }),
+      ),
+    );
+  });
+
+  it('calls onSubmit with empty files array when no file is selected', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Task no files' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({ files: [] }),
+      ),
+    );
+  });
 });
