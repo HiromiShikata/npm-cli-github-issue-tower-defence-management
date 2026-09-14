@@ -1,6 +1,15 @@
 import { act, renderHook } from '@testing-library/react';
 import { useConsoleActionQueue } from './useConsoleActionQueue';
 
+const COMMENT_EXPANDED_PREFIX = 'console-comment-expanded:';
+
+const seedCommentExpandedState = (): void => {
+  localStorage.setItem(
+    `${COMMENT_EXPANDED_PREFIX}https://github.com/owner/repo/issues/1`,
+    JSON.stringify(['key-a']),
+  );
+};
+
 const OFFLINE_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
 
 const offlinePayload = {
@@ -520,5 +529,50 @@ describe('useConsoleActionQueue', () => {
       localStorage.getItem(OFFLINE_QUEUE_STORAGE_KEY) ?? '[]',
     );
     expect(stored).toHaveLength(0);
+  });
+
+  it('clears comment expanded states when the timer commits the action', () => {
+    seedCommentExpandedState();
+    expect(
+      localStorage.getItem(
+        `${COMMENT_EXPANDED_PREFIX}https://github.com/owner/repo/issues/1`,
+      ),
+    ).not.toBeNull();
+    const { result } = renderHook(() => useConsoleActionQueue());
+    act(() => {
+      result.current.enqueue(makeAction());
+    });
+    act(() => {
+      jest.advanceTimersByTime(5100);
+    });
+    expect(
+      localStorage.getItem(
+        `${COMMENT_EXPANDED_PREFIX}https://github.com/owner/repo/issues/1`,
+      ),
+    ).toBeNull();
+  });
+
+  it('clears comment expanded states when a new action flushes the pending one', () => {
+    seedCommentExpandedState();
+    expect(
+      localStorage.getItem(
+        `${COMMENT_EXPANDED_PREFIX}https://github.com/owner/repo/issues/1`,
+      ),
+    ).not.toBeNull();
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const first = makeAction({ message: 'Approved — PR #851' });
+    const second = makeAction({ message: 'Rejected — PR #853', color: 'amber' });
+    act(() => {
+      result.current.enqueue(first);
+    });
+    act(() => {
+      jest.advanceTimersByTime(1000);
+      result.current.enqueue(second);
+    });
+    expect(
+      localStorage.getItem(
+        `${COMMENT_EXPANDED_PREFIX}https://github.com/owner/repo/issues/1`,
+      ),
+    ).toBeNull();
   });
 });
