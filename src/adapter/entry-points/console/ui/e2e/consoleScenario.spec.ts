@@ -541,7 +541,9 @@ test('create-task dialog submits agent, referenceUrl, and file attachment correc
   const developerButton = dialog.getByRole('button', { name: /developer/i });
   await expect(developerButton).toBeVisible();
   await expect(developerButton).toHaveAttribute('aria-pressed', 'false');
-  await expect(dialog.getByPlaceholder(/paste current task url/i)).toBeVisible();
+  await expect(
+    dialog.getByPlaceholder(/paste current task url/i),
+  ).toBeVisible();
   const fileInput = dialog.locator('input[type="file"]');
   await expect(fileInput).toBeAttached();
   expect(await fileInput.getAttribute('multiple')).not.toBeNull();
