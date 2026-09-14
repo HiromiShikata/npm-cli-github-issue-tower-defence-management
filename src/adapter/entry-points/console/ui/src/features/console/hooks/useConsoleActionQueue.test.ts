@@ -561,7 +561,10 @@ describe('useConsoleActionQueue', () => {
     ).not.toBeNull();
     const { result } = renderHook(() => useConsoleActionQueue());
     const first = makeAction({ message: 'Approved — PR #851' });
-    const second = makeAction({ message: 'Rejected — PR #853', color: 'amber' });
+    const second = makeAction({
+      message: 'Rejected — PR #853',
+      color: 'amber',
+    });
     act(() => {
       result.current.enqueue(first);
     });
