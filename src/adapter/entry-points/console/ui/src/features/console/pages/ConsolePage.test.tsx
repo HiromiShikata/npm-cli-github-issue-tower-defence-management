@@ -2465,6 +2465,25 @@ describe('ConsolePage workflow task creation', () => {
       ).toBeInTheDocument(),
     );
   });
+
+  it('shows the ! button on the root page when pjcode is null and workflowImprovementIssueUrl is set', async () => {
+    installFetchWithWorkflowIssueUrl(
+      'https://github.com/HiromiShikata/secretary/issues/42',
+    );
+    window.history.replaceState({}, '', '/');
+
+    const { getByTitle } = render(<ConsolePage />);
+
+    await waitFor(() =>
+      expect(
+        getByTitle('Create workflow improvement task'),
+      ).toBeInTheDocument(),
+    );
+
+    expect(getByTitle('Create workflow improvement task').textContent).toBe(
+      '!',
+    );
+  });
 });
 
 describe('ConsolePage story selection auto-reset', () => {

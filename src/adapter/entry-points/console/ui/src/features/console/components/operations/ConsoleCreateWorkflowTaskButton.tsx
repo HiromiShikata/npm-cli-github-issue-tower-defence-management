@@ -51,7 +51,7 @@ export const ConsoleCreateWorkflowTaskButton = ({
         title="Create workflow improvement task"
         aria-label="Create workflow improvement task"
       >
-        ↑
+        !
       </button>
       {expanded && (
         <>
