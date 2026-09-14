@@ -911,6 +911,11 @@ export type ConsoleE2eSetAgentCall = {
   agentOptionId: string;
 };
 
+export type ConsoleE2eUploadAttachmentCall = {
+  fileName: string;
+  content: Buffer;
+};
+
 export type ConsoleE2eHarness = {
   baseUrl: string;
   appUrl: string;
@@ -926,6 +931,7 @@ export type ConsoleE2eHarness = {
   renameStoryCalls: ConsoleE2eRenameStoryCall[];
   setStoryCalls: ConsoleE2eSetStoryCall[];
   setAgentCalls: ConsoleE2eSetAgentCall[];
+  uploadAttachmentCalls: ConsoleE2eUploadAttachmentCall[];
   closeIssueCalls: string[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
@@ -970,11 +976,18 @@ export const startConsoleE2eHarness = async (options?: {
   const deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[] = [];
   const setStoryCalls: ConsoleE2eSetStoryCall[] = [];
   const setAgentCalls: ConsoleE2eSetAgentCall[] = [];
+  const uploadAttachmentCalls: ConsoleE2eUploadAttachmentCall[] = [];
 
   const server = await startWebServer({
     accessToken: CONSOLE_E2E_TOKEN,
     uiDistDir,
     consoleDataOutputDir,
+    issueAttachmentRepository: {
+      uploadAttachment: async ({ fileName, content }): Promise<string> => {
+        uploadAttachmentCalls.push({ fileName, content: Buffer.from(content) });
+        return `![${fileName}](https://example.com/${fileName})`;
+      },
+    },
     issueRepository: {
       ...createStubIssueRepository(
         reviewCommentCalls,
@@ -1081,6 +1094,7 @@ export const startConsoleE2eHarness = async (options?: {
     renameStoryCalls,
     setStoryCalls,
     setAgentCalls,
+    uploadAttachmentCalls,
     closeIssueCalls,
     storyColorCalls,
     deleteAllCommentsCalls,
