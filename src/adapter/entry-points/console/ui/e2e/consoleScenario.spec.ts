@@ -959,7 +959,6 @@ test('does not show the fleet task create link when fleetTaskCreateUrl is not co
   );
 });
 
-
 test('shows the task-level workflow incident report link in the detail subbar when workflowImprovementIssueUrl is configured', async ({
   browser,
 }) => {

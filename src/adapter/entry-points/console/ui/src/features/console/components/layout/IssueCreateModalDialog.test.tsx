@@ -202,7 +202,10 @@ describe('IssueCreateModalDialog', () => {
       ...e,
     }));
     rerender(
-      <IssueCreateModalDialog {...baseProps} storyEntries={sameStoriesNewRef} />,
+      <IssueCreateModalDialog
+        {...baseProps}
+        storyEntries={sameStoriesNewRef}
+      />,
     );
 
     expect(
@@ -224,10 +227,7 @@ describe('IssueCreateModalDialog', () => {
   it('calls onTitleChange whenever the title textarea changes', () => {
     const onTitleChange = jest.fn();
     const { getByRole } = render(
-      <IssueCreateModalDialog
-        {...baseProps}
-        onTitleChange={onTitleChange}
-      />,
+      <IssueCreateModalDialog {...baseProps} onTitleChange={onTitleChange} />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Typed text' },

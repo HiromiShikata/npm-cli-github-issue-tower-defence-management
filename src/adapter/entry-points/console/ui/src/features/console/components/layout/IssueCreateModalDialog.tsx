@@ -90,9 +90,9 @@ export const IssueCreateModalDialog = ({
             aria-label="Title"
             value={titleValue}
             onChange={(e) => {
-                setTitleValue(e.target.value);
-                onTitleChange?.(e.target.value);
-              }}
+              setTitleValue(e.target.value);
+              onTitleChange?.(e.target.value);
+            }}
             rows={3}
           />
 
