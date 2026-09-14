@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleProjectSettingsModalScreen';
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
-import type { IssueCreateParams } from '../components/layout/ConsoleTaskCreateButton';
-import { ConsoleTaskCreateButton } from '../components/layout/ConsoleTaskCreateButton';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
+import {
+  IssueCreateModalDialog,
+  type IssueCreateParams,
+} from '../components/layout/IssueCreateModalDialog';
 import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsolePrsAgentFilter } from '../components/list/ConsolePrsAgentFilter';
 import { ConsoleQueuedList } from '../components/list/ConsoleQueuedList';
@@ -37,10 +39,7 @@ import { useConsoleTabData } from '../hooks/useConsoleTabData';
 import { useConsoleTabSelectHandler } from '../hooks/useConsoleTabSelectHandler';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
-  encodeAttachmentContent,
   postConsoleAddStory,
-  postConsoleAttachment,
-  postConsoleComment,
   postConsoleCreateIssue,
   postConsoleCreateWorkflowIssue,
   postConsoleDeleteStory,
@@ -200,6 +199,8 @@ export const ConsolePage = () => {
       clearInterval(id);
     };
   }, []);
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   useEffect(() => {
@@ -594,56 +595,31 @@ export const ConsolePage = () => {
   );
 
   const handleCreateIssueFromDialog = useCallback(
-    (params: IssueCreateParams): Promise<void> => {
-      if (pjcode === null) {
-        return Promise.reject(
-          new Error('No project specified in the URL path.'),
-        );
-      }
-      if (defaultNameWithOwner === null) {
-        return Promise.reject(
-          new Error('No repository configured for this project.'),
-        );
+    ({ storyOptionId, title }: IssueCreateParams): void => {
+      if (pjcode === null || defaultNameWithOwner === null) {
+        return;
       }
       const capturedPjcode = pjcode;
       const capturedNameWithOwner = defaultNameWithOwner;
+      const capturedTitle = title;
+      const capturedStoryName =
+        storyEntries.find((e) => e.storyOptionId === storyOptionId)
+          ?.storyName ?? '';
       actionQueue.enqueue({
-        message: `Task created — "${params.title}"`,
+        message: `Task created — "${capturedTitle}"`,
         color: 'blue',
         commit: async () => {
-          const issueUrl = await postConsoleCreateIssue({
+          await postConsoleCreateIssue({
             pjcode: capturedPjcode,
-            title: params.title,
-            storyName: params.storyName,
-            agentOptionId: params.agentOptionId,
-            body: params.body,
+            title: capturedTitle,
+            storyName: capturedStoryName,
             nameWithOwner: capturedNameWithOwner,
           });
-          if (params.files.length > 0) {
-            const markdownParts: string[] = [];
-            for (const file of params.files) {
-              const bytes = new Uint8Array(await file.arrayBuffer());
-              const contentBase64 = encodeAttachmentContent(bytes);
-              const markdown = await postConsoleAttachment({
-                pjcode: capturedPjcode,
-                url: issueUrl,
-                fileName: file.name,
-                contentBase64,
-              });
-              markdownParts.push(markdown);
-            }
-            await postConsoleComment({
-              pjcode: capturedPjcode,
-              url: issueUrl,
-              body: markdownParts.join('\n\n'),
-            });
-          }
         },
         advance: () => {},
       });
-      return Promise.resolve();
     },
-    [pjcode, defaultNameWithOwner, actionQueue],
+    [pjcode, defaultNameWithOwner, storyEntries, actionQueue],
   );
 
   const handleCreateWorkflowTask = useCallback(
@@ -927,20 +903,31 @@ export const ConsolePage = () => {
             </button>
             {pjcode !== null && (
               <>
-                <ConsoleTaskCreateButton
-                  pjcode={pjcode}
-                  storyEntries={storyEntries}
-                  agentOptions={agentOptions}
-                  defaultNameWithOwner={defaultNameWithOwner}
-                  onCreateIssue={handleCreateIssueFromDialog}
-                  fleetTaskCreateUrl={fleetTaskCreateUrl}
-                />
+                <button
+                  type="button"
+                  className="console-task-create-button"
+                  disabled={
+                    defaultNameWithOwner === null || storyEntries.length === 0
+                  }
+                  onClick={() => setIsDialogOpen(true)}
+                  aria-label="Create new task"
+                  title="Create new task"
+                >
+                  +
+                </button>
                 {workflowImprovementIssueUrl !== null && (
                   <ConsoleCreateWorkflowTaskButton
                     onCreateWorkflowTask={handleCreateWorkflowTask}
                   />
                 )}
               </>
+            )}
+            {isDialogOpen && (
+              <IssueCreateModalDialog
+                storyEntries={storyEntries}
+                onSubmit={handleCreateIssueFromDialog}
+                onClose={() => setIsDialogOpen(false)}
+              />
             )}
           </>
         }
