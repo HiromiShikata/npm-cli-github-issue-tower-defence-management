@@ -1,3 +1,10 @@
+# [2.115.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.114.2...v2.115.0) (2026-09-14)
+
+
+### Features
+
+* **console:** replace inline workflow task input with IssueCreateModalDialog ([#2368](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2368)) ([#2370](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2370)) ([45152f6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/45152f6eee847187044462eab70d332c078f5051))
+
 ## [2.114.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.114.1...v2.114.2) (2026-09-14)
 
 
