@@ -1304,6 +1304,30 @@ test('shows Delete Story in the danger zone of a story-labeled item detail page,
   });
 });
 
+test('undo toast appears at the bottom-left corner of the viewport', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  await tabByLabel(page, 'Awaiting Owner').click();
+  await itemRowByText(
+    page,
+    'Serve the committed console UI bundle from serveConsole',
+  ).click();
+
+  const approveButton = page
+    .locator('.console-op-button', { hasText: 'Approve' })
+    .first();
+  await expect(approveButton).toBeVisible();
+  await approveButton.click();
+
+  const undoToast = page.locator('.console-undo-toast');
+  await expect(undoToast).toBeVisible({ timeout: 8000 });
+  await expect(undoToast).toHaveCSS('position', 'fixed');
+  await expect(undoToast).toHaveCSS('bottom', '12px');
+  await expect(undoToast).toHaveCSS('left', '12px');
+});
+
 test('error toast renders with background styling when a merge operation fails', async ({
   page,
 }) => {
@@ -1331,6 +1355,8 @@ test('error toast renders with background styling when a merge operation fails',
     await expect(errorToast).toBeVisible({ timeout: 8000 });
     await expect(errorToast).toHaveCSS('background-color', 'rgb(58, 21, 24)');
     await expect(errorToast).toHaveCSS('position', 'fixed');
+    await expect(errorToast).toHaveCSS('bottom', '12px');
+    await expect(errorToast).toHaveCSS('left', '12px');
   } finally {
     await failHarness.stop();
   }
