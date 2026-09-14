@@ -950,11 +950,6 @@ export const ConsolePage = () => {
                 >
                   +
                 </button>
-                {workflowImprovementIssueUrl !== null && (
-                  <ConsoleCreateWorkflowTaskButton
-                    onCreateWorkflowTask={handleCreateWorkflowTask}
-                  />
-                )}
                 {isDialogOpen && (
                   <IssueCreateModalDialog
                     storyEntries={storyEntries}
@@ -966,6 +961,11 @@ export const ConsolePage = () => {
                   />
                 )}
               </>
+            )}
+            {workflowImprovementIssueUrl !== null && (
+              <ConsoleCreateWorkflowTaskButton
+                onCreateWorkflowTask={handleCreateWorkflowTask}
+              />
             )}
           </>
         }
