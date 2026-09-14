@@ -15,6 +15,10 @@ import {
   WorkflowStatusDefinition,
 } from '../entities/WorkflowStatus';
 
+const isStaleProjectItemError = (error: unknown): boolean =>
+  error instanceof Error &&
+  error.message.includes('Could not resolve to a node with the global id');
+
 export class SetupTowerDefenceProjectUseCase {
   constructor(
     private readonly projectRepository: Pick<
@@ -77,11 +81,18 @@ export class SetupTowerDefenceProjectUseCase {
           SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
       );
       for (const issue of unreadIssues) {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatus.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatus.id,
+          );
+        } catch (error) {
+          if (!isStaleProjectItemError(error)) throw error;
+          console.warn(
+            `Skipping stale project item during Unread migration: ${issue.itemId}`,
+          );
+        }
       }
     }
 
@@ -97,11 +108,18 @@ export class SetupTowerDefenceProjectUseCase {
             issue.status === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
         );
         for (const issue of awaitingTaskBreakdownIssues) {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            todoStatus.id,
-          );
+          try {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              todoStatus.id,
+            );
+          } catch (error) {
+            if (!isStaleProjectItemError(error)) throw error;
+            console.warn(
+              `Skipping stale project item during Awaiting Task Breakdown migration: ${issue.itemId}`,
+            );
+          }
         }
       }
     }
@@ -114,11 +132,18 @@ export class SetupTowerDefenceProjectUseCase {
           (issue.status === DONE_STATUS_NAME || issue.status === null),
       );
       for (const issue of limboIssues) {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatus.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatus.id,
+          );
+        } catch (error) {
+          if (!isStaleProjectItemError(error)) throw error;
+          console.warn(
+            `Skipping stale project item during limbo recovery: ${issue.itemId}`,
+          );
+        }
       }
     }
 

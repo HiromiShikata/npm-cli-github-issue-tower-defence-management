@@ -789,12 +789,26 @@ export class ApiV3CheerioRestIssueRepository
     issue: Issue,
     statusId: string,
   ) => Promise<void> = async (project, issue, statusId) => {
-    await this.graphqlProjectItemRepository.updateProjectField(
-      project.id,
-      project.status.fieldId,
-      issue.itemId,
-      { singleSelectOptionId: statusId },
-    );
+    try {
+      await this.graphqlProjectItemRepository.updateProjectField(
+        project.id,
+        project.status.fieldId,
+        issue.itemId,
+        { singleSelectOptionId: statusId },
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes('Could not resolve to a node with the global id')
+      ) {
+        this.getAllIssuesRefreshMemo.delete(project.id);
+        await this.projectIssuesCacheRepository.removeIssueByItemId(
+          project.id,
+          issue.itemId,
+        );
+      }
+      throw error;
+    }
     const memoized = this.getAllIssuesRefreshMemo.get(project.id);
     if (memoized) {
       const memoIssue = memoized.issues.find((i) => i.itemId === issue.itemId);
