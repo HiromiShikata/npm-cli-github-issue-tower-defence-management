@@ -882,6 +882,15 @@ export const ConsolePage = () => {
           title={actionQueue.error.message}
           message={`Operation failed: ${actionQueue.error.reason}`}
           onDismiss={actionQueue.dismissError}
+          onRetry={
+            actionQueue.error.retry !== undefined
+              ? () => {
+                  const retry = actionQueue.error?.retry;
+                  actionQueue.dismissError();
+                  retry?.();
+                }
+              : undefined
+          }
         />
       )}
       <ConsoleOfflinePendingActionsPanel

@@ -95,4 +95,38 @@ describe('ConsoleErrorToast', () => {
     fireEvent.click(getByText('Dismiss'));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
+
+  it('renders a Retry button when onRetry is provided', () => {
+    const { getByText } = render(
+      <ConsoleErrorToast
+        message="Operation failed: boom"
+        onDismiss={() => {}}
+        onRetry={() => {}}
+      />,
+    );
+    expect(getByText('Retry')).toBeInTheDocument();
+  });
+
+  it('does not render a Retry button when onRetry is not provided', () => {
+    const { queryByText } = render(
+      <ConsoleErrorToast
+        message="Operation failed: boom"
+        onDismiss={() => {}}
+      />,
+    );
+    expect(queryByText('Retry')).not.toBeInTheDocument();
+  });
+
+  it('invokes onRetry when the Retry button is clicked', () => {
+    const onRetry = jest.fn();
+    const { getByText } = render(
+      <ConsoleErrorToast
+        message="Operation failed: boom"
+        onDismiss={() => {}}
+        onRetry={onRetry}
+      />,
+    );
+    fireEvent.click(getByText('Retry'));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
 });

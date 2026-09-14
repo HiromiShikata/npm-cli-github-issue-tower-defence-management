@@ -39,12 +39,14 @@ export type ConsoleErrorToastProps = {
   title?: string;
   message: string;
   onDismiss: () => void;
+  onRetry?: () => void;
 };
 
 export const ConsoleErrorToast = ({
   title,
   message,
   onDismiss,
+  onRetry,
 }: ConsoleErrorToastProps) => (
   <div
     className="console-undo-toast-error console-error-toast"
@@ -55,12 +57,23 @@ export const ConsoleErrorToast = ({
       <span className="console-error-toast-title">{title}</span>
     )}
     <span className="console-error-toast-message">{message}</span>
-    <button
-      type="button"
-      className="console-error-toast-dismiss"
-      onClick={onDismiss}
-    >
-      Dismiss
-    </button>
+    <div className="console-error-toast-actions">
+      {onRetry !== undefined && (
+        <button
+          type="button"
+          className="console-error-toast-retry"
+          onClick={onRetry}
+        >
+          Retry
+        </button>
+      )}
+      <button
+        type="button"
+        className="console-error-toast-dismiss"
+        onClick={onDismiss}
+      >
+        Dismiss
+      </button>
+    </div>
   </div>
 );

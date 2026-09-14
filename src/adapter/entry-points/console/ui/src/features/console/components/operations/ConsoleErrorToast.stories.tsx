@@ -31,3 +31,29 @@ export const AirplaneModeGuard: Story = {
       'Operation failed: This action requires a network connection. Turn off airplane mode and try again.',
   },
 };
+
+export const WithRetry: Story = {
+  args: {
+    title: 'Approved — PR #851',
+    message: 'Operation failed: HTTP 422 Review cannot be requested',
+    onRetry: () => {},
+  },
+};
+
+export const DismissOnly: Story = {
+  args: {
+    title: 'Airplane mode',
+    message:
+      'Operation failed: This action requires a network connection. Turn off airplane mode and try again.',
+    onRetry: undefined,
+  },
+};
+
+export const LongMessage: Story = {
+  args: {
+    title: 'Approved — PR #851',
+    message:
+      'Operation failed: Unprocessable Entity — The review cannot be requested because the pull request is in a draft state and the reviewer has already submitted a review. Please resolve the existing review first, convert the PR to ready for review, and then request a new review from the appropriate reviewer.',
+    onRetry: () => {},
+  },
+};

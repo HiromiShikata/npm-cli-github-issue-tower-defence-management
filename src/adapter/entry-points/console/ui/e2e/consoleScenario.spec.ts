@@ -1393,6 +1393,9 @@ test('error toast renders with background styling when a merge operation fails',
     await expect(errorToast).toHaveCSS('position', 'fixed');
     await expect(errorToast).toHaveCSS('bottom', '12px');
     await expect(errorToast).toHaveCSS('left', '12px');
+    await expect(errorToast).toContainText(
+      'merge failed: simulated error for CSS test',
+    );
   } finally {
     await failHarness.stop();
   }
