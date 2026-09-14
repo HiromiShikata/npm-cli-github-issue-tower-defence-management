@@ -595,6 +595,40 @@ test('creates an issue with agent and referenceUrl when those fields are filled 
   expect(harness.setAgentCalls.at(-1)?.agentOptionId).toBe('agt00001');
 });
 
+test('uploads attached files after issue creation when files are selected in the new-task dialog', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  const initialUploadCount = harness.uploadAttachmentCalls.length;
+
+  const newTaskButton = page.locator('.console-task-create-button');
+  await expect(newTaskButton).toBeVisible();
+  await newTaskButton.click();
+
+  await page
+    .getByRole('textbox', { name: /title/i })
+    .fill('Task with file attachment');
+
+  const fileInput = page
+    .getByRole('dialog', { name: /create new task/i })
+    .locator('input[type="file"]');
+  await fileInput.setInputFiles({
+    name: 'fixture-attachment.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('fake-png-content'),
+  });
+
+  await page.getByRole('button', { name: /^create$/i }).click();
+
+  await expect
+    .poll(() => harness.uploadAttachmentCalls.length, { timeout: 10000 })
+    .toBe(initialUploadCount + 1);
+  expect(harness.uploadAttachmentCalls.at(-1)?.fileName).toBe(
+    'fixture-attachment.png',
+  );
+});
+
 test('restores draft title when the create-task dialog is cancelled and reopened', async ({
   page,
 }) => {

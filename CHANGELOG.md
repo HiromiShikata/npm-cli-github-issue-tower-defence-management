@@ -1,3 +1,10 @@
+# [2.113.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.112.1...v2.113.0) (2026-09-14)
+
+
+### Features
+
+* **console:** clear open comment state after action undo window expires ([#2353](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2353)) ([cf11e2c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cf11e2c9d9d1da06a92c7e4e3fb8d83cbf2e31a3)), closes [HiromiShikata/umino-corporait-operation#31740](https://github.com/HiromiShikata/umino-corporait-operation/issues/31740)
+
 ## [2.112.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.112.0...v2.112.1) (2026-09-14)
 
 
