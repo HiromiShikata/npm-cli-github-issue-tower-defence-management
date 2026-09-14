@@ -386,20 +386,22 @@ describe('RestIssueRepository', () => {
 
       expect(issueNumber).toBe(123);
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe(
+      expect(mockFetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/HiromiShikata/test-repository/issues',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            title: 'test issue',
+            body: 'test body',
+            assignees: ['HiromiShikata'],
+            labels: ['test'],
+          }),
+          headers: {
+            Authorization: 'token dummy-token',
+            'Content-Type': 'application/json',
+          },
+        },
       );
-      expect(options.method).toBe('POST');
-      expect(JSON.parse(options.body as string)).toEqual({
-        title: 'test issue',
-        body: 'test body',
-        assignees: ['HiromiShikata'],
-        labels: ['test'],
-      });
-      expect(
-        (options.headers as Record<string, string>)['Authorization'],
-      ).toBe('token dummy-token');
     });
 
     it('logs rate-limit information via githubRestClient on successful createNewIssue', async () => {

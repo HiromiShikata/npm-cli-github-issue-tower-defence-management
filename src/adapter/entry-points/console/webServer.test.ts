@@ -3191,7 +3191,7 @@ describe('webServer GET /api/projects', () => {
       );
       expect(response.statusCode).toBe(400);
       expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
-      const [warnMsg] = consoleWarnSpy.mock.calls[0] as [string];
+      const warnMsg = String(consoleWarnSpy.mock.calls[0]?.[0]);
       expect(warnMsg).toMatch(
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z console operation validation failure: path=\/api\/createissue status=400 error=title is required$/,
       );
