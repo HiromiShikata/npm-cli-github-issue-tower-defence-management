@@ -1,3 +1,10 @@
+## [2.113.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.113.2...v2.113.3) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console:** move workflow improvement task button before create-task button in project header ([#2363](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2363)) ([97b85a7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/97b85a7daf06f5a4951fe5c906ac2b068423d537)), closes [HiromiShikata/umino-corporait-operation#31753](https://github.com/HiromiShikata/umino-corporait-operation/issues/31753)
+
 ## [2.113.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.113.1...v2.113.2) (2026-09-14)
 
 
