@@ -469,8 +469,6 @@ describe('IssueCreateModalDialog', () => {
       <IssueCreateModalDialog {...baseProps} showOptionalFields={false} />,
     );
     expect(queryByPlaceholderText(/paste current task url/i)).toBeNull();
-    expect(
-      document.body.querySelector('input[type="file"]'),
-    ).toBeNull();
+    expect(document.body.querySelector('input[type="file"]')).toBeNull();
   });
 });

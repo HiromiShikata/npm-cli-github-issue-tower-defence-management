@@ -146,7 +146,9 @@ export const IssueCreateModalDialog = ({
                     type="button"
                     className={`console-task-create-dialog-option-button${selectedStoryOptionId === entry.storyOptionId ? ' console-task-create-dialog-option-button--selected' : ''}`}
                     aria-pressed={selectedStoryOptionId === entry.storyOptionId}
-                    onClick={() => setSelectedStoryOptionId(entry.storyOptionId)}
+                    onClick={() =>
+                      setSelectedStoryOptionId(entry.storyOptionId)
+                    }
                     disabled={submitting}
                   >
                     <span

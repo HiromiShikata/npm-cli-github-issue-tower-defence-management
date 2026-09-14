@@ -61,9 +61,9 @@ describe('ConsoleCreateWorkflowTaskButton', () => {
     fireEvent.change(textarea, { target: { value: 'Failing task' } });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
     await waitFor(() =>
-      expect(
-        document.body.querySelector('[role="alert"]')?.textContent,
-      ).toBe('API error'),
+      expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(
+        'API error',
+      ),
     );
     expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
   });
