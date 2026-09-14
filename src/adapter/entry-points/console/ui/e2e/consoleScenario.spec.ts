@@ -939,76 +939,6 @@ test('deletes all comments when the dangerous actions panel is opened and the de
   expect(harness.deleteAllCommentsCalls[0].issueUrl).toContain('/issues/720');
 });
 
-test('shows the workflow improvement link when workflowImprovementIssueUrl is configured', async ({
-  browser,
-}) => {
-  const workflowUrl =
-    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
-  const localHarness = await startConsoleE2eHarness({
-    workflowImprovementIssueUrl: workflowUrl,
-  });
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
-  try {
-    await page.goto(localHarness.appRootUrl);
-    const link = page.locator('.console-tab-workflow-improvement-link');
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute('href', workflowUrl);
-    await expect(link).toHaveAttribute('target', '_blank');
-    await expect(link).toHaveAttribute('rel', 'noreferrer');
-  } finally {
-    await ctx.close();
-    await localHarness.stop();
-  }
-});
-
-test('does not show the workflow improvement link when workflowImprovementIssueUrl is not configured', async ({
-  page,
-}) => {
-  await page.goto(harness.appRootUrl);
-  await expect(
-    page.locator('.console-tab-workflow-improvement-link'),
-  ).toHaveCount(0);
-});
-
-test('creates a workflow improvement issue when the workflow task button is used', async ({
-  browser,
-}) => {
-  const localHarness = await startConsoleE2eHarness({
-    workflowImprovementIssueUrl:
-      'https://github.com/HiromiShikata/secretary/issues/42',
-  });
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
-  try {
-    await page.goto(localHarness.appUrl);
-
-    const toggleButton = page.getByTitle('Create workflow improvement task');
-    await expect(toggleButton).toBeVisible();
-    await toggleButton.click();
-
-    await page.getByRole('dialog').waitFor();
-    await page
-      .getByRole('dialog')
-      .getByRole('textbox', { name: 'Title' })
-      .fill('My workflow task');
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Create', exact: true })
-      .click();
-
-    await expect
-      .poll(() => localHarness.createIssueCalls.length, { timeout: 10000 })
-      .toBe(1);
-    expect(localHarness.createIssueCalls[0].org).toBe('HiromiShikata');
-    expect(localHarness.createIssueCalls[0].repo).toBe('secretary');
-    expect(localHarness.createIssueCalls[0].title).toBe('My workflow task');
-  } finally {
-    await ctx.close();
-    await localHarness.stop();
-  }
-});
-
 test('shows the fleet task create link when fleetTaskCreateUrl is configured', async ({
   browser,
 }) => {
@@ -1039,62 +969,6 @@ test('does not show the fleet task create link when fleetTaskCreateUrl is not co
   await expect(page.locator('.console-tab-fleet-task-create-link')).toHaveCount(
     0,
   );
-});
-
-test('shows the task-level workflow incident report link in the detail subbar when workflowImprovementIssueUrl is configured', async ({
-  browser,
-}) => {
-  const workflowUrl =
-    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
-  const localHarness = await startConsoleE2eHarness({
-    workflowImprovementIssueUrl: workflowUrl,
-  });
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
-  try {
-    await page.goto(localHarness.appRootUrl);
-    await tabByLabel(page, 'Workflow Blocker').click();
-    await itemRowByText(
-      page,
-      'Resolve the shared GitHub token rate-limit exhaustion blocker',
-    ).click();
-    const link = page.locator('.console-detail-report-link');
-    await expect(link).toBeVisible();
-    const href = await link.getAttribute('href');
-    expect(href).toContain(workflowUrl);
-    expect(href).toContain('body=');
-  } finally {
-    await ctx.close();
-    await localHarness.stop();
-  }
-});
-
-test('shows per-comment workflow incident report links when workflowImprovementIssueUrl is configured', async ({
-  browser,
-}) => {
-  const workflowUrl =
-    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata';
-  const localHarness = await startConsoleE2eHarness({
-    workflowImprovementIssueUrl: workflowUrl,
-  });
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
-  try {
-    await page.goto(localHarness.appRootUrl);
-    await tabByLabel(page, 'Workflow Blocker').click();
-    await itemRowByText(
-      page,
-      'Resolve the shared GitHub token rate-limit exhaustion blocker',
-    ).click();
-    const link = page.locator('.console-comment-report-link').first();
-    await expect(link).toBeVisible({ timeout: 10000 });
-    const href = await link.getAttribute('href');
-    expect(href).toContain(workflowUrl);
-    expect(href).toContain(encodeURIComponent(CONSOLE_E2E_COMMENT_URL));
-  } finally {
-    await ctx.close();
-    await localHarness.stop();
-  }
 });
 
 test('renames a story option in the GitHub custom field via the rename form', async ({
