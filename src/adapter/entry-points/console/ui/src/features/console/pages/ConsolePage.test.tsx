@@ -856,6 +856,71 @@ describe('ConsolePage', () => {
     }
   });
 
+  it('shows a retry button in the error toast that re-attempts the failed action', async () => {
+    let postCallCount = 0;
+    const fetchMock = jest.fn(
+      async (url: string, init?: { method?: string }) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => listPayload(listMatch[1]),
+          };
+        }
+        if (init?.method === 'POST') {
+          postCallCount++;
+          if (postCallCount === 1) {
+            return {
+              ok: false,
+              status: 500,
+              text: async () => JSON.stringify({ error: 'merge failed' }),
+            };
+          }
+          return { ok: true, status: 200, json: async () => ({}) };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      },
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText, container } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      fireEvent.click(await findByText('Approve & Merge'));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(getByText(/^Operation failed:/)).toBeInTheDocument();
+
+      const retryButton = container.querySelector('.console-error-toast-retry');
+      expect(retryButton).not.toBeNull();
+
+      fireEvent.click(retryButton!);
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.console-error-toast'),
+        ).toBeNull();
+      });
+      expect(postCallCount).toBe(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('renders reorder buttons in the Stories tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     const { getAllByRole, container } = render(<ConsolePage />);
