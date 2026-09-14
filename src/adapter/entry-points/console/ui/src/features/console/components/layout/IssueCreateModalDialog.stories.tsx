@@ -67,3 +67,11 @@ export const NoAgentOptions: Story = {
     agentOptions: [],
   },
 };
+
+export const WorkflowTaskMode: Story = {
+  args: {
+    storyEntries: [],
+    agentOptions: [],
+    showOptionalFields: false,
+  },
+};

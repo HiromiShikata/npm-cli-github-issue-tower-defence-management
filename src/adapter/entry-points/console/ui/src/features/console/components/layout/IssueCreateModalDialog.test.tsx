@@ -446,4 +446,37 @@ describe('IssueCreateModalDialog', () => {
       ),
     );
   });
+
+  it('submitting with zero storyEntries succeeds without story validation error', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole, queryByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        storyEntries={[]}
+        onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'No story task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        storyOptionId: '',
+        agentOptionId: null,
+        title: 'No story task',
+        referenceUrl: null,
+        files: [],
+      }),
+    );
+    expect(queryByRole('alert')).toBeNull();
+  });
+
+  it('does not render Reference URL and Attachments sections when showOptionalFields is false', () => {
+    const { queryByPlaceholderText } = render(
+      <IssueCreateModalDialog {...baseProps} showOptionalFields={false} />,
+    );
+    expect(queryByPlaceholderText(/paste current task url/i)).toBeNull();
+    expect(document.body.querySelector('input[type="file"]')).toBeNull();
+  });
 });

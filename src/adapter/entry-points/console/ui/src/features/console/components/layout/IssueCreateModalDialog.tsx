@@ -18,6 +18,7 @@ export type IssueCreateModalDialogProps = {
   onClose: () => void;
   initialTitle?: string;
   onTitleChange?: (title: string) => void;
+  showOptionalFields?: boolean;
 };
 
 export const IssueCreateModalDialog = ({
@@ -27,6 +28,7 @@ export const IssueCreateModalDialog = ({
   onClose,
   initialTitle,
   onTitleChange,
+  showOptionalFields = true,
 }: IssueCreateModalDialogProps) => {
   const [selectedStoryOptionId, setSelectedStoryOptionId] = useState<
     string | null
@@ -60,7 +62,7 @@ export const IssueCreateModalDialog = ({
       setSubmitError('Title is required.');
       return;
     }
-    if (selectedStoryOptionId === null) {
+    if (storyEntries.length > 0 && selectedStoryOptionId === null) {
       setSubmitError('Please select a story.');
       return;
     }
@@ -69,11 +71,15 @@ export const IssueCreateModalDialog = ({
     setSubmitError(null);
     try {
       await onSubmit({
-        storyOptionId: selectedStoryOptionId,
+        storyOptionId: selectedStoryOptionId ?? '',
         agentOptionId: selectedAgentOptionId,
         title: trimmedTitle,
-        referenceUrl: trimmedUrl.length > 0 ? trimmedUrl : null,
-        files: selectedFiles,
+        referenceUrl: showOptionalFields
+          ? trimmedUrl.length > 0
+            ? trimmedUrl
+            : null
+          : null,
+        files: showOptionalFields ? selectedFiles : [],
       });
       onClose();
     } catch (err) {
@@ -128,29 +134,35 @@ export const IssueCreateModalDialog = ({
             rows={3}
           />
 
-          <span className="console-task-create-dialog-section-label">
-            Story
-          </span>
-          <div className="console-task-create-dialog-option-list">
-            {storyEntries.map((entry) => (
-              <button
-                key={entry.storyOptionId}
-                type="button"
-                className={`console-task-create-dialog-option-button${selectedStoryOptionId === entry.storyOptionId ? ' console-task-create-dialog-option-button--selected' : ''}`}
-                aria-pressed={selectedStoryOptionId === entry.storyOptionId}
-                onClick={() => setSelectedStoryOptionId(entry.storyOptionId)}
-                disabled={submitting}
-              >
-                <span
-                  className="console-story-dot"
-                  style={{
-                    backgroundColor: colorFromEnum(entry.color).dot,
-                  }}
-                />
-                {entry.storyName}
-              </button>
-            ))}
-          </div>
+          {storyEntries.length > 0 && (
+            <>
+              <span className="console-task-create-dialog-section-label">
+                Story
+              </span>
+              <div className="console-task-create-dialog-option-list">
+                {storyEntries.map((entry) => (
+                  <button
+                    key={entry.storyOptionId}
+                    type="button"
+                    className={`console-task-create-dialog-option-button${selectedStoryOptionId === entry.storyOptionId ? ' console-task-create-dialog-option-button--selected' : ''}`}
+                    aria-pressed={selectedStoryOptionId === entry.storyOptionId}
+                    onClick={() =>
+                      setSelectedStoryOptionId(entry.storyOptionId)
+                    }
+                    disabled={submitting}
+                  >
+                    <span
+                      className="console-story-dot"
+                      style={{
+                        backgroundColor: colorFromEnum(entry.color).dot,
+                      }}
+                    />
+                    {entry.storyName}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           {agentOptions.length > 0 && (
             <>
@@ -178,50 +190,56 @@ export const IssueCreateModalDialog = ({
             </>
           )}
 
-          <span className="console-task-create-dialog-section-label">
-            Reference URL
-          </span>
-          <input
-            type="url"
-            className="console-task-create-dialog-input"
-            placeholder="Paste current task URL here"
-            value={referenceUrlValue}
-            onChange={(e) => setReferenceUrlValue(e.target.value)}
-            disabled={submitting}
-          />
+          {showOptionalFields && (
+            <>
+              <span className="console-task-create-dialog-section-label">
+                Reference URL
+              </span>
+              <input
+                type="url"
+                className="console-task-create-dialog-input"
+                placeholder="Paste current task URL here"
+                value={referenceUrlValue}
+                onChange={(e) => setReferenceUrlValue(e.target.value)}
+                disabled={submitting}
+              />
 
-          <span className="console-task-create-dialog-section-label">
-            Attachments
-          </span>
-          <input
-            type="file"
-            multiple
-            className="console-task-create-dialog-file-input"
-            disabled={submitting}
-            onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
-          />
-          {selectedFiles.length > 0 && (
-            <ul className="console-task-create-dialog-file-list">
-              {selectedFiles.map((file, index) => (
-                <li
-                  key={`${file.name}-${file.size}-${file.lastModified}`}
-                  className="console-task-create-dialog-file-item"
-                >
-                  <span className="console-task-create-dialog-file-name">
-                    {file.name}
-                  </span>
-                  <button
-                    type="button"
-                    className="console-task-create-dialog-file-remove"
-                    aria-label={`Remove ${file.name}`}
-                    onClick={() => handleRemoveFile(index)}
-                    disabled={submitting}
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
+              <span className="console-task-create-dialog-section-label">
+                Attachments
+              </span>
+              <input
+                type="file"
+                multiple
+                className="console-task-create-dialog-file-input"
+                disabled={submitting}
+                onChange={(e) =>
+                  setSelectedFiles(Array.from(e.target.files ?? []))
+                }
+              />
+              {selectedFiles.length > 0 && (
+                <ul className="console-task-create-dialog-file-list">
+                  {selectedFiles.map((file, index) => (
+                    <li
+                      key={`${file.name}-${file.size}-${file.lastModified}`}
+                      className="console-task-create-dialog-file-item"
+                    >
+                      <span className="console-task-create-dialog-file-name">
+                        {file.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="console-task-create-dialog-file-remove"
+                        aria-label={`Remove ${file.name}`}
+                        onClick={() => handleRemoveFile(index)}
+                        disabled={submitting}
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
 
           {submitError !== null && (

@@ -987,8 +987,15 @@ test('creates a workflow improvement issue when the workflow task button is used
     await expect(toggleButton).toBeVisible();
     await toggleButton.click();
 
-    await page.getByPlaceholder('Task title').fill('My workflow task');
-    await page.getByRole('button', { name: 'Create', exact: true }).click();
+    await page.getByRole('dialog').waitFor();
+    await page
+      .getByRole('dialog')
+      .getByRole('textbox', { name: 'Title' })
+      .fill('My workflow task');
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Create', exact: true })
+      .click();
 
     await expect
       .poll(() => localHarness.createIssueCalls.length, { timeout: 10000 })
