@@ -15,9 +15,12 @@ import {
   WorkflowStatusDefinition,
 } from '../entities/WorkflowStatus';
 
-const isStaleProjectItemError = (error: unknown): boolean =>
-  error instanceof Error &&
-  error.message.includes('Could not resolve to a node with the global id');
+export class StaleProjectItemError extends Error {
+  constructor(public readonly itemId: string) {
+    super(`Project item '${itemId}' no longer exists in GitHub`);
+    this.name = 'StaleProjectItemError';
+  }
+}
 
 export class SetupTowerDefenceProjectUseCase {
   constructor(
@@ -88,7 +91,7 @@ export class SetupTowerDefenceProjectUseCase {
             awaitingWorkspaceStatus.id,
           );
         } catch (error) {
-          if (!isStaleProjectItemError(error)) throw error;
+          if (!(error instanceof StaleProjectItemError)) throw error;
           console.warn(
             `Skipping stale project item during Unread migration: ${issue.itemId}`,
           );
@@ -115,7 +118,7 @@ export class SetupTowerDefenceProjectUseCase {
               todoStatus.id,
             );
           } catch (error) {
-            if (!isStaleProjectItemError(error)) throw error;
+            if (!(error instanceof StaleProjectItemError)) throw error;
             console.warn(
               `Skipping stale project item during Awaiting Task Breakdown migration: ${issue.itemId}`,
             );
@@ -139,7 +142,7 @@ export class SetupTowerDefenceProjectUseCase {
             awaitingWorkspaceStatus.id,
           );
         } catch (error) {
-          if (!isStaleProjectItemError(error)) throw error;
+          if (!(error instanceof StaleProjectItemError)) throw error;
           console.warn(
             `Skipping stale project item during limbo recovery: ${issue.itemId}`,
           );

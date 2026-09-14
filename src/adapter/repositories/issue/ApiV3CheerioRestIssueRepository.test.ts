@@ -10,6 +10,7 @@ import {
   RELATED_OPEN_PRS_CACHE_TTL_MS,
   REQUIRED_CHECKS_CACHE_TTL_MS,
 } from './ApiV3CheerioRestIssueRepository';
+import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { GitHubRateLimitError } from './githubRateLimitRetry';
 import type { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import type {
@@ -7184,17 +7185,12 @@ describe('ApiV3CheerioRestIssueRepository', () => {
 
       await expect(
         repository.updateStatus(project, staleIssue, 'awaiting-status-id'),
-      ).rejects.toThrow('Could not resolve to a node with the global id');
+      ).rejects.toThrow(StaleProjectItemError);
 
-      const cacheWrite = localStorageCacheRepository.setSingle.mock.calls.find(
-        ([, value]) =>
-          typeof value === 'object' &&
-          value !== null &&
-          'issues' in value &&
-          Array.isArray(value.issues) &&
-          value.issues.length === 0,
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ issues: [] }),
       );
-      expect(cacheWrite).toBeDefined();
     });
 
     it('throws the original error when updateProjectField fails with an unrelated error', async () => {

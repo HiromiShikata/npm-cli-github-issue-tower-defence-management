@@ -9,6 +9,7 @@ import {
   PullRequestReviewCommentSide,
   PullRequestReviewInlineLocation,
 } from '../../../domain/usecases/adapter-interfaces/IssueRepository';
+import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { FieldOption, Project } from '../../../domain/entities/Project';
 import { Issue } from '../../../domain/entities/Issue';
 import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
@@ -806,6 +807,7 @@ export class ApiV3CheerioRestIssueRepository
           project.id,
           issue.itemId,
         );
+        throw new StaleProjectItemError(issue.itemId);
       }
       throw error;
     }

@@ -1,5 +1,8 @@
 import { mock } from 'jest-mock-extended';
-import { SetupTowerDefenceProjectUseCase } from './SetupTowerDefenceProjectUseCase';
+import {
+  SetupTowerDefenceProjectUseCase,
+  StaleProjectItemError,
+} from './SetupTowerDefenceProjectUseCase';
 import { ProjectRepository } from './adapter-interfaces/ProjectRepository';
 import { IssueRepository } from './adapter-interfaces/IssueRepository';
 import { StatusDefaultRepository } from './adapter-interfaces/StatusDefaultRepository';
@@ -1461,9 +1464,7 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       cacheUsed: false,
     });
     mockIssueRepository.updateStatus.mockRejectedValue(
-      new Error(
-        `Could not resolve to a node with the global id of 'PVTI_stale'.`,
-      ),
+      new StaleProjectItemError('PVTI_stale'),
     );
 
     const mockStatusDefaultRepository =
