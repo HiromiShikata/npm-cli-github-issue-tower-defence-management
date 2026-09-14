@@ -1669,11 +1669,10 @@ body {
 .console-undo-toast,
 .console-error-toast {
   position: fixed;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 12px;
+  left: 12px;
   z-index: 9998;
-  max-width: 92vw;
+  max-width: 45vw;
   display: flex;
   align-items: center;
   gap: 12px;
