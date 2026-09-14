@@ -15,6 +15,13 @@ import {
   WorkflowStatusDefinition,
 } from '../entities/WorkflowStatus';
 
+export class StaleProjectItemError extends Error {
+  constructor(public readonly itemId: string) {
+    super(`Project item '${itemId}' no longer exists in GitHub`);
+    this.name = 'StaleProjectItemError';
+  }
+}
+
 export class SetupTowerDefenceProjectUseCase {
   constructor(
     private readonly projectRepository: Pick<
@@ -77,11 +84,18 @@ export class SetupTowerDefenceProjectUseCase {
           SetupTowerDefenceProjectUseCase.UNREAD_MIGRATED_STATUS_NAME,
       );
       for (const issue of unreadIssues) {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatus.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatus.id,
+          );
+        } catch (error) {
+          if (!(error instanceof StaleProjectItemError)) throw error;
+          console.warn(
+            `Skipping stale project item during Unread migration: ${issue.itemId}`,
+          );
+        }
       }
     }
 
@@ -97,11 +111,18 @@ export class SetupTowerDefenceProjectUseCase {
             issue.status === LEGACY_AWAITING_TASK_BREAKDOWN_STATUS_NAME,
         );
         for (const issue of awaitingTaskBreakdownIssues) {
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            todoStatus.id,
-          );
+          try {
+            await this.issueRepository.updateStatus(
+              project,
+              issue,
+              todoStatus.id,
+            );
+          } catch (error) {
+            if (!(error instanceof StaleProjectItemError)) throw error;
+            console.warn(
+              `Skipping stale project item during Awaiting Task Breakdown migration: ${issue.itemId}`,
+            );
+          }
         }
       }
     }
@@ -114,11 +135,18 @@ export class SetupTowerDefenceProjectUseCase {
           (issue.status === DONE_STATUS_NAME || issue.status === null),
       );
       for (const issue of limboIssues) {
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingWorkspaceStatus.id,
-        );
+        try {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            awaitingWorkspaceStatus.id,
+          );
+        } catch (error) {
+          if (!(error instanceof StaleProjectItemError)) throw error;
+          console.warn(
+            `Skipping stale project item during limbo recovery: ${issue.itemId}`,
+          );
+        }
       }
     }
 

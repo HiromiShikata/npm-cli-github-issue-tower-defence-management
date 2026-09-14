@@ -10,6 +10,7 @@ import {
   RELATED_OPEN_PRS_CACHE_TTL_MS,
   REQUIRED_CHECKS_CACHE_TTL_MS,
 } from './ApiV3CheerioRestIssueRepository';
+import { StaleProjectItemError } from '../../../domain/usecases/SetupTowerDefenceProjectUseCase';
 import { GitHubRateLimitError } from './githubRateLimitRetry';
 import type { ApiV3IssueRepository } from './ApiV3IssueRepository';
 import type {
@@ -7119,6 +7120,119 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           'transient error updating branch for PR https://github.com/utage3/fc-happy/pull/1909',
         ),
       );
+    });
+  });
+
+  describe('updateStatus stale project item handling', () => {
+    it('removes the stale item from the cache and clears the memo when updateProjectField fails with "Could not resolve to a node"', async () => {
+      const {
+        repository,
+        graphqlProjectItemRepository,
+        localStorageCacheRepository,
+        projectRepository,
+        dateRepository,
+      } = createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('proj-1');
+      const staleIssue: Issue = {
+        nameWithOwner: 'o/r',
+        url: 'https://github.com/o/r/issues/1',
+        title: 'stale',
+        number: 1,
+        state: 'OPEN',
+        labels: [],
+        assignees: [],
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        status: 'Done',
+        story: null,
+        org: 'o',
+        repo: 'r',
+        body: '',
+        itemId: 'PVTI_lAHOAGJHa84AFWnrzg64iA4',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date('2026-01-01'),
+        author: '',
+        closingIssueReferenceUrls: [],
+        agent: null,
+        isRepoArchived: false,
+        stateReason: null,
+      };
+      const cachedData = {
+        lastFetchedAt: '2026-09-14T16:15:00.000Z',
+        lastFullFetchAt: '2026-09-14T16:00:00.000Z',
+        project,
+        issues: [staleIssue],
+      };
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-09-14T16:18:00.000Z'),
+      );
+      localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
+      projectRepository.getProject.mockResolvedValue(project);
+      graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
+      graphqlProjectItemRepository.fetchProjectItemsByIds.mockResolvedValue([]);
+      localStorageCacheRepository.setSingle.mockResolvedValue();
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new Error(
+          `Could not resolve to a node with the global id of 'PVTI_lAHOAGJHa84AFWnrzg64iA4'.`,
+        ),
+      );
+      await repository.getAllIssues('proj-1');
+
+      await expect(
+        repository.updateStatus(project, staleIssue, 'awaiting-status-id'),
+      ).rejects.toThrow(StaleProjectItemError);
+
+      expect(localStorageCacheRepository.setSingle).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ issues: [] }),
+      );
+    });
+
+    it('throws the original error when updateProjectField fails with an unrelated error', async () => {
+      const { repository, graphqlProjectItemRepository } =
+        createApiV3CheerioRestIssueRepository();
+      const project = buildTestProject('proj-2');
+      const issue: Issue = {
+        nameWithOwner: 'o/r',
+        url: 'https://github.com/o/r/issues/5',
+        title: 'issue',
+        number: 5,
+        state: 'OPEN',
+        labels: [],
+        assignees: [],
+        nextActionDate: null,
+        nextActionHour: null,
+        estimationMinutes: null,
+        dependedIssueUrls: [],
+        completionDate50PercentConfidence: null,
+        status: null,
+        story: null,
+        org: 'o',
+        repo: 'r',
+        body: '',
+        itemId: 'item-5',
+        isPr: false,
+        isInProgress: false,
+        isClosed: false,
+        createdAt: new Date('2026-01-01'),
+        author: '',
+        closingIssueReferenceUrls: [],
+        agent: null,
+        isRepoArchived: false,
+        stateReason: null,
+      };
+      graphqlProjectItemRepository.updateProjectField.mockRejectedValue(
+        new Error('Network timeout'),
+      );
+
+      await expect(
+        repository.updateStatus(project, issue, 'status-id'),
+      ).rejects.toThrow('Network timeout');
     });
   });
 

@@ -19,6 +19,7 @@ import {
   ProjectIssuesCacheRepository,
   deserializeStoryOptions,
 } from './ProjectIssuesCacheRepository';
+import { Issue } from '../../domain/entities/Issue';
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
@@ -381,6 +382,127 @@ describe('ProjectIssuesCacheRepository storyOptions', () => {
 
   it('deserializeStoryOptions returns empty array for object without storyOptions field', () => {
     expect(deserializeStoryOptions({})).toEqual([]);
+  });
+});
+
+describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
+  const buildIssueEntry = (itemId: string, url: string): Issue => ({
+    nameWithOwner: 'o/r',
+    url,
+    title: 'title',
+    number: 1,
+    state: 'OPEN',
+    labels: [],
+    assignees: [],
+    nextActionDate: null,
+    nextActionHour: null,
+    estimationMinutes: null,
+    dependedIssueUrls: [],
+    completionDate50PercentConfidence: null,
+    status: null,
+    story: null,
+    org: 'o',
+    repo: 'r',
+    body: '',
+    itemId,
+    isPr: false,
+    isInProgress: false,
+    isClosed: false,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    author: '',
+    closingIssueReferenceUrls: [],
+    agent: null,
+    isRepoArchived: false,
+    stateReason: null,
+  });
+
+  it('removes the issue with the matching itemId from the cache', async () => {
+    const cache = buildSharedCache();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    const issue1 = buildIssueEntry(
+      'PVTI_keep',
+      'https://github.com/o/r/issues/1',
+    );
+    const issue2 = buildIssueEntry(
+      'PVTI_stale',
+      'https://github.com/o/r/issues/2',
+    );
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [issue1, issue2],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+    });
+
+    await repo.removeIssueByItemId(projectId, 'PVTI_stale');
+
+    const result = await repo.read(projectId);
+    expect(result?.issues).toHaveLength(1);
+    expect(result?.issues[0].itemId).toBe('PVTI_keep');
+  });
+
+  it('does nothing when the itemId is not in the cache', async () => {
+    const cache = buildSharedCache();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    const issue1 = buildIssueEntry(
+      'PVTI_keep',
+      'https://github.com/o/r/issues/1',
+    );
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-01-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-01-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [issue1],
+      storyIssueUrlByOptionName: {},
+      storyOptions: [],
+    });
+
+    await repo.removeIssueByItemId(projectId, 'PVTI_not_here');
+
+    const result = await repo.read(projectId);
+    expect(result?.issues).toHaveLength(1);
+  });
+
+  it('does nothing when the cache is absent', async () => {
+    const cache = buildSharedCache();
+    const repo = new ProjectIssuesCacheRepository(cache);
+
+    await expect(
+      repo.removeIssueByItemId(projectId, 'PVTI_stale'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('preserves other cache fields when removing an issue', async () => {
+    const cache = buildSharedCache();
+    const repo = new ProjectIssuesCacheRepository(cache);
+    const issue1 = buildIssueEntry(
+      'PVTI_keep',
+      'https://github.com/o/r/issues/1',
+    );
+    const issue2 = buildIssueEntry(
+      'PVTI_stale',
+      'https://github.com/o/r/issues/2',
+    );
+    const storyOptions = [{ name: 'My Story', description: 'desc' }];
+    await repo.write(projectId, {
+      lastFetchedAt: '2026-06-01T00:00:00.000Z',
+      lastFullFetchAt: '2026-05-01T00:00:00.000Z',
+      project: cachedProject,
+      issues: [issue1, issue2],
+      storyIssueUrlByOptionName: {
+        'My Story': 'https://github.com/o/r/issues/10',
+      },
+      storyOptions,
+    });
+
+    await repo.removeIssueByItemId(projectId, 'PVTI_stale');
+
+    const result = await repo.read(projectId);
+    expect(result?.lastFetchedAt).toBe('2026-06-01T00:00:00.000Z');
+    expect(result?.lastFullFetchAt).toBe('2026-05-01T00:00:00.000Z');
+    expect(result?.storyOptions).toEqual(storyOptions);
   });
 
   it('deserializeStoryOptions returns empty array when storyOptions is not a valid array', () => {

@@ -145,6 +145,37 @@ export class ProjectIssuesCacheRepository {
     );
   };
 
+  removeIssueByItemId = async (
+    projectId: Project['id'],
+    itemId: Issue['itemId'],
+  ): Promise<void> => {
+    const raw = await this.readRaw(projectId);
+    if (
+      typeof raw !== 'object' ||
+      raw === null ||
+      !('issues' in raw) ||
+      !Array.isArray(raw.issues)
+    ) {
+      return;
+    }
+    const hasItemId = (value: object): value is { itemId: unknown } =>
+      'itemId' in value;
+    const filteredIssues = raw.issues.filter(
+      (issue: unknown) =>
+        typeof issue !== 'object' ||
+        issue === null ||
+        !hasItemId(issue) ||
+        issue.itemId !== itemId,
+    );
+    if (filteredIssues.length === raw.issues.length) {
+      return;
+    }
+    await this.localStorageCacheRepository.setSingle(this.cacheKey(projectId), {
+      ...raw,
+      issues: filteredIssues,
+    });
+  };
+
   updateFieldOptions = async (
     projectId: Project['id'],
     fieldId: string,
