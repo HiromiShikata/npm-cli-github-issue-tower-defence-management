@@ -1,3 +1,10 @@
+## [2.115.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.115.0...v2.115.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console:** patch overlay immediately on approve_and_merge & close ([#2375](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2375)) ([6a9e0f8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6a9e0f8e7f71e6d9b517fa5da8dff979d09d7788)), closes [#31762](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/31762)
+
 # [2.115.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.114.2...v2.115.0) (2026-09-14)
 
 
