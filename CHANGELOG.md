@@ -1,3 +1,10 @@
+## [2.115.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.115.1...v2.115.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* show undo toast when creating workflow improvement task ([#2374](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2374)) ([4a90fe7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4a90fe7c31124a877e64d0b3e3602bfb25538429)), closes [HiromiShikata/umino-corporait-operation#31764](https://github.com/HiromiShikata/umino-corporait-operation/issues/31764)
+
 ## [2.115.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.115.0...v2.115.1) (2026-09-14)
 
 
