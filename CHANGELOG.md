@@ -1,3 +1,10 @@
+## [2.112.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.112.0...v2.112.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console:** reset story selection and add action queue for Create new task dialog ([#2352](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2352)) ([cb03d6f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/cb03d6f4ab8fb1963d6b7c32904730b7ac734eee)), closes [#2351](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2351)
+
 # [2.112.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.7...v2.112.0) (2026-09-14)
 
 
