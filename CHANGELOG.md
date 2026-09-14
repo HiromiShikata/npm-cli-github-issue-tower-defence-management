@@ -1,3 +1,10 @@
+## [2.111.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.4...v2.111.5) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console-undo-toast:** move undo and error toast to bottom-left corner ([#2345](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2345)) ([6a5367b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6a5367be932f436602d69556cac975187c8d7946)), closes [HiromiShikata/umino-corporait-operation#31720](https://github.com/HiromiShikata/umino-corporait-operation/issues/31720)
+
 ## [2.111.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.3...v2.111.4) (2026-09-13)
 
 
