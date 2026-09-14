@@ -1,3 +1,10 @@
+## [2.114.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.114.0...v2.114.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console:** prevent header button wrapping on mobile by adding inline-flex to console-tab-settings ([#2369](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2369)) ([#2372](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2372)) ([25770a5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/25770a5073e81a2864866e2d01aad658074ef440))
+
 # [2.114.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.113.3...v2.114.0) (2026-09-14)
 
 
