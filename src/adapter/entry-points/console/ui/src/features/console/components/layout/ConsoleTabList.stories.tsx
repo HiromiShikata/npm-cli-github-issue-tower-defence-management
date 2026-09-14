@@ -194,16 +194,6 @@ export const WithWorkflowImprovementLink: Story = {
       stories: 0,
     },
     pjcodes: [],
-    workflowImprovementIssueUrl:
-      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata',
-  },
-};
-
-export const WithoutWorkflowImprovementLink: Story = {
-  args: {
-    activeTab: 'prs',
-    counts,
-    workflowImprovementIssueUrl: null,
   },
 };
 

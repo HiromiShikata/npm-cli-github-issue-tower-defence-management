@@ -32,16 +32,6 @@ export const NotLoaded: Story = {
   },
 };
 
-export const WithWorkflowLink: Story = {
-  args: {
-    comments: consoleCommentsFixture,
-    isLoading: false,
-    error: null,
-    workflowImprovementIssueUrl:
-      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata',
-  },
-};
-
 export const WithMultilineComment: Story = {
   args: {
     comments: [

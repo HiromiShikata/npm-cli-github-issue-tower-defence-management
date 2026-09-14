@@ -525,8 +525,6 @@ export const PullRequestItemWithWorkflowLink: Story = {
       missingRequiredCheckNames: [],
     },
     relatedPullRequests: [],
-    workflowImprovementIssueUrl:
-      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata',
   },
 };
 
