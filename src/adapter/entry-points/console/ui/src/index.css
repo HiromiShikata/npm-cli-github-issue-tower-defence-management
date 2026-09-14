@@ -211,6 +211,8 @@ body {
 .console-tab-settings {
   align-self: center;
   padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
 }
 
 .console-project-timer-bar {

@@ -177,6 +177,34 @@ describe('ConsoleTabList', () => {
     expect(document.querySelector('[data-from-cache]')).toBeNull();
   });
 
+  it('renders all multiple buttons within console-tab-settings span when multiple settingsButtons are provided', () => {
+    const { getByTestId, container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        settingsButton={
+          <>
+            <button type="button" data-testid="settings-btn-1">
+              ⏱
+            </button>
+            <button type="button" data-testid="settings-btn-2">
+              ⚙
+            </button>
+            <button type="button" data-testid="settings-btn-3">
+              +
+            </button>
+          </>
+        }
+      />,
+    );
+    const settingsSpan = container.querySelector('.console-tab-settings');
+    expect(settingsSpan).not.toBeNull();
+    expect(settingsSpan?.contains(getByTestId('settings-btn-1'))).toBe(true);
+    expect(settingsSpan?.contains(getByTestId('settings-btn-2'))).toBe(true);
+    expect(settingsSpan?.contains(getByTestId('settings-btn-3'))).toBe(true);
+  });
+
   it('renders the settingsButton prop in the top row when provided', () => {
     const { getByTestId } = render(
       <ConsoleTabList
