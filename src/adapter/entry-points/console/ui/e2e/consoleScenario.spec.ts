@@ -521,10 +521,15 @@ test('opens a fullscreen-overlay modal when the console header new-task button i
   expect(harness.createIssueCalls.at(-1)?.title).toBe('My console header task');
 });
 
-test('create-task dialog shows agent selection, reference URL, and file attachment inputs', async ({
+test('create-task dialog submits agent, referenceUrl, and file attachment correctly', async ({
   page,
 }) => {
   await page.goto(harness.appUrl);
+
+  const initialCreateCount = harness.createIssueCalls.length;
+  const initialAgentCount = harness.setAgentCalls.length;
+  const initialUploadCount = harness.uploadAttachmentCalls.length;
+  const initialCommentCount = harness.commentCalls.length;
 
   const newTaskButton = page.locator('.console-task-create-button');
   await expect(newTaskButton).toBeVisible();
@@ -536,83 +541,26 @@ test('create-task dialog shows agent selection, reference URL, and file attachme
   const developerButton = dialog.getByRole('button', { name: /developer/i });
   await expect(developerButton).toBeVisible();
   await expect(developerButton).toHaveAttribute('aria-pressed', 'false');
+  await expect(
+    dialog.getByPlaceholder(/paste current task url/i),
+  ).toBeVisible();
+  const fileInput = dialog.locator('input[type="file"]');
+  await expect(fileInput).toBeAttached();
+  expect(await fileInput.getAttribute('multiple')).not.toBeNull();
+
+  await page
+    .getByRole('textbox', { name: /title/i })
+    .fill('Task with all fields');
 
   await developerButton.click();
   await expect(developerButton).toHaveAttribute('aria-pressed', 'true');
 
-  await expect(
-    dialog.getByPlaceholder(/paste current task url/i),
-  ).toBeVisible();
-
-  const fileInput = dialog.locator('input[type="file"]');
-  await expect(fileInput).toBeAttached();
-  const multiple = await fileInput.getAttribute('multiple');
-  expect(multiple).not.toBeNull();
-});
-
-test('creates an issue with agent and referenceUrl when those fields are filled in the new-task dialog', async ({
-  page,
-}) => {
-  await page.goto(harness.appUrl);
-
-  const initialCreateCount = harness.createIssueCalls.length;
-  const initialAgentCount = harness.setAgentCalls.length;
-
-  const newTaskButton = page.locator('.console-task-create-button');
-  await expect(newTaskButton).toBeVisible();
-  await newTaskButton.click();
-
-  await page
-    .getByRole('textbox', { name: /title/i })
-    .fill('Task with agent and ref');
-
-  await page.getByRole('button', { name: 'developer', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: 'developer', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true');
-
-  await page
+  await dialog
     .getByPlaceholder(/paste current task url/i)
     .fill(
       'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
     );
 
-  await page.getByRole('button', { name: /^create$/i }).click();
-
-  await expect
-    .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
-    .toBe(initialCreateCount + 1);
-
-  const created = harness.createIssueCalls.at(-1);
-  expect(created?.title).toBe('Task with agent and ref');
-  expect(created?.body).toContain(
-    'Related: https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
-  );
-
-  await expect
-    .poll(() => harness.setAgentCalls.length, { timeout: 10000 })
-    .toBe(initialAgentCount + 1);
-  expect(harness.setAgentCalls.at(-1)?.agentOptionId).toBe('agt00001');
-});
-
-test('uploads attached files after issue creation when files are selected in the new-task dialog', async ({
-  page,
-}) => {
-  await page.goto(harness.appUrl);
-
-  const initialUploadCount = harness.uploadAttachmentCalls.length;
-
-  const newTaskButton = page.locator('.console-task-create-button');
-  await expect(newTaskButton).toBeVisible();
-  await newTaskButton.click();
-
-  await page
-    .getByRole('textbox', { name: /title/i })
-    .fill('Task with file attachment');
-
-  const fileInput = page
-    .getByRole('dialog', { name: /create new task/i })
-    .locator('input[type="file"]');
   await fileInput.setInputFiles({
     name: 'fixture-attachment.png',
     mimeType: 'image/png',
@@ -622,11 +570,30 @@ test('uploads attached files after issue creation when files are selected in the
   await page.getByRole('button', { name: /^create$/i }).click();
 
   await expect
+    .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
+    .toBe(initialCreateCount + 1);
+  const created = harness.createIssueCalls.at(-1);
+  expect(created?.title).toBe('Task with all fields');
+  expect(created?.body).toContain(
+    'Related: https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
+  );
+
+  await expect
+    .poll(() => harness.setAgentCalls.length, { timeout: 10000 })
+    .toBe(initialAgentCount + 1);
+  expect(harness.setAgentCalls.at(-1)?.agentOptionId).toBe('agt00001');
+
+  await expect
     .poll(() => harness.uploadAttachmentCalls.length, { timeout: 10000 })
     .toBe(initialUploadCount + 1);
   expect(harness.uploadAttachmentCalls.at(-1)?.fileName).toBe(
     'fixture-attachment.png',
   );
+
+  await expect
+    .poll(() => harness.commentCalls.length, { timeout: 10000 })
+    .toBe(initialCommentCount + 1);
+  expect(harness.commentCalls.at(-1)?.body).toContain('fixture-attachment.png');
 });
 
 test('restores draft title when the create-task dialog is cancelled and reopened', async ({
