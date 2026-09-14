@@ -96,9 +96,7 @@ export const IssueCreateModalDialog = ({
     );
     void Promise.all(reads).then((entries) => {
       if (!cancelled) {
-        setThumbnailUrls(
-          new Map(entries.filter(([, url]) => url.length > 0)),
-        );
+        setThumbnailUrls(new Map(entries.filter(([, url]) => url.length > 0)));
       }
     });
     return () => {
