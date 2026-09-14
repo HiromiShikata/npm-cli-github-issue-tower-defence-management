@@ -521,6 +521,35 @@ test('opens a fullscreen-overlay modal when the console header new-task button i
   expect(harness.createIssueCalls.at(-1)?.title).toBe('My console header task');
 });
 
+test('create-task dialog shows agent selection, reference URL, and file attachment inputs', async ({
+  page,
+}) => {
+  await page.goto(harness.appUrl);
+
+  const newTaskButton = page.locator('.console-task-create-button');
+  await expect(newTaskButton).toBeVisible();
+  await newTaskButton.click();
+
+  const dialog = page.getByRole('dialog', { name: /create new task/i });
+  await expect(dialog).toBeVisible();
+
+  const developerButton = dialog.getByRole('button', { name: /developer/i });
+  await expect(developerButton).toBeVisible();
+  await expect(developerButton).toHaveAttribute('aria-pressed', 'false');
+
+  await developerButton.click();
+  await expect(developerButton).toHaveAttribute('aria-pressed', 'true');
+
+  await expect(
+    dialog.getByPlaceholder(/paste current task url/i),
+  ).toBeVisible();
+
+  const fileInput = dialog.locator('input[type="file"]');
+  await expect(fileInput).toBeAttached();
+  const multiple = await fileInput.getAttribute('multiple');
+  expect(multiple).not.toBeNull();
+});
+
 test('restores draft title when the create-task dialog is cancelled and reopened', async ({
   page,
 }) => {
