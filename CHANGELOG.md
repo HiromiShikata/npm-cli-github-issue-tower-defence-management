@@ -1,3 +1,10 @@
+## [2.115.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.115.2...v2.115.3) (2026-09-14)
+
+
+### Bug Fixes
+
+* **GraphqlProjectItemRepository:** skip FORBIDDEN errors in updateProjectField instead of throwing ([#2378](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2378)) ([dc37122](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dc371229fb24f8a1142c8b9b15be155fffa02584)), closes [#2377](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2377)
+
 ## [2.115.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.115.1...v2.115.2) (2026-09-14)
 
 
