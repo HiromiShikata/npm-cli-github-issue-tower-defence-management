@@ -1,3 +1,10 @@
+# [2.112.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.7...v2.112.0) (2026-09-14)
+
+
+### Features
+
+* **logging:** add logging for createIssue steps and await background task ([94370cb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/94370cbb4724f9d50605ba499296d0f6b21bb7aa)), closes [#2347](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2347)
+
 ## [2.111.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.6...v2.111.7) (2026-09-14)
 
 
