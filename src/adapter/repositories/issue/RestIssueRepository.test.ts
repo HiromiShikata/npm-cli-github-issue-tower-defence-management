@@ -445,6 +445,30 @@ describe('RestIssueRepository', () => {
       expect(rateLimitLog).toContain('remaining=4999');
       consoleLogSpy.mockRestore();
     });
+
+    it('throws for owner or repo containing URL-unsafe characters', async () => {
+      await expect(
+        restIssueRepository.createNewIssue(
+          'owner with spaces',
+          'valid-repo',
+          'title',
+          'body',
+          [],
+          [],
+        ),
+      ).rejects.toThrow('Invalid owner or repo name');
+
+      await expect(
+        restIssueRepository.createNewIssue(
+          'valid-owner',
+          'repo/with/slashes',
+          'title',
+          'body',
+          [],
+          [],
+        ),
+      ).rejects.toThrow('Invalid owner or repo name');
+    });
   });
   describe('updateLabels', () => {
     it('should update issue labels', async () => {

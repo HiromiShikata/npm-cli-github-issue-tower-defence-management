@@ -160,6 +160,11 @@ export class RestIssueRepository
     assignees: string[],
     labels: string[],
   ): Promise<number> => {
+    if (!/^[\w.-]+$/.test(owner) || !/^[\w.-]+$/.test(repo)) {
+      throw new Error(
+        `Invalid owner or repo name: owner=${owner} repo=${repo}`,
+      );
+    }
     const url = `https://api.github.com/repos/${owner}/${repo}/issues`;
     const response = await fetchWithGitHubRateLimitRetry(
       () =>
