@@ -488,7 +488,6 @@ export const IssueWithSnapshotStatusNoOverlay: Story = {
   },
 };
 
-
 export const IssueWithAgent: Story = {
   args: {
     item: consoleListItemsFixture[5],
