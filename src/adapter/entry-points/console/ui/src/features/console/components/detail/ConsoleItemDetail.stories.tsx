@@ -488,7 +488,7 @@ export const IssueWithSnapshotStatusNoOverlay: Story = {
   },
 };
 
-export const PullRequestItemWithWorkflowLink: Story = {
+export const PullRequestItem: Story = {
   args: {
     item: consoleListItemsFixture[0],
     storyName: 'TDPM Console port',

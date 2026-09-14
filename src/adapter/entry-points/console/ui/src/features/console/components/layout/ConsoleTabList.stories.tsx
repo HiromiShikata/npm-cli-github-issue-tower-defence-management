@@ -181,7 +181,7 @@ export const WithProjectSwitcherOpen: Story = {
   render: (args) => <DropdownOpen {...args} />,
 };
 
-export const WithWorkflowImprovementLink: Story = {
+export const WithTabCounts: Story = {
   args: {
     activeTab: 'prs',
     counts: {
