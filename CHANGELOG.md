@@ -1,3 +1,10 @@
+## [2.116.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.0...v2.116.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console:** restore IssueCreateModalDialog body field, attachment position, and draft persistence ([#2373](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2373)) ([9c59cb6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9c59cb67c4b6765c704f0dd4694bab3d9bfc995a)), closes [#2367](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2367)
+
 # [2.116.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.115.3...v2.116.0) (2026-09-14)
 
 
