@@ -1,3 +1,10 @@
+## [2.113.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.113.1...v2.113.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console:** fix workflow task button icon and visibility condition in TDPM console UI ([#2362](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2362)) ([14097a5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/14097a501e780e2aa9c5450cd27d13a27cc51b85)), closes [#2361](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2361)
+
 ## [2.113.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.113.0...v2.113.1) (2026-09-14)
 
 
