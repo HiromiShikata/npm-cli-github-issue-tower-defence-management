@@ -114,7 +114,6 @@ const CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL = `https://github.com/${REPO_N
 export const CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/911`;
 export const CONSOLE_E2E_INLINE_COMMENT_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/912`;
 export const CONSOLE_E2E_REFERENCE_LINK_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/845`;
-export const CONSOLE_E2E_COMMENT_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/720#issuecomment-200001`;
 
 const INLINE_COMMENT_PR_FILE: PullRequestFile = {
   filename: 'src/adapter/entry-points/console/ui/src/index.css',
