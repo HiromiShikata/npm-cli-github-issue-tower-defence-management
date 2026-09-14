@@ -324,6 +324,34 @@ describe('IssueCreateModalDialog', () => {
     expect(queryByRole('button', { name: /chore/i })).toBeNull();
   });
 
+  it('submitting with zero storyEntries succeeds without story validation error', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole, queryByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        storyEntries={[]}
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(
+      queryByRole('button', { name: /workflow improvement/i }),
+    ).toBeNull();
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'No story task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>({
+        storyName: null,
+        agentOptionId: null,
+        title: 'No story task',
+        body: null,
+        files: [],
+      }),
+    );
+    expect(queryByRole('alert')).toBeNull();
+  });
+
   it('calls onClose when close button is clicked', () => {
     const onClose = jest.fn();
     const { getByRole } = render(

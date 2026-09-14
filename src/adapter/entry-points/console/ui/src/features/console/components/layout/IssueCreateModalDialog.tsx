@@ -257,37 +257,41 @@ export const IssueCreateModalDialog = ({
             </ul>
           )}
 
-          <span className="console-task-create-dialog-section-label">
-            Story
-          </span>
-          <div className="console-task-create-dialog-option-list">
-            {storyEntries.map((entry) => (
-              <button
-                key={entry.storyOptionId}
-                type="button"
-                className={`console-task-create-dialog-option-button${selectedStoryOptionId === entry.storyOptionId ? ' console-task-create-dialog-option-button--selected' : ''}`}
-                aria-pressed={selectedStoryOptionId === entry.storyOptionId}
-                onClick={() => {
-                  setSelectedStoryOptionId(entry.storyOptionId);
-                  onDraftChange?.({
-                    title: titleValue,
-                    body: bodyValue.trim().length > 0 ? bodyValue : null,
-                    storyName: entry.storyName,
-                    agentOptionId: selectedAgentOptionId,
-                  });
-                }}
-                disabled={submitting}
-              >
-                <span
-                  className="console-story-dot"
-                  style={{
-                    backgroundColor: colorFromEnum(entry.color).dot,
-                  }}
-                />
-                {entry.storyName}
-              </button>
-            ))}
-          </div>
+          {storyEntries.length > 0 && (
+            <>
+              <span className="console-task-create-dialog-section-label">
+                Story
+              </span>
+              <div className="console-task-create-dialog-option-list">
+                {storyEntries.map((entry) => (
+                  <button
+                    key={entry.storyOptionId}
+                    type="button"
+                    className={`console-task-create-dialog-option-button${selectedStoryOptionId === entry.storyOptionId ? ' console-task-create-dialog-option-button--selected' : ''}`}
+                    aria-pressed={selectedStoryOptionId === entry.storyOptionId}
+                    onClick={() => {
+                      setSelectedStoryOptionId(entry.storyOptionId);
+                      onDraftChange?.({
+                        title: titleValue,
+                        body: bodyValue.trim().length > 0 ? bodyValue : null,
+                        storyName: entry.storyName,
+                        agentOptionId: selectedAgentOptionId,
+                      });
+                    }}
+                    disabled={submitting}
+                  >
+                    <span
+                      className="console-story-dot"
+                      style={{
+                        backgroundColor: colorFromEnum(entry.color).dot,
+                      }}
+                    />
+                    {entry.storyName}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           {agentOptions.length > 0 && (
             <>
