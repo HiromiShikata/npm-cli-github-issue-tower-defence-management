@@ -1,3 +1,10 @@
+## [2.111.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.6...v2.111.7) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console-ui:** remove automatic project switching in TDPM console timer mode ([#2348](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2348)) ([c913ce4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c913ce4830ba515e6a0850b0ebaa9f021105d1e0))
+
 ## [2.111.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.5...v2.111.6) (2026-09-14)
 
 
