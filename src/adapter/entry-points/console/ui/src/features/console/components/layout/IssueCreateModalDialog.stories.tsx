@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { userEvent } from 'storybook/test';
 import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 import { IssueCreateModalDialog } from './IssueCreateModalDialog';
 
@@ -68,10 +69,21 @@ export const NoAgentOptions: Story = {
   },
 };
 
-export const WorkflowTaskMode: Story = {
+export const WithFleetTaskCreateUrl: Story = {
   args: {
-    storyEntries: [],
-    agentOptions: [],
-    showOptionalFields: false,
+    fleetTaskCreateUrl:
+      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
+  },
+};
+
+export const WithFileAttachments: Story = {
+  play: async ({ canvasElement }) => {
+    const fileInput = canvasElement.querySelector(
+      "input[type='file']",
+    ) as HTMLInputElement;
+    await userEvent.upload(fileInput, [
+      new File(['image content'], 'screenshot.png', { type: 'image/png' }),
+      new File(['text content'], 'notes.txt', { type: 'text/plain' }),
+    ]);
   },
 };

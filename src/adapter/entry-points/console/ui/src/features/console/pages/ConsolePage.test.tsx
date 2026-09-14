@@ -856,6 +856,69 @@ describe('ConsolePage', () => {
     }
   });
 
+  it('shows a retry button in the error toast that re-attempts the failed action', async () => {
+    let postCallCount = 0;
+    const fetchMock = jest.fn(
+      async (url: string, init?: { method?: string }) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => listPayload(listMatch[1]),
+          };
+        }
+        if (init?.method === 'POST') {
+          postCallCount++;
+          if (postCallCount === 1) {
+            return {
+              ok: false,
+              status: 500,
+              text: async () => JSON.stringify({ error: 'merge failed' }),
+            };
+          }
+          return { ok: true, status: 200, json: async () => ({}) };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      },
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText, container } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      fireEvent.click(await findByText('Approve & Merge'));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(getByText(/^Operation failed:/)).toBeInTheDocument();
+
+      const retryButton = container.querySelector('.console-error-toast-retry');
+      expect(retryButton).not.toBeNull();
+
+      fireEvent.click(retryButton!);
+
+      await waitFor(() => {
+        expect(container.querySelector('.console-error-toast')).toBeNull();
+      });
+      expect(postCallCount).toBe(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('renders reorder buttons in the Stories tab', async () => {
     window.history.replaceState({}, '', '/projects/acme/stories?k=token');
     const { getAllByRole, container } = render(<ConsolePage />);
@@ -2396,6 +2459,94 @@ describe('ConsolePage task creation action queue', () => {
         ([url]: [string]) => url === '/api/createissue',
       );
       expect(createCallsAfter.length).toBe(1);
+      const createBody = JSON.parse(
+        (createCallsAfter[0] as unknown as [string, RequestInit])[1]
+          .body as string,
+      ) as { storyName: string; body: string | null };
+      expect(createBody.storyName).toBe('TDPM Console port');
+      expect(createBody.body).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('passes body from dialog to postConsoleCreateIssue when body is filled in', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url === '/api/createissue') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              issueUrl: 'https://github.com/o/r/issues/100',
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByRole, getByLabelText } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Task with body text' },
+      });
+      fireEvent.change(getByLabelText('Body'), {
+        target: { value: 'This is the task body' },
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const createCallsAfter = fetchMock.mock.calls.filter(
+        ([url]: [string]) => url === '/api/createissue',
+      );
+      expect(createCallsAfter.length).toBe(1);
+      const createBody = JSON.parse(
+        (createCallsAfter[0] as unknown as [string, RequestInit])[1]
+          .body as string,
+      ) as { storyName: string; body: string | null };
+      expect(createBody.storyName).toBe('TDPM Console port');
+      expect(createBody.body).toBe('This is the task body');
     } finally {
       jest.useRealTimers();
     }

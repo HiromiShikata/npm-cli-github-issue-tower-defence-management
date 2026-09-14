@@ -4,6 +4,7 @@ import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimer
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import {
+  type IssueCreateDraft,
   IssueCreateModalDialog,
   type IssueCreateParams,
 } from '../components/layout/IssueCreateModalDialog';
@@ -201,7 +202,12 @@ export const ConsolePage = () => {
   }, []);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogDraftTitle, setDialogDraftTitle] = useState('');
+  const [dialogDraft, setDialogDraft] = useState<IssueCreateDraft>({
+    title: '',
+    body: null,
+    storyName: null,
+    agentOptionId: null,
+  });
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   useEffect(() => {
@@ -597,10 +603,10 @@ export const ConsolePage = () => {
 
   const handleCreateIssueFromDialog = useCallback(
     ({
-      storyOptionId,
+      storyName,
       agentOptionId,
       title,
-      referenceUrl,
+      body,
       files,
     }: IssueCreateParams): Promise<void> => {
       if (pjcode === null || defaultNameWithOwner === null) {
@@ -608,9 +614,6 @@ export const ConsolePage = () => {
       }
       const capturedPjcode = pjcode;
       const capturedNameWithOwner = defaultNameWithOwner;
-      const capturedStoryName =
-        storyEntries.find((e) => e.storyOptionId === storyOptionId)
-          ?.storyName ?? '';
       actionQueue.enqueue({
         message: `Task created — "${title}"`,
         color: 'blue',
@@ -618,10 +621,10 @@ export const ConsolePage = () => {
           const issueUrl = await postConsoleCreateIssue({
             pjcode: capturedPjcode,
             title,
-            storyName: capturedStoryName,
+            storyName: storyName ?? '',
             nameWithOwner: capturedNameWithOwner,
             agentOptionId: agentOptionId ?? null,
-            referenceUrl: referenceUrl ?? null,
+            body: body ?? null,
           });
           if (files.length > 0) {
             const markdownParts = await Promise.all(
@@ -648,10 +651,15 @@ export const ConsolePage = () => {
         },
         advance: () => {},
       });
-      setDialogDraftTitle('');
+      setDialogDraft({
+        title: '',
+        body: null,
+        storyName: null,
+        agentOptionId: null,
+      });
       return Promise.resolve();
     },
-    [pjcode, defaultNameWithOwner, storyEntries, actionQueue],
+    [pjcode, defaultNameWithOwner, actionQueue],
   );
 
   const handleReorderStory = useCallback(
@@ -862,9 +870,8 @@ export const ConsolePage = () => {
           onRetry={
             actionQueue.error.retry !== undefined
               ? () => {
-                  const retry = actionQueue.error?.retry;
                   actionQueue.dismissError();
-                  retry?.();
+                  actionQueue.error?.retry?.();
                 }
               : undefined
           }
@@ -942,8 +949,9 @@ export const ConsolePage = () => {
                     agentOptions={agentOptions}
                     onSubmit={handleCreateIssueFromDialog}
                     onClose={() => setIsDialogOpen(false)}
-                    initialTitle={dialogDraftTitle}
-                    onTitleChange={setDialogDraftTitle}
+                    initialDraft={dialogDraft}
+                    onDraftChange={setDialogDraft}
+                    fleetTaskCreateUrl={fleetTaskCreateUrl}
                   />
                 )}
               </>
