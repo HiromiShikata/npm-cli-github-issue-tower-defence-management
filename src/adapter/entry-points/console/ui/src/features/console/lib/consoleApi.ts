@@ -496,7 +496,6 @@ export const postConsoleCreateIssue = async (
   return payload.issueUrl;
 };
 
-
 export const REORDER_STORY_OPERATION_PATH = '/api/reorderstory';
 
 export type ConsoleReorderStoryRequest = {
