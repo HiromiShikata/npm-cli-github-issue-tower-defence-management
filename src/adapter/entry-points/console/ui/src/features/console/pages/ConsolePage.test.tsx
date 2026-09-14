@@ -2407,9 +2407,7 @@ describe('ConsolePage workflow task creation', () => {
       'https://github.com/HiromiShikata/secretary/issues/42',
     );
 
-    const { getByTitle, getByPlaceholderText, getByText } = render(
-      <ConsolePage />,
-    );
+    const { getByTitle } = render(<ConsolePage />);
 
     await waitFor(() =>
       expect(
@@ -2418,10 +2416,14 @@ describe('ConsolePage workflow task creation', () => {
     );
 
     fireEvent.click(getByTitle('Create workflow improvement task'));
-    fireEvent.change(getByPlaceholderText('Task title'), {
+    const dialog = await waitFor(
+      () => document.body.querySelector('[role="dialog"]') as HTMLElement,
+    );
+    const { getByRole } = within(dialog);
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Improve the pipeline' },
     });
-    fireEvent.click(getByText('Create'));
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -2441,9 +2443,7 @@ describe('ConsolePage workflow task creation', () => {
       'https://github.com/HiromiShikata/secretary',
     );
 
-    const { getByTitle, getByPlaceholderText, getByText } = render(
-      <ConsolePage />,
-    );
+    const { getByTitle, getByText } = render(<ConsolePage />);
 
     await waitFor(() =>
       expect(
@@ -2452,10 +2452,14 @@ describe('ConsolePage workflow task creation', () => {
     );
 
     fireEvent.click(getByTitle('Create workflow improvement task'));
-    fireEvent.change(getByPlaceholderText('Task title'), {
+    const dialog = await waitFor(
+      () => document.body.querySelector('[role="dialog"]') as HTMLElement,
+    );
+    const { getByRole } = within(dialog);
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Improve the pipeline' },
     });
-    fireEvent.click(getByText('Create'));
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
 
     await waitFor(() =>
       expect(
