@@ -1,3 +1,10 @@
+# [2.116.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.115.3...v2.116.0) (2026-09-14)
+
+
+### Features
+
+* **console:** remove lightning bolt icon links from TDPM console UI ([#2376](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2376)) ([0219ce9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0219ce9b95df3051d84b06556eecc75ad00a1d75)), closes [#2371](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2371)
+
 ## [2.115.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.115.2...v2.115.3) (2026-09-14)
 
 
