@@ -1667,22 +1667,7 @@ body {
   color: #f85149;
 }
 
-.console-undo-toast {
-  position: fixed;
-  bottom: 12px;
-  left: 12px;
-  z-index: 9998;
-  max-width: 45vw;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 18px;
-  border-radius: 10px;
-  font-size: 0.8438rem;
-  white-space: nowrap;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-}
-
+.console-undo-toast,
 .console-error-toast {
   position: fixed;
   bottom: 12px;
@@ -1690,15 +1675,23 @@ body {
   z-index: 9998;
   max-width: 45vw;
   display: flex;
-  flex-direction: column;
   gap: 12px;
   padding: 12px 18px;
   border-radius: 10px;
   font-size: 0.8438rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.console-undo-toast {
+  align-items: center;
+  white-space: nowrap;
+}
+
+.console-error-toast {
+  flex-direction: column;
   white-space: normal;
   max-height: 40vh;
   overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 }
 
 .console-undo-toast-green {

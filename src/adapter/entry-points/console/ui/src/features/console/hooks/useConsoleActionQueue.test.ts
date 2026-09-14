@@ -593,6 +593,33 @@ describe('useConsoleActionQueue', () => {
     expect(commit).toHaveBeenCalledTimes(2);
   });
 
+  it('dismissing the error then calling retry leaves error null when the commit succeeds', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const commit = jest
+      .fn<Promise<void>, []>()
+      .mockRejectedValueOnce(new Error('HTTP 422'))
+      .mockResolvedValue(undefined);
+    const action = makeAction({ commit });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+      await flushMicrotasks();
+    });
+    expect(result.current.error).not.toBeNull();
+    const retry = result.current.error?.retry;
+    act(() => {
+      result.current.dismissError();
+    });
+    await act(async () => {
+      retry?.();
+      await flushMicrotasks();
+    });
+    expect(result.current.error).toBeNull();
+    expect(commit).toHaveBeenCalledTimes(2);
+  });
+
   it('calling retry sets a new error when the retry commit also fails', async () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const commit = jest

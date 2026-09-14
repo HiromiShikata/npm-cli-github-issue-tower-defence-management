@@ -1367,9 +1367,13 @@ test('undo toast appears at the bottom-left corner of the viewport', async ({
 test('error toast renders with background styling when a merge operation fails', async ({
   page,
 }) => {
+  let mergeCallCount = 0;
   const failHarness = await startConsoleE2eHarness({
     mergePullRequest: async () => {
-      throw new Error('merge failed: simulated error for CSS test');
+      mergeCallCount++;
+      if (mergeCallCount === 1) {
+        throw new Error('merge failed: simulated error for CSS test');
+      }
     },
   });
   try {
@@ -1396,6 +1400,11 @@ test('error toast renders with background styling when a merge operation fails',
     await expect(errorToast).toContainText(
       'merge failed: simulated error for CSS test',
     );
+
+    const retryButton = page.locator('.console-error-toast-retry');
+    await expect(retryButton).toBeVisible();
+    await retryButton.click();
+    await expect(errorToast).not.toBeVisible({ timeout: 5000 });
   } finally {
     await failHarness.stop();
   }
