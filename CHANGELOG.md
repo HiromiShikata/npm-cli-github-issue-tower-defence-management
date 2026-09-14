@@ -1,3 +1,10 @@
+## [2.116.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.1...v2.116.2) (2026-09-14)
+
+
+### Bug Fixes
+
+* **token-selection:** increase weekly spend deadline from 24 to 48 hours ([#2379](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2379)) ([f1c5e64](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f1c5e64903be8d619f17222ca54f4705379f1dbd)), closes [HiromiShikata/umino-corporait-operation#31770](https://github.com/HiromiShikata/umino-corporait-operation/issues/31770)
+
 ## [2.116.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.0...v2.116.1) (2026-09-14)
 
 
