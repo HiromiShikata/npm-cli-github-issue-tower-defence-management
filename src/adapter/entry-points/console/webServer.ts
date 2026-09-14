@@ -661,7 +661,19 @@ const handleOperationApi = async (
     return null;
   }
   try {
-    return await dispatched;
+    const result = await dispatched;
+    if (result.statusCode >= 400 && result.statusCode < 500) {
+      const errorMsg =
+        typeof result.body === 'object' &&
+        result.body !== null &&
+        'error' in result.body
+          ? String(result.body.error)
+          : String(result.body);
+      console.warn(
+        `${new Date().toISOString()} console operation validation failure: path=${requestPath} status=${result.statusCode} error=${errorMsg}`,
+      );
+    }
+    return result;
   } catch (error) {
     console.error('console operation failed', error);
     if (options.consoleErrorReporter != null) {

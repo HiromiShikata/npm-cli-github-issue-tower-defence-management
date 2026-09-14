@@ -908,7 +908,7 @@ export const handleCreateIssue = async (
   );
   const issueUrl = `https://github.com/${nameWithOwner}/issues/${issueNumber}`;
 
-  const backgroundTask = (async () => {
+  await (async () => {
     await issueRepository.addIssueToProject(project, issueUrl);
     const addedIssue = await issueRepository.get(issueUrl, project);
     if (addedIssue !== null) {
@@ -939,11 +939,8 @@ export const handleCreateIssue = async (
       }
     }
   })();
-  backgroundTask.catch((e) =>
-    console.error('Background issue setup failed:', e),
-  );
 
-  return { statusCode: 200, body: { ok: true, issueUrl }, backgroundTask };
+  return { statusCode: 200, body: { ok: true, issueUrl } };
 };
 
 export const handleCreateWorkflowIssue = async (

@@ -10,6 +10,7 @@ import { SearchedIssue } from '../../../domain/entities/SearchedIssue';
 import {
   computeRateLimitResetIso,
   computeSecondaryRateLimitBackoffMs,
+  fetchWithGitHubRateLimitRetry,
   GitHubRateLimitError,
   hasRateLimitSignals,
   isSecondaryRateLimit,
@@ -159,19 +160,47 @@ export class RestIssueRepository
     assignees: string[],
     labels: string[],
   ): Promise<number> => {
-    this.checkBreakerOrThrow();
-    try {
-      const response = await ky
-        .post(`https://api.github.com/repos/${owner}/${repo}/issues`, {
-          json: { title, body, assignees, labels },
-          headers: { Authorization: `token ${this.ghToken}` },
-        })
-        .json<{ number: number }>();
-      return response.number;
-    } catch (e) {
-      await this.detectAndRecordSecondaryRateLimit(e);
-      throw e;
+    const url = `https://api.github.com/repos/${owner}/${repo}/issues`;
+    const response = await fetchWithGitHubRateLimitRetry(
+      () =>
+        fetch(url, {
+          method: 'POST',
+          body: JSON.stringify({ title, body, assignees, labels }),
+          headers: {
+            Authorization: `token ${this.ghToken}`,
+            'Content-Type': 'application/json',
+          },
+        }),
+      undefined,
+      undefined,
+      false,
+      true,
+      this.stateFilePath,
+      { method: 'POST', path: `/repos/${owner}/${repo}/issues` },
+    );
+    if (!response.ok) {
+      const bodyText = await response.text();
+      throw new Error(
+        `GitHub API error creating issue: ${response.status} ${bodyText}`,
+      );
     }
+    const data: unknown = await response.json();
+    if (
+      typeof data !== 'object' ||
+      data === null ||
+      !('number' in data)
+    ) {
+      throw new Error(
+        `Unexpected response format from GitHub issue creation API`,
+      );
+    }
+    const issueNumber: unknown = data.number;
+    if (typeof issueNumber !== 'number') {
+      throw new Error(
+        `Unexpected response format from GitHub issue creation API`,
+      );
+    }
+    return issueNumber;
   };
   getIssue = async (
     issueUrl: string,
