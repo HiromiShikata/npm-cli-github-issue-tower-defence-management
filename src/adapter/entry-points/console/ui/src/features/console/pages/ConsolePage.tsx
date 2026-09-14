@@ -947,7 +947,7 @@ export const ConsolePage = () => {
               aria-label="Open max settings"
               onClick={projectSettings.open}
             >
-              ⬆
+              ⚙
             </button>
             {pjcode !== null && (
               <>

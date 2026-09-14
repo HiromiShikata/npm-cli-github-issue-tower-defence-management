@@ -1420,6 +1420,15 @@ describe('ConsolePage auto-advance tab', () => {
     expect(maxBtn.closest('nav.console-tabbar')).not.toBeNull();
   });
 
+  it('renders the max settings button with the gear icon', async () => {
+    const { getByText, getByRole } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    const maxBtn = getByRole('button', { name: 'Open max settings' });
+    expect(maxBtn.textContent?.trim()).toBe('⚙');
+  });
+
   it('shows the max settings button even when no project is selected', async () => {
     window.history.replaceState({}, '', '/');
     const { getByRole } = render(<ConsolePage />);
