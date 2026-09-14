@@ -1701,7 +1701,7 @@ test('Create new task dialog body is scrollable in landscape orientation', async
   expect(scrollHeight).toBeGreaterThan(clientHeight);
 });
 
-test('in timer mode, automatically navigates away from a project with zero prs and zero todo-by-human items', async ({
+test('in timer mode, does not automatically navigate away from a project with zero prs and zero todo-by-human items', async ({
   page,
 }) => {
   const timerSettings = JSON.stringify({
@@ -1719,9 +1719,6 @@ test('in timer mode, automatically navigates away from a project with zero prs a
     `${harness.baseUrl}/projects/${CONSOLE_E2E_SECOND_PJCODE}?k=${CONSOLE_E2E_TOKEN}`,
   );
 
-  await page.waitForURL(
-    (url) => url.pathname.includes(`/projects/${CONSOLE_E2E_PJCODE}`),
-    { timeout: 5000 },
-  );
-  expect(page.url()).toContain(`/projects/${CONSOLE_E2E_PJCODE}`);
+  await expect(page.getByText('No items')).toBeVisible({ timeout: 5000 });
+  expect(page.url()).toContain(`/projects/${CONSOLE_E2E_SECOND_PJCODE}`);
 });
