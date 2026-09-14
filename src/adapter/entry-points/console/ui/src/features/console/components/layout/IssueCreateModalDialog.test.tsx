@@ -333,9 +333,7 @@ describe('IssueCreateModalDialog', () => {
         onSubmit={onSubmit}
       />,
     );
-    expect(
-      queryByRole('button', { name: /workflow improvement/i }),
-    ).toBeNull();
+    expect(queryByRole('button', { name: /workflow improvement/i })).toBeNull();
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'No story task' },
     });
