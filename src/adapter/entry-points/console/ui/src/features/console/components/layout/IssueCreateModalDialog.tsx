@@ -76,17 +76,33 @@ export const IssueCreateModalDialog = ({
   );
 
   useEffect(() => {
-    const map = new Map<File, string>();
-    for (const file of selectedFiles) {
-      if (file.type.startsWith('image/')) {
-        map.set(file, URL.createObjectURL(file));
+    let cancelled = false;
+    const imageFiles = selectedFiles.filter((file) =>
+      file.type.startsWith('image/'),
+    );
+    const reads = imageFiles.map(
+      (file) =>
+        new Promise<[File, string]>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+              resolve([file, reader.result]);
+            } else {
+              resolve([file, '']);
+            }
+          };
+          reader.readAsDataURL(file);
+        }),
+    );
+    void Promise.all(reads).then((entries) => {
+      if (!cancelled) {
+        setThumbnailUrls(
+          new Map(entries.filter(([, url]) => url.length > 0)),
+        );
       }
-    }
-    setThumbnailUrls(map);
+    });
     return () => {
-      for (const url of map.values()) {
-        URL.revokeObjectURL(url);
-      }
+      cancelled = true;
     };
   }, [selectedFiles]);
 

@@ -7,9 +7,17 @@ import {
   type IssueCreateParams,
 } from './IssueCreateModalDialog';
 
+class MockFileReader {
+  result: string | null = null;
+  onloadend: (() => void) | null = null;
+  readAsDataURL(file: File): void {
+    this.result = `data:${file.type};base64,dGVzdA==`;
+    this.onloadend?.();
+  }
+}
+
 beforeAll(() => {
-  global.URL.createObjectURL = jest.fn(() => 'blob:mock-thumbnail-url');
-  global.URL.revokeObjectURL = jest.fn();
+  global.FileReader = MockFileReader as unknown as typeof FileReader;
 });
 
 const storyEntries: ConsoleStoryEntry[] = [
@@ -521,36 +529,42 @@ describe('IssueCreateModalDialog', () => {
     expect(getByText('hello.txt')).not.toBeNull();
   });
 
-  it('shows a thumbnail img for image files', () => {
+  it('shows a thumbnail img for image files using a data URL', async () => {
     render(<IssueCreateModalDialog {...baseProps} />);
     const fileInput = document.body.querySelector(
       'input[type="file"]',
     ) as HTMLInputElement;
     const mockFile = new File(['data'], 'photo.png', { type: 'image/png' });
-    fireEvent.change(fileInput, { target: { files: [mockFile] } });
+    await act(async () => {
+      fireEvent.change(fileInput, { target: { files: [mockFile] } });
+    });
     const thumbnail = document.body.querySelector(
       '.console-task-create-dialog-file-thumbnail',
     ) as HTMLImageElement;
     expect(thumbnail).not.toBeNull();
-    expect(thumbnail.getAttribute('src')).toBe('blob:mock-thumbnail-url');
+    expect(thumbnail.getAttribute('src')).toBe(
+      'data:image/png;base64,dGVzdA==',
+    );
   });
 
-  it('revokes blob URLs when files are replaced', async () => {
+  it('clears thumbnails when files are replaced', async () => {
     render(<IssueCreateModalDialog {...baseProps} />);
     const fileInput = document.body.querySelector(
       'input[type="file"]',
     ) as HTMLInputElement;
     const mockFile = new File(['data'], 'photo.png', { type: 'image/png' });
-    (global.URL.revokeObjectURL as jest.Mock).mockClear();
     await act(async () => {
       fireEvent.change(fileInput, { target: { files: [mockFile] } });
     });
+    expect(
+      document.body.querySelector('.console-task-create-dialog-file-thumbnail'),
+    ).not.toBeNull();
     await act(async () => {
       fireEvent.change(fileInput, { target: { files: [] } });
     });
-    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith(
-      'blob:mock-thumbnail-url',
-    );
+    expect(
+      document.body.querySelector('.console-task-create-dialog-file-thumbnail'),
+    ).toBeNull();
   });
 
   it('does not show a thumbnail img for non-image files', () => {
