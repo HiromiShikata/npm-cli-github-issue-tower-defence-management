@@ -4,6 +4,7 @@ import {
   ACTION_TOAST_DELAY_MS,
   type ConsoleToastColor,
 } from '../logic/actionToast';
+import { clearAllCommentExpandedStates } from '../logic/commentExpandedStorage';
 
 export type ConsoleOfflinePayload = {
   itemUrl: string;
@@ -178,6 +179,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     setPending(null);
     if (action !== null && !committedRef.current) {
       committedRef.current = true;
+      clearAllCommentExpandedStates();
       runCommit(action);
     }
   }, [clearTimer, runCommit]);
@@ -235,6 +237,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
         const previous = actionRef.current;
         clearTimer();
         committedRef.current = true;
+        clearAllCommentExpandedStates();
         runCommit(previous);
       }
       committedRef.current = false;
