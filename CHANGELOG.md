@@ -1,3 +1,10 @@
+## [2.116.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.2...v2.116.3) (2026-09-14)
+
+
+### Bug Fixes
+
+* **setup-use-case:** skip stale project items on 'Could not resolve' GraphQL error ([#2380](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2380)) ([62adc3f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/62adc3ffc1eb769e1a90c0323af511cfce24bc74))
+
 ## [2.116.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.1...v2.116.2) (2026-09-14)
 
 
