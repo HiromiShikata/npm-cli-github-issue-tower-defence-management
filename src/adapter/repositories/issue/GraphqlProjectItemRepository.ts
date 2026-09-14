@@ -1434,12 +1434,18 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
           clientMutationId: string;
         };
       };
-      errors: { message: string }[];
+      errors: GraphqlError[];
     }>({
       ghToken: this.ghToken,
       query: graphqlQuery.query,
     });
     if (res.errors) {
+      if (res.errors.every((e) => e.type === 'FORBIDDEN')) {
+        console.warn(
+          `updateProjectField: FORBIDDEN for itemId ${itemId}, skipping. ${res.errors.map((e) => e.message).join('; ')}`,
+        );
+        return;
+      }
       throw new Error(res.errors.map((e) => e.message).join('\n'));
     }
   };

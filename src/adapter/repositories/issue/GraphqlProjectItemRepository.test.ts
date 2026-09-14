@@ -2629,6 +2629,64 @@ describe('GraphqlProjectItemRepository', () => {
       );
       expect(mockPost).toHaveBeenCalledTimes(GRAPHQL_RETRY_LIMIT + 1);
     });
+
+    it('resolves without throwing when all errors have FORBIDDEN type', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              message:
+                'umino-bot does not have the correct permissions to execute `UpdateProjectV2ItemFieldValue`',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+          singleSelectOptionId: 'opt-id',
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('still throws when FORBIDDEN errors are mixed with other error types in updateProjectField', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              message: 'forbidden',
+            },
+            {
+              message: 'some other error',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+          text: 'value',
+        }),
+      ).rejects.toThrow('forbidden\nsome other error');
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('addIssueToProject', () => {
