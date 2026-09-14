@@ -2554,6 +2554,40 @@ describe('ConsolePage workflow task creation', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
+
+  it('shows a workflow-task-created undo toast immediately after Create is pressed', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithWorkflowIssueUrl(
+        'https://github.com/HiromiShikata/secretary/issues/42',
+      );
+      const { queryByText, getByTitle } = render(<ConsolePage />);
+
+      await waitFor(() =>
+        expect(
+          getByTitle('Create workflow improvement task'),
+        ).toBeInTheDocument(),
+      );
+
+      fireEvent.click(getByTitle('Create workflow improvement task'));
+      const dialog = await waitFor(
+        () => document.body.querySelector('[role="dialog"]') as HTMLElement,
+      );
+      const { getByRole } = within(dialog);
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Fix the pipeline' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+
+      await waitFor(() => {
+        expect(
+          queryByText(/Workflow task created — "Fix the pipeline"/),
+        ).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('ConsolePage story selection auto-reset', () => {
