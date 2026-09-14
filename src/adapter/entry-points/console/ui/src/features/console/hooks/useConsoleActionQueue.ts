@@ -42,6 +42,7 @@ export type ConsolePendingActionView = {
 export type ConsoleActionError = {
   message: string;
   reason: string;
+  retry?: () => void;
 };
 
 const OFFLINE_QUEUE_STORAGE_KEY = 'console-offline-action-queue';
@@ -135,6 +136,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
   const startRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const committedRef = useRef<boolean>(false);
+  const runCommitRef = useRef<(action: ConsoleQueuedAction) => void>(() => {});
 
   const clearTimer = useCallback((): void => {
     if (timerRef.current !== null) {
@@ -165,12 +167,17 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
         if (isNetworkError(cause) && action.offline !== undefined) {
           addToOfflineQueue(action);
         } else {
-          setError({ message: action.message, reason: errorReason(cause) });
+          setError({
+            message: action.message,
+            reason: errorReason(cause),
+            retry: () => runCommitRef.current(action),
+          });
         }
       });
     },
     [addToOfflineQueue],
   );
+  runCommitRef.current = runCommit;
 
   const commitPending = useCallback((): void => {
     const action = actionRef.current;
