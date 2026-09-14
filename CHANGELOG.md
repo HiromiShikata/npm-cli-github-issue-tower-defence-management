@@ -1,3 +1,10 @@
+## [2.111.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.5...v2.111.6) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console:** replace up-arrow with gear icon on max settings button ([#2346](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2346)) ([672f20c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/672f20c7857bff08412e329e1d1c0b82fb0a4bc1))
+
 ## [2.111.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.111.4...v2.111.5) (2026-09-14)
 
 
