@@ -1,3 +1,10 @@
+# [2.114.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.113.3...v2.114.0) (2026-09-14)
+
+
+### Features
+
+* **console:** improve error toast — full message display and Retry button ([#2365](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2365)) ([bd6d31b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bd6d31bc237bf94f97777ed0108ea1b71c1d6629)), closes [#2364](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2364) [#5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/5)
+
 ## [2.113.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.113.2...v2.113.3) (2026-09-14)
 
 
