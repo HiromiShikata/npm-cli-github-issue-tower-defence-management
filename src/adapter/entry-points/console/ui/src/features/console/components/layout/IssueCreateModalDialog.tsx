@@ -12,17 +12,21 @@ export type IssueCreateModalDialogProps = {
   storyEntries: ConsoleStoryEntry[];
   onSubmit: (params: IssueCreateParams) => void;
   onClose: () => void;
+  initialTitle?: string;
+  onTitleChange?: (title: string) => void;
 };
 
 export const IssueCreateModalDialog = ({
   storyEntries,
   onSubmit,
   onClose,
+  initialTitle,
+  onTitleChange,
 }: IssueCreateModalDialogProps) => {
   const [selectedStoryOptionId, setSelectedStoryOptionId] = useState<
     string | null
   >(storyEntries[0]?.storyOptionId ?? null);
-  const [titleValue, setTitleValue] = useState('');
+  const [titleValue, setTitleValue] = useState(initialTitle ?? '');
   const [validationError, setValidationError] = useState<string | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
@@ -31,8 +35,13 @@ export const IssueCreateModalDialog = ({
   }, []);
 
   useEffect(() => {
-    setSelectedStoryOptionId(storyEntries[0]?.storyOptionId ?? null);
-  }, [storyEntries]);
+    if (
+      selectedStoryOptionId === null ||
+      !storyEntries.some((e) => e.storyOptionId === selectedStoryOptionId)
+    ) {
+      setSelectedStoryOptionId(storyEntries[0]?.storyOptionId ?? null);
+    }
+  }, [storyEntries, selectedStoryOptionId]);
 
   const handleSubmit = (): void => {
     const trimmedTitle = titleValue.trim();
@@ -80,7 +89,10 @@ export const IssueCreateModalDialog = ({
             className="console-task-create-dialog-textarea"
             aria-label="Title"
             value={titleValue}
-            onChange={(e) => setTitleValue(e.target.value)}
+            onChange={(e) => {
+                setTitleValue(e.target.value);
+                onTitleChange?.(e.target.value);
+              }}
             rows={3}
           />
 

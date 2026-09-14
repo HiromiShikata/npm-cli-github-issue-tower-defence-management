@@ -201,6 +201,7 @@ export const ConsolePage = () => {
   }, []);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogDraftTitle, setDialogDraftTitle] = useState('');
 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   useEffect(() => {
@@ -618,6 +619,7 @@ export const ConsolePage = () => {
         },
         advance: () => {},
       });
+      setDialogDraftTitle('');
     },
     [pjcode, defaultNameWithOwner, storyEntries, actionQueue],
   );
@@ -920,14 +922,16 @@ export const ConsolePage = () => {
                     onCreateWorkflowTask={handleCreateWorkflowTask}
                   />
                 )}
+                {isDialogOpen && (
+                  <IssueCreateModalDialog
+                    storyEntries={storyEntries}
+                    onSubmit={handleCreateIssueFromDialog}
+                    onClose={() => setIsDialogOpen(false)}
+                    initialTitle={dialogDraftTitle}
+                    onTitleChange={setDialogDraftTitle}
+                  />
+                )}
               </>
-            )}
-            {isDialogOpen && (
-              <IssueCreateModalDialog
-                storyEntries={storyEntries}
-                onSubmit={handleCreateIssueFromDialog}
-                onClose={() => setIsDialogOpen(false)}
-              />
             )}
           </>
         }

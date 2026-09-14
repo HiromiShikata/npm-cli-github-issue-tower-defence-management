@@ -151,7 +151,7 @@ describe('IssueCreateModalDialog', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('resets selectedStoryOptionId to the first entry when storyEntries prop changes', () => {
+  it('resets selectedStoryOptionId to the first entry when storyEntries changes to a different set', () => {
     const { rerender, getByRole } = render(
       <IssueCreateModalDialog {...baseProps} storyEntries={storyEntries} />,
     );
@@ -181,5 +181,57 @@ describe('IssueCreateModalDialog', () => {
         'aria-pressed',
       ),
     ).toBe('true');
+  });
+
+  it('preserves selectedStoryOptionId when storyEntries re-renders with same storyOptionIds in a new array reference', () => {
+    const { rerender, getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} storyEntries={storyEntries} />,
+    );
+    fireEvent.click(
+      getByRole('button', {
+        name: /regular \/ tdpm dashboard & console improvement/i,
+      }),
+    );
+    expect(
+      getByRole('button', {
+        name: /regular \/ tdpm dashboard & console improvement/i,
+      }).getAttribute('aria-pressed'),
+    ).toBe('true');
+
+    const sameStoriesNewRef: ConsoleStoryEntry[] = storyEntries.map((e) => ({
+      ...e,
+    }));
+    rerender(
+      <IssueCreateModalDialog {...baseProps} storyEntries={sameStoriesNewRef} />,
+    );
+
+    expect(
+      getByRole('button', {
+        name: /regular \/ tdpm dashboard & console improvement/i,
+      }).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('initializes titleValue from initialTitle prop', () => {
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} initialTitle="Restored draft" />,
+    );
+    expect(getByRole('textbox', { name: /title/i })).toHaveValue(
+      'Restored draft',
+    );
+  });
+
+  it('calls onTitleChange whenever the title textarea changes', () => {
+    const onTitleChange = jest.fn();
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        onTitleChange={onTitleChange}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Typed text' },
+    });
+    expect(onTitleChange).toHaveBeenCalledWith('Typed text');
   });
 });

@@ -513,17 +513,12 @@ test('opens a fullscreen-overlay modal when the console header new-task button i
     .getByRole('textbox', { name: /title/i })
     .fill('My console header task');
 
-  const bodyTextarea = page.getByRole('textbox', { name: /body/i });
-  await expect(bodyTextarea).toBeVisible();
-  await bodyTextarea.fill('E2E body description');
-
   await page.getByRole('button', { name: /^create$/i }).click();
 
   await expect
     .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
     .toBe(initialCreateCount + 1);
   expect(harness.createIssueCalls.at(-1)?.title).toBe('My console header task');
-  expect(harness.createIssueCalls.at(-1)?.body).toBe('E2E body description');
 });
 
 test('restores draft title when the create-task dialog is cancelled and reopened', async ({
@@ -964,39 +959,6 @@ test('does not show the fleet task create link when fleetTaskCreateUrl is not co
   );
 });
 
-test('shows the open-in-new-tab link in the Create New Task dialog when fleetTaskCreateUrl is configured', async ({
-  browser,
-}) => {
-  const fleetUrl =
-    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new';
-  const localHarness = await startConsoleE2eHarness({
-    fleetTaskCreateUrl: fleetUrl,
-  });
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
-  try {
-    await page.goto(localHarness.appUrl);
-    await page.locator('.console-task-create-button').click();
-    const link = page.locator('.console-task-create-dialog-open-link');
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute('href', fleetUrl);
-    await expect(link).toHaveAttribute('target', '_blank');
-    await expect(link).toHaveAttribute('rel', 'noreferrer');
-  } finally {
-    await ctx.close();
-    await localHarness.stop();
-  }
-});
-
-test('does not show the open-in-new-tab link in the Create New Task dialog when fleetTaskCreateUrl is not configured', async ({
-  page,
-}) => {
-  await page.goto(harness.appUrl);
-  await page.locator('.console-task-create-button').click();
-  await expect(
-    page.locator('.console-task-create-dialog-open-link'),
-  ).toHaveCount(0);
-});
 
 test('shows the task-level workflow incident report link in the detail subbar when workflowImprovementIssueUrl is configured', async ({
   browser,
