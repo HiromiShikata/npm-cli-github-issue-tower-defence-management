@@ -2480,7 +2480,9 @@ describe('ConsolePage workflow task creation', () => {
       ).toBeInTheDocument(),
     );
 
-    expect(getByTitle('Create workflow improvement task').textContent).toBe('!');
+    expect(getByTitle('Create workflow improvement task').textContent).toBe(
+      '!',
+    );
   });
 });
 
