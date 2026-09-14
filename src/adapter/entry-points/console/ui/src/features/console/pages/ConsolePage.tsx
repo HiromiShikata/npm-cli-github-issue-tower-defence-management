@@ -39,7 +39,10 @@ import { useConsoleTabData } from '../hooks/useConsoleTabData';
 import { useConsoleTabSelectHandler } from '../hooks/useConsoleTabSelectHandler';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
+  encodeAttachmentContent,
   postConsoleAddStory,
+  postConsoleAttachment,
+  postConsoleComment,
   postConsoleCreateIssue,
   postConsoleCreateWorkflowIssue,
   postConsoleDeleteStory,
@@ -596,30 +599,57 @@ export const ConsolePage = () => {
   );
 
   const handleCreateIssueFromDialog = useCallback(
-    ({ storyOptionId, title }: IssueCreateParams): void => {
+    ({
+      storyOptionId,
+      agentOptionId,
+      title,
+      referenceUrl,
+      files,
+    }: IssueCreateParams): Promise<void> => {
       if (pjcode === null || defaultNameWithOwner === null) {
-        return;
+        return Promise.resolve();
       }
       const capturedPjcode = pjcode;
       const capturedNameWithOwner = defaultNameWithOwner;
-      const capturedTitle = title;
       const capturedStoryName =
         storyEntries.find((e) => e.storyOptionId === storyOptionId)
           ?.storyName ?? '';
       actionQueue.enqueue({
-        message: `Task created — "${capturedTitle}"`,
+        message: `Task created — "${title}"`,
         color: 'blue',
         commit: async () => {
-          await postConsoleCreateIssue({
+          const issueUrl = await postConsoleCreateIssue({
             pjcode: capturedPjcode,
-            title: capturedTitle,
+            title,
             storyName: capturedStoryName,
             nameWithOwner: capturedNameWithOwner,
+            agentOptionId: agentOptionId ?? null,
+            referenceUrl: referenceUrl ?? null,
           });
+          if (files.length > 0) {
+            const markdownParts = await Promise.all(
+              files.map(async (file) => {
+                const bytes = new Uint8Array(await file.arrayBuffer());
+                const contentBase64 = encodeAttachmentContent(bytes);
+                return postConsoleAttachment({
+                  pjcode: capturedPjcode,
+                  url: issueUrl,
+                  fileName: file.name,
+                  contentBase64,
+                });
+              }),
+            );
+            await postConsoleComment({
+              pjcode: capturedPjcode,
+              url: issueUrl,
+              body: markdownParts.join('\n\n'),
+            });
+          }
         },
         advance: () => {},
       });
       setDialogDraftTitle('');
+      return Promise.resolve();
     },
     [pjcode, defaultNameWithOwner, storyEntries, actionQueue],
   );
@@ -925,6 +955,7 @@ export const ConsolePage = () => {
                 {isDialogOpen && (
                   <IssueCreateModalDialog
                     storyEntries={storyEntries}
+                    agentOptions={agentOptions}
                     onSubmit={handleCreateIssueFromDialog}
                     onClose={() => setIsDialogOpen(false)}
                     initialTitle={dialogDraftTitle}

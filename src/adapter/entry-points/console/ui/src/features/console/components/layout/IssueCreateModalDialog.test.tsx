@@ -1,5 +1,5 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
-import type { ConsoleStoryEntry } from '../../logic/types';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 import {
   IssueCreateModalDialog,
   type IssueCreateModalDialogProps,
@@ -27,9 +27,15 @@ const storyEntries: ConsoleStoryEntry[] = [
   },
 ];
 
+const agentOptions: ConsoleFieldOption[] = [
+  { id: 'agent-developer', name: 'developer', color: 'BLUE' },
+  { id: 'agent-chore', name: 'chore', color: 'GRAY' },
+];
+
 const baseProps: IssueCreateModalDialogProps = {
   storyEntries,
-  onSubmit: jest.fn(),
+  agentOptions,
+  onSubmit: jest.fn().mockResolvedValue(undefined),
   onClose: jest.fn(),
 };
 
@@ -46,12 +52,26 @@ describe('IssueCreateModalDialog', () => {
     ).not.toBeNull();
   });
 
+  it('renders agent buttons for each agent option', () => {
+    const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+    expect(getByRole('button', { name: /developer/i })).not.toBeNull();
+    expect(getByRole('button', { name: /chore/i })).not.toBeNull();
+  });
+
   it('selects the first story by default', () => {
     const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
     const firstStoryButton = getByRole('button', {
       name: /regular \/ workflow improvement/i,
     });
     expect(firstStoryButton.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('has no agent selected by default', () => {
+    const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+    const developerButton = getByRole('button', { name: /developer/i });
+    expect(developerButton.getAttribute('aria-pressed')).toBe('false');
+    const choreButton = getByRole('button', { name: /chore/i });
+    expect(choreButton.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('selects a story when its button is clicked', () => {
@@ -68,6 +88,25 @@ describe('IssueCreateModalDialog', () => {
     ).toBe('false');
   });
 
+  it('selects an agent when its button is clicked', () => {
+    const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+    const developerButton = getByRole('button', { name: /developer/i });
+    fireEvent.click(developerButton);
+    expect(developerButton.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      getByRole('button', { name: /chore/i }).getAttribute('aria-pressed'),
+    ).toBe('false');
+  });
+
+  it('deselects an agent when its button is clicked again', () => {
+    const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
+    const developerButton = getByRole('button', { name: /developer/i });
+    fireEvent.click(developerButton);
+    expect(developerButton.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(developerButton);
+    expect(developerButton.getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('auto-focuses the title textarea on mount', () => {
     const { getByRole } = render(<IssueCreateModalDialog {...baseProps} />);
     const textarea = getByRole('textbox', { name: /title/i });
@@ -82,45 +121,65 @@ describe('IssueCreateModalDialog', () => {
     );
   });
 
-  it('calls onSubmit with correct params when the form is valid', () => {
-    const onSubmit = jest.fn();
+  it('calls onSubmit with correct params when the form is valid', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
       <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
     );
     const textarea = getByRole('textbox', { name: /title/i });
     fireEvent.change(textarea, { target: { value: 'My new task' } });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
-    expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>({
-      storyOptionId: 'opt-workflow-improvement',
-      title: 'My new task',
-    });
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>({
+        storyOptionId: 'opt-workflow-improvement',
+        agentOptionId: null,
+        title: 'My new task',
+        referenceUrl: null,
+        files: [],
+      }),
+    );
   });
 
-  it('calls onClose after onSubmit when the form is valid', () => {
-    const onClose = jest.fn();
+  it('calls onSubmit with agentOptionId when agent is selected', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
     const { getByRole } = render(
-      <IssueCreateModalDialog {...baseProps} onClose={onClose} />,
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
-      target: { value: 'My new task' },
+      target: { value: 'Task with agent' },
+    });
+    fireEvent.click(getByRole('button', { name: /developer/i }));
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({ agentOptionId: 'agent-developer' }),
+      ),
+    );
+  });
+
+  it('calls onSubmit with referenceUrl when reference URL is filled in', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole, getByPlaceholderText } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Task with ref' },
+    });
+    fireEvent.change(getByPlaceholderText(/paste current task url/i), {
+      target: {
+        value:
+          'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
+      },
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it('renders color dot for each story entry', () => {
-    render(<IssueCreateModalDialog {...baseProps} />);
-    const dots = document.body.querySelectorAll('.console-story-dot');
-    expect(dots.length).toBe(storyEntries.length);
-    const firstDot = dots[0] as HTMLElement;
-    expect(firstDot.style.backgroundColor).toBeTruthy();
-  });
-
-  it('does not render a Reference URL input', () => {
-    const { queryByPlaceholderText } = render(
-      <IssueCreateModalDialog {...baseProps} />,
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({
+          referenceUrl:
+            'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
+        }),
+      ),
     );
-    expect(queryByPlaceholderText(/paste current task url/i)).toBeNull();
   });
 
   it('calls onClose when Cancel is clicked', () => {
@@ -130,6 +189,78 @@ describe('IssueCreateModalDialog', () => {
     );
     fireEvent.click(getByRole('button', { name: /^cancel$/i }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('calls onClose after onSubmit completes successfully', async () => {
+    const onClose = jest.fn();
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog
+        {...baseProps}
+        onSubmit={onSubmit}
+        onClose={onClose}
+      />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'My new task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it('shows an error message when onSubmit rejects', async () => {
+    const onSubmit = jest.fn().mockRejectedValue(new Error('Network failure'));
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: 'Failing task' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(
+        'Network failure',
+      ),
+    );
+  });
+
+  it('clears error on successful retry', async () => {
+    const onSubmit = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Network failure'))
+      .mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    const textarea = getByRole('textbox', { name: /title/i });
+    fireEvent.change(textarea, { target: { value: 'Retry task' } });
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+    });
+    await waitFor(() =>
+      expect(document.body.querySelector('[role="alert"]')).not.toBeNull(),
+    );
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(document.body.querySelector('[role="alert"]')).toBeNull(),
+    );
+  });
+
+  it('renders with no agent options - does not show agent section', () => {
+    const { queryByRole } = render(
+      <IssueCreateModalDialog {...baseProps} agentOptions={[]} />,
+    );
+    expect(queryByRole('button', { name: /developer/i })).toBeNull();
+    expect(queryByRole('button', { name: /chore/i })).toBeNull();
+  });
+
+  it('renders the Reference URL input', () => {
+    const { getByPlaceholderText } = render(
+      <IssueCreateModalDialog {...baseProps} />,
+    );
+    expect(
+      getByPlaceholderText(/paste current task url/i),
+    ).not.toBeNull();
   });
 
   it('calls onClose when close button is clicked', () => {
@@ -233,5 +364,13 @@ describe('IssueCreateModalDialog', () => {
       target: { value: 'Typed text' },
     });
     expect(onTitleChange).toHaveBeenCalledWith('Typed text');
+  });
+
+  it('renders color dot for each story entry', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const dots = document.body.querySelectorAll('.console-story-dot');
+    expect(dots.length).toBe(storyEntries.length);
+    const firstDot = dots[0] as HTMLElement;
+    expect(firstDot.style.backgroundColor).toBeTruthy();
   });
 });
