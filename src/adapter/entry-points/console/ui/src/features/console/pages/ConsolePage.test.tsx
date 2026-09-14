@@ -1741,7 +1741,9 @@ describe('ConsolePage auto-advance tab', () => {
         jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
       });
       await waitFor(() => {
-        expect(queryByText('Add serveConsole subcommand')).not.toBeInTheDocument();
+        expect(
+          queryByText('Add serveConsole subcommand'),
+        ).not.toBeInTheDocument();
       });
       expect(navigatePush).not.toHaveBeenCalledWith('/projects/beta');
     } finally {
