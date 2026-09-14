@@ -168,7 +168,30 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('distantResetIdle');
   });
 
-  it('allows a token whose seven day window is below the minimum when it resets within 24 hours but selects a higher free ratio token when one is available', () => {
+  it('allows a nearly used token within 48 hours of its seven day reset so remaining capacity can be drained', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'earlyDrainSevenDay',
+          snapshot({
+            sevenDayReset: NOW + 30 * HOUR,
+            sevenDayUtilization: 0.9,
+          }),
+        ),
+      ],
+      [],
+      NOW,
+      SETTINGS,
+    );
+
+    const earlyDrain = result.metrics.find(
+      (m) => m.name === 'earlyDrainSevenDay',
+    );
+    expect(earlyDrain?.eligible).toBe(true);
+    expect(result.selected?.name).toBe('earlyDrainSevenDay');
+  });
+
+  it('allows a token whose seven day window is below the minimum when it resets within 48 hours but selects a higher free ratio token when one is available', () => {
     const result = useCase.run(
       [
         candidate(
@@ -265,7 +288,15 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
 
   it('honours a fleet supplied five hour free ratio for the full concurrent session limit', () => {
     const result = useCase.run(
-      [candidate('narrowFiveHour', snapshot({ fiveHourUtilization: 0.6 }))],
+      [
+        candidate(
+          'narrowFiveHour',
+          snapshot({
+            fiveHourUtilization: 0.6,
+            sevenDayReset: NOW + 216 * HOUR,
+          }),
+        ),
+      ],
       [],
       NOW,
       settingsWith({ fullSpeedFiveHourFreeRatio: 0.8 }),
