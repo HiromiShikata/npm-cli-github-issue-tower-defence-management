@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import type { ConsoleStoryEntry } from '../../logic/types';
+import type { ConsoleFieldOption, ConsoleStoryEntry } from '../../logic/types';
 import { IssueCreateModalDialog } from './IssueCreateModalDialog';
 
 const storyEntries: ConsoleStoryEntry[] = [
@@ -34,12 +34,18 @@ const storyEntries: ConsoleStoryEntry[] = [
   },
 ];
 
+const agentOptions: ConsoleFieldOption[] = [
+  { id: 'agent-developer', name: 'developer', color: 'BLUE' },
+  { id: 'agent-chore', name: 'chore', color: 'GRAY' },
+];
+
 const meta: Meta<typeof IssueCreateModalDialog> = {
   title: 'Console/IssueCreateModalDialog',
   component: IssueCreateModalDialog,
   args: {
     storyEntries,
-    onSubmit: () => {},
+    agentOptions,
+    onSubmit: () => Promise.resolve(),
     onClose: () => {},
   },
 };
@@ -53,5 +59,11 @@ export const Default: Story = {};
 export const SingleStory: Story = {
   args: {
     storyEntries: [storyEntries[0]],
+  },
+};
+
+export const NoAgentOptions: Story = {
+  args: {
+    agentOptions: [],
   },
 };
