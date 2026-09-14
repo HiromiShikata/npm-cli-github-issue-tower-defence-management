@@ -1439,4 +1439,79 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       names.indexOf(FAILED_PREPARATION_STATUS_NAME) + 1,
     );
   });
+
+  it('should skip a limbo issue whose project item no longer exists in GitHub and not throw', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const canonicalStatuses = buildCanonicalStatuses();
+    const project = buildProject(canonicalStatuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    const staleItemIssue = buildIssue({
+      number: 99,
+      url: 'https://github.com/test-org/test-repo/issues/99',
+      itemId: 'PVTI_stale',
+      state: 'OPEN',
+      status: DONE_STATUS_NAME,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [staleItemIssue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.updateStatus.mockRejectedValue(
+      new Error(
+        `Could not resolve to a node with the global id of 'PVTI_stale'.`,
+      ),
+    );
+
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockStatusDefaultRepository,
+    );
+
+    await expect(useCase.run({ projectUrl: project.url })).resolves.toBeUndefined();
+    expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it('should still throw when updateStatus fails for a reason other than a stale project item', async () => {
+    const mockProjectRepository =
+      mock<Pick<ProjectRepository, 'getByUrl' | 'updateStatusList'>>();
+    const mockIssueRepository =
+      mock<Pick<IssueRepository, 'getAllIssues' | 'updateStatus'>>();
+    const canonicalStatuses = buildCanonicalStatuses();
+    const project = buildProject(canonicalStatuses);
+    mockProjectRepository.getByUrl.mockResolvedValue(project);
+    const limboIssue = buildIssue({
+      number: 98,
+      url: 'https://github.com/test-org/test-repo/issues/98',
+      itemId: 'item-98',
+      state: 'OPEN',
+      status: DONE_STATUS_NAME,
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mock<Project>(),
+      issues: [limboIssue],
+      cacheUsed: false,
+    });
+    mockIssueRepository.updateStatus.mockRejectedValue(
+      new Error('Network timeout'),
+    );
+
+    const mockStatusDefaultRepository =
+      mock<Pick<StatusDefaultRepository, 'setStatusFieldDefault'>>();
+    const useCase = new SetupTowerDefenceProjectUseCase(
+      mockProjectRepository,
+      mockIssueRepository,
+      mockStatusDefaultRepository,
+    );
+
+    await expect(useCase.run({ projectUrl: project.url })).rejects.toThrow(
+      'Network timeout',
+    );
+  });
 });
