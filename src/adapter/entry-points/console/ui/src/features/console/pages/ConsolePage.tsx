@@ -658,7 +658,7 @@ export const ConsolePage = () => {
   );
 
   const handleCreateWorkflowTask = useCallback(
-    async (title: string): Promise<string> => {
+    (title: string): void => {
       if (workflowImprovementIssueUrl === null) {
         throw new Error('Workflow improvement repository is not configured.');
       }
@@ -672,9 +672,16 @@ export const ConsolePage = () => {
         );
       }
       const nameWithOwner = match[1];
-      return postConsoleCreateWorkflowIssue({ nameWithOwner, title });
+      actionQueue.enqueue({
+        message: `Workflow task created — "${title}"`,
+        color: 'blue',
+        commit: async () => {
+          await postConsoleCreateWorkflowIssue({ nameWithOwner, title });
+        },
+        advance: () => {},
+      });
     },
-    [workflowImprovementIssueUrl],
+    [workflowImprovementIssueUrl, actionQueue],
   );
 
   const handleReorderStory = useCallback(

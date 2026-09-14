@@ -2447,39 +2447,48 @@ describe('ConsolePage workflow task creation', () => {
   });
 
   it('extracts nameWithOwner from workflowImprovementIssueUrl and calls the API', async () => {
-    const fetchMock = installFetchWithWorkflowIssueUrl(
-      'https://github.com/HiromiShikata/secretary/issues/42',
-    );
+    jest.useFakeTimers();
+    try {
+      const fetchMock = installFetchWithWorkflowIssueUrl(
+        'https://github.com/HiromiShikata/secretary/issues/42',
+      );
 
-    const { getByTitle } = render(<ConsolePage />);
+      const { getByTitle } = render(<ConsolePage />);
 
-    await waitFor(() =>
-      expect(
-        getByTitle('Create workflow improvement task'),
-      ).toBeInTheDocument(),
-    );
+      await waitFor(() =>
+        expect(
+          getByTitle('Create workflow improvement task'),
+        ).toBeInTheDocument(),
+      );
 
-    fireEvent.click(getByTitle('Create workflow improvement task'));
-    const dialog = await waitFor(
-      () => document.body.querySelector('[role="dialog"]') as HTMLElement,
-    );
-    const { getByRole } = within(dialog);
-    fireEvent.change(getByRole('textbox', { name: /title/i }), {
-      target: { value: 'Improve the pipeline' },
-    });
-    fireEvent.click(getByRole('button', { name: /^create$/i }));
+      fireEvent.click(getByTitle('Create workflow improvement task'));
+      const dialog = await waitFor(
+        () => document.body.querySelector('[role="dialog"]') as HTMLElement,
+      );
+      const { getByRole } = within(dialog);
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Improve the pipeline' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
 
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/createworkflowissue',
-        expect.objectContaining({
-          body: JSON.stringify({
-            nameWithOwner: 'HiromiShikata/secretary',
-            title: 'Improve the pipeline',
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+      });
+
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/createworkflowissue',
+          expect.objectContaining({
+            body: JSON.stringify({
+              nameWithOwner: 'HiromiShikata/secretary',
+              title: 'Improve the pipeline',
+            }),
           }),
-        }),
-      ),
-    );
+        ),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('shows an error when workflowImprovementIssueUrl cannot be parsed', async () => {

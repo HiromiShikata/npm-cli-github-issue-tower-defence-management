@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { IssueCreateModalDialog } from '../layout/IssueCreateModalDialog';
 
 export type ConsoleCreateWorkflowTaskButtonProps = {
-  onCreateWorkflowTask: (title: string) => Promise<string>;
+  onCreateWorkflowTask: (title: string) => void;
 };
 
 export const ConsoleCreateWorkflowTaskButton = ({
@@ -27,7 +27,7 @@ export const ConsoleCreateWorkflowTaskButton = ({
           agentOptions={[]}
           showOptionalFields={false}
           onSubmit={async (params) => {
-            await onCreateWorkflowTask(params.title);
+            onCreateWorkflowTask(params.title);
           }}
           onClose={() => setIsDialogOpen(false)}
         />

@@ -46,9 +46,9 @@ describe('ConsoleCreateWorkflowTaskButton', () => {
   });
 
   it('error thrown by onCreateWorkflowTask is displayed in the dialog', async () => {
-    const onCreateWorkflowTask = jest
-      .fn()
-      .mockRejectedValue(new Error('API error'));
+    const onCreateWorkflowTask = jest.fn().mockImplementation(() => {
+      throw new Error('API error');
+    });
     const { getByTitle, getByRole } = render(
       <ConsoleCreateWorkflowTaskButton
         onCreateWorkflowTask={onCreateWorkflowTask}
