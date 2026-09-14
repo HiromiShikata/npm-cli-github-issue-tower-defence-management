@@ -214,6 +214,12 @@ export const ConsoleItemDetailContainer = ({
                 reviewComments,
               )
             : undefined,
+        ...(action === 'approve_and_merge'
+          ? {
+              onAdvance: () => operations.patchItemOverlay(item, true),
+              revertAdvance: () => operations.patchItemOverlay(item, false),
+            }
+          : {}),
       });
     },
     onSetNextActionDate: (action) => {
@@ -284,6 +290,8 @@ export const ConsoleItemDetailContainer = ({
           pjcode != null
             ? buildTriageOfflinePayload(pjcode, item, action)
             : undefined,
+        onAdvance: () => operations.patchItemOverlay(item, true),
+        revertAdvance: () => operations.patchItemOverlay(item, false),
       });
     },
     onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => {
