@@ -592,24 +592,10 @@ describe('sevenDayUrgencyFactor', () => {
     expect(almostReset).toBe(SEVEN_DAY_WINDOW_HOURS);
   });
 
-  it('treats a token at the 24-hour spend deadline as maximally urgent for its free ratio', () => {
-    const atDeadline = sevenDayUrgencyFactor(0.5, now + 24 * 3600, now);
-
-    expect(atDeadline).toBe(0.5 * SEVEN_DAY_WINDOW_HOURS);
-  });
-
   it('treats a token at the 48-hour spend deadline as maximally urgent for its free ratio', () => {
     const atDeadline = sevenDayUrgencyFactor(0.5, now + 48 * 3600, now);
 
     expect(atDeadline).toBe(0.5 * SEVEN_DAY_WINDOW_HOURS);
-  });
-
-  it('gives higher urgency at 48h-to-reset than at 52h-to-reset using hours-to-deadline as the denominator', () => {
-    const closer = sevenDayUrgencyFactor(0.5, now + 48 * 3600, now);
-    const further = sevenDayUrgencyFactor(0.5, now + 52 * 3600, now);
-
-    expect(closer).toBeGreaterThan(further);
-    expect(closer).toBeCloseTo((0.5 * SEVEN_DAY_WINDOW_HOURS) / 24, 5);
   });
 
   it('gives higher urgency at 72h-to-reset than at 76h-to-reset using hours-to-deadline as the denominator', () => {
@@ -623,25 +609,6 @@ describe('sevenDayUrgencyFactor', () => {
 
 describe('OauthTokenSelectUseCase spend-deadline bypass', () => {
   const useCase = new OauthTokenSelectUseCase();
-
-  it('allows a token with less than the minimum seven day free ratio when within 24 hours of the seven day reset', () => {
-    const result = useCase.run(
-      [
-        candidate(
-          'nearReset7d',
-          snapshot({
-            sevenDayUtilization: 0.995,
-            sevenDayReset: NOW + 20 * HOUR,
-          }),
-        ),
-      ],
-      NOW,
-    );
-
-    expect(result.selected?.name).toBe('nearReset7d');
-    const nearReset = result.metrics.find((m) => m.name === 'nearReset7d');
-    expect(nearReset?.eligible).toBe(true);
-  });
 
   it('allows a token with less than the minimum seven day free ratio when within 48 hours of the seven day reset', () => {
     const result = useCase.run(
@@ -662,14 +629,14 @@ describe('OauthTokenSelectUseCase spend-deadline bypass', () => {
     expect(nearReset?.eligible).toBe(true);
   });
 
-  it('still excludes a token with less than the minimum seven day free ratio when more than 24 hours remain before reset', () => {
+  it('still excludes a token with less than the minimum seven day free ratio when more than 48 hours remain before reset', () => {
     const result = useCase.run(
       [
         candidate(
           'farReset7d',
           snapshot({
             sevenDayUtilization: 0.995,
-            sevenDayReset: NOW + 30 * HOUR,
+            sevenDayReset: NOW + 50 * HOUR,
           }),
         ),
       ],
