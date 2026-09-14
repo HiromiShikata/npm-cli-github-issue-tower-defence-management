@@ -2510,7 +2510,11 @@ describe('ConsolePage story selection auto-reset', () => {
             json: async () => ({ pjcodes: ['acme'] }),
           };
         }
-        return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
       });
       global.fetch = fetchMock as unknown as typeof fetch;
 
