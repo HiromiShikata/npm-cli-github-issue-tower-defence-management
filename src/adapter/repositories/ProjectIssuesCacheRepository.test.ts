@@ -19,6 +19,7 @@ import {
   ProjectIssuesCacheRepository,
   deserializeStoryOptions,
 } from './ProjectIssuesCacheRepository';
+import { Issue } from '../../domain/entities/Issue';
 import { GraphqlProjectRepository } from './GraphqlProjectRepository';
 import { LocalStorageCacheRepository } from './LocalStorageCacheRepository';
 import { LocalStorageRepository } from './LocalStorageRepository';
@@ -385,7 +386,7 @@ describe('ProjectIssuesCacheRepository storyOptions', () => {
 });
 
 describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
-  const buildIssueEntry = (itemId: string, url: string) => ({
+  const buildIssueEntry = (itemId: string, url: string): Issue => ({
     nameWithOwner: 'o/r',
     url,
     title: 'title',
@@ -407,7 +408,7 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
     isPr: false,
     isInProgress: false,
     isClosed: false,
-    createdAt: '2026-01-01T00:00:00.000Z',
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
     author: '',
     closingIssueReferenceUrls: [],
     agent: null,
@@ -424,7 +425,7 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
       lastFetchedAt: '2026-01-01T00:00:00.000Z',
       lastFullFetchAt: '2026-01-01T00:00:00.000Z',
       project: cachedProject,
-      issues: [issue1, issue2] as never,
+      issues: [issue1, issue2],
       storyIssueUrlByOptionName: {},
       storyOptions: [],
     });
@@ -444,7 +445,7 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
       lastFetchedAt: '2026-01-01T00:00:00.000Z',
       lastFullFetchAt: '2026-01-01T00:00:00.000Z',
       project: cachedProject,
-      issues: [issue1] as never,
+      issues: [issue1],
       storyIssueUrlByOptionName: {},
       storyOptions: [],
     });
@@ -474,7 +475,7 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
       lastFetchedAt: '2026-06-01T00:00:00.000Z',
       lastFullFetchAt: '2026-05-01T00:00:00.000Z',
       project: cachedProject,
-      issues: [issue1, issue2] as never,
+      issues: [issue1, issue2],
       storyIssueUrlByOptionName: { 'My Story': 'https://github.com/o/r/issues/10' },
       storyOptions,
     });

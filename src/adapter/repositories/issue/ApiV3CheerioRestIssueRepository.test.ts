@@ -7189,8 +7189,8 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           typeof value === 'object' &&
           value !== null &&
           'issues' in value &&
-          Array.isArray((value as Record<string, unknown>).issues) &&
-          ((value as Record<string, unknown>).issues as unknown[]).length === 0,
+          Array.isArray(value.issues) &&
+          value.issues.length === 0,
       );
       expect(cacheWrite).toBeDefined();
     });
