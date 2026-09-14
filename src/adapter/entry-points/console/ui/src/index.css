@@ -211,8 +211,6 @@ body {
 .console-tab-settings {
   align-self: center;
   padding: 0 4px;
-  display: inline-flex;
-  align-items: center;
 }
 
 .console-project-timer-bar {
@@ -1677,23 +1675,13 @@ body {
   z-index: 9998;
   max-width: 45vw;
   display: flex;
+  align-items: center;
   gap: 12px;
   padding: 12px 18px;
   border-radius: 10px;
   font-size: 0.8438rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-}
-
-.console-undo-toast {
-  align-items: center;
   white-space: nowrap;
-}
-
-.console-error-toast {
-  flex-direction: column;
-  white-space: normal;
-  max-height: 40vh;
-  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 }
 
 .console-undo-toast-green {
@@ -1732,21 +1720,16 @@ body {
   color: #f85149;
 }
 
-.console-undo-toast-message {
+.console-undo-toast-message,
+.console-error-toast-message {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
 }
 
-.console-error-toast-message {
-  flex: 1;
-  min-width: 0;
-}
-
 .console-undo-toast-undo,
-.console-error-toast-dismiss,
-.console-error-toast-retry {
+.console-error-toast-dismiss {
   flex: 0 0 auto;
   font-weight: 700;
   background: rgba(255, 255, 255, 0.12);
@@ -1759,15 +1742,8 @@ body {
 }
 
 .console-undo-toast-undo:hover,
-.console-error-toast-dismiss:hover,
-.console-error-toast-retry:hover {
+.console-error-toast-dismiss:hover {
   background: rgba(255, 255, 255, 0.22);
-}
-
-.console-error-toast-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .console-undo-toast-countdown {
@@ -2476,4 +2452,18 @@ body {
 .console-task-create-dialog-cancel:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.console-task-create-dialog-fleet-link {
+  color: #8b949e;
+  font-size: 0.8125rem;
+  text-decoration: none;
+  padding: 4px 8px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+.console-task-create-dialog-fleet-link:hover {
+  color: #e6edf3;
 }

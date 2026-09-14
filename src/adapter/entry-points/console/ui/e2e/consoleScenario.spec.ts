@@ -520,7 +520,7 @@ test('opens a fullscreen-overlay modal when the console header new-task button i
   expect(harness.createIssueCalls.at(-1)?.title).toBe('My console header task');
 });
 
-test('create-task dialog submits agent, referenceUrl, and file attachment correctly', async ({
+test('create-task dialog submits agent, body, and file attachment correctly', async ({
   page,
 }) => {
   await page.goto(harness.appUrl);
@@ -540,9 +540,7 @@ test('create-task dialog submits agent, referenceUrl, and file attachment correc
   const developerButton = dialog.getByRole('button', { name: /developer/i });
   await expect(developerButton).toBeVisible();
   await expect(developerButton).toHaveAttribute('aria-pressed', 'false');
-  await expect(
-    dialog.getByPlaceholder(/paste current task url/i),
-  ).toBeVisible();
+  await page.getByRole('textbox', { name: /body/i }).fill('My task body');
   const fileInput = dialog.locator('input[type="file"]');
   await expect(fileInput).toBeAttached();
   expect(await fileInput.getAttribute('multiple')).not.toBeNull();
@@ -553,12 +551,6 @@ test('create-task dialog submits agent, referenceUrl, and file attachment correc
 
   await developerButton.click();
   await expect(developerButton).toHaveAttribute('aria-pressed', 'true');
-
-  await dialog
-    .getByPlaceholder(/paste current task url/i)
-    .fill(
-      'https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
-    );
 
   await fileInput.setInputFiles({
     name: 'fixture-attachment.png',
@@ -573,9 +565,7 @@ test('create-task dialog submits agent, referenceUrl, and file attachment correc
     .toBe(initialCreateCount + 1);
   const created = harness.createIssueCalls.at(-1);
   expect(created?.title).toBe('Task with all fields');
-  expect(created?.body).toContain(
-    'Related: https://github.com/HiromiShikata/umino-corporait-operation/issues/99',
-  );
+  expect(created?.body).toBe('My task body');
 
   await expect
     .poll(() => harness.setAgentCalls.length, { timeout: 10000 })

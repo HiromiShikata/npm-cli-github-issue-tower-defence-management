@@ -2396,6 +2396,94 @@ describe('ConsolePage task creation action queue', () => {
         ([url]: [string]) => url === '/api/createissue',
       );
       expect(createCallsAfter.length).toBe(1);
+      const createBody = JSON.parse(
+        (createCallsAfter[0] as unknown as [string, RequestInit])[1]
+          .body as string,
+      ) as { storyName: string; body: string | null };
+      expect(createBody.storyName).toBe('TDPM Console port');
+      expect(createBody.body).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('passes body from dialog to postConsoleCreateIssue when body is filled in', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              tab === 'stories' ? storiesTabPayload() : listPayload(tab),
+          };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        if (url === '/api/createissue') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              issueUrl: 'https://github.com/o/r/issues/100',
+            }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByRole, getByLabelText } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.change(getByLabelText('Title'), {
+        target: { value: 'Task with body text' },
+      });
+      fireEvent.change(getByLabelText('Body'), {
+        target: { value: 'This is the task body' },
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const createCallsAfter = fetchMock.mock.calls.filter(
+        ([url]: [string]) => url === '/api/createissue',
+      );
+      expect(createCallsAfter.length).toBe(1);
+      const createBody = JSON.parse(
+        (createCallsAfter[0] as unknown as [string, RequestInit])[1]
+          .body as string,
+      ) as { storyName: string; body: string | null };
+      expect(createBody.storyName).toBe('TDPM Console port');
+      expect(createBody.body).toBe('This is the task body');
     } finally {
       jest.useRealTimers();
     }
