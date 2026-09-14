@@ -911,9 +911,7 @@ describe('ConsolePage', () => {
       fireEvent.click(retryButton!);
 
       await waitFor(() => {
-        expect(
-          container.querySelector('.console-error-toast'),
-        ).toBeNull();
+        expect(container.querySelector('.console-error-toast')).toBeNull();
       });
       expect(postCallCount).toBe(2);
     } finally {
