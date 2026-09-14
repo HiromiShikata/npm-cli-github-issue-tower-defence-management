@@ -2466,3 +2466,97 @@ describe('ConsolePage workflow task creation', () => {
     );
   });
 });
+
+describe('ConsolePage story selection auto-reset', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+  });
+
+  it('resets the story selection in the create-task dialog to the first story when the story list changes', async () => {
+    jest.useFakeTimers();
+    try {
+      let currentStoryOptionId = 'st1';
+      let currentStoryName = 'TDPM Console port';
+      const fetchMock = jest.fn(async (url: string) => {
+        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+        if (listMatch !== null) {
+          const tab = listMatch[1];
+          if (tab === 'stories') {
+            return {
+              ok: true,
+              status: 200,
+              json: async () => ({
+                ...listPayload('stories'),
+                defaultNameWithOwner: 'o/r',
+                stories: [
+                  {
+                    storyName: currentStoryName,
+                    storyOptionId: currentStoryOptionId,
+                    color: 'BLUE',
+                    openItemCount: 1,
+                    storyViewUrl: null,
+                  },
+                ],
+              }),
+            };
+          }
+          return { ok: true, status: 200, json: async () => listPayload(tab) };
+        }
+        if (url === '/api/projects') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({ pjcodes: ['acme'] }),
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ body: '# body' }),
+        };
+      });
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      const { getByRole } = render(<ConsolePage />);
+
+      await waitFor(() => {
+        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+      });
+
+      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+
+      await waitFor(() => {
+        expect(
+          getByRole('dialog', { name: 'Create new task' }),
+        ).toBeInTheDocument();
+      });
+
+      const dialog = getByRole('dialog', { name: 'Create new task' });
+      expect(
+        within(dialog)
+          .getByText('TDPM Console port')
+          .closest('button')
+          ?.getAttribute('aria-pressed'),
+      ).toBe('true');
+
+      currentStoryOptionId = 'st2';
+      currentStoryName = 'New project story';
+
+      await act(async () => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+      });
+
+      await waitFor(() => {
+        expect(
+          within(getByRole('dialog', { name: 'Create new task' }))
+            .getByText('New project story')
+            .closest('button')
+            ?.getAttribute('aria-pressed'),
+        ).toBe('true');
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
