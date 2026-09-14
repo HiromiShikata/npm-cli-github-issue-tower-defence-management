@@ -3161,7 +3161,6 @@ describe('webServer GET /api/projects', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
-
 });
 
 describe('webServer POST /api/createissue', () => {
