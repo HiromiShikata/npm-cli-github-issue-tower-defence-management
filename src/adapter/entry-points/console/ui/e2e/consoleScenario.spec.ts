@@ -566,9 +566,9 @@ test('creates an issue with agent and referenceUrl when those fields are filled 
     .getByRole('textbox', { name: /title/i })
     .fill('Task with agent and ref');
 
-  await page.getByRole('button', { name: /developer/i }).click();
+  await page.getByRole('button', { name: 'developer', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: /developer/i }),
+    page.getByRole('button', { name: 'developer', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
 
   await page
