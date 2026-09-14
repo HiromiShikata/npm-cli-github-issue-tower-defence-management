@@ -258,9 +258,7 @@ describe('IssueCreateModalDialog', () => {
     const { getByPlaceholderText } = render(
       <IssueCreateModalDialog {...baseProps} />,
     );
-    expect(
-      getByPlaceholderText(/paste current task url/i),
-    ).not.toBeNull();
+    expect(getByPlaceholderText(/paste current task url/i)).not.toBeNull();
   });
 
   it('calls onClose when close button is clicked', () => {
