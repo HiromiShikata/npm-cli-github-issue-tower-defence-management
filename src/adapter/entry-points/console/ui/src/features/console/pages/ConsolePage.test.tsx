@@ -454,7 +454,7 @@ describe('ConsolePage', () => {
     expect(genInfo?.textContent).toMatch(/^snapshot: \d+[smhd] ago$/);
   });
 
-  it('shows a cancellable toast and only drives the tab to zero after the five second window', async () => {
+  it('shows a cancellable toast when Approve & Merge is clicked', async () => {
     jest.useFakeTimers();
     try {
       const { getByText, findByText } = render(<ConsolePage />);
@@ -474,20 +474,6 @@ describe('ConsolePage', () => {
 
       expect(getByText('Approved & Merged — PR #851')).toBeInTheDocument();
       expect(getByText('Undo')).toBeInTheDocument();
-      expect(
-        within(tabBar())
-          .getByText('Awaiting Owner')
-          .closest('a')
-          ?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('1');
-
-      act(() => {
-        jest.advanceTimersByTime(5100);
-      });
-
-      await waitFor(() => {
-        expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
-      });
     } finally {
       jest.useRealTimers();
     }
@@ -513,6 +499,64 @@ describe('ConsolePage', () => {
 
       await waitFor(() => {
         expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('hides a processed item from the prs list immediately when Approve & Merge is clicked, without waiting for the 5-second commit', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      expect(
+        within(tabBar())
+          .getByText('Awaiting Owner')
+          .closest('a')
+          ?.querySelector('.console-tab-badge')?.textContent,
+      ).toBe('1');
+
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve & Merge'));
+
+      await waitFor(() => {
+        expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('hides a processed item from the todo-by-human list immediately when Close is clicked, without waiting for the 5-second commit', async () => {
+    jest.useFakeTimers();
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByText('Todo by human'));
+      await waitFor(() => {
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByText('Notify finished issue preparation'));
+      expect(await findByText('Close')).toBeInTheDocument();
+      fireEvent.click(getByText('Close'));
+
+      await waitFor(() => {
+        expect(
+          within(tabBar())
+            .getByText('Todo by human')
+            .closest('a')
+            ?.querySelector('.console-tab-badge')?.textContent,
+        ).toBe('0');
       });
     } finally {
       jest.useRealTimers();
