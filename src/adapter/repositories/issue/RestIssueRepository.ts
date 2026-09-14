@@ -185,11 +185,7 @@ export class RestIssueRepository
       );
     }
     const data: unknown = await response.json();
-    if (
-      typeof data !== 'object' ||
-      data === null ||
-      !('number' in data)
-    ) {
+    if (typeof data !== 'object' || data === null || !('number' in data)) {
       throw new Error(
         `Unexpected response format from GitHub issue creation API`,
       );
