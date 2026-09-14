@@ -20,7 +20,6 @@ import {
 } from '../components/operations/ConsoleUndoToast';
 import { useAirplaneMode } from '../hooks/useAirplaneMode';
 import { useConsoleActionQueue } from '../hooks/useConsoleActionQueue';
-import { useConsoleAwaitingOwnerTimerNavigation } from '../hooks/useConsoleAwaitingOwnerTimerNavigation';
 import { useConsoleCaches } from '../hooks/useConsoleCaches';
 import { useConsoleDetailPrefetch } from '../hooks/useConsoleDetailPrefetch';
 import { useConsoleFeaturesConfig } from '../hooks/useConsoleFeaturesConfig';
@@ -36,7 +35,6 @@ import { useConsolePrsTabSummaries } from '../hooks/useConsolePrsTabSummaries';
 import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
 import { useConsoleTabSelectHandler } from '../hooks/useConsoleTabSelectHandler';
-import { useConsoleTimerProjectSkipNavigation } from '../hooks/useConsoleTimerProjectSkipNavigation';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
   encodeAttachmentContent,
@@ -157,28 +155,6 @@ export const ConsolePage = () => {
     }
     return result;
   }, [snapshots, overlayState.overlay]);
-
-  useConsoleAwaitingOwnerTimerNavigation(
-    timerMode,
-    counts.prs,
-    pjcode,
-    pjcodes,
-    projectMinutes,
-    snapshots.prs?.fromCache ?? false,
-  );
-
-  useConsoleTimerProjectSkipNavigation(
-    timerMode,
-    counts.prs,
-    counts['todo-by-human'],
-    pjcode,
-    pjcodes,
-    projectMinutes,
-    snapshots.prs !== null,
-    snapshots['todo-by-human'] !== null,
-    snapshots.prs?.fromCache ?? false,
-    snapshots['todo-by-human']?.fromCache ?? false,
-  );
 
   const navigation = useConsoleNavigation(pjcode, counts);
   const { activeTab, selectedItemKey, openItem, closeItem } = navigation;

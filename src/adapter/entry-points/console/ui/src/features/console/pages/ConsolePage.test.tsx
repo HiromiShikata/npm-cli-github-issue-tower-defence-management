@@ -1692,7 +1692,7 @@ describe('ConsolePage auto-advance tab', () => {
     expect(localStorage.getItem('console-story-show-gray')).toBe('true');
   });
 
-  it('navigates to the next project when the awaiting owner tab becomes empty in timer mode', async () => {
+  it('does not navigate to the next project automatically when prs count drops to zero on data refresh in timer mode', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
       JSON.stringify({
@@ -1700,14 +1700,23 @@ describe('ConsolePage auto-advance tab', () => {
         projectMinutes: { acme: 30, beta: 30 },
       }),
     );
+    let prsCallCount = 0;
     global.fetch = jest.fn(async (url: string) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => listPayload(listMatch[1]),
-        };
+        const tab = listMatch[1];
+        if (tab === 'prs') {
+          prsCallCount += 1;
+          return {
+            ok: true,
+            status: 200,
+            json: async () =>
+              prsCallCount === 1
+                ? listPayload('prs')
+                : { ...listPayload('prs'), items: [] },
+          };
+        }
+        return { ok: true, status: 200, json: async () => listPayload(tab) };
       }
       if (url === '/api/projects') {
         return {
@@ -1724,22 +1733,58 @@ describe('ConsolePage auto-advance tab', () => {
     navigatePush.mockClear();
     jest.useFakeTimers();
     try {
-      const { getByText, findByText } = render(<ConsolePage />);
+      const { getByText, queryByText } = render(<ConsolePage />);
       await waitFor(() => {
         expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve & Merge')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve & Merge'));
-      act(() => {
-        jest.advanceTimersByTime(5100);
+      await act(async () => {
+        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
       });
       await waitFor(() => {
-        expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+        expect(queryByText('Add serveConsole subcommand')).not.toBeInTheDocument();
       });
+      expect(navigatePush).not.toHaveBeenCalledWith('/projects/beta');
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('does not navigate to the next project automatically when the initial load shows no prs or todo items in timer mode', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({
+        timerMode: true,
+        projectMinutes: { acme: 30, beta: 30 },
+      }),
+    );
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        const tab = listMatch[1];
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ...listPayload(tab), items: [] }),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    const { navigatePush } = jest.requireMock<{
+      navigatePush: jest.Mock;
+    }>('../lib/navigation');
+    navigatePush.mockClear();
+    const { getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('No items')).toBeInTheDocument();
+    });
+    expect(navigatePush).not.toHaveBeenCalledWith('/projects/beta');
   });
 
   it('navigates to the next project when a completing action fires after the project timer elapses', async () => {
