@@ -1,3 +1,10 @@
+## [2.113.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.113.0...v2.113.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **console:** add agent selection, body, and file upload to create task dialog ([#2354](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2354)) ([12b9969](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/12b9969a9109e287014dadea435372923ae85b7a)), closes [HiromiShikata/umino-corporait-operation#31741](https://github.com/HiromiShikata/umino-corporait-operation/issues/31741) [#2357](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2357) [#2356](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2356)
+
 # [2.113.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.112.1...v2.113.0) (2026-09-14)
 
 
