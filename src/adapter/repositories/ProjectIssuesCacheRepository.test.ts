@@ -419,8 +419,14 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
   it('removes the issue with the matching itemId from the cache', async () => {
     const cache = buildSharedCache();
     const repo = new ProjectIssuesCacheRepository(cache);
-    const issue1 = buildIssueEntry('PVTI_keep', 'https://github.com/o/r/issues/1');
-    const issue2 = buildIssueEntry('PVTI_stale', 'https://github.com/o/r/issues/2');
+    const issue1 = buildIssueEntry(
+      'PVTI_keep',
+      'https://github.com/o/r/issues/1',
+    );
+    const issue2 = buildIssueEntry(
+      'PVTI_stale',
+      'https://github.com/o/r/issues/2',
+    );
     await repo.write(projectId, {
       lastFetchedAt: '2026-01-01T00:00:00.000Z',
       lastFullFetchAt: '2026-01-01T00:00:00.000Z',
@@ -440,7 +446,10 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
   it('does nothing when the itemId is not in the cache', async () => {
     const cache = buildSharedCache();
     const repo = new ProjectIssuesCacheRepository(cache);
-    const issue1 = buildIssueEntry('PVTI_keep', 'https://github.com/o/r/issues/1');
+    const issue1 = buildIssueEntry(
+      'PVTI_keep',
+      'https://github.com/o/r/issues/1',
+    );
     await repo.write(projectId, {
       lastFetchedAt: '2026-01-01T00:00:00.000Z',
       lastFullFetchAt: '2026-01-01T00:00:00.000Z',
@@ -468,15 +477,23 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
   it('preserves other cache fields when removing an issue', async () => {
     const cache = buildSharedCache();
     const repo = new ProjectIssuesCacheRepository(cache);
-    const issue1 = buildIssueEntry('PVTI_keep', 'https://github.com/o/r/issues/1');
-    const issue2 = buildIssueEntry('PVTI_stale', 'https://github.com/o/r/issues/2');
+    const issue1 = buildIssueEntry(
+      'PVTI_keep',
+      'https://github.com/o/r/issues/1',
+    );
+    const issue2 = buildIssueEntry(
+      'PVTI_stale',
+      'https://github.com/o/r/issues/2',
+    );
     const storyOptions = [{ name: 'My Story', description: 'desc' }];
     await repo.write(projectId, {
       lastFetchedAt: '2026-06-01T00:00:00.000Z',
       lastFullFetchAt: '2026-05-01T00:00:00.000Z',
       project: cachedProject,
       issues: [issue1, issue2],
-      storyIssueUrlByOptionName: { 'My Story': 'https://github.com/o/r/issues/10' },
+      storyIssueUrlByOptionName: {
+        'My Story': 'https://github.com/o/r/issues/10',
+      },
       storyOptions,
     });
 
@@ -487,7 +504,6 @@ describe('ProjectIssuesCacheRepository removeIssueByItemId', () => {
     expect(result?.lastFullFetchAt).toBe('2026-05-01T00:00:00.000Z');
     expect(result?.storyOptions).toEqual(storyOptions);
   });
-
 
   it('deserializeStoryOptions returns empty array when storyOptions is not a valid array', () => {
     expect(deserializeStoryOptions({ storyOptions: 'not-an-array' })).toEqual(

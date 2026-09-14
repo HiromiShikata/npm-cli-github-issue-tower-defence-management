@@ -1474,7 +1474,9 @@ describe('SetupTowerDefenceProjectUseCase', () => {
       mockStatusDefaultRepository,
     );
 
-    await expect(useCase.run({ projectUrl: project.url })).resolves.toBeUndefined();
+    await expect(
+      useCase.run({ projectUrl: project.url }),
+    ).resolves.toBeUndefined();
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledTimes(1);
   });
 

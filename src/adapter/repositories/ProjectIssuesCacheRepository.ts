@@ -158,9 +158,8 @@ export class ProjectIssuesCacheRepository {
     ) {
       return;
     }
-    const hasItemId = (
-      value: object,
-    ): value is { itemId: unknown } => 'itemId' in value;
+    const hasItemId = (value: object): value is { itemId: unknown } =>
+      'itemId' in value;
     const filteredIssues = raw.issues.filter(
       (issue: unknown) =>
         typeof issue !== 'object' ||

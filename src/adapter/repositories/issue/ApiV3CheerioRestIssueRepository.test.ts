@@ -7167,7 +7167,9 @@ describe('ApiV3CheerioRestIssueRepository', () => {
         project,
         issues: [staleIssue],
       };
-      dateRepository.now.mockResolvedValue(new Date('2026-09-14T16:18:00.000Z'));
+      dateRepository.now.mockResolvedValue(
+        new Date('2026-09-14T16:18:00.000Z'),
+      );
       localStorageCacheRepository.getSingle.mockResolvedValue(cachedData);
       projectRepository.getProject.mockResolvedValue(project);
       graphqlProjectItemRepository.fetchProjectItemsLight.mockResolvedValue([]);
