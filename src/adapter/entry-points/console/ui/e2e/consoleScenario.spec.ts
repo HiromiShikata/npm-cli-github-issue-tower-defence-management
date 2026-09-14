@@ -882,7 +882,6 @@ test('project switcher dropdown options have adequate touch target height of at 
       body: JSON.stringify({
         pjcodes: ['acme', 'beta', 'gamma'],
         projectUrls: null,
-        workflowImprovementIssueUrl: null,
         fleetTaskCreateUrl: null,
       }),
     });
