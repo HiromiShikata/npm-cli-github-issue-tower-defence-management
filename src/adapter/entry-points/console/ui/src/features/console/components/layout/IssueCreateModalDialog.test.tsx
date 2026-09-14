@@ -460,7 +460,15 @@ describe('IssueCreateModalDialog', () => {
       target: { value: 'No story task' },
     });
     fireEvent.click(getByRole('button', { name: /^create$/i }));
-    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        storyOptionId: '',
+        agentOptionId: null,
+        title: 'No story task',
+        referenceUrl: null,
+        files: [],
+      }),
+    );
     expect(queryByRole('alert')).toBeNull();
   });
 
