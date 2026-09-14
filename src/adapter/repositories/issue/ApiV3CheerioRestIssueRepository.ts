@@ -531,7 +531,6 @@ type IssueCommentsResponseItem = {
   user: { login: string } | null;
   body: string | null;
   created_at: string;
-  html_url: string;
 };
 
 function isIssueCommentsResponseItem(
@@ -542,8 +541,7 @@ function isIssueCommentsResponseItem(
   return (
     userValid &&
     isNullableString(value.body) &&
-    typeof value.created_at === 'string' &&
-    typeof value.html_url === 'string'
+    typeof value.created_at === 'string'
   );
 }
 
@@ -3709,7 +3707,6 @@ export class ApiV3CheerioRestIssueRepository
           author: comment.user?.login ?? '',
           body: comment.body ?? '',
           createdAt: new Date(comment.created_at),
-          url: comment.html_url,
         });
       }
       if (body.length < perPage) {

@@ -2546,13 +2546,11 @@ describe('ApiV3CheerioRestIssueRepository', () => {
           author: 'alice',
           body: 'first comment',
           createdAt: new Date('2024-01-01T00:00:00Z'),
-          url: 'https://github.com/HiromiShikata/test-repository/issues/42#issuecomment-1',
         },
         {
           author: 'bob',
           body: 'second comment',
           createdAt: new Date('2024-01-02T00:00:00Z'),
-          url: 'https://github.com/HiromiShikata/test-repository/issues/42#issuecomment-2',
         },
       ]);
       expect(fetchSpy).toHaveBeenCalledTimes(1);

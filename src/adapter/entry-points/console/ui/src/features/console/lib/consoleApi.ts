@@ -142,7 +142,6 @@ const parseComments = (payload: unknown): ConsoleComment[] => {
     author: getString(comment.author),
     body: getString(comment.body),
     createdAt: getString(comment.createdAt),
-    url: typeof comment.url === 'string' ? comment.url : null,
   }));
 };
 
@@ -327,7 +326,6 @@ const parseCommentRecord = (
   author: getString(commentRecord.author),
   body: getString(commentRecord.body),
   createdAt: getString(commentRecord.createdAt),
-  url: typeof commentRecord.url === 'string' ? commentRecord.url : null,
 });
 
 export const postConsoleComment = async (
@@ -630,7 +628,6 @@ export const postConsoleUpdateStoryDescription = async (
 export type ProjectListResponse = {
   pjcodes: string[];
   projectUrls: Record<string, string> | null;
-  workflowImprovementIssueUrl: string | null;
   fleetTaskCreateUrl: string | null;
 };
 
@@ -648,7 +645,6 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
     return {
       pjcodes: [],
       projectUrls: null,
-      workflowImprovementIssueUrl: null,
       fleetTaskCreateUrl: null,
     };
   }
@@ -668,10 +664,6 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
           ),
         )
       : null;
-  const workflowImprovementIssueUrl =
-    typeof record.workflowImprovementIssueUrl === 'string'
-      ? record.workflowImprovementIssueUrl
-      : null;
   const fleetTaskCreateUrl =
     typeof record.fleetTaskCreateUrl === 'string'
       ? record.fleetTaskCreateUrl
@@ -679,7 +671,6 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
   return {
     pjcodes,
     projectUrls,
-    workflowImprovementIssueUrl,
     fleetTaskCreateUrl,
   };
 };

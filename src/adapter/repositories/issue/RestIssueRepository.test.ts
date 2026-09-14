@@ -867,7 +867,6 @@ describe('RestIssueRepository', () => {
         author: 'alice',
         body: 'hello',
         createdAt: new Date(created),
-        url: `${issueUrl}#issuecomment-1`,
       });
       expect(mockGet).toHaveBeenCalledTimes(1);
     });

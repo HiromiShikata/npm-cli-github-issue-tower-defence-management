@@ -1142,7 +1142,6 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     dashboardDataDir,
     dashboardProjectNames,
     dashboardProjectUrls: pjcodeToProjectUrl,
-    workflowImprovementIssueUrl,
     fleetTaskCreateUrl,
     resolveGithubToken,
     issueRepository,
