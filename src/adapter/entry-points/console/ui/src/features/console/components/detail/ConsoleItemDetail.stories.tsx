@@ -488,45 +488,6 @@ export const IssueWithSnapshotStatusNoOverlay: Story = {
   },
 };
 
-export const PullRequestItem: Story = {
-  args: {
-    item: consoleListItemsFixture[0],
-    storyName: 'TDPM Console port',
-    storyColorEnum: 'BLUE',
-    overlayStatus: { name: 'Awaiting Workspace', color: 'BLUE' },
-    state: {
-      state: 'open',
-      merged: false,
-      isPullRequest: true,
-      title: 'Add serveConsole subcommand under entry-points',
-    },
-    body: consoleMermaidBodyFixture,
-    bodyIsLoading: false,
-    bodyError: null,
-    stateError: null,
-    pullRequestStatusError: null,
-    relatedPullRequestsError: null,
-    comments: consoleCommentsFixture,
-    commentsAreLoading: false,
-    commentsError: null,
-    files: [],
-    filesAreLoading: false,
-    filesError: null,
-    commits: [],
-    commitsAreLoading: false,
-    commitsError: null,
-    pullRequestStatus: {
-      found: true,
-      isConflicted: false,
-      mergeableStatus: 'MERGEABLE',
-      isPassedAllCiJob: true,
-      isCiStateSuccess: true,
-      isBranchOutOfDate: false,
-      missingRequiredCheckNames: [],
-    },
-    relatedPullRequests: [],
-  },
-};
 
 export const IssueWithAgent: Story = {
   args: {
