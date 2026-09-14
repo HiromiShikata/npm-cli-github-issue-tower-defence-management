@@ -159,6 +159,11 @@ export const postGithubGraphqlJson = async <T>(
   const callSite = captureGraphqlCallSite();
   let attempt = 0;
   for (;;) {
+    if (isMutationOperation(params.query)) {
+      console.log(
+        `${new Date().toISOString()} githubGraphqlClient: mutation=${extractGraphqlOperationName(params.query)} caller=${callSite}`,
+      );
+    }
     const response = await ky
       .post(GITHUB_GRAPHQL_ENDPOINT, {
         json: {

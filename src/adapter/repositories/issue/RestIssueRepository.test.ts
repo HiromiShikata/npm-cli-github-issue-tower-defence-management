@@ -366,8 +366,14 @@ describe('RestIssueRepository', () => {
     });
   });
   describe('createNewIssue', () => {
-    it('should create a new issue', async () => {
-      mockPost.mockReturnValue(mockJsonResponse({ number: 123 }));
+    it('should create a new issue via fetch and return the issue number', async () => {
+      const mockFetch = jest.fn().mockResolvedValue(
+        new Response(JSON.stringify({ number: 123 }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+      global.fetch = mockFetch;
 
       const issueNumber = await restIssueRepository.createNewIssue(
         'HiromiShikata',
@@ -379,19 +385,89 @@ describe('RestIssueRepository', () => {
       );
 
       expect(issueNumber).toBe(123);
-      expect(mockPost).toHaveBeenCalledTimes(1);
-      expect(mockPost).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/HiromiShikata/test-repository/issues',
         {
-          json: {
+          method: 'POST',
+          body: JSON.stringify({
             title: 'test issue',
             body: 'test body',
             assignees: ['HiromiShikata'],
             labels: ['test'],
+          }),
+          headers: {
+            Authorization: 'token dummy-token',
+            'Content-Type': 'application/json',
           },
-          headers: { Authorization: 'token dummy-token' },
         },
       );
+    });
+
+    it('logs rate-limit information via githubRestClient on successful createNewIssue', async () => {
+      const consoleLogSpy = jest
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+      const resetEpoch = Math.floor(Date.now() / 1000) + 3600;
+      const mockFetch = jest.fn().mockResolvedValue(
+        new Response(JSON.stringify({ number: 456 }), {
+          status: 201,
+          headers: {
+            'content-type': 'application/json',
+            'x-ratelimit-remaining': '4999',
+            'x-ratelimit-used': '1',
+            'x-ratelimit-limit': '5000',
+            'x-ratelimit-resource': 'core',
+            'x-ratelimit-reset': String(resetEpoch),
+          },
+        }),
+      );
+      global.fetch = mockFetch;
+
+      await restIssueRepository.createNewIssue(
+        'HiromiShikata',
+        'test-repository',
+        'logged-issue',
+        'body',
+        [],
+        [],
+      );
+
+      const logCalls = consoleLogSpy.mock.calls.map((args) => String(args[0]));
+      const rateLimitLog = logCalls.find((msg) =>
+        msg.includes('githubRestClient:'),
+      );
+      expect(rateLimitLog).toBeDefined();
+      expect(rateLimitLog).toContain('method=POST');
+      expect(rateLimitLog).toContain(
+        'path=/repos/HiromiShikata/test-repository/issues',
+      );
+      expect(rateLimitLog).toContain('remaining=4999');
+      consoleLogSpy.mockRestore();
+    });
+
+    it('throws for owner or repo containing URL-unsafe characters', async () => {
+      await expect(
+        restIssueRepository.createNewIssue(
+          'owner with spaces',
+          'valid-repo',
+          'title',
+          'body',
+          [],
+          [],
+        ),
+      ).rejects.toThrow('Invalid owner or repo name');
+
+      await expect(
+        restIssueRepository.createNewIssue(
+          'valid-owner',
+          'repo/with/slashes',
+          'title',
+          'body',
+          [],
+          [],
+        ),
+      ).rejects.toThrow('Invalid owner or repo name');
     });
   });
   describe('updateLabels', () => {

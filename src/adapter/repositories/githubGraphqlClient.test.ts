@@ -418,7 +418,7 @@ describe('githubGraphqlClient', () => {
       );
     });
 
-    it('sends a mutation unchanged and does not log', async () => {
+    it('sends a mutation unchanged (rate limit selection not injected) and logs pre-execution mutation name', async () => {
       mockPost.mockReturnValue({
         json: jest.fn().mockResolvedValue({
           data: { addItem: { id: 'x' } },
@@ -433,7 +433,34 @@ describe('githubGraphqlClient', () => {
       const options = expectRecord(call[1]);
       const json = expectRecord(options.json);
       expect(json.query).toBe(mutation);
-      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringMatching(
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z githubGraphqlClient: mutation=AddItem caller=\S+$/,
+        ),
+      );
+    });
+
+    it('logs mutation name before execution', async () => {
+      const executionOrder: string[] = [];
+      consoleLogSpy.mockImplementation((msg: string) => {
+        executionOrder.push(`log:${msg}`);
+      });
+      mockPost.mockImplementation(() => {
+        executionOrder.push('post');
+        return {
+          json: jest.fn().mockResolvedValue({
+            data: { updateItem: { id: 'y' } },
+          }),
+        };
+      });
+      await postGithubGraphqlJson({
+        ghToken: 'token-b',
+        query: 'mutation UpdateItem($id: ID!) { updateItem(id: $id) { id } }',
+        variables: { id: 'y' },
+      });
+      expect(executionOrder[0]).toMatch(/mutation=UpdateItem/);
+      expect(executionOrder[1]).toBe('post');
     });
 
     it('passes GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS as the ky timeout so slow GitHub responses do not trigger the 10-second ky default', async () => {

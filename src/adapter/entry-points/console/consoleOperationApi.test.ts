@@ -2716,13 +2716,8 @@ describe('consoleOperationApi', () => {
       });
     });
 
-    it('returns response immediately before addIssueToProject completes', async () => {
-      let resolveAddToProject!: () => void;
-      issueRepository.addIssueToProject.mockReturnValue(
-        new Promise<string>((resolve) => {
-          resolveAddToProject = () => resolve('');
-        }),
-      );
+    it('returns 200 with issue URL after addIssueToProject completes', async () => {
+      issueRepository.addIssueToProject.mockResolvedValue('');
 
       const response = await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
@@ -2743,9 +2738,6 @@ describe('consoleOperationApi', () => {
         issueUrl: 'https://github.com/acme-labs/portal/issues/42',
       });
       expect(issueRepository.createNewIssue).toHaveBeenCalled();
-
-      resolveAddToProject();
-      await response.backgroundTask;
       expect(issueRepository.addIssueToProject).toHaveBeenCalled();
     });
 
@@ -3130,6 +3122,44 @@ describe('consoleOperationApi', () => {
         ['authenticated-user'],
         [],
       );
+    });
+
+    it('completes project setup synchronously before returning 200 and does not expose backgroundTask', async () => {
+      issueRepository.get.mockResolvedValue(null);
+      const response = await handleCreateIssue(
+        contextWithCreateIssueProjectRepository(() => ({
+          getProject: jest.fn().mockResolvedValue(projectWithStory()),
+          updateStoryList: jest.fn(),
+        })),
+        {
+          pjcode: 'acme',
+          title: 'Sync task',
+          storyName: 'Portal redesign',
+          nameWithOwner: 'acme-labs/portal',
+        },
+      );
+      expect(response.statusCode).toBe(200);
+      expect(response.backgroundTask).toBeUndefined();
+      expect(issueRepository.addIssueToProject).toHaveBeenCalled();
+    });
+
+    it('propagates background task errors so they surface as HTTP 502 via handleOperationApi', async () => {
+      const setupError = new Error('project field update failed');
+      issueRepository.addIssueToProject.mockRejectedValue(setupError);
+      await expect(
+        handleCreateIssue(
+          contextWithCreateIssueProjectRepository(() => ({
+            getProject: jest.fn().mockResolvedValue(projectWithStory()),
+            updateStoryList: jest.fn(),
+          })),
+          {
+            pjcode: 'acme',
+            title: 'Failing task',
+            storyName: 'Portal redesign',
+            nameWithOwner: 'acme-labs/portal',
+          },
+        ),
+      ).rejects.toThrow('project field update failed');
     });
   });
 

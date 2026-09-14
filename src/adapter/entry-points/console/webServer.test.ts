@@ -3161,4 +3161,44 @@ describe('webServer GET /api/projects', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('logs console.warn with validation failure details when operation returns 4xx', async () => {
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const issueRepository = mock<IssueRepository>();
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: mock<Project>() } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/createissue?k=${testToken}`,
+        { pjcode: 'acme', storyName: 'my-story', nameWithOwner: 'org/repo' },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      const warnMsg = String(consoleWarnSpy.mock.calls[0]?.[0]);
+      expect(warnMsg).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z console operation validation failure: path=\/api\/createissue status=400 error=title is required$/,
+      );
+    } finally {
+      consoleWarnSpy.mockRestore();
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
