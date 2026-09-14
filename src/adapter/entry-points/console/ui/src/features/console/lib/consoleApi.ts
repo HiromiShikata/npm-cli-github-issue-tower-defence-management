@@ -142,7 +142,6 @@ const parseComments = (payload: unknown): ConsoleComment[] => {
     author: getString(comment.author),
     body: getString(comment.body),
     createdAt: getString(comment.createdAt),
-    url: typeof comment.url === 'string' ? comment.url : null,
   }));
 };
 
@@ -327,7 +326,6 @@ const parseCommentRecord = (
   author: getString(commentRecord.author),
   body: getString(commentRecord.body),
   createdAt: getString(commentRecord.createdAt),
-  url: typeof commentRecord.url === 'string' ? commentRecord.url : null,
 });
 
 export const postConsoleComment = async (
@@ -498,33 +496,6 @@ export const postConsoleCreateIssue = async (
   return payload.issueUrl;
 };
 
-export const CREATE_WORKFLOW_ISSUE_OPERATION_PATH = '/api/createworkflowissue';
-
-export type ConsoleCreateWorkflowIssueRequest = {
-  nameWithOwner: string;
-  title: string;
-};
-
-export const postConsoleCreateWorkflowIssue = async (
-  request: ConsoleCreateWorkflowIssueRequest,
-): Promise<string> => {
-  const response = await fetch(CREATE_WORKFLOW_ISSUE_OPERATION_PATH, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  if (!response.ok) {
-    throw new Error(await readOperationErrorReason(response));
-  }
-  const payload: unknown = await response.json();
-  const isRecordLocal = (v: unknown): v is Record<string, unknown> =>
-    v !== null && typeof v === 'object' && !Array.isArray(v);
-  if (!isRecordLocal(payload) || typeof payload.issueUrl !== 'string') {
-    throw new Error('issueUrl was not returned');
-  }
-  return payload.issueUrl;
-};
-
 export const REORDER_STORY_OPERATION_PATH = '/api/reorderstory';
 
 export type ConsoleReorderStoryRequest = {
@@ -630,7 +601,6 @@ export const postConsoleUpdateStoryDescription = async (
 export type ProjectListResponse = {
   pjcodes: string[];
   projectUrls: Record<string, string> | null;
-  workflowImprovementIssueUrl: string | null;
   fleetTaskCreateUrl: string | null;
 };
 
@@ -648,7 +618,6 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
     return {
       pjcodes: [],
       projectUrls: null,
-      workflowImprovementIssueUrl: null,
       fleetTaskCreateUrl: null,
     };
   }
@@ -668,10 +637,6 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
           ),
         )
       : null;
-  const workflowImprovementIssueUrl =
-    typeof record.workflowImprovementIssueUrl === 'string'
-      ? record.workflowImprovementIssueUrl
-      : null;
   const fleetTaskCreateUrl =
     typeof record.fleetTaskCreateUrl === 'string'
       ? record.fleetTaskCreateUrl
@@ -679,7 +644,6 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
   return {
     pjcodes,
     projectUrls,
-    workflowImprovementIssueUrl,
     fleetTaskCreateUrl,
   };
 };

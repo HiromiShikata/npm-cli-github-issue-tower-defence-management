@@ -446,7 +446,6 @@ export class RestIssueRepository
             user: { login: string } | null;
             body: string | null;
             created_at: string;
-            html_url: string;
           }>
         >();
       for (const comment of body) {
@@ -454,7 +453,6 @@ export class RestIssueRepository
           author: comment.user?.login ?? '',
           body: comment.body ?? '',
           createdAt: new Date(comment.created_at),
-          url: comment.html_url,
         });
       }
       if (body.length < perPage) {

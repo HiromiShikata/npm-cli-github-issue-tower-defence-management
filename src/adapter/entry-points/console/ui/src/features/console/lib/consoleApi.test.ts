@@ -109,14 +109,13 @@ describe('createConsoleApiClient', () => {
     }
   });
 
-  it('parses comments including url when present', async () => {
+  it('parses comments from the api response', async () => {
     mockFetchOnce({
       comments: [
         {
           author: 'a',
           body: 'hello',
           createdAt: '2026-06-19T00:00:00.000Z',
-          url: 'https://github.com/o/r/issues/1#issuecomment-99',
         },
       ],
     });
@@ -129,27 +128,6 @@ describe('createConsoleApiClient', () => {
         author: 'a',
         body: 'hello',
         createdAt: '2026-06-19T00:00:00.000Z',
-        url: 'https://github.com/o/r/issues/1#issuecomment-99',
-      },
-    ]);
-  });
-
-  it('parses comments with null url when url is absent', async () => {
-    mockFetchOnce({
-      comments: [
-        { author: 'a', body: 'hello', createdAt: '2026-06-19T00:00:00.000Z' },
-      ],
-    });
-    const client = createConsoleApiClient();
-    const comments = await client.fetchComments(
-      'https://github.com/o/r/issues/1',
-    );
-    expect(comments).toEqual([
-      {
-        author: 'a',
-        body: 'hello',
-        createdAt: '2026-06-19T00:00:00.000Z',
-        url: null,
       },
     ]);
   });
@@ -341,7 +319,6 @@ describe('createConsoleApiClient', () => {
           author: 'alice',
           body: 'hello',
           createdAt: '2026-06-19T00:00:00.000Z',
-          url: null,
         },
       ],
     };
@@ -359,7 +336,6 @@ describe('createConsoleApiClient', () => {
         author: 'alice',
         body: 'hello',
         createdAt: '2026-06-19T00:00:00.000Z',
-        url: null,
       },
     ]);
   });
@@ -618,7 +594,6 @@ describe('postConsoleComment', () => {
         author: 'bot',
         body: 'ok',
         createdAt: '2026-09-05T14:00:00.000Z',
-        url: 'https://github.com/o/r/issues/1#issuecomment-1',
       },
     });
     const result = await postConsoleComment(request);
@@ -628,7 +603,6 @@ describe('postConsoleComment', () => {
         author: 'bot',
         body: 'ok',
         createdAt: '2026-09-05T14:00:00.000Z',
-        url: 'https://github.com/o/r/issues/1#issuecomment-1',
       },
     });
   });

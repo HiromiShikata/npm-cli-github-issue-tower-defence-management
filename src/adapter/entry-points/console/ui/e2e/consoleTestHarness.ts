@@ -114,7 +114,6 @@ const CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL = `https://github.com/${REPO_N
 export const CONSOLE_E2E_INLINE_COMMENT_ISSUE_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/911`;
 export const CONSOLE_E2E_INLINE_COMMENT_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/912`;
 export const CONSOLE_E2E_REFERENCE_LINK_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/845`;
-export const CONSOLE_E2E_COMMENT_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/issues/720#issuecomment-200001`;
 
 const INLINE_COMMENT_PR_FILE: PullRequestFile = {
   filename: 'src/adapter/entry-points/console/ui/src/index.css',
@@ -758,7 +757,7 @@ const createStubIssueRepository = (
     body: string,
   ): Promise<IssueComment> => {
     commentCalls.push({ url, body });
-    return { author: '', body, createdAt: new Date(0), url };
+    return { author: '', body, createdAt: new Date(0) };
   },
   getAllOpened: () => notImplemented('getAllOpened'),
   getStoryObjectMap: async (project): Promise<StoryObjectMap> => {
@@ -820,7 +819,6 @@ const createStubIssueRepository = (
       author: 'HiromiShikata',
       body: 'Console E2E fixture comment.',
       createdAt: new Date('2026-06-17T06:12:40.000Z'),
-      url: CONSOLE_E2E_COMMENT_URL,
     },
   ],
   getPullRequestDetail: async (
@@ -942,7 +940,6 @@ export type ConsoleE2eHarness = {
 };
 
 export const startConsoleE2eHarness = async (options?: {
-  workflowImprovementIssueUrl?: string | null;
   fleetTaskCreateUrl?: string | null;
   mergePullRequest?: () => Promise<void>;
   getIssueOrPullRequestComments?: () => Promise<IssueComment[]>;
@@ -1064,7 +1061,6 @@ export const startConsoleE2eHarness = async (options?: {
     dashboardDir: null,
     dashboardDataDir: null,
     dashboardProjectNames: [CONSOLE_E2E_PJCODE, CONSOLE_E2E_SECOND_PJCODE],
-    workflowImprovementIssueUrl: options?.workflowImprovementIssueUrl ?? null,
     fleetTaskCreateUrl: options?.fleetTaskCreateUrl ?? null,
     port: 0,
   });

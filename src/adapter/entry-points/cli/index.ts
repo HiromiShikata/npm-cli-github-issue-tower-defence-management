@@ -1142,7 +1142,6 @@ const runServeWeb = async (options: ServeWebOptions): Promise<void> => {
     dashboardDataDir,
     dashboardProjectNames,
     dashboardProjectUrls: pjcodeToProjectUrl,
-    workflowImprovementIssueUrl,
     fleetTaskCreateUrl,
     resolveGithubToken,
     issueRepository,
@@ -1196,7 +1195,7 @@ const addServeWebOptions = (command: Command): Command =>
     )
     .option(
       '--fleetConfigFilePath <path>',
-      'Path to the fleet-wide YAML config file; falls back to the TDPM_FLEET_CONFIG environment variable. Reads workflowImprovementIssueUrl for the workflow improvement link shown in the console.',
+      'Path to the fleet-wide YAML config file; falls back to the TDPM_FLEET_CONFIG environment variable. Reads workflowImprovementIssueUrl for error reporting.',
     );
 
 addServeWebOptions(program.command('serveWeb'))

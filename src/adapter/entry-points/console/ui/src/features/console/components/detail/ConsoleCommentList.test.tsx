@@ -9,7 +9,6 @@ describe('ConsoleCommentList', () => {
       author: 'HiromiShikata',
       body: 'Latest comment\nSecond line',
       createdAt: '2026-06-17T10:00:00.000Z',
-      url: null,
     };
     const { container } = render(
       <ConsoleCommentList
@@ -30,7 +29,6 @@ describe('ConsoleCommentList', () => {
       author: 'agent',
       body: 'Content',
       createdAt: '2026-09-01T10:00:00.000Z',
-      url: null,
     };
     const { container } = render(
       <ConsoleCommentList
@@ -49,13 +47,11 @@ describe('ConsoleCommentList', () => {
       author: 'reviewer',
       body: 'First line\nFirst detail',
       createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
     };
     const latestComment = {
       author: 'HiromiShikata',
       body: 'Latest line\nLatest detail',
       createdAt: '2026-06-17T10:00:00.000Z',
-      url: null,
     };
     const { getByText, queryByText, container } = render(
       <ConsoleCommentList
@@ -87,13 +83,11 @@ describe('ConsoleCommentList', () => {
       author: 'reviewer',
       body: 'First line summary\nFirst detail body',
       createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
     };
     const latestComment = {
       author: 'HiromiShikata',
       body: 'Latest comment body',
       createdAt: '2026-06-17T10:00:00.000Z',
-      url: null,
     };
     const { getByText, container } = render(
       <ConsoleCommentList
@@ -119,7 +113,6 @@ describe('ConsoleCommentList', () => {
       author: 'reviewer',
       body: 'Hello from agent\nSecond line that should not appear',
       createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
     };
     const { container } = render(
       <ConsoleCommentList
@@ -149,13 +142,11 @@ describe('ConsoleCommentList', () => {
       author: 'reviewer',
       body: 'First line summary.\n\nSecond paragraph detail.',
       createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
     };
     const secondComment = {
       author: 'HiromiShikata',
       body: 'Acknowledged.',
       createdAt: '2026-06-17T09:00:00.000Z',
-      url: null,
     };
     const { container, getByText, queryByText } = render(
       <ConsoleCommentList
@@ -205,81 +196,6 @@ describe('ConsoleCommentList', () => {
     expect(queryByRole('alert')).toBeNull();
   });
 
-  it('shows a workflow incident report link for comments with a url when workflowImprovementIssueUrl is set', () => {
-    const commentWithUrl = {
-      author: 'HiromiShikata',
-      body: 'Some comment body.',
-      createdAt: '2026-06-19T09:00:00.000Z',
-      url: 'https://github.com/owner/repo/issues/1#issuecomment-12345',
-    };
-    const { getAllByRole } = render(
-      <ConsoleCommentList
-        comments={[commentWithUrl]}
-        isLoading={false}
-        error={null}
-        now={now}
-        workflowImprovementIssueUrl="https://github.com/owner/secretary/issues/new"
-      />,
-    );
-    const links = getAllByRole('link', {
-      name: 'Create workflow incident report for this comment',
-    });
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute(
-      'href',
-      expect.stringContaining(
-        encodeURIComponent(
-          'https://github.com/owner/repo/issues/1#issuecomment-12345',
-        ),
-      ),
-    );
-  });
-
-  it('does not show a workflow incident report link for comments with null url', () => {
-    const commentWithoutUrl = {
-      author: 'HiromiShikata',
-      body: 'Some comment body.',
-      createdAt: '2026-06-19T09:00:00.000Z',
-      url: null,
-    };
-    const { queryByRole } = render(
-      <ConsoleCommentList
-        comments={[commentWithoutUrl]}
-        isLoading={false}
-        error={null}
-        now={now}
-        workflowImprovementIssueUrl="https://github.com/owner/secretary/issues/new"
-      />,
-    );
-    expect(
-      queryByRole('link', {
-        name: 'Create workflow incident report for this comment',
-      }),
-    ).toBeNull();
-  });
-
-  it('does not show a workflow incident report link when workflowImprovementIssueUrl is not set', () => {
-    const commentWithUrl = {
-      author: 'HiromiShikata',
-      body: 'Some comment body.',
-      createdAt: '2026-06-19T09:00:00.000Z',
-      url: 'https://github.com/owner/repo/issues/1#issuecomment-12345',
-    };
-    const { queryByRole } = render(
-      <ConsoleCommentList
-        comments={[commentWithUrl]}
-        isLoading={false}
-        error={null}
-        now={now}
-      />,
-    );
-    expect(
-      queryByRole('link', {
-        name: 'Create workflow incident report for this comment',
-      }),
-    ).toBeNull();
-  });
-
   it('renders an image from markdown in the comment body when the comment is expanded', () => {
     const imageUrl =
       'https://github.com/user-attachments/assets/1f363cda-b9e6-4e59-b3d6-6343a7fa4554';
@@ -287,7 +203,6 @@ describe('ConsoleCommentList', () => {
       author: 'HiromiShikata',
       body: `Screenshot attached:\n![Image](${imageUrl})`,
       createdAt: '2026-09-06T12:00:00.000Z',
-      url: null,
     };
     const buildProxyUrl = (src: string) =>
       `/api/img?url=${encodeURIComponent(src)}`;
@@ -316,7 +231,6 @@ describe('ConsoleCommentList', () => {
       author: 'agent',
       body: 'First line of body\nSecond line of body\nThird line',
       createdAt: '2026-09-01T10:00:00.000Z',
-      url: null,
     };
     const { container } = render(
       <ConsoleCommentList
@@ -354,13 +268,11 @@ describe('ConsoleCommentList', () => {
       author: 'reviewer',
       body: 'First line summary.\n\nSecond paragraph detail.',
       createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
     };
     const secondComment = {
       author: 'HiromiShikata',
       body: 'Acknowledged.',
       createdAt: '2026-06-17T09:00:00.000Z',
-      url: null,
     };
     const { container, queryByText } = render(
       <ConsoleCommentList
@@ -382,7 +294,6 @@ describe('ConsoleCommentList', () => {
       author: 'agent',
       body: 'First line\nSecond line\nThird line',
       createdAt: '2026-09-01T10:00:00.000Z',
-      url: null,
     };
     const { container } = render(
       <ConsoleCommentList
@@ -409,7 +320,6 @@ describe('ConsoleCommentList', () => {
       author: 'agent',
       body: 'See #42 for details.',
       createdAt: '2026-09-06T12:00:00.000Z',
-      url: null,
     };
     const { container } = render(
       <ConsoleCommentList
@@ -435,7 +345,6 @@ describe('ConsoleCommentList', () => {
       author: 'agent',
       body: '[secretary #42](https://github.com/HiromiShikata/secretary/issues/42)',
       createdAt: '2026-09-06T12:00:00.000Z',
-      url: null,
     };
     const mockRenderer = (href: string) => (
       <span data-testid="custom-reference" data-href={href} />
@@ -466,13 +375,11 @@ describe('ConsoleCommentList', () => {
       author: 'reviewer',
       body: 'First line\nSecond line',
       createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
     };
     const latestComment = {
       author: 'HiromiShikata',
       body: 'Latest comment',
       createdAt: '2026-06-17T10:00:00.000Z',
-      url: null,
     };
     const firstKey = `${firstComment.author}:${firstComment.createdAt}:${firstComment.body}`;
     localStorage.setItem(
@@ -501,13 +408,11 @@ describe('ConsoleCommentList', () => {
       author: 'reviewer',
       body: 'A comment body',
       createdAt: '2026-06-17T08:00:00.000Z',
-      url: null,
     };
     const latestComment = {
       author: 'HiromiShikata',
       body: 'Latest',
       createdAt: '2026-06-17T10:00:00.000Z',
-      url: null,
     };
     const { container } = render(
       <ConsoleCommentList
@@ -535,7 +440,6 @@ describe('ConsoleCommentList', () => {
       author: 'HiromiShikata',
       body: 'Content',
       createdAt: '2026-09-01T10:00:00.000Z',
-      url: null,
     };
     localStorage.clear();
     render(
@@ -554,7 +458,6 @@ describe('ConsoleCommentList', () => {
       author: 'agent',
       body: 'First line\nSecond line visible only when expanded',
       createdAt: '2026-09-01T10:00:00.000Z',
-      url: null,
     };
     const { container } = render(
       <ConsoleCommentList

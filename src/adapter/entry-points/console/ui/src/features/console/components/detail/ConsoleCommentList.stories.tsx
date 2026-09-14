@@ -32,16 +32,6 @@ export const NotLoaded: Story = {
   },
 };
 
-export const WithWorkflowLink: Story = {
-  args: {
-    comments: consoleCommentsFixture,
-    isLoading: false,
-    error: null,
-    workflowImprovementIssueUrl:
-      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new?assignees=HiromiShikata',
-  },
-};
-
 export const WithMultilineComment: Story = {
   args: {
     comments: [
@@ -49,7 +39,6 @@ export const WithMultilineComment: Story = {
         author: 'HiromiShikata',
         body: 'First summary line.\n\n## Details\n\nSecond paragraph with more context about the decision that was made here.\n\nThird paragraph explaining the rationale.',
         createdAt: '2026-06-17T09:03:27.000Z',
-        url: null,
       },
     ],
     isLoading: false,
@@ -64,7 +53,6 @@ export const WithImageComment: Story = {
         author: 'HiromiShikata',
         body: 'Screenshot attached:\n![Image](https://github.com/user-attachments/assets/1f363cda-b9e6-4e59-b3d6-6343a7fa4554)',
         createdAt: '2026-09-06T12:00:00.000Z',
-        url: null,
       },
     ],
     isLoading: false,

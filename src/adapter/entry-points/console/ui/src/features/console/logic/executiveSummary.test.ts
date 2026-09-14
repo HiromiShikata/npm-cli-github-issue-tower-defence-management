@@ -8,7 +8,6 @@ const makeComment = (body: string): ConsoleComment => ({
   author: 'bot',
   body,
   createdAt: '2026-08-31T00:00:00.000Z',
-  url: null,
 });
 
 const AGENT_COMMENT = `From: :robot: tdpm-workflow-improver (claude-sonnet-4-6)

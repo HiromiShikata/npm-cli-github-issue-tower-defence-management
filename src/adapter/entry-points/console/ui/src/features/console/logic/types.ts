@@ -77,7 +77,6 @@ export type ConsoleComment = {
   author: string;
   body: string;
   createdAt: string;
-  url: string | null;
 };
 
 export type ConsoleChangedFile = {

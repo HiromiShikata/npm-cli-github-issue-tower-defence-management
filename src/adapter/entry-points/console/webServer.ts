@@ -242,7 +242,6 @@ export type WebServerOptions = {
   dashboardDataDir: string | null;
   dashboardProjectNames: string[];
   dashboardProjectUrls?: Record<string, string> | null;
-  workflowImprovementIssueUrl?: string | null;
   fleetTaskCreateUrl?: string | null;
   resolveGithubToken?: ConsoleGithubTokenResolver | null;
   imageFetcher?: ImageFetcher | null;
@@ -492,8 +491,6 @@ const handleReadApi = async (
       body: {
         pjcodes: options.dashboardProjectNames,
         projectUrls: options.dashboardProjectUrls ?? null,
-        workflowImprovementIssueUrl:
-          options.workflowImprovementIssueUrl ?? null,
         fleetTaskCreateUrl: options.fleetTaskCreateUrl ?? null,
       },
     };

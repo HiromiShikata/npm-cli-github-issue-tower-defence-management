@@ -16,7 +16,6 @@ const stubSubmit = async (body: string): Promise<ConsoleComment> => ({
   author: 'HiromiShikata',
   body,
   createdAt: '2026-06-19T11:58:00.000Z',
-  url: null,
 });
 
 describe('ConsoleCommentComposer', () => {
@@ -97,7 +96,6 @@ describe('ConsoleCommentComposer', () => {
       author: 'HiromiShikata',
       body,
       createdAt: '2026-06-19T11:58:00.000Z',
-      url: null,
     }));
     const { container, getByPlaceholderText, getByText, queryByText } = render(
       <ConsoleCommentComposer initiallyOpen onSubmit={onSubmit} />,
@@ -383,7 +381,6 @@ describe('ConsoleCommentComposer', () => {
             author: 'HiromiShikata',
             body: _body,
             createdAt: '2026-06-19T11:58:00.000Z',
-            url: null,
           });
       });
     const { getByPlaceholderText, getByText } = render(

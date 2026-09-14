@@ -22,7 +22,6 @@ import type {
   ConsolePullRequestStatus,
   ConsoleRelatedPullRequest,
 } from '../../logic/types';
-import { buildWorkflowIncidentReportUrl } from '../../logic/workflowIncidentReport';
 import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 import { ConsolePanel } from '../layout/ConsolePanel';
@@ -78,7 +77,6 @@ export type ConsoleItemDetailProps = {
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
-  workflowImprovementIssueUrl?: string | null;
 };
 
 export const ConsoleItemDetail = ({
@@ -111,7 +109,6 @@ export const ConsoleItemDetail = ({
   buildImageProxyUrl,
   renderReferenceLink,
   onAddInlineComment,
-  workflowImprovementIssueUrl = null,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
@@ -289,20 +286,6 @@ export const ConsoleItemDetail = ({
             opened {formatRelativeTime(item.createdAt, now)}
           </span>
           <ConsoleCopyUrlButton url={item.url} />
-          {workflowImprovementIssueUrl !== null && (
-            <a
-              href={buildWorkflowIncidentReportUrl(
-                workflowImprovementIssueUrl,
-                item.url,
-              )}
-              target="_blank"
-              rel="noreferrer"
-              className="console-detail-report-link"
-              aria-label="Create workflow incident report for this task"
-            >
-              ⚡
-            </a>
-          )}
           {item.labels.map((label) => (
             <span key={label} className="console-label-chip">
               {label}
@@ -360,7 +343,6 @@ export const ConsoleItemDetail = ({
             isLoading={commentsAreLoading}
             error={commentsError}
             now={now}
-            workflowImprovementIssueUrl={workflowImprovementIssueUrl}
             buildImageProxyUrl={buildImageProxyUrl}
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
