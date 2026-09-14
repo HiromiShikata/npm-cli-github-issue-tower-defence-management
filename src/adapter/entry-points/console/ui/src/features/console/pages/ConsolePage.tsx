@@ -11,7 +11,6 @@ import { ConsoleItemList } from '../components/list/ConsoleItemList';
 import { ConsolePrsAgentFilter } from '../components/list/ConsolePrsAgentFilter';
 import { ConsoleQueuedList } from '../components/list/ConsoleQueuedList';
 import { ConsoleStoryList } from '../components/list/ConsoleStoryList';
-import { ConsoleCreateWorkflowTaskButton } from '../components/operations/ConsoleCreateWorkflowTaskButton';
 import {
   type ConsoleOfflinePendingActionItem,
   ConsoleOfflinePendingActionsPanel,
@@ -44,7 +43,6 @@ import {
   postConsoleAttachment,
   postConsoleComment,
   postConsoleCreateIssue,
-  postConsoleCreateWorkflowIssue,
   postConsoleDeleteStory,
   postConsoleRenameStory,
   postConsoleReorderStory,
@@ -124,7 +122,6 @@ export const ConsolePage = () => {
   const {
     pjcodes,
     projectUrls,
-    workflowImprovementIssueUrl,
     fleetTaskCreateUrl,
     isLoading: isLoadingPjcodes,
   } = useConsoleProjectList();
@@ -657,26 +654,6 @@ export const ConsolePage = () => {
     [pjcode, defaultNameWithOwner, storyEntries, actionQueue],
   );
 
-  const handleCreateWorkflowTask = useCallback(
-    async (title: string): Promise<string> => {
-      if (workflowImprovementIssueUrl === null) {
-        throw new Error('Workflow improvement repository is not configured.');
-      }
-      const match =
-        /github\.com\/([A-Za-z0-9._-]+\/[A-Za-z0-9._-]+)\/issues\//.exec(
-          workflowImprovementIssueUrl,
-        );
-      if (match === null) {
-        throw new Error(
-          'Could not parse repository from workflowImprovementIssueUrl.',
-        );
-      }
-      const nameWithOwner = match[1];
-      return postConsoleCreateWorkflowIssue({ nameWithOwner, title });
-    },
-    [workflowImprovementIssueUrl],
-  );
-
   const handleReorderStory = useCallback(
     async (storyOptionId: string, direction: 'up' | 'down'): Promise<void> => {
       if (pjcode === null) {
@@ -945,11 +922,6 @@ export const ConsolePage = () => {
             >
               ⚙
             </button>
-            {workflowImprovementIssueUrl !== null && (
-              <ConsoleCreateWorkflowTaskButton
-                onCreateWorkflowTask={handleCreateWorkflowTask}
-              />
-            )}
             {pjcode !== null && (
               <>
                 <button
@@ -986,7 +958,6 @@ export const ConsolePage = () => {
         onAirplaneModeStartSync={airplaneMode.startSync}
         onAirplaneModeTurnOff={airplaneMode.turnOff}
         projectUrl={pjcode !== null ? (projectUrls?.[pjcode] ?? null) : null}
-        workflowImprovementIssueUrl={workflowImprovementIssueUrl}
         fleetTaskCreateUrl={fleetTaskCreateUrl}
         now={now}
       />
@@ -1096,7 +1067,6 @@ export const ConsolePage = () => {
                 : null
             }
             storyNameForDeletion={selectedItemStoryEntry?.storyName ?? null}
-            workflowImprovementIssueUrl={workflowImprovementIssueUrl}
           />
         </div>
       )}

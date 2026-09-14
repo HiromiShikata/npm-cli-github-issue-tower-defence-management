@@ -27,7 +27,6 @@ export type ConsoleTabBarProps = {
   onAirplaneModeStartSync: () => void;
   onAirplaneModeTurnOff: () => void;
   projectUrl?: string | null;
-  workflowImprovementIssueUrl?: string | null;
   fleetTaskCreateUrl?: string | null;
   now: number;
 };
@@ -51,7 +50,6 @@ export const ConsoleTabList = ({
   onAirplaneModeStartSync,
   onAirplaneModeTurnOff,
   projectUrl = null,
-  workflowImprovementIssueUrl = null,
   fleetTaskCreateUrl = null,
   now,
 }: ConsoleTabBarProps) => {
@@ -157,17 +155,6 @@ export const ConsoleTabList = ({
         )}
         {settingsButton !== undefined && (
           <span className="console-tab-settings">{settingsButton}</span>
-        )}
-        {workflowImprovementIssueUrl !== null && (
-          <a
-            href={workflowImprovementIssueUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="console-tab-workflow-improvement-link"
-            aria-label="Open workflow improvement issue"
-          >
-            ⚡
-          </a>
         )}
         {fleetTaskCreateUrl !== null && (
           <a

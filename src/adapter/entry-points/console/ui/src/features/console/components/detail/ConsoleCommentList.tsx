@@ -7,7 +7,6 @@ import {
 } from '../../logic/commentExpandedStorage';
 import { formatRelativeTime } from '../../logic/relativeTime';
 import type { ConsoleComment } from '../../logic/types';
-import { buildWorkflowIncidentReportUrl } from '../../logic/workflowIncidentReport';
 import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
 
@@ -55,7 +54,6 @@ export type ConsoleCommentListProps = {
   isLoading: boolean;
   error: string | null;
   now: number;
-  workflowImprovementIssueUrl?: string | null;
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
@@ -67,7 +65,6 @@ export const ConsoleCommentList = ({
   isLoading,
   error,
   now,
-  workflowImprovementIssueUrl = null,
   buildImageProxyUrl,
   renderReferenceLink,
   repoContext,
@@ -159,20 +156,6 @@ export const ConsoleCommentList = ({
                 </span>
               )}
             </button>
-            {workflowImprovementIssueUrl !== null && comment.url !== null && (
-              <a
-                href={buildWorkflowIncidentReportUrl(
-                  workflowImprovementIssueUrl,
-                  comment.url,
-                )}
-                target="_blank"
-                rel="noreferrer"
-                className="console-comment-report-link"
-                aria-label="Create workflow incident report for this comment"
-              >
-                ⚡
-              </a>
-            )}
             {isExpanded && (
               <ConsoleCommentBodyExpanded
                 comment={comment}
