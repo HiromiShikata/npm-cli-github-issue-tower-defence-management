@@ -2453,7 +2453,6 @@ describe('consoleOperationApi', () => {
       );
 
       expect(response.statusCode).toBe(200);
-      await response.backgroundTask;
       expect(issueRepository.updateStory).toHaveBeenCalledWith(
         expect.anything(),
         createdIssue,
@@ -2503,7 +2502,7 @@ describe('consoleOperationApi', () => {
       };
       issueRepository.get.mockResolvedValue(createdIssue);
 
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(
           () => ({
             getProject: jest.fn().mockResolvedValue(freshProject),
@@ -2518,7 +2517,6 @@ describe('consoleOperationApi', () => {
           nameWithOwner: 'acme-labs/portal',
         },
       );
-      await response.backgroundTask;
 
       const expectedFreshStory = {
         name: 'Story',
@@ -2576,7 +2574,6 @@ describe('consoleOperationApi', () => {
         ['authenticated-user'],
         [],
       );
-      await response.backgroundTask;
       expect(issueRepository.addIssueToProject).toHaveBeenCalledWith(
         storyProject,
         'https://github.com/acme-labs/portal/issues/42',
@@ -2602,13 +2599,12 @@ describe('consoleOperationApi', () => {
       };
       issueRepository.get.mockResolvedValue(null);
 
-      const response = await handleCreateIssue(recordingContext, {
+      await handleCreateIssue(recordingContext, {
         pjcode: 'acme',
         title: 'Task',
         storyName: 'Portal redesign',
         nameWithOwner: 'acme-labs/portal',
       });
-      await response.backgroundTask;
 
       expect(resolvedUrls).toContain(
         'https://github.com/acme-labs/portal/issues/0',
@@ -2632,7 +2628,6 @@ describe('consoleOperationApi', () => {
       );
 
       expect(response.statusCode).toBe(200);
-      await response.backgroundTask;
       expect(issueRepository.updateStory).not.toHaveBeenCalled();
     });
 
@@ -2765,7 +2760,6 @@ describe('consoleOperationApi', () => {
         ok: true,
         issueUrl: 'https://github.com/acme-labs/portal/issues/42',
       });
-      await response.backgroundTask;
       expect(issueRepository.updateStory).toHaveBeenCalledWith(
         expect.objectContaining({ story: storyProject.story }),
         createdIssue,
@@ -2796,7 +2790,7 @@ describe('consoleOperationApi', () => {
 
     it('creates issue with provided body text when body is given', async () => {
       issueRepository.get.mockResolvedValue(null);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -2809,7 +2803,6 @@ describe('consoleOperationApi', () => {
           body: 'Task body content here',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2822,7 +2815,7 @@ describe('consoleOperationApi', () => {
 
     it('combines body and referenceUrl when both are provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -2836,7 +2829,6 @@ describe('consoleOperationApi', () => {
           referenceUrl: 'https://github.com/owner/repo/issues/99',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2849,7 +2841,7 @@ describe('consoleOperationApi', () => {
 
     it('treats whitespace-only body as absent and uses empty body', async () => {
       issueRepository.get.mockResolvedValue(null);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -2862,7 +2854,6 @@ describe('consoleOperationApi', () => {
           body: '   ',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2875,7 +2866,7 @@ describe('consoleOperationApi', () => {
 
     it('creates issue with body containing referenceUrl when referenceUrl is provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -2888,7 +2879,6 @@ describe('consoleOperationApi', () => {
           referenceUrl: 'https://github.com/owner/repo/issues/99',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2901,7 +2891,7 @@ describe('consoleOperationApi', () => {
 
     it('creates issue with empty body when referenceUrl is not provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -2913,7 +2903,6 @@ describe('consoleOperationApi', () => {
           nameWithOwner: 'acme-labs/portal',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -2947,7 +2936,7 @@ describe('consoleOperationApi', () => {
         itemId: 'PVTI_new',
       };
       issueRepository.get.mockResolvedValue(createdIssue);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(
           () => ({
             getProject: jest.fn().mockResolvedValue(projectWithStoryAndAgent()),
@@ -2963,7 +2952,6 @@ describe('consoleOperationApi', () => {
           agentOptionId: 'agent_opt_developer',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.setIssueAgentField).toHaveBeenCalledWith(
         'https://github.com/acme-labs/portal/issues/42',
         expect.objectContaining({ agent: agentField }),
@@ -2973,7 +2961,7 @@ describe('consoleOperationApi', () => {
 
     it('skips setting agent when agentOptionId is not provided', async () => {
       issueRepository.get.mockResolvedValue(null);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -2985,7 +2973,6 @@ describe('consoleOperationApi', () => {
           nameWithOwner: 'acme-labs/portal',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
 
@@ -2995,7 +2982,7 @@ describe('consoleOperationApi', () => {
         agent: null,
       });
       issueRepository.get.mockResolvedValue(null);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(
           () => ({
             getProject: jest.fn().mockResolvedValue(projectWithStoryNoAgent()),
@@ -3011,7 +2998,6 @@ describe('consoleOperationApi', () => {
           agentOptionId: 'agent_opt_developer',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.setIssueAgentField).not.toHaveBeenCalled();
     });
 
@@ -3021,7 +3007,7 @@ describe('consoleOperationApi', () => {
         'authenticated-user',
       );
 
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -3033,7 +3019,6 @@ describe('consoleOperationApi', () => {
           nameWithOwner: 'acme-labs/portal',
         },
       );
-      await response.backgroundTask;
 
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
@@ -3048,7 +3033,7 @@ describe('consoleOperationApi', () => {
     it('truncates title to 256 characters and prepends full title to body when title exceeds limit', async () => {
       issueRepository.get.mockResolvedValue(null);
       const longTitle = 'A'.repeat(257);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -3060,7 +3045,6 @@ describe('consoleOperationApi', () => {
           nameWithOwner: 'acme-labs/portal',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -3074,7 +3058,7 @@ describe('consoleOperationApi', () => {
     it('prepends full title before existing body when title exceeds limit and body is provided', async () => {
       issueRepository.get.mockResolvedValue(null);
       const longTitle = 'B'.repeat(257);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -3087,7 +3071,6 @@ describe('consoleOperationApi', () => {
           body: 'existing body',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',
@@ -3101,7 +3084,7 @@ describe('consoleOperationApi', () => {
     it('passes title unchanged when title is exactly 256 characters', async () => {
       issueRepository.get.mockResolvedValue(null);
       const exactTitle = 'C'.repeat(256);
-      const response = await handleCreateIssue(
+      await handleCreateIssue(
         contextWithCreateIssueProjectRepository(() => ({
           getProject: jest.fn().mockResolvedValue(projectWithStory()),
           updateStoryList: jest.fn(),
@@ -3113,7 +3096,6 @@ describe('consoleOperationApi', () => {
           nameWithOwner: 'acme-labs/portal',
         },
       );
-      await response.backgroundTask;
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'acme-labs',
         'portal',

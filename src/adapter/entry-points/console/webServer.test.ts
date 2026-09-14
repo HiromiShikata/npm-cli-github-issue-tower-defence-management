@@ -3162,6 +3162,68 @@ describe('webServer GET /api/projects', () => {
     }
   });
 
+});
+
+describe('webServer POST /api/createissue', () => {
+  const testToken = 'integration-test-token-value';
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  const request = (
+    server: http.Server,
+    method: string,
+    requestPath: string,
+    body?: unknown,
+  ): Promise<{ statusCode: number; body: string }> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('server is not listening on a TCP port');
+    }
+    const port = address.port;
+    const payload = body === undefined ? null : JSON.stringify(body);
+    return new Promise((resolve, reject) => {
+      const httpRequest = http.request(
+        {
+          host: '127.0.0.1',
+          port,
+          path: requestPath,
+          method,
+          headers:
+            payload === null
+              ? {}
+              : {
+                  'Content-Type': 'application/json',
+                  'Content-Length': Buffer.byteLength(payload),
+                },
+        },
+        (response) => {
+          const chunks: Uint8Array[] = [];
+          response.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+          response.on('end', () => {
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString('utf-8'),
+            });
+          });
+        },
+      );
+      httpRequest.on('error', reject);
+      if (payload !== null) {
+        httpRequest.write(payload);
+      }
+      httpRequest.end();
+    });
+  };
+
   it('logs console.warn with validation failure details when operation returns 4xx', async () => {
     const consoleWarnSpy = jest
       .spyOn(console, 'warn')

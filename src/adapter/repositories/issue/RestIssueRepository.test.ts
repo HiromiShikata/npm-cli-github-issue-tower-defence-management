@@ -367,13 +367,12 @@ describe('RestIssueRepository', () => {
   });
   describe('createNewIssue', () => {
     it('should create a new issue via fetch and return the issue number', async () => {
-      const mockFetch = jest.fn().mockResolvedValue(
+      const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
         new Response(JSON.stringify({ number: 123 }), {
           status: 201,
           headers: { 'content-type': 'application/json' },
         }),
       );
-      global.fetch = mockFetch;
 
       const issueNumber = await restIssueRepository.createNewIssue(
         'HiromiShikata',
@@ -385,8 +384,8 @@ describe('RestIssueRepository', () => {
       );
 
       expect(issueNumber).toBe(123);
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith(
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(
         'https://api.github.com/repos/HiromiShikata/test-repository/issues',
         {
           method: 'POST',
@@ -409,7 +408,7 @@ describe('RestIssueRepository', () => {
         .spyOn(console, 'log')
         .mockImplementation(() => {});
       const resetEpoch = Math.floor(Date.now() / 1000) + 3600;
-      const mockFetch = jest.fn().mockResolvedValue(
+      jest.spyOn(global, 'fetch').mockResolvedValue(
         new Response(JSON.stringify({ number: 456 }), {
           status: 201,
           headers: {
@@ -422,7 +421,6 @@ describe('RestIssueRepository', () => {
           },
         }),
       );
-      global.fetch = mockFetch;
 
       await restIssueRepository.createNewIssue(
         'HiromiShikata',
