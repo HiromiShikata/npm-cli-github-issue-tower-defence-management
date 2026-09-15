@@ -1,3 +1,10 @@
+## [2.118.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.0...v2.118.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* **live-session-select:** restore earliest-reset preference in live session token selection ([#2386](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2386)) ([7959535](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/795953554ac4c7698ec1c8ae27956f2abd9018a8)), closes [#1982](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/1982) [HiromiShikata/umino-corporait-operation#31793](https://github.com/HiromiShikata/umino-corporait-operation/issues/31793)
+
 # [2.118.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.117.0...v2.118.0) (2026-09-15)
 
 
