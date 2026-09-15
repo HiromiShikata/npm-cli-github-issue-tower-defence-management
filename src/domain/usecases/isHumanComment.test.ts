@@ -1,4 +1,7 @@
-import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
+import {
+  AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+  AUTO_STATUS_CHECK_MESSAGE_HEAD,
+} from './autoStatusCheckComments';
 import {
   ALL_DEPENDED_CLOSED_CLEARED_COMMENT_HEAD,
   ALL_DEPENDED_ICEBOX_CLEARED_COMMENT_HEAD,
@@ -79,6 +82,15 @@ describe('isHumanComment', () => {
           author: 'bot',
           content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} PULL_REQUEST_NOT_FOUND`,
         },
+        trustAll,
+      ),
+    ).toBe(false);
+  });
+
+  it('treats a conflict notification comment as machine generated', () => {
+    expect(
+      isHumanComment(
+        { author: 'bot', content: AUTO_STATUS_CHECK_CONFLICT_MESSAGE },
         trustAll,
       ),
     ).toBe(false);
