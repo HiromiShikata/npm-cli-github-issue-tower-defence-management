@@ -498,23 +498,16 @@ const handleReadApi = async (
         try {
           const raw = fs.readFileSync(storiesPath, 'utf-8');
           const data: unknown = JSON.parse(raw);
-          if (
-            data !== null &&
-            typeof data === 'object' &&
-            !Array.isArray(data) &&
-            typeof (data as Record<string, unknown>).defaultNameWithOwner ===
-              'string'
-          ) {
-            const nameWithOwner = (
-              data as Record<string, unknown>
-            ).defaultNameWithOwner as string;
-            if (nameWithOwner.length > 0) {
-              nameWithOwnerByPjcode[pjcode] = nameWithOwner;
+          if (isRecord(data)) {
+            const { defaultNameWithOwner } = data;
+            if (
+              typeof defaultNameWithOwner === 'string' &&
+              defaultNameWithOwner.length > 0
+            ) {
+              nameWithOwnerByPjcode[pjcode] = defaultNameWithOwner;
             }
           }
-        } catch {
-          // file not found or parse error — skip this pjcode
-        }
+        } catch {}
       }
     }
     return {
