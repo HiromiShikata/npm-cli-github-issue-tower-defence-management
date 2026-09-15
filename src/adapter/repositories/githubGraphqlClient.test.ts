@@ -589,6 +589,23 @@ describe('githubGraphqlClient', () => {
       expect(statusCodes).toContain(504);
       expect(statusCodes).toContain(GRAPHQL_RETRY_STATUS_CODES[0]);
     });
+
+    it('throws an Error with diagnostic context when the API returns a non-JSON body', async () => {
+      mockPost.mockReturnValue({
+        json: jest
+          .fn()
+          .mockRejectedValue(new SyntaxError('Unexpected end of JSON input')),
+      });
+      await expect(
+        postGithubGraphqlJson({
+          ghToken: 'token-a',
+          query:
+            'mutation ClearField { clearProjectV2ItemFieldValue(input: {}) { clientMutationId } }',
+        }),
+      ).rejects.toThrow(
+        'GitHub GraphQL API returned a non-JSON response: Unexpected end of JSON input',
+      );
+    });
   });
 
   describe('fetchGithubGraphql', () => {
