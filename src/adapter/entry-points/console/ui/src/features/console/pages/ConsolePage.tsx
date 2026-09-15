@@ -576,6 +576,10 @@ export const ConsolePage = () => {
       ? localStoryEntriesOverride.stories
       : rawStoryEntries;
   const defaultNameWithOwner = storiesSnapshot?.defaultNameWithOwner ?? null;
+  const newIssueUrl =
+    defaultNameWithOwner !== null
+      ? `https://github.com/${defaultNameWithOwner}/issues/new`
+      : null;
 
   const selectedItemStoryEntry = useMemo<ConsoleStoryEntry | null>(() => {
     if (selectedItem === null) return null;
@@ -952,6 +956,7 @@ export const ConsolePage = () => {
                     initialDraft={dialogDraft}
                     onDraftChange={setDialogDraft}
                     fleetTaskCreateUrl={fleetTaskCreateUrl}
+                    newIssueUrl={newIssueUrl}
                   />
                 )}
               </>
