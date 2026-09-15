@@ -18,9 +18,10 @@ export const useConsoleProjectList = (): ConsoleProjectListState => {
   const [fleetTaskCreateUrl, setFleetTaskCreateUrl] = useState<string | null>(
     null,
   );
-  const [nameWithOwnerByPjcode, setNameWithOwnerByPjcode] = useState<Record<string, string> | null>(
-    null,
-  );
+  const [nameWithOwnerByPjcode, setNameWithOwnerByPjcode] = useState<Record<
+    string,
+    string
+  > | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 

@@ -605,14 +605,8 @@ export type ProjectListResponse = {
   nameWithOwnerByPjcode: Record<string, string> | null;
 };
 
-const parseStringRecord = (
-  value: unknown,
-): Record<string, string> | null => {
-  if (
-    value === null ||
-    typeof value !== 'object' ||
-    Array.isArray(value)
-  ) {
+const parseStringRecord = (value: unknown): Record<string, string> | null => {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     return null;
   }
   return Object.fromEntries(

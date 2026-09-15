@@ -97,7 +97,9 @@ describe('useConsoleProjectList', () => {
       status: 200,
       json: async () => ({
         pjcodes: ['acme'],
-        nameWithOwnerByPjcode: { acme: 'HiromiShikata/umino-corporait-operation' },
+        nameWithOwnerByPjcode: {
+          acme: 'HiromiShikata/umino-corporait-operation',
+        },
       }),
     })) as unknown as typeof fetch;
 
