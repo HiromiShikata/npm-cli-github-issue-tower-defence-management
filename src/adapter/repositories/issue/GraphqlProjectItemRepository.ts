@@ -592,56 +592,72 @@ query GetProjectItems($projectId: ID!, $after: String, $first: Int!, $query: Str
         ? lastError
         : new Error(String(lastError));
     };
-    const issues: ProjectItem[] = [];
-    let after: string | null = null;
-    let hasNextPage = true;
-    let totalCount = 0;
-    let cumulativeRawNodes = 0;
-    let pageIndex = 0;
-
-    while (hasNextPage) {
-      if (after !== null) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, PAGINATION_DELAY_MS),
-        );
-      }
-      const data = await callGraphqlWithHalvingFallback(after);
-      const pageNodes = data.node.items.nodes;
-      const pageInfo = data.node.items.pageInfo;
-      totalCount = data.node.items.totalCount;
-      cumulativeRawNodes += pageNodes.length;
-      pageIndex++;
-      console.log(
-        `fetchProjectItems: page ${pageIndex}, nodes: ${pageNodes.length}, cumulative: ${cumulativeRawNodes}/${totalCount}`,
-      );
-      const nodes: ProjectV2ItemNode[] = pageNodes;
-      nodes.forEach((item) => {
-        const projectItem = this.mapProjectV2ItemNodeToProjectItem(item);
-        if (projectItem) {
-          issues.push(projectItem);
+    const fetchAllPages = async (): Promise<{
+      issues: ProjectItem[];
+      inconsistencyMessage: string | null;
+    }> => {
+      const issues: ProjectItem[] = [];
+      let after: string | null = null;
+      let hasNextPage = true;
+      let totalCount = 0;
+      let cumulativeRawNodes = 0;
+      let pageIndex = 0;
+      let inconsistencyMessage: string | null = null;
+      while (hasNextPage) {
+        if (after !== null) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, PAGINATION_DELAY_MS),
+          );
         }
-      });
-      if (
-        pageNodes.length > 0 &&
-        !pageInfo.hasNextPage &&
-        cumulativeRawNodes < totalCount
-      ) {
-        throw new Error(
-          `fetchProjectItems: page ${pageIndex} has ${pageNodes.length} nodes with hasNextPage=false but only ${cumulativeRawNodes}/${totalCount} items accumulated`,
+        const data = await callGraphqlWithHalvingFallback(after);
+        const pageNodes = data.node.items.nodes;
+        const pageInfo = data.node.items.pageInfo;
+        totalCount = data.node.items.totalCount;
+        cumulativeRawNodes += pageNodes.length;
+        pageIndex++;
+        console.log(
+          `fetchProjectItems: page ${pageIndex}, nodes: ${pageNodes.length}, cumulative: ${cumulativeRawNodes}/${totalCount}`,
         );
+        const nodes: ProjectV2ItemNode[] = pageNodes;
+        nodes.forEach((item) => {
+          const projectItem = this.mapProjectV2ItemNodeToProjectItem(item);
+          if (projectItem) {
+            issues.push(projectItem);
+          }
+        });
+        if (
+          pageNodes.length > 0 &&
+          !pageInfo.hasNextPage &&
+          cumulativeRawNodes < totalCount
+        ) {
+          inconsistencyMessage = `fetchProjectItems: page ${pageIndex} has ${pageNodes.length} nodes with hasNextPage=false but only ${cumulativeRawNodes}/${totalCount} items accumulated`;
+        }
+        hasNextPage = pageInfo.hasNextPage;
+        after = pageInfo.endCursor;
       }
-      hasNextPage = pageInfo.hasNextPage;
-      after = pageInfo.endCursor;
-    }
-    console.log(
-      `fetchProjectItems: completed, totalCount: ${totalCount}, cumulativeRawNodes: ${cumulativeRawNodes}, issues: ${issues.length}`,
-    );
-    if (cumulativeRawNodes !== totalCount) {
-      throw new Error(
-        `fetchProjectItems: expected ${totalCount} items but accumulated ${cumulativeRawNodes}`,
+      console.log(
+        `fetchProjectItems: completed, totalCount: ${totalCount}, cumulativeRawNodes: ${cumulativeRawNodes}, issues: ${issues.length}`,
       );
+      if (inconsistencyMessage === null && cumulativeRawNodes !== totalCount) {
+        inconsistencyMessage = `fetchProjectItems: expected ${totalCount} items but accumulated ${cumulativeRawNodes}`;
+      }
+      return { issues, inconsistencyMessage };
+    };
+    const firstAttempt = await fetchAllPages();
+    if (firstAttempt.inconsistencyMessage === null) {
+      return firstAttempt.issues;
     }
-    return issues;
+    console.warn(
+      `${firstAttempt.inconsistencyMessage}, retrying full fetch once`,
+    );
+    const retryAttempt = await fetchAllPages();
+    if (retryAttempt.inconsistencyMessage === null) {
+      return retryAttempt.issues;
+    }
+    console.warn(
+      `${retryAttempt.inconsistencyMessage}, continuing with accumulated items after retry`,
+    );
+    return retryAttempt.issues;
   };
   private mapProjectV2ItemNodeToProjectItem = (
     item: ProjectV2ItemNode | null,
