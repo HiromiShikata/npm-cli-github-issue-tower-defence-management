@@ -1,3 +1,10 @@
+# [2.117.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.4...v2.117.0) (2026-09-15)
+
+
+### Features
+
+* **console:** swap Create/Cancel order and add new issue tab link in IssueCreateModalDialog ([#2383](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2383)) ([4d5a48d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4d5a48dcfe6a598bceb5d5f0b8baf162ca56e6ad))
+
 ## [2.116.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.3...v2.116.4) (2026-09-15)
 
 
