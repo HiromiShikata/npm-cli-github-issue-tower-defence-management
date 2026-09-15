@@ -16,6 +16,7 @@ import {
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from './autoStatusCheckComments';
 
 const EXCLUDED_STATUSES = new Set([
   DONE_STATUS_NAME,
@@ -195,7 +196,7 @@ export class ConflictedIssueRevertUseCase {
       );
       if (
         isDuplicateWithinWindow(
-          'conflict',
+          AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
           existingComments.map((c) => ({
             text: c.content,
             createdAt: c.createdAt,
@@ -206,7 +207,10 @@ export class ConflictedIssueRevertUseCase {
         continue;
       }
       try {
-        await this.issueCommentRepository.createComment(issue, 'conflict');
+        await this.issueCommentRepository.createComment(
+          issue,
+          AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+        );
       } catch (error) {
         console.error(
           `Failed to post conflict comment on ${issue.url}: ${String(error)}`,
