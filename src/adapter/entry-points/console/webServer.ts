@@ -486,12 +486,40 @@ const handleReadApi = async (
   searchParams: URLSearchParams,
 ): Promise<{ statusCode: number; body: unknown } | null> => {
   if (requestPath === '/api/projects') {
+    const nameWithOwnerByPjcode: Record<string, string> = {};
+    if (options.consoleDataOutputDir !== null) {
+      for (const pjcode of options.dashboardProjectNames) {
+        const storiesPath = path.join(
+          options.consoleDataOutputDir,
+          pjcode,
+          'stories',
+          'list.json',
+        );
+        try {
+          const raw = fs.readFileSync(storiesPath, 'utf-8');
+          const data: unknown = JSON.parse(raw);
+          if (isRecord(data)) {
+            const { defaultNameWithOwner } = data;
+            if (
+              typeof defaultNameWithOwner === 'string' &&
+              defaultNameWithOwner.length > 0
+            ) {
+              nameWithOwnerByPjcode[pjcode] = defaultNameWithOwner;
+            }
+          }
+        } catch {}
+      }
+    }
     return {
       statusCode: 200,
       body: {
         pjcodes: options.dashboardProjectNames,
         projectUrls: options.dashboardProjectUrls ?? null,
         fleetTaskCreateUrl: options.fleetTaskCreateUrl ?? null,
+        nameWithOwnerByPjcode:
+          Object.keys(nameWithOwnerByPjcode).length > 0
+            ? nameWithOwnerByPjcode
+            : null,
       },
     };
   }

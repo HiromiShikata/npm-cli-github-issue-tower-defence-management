@@ -35,9 +35,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     const { getByRole, queryByRole } = render(
       <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={false} />,
     );
-    expect(
-      getByRole('button', { name: 'Console Settings' }),
-    ).toBeInTheDocument();
+    expect(getByRole('button', { name: 'Settings' })).toBeInTheDocument();
     expect(queryByRole('dialog')).toBeNull();
   });
 
@@ -45,9 +43,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     const { getByRole } = render(
       <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={true} />,
     );
-    expect(
-      getByRole('button', { name: 'Console Settings' }),
-    ).toBeInTheDocument();
+    expect(getByRole('button', { name: 'Settings' })).toBeInTheDocument();
   });
 
   it('calls onOpen when the timer button is clicked', () => {
@@ -59,7 +55,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
         onOpen={onOpen}
       />,
     );
-    fireEvent.click(getByRole('button', { name: 'Console Settings' }));
+    fireEvent.click(getByRole('button', { name: 'Settings' }));
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
@@ -68,10 +64,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
       <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={true} />,
     );
     expect(getByRole('dialog')).toBeInTheDocument();
-    expect(getByRole('dialog')).toHaveAttribute(
-      'aria-label',
-      'Console Settings',
-    );
+    expect(getByRole('dialog')).toHaveAttribute('aria-label', 'Settings');
   });
 
   it('adds active class to the button when isTimerActive is true', () => {
@@ -82,7 +75,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
         isTimerActive={true}
       />,
     );
-    expect(getByRole('button', { name: 'Console Settings' })).toHaveClass(
+    expect(getByRole('button', { name: 'Settings' })).toHaveClass(
       'console-timer-settings-button--active',
     );
   });
@@ -95,7 +88,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
         isTimerActive={false}
       />,
     );
-    expect(getByRole('button', { name: 'Console Settings' })).not.toHaveClass(
+    expect(getByRole('button', { name: 'Settings' })).not.toHaveClass(
       'console-timer-settings-button--active',
     );
   });
@@ -109,7 +102,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
       />,
     );
     expect(getByText('Loading projects...')).toBeInTheDocument();
-    expect(queryByRole('list')).toBeNull();
+    expect(queryByRole('table')).toBeNull();
   });
 
   it('renders per-project minute inputs when loaded', () => {
@@ -148,9 +141,9 @@ describe('ConsoleTimerSettingsModalDialog', () => {
       />,
     );
     const timerSwitch = getByRole('switch', { name: 'Timer Mode' });
-    const projectList = getByRole('list');
+    const projectTable = getByRole('table');
     expect(
-      projectList.compareDocumentPosition(timerSwitch) &
+      projectTable.compareDocumentPosition(timerSwitch) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
@@ -223,6 +216,58 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('renders a create task link when nameWithOwnerByPjcode is provided', () => {
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{ alpha: 5 }}
+        nameWithOwnerByPjcode={{
+          alpha: 'HiromiShikata/umino-corporait-operation',
+        }}
+      />,
+    );
+    const createLink = getByRole('link', { name: 'Create task in alpha' });
+    expect(createLink).toBeInTheDocument();
+    expect(createLink).toHaveAttribute(
+      'href',
+      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
+    );
+    expect(createLink).toHaveAttribute('target', '_blank');
+  });
+
+  it('renders no create task link when nameWithOwnerByPjcode is null', () => {
+    const { queryByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{ alpha: 5 }}
+        nameWithOwnerByPjcode={null}
+      />,
+    );
+    expect(queryByRole('link', { name: 'Create task in alpha' })).toBeNull();
+  });
+
+  it('renders no create task link for a pjcode absent from nameWithOwnerByPjcode', () => {
+    const { queryByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha', 'beta']}
+        projectMinutes={{ alpha: 5, beta: 0 }}
+        nameWithOwnerByPjcode={{
+          alpha: 'HiromiShikata/umino-corporait-operation',
+        }}
+      />,
+    );
+    expect(queryByRole('link', { name: 'Create task in beta' })).toBeNull();
+    expect(
+      queryByRole('link', { name: 'Create task in alpha' }),
+    ).toBeInTheDocument();
+  });
+
   it('clamps dialog right position so dialog stays within viewport when button is near the left edge', async () => {
     const testViewportWidth = 500;
     const buttonRight = 35;
@@ -240,7 +285,7 @@ describe('ConsoleTimerSettingsModalDialog', () => {
       <ConsoleTimerSettingsModalDialog {...baseProps} isOpen={false} />,
     );
 
-    const settingsButton = getByRole('button', { name: 'Console Settings' });
+    const settingsButton = getByRole('button', { name: 'Settings' });
     jest.spyOn(settingsButton, 'getBoundingClientRect').mockReturnValue({
       right: buttonRight,
       bottom: 40,

@@ -322,46 +322,87 @@ body {
   padding: 8px 0;
 }
 
-.console-timer-settings-project-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.console-timer-settings-project-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
 }
 
-.console-timer-settings-project-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+.console-timer-settings-th {
+  color: #8b949e;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-align: left;
+  padding: 0 4px 6px;
+  border-bottom: 1px solid #30363d;
+}
+
+.console-timer-settings-th-minutes {
+  text-align: right;
+}
+
+.console-timer-settings-project-row td {
+  padding: 5px 4px;
   border-bottom: 1px solid #21262d;
+  vertical-align: middle;
 }
 
-.console-timer-settings-project-row:last-child {
+.console-timer-settings-project-row:last-child td {
   border-bottom: none;
 }
 
 .console-timer-settings-pjcode {
-  flex: 1;
+  display: block;
   color: #c9d1d9;
   font-size: 0.8125rem;
   font-family: ui-monospace, 'SFMono-Regular', monospace;
+  cursor: pointer;
+}
+
+.console-timer-settings-minutes-cell {
+  white-space: nowrap;
+  text-align: right;
 }
 
 .console-timer-settings-minutes-input {
-  width: 56px;
+  width: 40px;
   background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 4px;
   color: #e6edf3;
   font-size: 0.8125rem;
-  padding: 3px 6px;
+  padding: 3px 4px;
   text-align: right;
 }
 
 .console-timer-settings-minutes-label {
+  display: inline-block;
   width: 24px;
   color: #8b949e;
   font-size: 0.75rem;
+}
+
+.console-timer-settings-action-cell {
+  text-align: center;
+  width: 24px;
+}
+
+.console-timer-settings-create-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: #58a6ff;
+  font-size: 1rem;
+  text-decoration: none;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.console-timer-settings-create-link:hover {
+  background: #21262d;
+  color: #79c0ff;
 }
 
 .console-timer-settings-actions {

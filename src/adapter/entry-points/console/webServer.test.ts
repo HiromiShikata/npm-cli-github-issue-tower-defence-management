@@ -2897,6 +2897,7 @@ describe('webServer GET /api/projects', () => {
         pjcodes: ['alpha', 'beta', 'gamma'],
         projectUrls: null,
         fleetTaskCreateUrl: null,
+        nameWithOwnerByPjcode: null,
       });
     } finally {
       await closeServer(server);
@@ -2928,6 +2929,7 @@ describe('webServer GET /api/projects', () => {
         pjcodes: ['alpha'],
         projectUrls: null,
         fleetTaskCreateUrl: 'https://github.com/myorg/myrepo/issues/new',
+        nameWithOwnerByPjcode: null,
       });
     } finally {
       await closeServer(server);
@@ -2965,6 +2967,54 @@ describe('webServer GET /api/projects', () => {
           beta: 'https://github.com/orgs/org/projects/2',
         },
         fleetTaskCreateUrl: null,
+        nameWithOwnerByPjcode: null,
+      });
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns nameWithOwnerByPjcode populated from stories list.json when consoleDataOutputDir is set', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const dataDir = path.join(tmpDir, 'data');
+    const storiesDir = path.join(dataDir, 'alpha', 'stories');
+    fs.mkdirSync(storiesDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(storiesDir, 'list.json'),
+      JSON.stringify({
+        pjcode: 'alpha',
+        generatedAt: '2026-01-01T00:00:00Z',
+        stories: [],
+        storyOrder: [],
+        storyColors: {},
+        defaultNameWithOwner: 'HiromiShikata/umino-corporait-operation',
+      }),
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: dataDir,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: ['alpha', 'beta'],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'GET',
+        `/api/projects?k=${testToken}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual({
+        pjcodes: ['alpha', 'beta'],
+        projectUrls: null,
+        fleetTaskCreateUrl: null,
+        nameWithOwnerByPjcode: {
+          alpha: 'HiromiShikata/umino-corporait-operation',
+        },
       });
     } finally {
       await closeServer(server);
