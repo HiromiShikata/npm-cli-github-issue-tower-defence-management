@@ -75,7 +75,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
             sevenDayUtilization: 0.9,
           }),
         ),
-        candidate('freshHighCapacity', snapshot({ sevenDayReset: NOW + 7 * DAY })),
+        candidate(
+          'freshHighCapacity',
+          snapshot({ sevenDayReset: NOW + 7 * DAY }),
+        ),
       ],
       [
         ...sessionsFor('nearExpiryLowCapacity', 1),
