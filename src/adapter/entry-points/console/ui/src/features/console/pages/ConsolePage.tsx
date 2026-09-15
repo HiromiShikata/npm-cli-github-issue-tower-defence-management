@@ -124,6 +124,7 @@ export const ConsolePage = () => {
     pjcodes,
     projectUrls,
     fleetTaskCreateUrl,
+    nameWithOwnerByPjcode,
     isLoading: isLoadingPjcodes,
   } = useConsoleProjectList();
   const { isTimerExpired } = useConsoleProjectTimer(pjcode);
@@ -915,6 +916,7 @@ export const ConsolePage = () => {
               projectMinutes={draftProjectMinutes}
               pjcodes={pjcodes}
               isLoadingPjcodes={isLoadingPjcodes}
+              nameWithOwnerByPjcode={nameWithOwnerByPjcode}
               onOpen={openSettings}
               onToggleTimerMode={toggleDraftTimerMode}
               onChangeMinutes={changeDraftMinutes}

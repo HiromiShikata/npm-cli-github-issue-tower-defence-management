@@ -9,6 +9,7 @@ export type ConsoleTimerSettingsModalDialogProps = {
   projectMinutes: Record<string, number>;
   pjcodes: string[];
   isLoadingPjcodes: boolean;
+  nameWithOwnerByPjcode?: Record<string, string> | null;
   onOpen: () => void;
   onToggleTimerMode: (enabled: boolean) => void;
   onChangeMinutes: (pjcode: string, minutes: number) => void;
@@ -23,6 +24,7 @@ export const ConsoleTimerSettingsModalDialog = ({
   projectMinutes,
   pjcodes,
   isLoadingPjcodes,
+  nameWithOwnerByPjcode = null,
   onOpen,
   onToggleTimerMode,
   onChangeMinutes,
@@ -58,7 +60,7 @@ export const ConsoleTimerSettingsModalDialog = ({
         ref={buttonRef}
         type="button"
         className={`console-timer-settings-button${isTimerActive ? ' console-timer-settings-button--active' : ''}`}
-        aria-label="Console Settings"
+        aria-label="Settings"
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         onClick={onOpen}
@@ -78,7 +80,7 @@ export const ConsoleTimerSettingsModalDialog = ({
               className="console-timer-settings-dialog-inner"
               role="dialog"
               aria-modal="true"
-              aria-label="Console Settings"
+              aria-label="Settings"
               style={
                 dialogPos !== null
                   ? {
@@ -89,47 +91,85 @@ export const ConsoleTimerSettingsModalDialog = ({
                   : undefined
               }
             >
-              <h2 className="console-timer-settings-title">Console Settings</h2>
+              <h2 className="console-timer-settings-title">Settings</h2>
               {isLoadingPjcodes ? (
                 <div className="console-timer-settings-loading">
                   Loading projects...
                 </div>
               ) : (
-                <ul className="console-timer-settings-project-list">
-                  {pjcodes.map((pjcode) => (
-                    <li
-                      key={pjcode}
-                      className="console-timer-settings-project-row"
-                    >
-                      <label
-                        htmlFor={`timer-minutes-${pjcode}`}
-                        className="console-timer-settings-pjcode"
-                      >
-                        {pjcode}
-                      </label>
-                      <input
-                        id={`timer-minutes-${pjcode}`}
-                        type="number"
-                        min={0}
-                        value={
-                          (projectMinutes[pjcode] ?? 0) === 0
-                            ? ''
-                            : projectMinutes[pjcode]
-                        }
-                        onChange={(e) =>
-                          onChangeMinutes(
-                            pjcode,
-                            Math.max(0, parseInt(e.target.value, 10) || 0),
-                          )
-                        }
-                        className="console-timer-settings-minutes-input"
-                      />
-                      <span className="console-timer-settings-minutes-label">
-                        {(projectMinutes[pjcode] ?? 0) === 0 ? 'Skip' : 'min'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <table className="console-timer-settings-project-table">
+                  <thead>
+                    <tr>
+                      <th className="console-timer-settings-th">Project</th>
+                      <th className="console-timer-settings-th console-timer-settings-th-minutes">
+                        Min
+                      </th>
+                      <th className="console-timer-settings-th"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pjcodes.map((pjcode) => {
+                      const nameWithOwner =
+                        nameWithOwnerByPjcode?.[pjcode] ?? null;
+                      return (
+                        <tr
+                          key={pjcode}
+                          className="console-timer-settings-project-row"
+                        >
+                          <td>
+                            <label
+                              htmlFor={`timer-minutes-${pjcode}`}
+                              className="console-timer-settings-pjcode"
+                            >
+                              {pjcode}
+                            </label>
+                          </td>
+                          <td className="console-timer-settings-minutes-cell">
+                            <input
+                              id={`timer-minutes-${pjcode}`}
+                              type="number"
+                              min={0}
+                              max={999}
+                              value={
+                                (projectMinutes[pjcode] ?? 0) === 0
+                                  ? ''
+                                  : projectMinutes[pjcode]
+                              }
+                              onChange={(e) =>
+                                onChangeMinutes(
+                                  pjcode,
+                                  Math.max(
+                                    0,
+                                    parseInt(e.target.value, 10) || 0,
+                                  ),
+                                )
+                              }
+                              className="console-timer-settings-minutes-input"
+                            />
+                            <span className="console-timer-settings-minutes-label">
+                              {(projectMinutes[pjcode] ?? 0) === 0
+                                ? 'Skip'
+                                : 'min'}
+                            </span>
+                          </td>
+                          <td className="console-timer-settings-action-cell">
+                            {nameWithOwner !== null && (
+                              <a
+                                href={`https://github.com/${nameWithOwner}/issues/new`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="console-timer-settings-create-link"
+                                aria-label={`Create task in ${pjcode}`}
+                              >
+                                +
+                              </a>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
               <div className="console-timer-settings-row">
                 <span className="console-timer-settings-label">Timer Mode</span>

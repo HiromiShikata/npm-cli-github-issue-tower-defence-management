@@ -602,6 +602,24 @@ export type ProjectListResponse = {
   pjcodes: string[];
   projectUrls: Record<string, string> | null;
   fleetTaskCreateUrl: string | null;
+  nameWithOwnerByPjcode: Record<string, string> | null;
+};
+
+const parseStringRecord = (
+  value: unknown,
+): Record<string, string> | null => {
+  if (
+    value === null ||
+    typeof value !== 'object' ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  );
 };
 
 export const fetchProjectList = async (): Promise<ProjectListResponse> => {
@@ -619,6 +637,7 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
       pjcodes: [],
       projectUrls: null,
       fleetTaskCreateUrl: null,
+      nameWithOwnerByPjcode: null,
     };
   }
   const record = payload as Record<string, unknown>;
@@ -627,24 +646,17 @@ export const fetchProjectList = async (): Promise<ProjectListResponse> => {
         (entry): entry is string => typeof entry === 'string',
       )
     : [];
-  const projectUrls =
-    record.projectUrls !== null &&
-    typeof record.projectUrls === 'object' &&
-    !Array.isArray(record.projectUrls)
-      ? Object.fromEntries(
-          Object.entries(record.projectUrls as Record<string, unknown>).filter(
-            (entry): entry is [string, string] => typeof entry[1] === 'string',
-          ),
-        )
-      : null;
+  const projectUrls = parseStringRecord(record.projectUrls);
   const fleetTaskCreateUrl =
     typeof record.fleetTaskCreateUrl === 'string'
       ? record.fleetTaskCreateUrl
       : null;
+  const nameWithOwnerByPjcode = parseStringRecord(record.nameWithOwnerByPjcode);
   return {
     pjcodes,
     projectUrls,
     fleetTaskCreateUrl,
+    nameWithOwnerByPjcode,
   };
 };
 
