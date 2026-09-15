@@ -1,3 +1,10 @@
+# [2.118.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.117.0...v2.118.0) (2026-09-15)
+
+
+### Features
+
+* **ConsoleTimerSettingsModalDialog:** improve settings dialog UI with table layout and issue creation links ([#2384](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2384)) ([8a503d9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8a503d909f7e2b4241b610e32f1a74445232fd6f))
+
 # [2.117.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.4...v2.117.0) (2026-09-15)
 
 
