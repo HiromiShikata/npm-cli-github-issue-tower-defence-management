@@ -601,7 +601,8 @@ describe('githubGraphqlClient', () => {
           'mutation ClearField { clearProjectV2ItemFieldValue(input: {}) { clientMutationId } }',
       }).catch((e: unknown) => e);
       expect(thrown).toBeInstanceOf(Error);
-      if (!(thrown instanceof Error)) throw new Error('Expected Error instance');
+      if (!(thrown instanceof Error))
+        throw new Error('Expected Error instance');
       expect(thrown.message).toBe(
         'GitHub GraphQL API returned a non-JSON response: Unexpected end of JSON input',
       );
