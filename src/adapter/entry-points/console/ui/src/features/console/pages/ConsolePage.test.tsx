@@ -1498,7 +1498,7 @@ describe('ConsolePage auto-advance tab', () => {
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
-    const gearBtn = getByRole('button', { name: 'Console Settings' });
+    const gearBtn = getByRole('button', { name: 'Settings' });
     expect(gearBtn).toBeInTheDocument();
     expect(gearBtn.closest('nav.console-tabbar')).not.toBeNull();
   });
@@ -1509,11 +1509,11 @@ describe('ConsolePage auto-advance tab', () => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     expect(queryByRole('dialog')).toBeNull();
-    fireEvent.click(getByRole('button', { name: 'Console Settings' }));
+    fireEvent.click(getByRole('button', { name: 'Settings' }));
     expect(getByRole('dialog')).toBeInTheDocument();
     expect(getByRole('dialog')).toHaveAttribute(
       'aria-label',
-      'Console Settings',
+      'Settings',
     );
   });
 
@@ -1565,7 +1565,7 @@ describe('ConsolePage auto-advance tab', () => {
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
-    fireEvent.click(getByRole('button', { name: 'Console Settings' }));
+    fireEvent.click(getByRole('button', { name: 'Settings' }));
     fireEvent.click(getByLabelText('Timer Mode'));
     fireEvent.click(getByText('Save and Close'));
     expect(queryByRole('dialog')).toBeNull();
