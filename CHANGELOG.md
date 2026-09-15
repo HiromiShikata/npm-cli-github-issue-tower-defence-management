@@ -1,3 +1,10 @@
+## [2.118.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.1...v2.118.2) (2026-09-15)
+
+
+### Bug Fixes
+
+* **conflict-revert:** prefix conflict notification comment with Auto Status Check ([#2385](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2385)) ([e021e21](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e021e21c604661d27b07acfe36f888b9c5f29195)), closes [HiromiShikata/umino-corporait-operation#31792](https://github.com/HiromiShikata/umino-corporait-operation/issues/31792)
+
 ## [2.118.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.0...v2.118.1) (2026-09-15)
 
 
