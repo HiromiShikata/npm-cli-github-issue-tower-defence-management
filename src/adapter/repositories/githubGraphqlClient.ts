@@ -189,6 +189,7 @@ export const postGithubGraphqlJson = async <T>(
       if (error instanceof SyntaxError) {
         throw new Error(
           `GitHub GraphQL API returned a non-JSON response: ${error.message}`,
+          { cause: error },
         );
       }
       throw error;
