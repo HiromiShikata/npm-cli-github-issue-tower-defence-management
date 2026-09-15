@@ -216,7 +216,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
@@ -286,7 +286,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         prIssue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
   });
@@ -372,7 +372,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
@@ -545,7 +545,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
@@ -700,7 +700,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
@@ -890,11 +890,11 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledTimes(2);
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue1,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue2,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
@@ -990,7 +990,11 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should not post conflict comment when most recent comment is already conflict', async () => {
       const issue = buildConflictedScenario();
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        { author: 'bot', content: 'conflict', createdAt: new Date() },
+        {
+          author: 'bot',
+          content: AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+          createdAt: new Date(),
+        },
       ]);
 
       await useCase.run({ projectUrl });
@@ -1004,7 +1008,11 @@ describe('ConflictedIssueRevertUseCase', () => {
     it('should post conflict comment when most recent comment has different content', async () => {
       const issue = buildConflictedScenario();
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        { author: 'bot', content: 'conflict', createdAt: new Date(0) },
+        {
+          author: 'bot',
+          content: AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+          createdAt: new Date(0),
+        },
         {
           author: 'developer',
           content: 'I will fix this',
@@ -1016,7 +1024,7 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
@@ -1028,7 +1036,7 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
@@ -1036,7 +1044,11 @@ describe('ConflictedIssueRevertUseCase', () => {
       buildConflictedScenario();
       const withinWindow = new Date(Date.now() - 30 * 60 * 1000);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-        { author: 'bot', content: 'conflict', createdAt: withinWindow },
+        {
+          author: 'bot',
+          content: AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+          createdAt: withinWindow,
+        },
         {
           author: 'developer',
           content: 'I will fix this',
@@ -1182,7 +1194,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
@@ -1351,7 +1363,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
@@ -1379,7 +1391,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
