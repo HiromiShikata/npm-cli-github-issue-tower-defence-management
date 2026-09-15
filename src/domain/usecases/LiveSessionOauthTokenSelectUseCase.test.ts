@@ -65,7 +65,33 @@ const withSelectionWeight = (
 describe('LiveSessionOauthTokenSelectUseCase', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
-  it('selects the token with the highest seven day free ratio even when it has more live sessions', () => {
+  it('prefers a near-expiry token over a fresh token even when the near-expiry token has little remaining seven day capacity', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'nearExpiryLowCapacity',
+          snapshot({
+            sevenDayReset: NOW + 5 * HOUR,
+            sevenDayUtilization: 0.9,
+          }),
+        ),
+        candidate(
+          'freshHighCapacity',
+          snapshot({ sevenDayReset: NOW + 7 * DAY }),
+        ),
+      ],
+      [
+        ...sessionsFor('nearExpiryLowCapacity', 1),
+        ...sessionsFor('freshHighCapacity', 5),
+      ],
+      NOW,
+      SETTINGS,
+    );
+
+    expect(result.selected?.name).toBe('nearExpiryLowCapacity');
+  });
+
+  it('prefers the token with fewer live sessions when seven day reset times are equal', () => {
     const result = useCase.run(
       [
         candidate('lowFreeRatioIdle', snapshot({ sevenDayUtilization: 0.5 })),
@@ -76,10 +102,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       SETTINGS,
     );
 
-    expect(result.selected?.name).toBe('highFreeRatioBusy');
+    expect(result.selected?.name).toBe('lowFreeRatioIdle');
   });
 
-  it('keeps filling the token with the highest seven day free ratio until it reaches its concurrent session limit', () => {
+  it('keeps filling the token with fewer live sessions when seven day reset times are equal until it reaches its concurrent session limit', () => {
     const belowLimit = useCase.run(
       [
         candidate('lowerFreeRatioIdle', snapshot({ sevenDayUtilization: 0.5 })),
@@ -90,7 +116,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       SETTINGS,
     );
 
-    expect(belowLimit.selected?.name).toBe('highFreeRatioBusy');
+    expect(belowLimit.selected?.name).toBe('lowerFreeRatioIdle');
   });
 
   it('moves to the next soonest resetting token once the soonest one is at its concurrent session limit', () => {
@@ -191,7 +217,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(result.selected?.name).toBe('earlyDrainSevenDay');
   });
 
-  it('allows a token whose seven day window is below the minimum when it resets within 48 hours but selects a higher free ratio token when one is available', () => {
+  it('prefers the token within the 48-hour deadline window over a token with a distant reset', () => {
     const result = useCase.run(
       [
         candidate(
@@ -215,7 +241,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       (m) => m.name === 'aboutToResetNearlyUsedSevenDay',
     );
     expect(aboutToReset?.eligible).toBe(true);
-    expect(result.selected?.name).toBe('distantResetIdle');
+    expect(result.selected?.name).toBe('aboutToResetNearlyUsedSevenDay');
   });
 
   it('still throttles a seven day window that resets within the hour once its five hour window falls below half free', () => {
@@ -324,7 +350,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     expect(tiny?.concurrentSessionLimit).toBe(1);
   });
 
-  it('selects the token with the highest seven day free ratio when every eligible token is at its concurrent session limit', () => {
+  it('selects the first eligible token when every token is at its concurrent session limit and all other tie-breakers are equal', () => {
     const result = useCase.run(
       [
         candidate('lowFreeRatioFull', snapshot({ sevenDayUtilization: 0.5 })),
@@ -338,10 +364,10 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
       SETTINGS,
     );
 
-    expect(result.selected?.name).toBe('highFreeRatioFull');
+    expect(result.selected?.name).toBe('lowFreeRatioFull');
   });
 
-  it('breaks a seven day free ratio tie by the fewer live sessions', () => {
+  it('breaks a seven day reset epoch tie by the fewer live sessions', () => {
     const result = useCase.run(
       [
         candidate('sameResetBusy', snapshot({ sevenDayReset: NOW + 2 * HOUR })),
@@ -429,7 +455,7 @@ describe('LiveSessionOauthTokenSelectUseCase', () => {
     const fresh = result.metrics.find((m) => m.name === 'fresh');
     expect(resumedHeavy?.liveSessionCount).toBe(2);
     expect(fresh?.liveSessionCount).toBe(1);
-    expect(result.selected?.name).toBe('fresh');
+    expect(result.selected?.name).toBe('resumedHeavy');
   });
 
   it('returns null selection when no token passes even the fallback filter', () => {

@@ -167,7 +167,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     );
   });
 
-  it('selects the token with fewer live sessions when seven day free ratios are equal', () => {
+  it('selects the token with fewer live sessions when seven day reset epochs are equal', () => {
     writeTokenList([
       { name: 'busy', token: 'fake-busy' },
       { name: 'idle', token: 'fake-idle' },
@@ -182,7 +182,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
       fiveHourUtilization: 0.1,
       fiveHourReset: NOW + HOUR,
       sevenDayUtilization: 0.1,
-      sevenDayReset: NOW + 6 * DAY,
+      sevenDayReset: NOW + 2 * DAY,
     });
 
     const handler = buildHandler([
@@ -202,7 +202,7 @@ describe('LiveSessionOauthTokenSelectHandler', () => {
     );
   });
 
-  it('selects the token with the highest seven day free ratio', () => {
+  it('selects the token with the earliest seven day reset epoch', () => {
     writeTokenList([
       { name: 'highUtilization', token: 'fake-high' },
       { name: 'lowUtilization', token: 'fake-low' },
