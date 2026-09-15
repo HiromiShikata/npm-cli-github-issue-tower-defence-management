@@ -164,25 +164,36 @@ export const postGithubGraphqlJson = async <T>(
         `${new Date().toISOString()} githubGraphqlClient: mutation=${extractGraphqlOperationName(params.query)} caller=${callSite}`,
       );
     }
-    const response = await ky
-      .post(GITHUB_GRAPHQL_ENDPOINT, {
-        json: {
-          query: injectRateLimitSelection(params.query),
-          ...(params.variables !== undefined
-            ? { variables: params.variables }
-            : {}),
-        },
-        headers: {
-          Authorization: `Bearer ${params.ghToken}`,
-        },
-        timeout: GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
-        retry: {
-          limit: GRAPHQL_RETRY_LIMIT,
-          methods: ['post'],
-          statusCodes: GRAPHQL_RETRY_STATUS_CODES,
-        },
-      })
-      .json<T>();
+    let response: T;
+    try {
+      response = await ky
+        .post(GITHUB_GRAPHQL_ENDPOINT, {
+          json: {
+            query: injectRateLimitSelection(params.query),
+            ...(params.variables !== undefined
+              ? { variables: params.variables }
+              : {}),
+          },
+          headers: {
+            Authorization: `Bearer ${params.ghToken}`,
+          },
+          timeout: GITHUB_GRAPHQL_REQUEST_TIMEOUT_MS,
+          retry: {
+            limit: GRAPHQL_RETRY_LIMIT,
+            methods: ['post'],
+            statusCodes: GRAPHQL_RETRY_STATUS_CODES,
+          },
+        })
+        .json<T>();
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error(
+          `GitHub GraphQL API returned a non-JSON response: ${error.message}`,
+          { cause: error },
+        );
+      }
+      throw error;
+    }
     logGithubGraphqlCost({
       query: params.query,
       responseBody: response,

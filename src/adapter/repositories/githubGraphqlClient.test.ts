@@ -589,6 +589,39 @@ describe('githubGraphqlClient', () => {
       expect(statusCodes).toContain(504);
       expect(statusCodes).toContain(GRAPHQL_RETRY_STATUS_CODES[0]);
     });
+
+    it('throws an Error with diagnostic context when the API returns a non-JSON body', async () => {
+      const syntaxError = new SyntaxError('Unexpected end of JSON input');
+      mockPost.mockReturnValue({
+        json: jest.fn().mockRejectedValue(syntaxError),
+      });
+      const thrown = await postGithubGraphqlJson({
+        ghToken: 'token-a',
+        query:
+          'mutation ClearField { clearProjectV2ItemFieldValue(input: {}) { clientMutationId } }',
+      }).catch((e: unknown) => e);
+      expect(thrown).toBeInstanceOf(Error);
+      if (!(thrown instanceof Error))
+        throw new Error('Expected Error instance');
+      expect(thrown.message).toBe(
+        'GitHub GraphQL API returned a non-JSON response: Unexpected end of JSON input',
+      );
+      expect(thrown.cause).toBe(syntaxError);
+    });
+
+    it('rethrows non-SyntaxError rejections from ky without wrapping', async () => {
+      const networkError = new TypeError('Failed to fetch');
+      mockPost.mockReturnValue({
+        json: jest.fn().mockRejectedValue(networkError),
+      });
+      await expect(
+        postGithubGraphqlJson({
+          ghToken: 'token-a',
+          query:
+            'mutation ClearField { clearProjectV2ItemFieldValue(input: {}) { clientMutationId } }',
+        }),
+      ).rejects.toBe(networkError);
+    });
   });
 
   describe('fetchGithubGraphql', () => {
