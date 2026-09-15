@@ -1511,10 +1511,7 @@ describe('ConsolePage auto-advance tab', () => {
     expect(queryByRole('dialog')).toBeNull();
     fireEvent.click(getByRole('button', { name: 'Settings' }));
     expect(getByRole('dialog')).toBeInTheDocument();
-    expect(getByRole('dialog')).toHaveAttribute(
-      'aria-label',
-      'Settings',
-    );
+    expect(getByRole('dialog')).toHaveAttribute('aria-label', 'Settings');
   });
 
   it('renders the max settings button in the tab bar', async () => {
