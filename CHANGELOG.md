@@ -1,3 +1,10 @@
+## [2.118.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.2...v2.118.3) (2026-09-15)
+
+
+### Bug Fixes
+
+* **githubGraphqlClient:** catch SyntaxError from ky json() and rethrow with context ([#2387](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2387)) ([0cdd975](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0cdd975ff0b9fb891d8fd1f53cad176e43013eb3)), closes [HiromiShikata/secretary#6332](https://github.com/HiromiShikata/secretary/issues/6332)
+
 ## [2.118.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.1...v2.118.2) (2026-09-15)
 
 
