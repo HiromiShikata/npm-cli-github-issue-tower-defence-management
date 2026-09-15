@@ -1,3 +1,10 @@
+## [2.116.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.3...v2.116.4) (2026-09-15)
+
+
+### Bug Fixes
+
+* **fetchProjectItems:** add totalCount inconsistency resilience with retry-once-then-warn ([#2382](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2382)) ([ec8e2c1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ec8e2c119270b68033c6dd52148f4930ade6be75)), closes [HiromiShikata/npm-cli-github-issue-tower-defence-management#2381](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2381)
+
 ## [2.116.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.116.2...v2.116.3) (2026-09-14)
 
 
