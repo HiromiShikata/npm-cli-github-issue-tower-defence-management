@@ -2,6 +2,7 @@ import { ConflictedIssueRevertUseCase } from './ConflictedIssueRevertUseCase';
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { RelatedPullRequest } from './adapter-interfaces/IssueRepository';
+import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from './autoStatusCheckComments';
 
 const createMockProject = (overrides: Partial<Project> = {}): Project => ({
   id: 'project-1',
@@ -548,7 +549,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       );
     });
 
-    it('should post exactly the string conflict as the comment body', async () => {
+    it('should post an Auto Status Check CONFLICT message as the comment body', async () => {
       const issue = createMockIssue({
         url: 'https://github.com/user/repo/issues/1',
         status: 'In Tmux by agent',
@@ -576,7 +577,7 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        'conflict',
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
     });
 
