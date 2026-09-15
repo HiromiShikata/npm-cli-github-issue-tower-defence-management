@@ -65,6 +65,29 @@ const withSelectionWeight = (
 describe('LiveSessionOauthTokenSelectUseCase', () => {
   const useCase = new LiveSessionOauthTokenSelectUseCase();
 
+  it('prefers a near-expiry token over a fresh token even when the near-expiry token has little remaining seven day capacity', () => {
+    const result = useCase.run(
+      [
+        candidate(
+          'nearExpiryLowCapacity',
+          snapshot({
+            sevenDayReset: NOW + 5 * HOUR,
+            sevenDayUtilization: 0.9,
+          }),
+        ),
+        candidate('freshHighCapacity', snapshot({ sevenDayReset: NOW + 7 * DAY })),
+      ],
+      [
+        ...sessionsFor('nearExpiryLowCapacity', 1),
+        ...sessionsFor('freshHighCapacity', 5),
+      ],
+      NOW,
+      SETTINGS,
+    );
+
+    expect(result.selected?.name).toBe('nearExpiryLowCapacity');
+  });
+
   it('selects the token with the highest seven day free ratio even when it has more live sessions', () => {
     const result = useCase.run(
       [
