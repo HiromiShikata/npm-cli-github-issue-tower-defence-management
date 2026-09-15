@@ -416,62 +416,93 @@ describe('GraphqlProjectItemRepository', () => {
       ).rejects.toThrow('No data returned from GitHub API');
     });
 
-    it('should throw when a returned page contains nodes, declares hasNextPage=false, yet totalCount still indicates more items remain', async () => {
+    it('should warn and retry when page reports hasNextPage=false but totalCount indicates more items remain', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
         'dummy-token',
       );
 
-      mockPost.mockReturnValueOnce(
-        mockJsonResponse({
-          data: {
-            node: {
-              items: {
-                totalCount: 5,
-                pageInfo: {
-                  endCursor: 'cursor-1',
-                  startCursor: 'cursor-start',
-                  hasNextPage: false,
-                },
-                nodes: [
-                  {
-                    id: 'item-1',
-                    fieldValues: { nodes: [] },
-                    content: {
-                      repository: { nameWithOwner: 'owner/repo' },
-                      number: 1,
-                      title: 'Test Issue',
-                      state: 'OPEN',
-                      url: 'https://github.com/owner/repo/issues/1',
-                      body: 'body',
-                      createdAt: '2024-01-01T00:00:00Z',
-                      labels: { nodes: [] },
-                      assignees: { nodes: [] },
-                    },
+      const makeItemNode = () => ({
+        id: 'item-1',
+        fieldValues: { nodes: [] },
+        content: {
+          repository: { nameWithOwner: 'owner/repo', isArchived: false },
+          number: 1,
+          title: 'Test Issue',
+          state: 'OPEN',
+          url: 'https://github.com/owner/repo/issues/1',
+          body: 'body',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          author: { login: 'author' },
+          labels: { nodes: [] },
+          assignees: { nodes: [] },
+        },
+      });
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              node: {
+                items: {
+                  totalCount: 5,
+                  pageInfo: {
+                    endCursor: 'cursor-1',
+                    startCursor: 'cursor-start',
+                    hasNextPage: false,
                   },
-                ],
+                  nodes: [makeItemNode()],
+                },
               },
             },
-          },
-        }),
-      );
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              node: {
+                items: {
+                  totalCount: 1,
+                  pageInfo: {
+                    endCursor: 'cursor-1',
+                    startCursor: 'cursor-start',
+                    hasNextPage: false,
+                  },
+                  nodes: [makeItemNode()],
+                },
+              },
+            },
+          }),
+        );
 
-      await expect(
-        repository.fetchProjectItems('test-project-id'),
-      ).rejects.toThrow(
-        'fetchProjectItems: page 1 has 1 nodes with hasNextPage=false but only 1/5 items accumulated',
-      );
+      try {
+        const result = await repository.fetchProjectItems('test-project-id');
+
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('item-1');
+        expect(mockPost).toHaveBeenCalledTimes(2);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'fetchProjectItems: page 1 has 1 nodes with hasNextPage=false but only 1/5 items accumulated',
+          ),
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
 
-    it('should throw when page has no nodes but totalCount is positive', async () => {
+    it('should warn and return empty array when page has no nodes but totalCount is positive even after retry', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const localStorageRepository = new LocalStorageRepository();
       const repository = new GraphqlProjectItemRepository(
         localStorageRepository,
         'dummy-token',
       );
 
-      mockPost.mockReturnValueOnce(
+      const inconsistentPage = () =>
         mockJsonResponse({
           data: {
             node: {
@@ -486,14 +517,103 @@ describe('GraphqlProjectItemRepository', () => {
               },
             },
           },
-        }),
+        });
+
+      mockPost
+        .mockReturnValueOnce(inconsistentPage())
+        .mockReturnValueOnce(inconsistentPage());
+
+      try {
+        const result = await repository.fetchProjectItems('test-project-id');
+
+        expect(result).toHaveLength(0);
+        expect(mockPost).toHaveBeenCalledTimes(2);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'fetchProjectItems: expected 2 items but accumulated 0',
+          ),
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('should warn and return accumulated items when the final page reports totalCount = 0 after accumulating items', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
       );
 
-      await expect(
-        repository.fetchProjectItems('test-project-id'),
-      ).rejects.toThrow(
-        'fetchProjectItems: expected 2 items but accumulated 0',
-      );
+      const makeItemNode = () => ({
+        id: 'item-1',
+        fieldValues: { nodes: [] },
+        content: {
+          repository: { nameWithOwner: 'owner/repo', isArchived: false },
+          number: 1,
+          title: 'Test Issue',
+          state: 'OPEN',
+          url: 'https://github.com/owner/repo/issues/1',
+          body: 'body',
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+          author: { login: 'author' },
+          labels: { nodes: [] },
+          assignees: { nodes: [] },
+        },
+      });
+
+      mockPost
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              node: {
+                items: {
+                  totalCount: 0,
+                  pageInfo: {
+                    endCursor: 'cursor-1',
+                    startCursor: 'cursor-start',
+                    hasNextPage: false,
+                  },
+                  nodes: [makeItemNode()],
+                },
+              },
+            },
+          }),
+        )
+        .mockReturnValueOnce(
+          mockJsonResponse({
+            data: {
+              node: {
+                items: {
+                  totalCount: 1,
+                  pageInfo: {
+                    endCursor: 'cursor-1',
+                    startCursor: 'cursor-start',
+                    hasNextPage: false,
+                  },
+                  nodes: [makeItemNode()],
+                },
+              },
+            },
+          }),
+        );
+
+      try {
+        const result = await repository.fetchProjectItems('test-project-id');
+
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('item-1');
+        expect(mockPost).toHaveBeenCalledTimes(2);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'fetchProjectItems: expected 0 items but accumulated 1',
+          ),
+        );
+      } finally {
+        warnSpy.mockRestore();
+      }
     });
 
     it('should not sleep on first request when there is only one page', async () => {
