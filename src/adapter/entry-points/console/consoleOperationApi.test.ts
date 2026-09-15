@@ -13,8 +13,8 @@ import {
   readDoneProjectItemIds,
 } from './consoleDoneStore';
 import { countCloseEvents } from './consoleCloseEventStore';
+import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
 import {
-  CONFLICT_RETURNED_MESSAGE,
   type ConsoleOperationContext,
   type ConsoleProjectBinding,
   handleAttachmentUpload,
@@ -626,7 +626,7 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(issueRepository.createCommentByUrl).toHaveBeenCalledWith(
         'https://github.com/o/r/pull/1',
-        CONFLICT_RETURNED_MESSAGE,
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
       expect(issueRepository.updateStatus).toHaveBeenCalledWith(
         project,

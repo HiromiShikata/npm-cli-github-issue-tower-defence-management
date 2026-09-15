@@ -31,12 +31,11 @@ import {
   updateProjectV2Readme,
 } from '../cli/projectConfig';
 import { removeItemFromConsoleLists } from '../handlers/FileSystemConsoleTabsRepository';
+import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from '../../../domain/usecases/autoStatusCheckComments';
 
 export const AWAITING_WORKSPACE_STATUS_NAME = 'awaiting workspace';
 export const PREPARATION_STATUS_NAME = 'preparation';
 export const GITHUB_ISSUE_TITLE_MAX_CHARS = 256;
-export const CONFLICT_RETURNED_MESSAGE =
-  'Auto Status Check: CONFLICT\nThis pull request has a merge conflict and has been returned to Awaiting Workspace.';
 export const IN_TMUX_BY_HUMAN_STATUS_NAME = 'in tmux by human';
 export const CHORE_LABEL_NAME = 'chore';
 
@@ -405,7 +404,7 @@ export const handleReview = async (
     if (prStatus.isConflicted) {
       await issueRepository.createCommentByUrl(
         prUrl,
-        CONFLICT_RETURNED_MESSAGE,
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
       const conflictFailure = await updateStatusByName(
         issueRepository,
