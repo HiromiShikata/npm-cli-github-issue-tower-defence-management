@@ -26,6 +26,7 @@ export type IssueCreateModalDialogProps = {
   initialDraft?: IssueCreateDraft;
   onDraftChange?: (draft: IssueCreateDraft) => void;
   fleetTaskCreateUrl?: string | null;
+  newIssueUrl?: string | null;
 };
 
 export const IssueCreateModalDialog = ({
@@ -36,6 +37,7 @@ export const IssueCreateModalDialog = ({
   initialDraft,
   onDraftChange,
   fleetTaskCreateUrl,
+  newIssueUrl,
 }: IssueCreateModalDialogProps) => {
   const [selectedStoryOptionId, setSelectedStoryOptionId] = useState<
     string | null
@@ -163,6 +165,16 @@ export const IssueCreateModalDialog = ({
                 className="console-task-create-dialog-fleet-link"
               >
                 Fleet
+              </a>
+            )}
+            {newIssueUrl != null && (
+              <a
+                href={newIssueUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="console-task-create-dialog-new-issue-link"
+              >
+                New tab
               </a>
             )}
             <button
@@ -334,19 +346,19 @@ export const IssueCreateModalDialog = ({
           <div className="console-task-create-dialog-actions">
             <button
               type="button"
-              className="console-task-create-dialog-submit"
-              disabled={submitting}
-              onClick={() => void handleSubmit()}
-            >
-              {submitting ? 'Creating…' : 'Create'}
-            </button>
-            <button
-              type="button"
               className="console-task-create-dialog-cancel"
               disabled={submitting}
               onClick={onClose}
             >
               Cancel
+            </button>
+            <button
+              type="button"
+              className="console-task-create-dialog-submit"
+              disabled={submitting}
+              onClick={() => void handleSubmit()}
+            >
+              {submitting ? 'Creating…' : 'Create'}
             </button>
           </div>
         </div>

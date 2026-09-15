@@ -959,6 +959,27 @@ test('does not show the fleet task create link when fleetTaskCreateUrl is not co
   );
 });
 
+test('shows the new issue tab link in the create-task dialog when defaultNameWithOwner is configured', async ({
+  page,
+}) => {
+  const expectedNewIssueUrl =
+    'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/new';
+  await page.goto(harness.appUrl);
+
+  const newTaskButton = page.locator('.console-task-create-button');
+  await expect(newTaskButton).toBeVisible();
+  await newTaskButton.click();
+
+  const dialog = page.getByRole('dialog', { name: /create new task/i });
+  await expect(dialog).toBeVisible();
+
+  const link = dialog.locator('.console-task-create-dialog-new-issue-link');
+  await expect(link).toBeVisible();
+  await expect(link).toHaveAttribute('href', expectedNewIssueUrl);
+  await expect(link).toHaveAttribute('target', '_blank');
+  await expect(link).toHaveAttribute('rel', 'noreferrer');
+});
+
 test('renames a story option in the GitHub custom field via the rename form', async ({
   page,
 }) => {

@@ -684,4 +684,48 @@ describe('IssueCreateModalDialog', () => {
       document.body.querySelector('.console-task-create-dialog-fleet-link'),
     ).toBeNull();
   });
+
+  it('renders Cancel button before Create button in DOM order', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    const actionsDiv = document.body.querySelector(
+      '.console-task-create-dialog-actions',
+    ) as HTMLElement;
+    const buttons = [...actionsDiv.querySelectorAll('button')];
+    const cancelIndex = buttons.findIndex((b) =>
+      /^cancel$/i.test(b.textContent ?? ''),
+    );
+    const createIndex = buttons.findIndex((b) =>
+      /^create$/i.test(b.textContent ?? ''),
+    );
+    expect(cancelIndex).toBeGreaterThanOrEqual(0);
+    expect(createIndex).toBeGreaterThanOrEqual(0);
+    expect(cancelIndex).toBeLessThan(createIndex);
+  });
+
+  it('renders new issue tab link when newIssueUrl is provided', () => {
+    const newIssueUrl =
+      'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/new';
+    render(<IssueCreateModalDialog {...baseProps} newIssueUrl={newIssueUrl} />);
+    const link = document.body.querySelector(
+      '.console-task-create-dialog-new-issue-link',
+    ) as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.href).toBe(newIssueUrl);
+    expect(link.target).toBe('_blank');
+    expect(link.rel).toContain('noreferrer');
+  });
+
+  it('does not render new issue tab link when newIssueUrl is not provided', () => {
+    render(<IssueCreateModalDialog {...baseProps} />);
+    expect(
+      document.body.querySelector('.console-task-create-dialog-new-issue-link'),
+    ).toBeNull();
+  });
+
+  it('does not render new issue tab link when newIssueUrl is null', () => {
+    render(<IssueCreateModalDialog {...baseProps} newIssueUrl={null} />);
+    expect(
+      document.body.querySelector('.console-task-create-dialog-new-issue-link'),
+    ).toBeNull();
+  });
 });

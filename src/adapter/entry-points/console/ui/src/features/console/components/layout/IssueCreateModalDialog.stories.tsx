@@ -76,6 +76,13 @@ export const WithFleetTaskCreateUrl: Story = {
   },
 };
 
+export const WithNewIssueUrl: Story = {
+  args: {
+    newIssueUrl:
+      'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/new',
+  },
+};
+
 export const WithFileAttachments: Story = {
   play: async ({ canvasElement }) => {
     const fileInput = canvasElement.querySelector(
