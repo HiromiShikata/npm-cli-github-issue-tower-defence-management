@@ -3266,7 +3266,12 @@ describe('webServer client disconnect handling', () => {
         fieldId: 'storyField',
         databaseId: 1,
         stories: [
-          { id: 'opt_test', name: 'Test Story', color: 'BLUE', description: '' },
+          {
+            id: 'opt_test',
+            name: 'Test Story',
+            color: 'BLUE',
+            description: '',
+          },
         ],
         workflowManagementStory: { id: 'wms', name: 'workflow' },
       },
