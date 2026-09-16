@@ -1,3 +1,10 @@
+## [2.118.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.3...v2.118.4) (2026-09-16)
+
+
+### Bug Fixes
+
+* **webServer:** suppress ECONNRESET errors from client disconnect in console server ([#2388](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2388)) ([30c683d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/30c683d729be630656b0f338cef07456eb00d983))
+
 ## [2.118.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.2...v2.118.3) (2026-09-15)
 
 
