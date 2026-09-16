@@ -1,4 +1,5 @@
 import * as http from 'http';
+import * as net from 'net';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -3209,6 +3210,149 @@ describe('webServer GET /api/projects', () => {
       );
     } finally {
       consoleWarnSpy.mockRestore();
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('webServer client disconnect handling', () => {
+  const testToken = 'client-disconnect-test-token';
+
+  const closeServer = (server: http.Server): Promise<void> =>
+    new Promise((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+
+  const assertEconnresetLogsAtInfoLevel = async (
+    server: http.Server,
+  ): Promise<void> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('unexpected server address');
+    }
+    const { port } = address;
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const consoleInfoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => {});
+    try {
+      const socket = net.createConnection(port, '127.0.0.1');
+      await new Promise<void>((resolve, reject) => {
+        socket.on('connect', resolve);
+        socket.on('error', reject);
+      });
+      const rawRequest = [
+        `POST /api/createissue?k=${testToken} HTTP/1.1`,
+        'Host: 127.0.0.1',
+        'Content-Type: application/json',
+        'Content-Length: 1000',
+        '',
+        '{"pjcode"',
+      ].join('\r\n');
+      socket.write(rawRequest);
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      socket.destroy();
+      socket.on('error', () => {});
+      await new Promise<void>((resolve) => setTimeout(resolve, 200));
+      expect(consoleSpy).not.toHaveBeenCalledWith(
+        'console request failed',
+        expect.anything(),
+      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        'console request: client disconnected (ECONNRESET)',
+        expect.anything(),
+      );
+    } finally {
+      consoleSpy.mockRestore();
+      consoleInfoSpy.mockRestore();
+    }
+  };
+
+  it('does not log "console request failed" when the client disconnects while the request body is being read on a configured endpoint', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.createNewIssue.mockResolvedValue(42);
+    issueRepository.addIssueToProject.mockResolvedValue('PVTI_added');
+    issueRepository.get.mockResolvedValue(null);
+    issueRepository.getAuthenticatedUserLogin.mockResolvedValue('test-user');
+
+    const projectWithStory: Project = {
+      ...mock<Project>(),
+      id: 'PVT_1',
+      status: {
+        name: 'Status',
+        fieldId: 'statusField',
+        statuses: [],
+      },
+      story: {
+        name: 'Story',
+        fieldId: 'storyField',
+        databaseId: 1,
+        stories: [
+          {
+            id: 'opt_test',
+            name: 'Test Story',
+            color: 'BLUE',
+            description: '',
+          },
+        ],
+        workflowManagementStory: { id: 'wms', name: 'workflow' },
+      },
+    };
+
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository,
+      resolveProject: async (pjcode) =>
+        pjcode === 'acme' ? { pjcode, project: projectWithStory } : null,
+      isPjcodeConfigured: (pjcode) => pjcode === 'acme',
+      port: 0,
+    });
+
+    try {
+      await assertEconnresetLogsAtInfoLevel(server);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('does not log "console request failed" when the client disconnects while the request body is being read', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      issueRepository: mock<IssueRepository>(),
+      resolveProject: async () => null,
+      isPjcodeConfigured: () => false,
+      port: 0,
+    });
+
+    try {
+      await assertEconnresetLogsAtInfoLevel(server);
+    } finally {
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

@@ -1036,7 +1036,19 @@ const sendInternalServerError = (response: http.ServerResponse): void => {
 
 export const createWebServer = (options: WebServerOptions): http.Server =>
   http.createServer((request, response) => {
-    handleWebRequest(options, request, response).catch((error) => {
+    handleWebRequest(options, request, response).catch((error: unknown) => {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'ECONNRESET'
+      ) {
+        console.info(
+          'console request: client disconnected (ECONNRESET)',
+          request.url,
+        );
+        return;
+      }
       console.error('console request failed', error);
       if (options.consoleErrorReporter != null) {
         void options.consoleErrorReporter(error, request.url ?? '/');
