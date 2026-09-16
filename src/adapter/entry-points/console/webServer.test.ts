@@ -3363,6 +3363,9 @@ describe('webServer client disconnect handling', () => {
     const consoleSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {});
+    const consoleInfoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => {});
 
     try {
       const address = server.address();
@@ -3398,8 +3401,13 @@ describe('webServer client disconnect handling', () => {
         'console request failed',
         expect.anything(),
       );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        'console request: client disconnected (ECONNRESET)',
+        expect.anything(),
+      );
     } finally {
       consoleSpy.mockRestore();
+      consoleInfoSpy.mockRestore();
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }

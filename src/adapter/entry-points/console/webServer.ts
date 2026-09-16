@@ -1043,6 +1043,10 @@ export const createWebServer = (options: WebServerOptions): http.Server =>
         'code' in error &&
         error.code === 'ECONNRESET'
       ) {
+        console.info(
+          'console request: client disconnected (ECONNRESET)',
+          request.url,
+        );
         return;
       }
       console.error('console request failed', error);
