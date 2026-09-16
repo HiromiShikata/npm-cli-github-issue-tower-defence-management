@@ -3230,25 +3230,11 @@ describe('webServer client disconnect handling', () => {
       });
     });
 
-  it('does not log "console request failed" when the client socket is destroyed before the response is sent', async () => {
+  it('does not log "console request failed" when the client disconnects while the request body is being read on a configured endpoint', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
 
-    let unblockOperation: () => void = () => {};
-    const operationGate = new Promise<void>((resolve) => {
-      unblockOperation = resolve;
-    });
-
-    let notifyCreateNewIssueCalled: () => void = () => {};
-    const createNewIssueCalled = new Promise<void>((resolve) => {
-      notifyCreateNewIssueCalled = resolve;
-    });
-
     const issueRepository = mock<IssueRepository>();
-    issueRepository.createNewIssue.mockImplementation(async () => {
-      notifyCreateNewIssueCalled();
-      await operationGate;
-      return 42;
-    });
+    issueRepository.createNewIssue.mockResolvedValue(42);
     issueRepository.addIssueToProject.mockResolvedValue('PVTI_added');
     issueRepository.get.mockResolvedValue(null);
     issueRepository.getAuthenticatedUserLogin.mockResolvedValue('test-user');
@@ -3295,6 +3281,9 @@ describe('webServer client disconnect handling', () => {
     const consoleSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {});
+    const consoleInfoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => {});
 
     try {
       const address = server.address();
@@ -3303,32 +3292,26 @@ describe('webServer client disconnect handling', () => {
       }
       const port = address.port;
 
-      const payload = JSON.stringify({
-        pjcode: 'acme',
-        title: 'New task',
-        storyName: 'Test Story',
-        nameWithOwner: 'o/r',
+      const socket = net.createConnection(port, '127.0.0.1');
+      await new Promise<void>((resolve, reject) => {
+        socket.on('connect', resolve);
+        socket.on('error', reject);
       });
 
-      const httpRequest = http.request({
-        host: '127.0.0.1',
-        port,
-        path: `/api/createissue?k=${testToken}`,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload),
-        },
-      });
-      httpRequest.on('error', () => {});
-      httpRequest.write(payload);
-      httpRequest.end();
+      const partialBody = '{"pjcode":"acme","title":"New';
+      const rawRequest = [
+        `POST /api/createissue?k=${testToken} HTTP/1.1`,
+        'Host: 127.0.0.1',
+        'Content-Type: application/json',
+        'Content-Length: 1000',
+        '',
+        partialBody,
+      ].join('\r\n');
+      socket.write(rawRequest);
 
-      await createNewIssueCalled;
-
-      httpRequest.socket?.destroy();
-
-      unblockOperation();
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      socket.destroy();
+      socket.on('error', () => {});
 
       await new Promise<void>((resolve) => setTimeout(resolve, 200));
 
@@ -3336,8 +3319,13 @@ describe('webServer client disconnect handling', () => {
         'console request failed',
         expect.anything(),
       );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        'console request: client disconnected (ECONNRESET)',
+        expect.anything(),
+      );
     } finally {
       consoleSpy.mockRestore();
+      consoleInfoSpy.mockRestore();
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
