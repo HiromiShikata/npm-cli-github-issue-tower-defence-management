@@ -3230,6 +3230,53 @@ describe('webServer client disconnect handling', () => {
       });
     });
 
+  const assertEconnresetLogsAtInfoLevel = async (
+    server: http.Server,
+  ): Promise<void> => {
+    const address = server.address();
+    if (address === null || typeof address === 'string') {
+      throw new Error('unexpected server address');
+    }
+    const { port } = address;
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const consoleInfoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => {});
+    try {
+      const socket = net.createConnection(port, '127.0.0.1');
+      await new Promise<void>((resolve, reject) => {
+        socket.on('connect', resolve);
+        socket.on('error', reject);
+      });
+      const rawRequest = [
+        `POST /api/createissue?k=${testToken} HTTP/1.1`,
+        'Host: 127.0.0.1',
+        'Content-Type: application/json',
+        'Content-Length: 1000',
+        '',
+        '{"pjcode"',
+      ].join('\r\n');
+      socket.write(rawRequest);
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      socket.destroy();
+      socket.on('error', () => {});
+      await new Promise<void>((resolve) => setTimeout(resolve, 200));
+      expect(consoleSpy).not.toHaveBeenCalledWith(
+        'console request failed',
+        expect.anything(),
+      );
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        'console request: client disconnected (ECONNRESET)',
+        expect.anything(),
+      );
+    } finally {
+      consoleSpy.mockRestore();
+      consoleInfoSpy.mockRestore();
+    }
+  };
+
   it('does not log "console request failed" when the client disconnects while the request body is being read on a configured endpoint', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
 
@@ -3278,54 +3325,9 @@ describe('webServer client disconnect handling', () => {
       port: 0,
     });
 
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-    const consoleInfoSpy = jest
-      .spyOn(console, 'info')
-      .mockImplementation(() => {});
-
     try {
-      const address = server.address();
-      if (address === null || typeof address === 'string') {
-        throw new Error('unexpected server address');
-      }
-      const port = address.port;
-
-      const socket = net.createConnection(port, '127.0.0.1');
-      await new Promise<void>((resolve, reject) => {
-        socket.on('connect', resolve);
-        socket.on('error', reject);
-      });
-
-      const partialBody = '{"pjcode":"acme","title":"New';
-      const rawRequest = [
-        `POST /api/createissue?k=${testToken} HTTP/1.1`,
-        'Host: 127.0.0.1',
-        'Content-Type: application/json',
-        'Content-Length: 1000',
-        '',
-        partialBody,
-      ].join('\r\n');
-      socket.write(rawRequest);
-
-      await new Promise<void>((resolve) => setTimeout(resolve, 50));
-      socket.destroy();
-      socket.on('error', () => {});
-
-      await new Promise<void>((resolve) => setTimeout(resolve, 200));
-
-      expect(consoleSpy).not.toHaveBeenCalledWith(
-        'console request failed',
-        expect.anything(),
-      );
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        'console request: client disconnected (ECONNRESET)',
-        expect.anything(),
-      );
+      await assertEconnresetLogsAtInfoLevel(server);
     } finally {
-      consoleSpy.mockRestore();
-      consoleInfoSpy.mockRestore();
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
@@ -3348,54 +3350,9 @@ describe('webServer client disconnect handling', () => {
       port: 0,
     });
 
-    const consoleSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation(() => {});
-    const consoleInfoSpy = jest
-      .spyOn(console, 'info')
-      .mockImplementation(() => {});
-
     try {
-      const address = server.address();
-      if (address === null || typeof address === 'string') {
-        throw new Error('unexpected server address');
-      }
-      const port = address.port;
-
-      const socket = net.createConnection(port, '127.0.0.1');
-      await new Promise<void>((resolve, reject) => {
-        socket.on('connect', resolve);
-        socket.on('error', reject);
-      });
-
-      const partialBody = '{"pjcode"';
-      const rawRequest = [
-        `POST /api/createissue?k=${testToken} HTTP/1.1`,
-        'Host: 127.0.0.1',
-        'Content-Type: application/json',
-        'Content-Length: 1000',
-        '',
-        partialBody,
-      ].join('\r\n');
-      socket.write(rawRequest);
-
-      await new Promise<void>((resolve) => setTimeout(resolve, 50));
-      socket.destroy();
-      socket.on('error', () => {});
-
-      await new Promise<void>((resolve) => setTimeout(resolve, 200));
-
-      expect(consoleSpy).not.toHaveBeenCalledWith(
-        'console request failed',
-        expect.anything(),
-      );
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        'console request: client disconnected (ECONNRESET)',
-        expect.anything(),
-      );
+      await assertEconnresetLogsAtInfoLevel(server);
     } finally {
-      consoleSpy.mockRestore();
-      consoleInfoSpy.mockRestore();
       await closeServer(server);
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
