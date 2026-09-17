@@ -979,9 +979,9 @@ describe('ClearDependedIssueURLUseCase', () => {
           ],
           cacheUsed: false,
         });
-        expect(
-          mockIssueRepository.clearProjectField.mock.calls,
-        ).toHaveLength(0);
+        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+          0,
+        );
         expect(
           mockIssueRepository.updateProjectTextField.mock.calls,
         ).toHaveLength(1);
