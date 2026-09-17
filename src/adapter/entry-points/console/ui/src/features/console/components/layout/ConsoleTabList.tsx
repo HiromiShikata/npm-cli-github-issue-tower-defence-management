@@ -26,6 +26,7 @@ export type ConsoleTabBarProps = {
   airplaneModeFailures: string[];
   onAirplaneModeStartSync: () => void;
   onAirplaneModeTurnOff: () => void;
+  onAirplaneModeRetryFailed: () => void;
   projectUrl?: string | null;
   fleetTaskCreateUrl?: string | null;
   now: number;
@@ -49,6 +50,7 @@ export const ConsoleTabList = ({
   airplaneModeFailures,
   onAirplaneModeStartSync,
   onAirplaneModeTurnOff,
+  onAirplaneModeRetryFailed,
   projectUrl = null,
   fleetTaskCreateUrl = null,
   now,
@@ -185,6 +187,7 @@ export const ConsoleTabList = ({
             failures={airplaneModeFailures}
             onStartSync={onAirplaneModeStartSync}
             onTurnOff={onAirplaneModeTurnOff}
+            onRetryFailed={onAirplaneModeRetryFailed}
           />
         )}
       </div>

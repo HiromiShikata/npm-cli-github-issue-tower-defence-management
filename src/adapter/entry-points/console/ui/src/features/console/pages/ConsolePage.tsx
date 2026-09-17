@@ -972,6 +972,7 @@ export const ConsolePage = () => {
         airplaneModeFailures={airplaneMode.failures}
         onAirplaneModeStartSync={airplaneMode.startSync}
         onAirplaneModeTurnOff={airplaneMode.turnOff}
+        onAirplaneModeRetryFailed={airplaneMode.retryFailed}
         projectUrl={pjcode !== null ? (projectUrls?.[pjcode] ?? null) : null}
         fleetTaskCreateUrl={fleetTaskCreateUrl}
         now={now}

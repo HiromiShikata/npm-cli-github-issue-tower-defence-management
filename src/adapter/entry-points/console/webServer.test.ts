@@ -3095,6 +3095,86 @@ describe('webServer GET /api/projects', () => {
     }
   });
 
+  it('POST /api/airplanesync returns 400 when targetUrls is not an array', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/airplanesync?k=${testToken}`,
+        { targetUrls: 'not-an-array' },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toContain('array');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('POST /api/airplanesync returns 400 when a URL does not contain github.com', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/airplanesync?k=${testToken}`,
+        { targetUrls: ['https://example.com/not-github'] },
+      );
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toContain('github.com');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('POST /api/airplanesync returns 404 when issueRepository is not configured', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await request(
+        server,
+        'POST',
+        `/api/airplanesync?k=${testToken}`,
+        { targetUrls: ['https://github.com/o/r/issues/1'] },
+      );
+      expect(response.statusCode).toBe(404);
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
   it('routes POST /api/timer to start a project timer and writes timer.json', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
     const issueRepository = mock<IssueRepository>();

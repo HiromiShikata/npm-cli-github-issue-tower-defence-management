@@ -11,6 +11,7 @@ const meta: Meta<typeof ConsoleAirplaneModeButton> = {
     failures: [],
     onStartSync: () => {},
     onTurnOff: () => {},
+    onRetryFailed: () => {},
   },
 };
 
@@ -48,6 +49,17 @@ export const On: Story = {
 export const SyncError: Story = {
   args: {
     status: 'error',
+    failures: [
+      'https://github.com/owner/repo/issues/99',
+      'https://github.com/owner/repo/pull/100',
+    ],
+  },
+};
+
+export const OnWithFailures: Story = {
+  args: {
+    status: 'on',
+    capturedAt: '2026-08-18T11:30:00Z',
     failures: [
       'https://github.com/owner/repo/issues/99',
       'https://github.com/owner/repo/pull/100',

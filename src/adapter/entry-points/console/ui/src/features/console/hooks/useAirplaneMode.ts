@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { airplaneSnapshotMerge } from '../../../../../../../../domain/usecases/AirplaneSnapshotMergeUseCase';
 import {
   type AirplaneSnapshot,
   clearAirplaneSnapshot,
@@ -23,6 +24,7 @@ export type AirplaneModeState = {
   failures: string[];
   startSync: () => void;
   turnOff: () => void;
+  retryFailed: () => void;
 };
 
 const AIRPLANE_SYNC_PATH = '/api/airplanesync';
@@ -127,16 +129,23 @@ export const useAirplaneMode = (): AirplaneModeState => {
                 setFailures(['Failed to parse snapshot']);
                 return;
               }
-              if (parsed.failures.length > 0) {
-                setFailures(parsed.failures);
+              const mergeResult = airplaneSnapshotMerge(null, parsed);
+              if (mergeResult.status === 'error') {
+                setFailures(mergeResult.failures);
                 setStatus('error');
                 return;
               }
-              await storeAirplaneSnapshot(parsed);
+              const mergedSnapshot = parseAirplaneSnapshot(mergeResult.snapshot);
+              if (mergedSnapshot === null) {
+                setStatus('error');
+                setFailures(['Failed to merge snapshot']);
+                return;
+              }
+              await storeAirplaneSnapshot(mergedSnapshot);
               writeAirplaneModeFlag(true);
-              setSnapshot(parsed);
+              setSnapshot(mergedSnapshot);
               setStatus('on');
-              setFailures([]);
+              setFailures(mergedSnapshot.failures);
             }
           }
         }
@@ -163,5 +172,106 @@ export const useAirplaneMode = (): AirplaneModeState => {
     clearAirplaneSnapshot().catch(() => {});
   }, []);
 
-  return { status, progress, snapshot, failures, startSync, turnOff };
+  const retryFailed = useCallback(
+    (currentSnapshot: AirplaneSnapshot | null, targetUrls: string[]): void => {
+      if (targetUrls.length === 0) {
+        return;
+      }
+      if (abortControllerRef.current !== null) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      setStatus('syncing');
+      setProgress({ fetched: 0, total: targetUrls.length });
+      setFailures([]);
+
+      fetch(AIRPLANE_SYNC_PATH, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUrls }),
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok || response.body === null) {
+            setStatus('error');
+            setFailures([`HTTP ${response.status}`]);
+            return;
+          }
+
+          const reader = response.body
+            .pipeThrough(new TextDecoderStream())
+            .getReader();
+
+          let buffer = '';
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) {
+              break;
+            }
+            buffer += value;
+            const blocks = buffer.split('\n\n');
+            buffer = blocks.pop() ?? '';
+            for (const block of blocks) {
+              if (!block.startsWith('data: ')) {
+                continue;
+              }
+              const event = parseSyncEvent(block.slice('data: '.length));
+              if (event === null) {
+                continue;
+              }
+              if (event.type === 'progress') {
+                setProgress({
+                  fetched: typeof event.fetched === 'number' ? event.fetched : 0,
+                  total: typeof event.total === 'number' ? event.total : 0,
+                });
+              } else if (event.type === 'done') {
+                const parsed = parseAirplaneSnapshot(event.snapshot);
+                if (parsed === null) {
+                  setStatus('error');
+                  setFailures(['Failed to parse snapshot']);
+                  return;
+                }
+                const mergeResult = airplaneSnapshotMerge(currentSnapshot, parsed);
+                if (mergeResult.status === 'error') {
+                  setFailures(mergeResult.failures);
+                  setStatus('error');
+                  return;
+                }
+                const mergedSnapshot = parseAirplaneSnapshot(mergeResult.snapshot);
+                if (mergedSnapshot === null) {
+                  setStatus('error');
+                  setFailures(['Failed to merge snapshot']);
+                  return;
+                }
+                await storeAirplaneSnapshot(mergedSnapshot);
+                writeAirplaneModeFlag(true);
+                setSnapshot(mergedSnapshot);
+                setStatus('on');
+                setFailures(mergedSnapshot.failures);
+              }
+            }
+          }
+        })
+        .catch((error: unknown) => {
+          if (error instanceof Error && error.name === 'AbortError') {
+            return;
+          }
+          setStatus('error');
+          setFailures([error instanceof Error ? error.message : String(error)]);
+        });
+    },
+    [],
+  );
+
+  return {
+    status,
+    progress,
+    snapshot,
+    failures,
+    startSync,
+    turnOff,
+    retryFailed: () => retryFailed(snapshot, failures),
+  };
 };

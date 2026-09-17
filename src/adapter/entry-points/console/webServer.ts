@@ -845,6 +845,50 @@ const handleTokenedRequest = async (
         sendJson(response, 400, { error: 'invalid JSON body' });
         return;
       }
+      if (requestPath === '/api/airplanesync') {
+        const targetUrlsRaw = parsedBody.targetUrls;
+        if (
+          !Array.isArray(targetUrlsRaw) ||
+          !targetUrlsRaw.every((u): u is string => typeof u === 'string')
+        ) {
+          sendJson(response, 400, { error: 'targetUrls must be an array of strings' });
+          return;
+        }
+        if (targetUrlsRaw.some((u) => !u.includes('github.com'))) {
+          sendJson(response, 400, { error: 'each targetUrl must contain github.com' });
+          return;
+        }
+        const defaultIssueRepository = options.issueRepository ?? null;
+        const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+        const issueTitleStateCache = options.issueTitleStateCache ?? null;
+        const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
+        const resolveIssueRepository =
+          options.resolveIssueRepository ??
+          (defaultIssueRepository !== null
+            ? (): IssueRepository => defaultIssueRepository
+            : null);
+        if (
+          resolveIssueRepository === null ||
+          consoleDataOutputDir === null ||
+          issueTitleStateCache === null ||
+          pullRequestStatusCache === null
+        ) {
+          sendNotFound(response);
+          return;
+        }
+        await handleAirplaneSync(
+          response,
+          consoleDataOutputDir,
+          resolveIssueRepository,
+          issueTitleStateCache,
+          pullRequestStatusCache,
+          options.resolveGithubToken != null
+            ? options.resolveGithubToken('')
+            : null,
+          targetUrlsRaw,
+        );
+        return;
+      }
       const operationResult = await handleOperationApi(
         options,
         requestPath,

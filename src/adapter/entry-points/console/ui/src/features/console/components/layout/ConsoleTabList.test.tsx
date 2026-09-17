@@ -30,6 +30,7 @@ const baseProps = {
   airplaneModeFailures: [],
   onAirplaneModeStartSync: () => {},
   onAirplaneModeTurnOff: () => {},
+  onAirplaneModeRetryFailed: () => {},
   now: NOW_30S_LATER,
 };
 
@@ -412,5 +413,22 @@ describe('ConsoleTabList', () => {
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
     expect(container.querySelector('.console-tab-project-link')).toBeNull();
+  });
+
+  it('calls onAirplaneModeRetryFailed when the retry-failed button is clicked', () => {
+    const onAirplaneModeRetryFailed = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        airplaneModeStatus="on"
+        airplaneModeCapturedAt="2026-01-01T00:00:00Z"
+        airplaneModeFailures={['https://github.com/o/r/issues/1']}
+        onAirplaneModeRetryFailed={onAirplaneModeRetryFailed}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: /retry failed/i }));
+    expect(onAirplaneModeRetryFailed).toHaveBeenCalledTimes(1);
   });
 });

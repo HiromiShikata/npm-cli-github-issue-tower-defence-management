@@ -282,4 +282,92 @@ describe('handleAirplaneSync', () => {
     expect(doneEvent).toBeDefined();
     expect(doneEvent?.snapshot.capturedAt).toBeTruthy();
   });
+
+  it('when targetUrls is provided, skips tab discovery and fetches only specified URLs', async () => {
+    const issueUrl = 'https://github.com/o/r/issues/5';
+
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.getIssueOrPullRequestBody.mockResolvedValue('body');
+    issueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    issueRepository.getIssueOrPullRequestState.mockResolvedValue({
+      state: 'open',
+      merged: false,
+      isPullRequest: false,
+      title: 'Issue',
+    });
+
+    const response = buildResponseWriter();
+    await handleAirplaneSync(
+      response,
+      tmpDir,
+      () => issueRepository,
+      new IssueTitleStateCache(),
+      new PullRequestStatusCache(),
+      null,
+      [issueUrl],
+    );
+
+    const events = captureEvents(response);
+    const doneEvent = events.find(isDoneEvent);
+    expect(doneEvent).toBeDefined();
+    expect(doneEvent?.snapshot.tabs).toEqual({});
+    expect(doneEvent?.snapshot.items[issueUrl]).toBeDefined();
+  });
+
+  it('when targetUrls is provided, infers isPr from URL pattern', async () => {
+    const prUrl = 'https://github.com/o/r/pull/99';
+
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.getIssueOrPullRequestBody.mockResolvedValue('pr body');
+    issueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+    issueRepository.getIssueOrPullRequestState.mockResolvedValue({
+      state: 'open',
+      merged: false,
+      isPullRequest: true,
+      title: 'PR title',
+    });
+    issueRepository.getPullRequestDetail.mockResolvedValue(null);
+    issueRepository.getPullRequestCommits.mockResolvedValue([]);
+    issueRepository.getOpenPullRequestCiStatus.mockResolvedValue(null);
+
+    const response = buildResponseWriter();
+    await handleAirplaneSync(
+      response,
+      tmpDir,
+      () => issueRepository,
+      new IssueTitleStateCache(),
+      new PullRequestStatusCache(),
+      null,
+      [prUrl],
+    );
+
+    const events = captureEvents(response);
+    const doneEvent = events.find(isDoneEvent);
+    expect(doneEvent?.snapshot.items[prUrl]).toBeDefined();
+    expect(doneEvent?.snapshot.items[prUrl]?.prStatus).toBeDefined();
+  });
+
+  it('when targetUrls is provided and all URLs fail, snapshot has empty items and non-empty failures', async () => {
+    const badUrl = 'https://github.com/o/r/issues/404';
+
+    const issueRepository = mock<IssueRepository>();
+    issueRepository.getIssueOrPullRequestBody.mockRejectedValue(new Error('not found'));
+
+    const response = buildResponseWriter();
+    await handleAirplaneSync(
+      response,
+      tmpDir,
+      () => issueRepository,
+      new IssueTitleStateCache(),
+      new PullRequestStatusCache(),
+      null,
+      [badUrl],
+    );
+
+    const events = captureEvents(response);
+    const doneEvent = events.find(isDoneEvent);
+    expect(doneEvent).toBeDefined();
+    expect(Object.keys(doneEvent?.snapshot.items ?? {})).toHaveLength(0);
+    expect(doneEvent?.snapshot.failures).toContain(badUrl);
+  });
 });
