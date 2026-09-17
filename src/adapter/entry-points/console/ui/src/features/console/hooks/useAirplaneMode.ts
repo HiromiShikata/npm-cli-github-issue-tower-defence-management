@@ -77,63 +77,66 @@ export const useAirplaneMode = (): AirplaneModeState => {
     };
   }, []);
 
-  const processSyncStream = useCallback(async (
-    responseBody: ReadableStream<Uint8Array>,
-    previousSnapshot: AirplaneSnapshot | null,
-  ): Promise<void> => {
-    const reader = responseBody.getReader();
-    const decoder = new TextDecoder();
+  const processSyncStream = useCallback(
+    async (
+      responseBody: ReadableStream<Uint8Array>,
+      previousSnapshot: AirplaneSnapshot | null,
+    ): Promise<void> => {
+      const reader = responseBody.getReader();
+      const decoder = new TextDecoder();
 
-    let buffer = '';
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) {
-        break;
+      let buffer = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop() ?? '';
+        for (const block of blocks) {
+          if (!block.startsWith('data: ')) {
+            continue;
+          }
+          const event = parseSyncEvent(block.slice('data: '.length));
+          if (event === null) {
+            continue;
+          }
+          if (event.type === 'progress') {
+            setProgress({
+              fetched: typeof event.fetched === 'number' ? event.fetched : 0,
+              total: typeof event.total === 'number' ? event.total : 0,
+            });
+          } else if (event.type === 'done') {
+            const parsed = parseAirplaneSnapshot(event.snapshot);
+            if (parsed === null) {
+              setStatus('error');
+              setFailures(['Failed to parse snapshot']);
+              return;
+            }
+            const mergeResult = airplaneSnapshotMerge(previousSnapshot, parsed);
+            if (mergeResult.status === 'error') {
+              setFailures(mergeResult.failures);
+              setStatus('error');
+              return;
+            }
+            const mergedSnapshot = parseAirplaneSnapshot(mergeResult.snapshot);
+            if (mergedSnapshot === null) {
+              setStatus('error');
+              setFailures(['Failed to merge snapshot']);
+              return;
+            }
+            await storeAirplaneSnapshot(mergedSnapshot);
+            writeAirplaneModeFlag(true);
+            setSnapshot(mergedSnapshot);
+            setStatus('on');
+            setFailures(mergedSnapshot.failures);
+          }
+        }
       }
-      buffer += decoder.decode(value, { stream: true });
-      const blocks = buffer.split('\n\n');
-      buffer = blocks.pop() ?? '';
-      for (const block of blocks) {
-        if (!block.startsWith('data: ')) {
-          continue;
-        }
-        const event = parseSyncEvent(block.slice('data: '.length));
-        if (event === null) {
-          continue;
-        }
-        if (event.type === 'progress') {
-          setProgress({
-            fetched: typeof event.fetched === 'number' ? event.fetched : 0,
-            total: typeof event.total === 'number' ? event.total : 0,
-          });
-        } else if (event.type === 'done') {
-          const parsed = parseAirplaneSnapshot(event.snapshot);
-          if (parsed === null) {
-            setStatus('error');
-            setFailures(['Failed to parse snapshot']);
-            return;
-          }
-          const mergeResult = airplaneSnapshotMerge(previousSnapshot, parsed);
-          if (mergeResult.status === 'error') {
-            setFailures(mergeResult.failures);
-            setStatus('error');
-            return;
-          }
-          const mergedSnapshot = parseAirplaneSnapshot(mergeResult.snapshot);
-          if (mergedSnapshot === null) {
-            setStatus('error');
-            setFailures(['Failed to merge snapshot']);
-            return;
-          }
-          await storeAirplaneSnapshot(mergedSnapshot);
-          writeAirplaneModeFlag(true);
-          setSnapshot(mergedSnapshot);
-          setStatus('on');
-          setFailures(mergedSnapshot.failures);
-        }
-      }
-    }
-  }, []);
+    },
+    [],
+  );
 
   const startSync = useCallback((): void => {
     if (abortControllerRef.current !== null) {
