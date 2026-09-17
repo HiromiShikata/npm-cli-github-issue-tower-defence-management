@@ -1,3 +1,10 @@
+## [2.119.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.1...v2.119.2) (2026-09-17)
+
+
+### Bug Fixes
+
+* **ClearDependedIssueURLUseCase:** preserve not-found depended issue when iterationsExhausted true ([#2396](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2396)) ([a9ce9d7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a9ce9d70297ed5147d954f6da8960af855a1a1a3)), closes [HiromiShikata/secretary#6399](https://github.com/HiromiShikata/secretary/issues/6399)
+
 ## [2.119.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.0...v2.119.1) (2026-09-17)
 
 
