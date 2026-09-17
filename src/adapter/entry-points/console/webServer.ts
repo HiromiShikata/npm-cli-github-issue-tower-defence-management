@@ -1049,6 +1049,13 @@ export const createWebServer = (options: WebServerOptions): http.Server =>
         );
         return;
       }
+      if (error instanceof Error && error.message === 'aborted') {
+        console.info(
+          'console request: client disconnected (aborted)',
+          request.url,
+        );
+        return;
+      }
       console.error('console request failed', error);
       if (options.consoleErrorReporter != null) {
         void options.consoleErrorReporter(error, request.url ?? '/');
