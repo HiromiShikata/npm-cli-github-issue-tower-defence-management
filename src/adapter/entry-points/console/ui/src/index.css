@@ -382,29 +382,6 @@ body {
   font-size: 0.75rem;
 }
 
-.console-timer-settings-action-cell {
-  text-align: center;
-  width: 24px;
-}
-
-.console-timer-settings-create-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  color: #58a6ff;
-  font-size: 1rem;
-  text-decoration: none;
-  border-radius: 3px;
-  line-height: 1;
-}
-
-.console-timer-settings-create-link:hover {
-  background: #21262d;
-  color: #79c0ff;
-}
-
 .console-timer-settings-actions {
   margin-top: 16px;
   display: flex;
@@ -566,6 +543,24 @@ body {
 .console-settings-modal-input:focus {
   outline: none;
   border-color: #58a6ff;
+}
+
+.console-settings-modal-create-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: #58a6ff;
+  font-size: 1rem;
+  text-decoration: none;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.console-settings-modal-create-link:hover {
+  background: #21262d;
+  color: #79c0ff;
 }
 
 .console-settings-modal-error {
