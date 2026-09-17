@@ -3386,11 +3386,7 @@ describe('webServer aborted error without ECONNRESET code', () => {
       mockReq.method = 'POST';
       mockReq.url = `/api/review?k=${testToken}`;
 
-      const mockRes = {
-        headersSent: false,
-        writeHead: () => {},
-        end: () => {},
-      } as unknown as http.ServerResponse;
+      const mockRes = new http.ServerResponse(mockReq);
 
       server.emit('request', mockReq, mockRes);
 
