@@ -11,6 +11,7 @@ const baseProps: ConsoleAirplaneModeButtonProps = {
   failures: [],
   onStartSync: jest.fn(),
   onTurnOff: jest.fn(),
+  onRetryFailed: jest.fn(),
 };
 
 describe('ConsoleAirplaneModeButton', () => {
@@ -107,5 +108,48 @@ describe('ConsoleAirplaneModeButton', () => {
     const retryBtn = getByRole('button', { name: /retry/i });
     fireEvent.click(retryBtn);
     expect(onStartSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not show retry-failed button when status is on with no failures', () => {
+    const { queryByText } = render(
+      <ConsoleAirplaneModeButton
+        {...baseProps}
+        status="on"
+        capturedAt="2026-01-01T00:00:00Z"
+        failures={[]}
+      />,
+    );
+    expect(queryByText(/retry failed/i)).toBeNull();
+  });
+
+  it('shows retry-failed button with failure count when status is on and failures exist', () => {
+    const { getByText } = render(
+      <ConsoleAirplaneModeButton
+        {...baseProps}
+        status="on"
+        capturedAt="2026-01-01T00:00:00Z"
+        failures={[
+          'https://github.com/o/r/issues/1',
+          'https://github.com/o/r/issues/2',
+        ]}
+      />,
+    );
+    expect(getByText(/2 failed/)).not.toBeNull();
+    expect(getByText(/retry failed/i)).not.toBeNull();
+  });
+
+  it('calls onRetryFailed when retry-failed button is clicked', () => {
+    const onRetryFailed = jest.fn();
+    const { getByRole } = render(
+      <ConsoleAirplaneModeButton
+        {...baseProps}
+        status="on"
+        capturedAt="2026-01-01T00:00:00Z"
+        failures={['https://github.com/o/r/issues/1']}
+        onRetryFailed={onRetryFailed}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: /retry failed/i }));
+    expect(onRetryFailed).toHaveBeenCalledTimes(1);
   });
 });

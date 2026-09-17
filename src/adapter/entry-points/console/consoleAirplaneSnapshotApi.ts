@@ -364,6 +364,7 @@ export const handleAirplaneSync = async (
   issueTitleStateCache: IssueTitleStateCache,
   pullRequestStatusCache: PullRequestStatusCache,
   ghToken: string | null = null,
+  targetUrls: string[] | null = null,
 ): Promise<void> => {
   response.writeHead(200, {
     'Content-Type': 'text/event-stream; charset=utf-8',
@@ -371,20 +372,29 @@ export const handleAirplaneSync = async (
     Connection: 'keep-alive',
   });
 
-  const pjcodes = discoverPjcodes(consoleDataOutputDir);
   const tabData: Record<string, AirplaneTabData> = {};
-  for (const pjcode of pjcodes) {
-    const pjTabs: AirplaneTabData = {};
-    for (const tab of CONSOLE_LIST_TAB_NAMES) {
-      const payload = readTabListJson(consoleDataOutputDir, pjcode, tab);
-      if (payload !== null) {
-        pjTabs[tab] = payload;
-      }
-    }
-    tabData[pjcode] = pjTabs;
-  }
+  let uniqueItems: UniqueItem[];
 
-  const uniqueItems = collectUniqueItems(tabData);
+  if (targetUrls !== null) {
+    uniqueItems = targetUrls.map((url) => ({
+      url,
+      isPr: /\/pull\/\d+/.test(url),
+      relatedOpenPullRequestUrls: [],
+    }));
+  } else {
+    const pjcodes = discoverPjcodes(consoleDataOutputDir);
+    for (const pjcode of pjcodes) {
+      const pjTabs: AirplaneTabData = {};
+      for (const tab of CONSOLE_LIST_TAB_NAMES) {
+        const payload = readTabListJson(consoleDataOutputDir, pjcode, tab);
+        if (payload !== null) {
+          pjTabs[tab] = payload;
+        }
+      }
+      tabData[pjcode] = pjTabs;
+    }
+    uniqueItems = collectUniqueItems(tabData);
+  }
   const total = uniqueItems.length;
   let fetched = 0;
   const failures: string[] = [];
@@ -401,6 +411,13 @@ export const handleAirplaneSync = async (
         handleComments(issueRepository, url),
         handleIssueTitle(issueRepository, issueTitleStateCache, url),
       ]);
+
+      if (bodyResult.statusCode !== 200) {
+        failures.push(url);
+        fetched += 1;
+        writeSseEvent(response, { type: 'progress', fetched, total });
+        return;
+      }
 
       let files: AirplaneFilesItem[] | null = null;
       let commits: AirplaneCommitItem[] | null = null;

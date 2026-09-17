@@ -1,10 +1,21 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
+  type AirplaneItemSnapshot,
   type AirplaneSnapshot,
   readAirplaneModeFlag,
   writeAirplaneModeFlag,
 } from '../lib/airplaneSnapshot';
 import { useAirplaneMode } from './useAirplaneMode';
+
+const makeMinimalItemSnapshot = (): AirplaneItemSnapshot => ({
+  body: '',
+  comments: [],
+  state: { state: 'open', merged: false, isPullRequest: false, title: '' },
+  files: null,
+  commits: null,
+  prStatus: null,
+  relatedPrs: null,
+});
 
 const makeMinimalSnapshot = (
   overrides: Partial<AirplaneSnapshot> = {},
@@ -300,5 +311,130 @@ describe('useAirplaneMode', () => {
 
     expect(readAirplaneModeFlag()).toBe(false);
     expect(result.current.snapshot).toBeNull();
+  });
+
+  it('stores partial snapshot and sets status on when done has items and failures', async () => {
+    const snapshot = makeMinimalSnapshot({
+      items: { 'https://github.com/o/r/issues/1': makeMinimalItemSnapshot() },
+      failures: ['https://github.com/o/r/issues/2'],
+    });
+    mockFetchSse([{ type: 'done', snapshot }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+
+    act(() => {
+      result.current.startSync();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    expect(result.current.failures).toContain(
+      'https://github.com/o/r/issues/2',
+    );
+    expect(result.current.snapshot).not.toBeNull();
+    expect(
+      result.current.snapshot?.items['https://github.com/o/r/issues/1'],
+    ).toBeDefined();
+  });
+
+  it('retryFailed POSTs targetUrls to /api/airplanesync and merges result with existing snapshot', async () => {
+    mockFetchSse([
+      { type: 'progress', fetched: 0, total: 1 },
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          capturedAt: '2026-02-01T00:00:00Z',
+          items: {
+            'https://github.com/o/r/issues/1': makeMinimalItemSnapshot(),
+          },
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
+    ]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+
+    act(() => {
+      result.current.startSync();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    mockFetchSse([
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          capturedAt: '2026-02-01T00:00:00Z',
+          items: {
+            'https://github.com/o/r/issues/2': makeMinimalItemSnapshot(),
+          },
+          failures: [],
+        }),
+      },
+    ]);
+
+    const fetchMock = global.fetch as jest.Mock;
+    fetchMock.mockClear();
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/airplanesync',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('https://github.com/o/r/issues/2'),
+      }),
+    );
+    expect(result.current.failures).toEqual([]);
+    expect(
+      result.current.snapshot?.items['https://github.com/o/r/issues/2'],
+    ).toBeDefined();
+  });
+
+  it('retryFailed sets error when all retried URLs fail', async () => {
+    const firstSnapshot = makeMinimalSnapshot({
+      items: { 'https://github.com/o/r/issues/1': makeMinimalItemSnapshot() },
+      failures: ['https://github.com/o/r/issues/2'],
+    });
+    mockFetchSse([{ type: 'done', snapshot: firstSnapshot }]);
+
+    const { result } = renderHook(() => useAirplaneMode());
+    act(() => {
+      result.current.startSync();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
+
+    mockFetchSse([
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          items: {},
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
+    ]);
+
+    act(() => {
+      result.current.retryFailed();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+    });
+
+    expect(result.current.failures).toContain(
+      'https://github.com/o/r/issues/2',
+    );
   });
 });
