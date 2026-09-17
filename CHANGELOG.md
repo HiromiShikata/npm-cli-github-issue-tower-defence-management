@@ -1,3 +1,10 @@
+## [2.118.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.6...v2.118.7) (2026-09-17)
+
+
+### Bug Fixes
+
+* **RevertOrphanedPreparationUseCase:** skip orphaned issue when last report has waitingForOwner true ([#2394](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2394)) ([a1c8a45](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a1c8a4591aba482032e83b96095ef689fe479943)), closes [HiromiShikata/secretary#6357](https://github.com/HiromiShikata/secretary/issues/6357)
+
 ## [2.118.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.5...v2.118.6) (2026-09-17)
 
 
