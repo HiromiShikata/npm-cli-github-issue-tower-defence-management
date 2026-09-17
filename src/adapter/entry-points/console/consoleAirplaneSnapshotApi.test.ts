@@ -351,7 +351,9 @@ describe('handleAirplaneSync', () => {
     const badUrl = 'https://github.com/o/r/issues/404';
 
     const issueRepository = mock<IssueRepository>();
-    issueRepository.getIssueOrPullRequestBody.mockRejectedValue(new Error('not found'));
+    issueRepository.getIssueOrPullRequestBody.mockRejectedValue(
+      new Error('not found'),
+    );
 
     const response = buildResponseWriter();
     await handleAirplaneSync(

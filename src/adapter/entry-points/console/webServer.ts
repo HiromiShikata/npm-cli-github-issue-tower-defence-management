@@ -851,11 +851,15 @@ const handleTokenedRequest = async (
           !Array.isArray(targetUrlsRaw) ||
           !targetUrlsRaw.every((u): u is string => typeof u === 'string')
         ) {
-          sendJson(response, 400, { error: 'targetUrls must be an array of strings' });
+          sendJson(response, 400, {
+            error: 'targetUrls must be an array of strings',
+          });
           return;
         }
         if (targetUrlsRaw.some((u) => !u.includes('github.com'))) {
-          sendJson(response, 400, { error: 'each targetUrl must contain github.com' });
+          sendJson(response, 400, {
+            error: 'each targetUrl must contain github.com',
+          });
           return;
         }
         const defaultIssueRepository = options.issueRepository ?? null;

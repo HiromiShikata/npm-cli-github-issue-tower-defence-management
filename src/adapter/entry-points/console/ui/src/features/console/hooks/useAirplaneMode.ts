@@ -135,7 +135,9 @@ export const useAirplaneMode = (): AirplaneModeState => {
                 setStatus('error');
                 return;
               }
-              const mergedSnapshot = parseAirplaneSnapshot(mergeResult.snapshot);
+              const mergedSnapshot = parseAirplaneSnapshot(
+                mergeResult.snapshot,
+              );
               if (mergedSnapshot === null) {
                 setStatus('error');
                 setFailures(['Failed to merge snapshot']);
@@ -223,7 +225,8 @@ export const useAirplaneMode = (): AirplaneModeState => {
               }
               if (event.type === 'progress') {
                 setProgress({
-                  fetched: typeof event.fetched === 'number' ? event.fetched : 0,
+                  fetched:
+                    typeof event.fetched === 'number' ? event.fetched : 0,
                   total: typeof event.total === 'number' ? event.total : 0,
                 });
               } else if (event.type === 'done') {
@@ -233,13 +236,18 @@ export const useAirplaneMode = (): AirplaneModeState => {
                   setFailures(['Failed to parse snapshot']);
                   return;
                 }
-                const mergeResult = airplaneSnapshotMerge(currentSnapshot, parsed);
+                const mergeResult = airplaneSnapshotMerge(
+                  currentSnapshot,
+                  parsed,
+                );
                 if (mergeResult.status === 'error') {
                   setFailures(mergeResult.failures);
                   setStatus('error');
                   return;
                 }
-                const mergedSnapshot = parseAirplaneSnapshot(mergeResult.snapshot);
+                const mergedSnapshot = parseAirplaneSnapshot(
+                  mergeResult.snapshot,
+                );
                 if (mergedSnapshot === null) {
                   setStatus('error');
                   setFailures(['Failed to merge snapshot']);

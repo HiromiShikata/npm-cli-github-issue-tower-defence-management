@@ -128,7 +128,10 @@ describe('ConsoleAirplaneModeButton', () => {
         {...baseProps}
         status="on"
         capturedAt="2026-01-01T00:00:00Z"
-        failures={['https://github.com/o/r/issues/1', 'https://github.com/o/r/issues/2']}
+        failures={[
+          'https://github.com/o/r/issues/1',
+          'https://github.com/o/r/issues/2',
+        ]}
       />,
     );
     expect(getByText(/2 failed/)).not.toBeNull();

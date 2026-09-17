@@ -330,19 +330,28 @@ describe('useAirplaneMode', () => {
       expect(result.current.status).toBe('on');
     });
 
-    expect(result.current.failures).toContain('https://github.com/o/r/issues/2');
+    expect(result.current.failures).toContain(
+      'https://github.com/o/r/issues/2',
+    );
     expect(result.current.snapshot).not.toBeNull();
-    expect(result.current.snapshot?.items['https://github.com/o/r/issues/1']).toBeDefined();
+    expect(
+      result.current.snapshot?.items['https://github.com/o/r/issues/1'],
+    ).toBeDefined();
   });
 
   it('retryFailed POSTs targetUrls to /api/airplanesync and merges result with existing snapshot', async () => {
     mockFetchSse([
       { type: 'progress', fetched: 0, total: 1 },
-      { type: 'done', snapshot: makeMinimalSnapshot({
-        capturedAt: '2026-02-01T00:00:00Z',
-        items: { 'https://github.com/o/r/issues/1': makeMinimalItemSnapshot() },
-        failures: ['https://github.com/o/r/issues/2'],
-      }) },
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          capturedAt: '2026-02-01T00:00:00Z',
+          items: {
+            'https://github.com/o/r/issues/1': makeMinimalItemSnapshot(),
+          },
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
     ]);
 
     const { result } = renderHook(() => useAirplaneMode());
@@ -355,11 +364,16 @@ describe('useAirplaneMode', () => {
     });
 
     mockFetchSse([
-      { type: 'done', snapshot: makeMinimalSnapshot({
-        capturedAt: '2026-02-01T00:00:00Z',
-        items: { 'https://github.com/o/r/issues/2': makeMinimalItemSnapshot() },
-        failures: [],
-      }) },
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          capturedAt: '2026-02-01T00:00:00Z',
+          items: {
+            'https://github.com/o/r/issues/2': makeMinimalItemSnapshot(),
+          },
+          failures: [],
+        }),
+      },
     ]);
 
     const fetchMock = global.fetch as jest.Mock;
@@ -381,7 +395,9 @@ describe('useAirplaneMode', () => {
       }),
     );
     expect(result.current.failures).toEqual([]);
-    expect(result.current.snapshot?.items['https://github.com/o/r/issues/2']).toBeDefined();
+    expect(
+      result.current.snapshot?.items['https://github.com/o/r/issues/2'],
+    ).toBeDefined();
   });
 
   it('retryFailed sets error when all retried URLs fail', async () => {
@@ -392,22 +408,33 @@ describe('useAirplaneMode', () => {
     mockFetchSse([{ type: 'done', snapshot: firstSnapshot }]);
 
     const { result } = renderHook(() => useAirplaneMode());
-    act(() => { result.current.startSync(); });
-    await waitFor(() => { expect(result.current.status).toBe('on'); });
+    act(() => {
+      result.current.startSync();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('on');
+    });
 
     mockFetchSse([
-      { type: 'done', snapshot: makeMinimalSnapshot({
-        items: {},
-        failures: ['https://github.com/o/r/issues/2'],
-      }) },
+      {
+        type: 'done',
+        snapshot: makeMinimalSnapshot({
+          items: {},
+          failures: ['https://github.com/o/r/issues/2'],
+        }),
+      },
     ]);
 
-    act(() => { result.current.retryFailed(); });
+    act(() => {
+      result.current.retryFailed();
+    });
 
     await waitFor(() => {
       expect(result.current.status).toBe('error');
     });
 
-    expect(result.current.failures).toContain('https://github.com/o/r/issues/2');
+    expect(result.current.failures).toContain(
+      'https://github.com/o/r/issues/2',
+    );
   });
 });

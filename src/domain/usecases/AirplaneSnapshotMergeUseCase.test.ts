@@ -37,7 +37,9 @@ describe('airplaneSnapshotMerge', () => {
     const result = airplaneSnapshotMerge(null, newResult);
     expect(result.status).toBe('on');
     if (result.status === 'on') {
-      expect(result.snapshot.items['https://github.com/o/r/issues/1']).toBeDefined();
+      expect(
+        result.snapshot.items['https://github.com/o/r/issues/1'],
+      ).toBeDefined();
       expect(result.snapshot.failures).toEqual([]);
       expect(result.snapshot.capturedAt).toBe('2026-02-01T00:00:00Z');
     }
@@ -59,9 +61,15 @@ describe('airplaneSnapshotMerge', () => {
     const result = airplaneSnapshotMerge(previous, newResult);
     expect(result.status).toBe('on');
     if (result.status === 'on') {
-      expect(result.snapshot.items['https://github.com/o/r/issues/1']).toEqual({ body: 'old-1' });
-      expect(result.snapshot.items['https://github.com/o/r/issues/2']).toEqual({ body: 'new-2' });
-      expect(result.snapshot.failures).toContain('https://github.com/o/r/issues/3');
+      expect(result.snapshot.items['https://github.com/o/r/issues/1']).toEqual({
+        body: 'old-1',
+      });
+      expect(result.snapshot.items['https://github.com/o/r/issues/2']).toEqual({
+        body: 'new-2',
+      });
+      expect(result.snapshot.failures).toContain(
+        'https://github.com/o/r/issues/3',
+      );
       expect(result.snapshot.capturedAt).toBe('2026-02-01T00:00:00Z');
     }
   });
@@ -98,14 +106,21 @@ describe('airplaneSnapshotMerge', () => {
     const result = airplaneSnapshotMerge(previous, newResult);
     expect(result.status).toBe('on');
     if (result.status === 'on') {
-      expect(result.snapshot.items['https://github.com/o/r/issues/1']).toEqual({ body: 'fresh' });
-      expect(result.snapshot.items['https://github.com/o/r/issues/2']).toEqual({ body: 'new' });
+      expect(result.snapshot.items['https://github.com/o/r/issues/1']).toEqual({
+        body: 'fresh',
+      });
+      expect(result.snapshot.items['https://github.com/o/r/issues/2']).toEqual({
+        body: 'new',
+      });
       expect(result.snapshot.failures).toEqual([]);
     }
   });
 
   it('returns on when both items and failures are empty', () => {
-    const result = airplaneSnapshotMerge(null, makeSnapshot({ items: {}, failures: [] }));
+    const result = airplaneSnapshotMerge(
+      null,
+      makeSnapshot({ items: {}, failures: [] }),
+    );
     expect(result.status).toBe('on');
   });
 
@@ -120,7 +135,9 @@ describe('airplaneSnapshotMerge', () => {
     const result = airplaneSnapshotMerge(previous, newResult);
     expect(result.status).toBe('on');
     if (result.status === 'on') {
-      expect(result.snapshot.failures).toEqual(['https://github.com/o/r/issues/3']);
+      expect(result.snapshot.failures).toEqual([
+        'https://github.com/o/r/issues/3',
+      ]);
     }
   });
 });
