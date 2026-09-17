@@ -1,3 +1,10 @@
+# [2.119.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.7...v2.119.0) (2026-09-17)
+
+
+### Features
+
+* **airplaneSync:** save partial snapshots and retry only failed URLs ([#2393](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2393)) ([7ef812a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7ef812ad9a2d0b87a5ab8ef296fbadca8f8dcbab)), closes [#2389](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2389)
+
 ## [2.118.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.6...v2.118.7) (2026-09-17)
 
 
