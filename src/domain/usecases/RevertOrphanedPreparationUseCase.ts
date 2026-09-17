@@ -18,6 +18,7 @@ import {
 import { resolveLabelsNotRequiringPullRequest } from './resolveLabelsNotRequiringPullRequest';
 import { isAuthorAuthorizedForAutoStatusCheck } from './isAuthorAuthorizedForAutoStatusCheck';
 import { extractNextStepAgent } from './extractNextStepAgent';
+import { extractWaitingForOwner } from './extractWaitingForOwner';
 import { findLastAgentReport } from './findLastAgentReport';
 import { isAgentReportBody } from './isAgentReportBody';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
@@ -255,6 +256,14 @@ export class RevertOrphanedPreparationUseCase {
         if (repetition.type !== 'notRepeated') {
           await this.createCommentWithDedup(issue, repetition.comment);
         }
+        continue;
+      }
+
+      if (
+        nextStepAgent === null &&
+        lastAgentReport !== null &&
+        extractWaitingForOwner(lastAgentReport.content)
+      ) {
         continue;
       }
 
