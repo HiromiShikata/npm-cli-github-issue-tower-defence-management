@@ -1,3 +1,10 @@
+## [2.118.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.4...v2.118.5) (2026-09-17)
+
+
+### Bug Fixes
+
+* **console:** skip error reporter for client-abort errors in createWebServer ([#2392](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2392)) ([3dfa00b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3dfa00b7be85779120064dbfd2a703e515fda9f5))
+
 ## [2.118.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.3...v2.118.4) (2026-09-16)
 
 
