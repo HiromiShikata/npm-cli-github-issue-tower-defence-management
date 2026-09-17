@@ -231,6 +231,11 @@ export class NotifyFinishedIssuePreparationUseCase {
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is in Icebox`,
       );
       return;
+    } else if (issue.status === AWAITING_OWNER_STATUS_NAME) {
+      console.log(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Awaiting Owner`,
+      );
+      return;
     } else if (
       issue.status !== PREPARATION_STATUS_NAME &&
       issue.status !== IN_TMUX_BY_AGENT_STATUS_NAME
