@@ -77,11 +77,12 @@ export class ClearDependedIssueURLUseCase {
               ),
           )
         : [];
-      const notFoundDependedIssueUrls =
+      const iterationsExhaustedPreservesNotFound =
         rawNotFoundDependedIssueUrls.length > 0 &&
-        (await this.lastAgentReportHasIterationsExhausted(issue.url))
-          ? []
-          : rawNotFoundDependedIssueUrls;
+        (await this.lastAgentReportHasIterationsExhausted(issue.url));
+      const notFoundDependedIssueUrls = iterationsExhaustedPreservesNotFound
+        ? []
+        : rawNotFoundDependedIssueUrls;
       const iceboxDependedIssueUrls = issue.dependedIssueUrls.filter(
         (dependedIssueUrl) =>
           input.issues.some(
@@ -115,7 +116,13 @@ export class ClearDependedIssueURLUseCase {
         continue;
       }
       const remainingDependedIssueUrls = absentDependedIssueIsResolvable
-        ? [...openDependedIssueUrls, ...allowedExternalDependedIssueUrls]
+        ? [
+            ...openDependedIssueUrls,
+            ...allowedExternalDependedIssueUrls,
+            ...(iterationsExhaustedPreservesNotFound
+              ? rawNotFoundDependedIssueUrls
+              : []),
+          ]
         : issue.dependedIssueUrls.filter(
             (dependedIssueUrl) =>
               !closedDependedIssueUrls.includes(dependedIssueUrl) &&

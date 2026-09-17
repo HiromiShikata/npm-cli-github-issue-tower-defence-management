@@ -955,6 +955,41 @@ describe('ClearDependedIssueURLUseCase', () => {
           1,
         );
       });
+
+      it('should preserve not-found URL and remove closed dep via updateProjectTextField when iterationsExhausted true and closed dep coexist', async () => {
+        jest.clearAllMocks();
+        const notFoundUrl =
+          'https://github.com/xcare-medical/hubspot-automation/issues/3410';
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+          {
+            author: 'hs-bot-gh-app[bot]',
+            body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
+            createdAt: new Date('2026-09-17T14:59:07Z'),
+          },
+        ]);
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url1', notFoundUrl],
+            },
+          ],
+          cacheUsed: false,
+        });
+        expect(
+          mockIssueRepository.clearProjectField.mock.calls,
+        ).toHaveLength(0);
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(1);
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls[0][3],
+        ).toBe(notFoundUrl);
+        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
+      });
     });
   });
 });
