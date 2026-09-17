@@ -3369,6 +3369,9 @@ describe('webServer aborted error without ECONNRESET code', () => {
     const consoleSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {});
+    const consoleInfoSpy = jest
+      .spyOn(console, 'info')
+      .mockImplementation(() => {});
     const server = createWebServer({
       accessToken: testToken,
       uiDistDir: path.join(tmpDir, 'ui-dist'),
@@ -3398,8 +3401,13 @@ describe('webServer aborted error without ECONNRESET code', () => {
       await new Promise<void>((resolve) => setTimeout(resolve, 100));
 
       expect(consoleErrorReporter).not.toHaveBeenCalled();
+      expect(consoleInfoSpy).toHaveBeenCalledWith(
+        'console request: client disconnected (aborted)',
+        mockReq.url,
+      );
     } finally {
       consoleSpy.mockRestore();
+      consoleInfoSpy.mockRestore();
       server.close();
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
