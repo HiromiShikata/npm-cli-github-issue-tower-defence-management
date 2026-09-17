@@ -158,4 +158,48 @@ describe('ConsoleProjectSettingsModalScreen', () => {
       'Max settings',
     );
   });
+
+  it('renders a create task link when nameWithOwnerByPjcode is provided', () => {
+    const { getByRole } = render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        nameWithOwnerByPjcode={{
+          acme: 'HiromiShikata/umino-corporait-operation',
+        }}
+      />,
+    );
+    const link = getByRole('link', { name: 'Create task in acme' });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('renders no create task link when nameWithOwnerByPjcode is null', () => {
+    const { queryByRole } = render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        nameWithOwnerByPjcode={null}
+      />,
+    );
+    expect(queryByRole('link', { name: 'Create task in acme' })).toBeNull();
+  });
+
+  it('renders no create task link for a pjcode absent from nameWithOwnerByPjcode', () => {
+    const { getByRole, queryByRole } = render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        nameWithOwnerByPjcode={{
+          acme: 'HiromiShikata/umino-corporait-operation',
+        }}
+      />,
+    );
+    expect(queryByRole('link', { name: 'Create task in beta' })).toBeNull();
+    expect(
+      getByRole('link', { name: 'Create task in acme' }),
+    ).toBeInTheDocument();
+  });
 });

@@ -3,6 +3,7 @@ import {
   CONSOLE_E2E_AWAITING_OWNER_PR_URL,
   CONSOLE_E2E_PJCODE,
   CONSOLE_E2E_REFERENCE_LINK_URL,
+  CONSOLE_E2E_REPO_NAME_WITH_OWNER,
   CONSOLE_E2E_SECOND_PJCODE,
   CONSOLE_E2E_TOKEN,
   type ConsoleE2eHarness,
@@ -1614,6 +1615,16 @@ test('max settings button is always visible and cross-project settings modal lis
   await expect(acmeInput).toBeVisible();
 
   await acmeInput.fill('5');
+
+  const createLink = modal.getByRole('link', {
+    name: `Create task in ${CONSOLE_E2E_PJCODE}`,
+  });
+  await expect(createLink).toBeVisible();
+  await expect(createLink).toHaveAttribute(
+    'href',
+    `https://github.com/${CONSOLE_E2E_REPO_NAME_WITH_OWNER}/issues/new`,
+  );
+  await expect(createLink).toHaveAttribute('target', '_blank');
 
   const saveButton = page.getByLabel('Save max settings');
   await expect(saveButton).toBeEnabled();

@@ -106,8 +106,9 @@ type ConsoleFixtureSnapshot = {
   items: ConsoleFixtureListItem[];
 };
 
-const REPO_NAME_WITH_OWNER =
+export const CONSOLE_E2E_REPO_NAME_WITH_OWNER =
   'HiromiShikata/npm-cli-github-issue-tower-defence-management';
+const REPO_NAME_WITH_OWNER = CONSOLE_E2E_REPO_NAME_WITH_OWNER;
 
 export const CONSOLE_E2E_AWAITING_OWNER_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/867`;
 const CONSOLE_E2E_AUTO_ADVANCE_DESTINATION_PR_URL = `https://github.com/${REPO_NAME_WITH_OWNER}/pull/868`;
