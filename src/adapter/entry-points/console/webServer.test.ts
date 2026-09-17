@@ -18,6 +18,7 @@ import {
   isOwnerCallFileRequestPath,
   resolveFlatInTmuxFilePath,
   resolveDashboardFilePath,
+  createWebServer,
   startWebServer,
 } from './webServer';
 import type { ImageFetcher } from './consoleImageProxy';
@@ -3354,6 +3355,56 @@ describe('webServer client disconnect handling', () => {
       await assertEconnresetLogsAtInfoLevel(server);
     } finally {
       await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('webServer aborted error without ECONNRESET code', () => {
+  const testToken = 'aborted-no-econnreset-test-token';
+
+  it('does not call consoleErrorReporter when request body read is aborted without ECONNRESET code', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const consoleErrorReporter = jest.fn(async () => {});
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const server = createWebServer({
+      accessToken: testToken,
+      uiDistDir: path.join(tmpDir, 'ui-dist'),
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      consoleErrorReporter,
+    });
+
+    try {
+      const mockSocket = new net.Socket();
+      const mockReq = new http.IncomingMessage(mockSocket);
+      mockReq.method = 'POST';
+      mockReq.url = `/api/review?k=${testToken}`;
+
+      const mockRes = {
+        headersSent: false,
+        writeHead: () => {},
+        end: () => {},
+      } as unknown as http.ServerResponse;
+
+      server.emit('request', mockReq, mockRes);
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+
+      const abortedError = new Error('aborted');
+      mockReq.emit('error', abortedError);
+
+      await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+      expect(consoleErrorReporter).not.toHaveBeenCalled();
+    } finally {
+      consoleSpy.mockRestore();
+      server.close();
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
