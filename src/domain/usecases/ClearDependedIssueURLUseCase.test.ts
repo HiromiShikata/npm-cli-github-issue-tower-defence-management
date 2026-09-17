@@ -837,6 +837,127 @@ describe('ClearDependedIssueURLUseCase', () => {
         });
       },
     );
+
+    describe('iterationsExhausted guard', () => {
+      it('should not remove not-found dependency URL when last agent report has iterationsExhausted true', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+          {
+            author: 'hs-bot-gh-app[bot]',
+            body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
+            createdAt: new Date('2026-09-17T14:59:07Z'),
+          },
+        ]);
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/xcare-medical/hubspot-automation/issues/3410',
+              ],
+            },
+          ],
+          cacheUsed: false,
+        });
+        expect(
+          mockIssueRepository.clearProjectField.mock.calls,
+        ).toHaveLength(0);
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+      });
+
+      it('should still remove not-found dependency URL when last agent report does not have iterationsExhausted true', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+          {
+            author: 'hs-bot-gh-app[bot]',
+            body: 'From: :robot: developer (model)\n\n```json\n{ "nextStep": null }\n```\n',
+            createdAt: new Date('2026-09-17T14:59:07Z'),
+          },
+        ]);
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/xcare-medical/hubspot-automation/issues/3410',
+              ],
+            },
+          ],
+          cacheUsed: false,
+        });
+        expect(
+          mockIssueRepository.clearProjectField.mock.calls,
+        ).toHaveLength(1);
+        expect(
+          mockIssueRepository.createComment.mock.calls,
+        ).toHaveLength(1);
+      });
+
+      it('should not remove not-found dependency URL when cacheUsed is false and iterationsExhausted true with multiple deps', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+          {
+            author: 'hs-bot-gh-app[bot]',
+            body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
+            createdAt: new Date('2026-09-17T14:59:07Z'),
+          },
+        ]);
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: [
+                'https://github.com/xcare-medical/hubspot-automation/issues/3410',
+                'https://github.com/xcare-medical/hubspot-automation/issues/3411',
+              ],
+            },
+          ],
+          cacheUsed: false,
+        });
+        expect(
+          mockIssueRepository.clearProjectField.mock.calls,
+        ).toHaveLength(0);
+        expect(
+          mockIssueRepository.updateProjectTextField.mock.calls,
+        ).toHaveLength(0);
+        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(0);
+      });
+
+      it('should still remove closed dependency even when iterationsExhausted true', async () => {
+        jest.clearAllMocks();
+        mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([
+          {
+            author: 'hs-bot-gh-app[bot]',
+            body: 'From: :robot: acceptance-tester (model)\n\n```json\n{ "nextStep": null, "iterationsExhausted": true }\n```\n',
+            createdAt: new Date('2026-09-17T14:59:07Z'),
+          },
+        ]);
+        const useCase = new ClearDependedIssueURLUseCase(mockIssueRepository);
+        await useCase.run({
+          project: basicProject,
+          issues: [
+            basicIssueOne,
+            {
+              ...basicIssueTwo,
+              dependedIssueUrls: ['url1'],
+            },
+          ],
+          cacheUsed: false,
+        });
+        expect(
+          mockIssueRepository.clearProjectField.mock.calls,
+        ).toHaveLength(1);
+      });
+    });
   });
 });
 
