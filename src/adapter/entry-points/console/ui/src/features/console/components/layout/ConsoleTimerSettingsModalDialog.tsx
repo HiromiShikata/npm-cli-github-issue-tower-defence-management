@@ -132,10 +132,7 @@ export const ConsoleTimerSettingsModalDialog = ({
                             onChange={(e) =>
                               onChangeMinutes(
                                 pjcode,
-                                Math.max(
-                                  0,
-                                  parseInt(e.target.value, 10) || 0,
-                                ),
+                                Math.max(0, parseInt(e.target.value, 10) || 0),
                               )
                             }
                             className="console-timer-settings-minutes-input"
