@@ -865,7 +865,9 @@ const handleTokenedRequest = async (
           }
         };
         if (targetUrlsRaw.some((u) => !isGitHubUrl(u))) {
-          sendJson(response, 400, { error: 'each targetUrl must have hostname github.com' });
+          sendJson(response, 400, {
+            error: 'each targetUrl must have hostname github.com',
+          });
           return;
         }
         const defaultIssueRepository = options.issueRepository ?? null;
