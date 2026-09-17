@@ -1,3 +1,10 @@
+## [2.118.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.5...v2.118.6) (2026-09-17)
+
+
+### Bug Fixes
+
+* **console:** move task create link from timer settings to project settings ([#2391](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2391)) ([ff0410d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/ff0410d0ebdc065e0bad572c3a95f7e411f191e2))
+
 ## [2.118.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.118.4...v2.118.5) (2026-09-17)
 
 
