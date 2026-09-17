@@ -856,10 +856,16 @@ const handleTokenedRequest = async (
           });
           return;
         }
-        if (targetUrlsRaw.some((u) => !u.includes('github.com'))) {
-          sendJson(response, 400, {
-            error: 'each targetUrl must contain github.com',
-          });
+        const isGitHubUrl = (u: string): boolean => {
+          try {
+            const parsed = new URL(u);
+            return parsed.hostname === 'github.com';
+          } catch {
+            return false;
+          }
+        };
+        if (targetUrlsRaw.some((u) => !isGitHubUrl(u))) {
+          sendJson(response, 400, { error: 'each targetUrl must have hostname github.com' });
           return;
         }
         const defaultIssueRepository = options.issueRepository ?? null;
