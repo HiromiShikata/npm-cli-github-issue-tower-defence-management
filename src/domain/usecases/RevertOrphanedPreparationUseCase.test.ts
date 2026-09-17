@@ -758,6 +758,44 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
   });
 
+  it('skips orphaned issue with non-developer agent field when last trusted agent report has waitingForOwner true', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      labels: [],
+      agent: 'liaison',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      {
+        author: 'agent-bot',
+        content:
+          'From: :robot: liaison (model)\n\n```json\n{ "waitingForOwner": true }\n```\n',
+        createdAt: new Date(),
+      },
+    ]);
+    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      allowedIssueAuthors: ['agent-bot'],
+    });
+
+    expect(mockIssueRepository.updateStatus).not.toHaveBeenCalled();
+    expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalled();
+  });
+
   it('should reject orphaned issue with non-developer agent field to Awaiting Workspace when PR is conflicted', async () => {
     const stuckIssue = createMockIssue({
       url: 'https://github.com/user/repo/issues/10',
