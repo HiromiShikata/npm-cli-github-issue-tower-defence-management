@@ -175,6 +175,7 @@ describe('ConsoleProjectSettingsModalScreen', () => {
       'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
     );
     expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
   });
 
   it('renders no create task link when nameWithOwnerByPjcode is null', () => {
