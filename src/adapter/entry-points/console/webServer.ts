@@ -761,6 +761,46 @@ const removeOwnerCallFile = (
   response.end();
 };
 
+type AirplaneSyncDeps = {
+  consoleDataOutputDir: string;
+  resolveIssueRepository: ConsoleIssueRepositoryResolver;
+  issueTitleStateCache: IssueTitleStateCache;
+  pullRequestStatusCache: PullRequestStatusCache;
+  ghToken: string | null;
+};
+
+const resolveAirplaneSyncDeps = (
+  options: WebServerOptions,
+): AirplaneSyncDeps | null => {
+  const defaultIssueRepository = options.issueRepository ?? null;
+  const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
+  const issueTitleStateCache = options.issueTitleStateCache ?? null;
+  const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
+  const resolveIssueRepository =
+    options.resolveIssueRepository ??
+    (defaultIssueRepository !== null
+      ? (): IssueRepository => defaultIssueRepository
+      : null);
+  if (
+    resolveIssueRepository === null ||
+    consoleDataOutputDir === null ||
+    issueTitleStateCache === null ||
+    pullRequestStatusCache === null
+  ) {
+    return null;
+  }
+  return {
+    consoleDataOutputDir,
+    resolveIssueRepository,
+    issueTitleStateCache,
+    pullRequestStatusCache,
+    ghToken:
+      options.resolveGithubToken != null
+        ? options.resolveGithubToken('')
+        : null,
+  };
+};
+
 const handleTokenedRequest = async (
   options: WebServerOptions,
   request: http.IncomingMessage,
@@ -783,33 +823,18 @@ const handleTokenedRequest = async (
         return;
       }
       if (requestPath === '/api/airplanesync') {
-        const defaultIssueRepository = options.issueRepository ?? null;
-        const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
-        const issueTitleStateCache = options.issueTitleStateCache ?? null;
-        const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
-        const resolveIssueRepository =
-          options.resolveIssueRepository ??
-          (defaultIssueRepository !== null
-            ? (): IssueRepository => defaultIssueRepository
-            : null);
-        if (
-          resolveIssueRepository === null ||
-          consoleDataOutputDir === null ||
-          issueTitleStateCache === null ||
-          pullRequestStatusCache === null
-        ) {
+        const deps = resolveAirplaneSyncDeps(options);
+        if (deps === null) {
           sendNotFound(response);
           return;
         }
         await handleAirplaneSync(
           response,
-          consoleDataOutputDir,
-          resolveIssueRepository,
-          issueTitleStateCache,
-          pullRequestStatusCache,
-          options.resolveGithubToken != null
-            ? options.resolveGithubToken('')
-            : null,
+          deps.consoleDataOutputDir,
+          deps.resolveIssueRepository,
+          deps.issueTitleStateCache,
+          deps.pullRequestStatusCache,
+          deps.ghToken,
         );
         return;
       }
@@ -870,33 +895,18 @@ const handleTokenedRequest = async (
           });
           return;
         }
-        const defaultIssueRepository = options.issueRepository ?? null;
-        const consoleDataOutputDir = options.consoleDataOutputDir ?? null;
-        const issueTitleStateCache = options.issueTitleStateCache ?? null;
-        const pullRequestStatusCache = options.pullRequestStatusCache ?? null;
-        const resolveIssueRepository =
-          options.resolveIssueRepository ??
-          (defaultIssueRepository !== null
-            ? (): IssueRepository => defaultIssueRepository
-            : null);
-        if (
-          resolveIssueRepository === null ||
-          consoleDataOutputDir === null ||
-          issueTitleStateCache === null ||
-          pullRequestStatusCache === null
-        ) {
+        const deps = resolveAirplaneSyncDeps(options);
+        if (deps === null) {
           sendNotFound(response);
           return;
         }
         await handleAirplaneSync(
           response,
-          consoleDataOutputDir,
-          resolveIssueRepository,
-          issueTitleStateCache,
-          pullRequestStatusCache,
-          options.resolveGithubToken != null
-            ? options.resolveGithubToken('')
-            : null,
+          deps.consoleDataOutputDir,
+          deps.resolveIssueRepository,
+          deps.issueTitleStateCache,
+          deps.pullRequestStatusCache,
+          deps.ghToken,
           targetUrlsRaw,
         );
         return;
