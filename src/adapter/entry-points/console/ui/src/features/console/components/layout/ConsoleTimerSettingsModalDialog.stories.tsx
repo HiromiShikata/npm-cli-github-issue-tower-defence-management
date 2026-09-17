@@ -9,7 +9,6 @@ const meta: Meta<typeof ConsoleTimerSettingsModalDialog> = {
     pjcodes: ['acme', 'beta'],
     isLoadingPjcodes: false,
     projectMinutes: { acme: 25, beta: 0 },
-    nameWithOwnerByPjcode: { acme: 'HiromiShikata/umino-corporait-operation' },
     timerMode: false,
     onOpen: () => {},
     onToggleTimerMode: () => {},

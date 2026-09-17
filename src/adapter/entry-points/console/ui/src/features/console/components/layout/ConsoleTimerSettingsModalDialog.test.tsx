@@ -216,58 +216,6 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('renders a create task link when nameWithOwnerByPjcode is provided', () => {
-    const { getByRole } = render(
-      <ConsoleTimerSettingsModalDialog
-        {...baseProps}
-        isOpen={true}
-        pjcodes={['alpha']}
-        projectMinutes={{ alpha: 5 }}
-        nameWithOwnerByPjcode={{
-          alpha: 'HiromiShikata/umino-corporait-operation',
-        }}
-      />,
-    );
-    const createLink = getByRole('link', { name: 'Create task in alpha' });
-    expect(createLink).toBeInTheDocument();
-    expect(createLink).toHaveAttribute(
-      'href',
-      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
-    );
-    expect(createLink).toHaveAttribute('target', '_blank');
-  });
-
-  it('renders no create task link when nameWithOwnerByPjcode is null', () => {
-    const { queryByRole } = render(
-      <ConsoleTimerSettingsModalDialog
-        {...baseProps}
-        isOpen={true}
-        pjcodes={['alpha']}
-        projectMinutes={{ alpha: 5 }}
-        nameWithOwnerByPjcode={null}
-      />,
-    );
-    expect(queryByRole('link', { name: 'Create task in alpha' })).toBeNull();
-  });
-
-  it('renders no create task link for a pjcode absent from nameWithOwnerByPjcode', () => {
-    const { queryByRole } = render(
-      <ConsoleTimerSettingsModalDialog
-        {...baseProps}
-        isOpen={true}
-        pjcodes={['alpha', 'beta']}
-        projectMinutes={{ alpha: 5, beta: 0 }}
-        nameWithOwnerByPjcode={{
-          alpha: 'HiromiShikata/umino-corporait-operation',
-        }}
-      />,
-    );
-    expect(queryByRole('link', { name: 'Create task in beta' })).toBeNull();
-    expect(
-      queryByRole('link', { name: 'Create task in alpha' }),
-    ).toBeInTheDocument();
-  });
-
   it('clamps dialog right position so dialog stays within viewport when button is near the left edge', async () => {
     const testViewportWidth = 500;
     const buttonRight = 35;

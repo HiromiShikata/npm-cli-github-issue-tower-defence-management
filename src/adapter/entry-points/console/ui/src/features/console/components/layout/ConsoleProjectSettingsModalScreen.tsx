@@ -5,6 +5,7 @@ export type ConsoleProjectSettingsModalScreenProps = {
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
+  nameWithOwnerByPjcode?: Record<string, string> | null;
   onSave: () => void;
   onClose: () => void;
 };
@@ -16,6 +17,7 @@ export const ConsoleProjectSettingsModalScreen = ({
   isLoading,
   isSaving,
   error,
+  nameWithOwnerByPjcode = null,
   onSave,
   onClose,
 }: ConsoleProjectSettingsModalScreenProps) => {
@@ -50,27 +52,41 @@ export const ConsoleProjectSettingsModalScreen = ({
           <p className="console-settings-modal-loading">Loading…</p>
         ) : (
           <ul className="console-settings-modal-project-list">
-            {pjcodes.map((pjcode) => (
-              <li key={pjcode} className="console-settings-modal-project-row">
-                <label
-                  htmlFor={`max-preparing-count-${pjcode}`}
-                  className="console-settings-modal-label"
-                >
-                  {pjcode}
-                </label>
-                <input
-                  id={`max-preparing-count-${pjcode}`}
-                  type="number"
-                  min={0}
-                  step={1}
-                  className="console-settings-modal-input"
-                  value={inputValues[pjcode] ?? ''}
-                  onChange={(e) => onChangeInput(pjcode, e.target.value)}
-                  disabled={isSaving}
-                  aria-label={`Maximum preparing issues count for ${pjcode}`}
-                />
-              </li>
-            ))}
+            {pjcodes.map((pjcode) => {
+              const nameWithOwner = nameWithOwnerByPjcode?.[pjcode] ?? null;
+              return (
+                <li key={pjcode} className="console-settings-modal-project-row">
+                  <label
+                    htmlFor={`max-preparing-count-${pjcode}`}
+                    className="console-settings-modal-label"
+                  >
+                    {pjcode}
+                  </label>
+                  <input
+                    id={`max-preparing-count-${pjcode}`}
+                    type="number"
+                    min={0}
+                    step={1}
+                    className="console-settings-modal-input"
+                    value={inputValues[pjcode] ?? ''}
+                    onChange={(e) => onChangeInput(pjcode, e.target.value)}
+                    disabled={isSaving}
+                    aria-label={`Maximum preparing issues count for ${pjcode}`}
+                  />
+                  {nameWithOwner !== null && (
+                    <a
+                      href={`https://github.com/${nameWithOwner}/issues/new`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="console-settings-modal-create-link"
+                      aria-label={`Create task in ${pjcode}`}
+                    >
+                      +
+                    </a>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
         {error !== null && (

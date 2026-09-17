@@ -897,6 +897,7 @@ export const ConsolePage = () => {
           isLoading={projectSettings.isLoading}
           isSaving={projectSettings.isSaving}
           error={projectSettings.error}
+          nameWithOwnerByPjcode={nameWithOwnerByPjcode}
           onSave={projectSettings.save}
           onClose={projectSettings.close}
         />
@@ -920,7 +921,6 @@ export const ConsolePage = () => {
               projectMinutes={draftProjectMinutes}
               pjcodes={pjcodes}
               isLoadingPjcodes={isLoadingPjcodes}
-              nameWithOwnerByPjcode={nameWithOwnerByPjcode}
               onOpen={openSettings}
               onToggleTimerMode={toggleDraftTimerMode}
               onChangeMinutes={changeDraftMinutes}

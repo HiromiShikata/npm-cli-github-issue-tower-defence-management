@@ -7,6 +7,7 @@ const meta: Meta<typeof ConsoleProjectSettingsModalScreen> = {
   args: {
     pjcodes: ['acme', 'beta', 'gamma'],
     inputValues: { acme: '5', beta: '3', gamma: '8' },
+    nameWithOwnerByPjcode: { acme: 'HiromiShikata/umino-corporait-operation' },
     onChangeInput: () => {},
     isLoading: false,
     isSaving: false,
