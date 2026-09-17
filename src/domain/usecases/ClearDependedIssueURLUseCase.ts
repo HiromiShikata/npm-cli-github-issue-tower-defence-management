@@ -11,6 +11,8 @@ import {
   SOME_DEPENDED_ICEBOX_REMOVED_COMMENT_HEAD,
 } from './dependencyNotificationCommentHeads';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
+import { isAgentReportBody } from './isAgentReportBody';
+import { extractIterationsExhausted } from './extractIterationsExhausted';
 
 export class ClearDependedIssueURLUseCase {
   constructor(
@@ -63,7 +65,7 @@ export class ClearDependedIssueURLUseCase {
               ) && !input.issues.some((depIssue) => depIssue.url === url),
           )
         : [];
-      const notFoundDependedIssueUrls = absentDependedIssueIsResolvable
+      const rawNotFoundDependedIssueUrls = absentDependedIssueIsResolvable
         ? issue.dependedIssueUrls.filter(
             (dependedIssueUrl) =>
               !input.issues.some(
@@ -75,6 +77,12 @@ export class ClearDependedIssueURLUseCase {
               ),
           )
         : [];
+      const iterationsExhaustedPreservesNotFound =
+        rawNotFoundDependedIssueUrls.length > 0 &&
+        (await this.lastAgentReportHasIterationsExhausted(issue.url));
+      const notFoundDependedIssueUrls = iterationsExhaustedPreservesNotFound
+        ? []
+        : rawNotFoundDependedIssueUrls;
       const iceboxDependedIssueUrls = issue.dependedIssueUrls.filter(
         (dependedIssueUrl) =>
           input.issues.some(
@@ -108,7 +116,13 @@ export class ClearDependedIssueURLUseCase {
         continue;
       }
       const remainingDependedIssueUrls = absentDependedIssueIsResolvable
-        ? [...openDependedIssueUrls, ...allowedExternalDependedIssueUrls]
+        ? [
+            ...openDependedIssueUrls,
+            ...allowedExternalDependedIssueUrls,
+            ...(iterationsExhaustedPreservesNotFound
+              ? rawNotFoundDependedIssueUrls
+              : []),
+          ]
         : issue.dependedIssueUrls.filter(
             (dependedIssueUrl) =>
               !closedDependedIssueUrls.includes(dependedIssueUrl) &&
@@ -155,6 +169,19 @@ export class ClearDependedIssueURLUseCase {
         );
       }
     }
+  };
+
+  private lastAgentReportHasIterationsExhausted = async (
+    issueUrl: string,
+  ): Promise<boolean> => {
+    const comments =
+      await this.issueRepository.getIssueOrPullRequestComments(issueUrl);
+    const lastAgentReport = [...comments]
+      .reverse()
+      .find((comment) => isAgentReportBody(comment.body));
+    return lastAgentReport
+      ? extractIterationsExhausted(lastAgentReport.body)
+      : false;
   };
 
   private createCommentWithDedup = async (
