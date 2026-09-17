@@ -861,9 +861,9 @@ describe('ClearDependedIssueURLUseCase', () => {
           ],
           cacheUsed: false,
         });
-        expect(
-          mockIssueRepository.clearProjectField.mock.calls,
-        ).toHaveLength(0);
+        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+          0,
+        );
         expect(
           mockIssueRepository.updateProjectTextField.mock.calls,
         ).toHaveLength(0);
@@ -892,12 +892,10 @@ describe('ClearDependedIssueURLUseCase', () => {
           ],
           cacheUsed: false,
         });
-        expect(
-          mockIssueRepository.clearProjectField.mock.calls,
-        ).toHaveLength(1);
-        expect(
-          mockIssueRepository.createComment.mock.calls,
-        ).toHaveLength(1);
+        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+          1,
+        );
+        expect(mockIssueRepository.createComment.mock.calls).toHaveLength(1);
       });
 
       it('should not remove not-found dependency URL when cacheUsed is false and iterationsExhausted true with multiple deps', async () => {
@@ -923,9 +921,9 @@ describe('ClearDependedIssueURLUseCase', () => {
           ],
           cacheUsed: false,
         });
-        expect(
-          mockIssueRepository.clearProjectField.mock.calls,
-        ).toHaveLength(0);
+        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+          0,
+        );
         expect(
           mockIssueRepository.updateProjectTextField.mock.calls,
         ).toHaveLength(0);
@@ -953,9 +951,9 @@ describe('ClearDependedIssueURLUseCase', () => {
           ],
           cacheUsed: false,
         });
-        expect(
-          mockIssueRepository.clearProjectField.mock.calls,
-        ).toHaveLength(1);
+        expect(mockIssueRepository.clearProjectField.mock.calls).toHaveLength(
+          1,
+        );
       });
     });
   });
