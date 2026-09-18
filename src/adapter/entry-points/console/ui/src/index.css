@@ -364,6 +364,29 @@ body {
   text-align: right;
 }
 
+.console-timer-settings-minutes-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.console-timer-settings-minutes-step-btn {
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  color: #c9d1d9;
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1;
+  padding: 2px 5px;
+  user-select: none;
+}
+
+.console-timer-settings-minutes-step-btn:hover {
+  background: #30363d;
+  color: #e6edf3;
+}
+
 .console-timer-settings-minutes-input {
   width: 40px;
   background: #0d1117;

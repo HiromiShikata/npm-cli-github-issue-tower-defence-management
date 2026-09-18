@@ -203,6 +203,74 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     expect(onChangeMinutes).toHaveBeenCalledWith('alpha', 10);
   });
 
+  it('calls onChangeMinutes with incremented value when the increase button is clicked', () => {
+    const onChangeMinutes = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{ alpha: 5 }}
+        onChangeMinutes={onChangeMinutes}
+      />,
+    );
+    fireEvent.click(
+      getByRole('button', { name: 'Increase minutes for alpha' }),
+    );
+    expect(onChangeMinutes).toHaveBeenCalledWith('alpha', 6);
+  });
+
+  it('calls onChangeMinutes with decremented value when the decrease button is clicked', () => {
+    const onChangeMinutes = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{ alpha: 5 }}
+        onChangeMinutes={onChangeMinutes}
+      />,
+    );
+    fireEvent.click(
+      getByRole('button', { name: 'Decrease minutes for alpha' }),
+    );
+    expect(onChangeMinutes).toHaveBeenCalledWith('alpha', 4);
+  });
+
+  it('does not decrease below 0 when the decrease button is clicked at 0 minutes', () => {
+    const onChangeMinutes = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{ alpha: 0 }}
+        onChangeMinutes={onChangeMinutes}
+      />,
+    );
+    fireEvent.click(
+      getByRole('button', { name: 'Decrease minutes for alpha' }),
+    );
+    expect(onChangeMinutes).toHaveBeenCalledWith('alpha', 0);
+  });
+
+  it('does not increase above 999 when the increase button is clicked at 999 minutes', () => {
+    const onChangeMinutes = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{ alpha: 999 }}
+        onChangeMinutes={onChangeMinutes}
+      />,
+    );
+    fireEvent.click(
+      getByRole('button', { name: 'Increase minutes for alpha' }),
+    );
+    expect(onChangeMinutes).toHaveBeenCalledWith('alpha', 999);
+  });
+
   it('calls onClose when the backdrop is clicked', () => {
     const onClose = jest.fn();
     const { getByRole } = render(
