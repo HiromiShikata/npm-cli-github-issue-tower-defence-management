@@ -1,3 +1,10 @@
+## [2.120.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.120.0...v2.120.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* **ConsoleProjectSettingsModalScreen:** align label widths and narrow max input to 3-digit width ([#2404](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2404)) ([438f287](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/438f2879624ea994133d108d96dd84886ccf6cc4))
+
 # [2.120.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.5...v2.120.0) (2026-09-18)
 
 
