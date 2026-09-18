@@ -1,3 +1,10 @@
+## [2.121.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.121.0...v2.121.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* **resolveNextStepAgentDispatchRepetition:** skip escalation for nextStepAgent self-reference ([#2402](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2402)) ([8481526](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8481526bbe02f7d6d27ab6919d86dcfef6597beb)), closes [HiromiShikata/secretary#6444](https://github.com/HiromiShikata/secretary/issues/6444)
+
 # [2.121.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.120.1...v2.121.0) (2026-09-18)
 
 
