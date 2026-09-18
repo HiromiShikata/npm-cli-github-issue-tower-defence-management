@@ -78,7 +78,7 @@ export type ConsoleItemDetailProps = {
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
-  onRenameTitle?: ((newTitle: string) => Promise<void>) | null;
+  onTitleRename?: ((newTitle: string) => Promise<void>) | null;
 };
 
 export const ConsoleItemDetail = ({
@@ -111,7 +111,7 @@ export const ConsoleItemDetail = ({
   buildImageProxyUrl,
   renderReferenceLink,
   onAddInlineComment,
-  onRenameTitle,
+  onTitleRename,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
@@ -192,10 +192,10 @@ export const ConsoleItemDetail = ({
             isDraft={false}
             stateReason=""
           />
-          {onRenameTitle != null ? (
+          {onTitleRename != null ? (
             <ConsoleItemTitleEditor
               title={item.title}
-              onRename={onRenameTitle}
+              onRename={onTitleRename}
             />
           ) : (
             <span className="console-detail-title-text">{item.title}</span>

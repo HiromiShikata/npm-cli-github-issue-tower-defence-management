@@ -841,31 +841,31 @@ describe('ConsoleItemDetail', () => {
     expect(descriptionButton).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('renders a title editor with an edit button when onRenameTitle is provided', () => {
+  it('renders a title editor with an edit button when onTitleRename is provided', () => {
     const { getByRole } = render(
       <ConsoleItemDetail
         item={issueItem}
         {...baseProps}
-        onRenameTitle={jest.fn()}
+        onTitleRename={jest.fn()}
       />,
     );
     expect(getByRole('button', { name: 'Edit title' })).toBeInTheDocument();
   });
 
-  it('does not render an edit title button when onRenameTitle is not provided', () => {
+  it('does not render an edit title button when onTitleRename is not provided', () => {
     const { queryByRole } = render(
       <ConsoleItemDetail item={issueItem} {...baseProps} />,
     );
     expect(queryByRole('button', { name: 'Edit title' })).toBeNull();
   });
 
-  it('calls onRenameTitle with the new title when the user saves via the editor', async () => {
-    const onRenameTitle = jest.fn().mockResolvedValue(undefined);
+  it('calls onTitleRename with the new title when the user saves via the editor', async () => {
+    const onTitleRename = jest.fn().mockResolvedValue(undefined);
     const { getByRole, queryByRole } = render(
       <ConsoleItemDetail
         item={issueItem}
         {...baseProps}
-        onRenameTitle={onRenameTitle}
+        onTitleRename={onTitleRename}
       />,
     );
     fireEvent.click(getByRole('button', { name: 'Edit title' }));
@@ -874,6 +874,6 @@ describe('ConsoleItemDetail', () => {
     });
     fireEvent.click(getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(queryByRole('textbox')).toBeNull());
-    expect(onRenameTitle).toHaveBeenCalledWith('Renamed title');
+    expect(onTitleRename).toHaveBeenCalledWith('Renamed title');
   });
 });

@@ -1671,3 +1671,33 @@ test('in timer mode, automatically navigates away from a project with zero prs a
   );
   expect(page.url()).toContain(`/projects/${CONSOLE_E2E_PJCODE}`);
 });
+
+test('renames the issue title when the user clicks Edit, types a new title, and saves', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Todo by human').click();
+  await itemRowByText(
+    page,
+    'Auto-advance to the next non-empty console tab when one empties',
+  ).click();
+
+  const editButton = page.locator('.console-detail-title-edit');
+  await expect(editButton).toBeVisible();
+
+  await editButton.click();
+
+  const input = page.locator('.console-detail-title-input');
+  await expect(input).toBeVisible();
+
+  await input.fill('Updated task title');
+  await page.locator('.console-detail-title-save').click();
+
+  await expect
+    .poll(() => harness.renameIssueCalls.length, { timeout: 10000 })
+    .toBe(1);
+
+  expect(harness.renameIssueCalls[0].issueUrl).toContain('/issues/869');
+  expect(harness.renameIssueCalls[0].newTitle).toBe('Updated task title');
+});

@@ -5658,5 +5658,20 @@ describe('consoleOperationApi', () => {
       });
       expect(response.statusCode).toBe(400);
     });
+
+    it('propagates an error from updateIssue (resulting in 502 from webServer)', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/42',
+        title: 'Old title',
+      });
+      issueRepository.updateIssue.mockRejectedValue(new Error('API failure'));
+      await expect(
+        handleIssueRename(context, {
+          issueUrl: 'https://github.com/o/r/issues/42',
+          newTitle: 'New title',
+        }),
+      ).rejects.toThrow('API failure');
+    });
   });
 });

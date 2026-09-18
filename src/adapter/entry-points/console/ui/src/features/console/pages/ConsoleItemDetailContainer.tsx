@@ -321,9 +321,9 @@ export const ConsoleItemDetailContainer = ({
         : null,
   };
 
-  const renameTitle = useCallback(
+  const issueRename = useCallback(
     async (newTitle: string) => {
-      await operations.renameIssue(item, newTitle);
+      await operations.issueRename(item, newTitle);
     },
     [item, operations],
   );
@@ -376,7 +376,7 @@ export const ConsoleItemDetailContainer = ({
       buildImageProxyUrl={resolveImageProxyUrl}
       renderReferenceLink={renderReferenceLink}
       onAddInlineComment={addInlineComment}
-      onRenameTitle={renameTitle}
+      onTitleRename={issueRename}
       commentComposer={
         <ConsoleCommentComposer
           initiallyOpen
