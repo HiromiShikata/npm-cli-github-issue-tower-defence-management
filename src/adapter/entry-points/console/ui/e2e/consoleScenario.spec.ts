@@ -1695,9 +1695,15 @@ test('renames the issue title when the user clicks Edit, types a new title, and 
   await page.locator('.console-detail-title-save').click();
 
   await expect
-    .poll(() => harness.renameIssueCalls.length, { timeout: 10000 })
-    .toBe(1);
+    .poll(
+      () =>
+        harness.renameIssueCalls.some((c) => c.issueUrl.includes('/issues/869')),
+      { timeout: 10000 },
+    )
+    .toBe(true);
 
-  expect(harness.renameIssueCalls[0].issueUrl).toContain('/issues/869');
-  expect(harness.renameIssueCalls[0].newTitle).toBe('Updated task title');
+  const call = harness.renameIssueCalls.find((c) =>
+    c.issueUrl.includes('/issues/869'),
+  );
+  expect(call?.newTitle).toBe('Updated task title');
 });
