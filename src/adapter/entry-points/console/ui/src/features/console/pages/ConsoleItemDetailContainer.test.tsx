@@ -887,4 +887,39 @@ describe('ConsoleItemDetailContainer', () => {
     input.revertAdvance();
     expect(operations.patchItemOverlay).toHaveBeenCalledWith(issueItem, false);
   });
+
+  it('calls operations.issueRename with the item and new title when the user saves via the title editor', async () => {
+    const operations = buildOperations();
+    (operations.issueRename as jest.Mock).mockResolvedValue(undefined);
+    const onQueueAction = jest.fn();
+    const { getByRole } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-agent"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+
+    fireEvent.click(getByRole('button', { name: 'Edit title' }));
+    fireEvent.change(getByRole('textbox', { name: 'Edit title' }), {
+      target: { value: 'Renamed issue title' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(operations.issueRename).toHaveBeenCalledWith(
+        issueItem,
+        'Renamed issue title',
+      ),
+    );
+  });
 });

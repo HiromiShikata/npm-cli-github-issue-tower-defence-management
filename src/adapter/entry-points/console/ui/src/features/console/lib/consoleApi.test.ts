@@ -8,9 +8,11 @@ import {
   postConsoleComment,
   postConsoleDeleteStory,
   postConsoleOperation,
+  postConsoleRenameIssue,
   postConsoleRenameStory,
   postConsoleReviewComment,
   postProjectMaxPreparingUpdate,
+  RENAME_ISSUE_OPERATION_PATH,
   RENAME_STORY_OPERATION_PATH,
 } from './consoleApi';
 
@@ -709,5 +711,32 @@ describe('fetchProjectList', () => {
     expect(result.projectUrls).toEqual({
       acme: 'https://github.com/users/owner/projects/1',
     });
+  });
+});
+
+describe('postConsoleRenameIssue', () => {
+  it('posts issueUrl and newTitle to the renameissue endpoint', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleRenameIssue({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      newTitle: 'New task title',
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(RENAME_ISSUE_OPERATION_PATH);
+    expect(init).toMatchObject({ method: 'POST' });
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      issueUrl: 'https://github.com/o/r/issues/42',
+      newTitle: 'New task title',
+    });
+  });
+
+  it('throws the error reason surfaced by the server', async () => {
+    mockFetchFailureOnce(400, JSON.stringify({ error: 'newTitle is required' }));
+    await expect(
+      postConsoleRenameIssue({
+        issueUrl: 'https://github.com/o/r/issues/42',
+        newTitle: '',
+      }),
+    ).rejects.toThrow('newTitle is required');
   });
 });
