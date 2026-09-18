@@ -1708,4 +1708,8 @@ test('renames the issue title when the user clicks Edit, types a new title, and 
     c.issueUrl.includes('/issues/869'),
   );
   expect(call?.newTitle).toBe('Updated task title');
+
+  await expect(input).not.toBeVisible();
+  const titleText = page.locator('.console-detail-title-text');
+  await expect(titleText).toContainText('Updated task title');
 });

@@ -6,7 +6,7 @@ const meta: Meta<typeof ConsoleItemTitleEditor> = {
   component: ConsoleItemTitleEditor,
   args: {
     title: 'Implement feature to edit task title inline',
-    onRename: async () => {},
+    onTitleRename: async () => {},
   },
 };
 
@@ -18,7 +18,7 @@ export const DisplayMode: Story = {};
 
 export const SaveError: Story = {
   args: {
-    onRename: async () => {
+    onTitleRename: async () => {
       throw new Error('GitHub API error: Not Found');
     },
   },

@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 
 export type ConsoleItemTitleEditorProps = {
   title: string;
-  onRename: (newTitle: string) => Promise<void>;
+  onTitleRename: (newTitle: string) => Promise<void>;
 };
 
 export const ConsoleItemTitleEditor = ({
   title,
-  onRename,
+  onTitleRename,
 }: ConsoleItemTitleEditorProps) => {
   const [localTitle, setLocalTitle] = useState(title);
   const [isEditing, setIsEditing] = useState(false);
@@ -44,7 +44,7 @@ export const ConsoleItemTitleEditor = ({
     setIsLoading(true);
     setError(null);
     try {
-      await onRename(trimmed);
+      await onTitleRename(trimmed);
       setLocalTitle(trimmed);
       setIsEditing(false);
     } catch (e) {

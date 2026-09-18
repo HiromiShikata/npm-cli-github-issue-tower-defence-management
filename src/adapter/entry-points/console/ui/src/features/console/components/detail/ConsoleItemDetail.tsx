@@ -195,7 +195,7 @@ export const ConsoleItemDetail = ({
           {onTitleRename != null ? (
             <ConsoleItemTitleEditor
               title={item.title}
-              onRename={onTitleRename}
+              onTitleRename={onTitleRename}
             />
           ) : (
             <span className="console-detail-title-text">{item.title}</span>
