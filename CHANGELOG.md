@@ -1,3 +1,10 @@
+# [2.121.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.120.1...v2.121.0) (2026-09-18)
+
+
+### Features
+
+* **console:** add inline title editing to task detail page ([#2405](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2405)) ([5c0159c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5c0159cf0717b79826c592e74f97d12a8cf63e73)), closes [HiromiShikata/umino-corporait-operation#31891](https://github.com/HiromiShikata/umino-corporait-operation/issues/31891)
+
 ## [2.120.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.120.0...v2.120.1) (2026-09-18)
 
 
