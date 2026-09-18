@@ -274,7 +274,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     [clearTimer, commitPending, runCommit],
   );
 
-  useEffect(() => clearTimer, [clearTimer]);
+  useEffect(() => commitPending, [commitPending]);
 
   return {
     pending,
