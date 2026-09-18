@@ -25,6 +25,7 @@ import {
   handleDeleteStory,
   handleIntmux,
   handleProjectMaxPreparingUpdate,
+  handleRenameIssue,
   handleReorderStory,
   handleReview,
   handleReviewComment,
@@ -5608,6 +5609,52 @@ describe('consoleOperationApi', () => {
       const response = await handleCreateWorkflowIssue(issueRepository, {
         nameWithOwner: 'invalid',
         title: 'Some title',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('handleRenameIssue', () => {
+    it('renames the issue and returns 200', async () => {
+      const issueToRename: Issue = {
+        ...issue,
+        url: 'https://github.com/o/r/issues/42',
+        title: 'Old title',
+      };
+      issueRepository.getIssueByUrl.mockResolvedValue(issueToRename);
+      issueRepository.updateIssue.mockResolvedValue(undefined);
+      const response = await handleRenameIssue(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        newTitle: 'New title',
+      });
+      expect(issueRepository.getIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/42',
+      );
+      expect(issueRepository.updateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'New title' }),
+      );
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('returns 404 when the issue is not found', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue(null);
+      const response = await handleRenameIssue(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        newTitle: 'New title',
+      });
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('returns 400 when issueUrl is missing', async () => {
+      const response = await handleRenameIssue(context, {
+        newTitle: 'New title',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when newTitle is missing', async () => {
+      const response = await handleRenameIssue(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
       });
       expect(response.statusCode).toBe(400);
     });

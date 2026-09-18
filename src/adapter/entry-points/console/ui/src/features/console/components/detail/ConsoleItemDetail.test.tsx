@@ -1,4 +1,4 @@
-import { render, within } from '@testing-library/react';
+import { fireEvent, render, waitFor, within } from '@testing-library/react';
 import {
   consoleChangedFilesFixture,
   consoleCommentsFixture,
@@ -839,5 +839,41 @@ describe('ConsoleItemDetail', () => {
     );
     const descriptionButton = getByRole('button', { name: /description/i });
     expect(descriptionButton).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('renders a title editor with an edit button when onRenameTitle is provided', () => {
+    const { getByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        onRenameTitle={jest.fn()}
+      />,
+    );
+    expect(getByRole('button', { name: 'Edit title' })).toBeInTheDocument();
+  });
+
+  it('does not render an edit title button when onRenameTitle is not provided', () => {
+    const { queryByRole } = render(
+      <ConsoleItemDetail item={issueItem} {...baseProps} />,
+    );
+    expect(queryByRole('button', { name: 'Edit title' })).toBeNull();
+  });
+
+  it('calls onRenameTitle with the new title when the user saves via the editor', async () => {
+    const onRenameTitle = jest.fn().mockResolvedValue(undefined);
+    const { getByRole, queryByRole } = render(
+      <ConsoleItemDetail
+        item={issueItem}
+        {...baseProps}
+        onRenameTitle={onRenameTitle}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: 'Edit title' }));
+    fireEvent.change(getByRole('textbox', { name: 'Edit title' }), {
+      target: { value: 'Renamed title' },
+    });
+    fireEvent.click(getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(queryByRole('textbox')).toBeNull());
+    expect(onRenameTitle).toHaveBeenCalledWith('Renamed title');
   });
 });

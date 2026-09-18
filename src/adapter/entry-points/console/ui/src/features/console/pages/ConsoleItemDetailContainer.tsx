@@ -369,6 +369,9 @@ export const ConsoleItemDetailContainer = ({
       buildImageProxyUrl={resolveImageProxyUrl}
       renderReferenceLink={renderReferenceLink}
       onAddInlineComment={addInlineComment}
+      onRenameTitle={async (newTitle) => {
+        await operations.renameIssue(item, newTitle);
+      }}
       commentComposer={
         <ConsoleCommentComposer
           initiallyOpen

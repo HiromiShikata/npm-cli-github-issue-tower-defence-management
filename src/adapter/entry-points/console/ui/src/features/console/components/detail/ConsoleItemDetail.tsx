@@ -33,6 +33,7 @@ import type { ConsoleFetchFailure } from './ConsoleFetchFailureAlert';
 import { ConsoleFetchFailureAlert } from './ConsoleFetchFailureAlert';
 import type { ConsoleAddInlineComment } from './ConsoleFileDiff';
 import { ConsoleItemIcon } from './ConsoleItemIcon';
+import { ConsoleItemTitleEditor } from './ConsoleItemTitleEditor';
 import { ConsolePullRequestDetail } from './ConsolePullRequestDetail';
 import { ConsolePullRequestMergeableChip } from './ConsolePullRequestMergeableChip';
 import { ConsolePullRequestStatusBadges } from './ConsolePullRequestStatusBadges';
@@ -77,6 +78,7 @@ export type ConsoleItemDetailProps = {
   buildImageProxyUrl?: ImageProxyUrlBuilder;
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
+  onRenameTitle?: ((newTitle: string) => Promise<void>) | null;
 };
 
 export const ConsoleItemDetail = ({
@@ -109,6 +111,7 @@ export const ConsoleItemDetail = ({
   buildImageProxyUrl,
   renderReferenceLink,
   onAddInlineComment,
+  onRenameTitle,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
@@ -189,7 +192,14 @@ export const ConsoleItemDetail = ({
             isDraft={false}
             stateReason=""
           />
-          <span className="console-detail-title-text">{item.title}</span>
+          {onRenameTitle != null ? (
+            <ConsoleItemTitleEditor
+              title={item.title}
+              onRename={onRenameTitle}
+            />
+          ) : (
+            <span className="console-detail-title-text">{item.title}</span>
+          )}
           <span className="console-detail-number">
             {item.isPr ? `PR #${item.number}` : `#${item.number}`}
           </span>
