@@ -4,14 +4,20 @@ import { ConsoleItemTitleEditor } from './ConsoleItemTitleEditor';
 describe('ConsoleItemTitleEditor', () => {
   it('shows the title text in display mode', () => {
     const { getByText } = render(
-      <ConsoleItemTitleEditor title="My task title" onTitleRename={jest.fn()} />,
+      <ConsoleItemTitleEditor
+        title="My task title"
+        onTitleRename={jest.fn()}
+      />,
     );
     expect(getByText('My task title')).toBeInTheDocument();
   });
 
   it('has the console-detail-title-text class in display mode', () => {
     const { container } = render(
-      <ConsoleItemTitleEditor title="My task title" onTitleRename={jest.fn()} />,
+      <ConsoleItemTitleEditor
+        title="My task title"
+        onTitleRename={jest.fn()}
+      />,
     );
     expect(
       container.querySelector('.console-detail-title-text'),
@@ -20,14 +26,20 @@ describe('ConsoleItemTitleEditor', () => {
 
   it('shows an edit button in display mode', () => {
     const { getByRole } = render(
-      <ConsoleItemTitleEditor title="My task title" onTitleRename={jest.fn()} />,
+      <ConsoleItemTitleEditor
+        title="My task title"
+        onTitleRename={jest.fn()}
+      />,
     );
     expect(getByRole('button', { name: 'Edit title' })).toBeInTheDocument();
   });
 
   it('enters editing mode with input pre-filled when clicking the edit button', () => {
     const { getByRole } = render(
-      <ConsoleItemTitleEditor title="My task title" onTitleRename={jest.fn()} />,
+      <ConsoleItemTitleEditor
+        title="My task title"
+        onTitleRename={jest.fn()}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Edit title' }));
     const input = getByRole('textbox', { name: 'Edit title' });
@@ -37,7 +49,10 @@ describe('ConsoleItemTitleEditor', () => {
 
   it('has the console-detail-title-text class in editing mode', () => {
     const { getByRole, container } = render(
-      <ConsoleItemTitleEditor title="My task title" onTitleRename={jest.fn()} />,
+      <ConsoleItemTitleEditor
+        title="My task title"
+        onTitleRename={jest.fn()}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Edit title' }));
     expect(
@@ -48,7 +63,10 @@ describe('ConsoleItemTitleEditor', () => {
   it('exits editing mode without calling onTitleRename when Cancel is clicked', () => {
     const onTitleRename = jest.fn();
     const { getByRole, queryByRole } = render(
-      <ConsoleItemTitleEditor title="My task title" onTitleRename={onTitleRename} />,
+      <ConsoleItemTitleEditor
+        title="My task title"
+        onTitleRename={onTitleRename}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Edit title' }));
     fireEvent.click(getByRole('button', { name: 'Cancel' }));
@@ -58,7 +76,10 @@ describe('ConsoleItemTitleEditor', () => {
 
   it('exits editing mode when Escape is pressed', () => {
     const { getByRole, queryByRole } = render(
-      <ConsoleItemTitleEditor title="My task title" onTitleRename={jest.fn()} />,
+      <ConsoleItemTitleEditor
+        title="My task title"
+        onTitleRename={jest.fn()}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Edit title' }));
     fireEvent.keyDown(getByRole('textbox'), { key: 'Escape' });
@@ -68,7 +89,10 @@ describe('ConsoleItemTitleEditor', () => {
   it('calls onTitleRename with the trimmed new title and shows the new title after save', async () => {
     const onTitleRename = jest.fn().mockResolvedValue(undefined);
     const { getByRole, queryByRole, getByText } = render(
-      <ConsoleItemTitleEditor title="Old title" onTitleRename={onTitleRename} />,
+      <ConsoleItemTitleEditor
+        title="Old title"
+        onTitleRename={onTitleRename}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Edit title' }));
     fireEvent.change(getByRole('textbox'), { target: { value: 'New title' } });
@@ -82,7 +106,10 @@ describe('ConsoleItemTitleEditor', () => {
   it('calls onTitleRename when Enter is pressed in the input', async () => {
     const onTitleRename = jest.fn().mockResolvedValue(undefined);
     const { getByRole, queryByRole } = render(
-      <ConsoleItemTitleEditor title="Old title" onTitleRename={onTitleRename} />,
+      <ConsoleItemTitleEditor
+        title="Old title"
+        onTitleRename={onTitleRename}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Edit title' }));
     const input = getByRole('textbox');
@@ -95,7 +122,10 @@ describe('ConsoleItemTitleEditor', () => {
   it('does not call onTitleRename and exits editing when the title is unchanged', async () => {
     const onTitleRename = jest.fn();
     const { getByRole, queryByRole } = render(
-      <ConsoleItemTitleEditor title="Same title" onTitleRename={onTitleRename} />,
+      <ConsoleItemTitleEditor
+        title="Same title"
+        onTitleRename={onTitleRename}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Edit title' }));
     fireEvent.click(getByRole('button', { name: 'Save' }));
@@ -104,9 +134,14 @@ describe('ConsoleItemTitleEditor', () => {
   });
 
   it('shows an error alert and stays in editing mode when onTitleRename throws', async () => {
-    const onTitleRename = jest.fn().mockRejectedValue(new Error('GitHub API error'));
+    const onTitleRename = jest
+      .fn()
+      .mockRejectedValue(new Error('GitHub API error'));
     const { getByRole, queryByRole } = render(
-      <ConsoleItemTitleEditor title="Old title" onTitleRename={onTitleRename} />,
+      <ConsoleItemTitleEditor
+        title="Old title"
+        onTitleRename={onTitleRename}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Edit title' }));
     fireEvent.change(getByRole('textbox'), { target: { value: 'New title' } });
