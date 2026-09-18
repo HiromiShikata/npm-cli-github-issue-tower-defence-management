@@ -66,6 +66,7 @@ export const ConsoleProjectSettingsModalScreen = ({
                     id={`max-preparing-count-${pjcode}`}
                     type="number"
                     min={0}
+                    max={999}
                     step={1}
                     className="console-settings-modal-input"
                     value={inputValues[pjcode] ?? ''}

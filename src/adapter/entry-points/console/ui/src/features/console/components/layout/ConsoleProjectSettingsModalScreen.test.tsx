@@ -202,4 +202,12 @@ describe('ConsoleProjectSettingsModalScreen', () => {
       getByRole('link', { name: 'Create task in acme' }),
     ).toBeInTheDocument();
   });
+
+  it('caps numeric input at 999 to match the 3-digit max constraint', () => {
+    render(<ConsoleProjectSettingsModalScreen {...baseProps} />);
+    const acmeInput = screen.getByLabelText(
+      'Maximum preparing issues count for acme',
+    );
+    expect((acmeInput as HTMLInputElement).max).toBe('999');
+  });
 });
