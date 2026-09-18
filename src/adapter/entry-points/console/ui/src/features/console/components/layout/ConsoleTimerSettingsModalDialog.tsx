@@ -119,24 +119,55 @@ export const ConsoleTimerSettingsModalDialog = ({
                           </label>
                         </td>
                         <td className="console-timer-settings-minutes-cell">
-                          <input
-                            id={`timer-minutes-${pjcode}`}
-                            type="number"
-                            min={0}
-                            max={999}
-                            value={
-                              (projectMinutes[pjcode] ?? 0) === 0
-                                ? ''
-                                : projectMinutes[pjcode]
-                            }
-                            onChange={(e) =>
-                              onChangeMinutes(
-                                pjcode,
-                                Math.max(0, parseInt(e.target.value, 10) || 0),
-                              )
-                            }
-                            className="console-timer-settings-minutes-input"
-                          />
+                          <div className="console-timer-settings-minutes-stepper">
+                            <button
+                              type="button"
+                              className="console-timer-settings-minutes-step-btn"
+                              aria-label={`Decrease minutes for ${pjcode}`}
+                              onClick={() =>
+                                onChangeMinutes(
+                                  pjcode,
+                                  Math.max(0, (projectMinutes[pjcode] ?? 0) - 1),
+                                )
+                              }
+                            >
+                              −
+                            </button>
+                            <input
+                              id={`timer-minutes-${pjcode}`}
+                              type="number"
+                              min={0}
+                              max={999}
+                              value={
+                                (projectMinutes[pjcode] ?? 0) === 0
+                                  ? ''
+                                  : projectMinutes[pjcode]
+                              }
+                              onChange={(e) =>
+                                onChangeMinutes(
+                                  pjcode,
+                                  Math.max(
+                                    0,
+                                    parseInt(e.target.value, 10) || 0,
+                                  ),
+                                )
+                              }
+                              className="console-timer-settings-minutes-input"
+                            />
+                            <button
+                              type="button"
+                              className="console-timer-settings-minutes-step-btn"
+                              aria-label={`Increase minutes for ${pjcode}`}
+                              onClick={() =>
+                                onChangeMinutes(
+                                  pjcode,
+                                  Math.min(999, (projectMinutes[pjcode] ?? 0) + 1),
+                                )
+                              }
+                            >
+                              +
+                            </button>
+                          </div>
                           <span className="console-timer-settings-minutes-label">
                             {(projectMinutes[pjcode] ?? 0) === 0
                               ? 'Skip'
