@@ -234,7 +234,10 @@ Failed to receive a report from the dispatched agent for ${params.thresholdForAu
     }
   }
   const dispatchesInCycle = countDispatchesInCurrentCycle(params);
-  if (!isSelfReference && dispatchesInCycle >= params.thresholdForDispatchLoop) {
+  if (
+    !isSelfReference &&
+    dispatchesInCycle >= params.thresholdForDispatchLoop
+  ) {
     const agentLabel = params.nextStepAgent ?? '(no next-step agent)';
     const dispatchLoopBody =
       params.nextStepAgent === null
