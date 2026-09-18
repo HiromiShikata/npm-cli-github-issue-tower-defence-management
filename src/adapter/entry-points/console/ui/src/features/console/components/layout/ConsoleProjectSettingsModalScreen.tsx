@@ -26,7 +26,7 @@ export const ConsoleProjectSettingsModalScreen = ({
     pjcodes.every((pjcode) => {
       const v = inputValues[pjcode] ?? '';
       const parsed = parseInt(v, 10);
-      return v === '' || Number.isNaN(parsed) || parsed < 0;
+      return v === '' || Number.isNaN(parsed) || parsed < 0 || parsed > 999;
     });
 
   return (

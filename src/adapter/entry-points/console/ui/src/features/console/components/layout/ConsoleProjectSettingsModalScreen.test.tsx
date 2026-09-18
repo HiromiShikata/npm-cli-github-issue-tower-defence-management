@@ -203,11 +203,21 @@ describe('ConsoleProjectSettingsModalScreen', () => {
     ).toBeInTheDocument();
   });
 
-  it('caps numeric input at 999 to match the 3-digit max constraint', () => {
+  it('has max attribute set to 999 to signal the 3-digit constraint', () => {
     render(<ConsoleProjectSettingsModalScreen {...baseProps} />);
     const acmeInput = screen.getByLabelText(
       'Maximum preparing issues count for acme',
     );
     expect((acmeInput as HTMLInputElement).max).toBe('999');
+  });
+
+  it('disables Save when a value exceeds 999', () => {
+    render(
+      <ConsoleProjectSettingsModalScreen
+        {...baseProps}
+        inputValues={{ acme: '1000', beta: '' }}
+      />,
+    );
+    expect(screen.getByLabelText('Save max settings')).toBeDisabled();
   });
 });
