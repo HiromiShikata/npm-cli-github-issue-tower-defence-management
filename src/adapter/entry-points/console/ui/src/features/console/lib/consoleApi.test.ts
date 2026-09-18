@@ -731,7 +731,10 @@ describe('postConsoleRenameIssue', () => {
   });
 
   it('throws the error reason surfaced by the server', async () => {
-    mockFetchFailureOnce(400, JSON.stringify({ error: 'newTitle is required' }));
+    mockFetchFailureOnce(
+      400,
+      JSON.stringify({ error: 'newTitle is required' }),
+    );
     await expect(
       postConsoleRenameIssue({
         issueUrl: 'https://github.com/o/r/issues/42',
