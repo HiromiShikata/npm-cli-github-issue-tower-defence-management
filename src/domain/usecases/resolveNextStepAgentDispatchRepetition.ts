@@ -197,6 +197,11 @@ export const resolveNextStepAgentDispatchRepetition = <
   thresholdForDispatchLoop: number;
   isNoStory?: boolean;
 }): NextStepAgentDispatchRepetition => {
+  const isSelfReference =
+    params.nextStepAgent !== null &&
+    params.agentFieldValue !== null &&
+    normalizeProjectFieldName(params.agentFieldValue) ===
+      normalizeProjectFieldName(params.nextStepAgent);
   const silentRedispatches = countSilentRedispatches(params);
   if (params.isNoStory) {
     if (silentRedispatches !== null) {
@@ -211,7 +216,7 @@ export const resolveNextStepAgentDispatchRepetition = <
     silentRedispatches !== null &&
     silentRedispatches.count >= params.thresholdForAutoReject
   ) {
-    if (silentRedispatches.hasReportsInCycle) {
+    if (silentRedispatches.hasReportsInCycle && !isSelfReference) {
       return {
         type: 'escalateReportingLoop',
         comment: `${DISPATCH_REPETITION_PREFIX}${REPORTING_LOOP_ESCALATED_KEYWORD} ${params.nextStepAgent}
@@ -219,15 +224,17 @@ export const resolveNextStepAgentDispatchRepetition = <
 The agent has been reporting every cycle but cannot advance — it has been dispatched ${params.thresholdForAutoReject} times since the last human comment without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
       };
     }
-    return {
-      type: 'escalateSilentRedispatch',
-      comment: `${DISPATCH_REPETITION_PREFIX}${SILENT_REDISPATCH_ESCALATED_KEYWORD} ${params.nextStepAgent}
+    if (!silentRedispatches.hasReportsInCycle) {
+      return {
+        type: 'escalateSilentRedispatch',
+        comment: `${DISPATCH_REPETITION_PREFIX}${SILENT_REDISPATCH_ESCALATED_KEYWORD} ${params.nextStepAgent}
 
 Failed to receive a report from the dispatched agent for ${params.thresholdForAutoReject} consecutive dispatches since the last human comment. ${SILENT_CRASH_ESCALATION_PHRASE}.`,
-    };
+      };
+    }
   }
   const dispatchesInCycle = countDispatchesInCurrentCycle(params);
-  if (dispatchesInCycle >= params.thresholdForDispatchLoop) {
+  if (!isSelfReference && dispatchesInCycle >= params.thresholdForDispatchLoop) {
     const agentLabel = params.nextStepAgent ?? '(no next-step agent)';
     const dispatchLoopBody =
       params.nextStepAgent === null
@@ -246,7 +253,8 @@ ${dispatchLoopBody}`,
   if (
     silentRedispatches !== null &&
     silentRedispatches.count >= 3 &&
-    silentRedispatches.hasReportsInCycle
+    silentRedispatches.hasReportsInCycle &&
+    !isSelfReference
   ) {
     return {
       type: 'escalateReportingLoop',
