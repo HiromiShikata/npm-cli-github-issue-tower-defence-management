@@ -8,11 +8,11 @@ import {
   postConsoleComment,
   postConsoleDeleteStory,
   postConsoleOperation,
-  postConsoleRenameIssue,
+  postConsoleIssueRename,
   postConsoleRenameStory,
   postConsoleReviewComment,
   postProjectMaxPreparingUpdate,
-  RENAME_ISSUE_OPERATION_PATH,
+  ISSUE_RENAME_OPERATION_PATH,
   RENAME_STORY_OPERATION_PATH,
 } from './consoleApi';
 
@@ -714,15 +714,15 @@ describe('fetchProjectList', () => {
   });
 });
 
-describe('postConsoleRenameIssue', () => {
+describe('postConsoleIssueRename', () => {
   it('posts issueUrl and newTitle to the renameissue endpoint', async () => {
     const fetchMock = mockFetchOnce({ ok: true });
-    await postConsoleRenameIssue({
+    await postConsoleIssueRename({
       issueUrl: 'https://github.com/o/r/issues/42',
       newTitle: 'New task title',
     });
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe(RENAME_ISSUE_OPERATION_PATH);
+    expect(url).toBe(ISSUE_RENAME_OPERATION_PATH);
     expect(init).toMatchObject({ method: 'POST' });
     expect(JSON.parse((init as { body: string }).body)).toEqual({
       issueUrl: 'https://github.com/o/r/issues/42',
@@ -736,7 +736,7 @@ describe('postConsoleRenameIssue', () => {
       JSON.stringify({ error: 'newTitle is required' }),
     );
     await expect(
-      postConsoleRenameIssue({
+      postConsoleIssueRename({
         issueUrl: 'https://github.com/o/r/issues/42',
         newTitle: '',
       }),

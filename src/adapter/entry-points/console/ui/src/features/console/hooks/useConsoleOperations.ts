@@ -9,7 +9,7 @@ import {
   postConsoleComment,
   postConsoleDeleteAllComments,
   postConsoleOperation,
-  postConsoleRenameIssue,
+  postConsoleIssueRename,
   postConsoleReviewComment,
   postConsoleSetDependedIssueUrl,
 } from '../lib/consoleApi';
@@ -477,7 +477,7 @@ export const useConsoleOperations = (
 
   const issueRename = useCallback(
     async (item: ConsoleListItem, newTitle: string) => {
-      await postConsoleRenameIssue({ issueUrl: item.url, newTitle });
+      await postConsoleIssueRename({ issueUrl: item.url, newTitle });
     },
     [],
   );

@@ -672,17 +672,17 @@ export const fetchProjectReadmeConfig = async (
   return { maximumPreparingIssuesCount: count };
 };
 
-export const RENAME_ISSUE_OPERATION_PATH = '/api/renameissue';
+export const ISSUE_RENAME_OPERATION_PATH = '/api/renameissue';
 
-export type ConsoleRenameIssueRequest = {
+export type ConsoleIssueRenameRequest = {
   issueUrl: string;
   newTitle: string;
 };
 
-export const postConsoleRenameIssue = async (
-  request: ConsoleRenameIssueRequest,
+export const postConsoleIssueRename = async (
+  request: ConsoleIssueRenameRequest,
 ): Promise<void> => {
-  const response = await fetch(RENAME_ISSUE_OPERATION_PATH, {
+  const response = await fetch(ISSUE_RENAME_OPERATION_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
