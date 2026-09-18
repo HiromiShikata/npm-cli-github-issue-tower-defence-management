@@ -214,7 +214,9 @@ describe('ConsoleTimerSettingsModalDialog', () => {
         onChangeMinutes={onChangeMinutes}
       />,
     );
-    fireEvent.click(getByRole('button', { name: 'Increase minutes for alpha' }));
+    fireEvent.click(
+      getByRole('button', { name: 'Increase minutes for alpha' }),
+    );
     expect(onChangeMinutes).toHaveBeenCalledWith('alpha', 6);
   });
 
@@ -229,7 +231,9 @@ describe('ConsoleTimerSettingsModalDialog', () => {
         onChangeMinutes={onChangeMinutes}
       />,
     );
-    fireEvent.click(getByRole('button', { name: 'Decrease minutes for alpha' }));
+    fireEvent.click(
+      getByRole('button', { name: 'Decrease minutes for alpha' }),
+    );
     expect(onChangeMinutes).toHaveBeenCalledWith('alpha', 4);
   });
 
@@ -244,7 +248,9 @@ describe('ConsoleTimerSettingsModalDialog', () => {
         onChangeMinutes={onChangeMinutes}
       />,
     );
-    fireEvent.click(getByRole('button', { name: 'Decrease minutes for alpha' }));
+    fireEvent.click(
+      getByRole('button', { name: 'Decrease minutes for alpha' }),
+    );
     expect(onChangeMinutes).toHaveBeenCalledWith('alpha', 0);
   });
 
@@ -259,7 +265,9 @@ describe('ConsoleTimerSettingsModalDialog', () => {
         onChangeMinutes={onChangeMinutes}
       />,
     );
-    fireEvent.click(getByRole('button', { name: 'Increase minutes for alpha' }));
+    fireEvent.click(
+      getByRole('button', { name: 'Increase minutes for alpha' }),
+    );
     expect(onChangeMinutes).toHaveBeenCalledWith('alpha', 999);
   });
 

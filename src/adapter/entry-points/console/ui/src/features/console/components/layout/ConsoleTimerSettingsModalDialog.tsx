@@ -127,7 +127,10 @@ export const ConsoleTimerSettingsModalDialog = ({
                               onClick={() =>
                                 onChangeMinutes(
                                   pjcode,
-                                  Math.max(0, (projectMinutes[pjcode] ?? 0) - 1),
+                                  Math.max(
+                                    0,
+                                    (projectMinutes[pjcode] ?? 0) - 1,
+                                  ),
                                 )
                               }
                             >
@@ -161,7 +164,10 @@ export const ConsoleTimerSettingsModalDialog = ({
                               onClick={() =>
                                 onChangeMinutes(
                                   pjcode,
-                                  Math.min(999, (projectMinutes[pjcode] ?? 0) + 1),
+                                  Math.min(
+                                    999,
+                                    (projectMinutes[pjcode] ?? 0) + 1,
+                                  ),
                                 )
                               }
                             >
