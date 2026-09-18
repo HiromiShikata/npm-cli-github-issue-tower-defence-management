@@ -1697,7 +1697,9 @@ test('renames the issue title when the user clicks Edit, types a new title, and 
   await expect
     .poll(
       () =>
-        harness.renameIssueCalls.some((c) => c.issueUrl.includes('/issues/869')),
+        harness.renameIssueCalls.some((c) =>
+          c.issueUrl.includes('/issues/869'),
+        ),
       { timeout: 10000 },
     )
     .toBe(true);
