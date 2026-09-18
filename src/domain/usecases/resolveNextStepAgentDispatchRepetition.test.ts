@@ -898,7 +898,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
   });
 
   describe('self-reference (nextStepAgent equals agentFieldValue)', () => {
-    it('should not escalate to reporting loop when agent reports with self-reference beyond threshold', () => {
+    it('dispatches again for self-reference when agent reports beyond threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
@@ -916,11 +916,10 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForDispatchLoop: 6,
       });
 
-      expect(result.type).not.toBe('escalateReportingLoop');
-      expect(result.type).not.toBe('escalateDispatchLoop');
+      expect(result.type).toBe('dispatchAgain');
     });
 
-    it('should not escalate to dispatch loop when same agent is dispatched beyond threshold', () => {
+    it('dispatches again for self-reference when same agent is dispatched beyond dispatch loop threshold', () => {
       const manyDispatches = [
         report('developer'),
         report('developer'),
@@ -939,7 +938,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         thresholdForDispatchLoop: 6,
       });
 
-      expect(result.type).not.toBe('escalateDispatchLoop');
+      expect(result.type).toBe('dispatchAgain');
     });
 
     it('should still escalate silent redispatch when agent does not report after self-nomination', () => {

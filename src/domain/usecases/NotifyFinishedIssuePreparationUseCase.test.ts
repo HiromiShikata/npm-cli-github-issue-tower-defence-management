@@ -1387,7 +1387,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should set Awaiting Owner when the dispatched agent has been reporting but cannot advance', async () => {
+  it('should dispatch again for self-reference when agent has been reporting but cannot advance', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1421,11 +1421,11 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
       expect.anything(),
-      'awaiting-owner-id',
+      'awaiting-workspace-id',
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('reporting every cycle but cannot advance'),
+      expect.stringContaining('Dispatching it again (3/3)'),
     );
   });
 

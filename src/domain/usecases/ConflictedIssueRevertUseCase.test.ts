@@ -1314,7 +1314,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       createdAt: new Date(),
     });
 
-    it('escalates to Failed Preparation when agent has been reporting every cycle but cannot advance (escalateReportingLoop)', async () => {
+    it('dispatches again for self-reference when agent has been reporting every cycle but cannot advance', async () => {
       const issue = buildConflictedIssueWithLinkedPr(
         projectWithAllEscalationStatuses,
       );
@@ -1328,7 +1328,7 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       // One silent-redispatch comment in cycle → count = 2 >= threshold = 2.
       // agentReport in cycle → hasReportsInCycle = true.
-      // Together → escalateReportingLoop, not escalateSilentRedispatch.
+      // Self-reference → dispatchAgain, not escalateReportingLoop.
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         humanComment,
         silentRedispatchComment(1),
@@ -1342,9 +1342,9 @@ describe('ConflictedIssueRevertUseCase', () => {
         thresholdForDispatchLoop: 6,
       });
 
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithAllEscalationStatuses,
+        issue,
         'awaiting-workspace-id',
       );
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
@@ -1352,18 +1352,18 @@ describe('ConflictedIssueRevertUseCase', () => {
         expect.anything(),
         'awaiting-owner-id',
       );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithAllEscalationStatuses,
-        issue,
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
         'failed-preparation-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        expect.stringContaining('Owner judgment is required to break the loop'),
+        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         issue,
-        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+        expect.stringContaining('Owner judgment is required to break the loop'),
       );
     });
 
