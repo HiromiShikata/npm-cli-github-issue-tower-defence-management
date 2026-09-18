@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { ConsoleItemTitleEditor } from './ConsoleItemTitleEditor';
 
 describe('ConsoleItemTitleEditor', () => {
@@ -74,6 +74,7 @@ describe('ConsoleItemTitleEditor', () => {
     fireEvent.change(getByRole('textbox'), { target: { value: 'New title' } });
     fireEvent.click(getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(queryByRole('textbox')).toBeNull());
+    await act(async () => {});
     expect(onRename).toHaveBeenCalledWith('New title');
     expect(getByText('New title')).toBeInTheDocument();
   });

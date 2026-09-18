@@ -25,7 +25,7 @@ import {
   handleDeleteStory,
   handleIntmux,
   handleProjectMaxPreparingUpdate,
-  handleRenameIssue,
+  handleIssueRename,
   handleReorderStory,
   handleReview,
   handleReviewComment,
@@ -5614,7 +5614,7 @@ describe('consoleOperationApi', () => {
     });
   });
 
-  describe('handleRenameIssue', () => {
+  describe('handleIssueRename', () => {
     it('renames the issue and returns 200', async () => {
       const issueToRename: Issue = {
         ...issue,
@@ -5623,7 +5623,7 @@ describe('consoleOperationApi', () => {
       };
       issueRepository.getIssueByUrl.mockResolvedValue(issueToRename);
       issueRepository.updateIssue.mockResolvedValue(undefined);
-      const response = await handleRenameIssue(context, {
+      const response = await handleIssueRename(context, {
         issueUrl: 'https://github.com/o/r/issues/42',
         newTitle: 'New title',
       });
@@ -5638,7 +5638,7 @@ describe('consoleOperationApi', () => {
 
     it('returns 404 when the issue is not found', async () => {
       issueRepository.getIssueByUrl.mockResolvedValue(null);
-      const response = await handleRenameIssue(context, {
+      const response = await handleIssueRename(context, {
         issueUrl: 'https://github.com/o/r/issues/42',
         newTitle: 'New title',
       });
@@ -5646,14 +5646,14 @@ describe('consoleOperationApi', () => {
     });
 
     it('returns 400 when issueUrl is missing', async () => {
-      const response = await handleRenameIssue(context, {
+      const response = await handleIssueRename(context, {
         newTitle: 'New title',
       });
       expect(response.statusCode).toBe(400);
     });
 
     it('returns 400 when newTitle is missing', async () => {
-      const response = await handleRenameIssue(context, {
+      const response = await handleIssueRename(context, {
         issueUrl: 'https://github.com/o/r/issues/42',
       });
       expect(response.statusCode).toBe(400);

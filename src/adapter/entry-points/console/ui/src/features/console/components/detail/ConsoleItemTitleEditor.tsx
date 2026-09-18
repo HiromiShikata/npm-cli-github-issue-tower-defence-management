@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export type ConsoleItemTitleEditorProps = {
   title: string;
@@ -14,9 +14,12 @@ export const ConsoleItemTitleEditor = ({
   const [editValue, setEditValue] = useState(title);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const prevTitlePropRef = useRef(title);
 
   useEffect(() => {
-    if (!isEditing) {
+    const externalTitleChanged = title !== prevTitlePropRef.current;
+    prevTitlePropRef.current = title;
+    if (!isEditing && externalTitleChanged) {
       setLocalTitle(title);
     }
   }, [title, isEditing]);

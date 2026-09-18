@@ -1342,7 +1342,7 @@ export const handleDeleteStory = async (
   return { statusCode: 200, body: { ok: true }, backgroundTask };
 };
 
-export const handleRenameIssue = async (
+export const handleIssueRename = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
 ): Promise<ConsoleOperationResponse> => {
