@@ -492,6 +492,38 @@ describe('useConsoleActionQueue', () => {
     expect(revertAdvance).toHaveBeenCalledTimes(1);
   });
 
+  it('commits the pending action when the component unmounts before the countdown elapses', async () => {
+    const { result, unmount } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction();
+    act(() => {
+      result.current.enqueue(action);
+    });
+    expect(action.commit).not.toHaveBeenCalled();
+
+    await act(async () => {
+      unmount();
+      await flushMicrotasks();
+    });
+
+    expect(action.commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not commit on unmount when undo was called before unmount', async () => {
+    const { result, unmount } = renderHook(() => useConsoleActionQueue());
+    const action = makeAction();
+    act(() => {
+      result.current.enqueue(action);
+    });
+    act(() => {
+      result.current.undo();
+    });
+    await act(async () => {
+      unmount();
+      await flushMicrotasks();
+    });
+    expect(action.commit).not.toHaveBeenCalled();
+  });
+
   it('does not call revertAdvance when the timer commits the action', () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const revertAdvance = jest.fn();
