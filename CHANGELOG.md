@@ -1,3 +1,10 @@
+## [2.119.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.3...v2.119.4) (2026-09-18)
+
+
+### Bug Fixes
+
+* **useConsoleActionQueue:** commit pending action on component unmount ([#2399](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2399)) ([4a316ec](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4a316ec94884af56a6d14d9d4d615f8b18e4df77)), closes [HiromiShikata/umino-corporait-operation#31876](https://github.com/HiromiShikata/umino-corporait-operation/issues/31876)
+
 ## [2.119.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.2...v2.119.3) (2026-09-18)
 
 
