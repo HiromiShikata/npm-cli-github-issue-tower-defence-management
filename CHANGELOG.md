@@ -1,3 +1,10 @@
+## [2.119.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.2...v2.119.3) (2026-09-18)
+
+
+### Bug Fixes
+
+* **useConsoleTabData:** eliminate stale project data on switch via in-memory registry ([#2398](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2398)) ([beccc40](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/beccc403452c4ae1b7fdf132d24e66deaea626cb)), closes [#2397](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2397)
+
 ## [2.119.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.1...v2.119.2) (2026-09-17)
 
 
