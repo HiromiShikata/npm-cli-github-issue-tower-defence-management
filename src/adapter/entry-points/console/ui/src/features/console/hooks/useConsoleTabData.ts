@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AirplaneSnapshot } from '../lib/airplaneSnapshot';
 import type {
   ConsoleFieldOption,
@@ -252,10 +252,24 @@ export const useConsoleTabData = (
   pjcode: string | null,
   airplaneSnapshot: AirplaneSnapshot | null = null,
 ): ConsoleTabDataState => {
+  const snapshotRegistry = useRef<
+    Map<string, Record<ConsoleTabName, ConsoleTabSnapshot | null>>
+  >(new Map());
   const [snapshots, setSnapshots] =
     useState<Record<ConsoleTabName, ConsoleTabSnapshot | null>>(emptySnapshots);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [trackedPjcode, setTrackedPjcode] = useState<string | null>(pjcode);
+
+  if (trackedPjcode !== pjcode) {
+    setTrackedPjcode(pjcode);
+    const registryEntry =
+      pjcode !== null ? (snapshotRegistry.current.get(pjcode) ?? null) : null;
+    setSnapshots(registryEntry ?? emptySnapshots());
+    if (registryEntry !== null) {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (airplaneSnapshot !== null && pjcode !== null) {
@@ -288,13 +302,16 @@ export const useConsoleTabData = (
       };
     }
 
+    const hasRegistryData = snapshotRegistry.current.has(pjcode);
+
     loadAllSnapshotsFromCache(pjcode).then((cached) => {
       if (cancelled) return;
       const hasAny = Object.values(cached).some((s) => s !== null);
       if (hasAny && !freshDataReceived) {
+        snapshotRegistry.current.set(pjcode, cached);
         setSnapshots(cached);
         setIsLoading(false);
-      } else if (!hasAny && !freshDataReceived) {
+      } else if (!hasAny && !freshDataReceived && !hasRegistryData) {
         setIsLoading(true);
         setSnapshots(emptySnapshots());
       }
@@ -307,6 +324,7 @@ export const useConsoleTabData = (
             return;
           }
           freshDataReceived = true;
+          snapshotRegistry.current.set(pjcode, next);
           setSnapshots(next);
           setError(firstError !== null ? firstError.message : null);
           setIsLoading(false);
@@ -337,7 +355,11 @@ export const useConsoleTabData = (
       }
       const { snapshot } = await fetchSingleSnapshot(pjcode, tabName);
       if (snapshot !== null) {
-        setSnapshots((prev) => ({ ...prev, [tabName]: snapshot }));
+        setSnapshots((prev) => {
+          const next = { ...prev, [tabName]: snapshot };
+          snapshotRegistry.current.set(pjcode, next);
+          return next;
+        });
       }
     },
     [pjcode],

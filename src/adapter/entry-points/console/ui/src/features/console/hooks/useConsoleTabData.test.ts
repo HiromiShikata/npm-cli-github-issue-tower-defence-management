@@ -893,4 +893,67 @@ describe('useConsoleTabData', () => {
     expect(result.current.snapshots.prs?.fromCache).toBe(true);
     expect(result.current.error).toBeNull();
   });
+
+  it('clears previous project snapshots in the same render when switching to an unvisited project', async () => {
+    installNetworkFetch((url) =>
+      url.includes('/acme/prs/')
+        ? [{ number: 1, itemId: 'PVTI_1', projectItemId: 'PVTI_1' }]
+        : [],
+    );
+
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) => useConsoleTabData(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.snapshots.prs?.items).toHaveLength(1);
+    });
+
+    removeMockCaches();
+    global.fetch = jest.fn(
+      () => new Promise<never>(() => {}),
+    ) as unknown as typeof fetch;
+
+    rerender({ pjcode: 'beta' });
+
+    expect(
+      Object.values(result.current.snapshots).every((s) => s === null),
+    ).toBe(true);
+  });
+
+  it('shows in-memory registry data synchronously when switching back to a previously-visited project without Cache API', async () => {
+    installNetworkFetch((url) =>
+      url.includes('/acme/prs/')
+        ? [{ number: 2, itemId: 'PVTI_2', projectItemId: 'PVTI_2' }]
+        : [],
+    );
+
+    const { result, rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) => useConsoleTabData(pjcode),
+      { initialProps: { pjcode: 'acme' } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.snapshots.prs?.items).toHaveLength(1);
+    });
+
+    removeMockCaches();
+    global.fetch = jest.fn(
+      () => new Promise<never>(() => {}),
+    ) as unknown as typeof fetch;
+
+    rerender({ pjcode: 'beta' });
+
+    await waitFor(() => {
+      expect(
+        Object.values(result.current.snapshots).every((s) => s === null),
+      ).toBe(true);
+    });
+
+    rerender({ pjcode: 'acme' });
+
+    expect(result.current.snapshots.prs?.items).toHaveLength(1);
+    expect(result.current.isLoading).toBe(false);
+  });
 });
