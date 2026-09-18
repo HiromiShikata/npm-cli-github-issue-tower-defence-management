@@ -1342,6 +1342,27 @@ export const handleDeleteStory = async (
   return { statusCode: 200, body: { ok: true }, backgroundTask };
 };
 
+export const handleIssueRename = async (
+  context: ConsoleOperationContext,
+  body: Record<string, unknown>,
+): Promise<ConsoleOperationResponse> => {
+  const issueUrl = body.issueUrl;
+  const newTitle = body.newTitle;
+  if (!isNonEmptyString(issueUrl)) {
+    return badRequest('issueUrl is required');
+  }
+  if (!isNonEmptyString(newTitle)) {
+    return badRequest('newTitle is required');
+  }
+  const issueRepository = context.resolveIssueRepository(issueUrl);
+  const issue = await issueRepository.getIssueByUrl(issueUrl);
+  if (issue === null) {
+    return { statusCode: 404, body: { error: 'issue not found' } };
+  }
+  await issueRepository.updateIssue({ ...issue, title: newTitle });
+  return ok();
+};
+
 export const handleStoryRename = async (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,

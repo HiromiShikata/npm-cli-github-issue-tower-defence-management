@@ -8,6 +8,7 @@ import {
   postConsoleAttachment,
   postConsoleComment,
   postConsoleDeleteAllComments,
+  postConsoleIssueRename,
   postConsoleOperation,
   postConsoleReviewComment,
   postConsoleSetDependedIssueUrl,
@@ -81,6 +82,7 @@ export type ConsoleOperationsApi = {
     side: ConsoleReviewCommentSide,
     body: string,
   ) => Promise<void>;
+  issueRename: (item: ConsoleListItem, newTitle: string) => Promise<void>;
   deleteAllComments: (item: ConsoleListItem) => Promise<void>;
   setDependedIssueUrl: (
     item: ConsoleListItem,
@@ -473,6 +475,13 @@ export const useConsoleOperations = (
     [pjcode],
   );
 
+  const issueRename = useCallback(
+    async (item: ConsoleListItem, newTitle: string) => {
+      await postConsoleIssueRename({ issueUrl: item.url, newTitle });
+    },
+    [],
+  );
+
   const deleteAllComments = useCallback(
     async (item: ConsoleListItem) => {
       await postConsoleDeleteAllComments({ issueUrl: item.url });
@@ -507,6 +516,7 @@ export const useConsoleOperations = (
     addComment,
     uploadAttachment,
     addInlineReviewComment,
+    issueRename,
     deleteAllComments,
     setDependedIssueUrl,
     patchItemOverlay,

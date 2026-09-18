@@ -25,6 +25,7 @@ import {
   handleDeleteStory,
   handleIntmux,
   handleProjectMaxPreparingUpdate,
+  handleIssueRename,
   handleReorderStory,
   handleReview,
   handleReviewComment,
@@ -5610,6 +5611,67 @@ describe('consoleOperationApi', () => {
         title: 'Some title',
       });
       expect(response.statusCode).toBe(400);
+    });
+  });
+
+  describe('handleIssueRename', () => {
+    it('renames the issue and returns 200', async () => {
+      const issueToRename: Issue = {
+        ...issue,
+        url: 'https://github.com/o/r/issues/42',
+        title: 'Old title',
+      };
+      issueRepository.getIssueByUrl.mockResolvedValue(issueToRename);
+      issueRepository.updateIssue.mockResolvedValue(undefined);
+      const response = await handleIssueRename(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        newTitle: 'New title',
+      });
+      expect(issueRepository.getIssueByUrl).toHaveBeenCalledWith(
+        'https://github.com/o/r/issues/42',
+      );
+      expect(issueRepository.updateIssue).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'New title' }),
+      );
+      expect(response.statusCode).toBe(200);
+    });
+
+    it('returns 404 when the issue is not found', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue(null);
+      const response = await handleIssueRename(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+        newTitle: 'New title',
+      });
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('returns 400 when issueUrl is missing', async () => {
+      const response = await handleIssueRename(context, {
+        newTitle: 'New title',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('returns 400 when newTitle is missing', async () => {
+      const response = await handleIssueRename(context, {
+        issueUrl: 'https://github.com/o/r/issues/42',
+      });
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('propagates an error from updateIssue (resulting in 502 from webServer)', async () => {
+      issueRepository.getIssueByUrl.mockResolvedValue({
+        ...issue,
+        url: 'https://github.com/o/r/issues/42',
+        title: 'Old title',
+      });
+      issueRepository.updateIssue.mockRejectedValue(new Error('API failure'));
+      await expect(
+        handleIssueRename(context, {
+          issueUrl: 'https://github.com/o/r/issues/42',
+          newTitle: 'New title',
+        }),
+      ).rejects.toThrow('API failure');
     });
   });
 });

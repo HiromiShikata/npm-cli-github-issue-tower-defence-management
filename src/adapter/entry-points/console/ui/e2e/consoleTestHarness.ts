@@ -69,6 +69,11 @@ export type ConsoleE2eDeleteAllCommentsCall = {
   issueUrl: string;
 };
 
+export type ConsoleE2eRenameIssueCall = {
+  issueUrl: string;
+  newTitle: string;
+};
+
 type ConsoleFixtureListItem = {
   number: number;
   title: string;
@@ -638,6 +643,7 @@ const createStubIssueRepository = (
   closeIssueCalls: string[],
   setStoryCalls: ConsoleE2eSetStoryCall[],
   setAgentCalls: ConsoleE2eSetAgentCall[],
+  renameIssueCalls: ConsoleE2eRenameIssueCall[],
 ): IssueRepository => ({
   getAllIssues: () => notImplemented('getAllIssues'),
   getIssueByUrl: async (url: string): Promise<Issue | null> =>
@@ -655,7 +661,9 @@ const createStubIssueRepository = (
     return 9001;
   },
   searchIssue: () => notImplemented('searchIssue'),
-  updateIssue: async (): Promise<void> => undefined,
+  updateIssue: async (issue): Promise<void> => {
+    renameIssueCalls.push({ issueUrl: issue.url, newTitle: issue.title });
+  },
   updateIssueBody: () => notImplemented('updateIssueBody'),
   updateNextActionDate: async (): Promise<void> => undefined,
   updateNextActionHour: () => notImplemented('updateNextActionHour'),
@@ -934,6 +942,7 @@ export type ConsoleE2eHarness = {
   closeIssueCalls: string[];
   storyColorCalls: ConsoleE2eStoryColorCall[];
   deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[];
+  renameIssueCalls: ConsoleE2eRenameIssueCall[];
   setProjectTimer: (durationSeconds: number) => void;
   expireProjectTimer: () => void;
   clearProjectTimer: () => void;
@@ -972,6 +981,7 @@ export const startConsoleE2eHarness = async (options?: {
   const closeIssueCalls: string[] = [];
   const storyColorCalls: ConsoleE2eStoryColorCall[] = [];
   const deleteAllCommentsCalls: ConsoleE2eDeleteAllCommentsCall[] = [];
+  const renameIssueCalls: ConsoleE2eRenameIssueCall[] = [];
   const setStoryCalls: ConsoleE2eSetStoryCall[] = [];
   const setAgentCalls: ConsoleE2eSetAgentCall[] = [];
   const uploadAttachmentCalls: ConsoleE2eUploadAttachmentCall[] = [];
@@ -997,6 +1007,7 @@ export const startConsoleE2eHarness = async (options?: {
         closeIssueCalls,
         setStoryCalls,
         setAgentCalls,
+        renameIssueCalls,
       ),
       ...(options?.mergePullRequest !== undefined
         ? { mergePullRequest: options.mergePullRequest }
@@ -1095,6 +1106,7 @@ export const startConsoleE2eHarness = async (options?: {
     closeIssueCalls,
     storyColorCalls,
     deleteAllCommentsCalls,
+    renameIssueCalls,
     setProjectTimer: (durationSeconds: number): void => {
       writeProjectTimer(consoleDataOutputDir, CONSOLE_E2E_PJCODE, {
         startedAt: new Date().toISOString(),

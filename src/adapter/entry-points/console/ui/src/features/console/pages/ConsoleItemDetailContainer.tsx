@@ -321,6 +321,13 @@ export const ConsoleItemDetailContainer = ({
         : null,
   };
 
+  const issueRename = useCallback(
+    async (newTitle: string) => {
+      await operations.issueRename(item, newTitle);
+    },
+    [item, operations],
+  );
+
   const awaitingWorkspaceOption =
     statusOptions.find((o) => o.name === AWAITING_WORKSPACE_NAME) ?? null;
 
@@ -369,6 +376,7 @@ export const ConsoleItemDetailContainer = ({
       buildImageProxyUrl={resolveImageProxyUrl}
       renderReferenceLink={renderReferenceLink}
       onAddInlineComment={addInlineComment}
+      onTitleRename={issueRename}
       commentComposer={
         <ConsoleCommentComposer
           initiallyOpen
