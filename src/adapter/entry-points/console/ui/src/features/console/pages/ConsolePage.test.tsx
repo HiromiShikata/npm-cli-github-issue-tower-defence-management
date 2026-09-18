@@ -1864,7 +1864,7 @@ describe('ConsolePage auto-advance tab', () => {
     }
   });
 
-  it('does not navigate to the next project automatically when the initial load shows no prs or todo items in timer mode', async () => {
+  it('automatically navigates to the next project when the initial load shows no prs or todo items in timer mode', async () => {
     localStorage.setItem(
       'tdpm-timer-settings',
       JSON.stringify({
@@ -1895,11 +1895,10 @@ describe('ConsolePage auto-advance tab', () => {
       navigatePush: jest.Mock;
     }>('../lib/navigation');
     navigatePush.mockClear();
-    const { getByText } = render(<ConsolePage />);
+    render(<ConsolePage />);
     await waitFor(() => {
-      expect(getByText('No items')).toBeInTheDocument();
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
     });
-    expect(navigatePush).not.toHaveBeenCalledWith('/projects/beta');
   });
 
   it('navigates to the next project when a completing action fires after the project timer elapses', async () => {
