@@ -1,3 +1,10 @@
+## [2.119.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.4...v2.119.5) (2026-09-18)
+
+
+### Bug Fixes
+
+* **useConsoleTimerProjectSkipNavigation:** restore auto-skip hook for empty projects in timer mode ([#2401](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2401)) ([dd99c91](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/dd99c91698ac2aad5324e1735778467a55069fc3)), closes [#2400](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2400)
+
 ## [2.119.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.3...v2.119.4) (2026-09-18)
 
 
