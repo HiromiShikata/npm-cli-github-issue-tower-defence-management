@@ -211,7 +211,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('dispatchAgain');
     });
 
-    it('escalates to escalateReportingLoop when count is 3 and agent has reported in the cycle', () => {
+    it('dispatches again for self-reference when silent dispatch count reaches threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
@@ -228,11 +228,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateReportingLoop');
-      const comment =
-        result.type === 'escalateReportingLoop' ? result.comment : '';
-      expect(comment).not.toContain('Failed to receive a report');
-      expect(comment).toContain(REPORTING_LOOP_ESCALATION_PHRASE);
+      expect(result.type).toBe('dispatchAgain');
     });
 
     it('escalates to escalateSilentRedispatch when the agent reported only before the first re-dispatch but not after', () => {
@@ -253,7 +249,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(result.type).toBe('escalateSilentRedispatch');
     });
 
-    it('escalates to escalateReportingLoop when the agent reports again after being re-dispatched and threshold is reached', () => {
+    it('dispatches again for self-reference when agent reports after each re-dispatch beyond threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'accounting',
         nextStepAgent: 'accounting',
@@ -270,7 +266,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateReportingLoop');
+      expect(result.type).toBe('dispatchAgain');
     });
 
     it('escalates to escalateSilentRedispatch when the agent never reported in the cycle', () => {
@@ -331,7 +327,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       expect(comment).toContain('Failed to receive a report');
     });
 
-    it('escalates to escalateReportingLoop when agent name casing in prior comments differs from nextStepAgent', () => {
+    it('dispatches again for self-reference when agent name casing in prior comments differs', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'pr-reviewer',
         nextStepAgent: 'pr-reviewer',
@@ -347,10 +343,10 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateReportingLoop');
+      expect(result.type).toBe('dispatchAgain');
     });
 
-    it('does not reset the silent dispatch count when a routing comment is posted after escalation without a human comment', () => {
+    it('dispatches again for self-reference when routing comments appear after escalation without a human comment', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'developer',
         nextStepAgent: 'developer',
@@ -367,7 +363,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateReportingLoop');
+      expect(result.type).toBe('dispatchAgain');
     });
 
     it('resets the silent dispatch count after a human comment even if a routing comment follows', () => {
@@ -433,7 +429,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       );
     });
 
-    it('still escalates after 3 consecutive failures in the new chain following a previous escalation', () => {
+    it('dispatches again for self-reference after a previous escalation when reports follow re-dispatch', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
@@ -450,10 +446,10 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateReportingLoop');
+      expect(result.type).toBe('dispatchAgain');
     });
 
-    it('does not treat bare repetition comments as escalation resets', () => {
+    it('dispatches again for self-reference with bare repetition comments when reports follow', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
@@ -468,7 +464,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateReportingLoop');
+      expect(result.type).toBe('dispatchAgain');
     });
   });
 
@@ -496,7 +492,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       ).toContain('reviewer');
     });
 
-    it('escalates when the same agent is named every round while a fresh report arrives each time', () => {
+    it('dispatches again for self-reference when same agent is named every round', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'chore',
         nextStepAgent: 'chore',
@@ -507,7 +503,7 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
         isNoStory: false,
       });
 
-      expect(result.type).toBe('escalateDispatchLoop');
+      expect(result.type).toBe('dispatchAgain');
     });
 
     it('reports the dispatch count against the dispatch loop threshold before escalating', () => {
@@ -898,6 +894,69 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       });
 
       expect(result.type).toBe('notRepeated');
+    });
+  });
+
+  describe('self-reference (nextStepAgent equals agentFieldValue)', () => {
+    it('dispatches again for self-reference when agent reports beyond threshold', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          repetitionComment('developer'),
+          report('developer'),
+          repetitionComment('developer'),
+          report('developer'),
+          repetitionComment('developer'),
+          report('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+    });
+
+    it('dispatches again for self-reference when same agent is dispatched beyond dispatch loop threshold', () => {
+      const manyDispatches = [
+        report('developer'),
+        report('developer'),
+        report('developer'),
+        report('developer'),
+        report('developer'),
+        report('developer'),
+        report('developer'),
+      ];
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: manyDispatches,
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+    });
+
+    it('should still escalate silent redispatch when agent does not report after self-nomination', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          repetitionComment('developer'),
+          repetitionComment('developer'),
+          repetitionComment('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+      });
+
+      expect(result.type).toBe('escalateSilentRedispatch');
     });
   });
 });

@@ -2391,7 +2391,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       createdAt: new Date(),
     });
 
-    it('escalates to Failed Preparation instead of reverting when dispatch loop threshold is reached', async () => {
+    it('dispatches again for self-reference when dispatch loop threshold is reached', async () => {
       mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
 
       const issue = createMockIssue({
@@ -2422,28 +2422,23 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         thresholdForDispatchLoop: 3,
       });
 
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
         'awaiting-workspace-id',
       );
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
-        'awaiting-owner-id',
-      );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        issue,
         'failed-preparation-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        expect.stringContaining('dispatched 3 times'),
+        expect.stringContaining('Auto Status Check: REJECTED'),
       );
     });
 
-    it('keeps an escalateDispatchLoop issue out of the Awaiting Owner target set on the following cycle', async () => {
+    it('dispatches again for self-reference when dispatch loop threshold is reached and Failed Preparation issue is not processed on the following cycle', async () => {
       mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
 
       const issue = createMockIssue({
@@ -2480,7 +2475,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         projectWithFailedPrep,
         issue,
-        'failed-preparation-id',
+        'awaiting-workspace-id',
       );
       const lastCreateCommentCall =
         mockIssueCommentRepository.createComment.mock.calls[
@@ -2621,7 +2616,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
     });
 
-    it('escalates to Failed Preparation when agent has been reporting every cycle but cannot advance (escalateReportingLoop)', async () => {
+    it('dispatches again for self-reference when agent has been reporting every cycle but cannot advance', async () => {
       mockProjectRepository.getProject.mockResolvedValue(projectWithFailedPrep);
 
       const issue = createMockIssue({
@@ -2650,7 +2645,7 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
 
       // One silent-redispatch comment in cycle → count = 2 >= threshold = 2.
       // agentReport in cycle → hasReportsInCycle = true.
-      // Together → escalateReportingLoop, not escalateSilentRedispatch.
+      // Self-reference → dispatchAgain, not escalateReportingLoop.
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         humanComment,
         silentRedispatchComment(1),
@@ -2666,9 +2661,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         thresholdForDispatchLoop: 6,
       });
 
-      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
-        expect.anything(),
-        expect.anything(),
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        projectWithFailedPrep,
+        issue,
         'awaiting-workspace-id',
       );
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
@@ -2676,14 +2671,14 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
         expect.anything(),
         'awaiting-owner-id',
       );
-      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
-        projectWithFailedPrep,
-        issue,
+      expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
         'failed-preparation-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        expect.stringContaining('Owner judgment is required to break the loop'),
+        expect.stringContaining('Auto Status Check: REJECTED'),
       );
     });
 

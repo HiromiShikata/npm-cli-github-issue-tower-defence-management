@@ -391,7 +391,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should set Awaiting Owner when the dispatched agent has been reporting but cannot advance', async () => {
+  it('should dispatch again for self-reference when agent has been reporting but cannot advance', async () => {
     mockProject.agent = {
       name: 'agent',
       fieldId: 'agent-field-id',
@@ -450,10 +450,10 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('4');
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('reporting every cycle but cannot advance'),
+      expect.stringContaining('Dispatching it again (3/3)'),
     );
   });
 
