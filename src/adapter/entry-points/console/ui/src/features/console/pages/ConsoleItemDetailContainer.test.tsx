@@ -85,6 +85,7 @@ const buildOperations = (): ConsoleOperationsApi => ({
   })),
   uploadAttachment: jest.fn(async () => ''),
   addInlineReviewComment: jest.fn(async () => {}),
+  renameIssue: jest.fn(async () => {}),
   deleteAllComments: jest.fn(async () => {}),
   setDependedIssueUrl: jest.fn(async () => {}),
   patchItemOverlay: jest.fn(),
