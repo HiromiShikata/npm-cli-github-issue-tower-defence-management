@@ -1,3 +1,10 @@
+# [2.120.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.5...v2.120.0) (2026-09-18)
+
+
+### Features
+
+* **ConsoleTimerSettingsModalDialog:** add increment/decrement buttons for project minutes ([#2403](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2403)) ([5ae31c4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5ae31c47bad0dd4311f5feb25975d1ed4b6fadc0)), closes [HiromiShikata/umino-corporait-operation#31888](https://github.com/HiromiShikata/umino-corporait-operation/issues/31888)
+
 ## [2.119.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.119.4...v2.119.5) (2026-09-18)
 
 
