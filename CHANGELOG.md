@@ -1,3 +1,11 @@
+## [2.132.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.4...v2.132.5) (2026-09-19)
+
+
+### Bug Fixes
+
+* **GraphqlProjectItemRepository:** skip archived-item error in updateProjectField and clearProjectField ([#2469](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2469)) ([5e2cc23](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5e2cc23bbea175d0ab51f681bb3fba373d03ad3e))
+* **GraphqlProjectRepository:** retry listFieldNames once after transient 403 ([#2467](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2467)) ([8e70233](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8e70233e1975114f462b18b8c690c4aab272f5aa))
+
 ## [2.132.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.3...v2.132.4) (2026-09-19)
 
 
