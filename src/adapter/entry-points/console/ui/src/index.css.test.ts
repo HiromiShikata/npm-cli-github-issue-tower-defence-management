@@ -138,4 +138,25 @@ describe('console CSS class contract', () => {
 
     expect(missingEntries).toEqual([]);
   });
+
+  it('defines a CSS rule in index.css for every console-* class name used in all non-modal inline TSX components', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const definedClasses = loadDefinedCssClasses(css);
+    const missingEntries: { file: string; className: string }[] = [];
+
+    for (const filePath of walkTsxFiles(SRC_DIR)) {
+      const content = readFileSync(filePath, 'utf-8');
+      if (isModalOverlayComponent(content)) continue;
+
+      const relPath = filePath.replace(`${SRC_DIR}/`, '');
+      for (const className of extractConsoleClassNames(content)) {
+        if (className.endsWith('-')) continue;
+        if (!definedClasses.has(className)) {
+          missingEntries.push({ file: relPath, className });
+        }
+      }
+    }
+
+    expect(missingEntries).toEqual([]);
+  });
 });
