@@ -1,3 +1,10 @@
+## [2.121.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.121.1...v2.121.2) (2026-09-19)
+
+
+### Bug Fixes
+
+* **console:** use circled-plus icon for fleet task create link to distinguish from project task create button ([#2406](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2406)) ([4469524](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/446952406b2741b4758584179a4a2847aa72db4d))
+
 ## [2.121.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.121.0...v2.121.1) (2026-09-18)
 
 
