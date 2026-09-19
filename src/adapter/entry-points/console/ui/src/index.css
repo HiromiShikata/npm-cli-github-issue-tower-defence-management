@@ -192,7 +192,7 @@ body {
   color: #8b949e;
   text-decoration: none;
   font-size: 0.7188rem;
-  padding: 2px 4px;
+  padding: 8px 10px;
   border-radius: 4px;
 }
 
@@ -257,7 +257,7 @@ body {
   color: #8b949e;
   cursor: pointer;
   font-size: 1rem;
-  padding: 4px 8px;
+  padding: 8px 12px;
   line-height: 1;
   border-radius: 4px;
 }
@@ -466,7 +466,7 @@ body {
 .console-tab-settings-button {
   align-self: center;
   margin-left: 4px;
-  padding: 4px 8px;
+  padding: 8px 12px;
   background: transparent;
   border: 1px solid #30363d;
   border-radius: 6px;
@@ -2207,7 +2207,7 @@ body {
 .console-task-create-button {
   align-self: center;
   margin-left: 4px;
-  padding: 4px 8px;
+  padding: 8px 12px;
   background: transparent;
   border: 1px solid #30363d;
   border-radius: 6px;
