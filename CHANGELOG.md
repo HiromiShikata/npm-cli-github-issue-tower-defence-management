@@ -1,3 +1,16 @@
+# [2.132.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.131.2...v2.132.0) (2026-09-19)
+
+
+### Bug Fixes
+
+* **deps:** update all non-major dependencies ([#2411](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2411)) ([9d51595](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/9d515952b3de10b77d45987aa193761511313773))
+* **deps:** update all non-major dependencies ([#2453](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2453)) ([2b669fb](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2b669fb9c96c9d88dcb4b79e26fdc5f062bf71aa))
+
+
+### Features
+
+* **notifyFinished:** add --moveToFailedPreparation flag to move item to Failed Preparation status on consecutive failure threshold ([#2451](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2451)) ([609026c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/609026ca4a9015e68b519980817440fa7dcb66a7)), closes [#2450](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2450)
+
 ## [2.131.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.131.1...v2.131.2) (2026-09-19)
 
 
