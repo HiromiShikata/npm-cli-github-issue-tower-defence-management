@@ -347,10 +347,6 @@ body {
   vertical-align: middle;
 }
 
-.console-timer-settings-project-row:last-child td {
-  border-bottom: none;
-}
-
 .console-timer-settings-pjcode {
   display: block;
   color: #c9d1d9;
@@ -1991,6 +1987,10 @@ body {
 .console-diff-composer-row td {
   padding: 6px 10px;
   background: #0d1117;
+}
+
+.console-timer-settings-project-row:last-child td {
+  border-bottom: none;
 }
 
 .console-diff-composer {

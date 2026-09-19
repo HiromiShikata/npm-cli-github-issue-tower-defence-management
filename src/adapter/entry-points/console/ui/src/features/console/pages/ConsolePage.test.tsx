@@ -907,8 +907,9 @@ describe('ConsolePage', () => {
 
       const retryButton = container.querySelector('.console-error-toast-retry');
       expect(retryButton).not.toBeNull();
+      if (retryButton === null) throw new Error('retryButton should not be null');
 
-      fireEvent.click(retryButton!);
+      fireEvent.click(retryButton);
 
       await waitFor(() => {
         expect(container.querySelector('.console-error-toast')).toBeNull();
