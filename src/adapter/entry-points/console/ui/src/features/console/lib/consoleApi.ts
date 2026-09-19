@@ -128,7 +128,6 @@ const requestJson = async (
         }
       }
     } catch {
-      // cache read failure, fall through to original error
     }
     throw e;
   }
