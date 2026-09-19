@@ -1449,7 +1449,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('Dispatching it again (3/3)'),
+      expect.stringContaining('Dispatching again (3/3)'),
     );
   });
 

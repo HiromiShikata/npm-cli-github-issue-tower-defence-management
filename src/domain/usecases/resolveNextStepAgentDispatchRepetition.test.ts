@@ -897,6 +897,60 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
     });
   });
 
+  describe('legitimate multi-session continuation', () => {
+    it('does not report no-report-received when the agent nominated itself in its own report', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [report('developer')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+      const comment = result.type === 'dispatchAgain' ? result.comment : '';
+      expect(comment).not.toContain('No report has been received');
+    });
+
+    it('does not report no-report-received when the agent re-nominated itself after a prior re-dispatch', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [
+          report('developer'),
+          repetitionComment('developer'),
+          report('developer'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+      const comment = result.type === 'dispatchAgain' ? result.comment : '';
+      expect(comment).not.toContain('No report has been received');
+    });
+
+    it('does claim no-report-received when a prior agent nominated the agent but it never reported', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'developer',
+        nextStepAgent: 'developer',
+        comments: [report('triager')],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+      const comment = result.type === 'dispatchAgain' ? result.comment : '';
+      expect(comment).toContain('No report has been received');
+    });
+  });
+
   describe('self-reference (nextStepAgent equals agentFieldValue)', () => {
     it('dispatches again for self-reference when agent reports beyond threshold', () => {
       const result = resolveNextStepAgentDispatchRepetition({
