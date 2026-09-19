@@ -1986,6 +1986,107 @@ describe('GraphqlProjectItemRepository', () => {
       expect(firstBatch?.ids).toHaveLength(100);
       expect(secondBatch?.ids).toHaveLength(50);
     });
+
+    it('returns items with empty closingIssueReferenceUrls when all errors are FORBIDDEN on closingIssuesReferences paths', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            nodes: [
+              {
+                id: 'PVTI_1',
+                fieldValues: { nodes: [] },
+                content: {
+                  repository: { nameWithOwner: 'o/r', isArchived: false },
+                  number: 1,
+                  title: 'PR with forbidden closing refs',
+                  state: 'OPEN',
+                  url: 'https://github.com/o/r/pull/1',
+                  createdAt: '2026-01-01T00:00:00Z',
+                  updatedAt: '2026-01-02T00:00:00Z',
+                  author: { login: 'octocat' },
+                  labels: { nodes: [] },
+                  assignees: { nodes: [] },
+                  closingIssuesReferences: null,
+                },
+              },
+            ],
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 25, 'content', 'closingIssuesReferences', 'nodes', 0],
+              message:
+                '`meta-site` forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions.',
+            },
+          ],
+        }),
+      );
+
+      const result = await repository.fetchProjectItemsByIds(['PVTI_1']);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe('PVTI_1');
+      expect(result[0].closingIssueReferenceUrls).toEqual([]);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('FORBIDDEN closingIssuesReferences'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('throws when fetchProjectItemsByIds errors include a non-closingIssuesReferences FORBIDDEN path', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: null,
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 0, 'content'],
+              message: '`meta-site` forbids access.',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItemsByIds(['PVTI_1']),
+      ).rejects.toThrow('GitHub GraphQL errors:');
+    });
+
+    it('throws when fetchProjectItemsByIds has FORBIDDEN closingIssuesReferences errors but data is null', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: null,
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 0, 'content', 'closingIssuesReferences', 'nodes', 0],
+              message:
+                '`meta-site` forbids access via a personal access token (classic).',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItemsByIds(['PVTI_1']),
+      ).rejects.toThrow('GitHub GraphQL errors:');
+    });
   });
 
   describe('callWithRateLimitRetry', () => {

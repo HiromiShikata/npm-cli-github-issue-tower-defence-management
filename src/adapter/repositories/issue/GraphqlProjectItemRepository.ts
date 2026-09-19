@@ -305,6 +305,17 @@ const isForbiddenContentError = (error: GraphqlError): boolean =>
   typeof error.path[3] === 'number' &&
   error.path[4] === 'content';
 
+const isClosingIssuesReferencesForbiddenByIdsError = (
+  error: GraphqlError,
+): boolean =>
+  error.type === 'FORBIDDEN' &&
+  Array.isArray(error.path) &&
+  error.path.length >= 4 &&
+  error.path[0] === 'nodes' &&
+  typeof error.path[1] === 'number' &&
+  error.path[2] === 'content' &&
+  error.path[3] === 'closingIssuesReferences';
+
 export class GraphqlProjectItemRepository extends BaseGitHubRepository {
   fetchItemId = async (
     projectId: string,
@@ -892,7 +903,7 @@ query GetProjectItemsByIds($ids: [ID!]!) {
       const response = await callWithRateLimitRetry(() =>
         postGithubGraphqlJson<{
           data: { nodes: (ProjectV2ItemNode | null)[] } | null;
-          errors?: { message: string }[];
+          errors?: GraphqlError[];
         }>({
           ghToken: this.ghToken,
           query: graphqlQueryString,
@@ -902,8 +913,16 @@ query GetProjectItemsByIds($ids: [ID!]!) {
         }),
       );
       if (response.errors && response.errors.length > 0) {
-        throw new Error(
-          `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
+        const allForbiddenClosingIssues = response.errors.every(
+          isClosingIssuesReferencesForbiddenByIdsError,
+        );
+        if (!allForbiddenClosingIssues || !response.data) {
+          throw new Error(
+            `GitHub GraphQL errors: ${stringifyGraphqlErrorsForLog(response.errors)}`,
+          );
+        }
+        console.warn(
+          `fetchProjectItemsByIds: skipping ${response.errors.length} item(s) with FORBIDDEN closingIssuesReferences. paths: ${response.errors.map((e) => JSON.stringify(e.path)).join(', ')}`,
         );
       }
       if (!response.data) {
