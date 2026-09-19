@@ -1,3 +1,10 @@
+## [2.132.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.1...v2.132.2) (2026-09-19)
+
+
+### Bug Fixes
+
+* **console:** Fix TDPM console comment workflow-issue create button: add confirmation dialog and submission guard ([#2456](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2456)) ([81f5822](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/81f582236ab173068752fbe9d6fa92e3d9f1d2c7)), closes [HiromiShikata/umino-corporait-operation#31989](https://github.com/HiromiShikata/umino-corporait-operation/issues/31989)
+
 ## [2.132.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.0...v2.132.1) (2026-09-19)
 
 
