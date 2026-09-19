@@ -1,3 +1,10 @@
+# [2.123.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.122.1...v2.123.0) (2026-09-19)
+
+
+### Features
+
+* **fleetConfig:** append project query param to fleet task create URL ([#2409](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2409)) ([476c79b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/476c79b60f88ca8d3ad2844a01bf5f945f59c00e))
+
 ## [2.122.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.122.0...v2.122.1) (2026-09-19)
 
 
