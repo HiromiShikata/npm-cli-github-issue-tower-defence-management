@@ -1268,10 +1268,6 @@ describe('ConflictedIssueRevertUseCase', () => {
         content: `Auto Status Check: DISPATCH_AGAIN developer\n\nThe latest agent report names this agent as the next step and the agent field already holds it, so the previous dispatch to it ended without a report. Dispatching it again (${count}/3).`,
         createdAt: new Date(),
       });
-      // The agent report is placed before the human comment so it is outside
-      // the current cycle. Silent-redispatch comments inside the cycle with
-      // no agent report in the cycle → hasReportsInCycle = false →
-      // escalateSilentRedispatch (not escalateReportingLoop).
       const humanComment = {
         author: 'owner',
         content: 'please continue',
