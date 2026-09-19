@@ -1986,6 +1986,86 @@ describe('GraphqlProjectItemRepository', () => {
       expect(firstBatch?.ids).toHaveLength(100);
       expect(secondBatch?.ids).toHaveLength(50);
     });
+
+    it('returns accessible items without throwing when a FORBIDDEN error appears on a nodes-batch content path', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            nodes: [
+              makeDetailNode(
+                'PVTI_1',
+                'https://github.com/o/r/issues/1',
+                'accessible',
+              ),
+              {
+                id: 'PVTI_2',
+                fieldValues: { nodes: [] },
+                content: null,
+              },
+            ],
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: [
+                'nodes',
+                1,
+                'content',
+                'closingIssuesReferences',
+                'nodes',
+                0,
+              ],
+              message:
+                '`meta-site` forbids access via a personal access token (classic).',
+            },
+          ],
+        }),
+      );
+
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+      try {
+        const result = await repository.fetchProjectItemsByIds([
+          'PVTI_1',
+          'PVTI_2',
+        ]);
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('PVTI_1');
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('FORBIDDEN'),
+        );
+      } finally {
+        consoleWarnSpy.mockRestore();
+      }
+    });
+
+    it('throws when a non-FORBIDDEN error appears in fetchProjectItemsByIds', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: null,
+          errors: [
+            {
+              type: 'NOT_FOUND',
+              path: ['nodes', 0],
+              message: 'Could not resolve to a node',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItemsByIds(['PVTI_1']),
+      ).rejects.toThrow('GitHub GraphQL errors');
+    });
   });
 
   describe('callWithRateLimitRetry', () => {
