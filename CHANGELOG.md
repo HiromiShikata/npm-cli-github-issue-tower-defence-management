@@ -1,3 +1,10 @@
+# [2.122.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.121.2...v2.122.0) (2026-09-19)
+
+
+### Features
+
+* **console-ui:** enlarge tap area of header icon buttons ([#2408](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2408)) ([2c4ee93](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2c4ee931f7dfa444ada29791e2f731212e2d099c)), closes [HiromiShikata/umino-corporait-operation#31899](https://github.com/HiromiShikata/umino-corporait-operation/issues/31899)
+
 ## [2.121.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.121.1...v2.121.2) (2026-09-19)
 
 
