@@ -51,7 +51,8 @@ export const WithCreateWorkflowIssueAction: Story = {
     comments: consoleCommentsFixture,
     isLoading: false,
     error: null,
-    onCreateWorkflowIssue: () => {},
+    issueTitle: 'Example issue title from the source task',
+    onCreateWorkflowIssue: async () => {},
   },
 };
 

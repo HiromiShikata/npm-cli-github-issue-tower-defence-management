@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
 import { ConsoleCommentList } from './ConsoleCommentList';
 
 const now = Date.parse('2026-06-19T12:00:00.000Z');
@@ -494,14 +494,79 @@ describe('ConsoleCommentList', () => {
     ).toBeNull();
   });
 
-  it('calls onCreateWorkflowIssue with the comment when the create workflow issue button is clicked', () => {
+  it('calls onCreateWorkflowIssue with title and body when the dialog Create button is clicked', async () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onCreateWorkflowIssue = jest.fn();
-    const { container } = render(
+    const onCreateWorkflowIssue = jest.fn().mockResolvedValue(undefined);
+    const { container, getByRole } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        issueTitle="Source issue title"
+        onCreateWorkflowIssue={onCreateWorkflowIssue}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    await waitFor(() => {
+      expect(onCreateWorkflowIssue).toHaveBeenCalledWith(
+        'Source issue title',
+        `> ${comment.body}`,
+      );
+    });
+  });
+
+  it('pre-populates dialog title with issueTitle and body as blockquote of comment body', () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'First line\nSecond line',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const { container, getByRole } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        issueTitle="My issue title"
+        onCreateWorkflowIssue={jest.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    const titleTextarea = getByRole('textbox', { name: 'Title' });
+    const bodyTextarea = getByRole('textbox', { name: 'Body' });
+    expect((titleTextarea as HTMLTextAreaElement).value).toBe('My issue title');
+    expect((bodyTextarea as HTMLTextAreaElement).value).toBe(
+      '> First line\n> Second line',
+    );
+  });
+
+  it('disables the dialog submit button while onCreateWorkflowIssue is in progress', async () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'A comment body',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    let resolveSubmit!: () => void;
+    const onCreateWorkflowIssue = jest.fn().mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveSubmit = resolve;
+      }),
+    );
+    const { container, getByRole } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
@@ -515,7 +580,41 @@ describe('ConsoleCommentList', () => {
     );
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
-    expect(onCreateWorkflowIssue).toHaveBeenCalledWith(comment);
+    const createBtn = getByRole('button', { name: 'Create' });
+    fireEvent.click(createBtn);
+    await waitFor(() => {
+      expect(createBtn).toBeDisabled();
+    });
+    resolveSubmit();
+  });
+
+  it('shows error in the dialog when onCreateWorkflowIssue rejects', async () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'A comment body',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const onCreateWorkflowIssue = jest
+      .fn()
+      .mockRejectedValue(new Error('Server error'));
+    const { container, getByRole, getByText } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCreateWorkflowIssue={onCreateWorkflowIssue}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    fireEvent.click(getByRole('button', { name: 'Create' }));
+    await waitFor(() => {
+      expect(getByText('Server error')).toBeInTheDocument();
+    });
   });
 
   it('opens a confirmation dialog when the create workflow issue button is clicked instead of calling the callback directly', () => {

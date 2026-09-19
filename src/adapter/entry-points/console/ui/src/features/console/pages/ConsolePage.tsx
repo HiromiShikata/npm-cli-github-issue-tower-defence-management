@@ -78,7 +78,6 @@ import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
 import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
 import type {
   ConsoleColor,
-  ConsoleComment,
   ConsoleFieldOption,
   ConsoleIssueState,
   ConsoleListItem,
@@ -621,25 +620,19 @@ export const ConsolePage = () => {
   }, [selectedItem, storyEntries]);
 
   const handleCreateWorkflowIssue = useCallback(
-    (comment: ConsoleComment): void => {
+    async (title: string, body: string): Promise<void> => {
       if (fleetTaskCreateUrl === null || selectedItem === null) return;
       const nameWithOwner = fleetTaskCreateUrl
         .replace('https://github.com/', '')
         .replace(/\/issues\/new.*$/, '');
-      postConsoleCreateWorkflowIssue({
+      await postConsoleCreateWorkflowIssue({
         nameWithOwner,
-        title: selectedItem.title,
+        title,
         sourceIssueTitle: selectedItem.title,
-        quotedCommentBody: comment.body,
-      }).catch((err: unknown) => {
-        console.error('Failed to create workflow issue:', err);
-        actionQueue.showError(
-          'Failed to create workflow issue',
-          err instanceof Error ? err.message : String(err),
-        );
+        quotedCommentBody: body,
       });
     },
-    [actionQueue, fleetTaskCreateUrl, selectedItem],
+    [fleetTaskCreateUrl, selectedItem],
   );
 
   const handleCreateIssue = useCallback(

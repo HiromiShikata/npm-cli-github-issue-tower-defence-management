@@ -79,7 +79,7 @@ export type ConsoleItemDetailProps = {
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
   onTitleRename?: ((newTitle: string) => Promise<void>) | null;
-  onCreateWorkflowIssue?: (comment: ConsoleComment) => void;
+  onCreateWorkflowIssue?: (title: string, body: string) => Promise<void>;
 };
 
 export const ConsoleItemDetail = ({
@@ -359,6 +359,7 @@ export const ConsoleItemDetail = ({
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
             persistenceKey={item.url}
+            issueTitle={item.title}
             onCreateWorkflowIssue={onCreateWorkflowIssue}
           />
         </ConsolePanel>
