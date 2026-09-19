@@ -2580,3 +2580,139 @@ body {
 .console-task-create-dialog-new-issue-link:hover {
   color: #e6edf3;
 }
+
+.console-fleet-task-create-dialog-container {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 60px;
+}
+
+.console-fleet-task-create-dialog-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 4, 9, 0.6);
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+.console-fleet-task-create-dialog {
+  position: relative;
+  z-index: 1;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 100px);
+  overflow: hidden;
+}
+
+.console-fleet-task-create-dialog-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #161b22;
+  border-bottom: 1px solid #30363d;
+  flex-shrink: 0;
+}
+
+.console-fleet-task-create-dialog-title {
+  color: #e6edf3;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.console-fleet-task-create-dialog-close {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  font-size: 1.125rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.console-fleet-task-create-dialog-close:hover {
+  color: #e6edf3;
+}
+
+.console-fleet-task-create-dialog-body {
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.console-fleet-task-create-dialog-label {
+  color: #e6edf3;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.console-fleet-task-create-dialog-input {
+  padding: 6px 10px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 0.875rem;
+}
+
+.console-fleet-task-create-dialog-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+}
+
+.console-fleet-task-create-dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.console-fleet-task-create-dialog-cancel {
+  padding: 6px 16px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.console-fleet-task-create-dialog-cancel:hover:not(:disabled) {
+  border-color: #484f58;
+}
+
+.console-fleet-task-create-dialog-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.console-fleet-task-create-dialog-submit {
+  padding: 6px 16px;
+  background: #238636;
+  border: 1px solid #2ea043;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.console-fleet-task-create-dialog-submit:hover:not(:disabled) {
+  background: #2ea043;
+}
+
+.console-fleet-task-create-dialog-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

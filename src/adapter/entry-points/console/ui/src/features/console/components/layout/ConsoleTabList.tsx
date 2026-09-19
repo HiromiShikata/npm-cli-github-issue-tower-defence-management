@@ -28,7 +28,7 @@ export type ConsoleTabBarProps = {
   onAirplaneModeTurnOff: () => void;
   onAirplaneModeRetryFailed: () => void;
   projectUrl?: string | null;
-  fleetTaskCreateUrl?: string | null;
+  onFleetTaskCreate?: (() => void) | null;
   now: number;
 };
 
@@ -52,7 +52,7 @@ export const ConsoleTabList = ({
   onAirplaneModeTurnOff,
   onAirplaneModeRetryFailed,
   projectUrl = null,
-  fleetTaskCreateUrl = null,
+  onFleetTaskCreate = null,
   now,
 }: ConsoleTabBarProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -158,16 +158,15 @@ export const ConsoleTabList = ({
         {settingsButton !== undefined && (
           <span className="console-tab-settings">{settingsButton}</span>
         )}
-        {fleetTaskCreateUrl !== null && (
-          <a
-            href={fleetTaskCreateUrl}
-            target="_blank"
-            rel="noreferrer"
+        {onFleetTaskCreate !== null && onFleetTaskCreate !== undefined && (
+          <button
+            type="button"
             className="console-tab-fleet-task-create-link"
             aria-label="Create fleet task"
+            onClick={onFleetTaskCreate}
           >
             ⊕
-          </a>
+          </button>
         )}
         {generatedAt !== null && airplaneModeStatus !== 'on' && (
           <span
