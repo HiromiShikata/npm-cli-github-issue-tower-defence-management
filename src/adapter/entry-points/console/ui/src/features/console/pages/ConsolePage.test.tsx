@@ -2667,7 +2667,11 @@ describe('ConsolePage workflow issue creation', () => {
     global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
-        return { ok: true, status: 200, json: async () => listPayload(listMatch[1]) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
       }
       if (url === '/api/projects') {
         return {
@@ -2680,7 +2684,11 @@ describe('ConsolePage workflow issue creation', () => {
         };
       }
       if (url.startsWith('/api/projectreadmeconfig')) {
-        return { ok: true, status: 200, json: async () => ({ maximumPreparingIssuesCount: 3 }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
       }
       if (url.startsWith('/api/comments')) {
         return {
@@ -2725,23 +2733,32 @@ describe('ConsolePage workflow issue creation', () => {
     await waitFor(() => {
       expect(getByText('Workflow test comment body.')).toBeInTheDocument();
     });
-    expect(queryAllByTitle('Create workflow improvement issue from this comment')).toHaveLength(0);
+    expect(
+      queryAllByTitle('Create workflow improvement issue from this comment'),
+    ).toHaveLength(0);
   });
 
   it('renders the create workflow issue button on a comment when fleetTaskCreateUrl is non-null', async () => {
-    installFetchWithFleetUrl('https://github.com/HiromiShikata/secretary/issues/new');
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+    );
     const { getByText, getAllByTitle } = render(<ConsolePage />);
     await waitFor(() => {
       expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
     });
     fireEvent.click(getByText('Add serveConsole subcommand'));
     await waitFor(() => {
-      expect(getAllByTitle('Create workflow improvement issue from this comment').length).toBeGreaterThan(0);
+      expect(
+        getAllByTitle('Create workflow improvement issue from this comment')
+          .length,
+      ).toBeGreaterThan(0);
     });
   });
 
   it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner when the button is clicked', async () => {
-    installFetchWithFleetUrl('https://github.com/HiromiShikata/secretary/issues/new');
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+    );
     const fetchSpy = global.fetch as jest.Mock;
     const { getByText, getAllByTitle } = render(<ConsolePage />);
     await waitFor(() => {
@@ -2749,9 +2766,14 @@ describe('ConsolePage workflow issue creation', () => {
     });
     fireEvent.click(getByText('Add serveConsole subcommand'));
     await waitFor(() => {
-      expect(getAllByTitle('Create workflow improvement issue from this comment').length).toBeGreaterThan(0);
+      expect(
+        getAllByTitle('Create workflow improvement issue from this comment')
+          .length,
+      ).toBeGreaterThan(0);
     });
-    const createBtn = getAllByTitle('Create workflow improvement issue from this comment')[0];
+    const createBtn = getAllByTitle(
+      'Create workflow improvement issue from this comment',
+    )[0];
     fireEvent.click(createBtn);
     await waitFor(() => {
       const createIssueCalls = fetchSpy.mock.calls.filter(
