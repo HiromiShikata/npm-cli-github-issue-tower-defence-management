@@ -3030,8 +3030,7 @@ describe('ConsolePage workflow issue creation', () => {
       ) as Record<string, unknown>;
       expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
       expect(requestBody.title).toBe('My fleet task');
-      expect(requestBody.sourceIssueTitle).toBe('');
-      expect(requestBody.quotedCommentBody).toBe('');
+      expect(requestBody.body).toBe('');
     });
   });
 
