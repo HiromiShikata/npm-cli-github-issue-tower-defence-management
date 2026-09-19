@@ -1783,6 +1783,10 @@ test('creates a workflow improvement issue from a comment when the + button is c
     const initialCreateCount = localHarness.createIssueCalls.length;
     await createBtn.click();
 
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Create' }).click();
+
     await expect
       .poll(() => localHarness.createIssueCalls.length, { timeout: 10000 })
       .toBe(initialCreateCount + 1);

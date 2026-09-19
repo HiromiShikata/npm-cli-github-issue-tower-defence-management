@@ -126,7 +126,7 @@ export type ConsoleItemDetailContainerProps = {
   onQueueAction: (input: ConsoleQueueActionInput) => void;
   onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
   storyNameForDeletion?: string | null;
-  onCreateWorkflowIssue?: (comment: ConsoleComment) => void;
+  onCreateWorkflowIssue?: (title: string, body: string) => Promise<void>;
 };
 
 export const ConsoleItemDetailContainer = ({
