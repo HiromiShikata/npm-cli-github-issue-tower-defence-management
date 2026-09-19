@@ -894,6 +894,60 @@ describe('RestIssueRepository', () => {
         restIssueRepository.updateIssue(buildIssue()),
       ).rejects.toBeInstanceOf(RepositoryArchivedError);
     });
+
+    it('sends state "open" to the GitHub API when the domain state is "OPEN"', async () => {
+      mockPatch.mockResolvedValue(undefined);
+      await restIssueRepository.updateIssue(buildIssue({ state: 'OPEN' }));
+      expect(mockPatch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/40',
+        {
+          json: {
+            title: 'Test Issue',
+            body: 'Test body',
+            assignees: [],
+            labels: ['test'],
+            state: 'open',
+          },
+          headers: { Authorization: 'token dummy-token' },
+        },
+      );
+    });
+
+    it('sends state "closed" to the GitHub API when the domain state is "CLOSED"', async () => {
+      mockPatch.mockResolvedValue(undefined);
+      await restIssueRepository.updateIssue(buildIssue({ state: 'CLOSED' }));
+      expect(mockPatch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/40',
+        {
+          json: {
+            title: 'Test Issue',
+            body: 'Test body',
+            assignees: [],
+            labels: ['test'],
+            state: 'closed',
+          },
+          headers: { Authorization: 'token dummy-token' },
+        },
+      );
+    });
+
+    it('sends state "closed" to the GitHub API when the domain state is "MERGED"', async () => {
+      mockPatch.mockResolvedValue(undefined);
+      await restIssueRepository.updateIssue(buildIssue({ state: 'MERGED' }));
+      expect(mockPatch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/HiromiShikata/test-repository/issues/40',
+        {
+          json: {
+            title: 'Test Issue',
+            body: 'Test body',
+            assignees: [],
+            labels: ['test'],
+            state: 'closed',
+          },
+          headers: { Authorization: 'token dummy-token' },
+        },
+      );
+    });
   });
 
   describe('getIssueOrPullRequestComments', () => {

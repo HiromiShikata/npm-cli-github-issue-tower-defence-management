@@ -256,7 +256,7 @@ export class RestIssueRepository
             body: issue.body,
             assignees: issue.assignees,
             labels: issue.labels,
-            state: issue.state,
+            state: issue.state === 'OPEN' ? 'open' : 'closed',
           },
           headers: { Authorization: `token ${this.ghToken}` },
         },
