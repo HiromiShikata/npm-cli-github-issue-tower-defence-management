@@ -1,3 +1,11 @@
+## [2.125.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.125.0...v2.125.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **domain:** make isNoStory parameter required in resolveNextStepAgentDispatchRepetition ([#2427](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2427)) ([0137f8b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0137f8bce1a32a4fea595a199774c61f9203bc7b)), closes [#2420](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2420)
+* **notifyFinishedIssuePreparation:** skip gracefully when issue status is Disabled ([#2431](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2431)) ([39db1b8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/39db1b8ce8d4ed33178155ca8f7c60040a424b62)), closes [HiromiShikata/secretary#6511](https://github.com/HiromiShikata/secretary/issues/6511)
+
 # [2.125.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.124.0...v2.125.0) (2026-09-19)
 
 
