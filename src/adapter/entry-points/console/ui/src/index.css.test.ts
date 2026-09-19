@@ -71,6 +71,53 @@ describe('console CSS class contract', () => {
     expect(ruleBlock).toContain('min-height: 0');
   });
 
+  it('sets minimum 8px vertical padding on console-tab-project-link to provide an adequate tap target for the GitHub project icon link', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(css, '.console-tab-project-link');
+    expect(ruleBlock).not.toBeNull();
+    const paddingMatch = ruleBlock!.match(/padding:\s*([^;]+)/);
+    expect(paddingMatch).not.toBeNull();
+    const parts = paddingMatch![1].trim().split(/\s+/);
+    const verticalPx = parseInt(parts[0], 10);
+    expect(verticalPx).toBeGreaterThanOrEqual(8);
+  });
+
+  it('sets minimum 8px vertical padding on console-timer-settings-button to provide an adequate tap target for the timer settings icon button', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(
+      css,
+      '.console-timer-settings-button',
+    );
+    expect(ruleBlock).not.toBeNull();
+    const paddingMatch = ruleBlock!.match(/padding:\s*([^;]+)/);
+    expect(paddingMatch).not.toBeNull();
+    const parts = paddingMatch![1].trim().split(/\s+/);
+    const verticalPx = parseInt(parts[0], 10);
+    expect(verticalPx).toBeGreaterThanOrEqual(8);
+  });
+
+  it('sets minimum 8px vertical padding on console-tab-settings-button to provide an adequate tap target for the settings gear icon button', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(css, '.console-tab-settings-button');
+    expect(ruleBlock).not.toBeNull();
+    const paddingMatch = ruleBlock!.match(/padding:\s*([^;]+)/);
+    expect(paddingMatch).not.toBeNull();
+    const parts = paddingMatch![1].trim().split(/\s+/);
+    const verticalPx = parseInt(parts[0], 10);
+    expect(verticalPx).toBeGreaterThanOrEqual(8);
+  });
+
+  it('sets minimum 8px vertical padding on console-task-create-button to provide an adequate tap target for the new task icon button', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(css, '.console-task-create-button');
+    expect(ruleBlock).not.toBeNull();
+    const paddingMatch = ruleBlock!.match(/padding:\s*([^;]+)/);
+    expect(paddingMatch).not.toBeNull();
+    const parts = paddingMatch![1].trim().split(/\s+/);
+    const verticalPx = parseInt(parts[0], 10);
+    expect(verticalPx).toBeGreaterThanOrEqual(8);
+  });
+
   it('defines a CSS rule in index.css for every console-* class name used in portal overlay components', () => {
     const definedClasses = loadDefinedCssClasses(
       readFileSync(INDEX_CSS_PATH, 'utf-8'),
