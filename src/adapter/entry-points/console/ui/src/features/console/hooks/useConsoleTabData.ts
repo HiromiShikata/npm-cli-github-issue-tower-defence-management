@@ -218,6 +218,24 @@ const fetchSingleSnapshot = async (
   }
 };
 
+export const refreshProjectTabsToCache = async (
+  pjcode: string,
+): Promise<void> => {
+  await Promise.all(
+    CONSOLE_TABS.map(async (tab) => {
+      const url = buildListUrl(pjcode, tab.name);
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          return;
+        }
+        const payload: unknown = await response.json();
+        persistListSnapshot(url, payload);
+      } catch {}
+    }),
+  );
+};
+
 const fetchSnapshots = async (
   pjcode: string,
 ): Promise<{
