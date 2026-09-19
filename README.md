@@ -180,7 +180,7 @@ The `notifyFinishedIssuePreparation` and `revertOrphanedPreparation` commands su
 
 - `owner` (string, required): GitHub owner (organisation or user) of the repository where the workflow issue is created.
 - `repo` (string, required): repository name under that owner.
-- `projectUrl` (string, optional): URL of a GitHub ProjectV2 to which the newly created issue is added. When the project contains a story option whose name includes "workflow blocker" (case-insensitive), the issue's Story field is set to that option automatically.
+- `projectUrl` (string, optional): URL of a GitHub ProjectV2 to which the newly created issue is added. When the project contains a story option whose name includes "workflow blocker" (case-insensitive), the issue's Story field is set to that option automatically. When this URL matches a GitHub org (`https://github.com/orgs/{org}/projects/{n}`) or user (`https://github.com/users/{user}/projects/{n}`) project URL, the fleet task creation console link also appends `?projects={org}/{n}` or `?projects={user}/{n}` so that any new issue created from that link is automatically added to the project.
 
 Example:
 
