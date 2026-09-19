@@ -84,7 +84,10 @@ describe('console CSS class contract', () => {
 
   it('sets minimum 8px vertical padding on console-timer-settings-button to provide an adequate tap target for the timer settings icon button', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
-    const ruleBlock = extractCssRuleBlock(css, '.console-timer-settings-button');
+    const ruleBlock = extractCssRuleBlock(
+      css,
+      '.console-timer-settings-button',
+    );
     expect(ruleBlock).not.toBeNull();
     const paddingMatch = ruleBlock!.match(/padding:\s*([^;]+)/);
     expect(paddingMatch).not.toBeNull();
