@@ -7075,7 +7075,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     });
   });
 
-  describe('story field update from routing JSON', () => {
+  describe('story field update from result JSON', () => {
     const projectWithStoryAndAgent = () =>
       createMockProject({
         agent: {
@@ -7115,7 +7115,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         },
       });
 
-    it('calls updateStory with the resolved storyOptionId when the routing JSON contains a story key matching a project story', async () => {
+    it('calls updateStory with the resolved storyOptionId when the result JSON contains a story key matching a project story', async () => {
       const project = projectWithStoryAndAgent();
       const issue = createMockIssue({
         status: 'Preparation',
@@ -7146,7 +7146,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('does not call updateStory when the routing JSON has no story key', async () => {
+    it('does not call updateStory when the result JSON has no story key', async () => {
       const project = projectWithStoryAndAgent();
       const issue = createMockIssue({
         status: 'Preparation',
