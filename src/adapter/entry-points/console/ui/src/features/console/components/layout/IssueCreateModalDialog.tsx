@@ -145,7 +145,14 @@ export const IssueCreateModalDialog = ({
   };
 
   return createPortal(
-    <div className="console-task-create-dialog-overlay">
+    <div className="console-task-create-dialog-container">
+      <button
+        type="button"
+        className="console-task-create-dialog-overlay"
+        aria-label="Close dialog"
+        disabled={submitting}
+        onClick={onClose}
+      />
       <div
         className="console-task-create-dialog"
         role="dialog"
