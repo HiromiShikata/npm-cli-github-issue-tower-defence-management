@@ -1,3 +1,10 @@
+# [2.128.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.127.0...v2.128.0) (2026-09-19)
+
+
+### Features
+
+* **IssueCreateModalDialog:** truncate title to 256 chars and move overflow to body on submit ([#2437](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2437)) ([2d40968](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2d40968c784312790a3571914b974fd202f5f1ca))
+
 # [2.127.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.126.0...v2.127.0) (2026-09-19)
 
 
