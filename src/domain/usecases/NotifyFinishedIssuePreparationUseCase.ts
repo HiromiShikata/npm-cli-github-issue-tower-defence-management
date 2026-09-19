@@ -70,6 +70,12 @@ export class IllegalIssueStatusError extends Error {
     this.name = 'IllegalIssueStatusError';
   }
 }
+export class RepositoryArchivedError extends Error {
+  constructor(org: string, repo: string) {
+    super(`Repository ${org}/${repo} is archived and cannot be written to`);
+    this.name = 'RepositoryArchivedError';
+  }
+}
 type RejectedReasonType = 'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
 
 const parseOrgRepo = (
@@ -142,6 +148,40 @@ export class NotifyFinishedIssuePreparationUseCase {
   }
 
   run = async (params: {
+    projectUrl: string;
+    issueUrl: string;
+    thresholdForAutoReject: number;
+    thresholdForDispatchLoop?: number;
+    workflowBlockerResolvedWebhookUrl: string | null;
+    allowedIssueAuthors?: string[] | null;
+    labelsAsLlmAgentName?: string[] | null;
+    labelsNotRequiringPullRequest?: string[] | null;
+    changeTargetPathAliases?: Record<string, string> | null;
+    agents?: string[] | null;
+    missingAgentName?: string | null;
+    sessionErrorLine?: string | null;
+    manager?: string | null;
+    developerAgentNames?: string[] | null;
+    defaultAgentName?: string | null;
+    deferPreparation?: boolean | null;
+    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
+    tdpmReportingRepository?: string | null;
+    projectName?: string | null;
+  }): Promise<void> => {
+    try {
+      await this.runInternal(params);
+    } catch (e) {
+      if (e instanceof RepositoryArchivedError) {
+        console.warn(
+          `notifyFinishedIssuePreparation skipped: ${e.message}`,
+        );
+        return;
+      }
+      throw e;
+    }
+  };
+
+  private runInternal = async (params: {
     projectUrl: string;
     issueUrl: string;
     thresholdForAutoReject: number;

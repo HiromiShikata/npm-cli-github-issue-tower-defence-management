@@ -830,6 +830,27 @@ describe('RestIssueRepository', () => {
         rateLimitResetAt: new Date(resetEpoch * 1000).toISOString(),
       });
     });
+
+    it('throws RepositoryArchivedError when ky returns 403 with archived repository body', async () => {
+      const mockHeaders = new Headers({ 'x-ratelimit-remaining': '100' });
+      mockPatch.mockRejectedValue(
+        new MockHTTPError({
+          status: 403,
+          headers: mockHeaders,
+          clone: () => ({
+            text: async () =>
+              'Repository was archived so is read-only.',
+          }),
+        }),
+      );
+
+      const { RepositoryArchivedError } = await import(
+        '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase'
+      );
+      await expect(
+        restIssueRepository.updateIssue(buildIssue()),
+      ).rejects.toBeInstanceOf(RepositoryArchivedError);
+    });
   });
 
   describe('getIssueOrPullRequestComments', () => {
