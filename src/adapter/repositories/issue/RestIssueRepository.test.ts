@@ -862,7 +862,9 @@ describe('RestIssueRepository', () => {
           );
         },
       });
-      archivedError.data = { message: 'Repository was archived so is read-only.' };
+      archivedError.data = {
+        message: 'Repository was archived so is read-only.',
+      };
       mockPatch.mockRejectedValue(archivedError);
 
       const { RepositoryArchivedError } =
