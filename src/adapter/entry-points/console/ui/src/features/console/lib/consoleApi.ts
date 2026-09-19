@@ -127,9 +127,7 @@ const requestJson = async (
           return cached.json();
         }
       }
-    } catch {
-      // cache read failure, fall through to original error
-    }
+    } catch {}
     throw e;
   }
 };

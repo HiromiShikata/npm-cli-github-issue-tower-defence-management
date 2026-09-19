@@ -132,11 +132,6 @@ const resolveStatusId = (
   return match ? match.id : null;
 };
 
-// Builds the minimal Issue reference the ProjectV2 mutations need. The dashboard
-// already supplies the project item id in the request body, and updateStatus,
-// updateStory and updateNextActionHour read only `issue.itemId` (plus `url` for
-// context). Constructing the reference locally avoids the GraphQL
-// fetchProjectItemByUrl call that issueRepository.get would otherwise perform.
 const projectItemReference = (
   issueUrl: string,
   projectItemId: string,
@@ -245,11 +240,6 @@ const isOperationResponse = (
   value: ConsoleProjectBinding | ConsoleOperationResponse,
 ): value is ConsoleOperationResponse => Object.hasOwn(value, 'statusCode');
 
-// Validates that a pjcode is configured WITHOUT loading the ProjectV2 via
-// GraphQL. Close operations only need the pjcode (for recordDone namespacing)
-// and the issue/PR URL, both of which are handled through REST. Loading the
-// full project here would make close fail whenever the GraphQL quota is
-// exhausted, even though closing a GitHub issue or PR needs only REST.
 const resolveConfiguredPjcode = (
   context: ConsoleOperationContext,
   body: Record<string, unknown>,
