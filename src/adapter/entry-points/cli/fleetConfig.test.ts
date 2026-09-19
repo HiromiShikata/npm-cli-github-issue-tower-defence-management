@@ -826,6 +826,33 @@ describe('loadFleetTaskCreateUrl', () => {
     );
   });
 
+  it('appends ?projects= query param when projectUrl is an org project URL', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n  projectUrl: https://github.com/orgs/myorg/projects/3\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
+      'https://github.com/myorg/myrepo/issues/new?projects=myorg/3',
+    );
+  });
+
+  it('appends ?projects= query param when projectUrl is a user project URL', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myuser\n  repo: myrepo\n  projectUrl: https://github.com/users/myuser/projects/5\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
+      'https://github.com/myuser/myrepo/issues/new?projects=myuser/5',
+    );
+  });
+
+  it('returns base URL without query param when projectUrl is not an org or user project URL', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n  projectUrl: https://github.com/myorg/myrepo/projects/1\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
+      'https://github.com/myorg/myrepo/issues/new',
+    );
+  });
+
   it('returns null when the workflowIssueReporter section is absent', () => {
     const fleetConfigFilePath = writeFleetConfig(
       'preparationWorker:\n  normalConcurrentLimit: 5\n',

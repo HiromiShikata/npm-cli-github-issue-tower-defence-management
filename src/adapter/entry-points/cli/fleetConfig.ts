@@ -333,6 +333,17 @@ export const loadWorkflowImprovementIssueUrl = (
   return value;
 };
 
+const extractGitHubProjectParam = (projectUrl: string): string | null => {
+  const match =
+    /^https:\/\/github\.com\/(?:orgs|users)\/([^/]+)\/projects\/(\d+)$/.exec(
+      projectUrl,
+    );
+  if (match === null) {
+    return null;
+  }
+  return `${match[1]}/${match[2]}`;
+};
+
 export const loadFleetTaskCreateUrl = (
   fleetConfigFilePath: string | null,
 ): string | null => {
@@ -340,7 +351,15 @@ export const loadFleetTaskCreateUrl = (
   if (settings === null) {
     return null;
   }
-  return `https://github.com/${settings.owner}/${settings.repo}/issues/new`;
+  const base = `https://github.com/${settings.owner}/${settings.repo}/issues/new`;
+  if (settings.projectUrl == null) {
+    return base;
+  }
+  const projectParam = extractGitHubProjectParam(settings.projectUrl);
+  if (projectParam === null) {
+    return base;
+  }
+  return `${base}?projects=${projectParam}`;
 };
 
 export const ERROR_REPORTING_REPOSITORY_KEY = 'errorReportingRepository';
