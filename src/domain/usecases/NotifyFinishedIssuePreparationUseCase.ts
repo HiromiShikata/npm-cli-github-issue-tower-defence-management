@@ -77,6 +77,27 @@ export class RepositoryArchivedError extends Error {
   }
 }
 type RejectedReasonType = 'NO_REPORT_FROM_AGENT_BOT' | PrRejectedReasonType;
+type NotifyFinishedIssuePreparationParams = {
+  projectUrl: string;
+  issueUrl: string;
+  thresholdForAutoReject: number;
+  thresholdForDispatchLoop?: number;
+  workflowBlockerResolvedWebhookUrl: string | null;
+  allowedIssueAuthors?: string[] | null;
+  labelsAsLlmAgentName?: string[] | null;
+  labelsNotRequiringPullRequest?: string[] | null;
+  changeTargetPathAliases?: Record<string, string> | null;
+  agents?: string[] | null;
+  missingAgentName?: string | null;
+  sessionErrorLine?: string | null;
+  manager?: string | null;
+  developerAgentNames?: string[] | null;
+  defaultAgentName?: string | null;
+  deferPreparation?: boolean | null;
+  workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
+  tdpmReportingRepository?: string | null;
+  projectName?: string | null;
+};
 
 const parseOrgRepo = (
   repository: string | null,
@@ -147,27 +168,7 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
   }
 
-  run = async (params: {
-    projectUrl: string;
-    issueUrl: string;
-    thresholdForAutoReject: number;
-    thresholdForDispatchLoop?: number;
-    workflowBlockerResolvedWebhookUrl: string | null;
-    allowedIssueAuthors?: string[] | null;
-    labelsAsLlmAgentName?: string[] | null;
-    labelsNotRequiringPullRequest?: string[] | null;
-    changeTargetPathAliases?: Record<string, string> | null;
-    agents?: string[] | null;
-    missingAgentName?: string | null;
-    sessionErrorLine?: string | null;
-    manager?: string | null;
-    developerAgentNames?: string[] | null;
-    defaultAgentName?: string | null;
-    deferPreparation?: boolean | null;
-    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
-    tdpmReportingRepository?: string | null;
-    projectName?: string | null;
-  }): Promise<void> => {
+  run = async (params: NotifyFinishedIssuePreparationParams): Promise<void> => {
     try {
       await this.runInternal(params);
     } catch (e) {
@@ -179,27 +180,9 @@ export class NotifyFinishedIssuePreparationUseCase {
     }
   };
 
-  private runInternal = async (params: {
-    projectUrl: string;
-    issueUrl: string;
-    thresholdForAutoReject: number;
-    thresholdForDispatchLoop?: number;
-    workflowBlockerResolvedWebhookUrl: string | null;
-    allowedIssueAuthors?: string[] | null;
-    labelsAsLlmAgentName?: string[] | null;
-    labelsNotRequiringPullRequest?: string[] | null;
-    changeTargetPathAliases?: Record<string, string> | null;
-    agents?: string[] | null;
-    missingAgentName?: string | null;
-    sessionErrorLine?: string | null;
-    manager?: string | null;
-    developerAgentNames?: string[] | null;
-    defaultAgentName?: string | null;
-    deferPreparation?: boolean | null;
-    workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
-    tdpmReportingRepository?: string | null;
-    projectName?: string | null;
-  }): Promise<void> => {
+  private runInternal = async (
+    params: NotifyFinishedIssuePreparationParams,
+  ): Promise<void> => {
     const project = await this.projectRepository.getByUrl(params.projectUrl);
 
     const awaitingWorkspaceStatusOption = project.status.statuses.find(
