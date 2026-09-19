@@ -342,6 +342,20 @@ describe('ConsoleTabList', () => {
     expect(link).toHaveAttribute('rel', 'noreferrer');
   });
 
+  it('renders the fleet task create link with the circled-plus icon to distinguish it from the project task create button', () => {
+    const url = 'https://github.com/myorg/myrepo/issues/new';
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        fleetTaskCreateUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /create fleet task/i });
+    expect(link.textContent).toBe('⊕');
+  });
+
   it('does not render the fleet task create link when fleetTaskCreateUrl is null', () => {
     const { container } = render(
       <ConsoleTabList
