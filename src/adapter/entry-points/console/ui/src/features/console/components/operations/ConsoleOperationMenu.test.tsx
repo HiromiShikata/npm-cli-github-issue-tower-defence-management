@@ -42,7 +42,7 @@ describe('ConsoleOperationMenu', () => {
       />,
     );
     expect(getByText('Approve & Merge')).toBeInTheDocument();
-    expect(getByText('+1 day')).toBeInTheDocument();
+    expect(getByText('+1d')).toBeInTheDocument();
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
     expect(getByText('Close')).toBeInTheDocument();
     expect(getByText('Close as not planned')).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('ConsoleOperationMenu', () => {
     expect(queryByText('TDPM Console port')).toBeNull();
   });
 
-  it('shows +1 week and skip on the todo-by-human tab', () => {
+  it('shows +1w skip on the todo-by-human tab', () => {
     const { getByText } = render(
       <ConsoleOperationMenu
         tab="todo-by-human"
@@ -65,10 +65,10 @@ describe('ConsoleOperationMenu', () => {
         handlers={handlers}
       />,
     );
-    expect(getByText('+1 week and skip')).toBeInTheDocument();
+    expect(getByText('+1w skip')).toBeInTheDocument();
   });
 
-  it('shows +1 week and skip on the todo-by-agent tab', () => {
+  it('shows +1w skip on the todo-by-agent tab', () => {
     const { getByText } = render(
       <ConsoleOperationMenu
         tab="todo-by-agent"
@@ -83,7 +83,7 @@ describe('ConsoleOperationMenu', () => {
         handlers={handlers}
       />,
     );
-    expect(getByText('+1 week and skip')).toBeInTheDocument();
+    expect(getByText('+1w skip')).toBeInTheDocument();
   });
 
   it('hides the review group when there is no pull request', () => {
@@ -123,7 +123,7 @@ describe('ConsoleOperationMenu', () => {
     expect(getByText('Awaiting Workspace')).toBeInTheDocument();
     expect(getByText('Close')).toBeInTheDocument();
     expect(getByText('Close as not planned')).toBeInTheDocument();
-    expect(getByText('+1 day')).toBeInTheDocument();
+    expect(getByText('+1d')).toBeInTheDocument();
     expect(queryByText('Move to Okinawa')).toBeNull();
     expect(queryByText('Approve & Merge')).toBeNull();
   });

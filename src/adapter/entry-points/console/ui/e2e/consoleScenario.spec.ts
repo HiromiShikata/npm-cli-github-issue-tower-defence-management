@@ -136,28 +136,28 @@ test('renders the Workflow Blocker tab immediately right of Todo by human and sh
     page.locator('.console-op-button', { hasText: 'Close as not planned' }),
   ).toBeVisible();
   await expect(
-    page.locator('.console-op-button', { hasText: '+1 hour' }),
+    page.locator('.console-op-button', { hasText: '+1h' }),
   ).toBeVisible();
   await expect(
-    page.locator('.console-op-button', { hasText: '+3 hours' }),
+    page.locator('.console-op-button', { hasText: '+3h' }),
   ).toBeVisible();
   await expect(
-    page.locator('.console-op-button', { hasText: '+6 hours' }),
+    page.locator('.console-op-button', { hasText: '+6h' }),
   ).toBeVisible();
   await expect(
-    page.locator('.console-op-button', { hasText: '+1 day' }),
+    page.locator('.console-op-button', { hasText: '+1d' }),
   ).toBeVisible();
   await expect(
-    page.locator('.console-op-button', { hasText: '+2 days' }),
+    page.locator('.console-op-button', { hasText: '+2d' }),
   ).toBeVisible();
   await expect(
-    page.locator('.console-op-button', { hasText: '+3 days' }),
+    page.locator('.console-op-button', { hasText: '+3d' }),
   ).toBeVisible();
   await expect(
-    page.locator('.console-op-button', { hasText: '+5 days' }),
+    page.locator('.console-op-button', { hasText: '+5d' }),
   ).toBeVisible();
   await expect(
-    page.locator('.console-op-button', { hasText: '+1 month' }),
+    page.locator('.console-op-button', { hasText: '+1mo' }),
   ).toBeVisible();
 });
 
