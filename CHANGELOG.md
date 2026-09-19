@@ -1,3 +1,15 @@
+# [2.126.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.125.1...v2.126.0) (2026-09-19)
+
+
+### Bug Fixes
+
+* **rest-issue-repository:** use error.data fallback when clone() throws in archived-repo detection ([#2432](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2432)) ([a990c1d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a990c1d59eb88a03df528c4ff94b46364fe4fd3e)), closes [HiromiShikata/secretary#6510](https://github.com/HiromiShikata/secretary/issues/6510)
+
+
+### Features
+
+* **console:** add chess rook SVG favicon to TDPM Console ([#2435](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2435)) ([28cc6a0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/28cc6a08f38b3de804b3ca0c90a83eff083cebb6))
+
 ## [2.125.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.125.0...v2.125.1) (2026-09-19)
 
 
