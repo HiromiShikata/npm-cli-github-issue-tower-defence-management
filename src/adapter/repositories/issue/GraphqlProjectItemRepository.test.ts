@@ -1995,12 +1995,25 @@ describe('GraphqlProjectItemRepository', () => {
       mockPost.mockReturnValueOnce(
         mockJsonResponse({
           data: {
-            nodes: [makeDetailNode('PVTI_1', 'https://github.com/o/r/issues/1', 'first')],
+            nodes: [
+              makeDetailNode(
+                'PVTI_1',
+                'https://github.com/o/r/issues/1',
+                'first',
+              ),
+            ],
           },
           errors: [
             {
               type: 'FORBIDDEN',
-              path: ['nodes', 0, 'content', 'closingIssuesReferences', 'nodes', 0],
+              path: [
+                'nodes',
+                0,
+                'content',
+                'closingIssuesReferences',
+                'nodes',
+                0,
+              ],
               message:
                 '`meta-site` forbids access via a personal access token (classic).',
             },
@@ -2033,7 +2046,14 @@ describe('GraphqlProjectItemRepository', () => {
           errors: [
             {
               type: 'FORBIDDEN',
-              path: ['nodes', 0, 'content', 'closingIssuesReferences', 'nodes', 0],
+              path: [
+                'nodes',
+                0,
+                'content',
+                'closingIssuesReferences',
+                'nodes',
+                0,
+              ],
               message: '`meta-site` forbids access.',
             },
             { message: 'Something else went wrong.' },

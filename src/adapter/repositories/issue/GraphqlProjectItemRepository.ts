@@ -305,7 +305,9 @@ const isForbiddenContentError = (error: GraphqlError): boolean =>
   typeof error.path[3] === 'number' &&
   error.path[4] === 'content';
 
-const isForbiddenClosingIssuesReferencesError = (error: GraphqlError): boolean =>
+const isForbiddenClosingIssuesReferencesError = (
+  error: GraphqlError,
+): boolean =>
   error.type === 'FORBIDDEN' &&
   Array.isArray(error.path) &&
   error.path.includes('closingIssuesReferences');
