@@ -469,7 +469,9 @@ describe('ConsoleCommentList', () => {
         onCreateWorkflowIssue={onCreateWorkflowIssue}
       />,
     );
-    const btn = container.querySelector('.console-comment-create-workflow-issue');
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
     expect(btn).not.toBeNull();
   });
 
@@ -508,7 +510,9 @@ describe('ConsoleCommentList', () => {
         onCreateWorkflowIssue={onCreateWorkflowIssue}
       />,
     );
-    const btn = container.querySelector('.console-comment-create-workflow-issue');
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
     expect(onCreateWorkflowIssue).toHaveBeenCalledWith(comment);

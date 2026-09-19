@@ -5788,7 +5788,8 @@ describe('consoleOperationApi', () => {
         nameWithOwner: 'HiromiShikata/secretary',
         title: 'Fix the workflow pipeline',
         sourceIssueTitle: 'Original task title',
-        quotedCommentBody: 'Please split the token validation into its own tested function.',
+        quotedCommentBody:
+          'Please split the token validation into its own tested function.',
       });
       expect(response.statusCode).toBe(200);
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
