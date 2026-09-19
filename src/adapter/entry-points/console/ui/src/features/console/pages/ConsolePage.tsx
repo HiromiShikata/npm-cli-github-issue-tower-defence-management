@@ -47,9 +47,9 @@ import {
   postConsoleComment,
   postConsoleCreateIssue,
   postConsoleDeleteStory,
-  postConsoleRenameStory,
   postConsoleReorderStory,
   postConsoleStoryColor,
+  postConsoleStoryRename,
   postConsoleUpdateStoryDescription,
 } from '../lib/consoleApi';
 import { navigatePush, navigateReplaceState } from '../lib/navigation';
@@ -812,7 +812,7 @@ export const ConsolePage = () => {
       if (pjcode === null) {
         throw new Error('No project specified in the URL path.');
       }
-      await postConsoleRenameStory({ pjcode, storyOptionId, newName });
+      await postConsoleStoryRename({ pjcode, storyOptionId, newName });
       const updatedEntries = storyEntries.map((e) =>
         e.storyOptionId === storyOptionId ? { ...e, storyName: newName } : e,
       );

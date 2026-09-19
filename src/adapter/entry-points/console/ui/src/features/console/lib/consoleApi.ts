@@ -556,7 +556,7 @@ export const postConsoleDeleteStory = async (
   }
 };
 
-export const RENAME_STORY_OPERATION_PATH = '/api/renamestory';
+export const STORY_RENAME_OPERATION_PATH = '/api/renamestory';
 
 export type ConsoleRenameStoryRequest = {
   pjcode: string;
@@ -564,10 +564,10 @@ export type ConsoleRenameStoryRequest = {
   newName: string;
 };
 
-export const postConsoleRenameStory = async (
+export const postConsoleStoryRename = async (
   request: ConsoleRenameStoryRequest,
 ): Promise<void> => {
-  const response = await fetch(RENAME_STORY_OPERATION_PATH, {
+  const response = await fetch(STORY_RENAME_OPERATION_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
