@@ -1,7 +1,7 @@
 import { IssueCheckpointRepository } from '../../domain/usecases/adapter-interfaces/IssueCheckpointRepository';
 
 const CHECKPOINT_COMMENT_BODY =
-  '```json\n{"nextStep": null}\n```\n\nThis implementation session was interrupted by the preparation daemon due to token near exhaustion. The task will be re-dispatched.';
+  '```json\n{"checkpointReason": "token_exhaustion"}\n```\n\nThis implementation session was interrupted by the preparation daemon due to token near exhaustion. The task will be re-dispatched.';
 
 export class GitHubIssueCheckpointRepository implements IssueCheckpointRepository {
   constructor(private readonly ghToken: string) {}
