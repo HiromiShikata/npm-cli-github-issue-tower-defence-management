@@ -1025,6 +1025,10 @@ test('creates a fleet task issue via the tab bar dialog when title is submitted'
     expect(call?.org).toBe('HiromiShikata');
     expect(call?.repo).toBe('secretary');
     expect(call?.title).toBe('My fleet task');
+
+    await expect(
+      page.locator('.console-fleet-task-create-dialog-container'),
+    ).not.toBeVisible();
   } finally {
     await ctx.close();
     await localHarness.stop();
