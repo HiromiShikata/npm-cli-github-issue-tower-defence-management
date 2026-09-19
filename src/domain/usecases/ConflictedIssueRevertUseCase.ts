@@ -159,6 +159,7 @@ export class ConflictedIssueRevertUseCase {
             thresholdForDispatchLoop:
               params.thresholdForDispatchLoop ??
               DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
+            isNoStory: false,
           });
           if (repetition.type === 'escalateSilentRedispatch') {
             await this.issueRepository.updateStatus(
