@@ -4903,7 +4903,7 @@ describe('consoleOperationApi', () => {
 
       expect(response.statusCode).toBe(200);
       expect(issueRepository.clearProjectField).toHaveBeenCalledWith(
-        expect.objectContaining({ story: expect.objectContaining({ fieldId: 'storyField' }) }),
+        expect.anything(),
         'storyField',
         openTask,
       );

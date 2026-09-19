@@ -1260,7 +1260,8 @@ const handleDeletedStoryItemsInBackground = async (
   context: ConsoleOperationContext,
   pjcode: string,
   storyOption: FieldOption,
-  project: Project & { story: NonNullable<Project['story']> },
+  project: Project,
+  storyFieldId: string,
   issueRepository: IssueRepository,
   storyObjectMap: StoryObjectMap,
   deleteChildTasks: boolean,
@@ -1290,7 +1291,7 @@ const handleDeletedStoryItemsInBackground = async (
         try {
           await issueRepository.clearProjectField(
             project,
-            project.story.fieldId,
+            storyFieldId,
             task,
           );
         } catch (e) {
@@ -1347,14 +1348,12 @@ export const handleDeleteStory = async (
   const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
   await projectRepository.updateStoryList(project, filteredStories);
   context.invalidateProject?.(pjcode);
-  const projectWithStory = project as Project & {
-    story: NonNullable<Project['story']>;
-  };
   const backgroundTask = handleDeletedStoryItemsInBackground(
     context,
     pjcode,
     storyOption,
-    projectWithStory,
+    project,
+    project.story.fieldId,
     issueRepository,
     storyObjectMap,
     deleteChildTasks,
