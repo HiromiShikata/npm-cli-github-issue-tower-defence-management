@@ -1,3 +1,10 @@
+## [2.132.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.0...v2.132.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **console-ui:** add white-space: nowrap to console-error-toast-title for ellipsis truncation at narrow viewports ([#2455](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2455)) ([96ad127](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/96ad127dad6d474a72595f8fbd8f931b08a821d0))
+
 # [2.132.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.131.2...v2.132.0) (2026-09-19)
 
 
