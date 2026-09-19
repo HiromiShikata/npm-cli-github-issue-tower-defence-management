@@ -135,13 +135,14 @@ describe('console CSS class contract', () => {
     expect(verticalPx).toBeGreaterThanOrEqual(8);
   });
 
-  it('sets flex: 0 1 auto, min-width: 0, overflow: hidden, and text-overflow: ellipsis on console-error-toast-title so the title shrinks and clips when the viewport is narrow, keeping the Dismiss button reachable', () => {
+  it('sets flex: 0 1 auto, min-width: 0, overflow: hidden, white-space: nowrap, and text-overflow: ellipsis on console-error-toast-title so the title truncates with ellipsis instead of wrapping at narrow viewports', () => {
     const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
     const ruleBlock = extractCssRuleBlock(css, '.console-error-toast-title');
     expect(ruleBlock).not.toBeNull();
     expect(ruleBlock).toContain('flex: 0 1 auto');
     expect(ruleBlock).toContain('min-width: 0');
     expect(ruleBlock).toContain('overflow: hidden');
+    expect(ruleBlock).toContain('white-space: nowrap');
     expect(ruleBlock).toContain('text-overflow: ellipsis');
   });
 
