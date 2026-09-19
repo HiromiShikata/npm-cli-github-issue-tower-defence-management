@@ -2020,7 +2020,14 @@ describe('GraphqlProjectItemRepository', () => {
           errors: [
             {
               type: 'FORBIDDEN',
-              path: ['nodes', 25, 'content', 'closingIssuesReferences', 'nodes', 0],
+              path: [
+                'nodes',
+                25,
+                'content',
+                'closingIssuesReferences',
+                'nodes',
+                0,
+              ],
               message:
                 '`meta-site` forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions.',
             },
@@ -2075,7 +2082,14 @@ describe('GraphqlProjectItemRepository', () => {
           errors: [
             {
               type: 'FORBIDDEN',
-              path: ['nodes', 0, 'content', 'closingIssuesReferences', 'nodes', 0],
+              path: [
+                'nodes',
+                0,
+                'content',
+                'closingIssuesReferences',
+                'nodes',
+                0,
+              ],
               message:
                 '`meta-site` forbids access via a personal access token (classic).',
             },
