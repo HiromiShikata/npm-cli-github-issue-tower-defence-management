@@ -103,6 +103,11 @@ const emptyCounts = (): Record<ConsoleTabName, number> => {
 
 const OVERLAY_NAMESPACE_FALLBACK = 'console';
 
+const parseFleetNameWithOwner = (fleetTaskCreateUrl: string): string =>
+  fleetTaskCreateUrl
+    .replace('https://github.com/', '')
+    .replace(/\/issues\/new.*$/, '');
+
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
   const featuresConfig = useConsoleFeaturesConfig();
@@ -619,9 +624,7 @@ export const ConsolePage = () => {
   const handleCreateWorkflowIssue = useCallback(
     (comment: ConsoleComment): void => {
       if (fleetTaskCreateUrl === null || selectedItem === null) return;
-      const nameWithOwner = fleetTaskCreateUrl
-        .replace('https://github.com/', '')
-        .replace(/\/issues\/new.*$/, '');
+      const nameWithOwner = parseFleetNameWithOwner(fleetTaskCreateUrl);
       postConsoleCreateWorkflowIssue({
         nameWithOwner,
         title: selectedItem.title,
@@ -641,9 +644,7 @@ export const ConsolePage = () => {
   const handleFleetTaskCreateSubmit = useCallback(
     async (title: string): Promise<void> => {
       if (fleetTaskCreateUrl === null) return;
-      const nameWithOwner = fleetTaskCreateUrl
-        .replace('https://github.com/', '')
-        .replace(/\/issues\/new.*$/, '');
+      const nameWithOwner = parseFleetNameWithOwner(fleetTaskCreateUrl);
       await postConsoleCreateWorkflowIssue({
         nameWithOwner,
         title,
