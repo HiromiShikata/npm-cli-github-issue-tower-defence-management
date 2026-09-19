@@ -1,3 +1,10 @@
+## [2.132.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.2...v2.132.3) (2026-09-19)
+
+
+### Bug Fixes
+
+* **fetchProjectItemsByIds:** skip FORBIDDEN content errors instead of throwing ([#2463](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2463)) ([c8fe12d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c8fe12dc81bb519d297abb5540461cfe6417c7e4)), closes [#2458](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2458)
+
 ## [2.132.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.1...v2.132.2) (2026-09-19)
 
 
