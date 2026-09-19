@@ -1628,6 +1628,75 @@ describe('HandleScheduledEventUseCase', () => {
       });
     });
 
+    describe('transient API errors from projectRequiredFieldCreateUseCase and setupTowerDefenceProjectUseCase', () => {
+      const transientSetupInput = {
+        projectName: 'test-project',
+        org: 'test-org',
+        projectUrl: 'https://github.com/test-org/test-project',
+        manager: 'test-manager',
+        workingReport: {
+          repo: 'test-repo',
+          members: ['member1'],
+          spreadsheetUrl: 'https://docs.google.com/spreadsheets/test',
+        },
+        urlOfStoryView: 'https://github.com/test-org/test-project/issues',
+        disabled: false,
+      };
+
+      let warnSpy: jest.SpyInstance;
+      beforeEach(() => {
+        mockSpreadsheetRepository.updateCell.mockResolvedValue(undefined);
+        warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      });
+      afterEach(() => {
+        warnSpy.mockRestore();
+      });
+
+      it('should skip field setup and continue the cycle when projectRequiredFieldCreateUseCase throws a transient 403 error', async () => {
+        mockProjectRequiredFieldCreateUseCase.run.mockRejectedValueOnce(
+          new Error(
+            'Request failed with status code 403: GET https://api.github.com/orgs/test-org/projectsV2/18/fields?per_page=100',
+          ),
+        );
+
+        const result = await useCase.run(transientSetupInput);
+
+        expect(result).not.toBeNull();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          'Error in HandleScheduledEvent / workflow incident',
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+        );
+        expect(warnSpy).toHaveBeenCalled();
+        expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
+      });
+
+      it('should skip project setup and continue the cycle when setupTowerDefenceProjectUseCase throws a transient 403 error', async () => {
+        mockSetupTowerDefenceProjectUseCase.run.mockRejectedValueOnce(
+          new Error(
+            'Request failed with status code 403: GET https://api.github.com/orgs/test-org/projectsV2/18/fields?per_page=100',
+          ),
+        );
+
+        const result = await useCase.run(transientSetupInput);
+
+        expect(result).not.toBeNull();
+        expect(mockIssueRepository.createNewIssue).not.toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          'Error in HandleScheduledEvent / workflow incident',
+          expect.anything(),
+          expect.anything(),
+          expect.anything(),
+        );
+        expect(warnSpy).toHaveBeenCalled();
+        expect(mockUpdateIssueStatusByLabelUseCase.run).toHaveBeenCalled();
+      });
+    });
+
     describe('empty targetDateTimes handling', () => {
       const emptyTargetInput = {
         projectName: 'test-project',
