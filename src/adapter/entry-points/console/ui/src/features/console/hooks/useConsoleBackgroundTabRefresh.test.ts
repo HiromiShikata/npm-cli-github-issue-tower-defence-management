@@ -40,9 +40,7 @@ describe('useConsoleBackgroundTabRefresh', () => {
   });
 
   it('does not refresh when there are no background projects', () => {
-    renderHook(() =>
-      useConsoleBackgroundTabRefresh('acme', ['acme'], true),
-    );
+    renderHook(() => useConsoleBackgroundTabRefresh('acme', ['acme'], true));
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
