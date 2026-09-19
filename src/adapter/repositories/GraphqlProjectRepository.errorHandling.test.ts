@@ -178,10 +178,7 @@ describe('GraphqlProjectRepository error handling', () => {
       });
 
       const promise = repository.listFieldNames(minimalProject);
-      await Promise.allSettled([
-        jest.advanceTimersByTimeAsync(3000),
-        promise,
-      ]);
+      await Promise.allSettled([jest.advanceTimersByTimeAsync(3000), promise]);
 
       await expect(promise).rejects.toThrow('Forbidden');
       expect(mockGet).toHaveBeenCalledTimes(2);
