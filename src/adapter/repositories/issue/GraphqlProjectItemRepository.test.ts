@@ -2911,6 +2911,164 @@ describe('GraphqlProjectItemRepository', () => {
 
       expect(mockPost).toHaveBeenCalledTimes(1);
     });
+
+    it('resolves without throwing when the error message is the archived-item message', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              message: 'The item is archived and cannot be updated',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+          singleSelectOptionId: 'opt-id',
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('still throws when archived-item error is mixed with other error types in updateProjectField', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              message: 'The item is archived and cannot be updated',
+            },
+            {
+              message: 'some other error',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.updateProjectField('proj-id', 'field-id', 'item-id', {
+          text: 'value',
+        }),
+      ).rejects.toThrow(
+        'The item is archived and cannot be updated\nsome other error',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('clearProjectField', () => {
+    afterEach(() => {
+      mockPost.mockClear();
+    });
+
+    it('resolves without throwing when the mutation succeeds', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          data: {
+            clearProjectV2ItemFieldValue: { clientMutationId: null },
+          },
+        }),
+      );
+
+      await expect(
+        repository.clearProjectField('proj-id', 'field-id', 'item-id'),
+      ).resolves.toBeUndefined();
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('resolves without throwing when the error message is the archived-item message', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              message: 'The item is archived and cannot be updated',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.clearProjectField('proj-id', 'field-id', 'item-id'),
+      ).resolves.toBeUndefined();
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws when an unexpected error occurs in clearProjectField', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [{ message: 'UNAUTHORIZED' }],
+        }),
+      );
+
+      await expect(
+        repository.clearProjectField('proj-id', 'field-id', 'item-id'),
+      ).rejects.toThrow('UNAUTHORIZED');
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
+
+    it('still throws when archived-item error is mixed with other error types in clearProjectField', async () => {
+      const localStorageRepository = new LocalStorageRepository();
+      const repository = new GraphqlProjectItemRepository(
+        localStorageRepository,
+        'dummy-token',
+      );
+
+      mockPost.mockReturnValue(
+        mockJsonResponse({
+          errors: [
+            {
+              message: 'The item is archived and cannot be updated',
+            },
+            {
+              message: 'some other error',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.clearProjectField('proj-id', 'field-id', 'item-id'),
+      ).rejects.toThrow(
+        'The item is archived and cannot be updated\nsome other error',
+      );
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('addIssueToProject', () => {

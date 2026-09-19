@@ -1478,6 +1478,16 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
         );
         return;
       }
+      if (
+        res.errors.every(
+          (e) => e.message === 'The item is archived and cannot be updated',
+        )
+      ) {
+        console.warn(
+          `updateProjectField: archived item for itemId ${itemId}, skipping.`,
+        );
+        return;
+      }
       throw new Error(res.errors.map((e) => e.message).join('\n'));
     }
   };
@@ -1511,6 +1521,16 @@ query GetProjectFields($owner: String!, $repository: String!, $issueNumber: Int!
       query: graphqlQuery.query,
     });
     if (res.errors) {
+      if (
+        res.errors.every(
+          (e) => e.message === 'The item is archived and cannot be updated',
+        )
+      ) {
+        console.warn(
+          `clearProjectField: archived item for itemId ${itemId}, skipping.`,
+        );
+        return;
+      }
       throw new Error(res.errors.map((e) => e.message).join('\n'));
     }
   };
