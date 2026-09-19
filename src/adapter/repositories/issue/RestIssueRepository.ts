@@ -267,7 +267,12 @@ export class RestIssueRepository
         let bodyText = '';
         try {
           bodyText = await e.response.clone().text();
-        } catch {}
+        } catch {
+          if (e.data != null) {
+            bodyText =
+              typeof e.data === 'string' ? e.data : JSON.stringify(e.data);
+          }
+        }
         if (
           hasRateLimitSignals(e.response.status, e.response.headers, bodyText)
         ) {

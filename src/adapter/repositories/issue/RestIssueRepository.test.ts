@@ -24,6 +24,7 @@ class MockHTTPError extends Error {
     headers: Headers;
     clone: () => { text: () => Promise<string> };
   };
+  data?: unknown;
   constructor(response: {
     status: number;
     headers: Headers;
@@ -842,6 +843,50 @@ describe('RestIssueRepository', () => {
           }),
         }),
       );
+
+      const { RepositoryArchivedError } =
+        await import('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
+      await expect(
+        restIssueRepository.updateIssue(buildIssue()),
+      ).rejects.toBeInstanceOf(RepositoryArchivedError);
+    });
+
+    it('throws RepositoryArchivedError when clone() throws but error.data has archived message', async () => {
+      const mockHeaders = new Headers({ 'x-ratelimit-remaining': '100' });
+      const archivedError = new MockHTTPError({
+        status: 403,
+        headers: mockHeaders,
+        clone: (): { text: () => Promise<string> } => {
+          throw new TypeError(
+            'Response.clone: Body has already been consumed.',
+          );
+        },
+      });
+      archivedError.data = {
+        message: 'Repository was archived so is read-only.',
+      };
+      mockPatch.mockRejectedValue(archivedError);
+
+      const { RepositoryArchivedError } =
+        await import('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
+      await expect(
+        restIssueRepository.updateIssue(buildIssue()),
+      ).rejects.toBeInstanceOf(RepositoryArchivedError);
+    });
+
+    it('throws RepositoryArchivedError when clone() throws and error.data is a plain string with archived text', async () => {
+      const mockHeaders = new Headers({ 'x-ratelimit-remaining': '100' });
+      const archivedError = new MockHTTPError({
+        status: 403,
+        headers: mockHeaders,
+        clone: (): { text: () => Promise<string> } => {
+          throw new TypeError(
+            'Response.clone: Body has already been consumed.',
+          );
+        },
+      });
+      archivedError.data = 'Repository was archived so is read-only.';
+      mockPatch.mockRejectedValue(archivedError);
 
       const { RepositoryArchivedError } =
         await import('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
