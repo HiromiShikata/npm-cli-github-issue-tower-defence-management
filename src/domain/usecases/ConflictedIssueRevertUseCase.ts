@@ -148,8 +148,7 @@ export class ConflictedIssueRevertUseCase {
         );
         if (nextStepAgent !== null) {
           const isNoStory =
-            issue.story === null ||
-            issue.story.startsWith(NO_STORY_STORY_NAME);
+            issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
           const repetition = resolveNextStepAgentDispatchRepetition({
             agentFieldValue: issue.agent,
             nextStepAgent,
