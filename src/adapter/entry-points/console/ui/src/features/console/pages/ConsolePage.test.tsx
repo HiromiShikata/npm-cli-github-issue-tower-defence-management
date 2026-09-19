@@ -2549,6 +2549,18 @@ describe('ConsolePage task creation action queue', () => {
       jest.useRealTimers();
     }
   });
+
+  it('renders an SVG icon inside the Create new task button', async () => {
+    installFetchWithBlockingCreate();
+    const { getByRole } = render(<ConsolePage />);
+
+    await waitFor(() => {
+      expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
+    });
+
+    const button = getByRole('button', { name: 'Create new task' });
+    expect(button.querySelector('svg')).toBeInTheDocument();
+  });
 });
 
 describe('ConsolePage story selection auto-reset', () => {
