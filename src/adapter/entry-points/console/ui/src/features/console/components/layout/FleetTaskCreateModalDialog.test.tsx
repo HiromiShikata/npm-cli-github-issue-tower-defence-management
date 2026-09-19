@@ -101,9 +101,7 @@ describe('FleetTaskCreateModalDialog', () => {
   });
 
   it('shows an error message when onSubmit throws', async () => {
-    const onSubmit = jest
-      .fn()
-      .mockRejectedValue(new Error('Network failure'));
+    const onSubmit = jest.fn().mockRejectedValue(new Error('Network failure'));
     const { getByRole, getByText } = render(
       <FleetTaskCreateModalDialog onSubmit={onSubmit} onClose={jest.fn()} />,
     );
