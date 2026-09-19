@@ -888,6 +888,79 @@ describe('ConsoleItemDetailContainer', () => {
     expect(operations.patchItemOverlay).toHaveBeenCalledWith(issueItem, false);
   });
 
+  it('clicking Submit in the Comment & Close form calls addComment then queues a close action', async () => {
+    const operations = buildOperations();
+    const onQueueAction = jest.fn();
+    const { container, getByText } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.click(getByText('Comment & Close'));
+    const textarea = container.querySelector(
+      '.console-op-comment-and-close-input',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'closing comment' } });
+    fireEvent.click(getByText('Submit'));
+    await waitFor(() => {
+      expect(operations.addComment).toHaveBeenCalledWith(
+        issueItem,
+        'closing comment',
+      );
+    });
+    expect(onQueueAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: { type: 'close', action: 'close' },
+        item: issueItem,
+      }),
+    );
+  });
+
+  it('does not queue the close action when addComment throws in the Comment & Close form', async () => {
+    const operations = buildOperations();
+    operations.addComment = jest.fn(async () => {
+      throw new Error('network error');
+    });
+    const onQueueAction = jest.fn();
+    const { container, getByText, findByRole } = render(
+      <ConsoleItemDetailContainer
+        tab="todo-by-human"
+        item={issueItem}
+        caches={buildCaches()}
+        operations={operations}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={onQueueAction}
+      />,
+    );
+    fireEvent.click(getByText('Comment & Close'));
+    const textarea = container.querySelector(
+      '.console-op-comment-and-close-input',
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'closing comment' } });
+    fireEvent.click(getByText('Submit'));
+    await findByRole('alert');
+    expect(onQueueAction).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: { type: 'close', action: 'close' } }),
+    );
+  });
+
   it('calls operations.issueRename with the item and new title when the user saves via the title editor', async () => {
     const operations = buildOperations();
     (operations.issueRename as jest.Mock).mockResolvedValue(undefined);

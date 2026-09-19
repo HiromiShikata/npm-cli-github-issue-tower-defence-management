@@ -806,6 +806,47 @@ test('posts a comment and moves the item to Awaiting Workspace when the Comment 
   });
 });
 
+test('posts a comment and closes the item when the Comment & Close button is used', async ({
+  page,
+}) => {
+  await page.goto(harness.appRootUrl);
+
+  await tabByLabel(page, 'Workflow Blocker').click();
+  await itemRowByText(
+    page,
+    'Resolve the shared GitHub token rate-limit exhaustion blocker',
+  ).click();
+
+  await page
+    .getByRole('button', { name: 'Comment & Close', exact: true })
+    .click();
+
+  await page
+    .locator('.console-op-comment-and-close-input')
+    .fill('closing with comment');
+
+  await page.getByRole('button', { name: 'Submit', exact: true }).click();
+
+  await expect
+    .poll(
+      () => harness.commentCalls.some((c) => c.body === 'closing with comment'),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+
+  await expect
+    .poll(
+      () =>
+        harness.closeIssueCalls.some(
+          (url) =>
+            url ===
+            'https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/720',
+        ),
+      { timeout: 8000 },
+    )
+    .toBe(true);
+});
+
 test('posts an ok comment and moves the item to Awaiting Workspace when the ok & Awaiting Workspace button is clicked', async ({
   page,
 }) => {
@@ -1025,6 +1066,9 @@ test('deletes a story option from the GitHub custom field when confirmed via the
 }) => {
   await page.goto(harness.appRootUrl);
 
+  const initialDeleteStoryCount = harness.deleteStoryCalls.length;
+  const initialCloseCount = harness.closeIssueCalls.length;
+
   await tabByLabel(page, 'Stories').click();
 
   const tdpmRow = page.locator('.console-story-list-row', {
@@ -1045,13 +1089,13 @@ test('deletes a story option from the GitHub custom field when confirmed via the
 
   await expect
     .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
-    .toBe(1);
-  expect(harness.deleteStoryCalls[0].storyOptionId).toBe('1491051e');
+    .toBe(initialDeleteStoryCount + 1);
+  expect(harness.deleteStoryCalls.at(-1)?.storyOptionId).toBe('1491051e');
 
   await expect
     .poll(() => harness.closeIssueCalls.length, { timeout: 10000 })
-    .toBe(1);
-  expect(harness.closeIssueCalls[0]).toBe(
+    .toBe(initialCloseCount + 1);
+  expect(harness.closeIssueCalls.at(-1)).toBe(
     'https://github.com/example/example/issues/1491051e',
   );
 
