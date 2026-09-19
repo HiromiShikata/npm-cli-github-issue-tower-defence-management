@@ -102,8 +102,9 @@ describe('FleetTaskCreateModalDialog', () => {
 
   it('shows an error message when onSubmit throws', async () => {
     const onSubmit = jest.fn().mockRejectedValue(new Error('Network failure'));
+    const onClose = jest.fn();
     const { getByRole, getByText } = render(
-      <FleetTaskCreateModalDialog onSubmit={onSubmit} onClose={jest.fn()} />,
+      <FleetTaskCreateModalDialog onSubmit={onSubmit} onClose={onClose} />,
     );
     fireEvent.change(getByRole('textbox', { name: /title/i }), {
       target: { value: 'Failing task' },
@@ -112,6 +113,7 @@ describe('FleetTaskCreateModalDialog', () => {
       fireEvent.click(getByRole('button', { name: /^create$/i }));
     });
     expect(getByText('Network failure')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('shows a required error when title is empty', async () => {
