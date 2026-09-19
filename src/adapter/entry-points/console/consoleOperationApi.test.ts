@@ -5818,6 +5818,38 @@ describe('consoleOperationApi', () => {
         [],
       );
     });
+
+    it('uses empty body when sourceIssueTitle is provided but quotedCommentBody is absent', async () => {
+      await handleCreateWorkflowIssue(issueRepository, {
+        nameWithOwner: 'HiromiShikata/secretary',
+        title: 'Fix the workflow pipeline',
+        sourceIssueTitle: 'Original task title',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'HiromiShikata',
+        'secretary',
+        'Fix the workflow pipeline',
+        '',
+        [],
+        [],
+      );
+    });
+
+    it('uses empty body when quotedCommentBody is provided but sourceIssueTitle is absent', async () => {
+      await handleCreateWorkflowIssue(issueRepository, {
+        nameWithOwner: 'HiromiShikata/secretary',
+        title: 'Fix the workflow pipeline',
+        quotedCommentBody: 'Some comment text.',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'HiromiShikata',
+        'secretary',
+        'Fix the workflow pipeline',
+        '',
+        [],
+        [],
+      );
+    });
   });
 
   describe('handleIssueRename', () => {
