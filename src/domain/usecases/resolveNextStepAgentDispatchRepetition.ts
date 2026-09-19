@@ -1,7 +1,10 @@
 import { normalizeProjectFieldName } from '../entities/ProjectFieldName';
 import { AUTO_STATUS_CHECK_MESSAGE_HEAD } from './autoStatusCheckComments';
 import { extractNextStepAgent } from './extractNextStepAgent';
-import { extractAgentNameFromReportBody, isAgentReportBody } from './isAgentReportBody';
+import {
+  extractAgentNameFromReportBody,
+  isAgentReportBody,
+} from './isAgentReportBody';
 import { isHumanComment } from './isHumanComment';
 
 export const SILENT_CRASH_ESCALATION_PHRASE =
@@ -135,15 +138,18 @@ const countSilentRedispatches = <
   const agentSelfReported =
     firstRedispatchIndex === -1 &&
     ((): boolean => {
-      const lastReport = [...commentsAfterLastEscalation]
-        .reverse()
-        .find(
-          (comment) =>
-            params.isTrustedAuthor(comment.author) &&
-            isAgentReportBody(comment.content),
-        ) ?? null;
+      const lastReport =
+        [...commentsAfterLastEscalation]
+          .reverse()
+          .find(
+            (comment) =>
+              params.isTrustedAuthor(comment.author) &&
+              isAgentReportBody(comment.content),
+          ) ?? null;
       if (lastReport === null) return false;
-      const reportAgentName = extractAgentNameFromReportBody(lastReport.content);
+      const reportAgentName = extractAgentNameFromReportBody(
+        lastReport.content,
+      );
       return (
         reportAgentName !== null &&
         normalizeProjectFieldName(reportAgentName) ===
