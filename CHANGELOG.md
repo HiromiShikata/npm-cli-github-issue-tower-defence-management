@@ -1,3 +1,10 @@
+# [2.127.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.126.0...v2.127.0) (2026-09-19)
+
+
+### Features
+
+* **console:** add Comment & Close button to the right of Close button ([#2433](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2433)) ([bcc76d2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/bcc76d2dcb6d0a2d40757781728665258afa237d))
+
 # [2.126.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.125.1...v2.126.0) (2026-09-19)
 
 
