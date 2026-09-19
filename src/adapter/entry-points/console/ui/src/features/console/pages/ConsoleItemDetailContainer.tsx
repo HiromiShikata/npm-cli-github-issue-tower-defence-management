@@ -124,7 +124,7 @@ export type ConsoleItemDetailContainerProps = {
   initialCommentDraft?: string;
   onCommentDraftChange?: (draft: string) => void;
   onQueueAction: (input: ConsoleQueueActionInput) => void;
-  onDeleteStory?: (() => Promise<void>) | null;
+  onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
   storyNameForDeletion?: string | null;
 };
 

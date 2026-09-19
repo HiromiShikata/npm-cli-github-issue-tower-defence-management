@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 export type ConsoleDangerousActionsProps = {
   onDeleteAllComments: () => void;
-  onDeleteStory?: (() => Promise<void>) | null;
+  onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
   storyNameForDeletion?: string | null;
 };
 
@@ -26,12 +26,14 @@ export const ConsoleDangerousActions = ({
     setStoryDeleteError(null);
   };
 
-  const handleStoryDeleteConfirm = async (): Promise<void> => {
+  const handleStoryDeleteConfirm = async (
+    deleteChildTasks: boolean,
+  ): Promise<void> => {
     if (!onDeleteStory) return;
     setIsStoryDeleting(true);
     setStoryDeleteError(null);
     try {
-      await onDeleteStory();
+      await onDeleteStory(deleteChildTasks);
     } catch (err) {
       setStoryDeleteError(err instanceof Error ? err.message : String(err));
       setIsStoryDeleting(false);
@@ -82,8 +84,7 @@ export const ConsoleDangerousActions = ({
         >
           <p className="console-story-delete-confirm-message">
             Delete story option &quot;{storyNameForDeletion}&quot; from the
-            GitHub custom field? Open tasks assigned to this story will be
-            closed.
+            GitHub custom field?
           </p>
           {storyDeleteError !== null && (
             <p role="alert" className="console-list-error">
@@ -94,10 +95,18 @@ export const ConsoleDangerousActions = ({
             <button
               type="button"
               className="console-op-button console-op-button-danger"
-              onClick={() => void handleStoryDeleteConfirm()}
+              onClick={() => void handleStoryDeleteConfirm(true)}
               disabled={isStoryDeleting}
             >
-              {isStoryDeleting ? 'Deleting…' : 'Delete'}
+              {isStoryDeleting ? 'Deleting…' : 'Delete with child tasks'}
+            </button>
+            <button
+              type="button"
+              className="console-op-button console-op-button-danger"
+              onClick={() => void handleStoryDeleteConfirm(false)}
+              disabled={isStoryDeleting}
+            >
+              {isStoryDeleting ? 'Deleting…' : 'Keep child tasks'}
             </button>
             <button
               type="button"

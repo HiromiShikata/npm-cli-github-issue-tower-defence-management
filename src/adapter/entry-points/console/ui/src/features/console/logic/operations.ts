@@ -47,7 +47,7 @@ export type ConsoleOperationHandlers = {
   onClose: (action: ConsoleCloseAction) => void;
   onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => void;
   onDeleteAllComments: () => void;
-  onDeleteStory: (() => Promise<void>) | null;
+  onDeleteStory: ((deleteChildTasks: boolean) => Promise<void>) | null;
   onSetDependedIssueUrl: ((url: string) => Promise<void>) | null;
 };
 

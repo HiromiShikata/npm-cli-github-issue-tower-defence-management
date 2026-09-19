@@ -1256,12 +1256,14 @@ const removeFromConsoleLists = (
   );
 };
 
-const closeDeletedStoryItemsInBackground = async (
+const handleDeletedStoryItemsInBackground = async (
   context: ConsoleOperationContext,
   pjcode: string,
   storyOption: FieldOption,
+  project: Project & { story: NonNullable<Project['story']> },
   issueRepository: IssueRepository,
   storyObjectMap: StoryObjectMap,
+  deleteChildTasks: boolean,
 ): Promise<void> => {
   const storyIssue = storyObjectMap.get(storyOption.name)?.storyIssue ?? null;
   if (storyIssue !== null) {
@@ -1275,13 +1277,28 @@ const closeDeletedStoryItemsInBackground = async (
   const storyTasks = storyObjectMap.get(storyOption.name)?.issues ?? [];
   for (const task of storyTasks) {
     if (!task.isClosed && !task.isPr) {
-      try {
-        await issueRepository.closeIssueByUrl(task.url, 'not_planned');
-      } catch (e) {
-        console.error(
-          `Failed to close task after story deletion: ${task.url}`,
-          e,
-        );
+      if (deleteChildTasks) {
+        try {
+          await issueRepository.closeIssueByUrl(task.url, 'not_planned');
+        } catch (e) {
+          console.error(
+            `Failed to close task after story deletion: ${task.url}`,
+            e,
+          );
+        }
+      } else {
+        try {
+          await issueRepository.clearProjectField(
+            project,
+            project.story.fieldId,
+            task,
+          );
+        } catch (e) {
+          console.error(
+            `Failed to clear story field on task after story deletion: ${task.url}`,
+            e,
+          );
+        }
       }
       removeFromConsoleLists(context, pjcode, task.itemId);
     }
@@ -1314,6 +1331,7 @@ export const handleDeleteStory = async (
   if (project.story.workflowManagementStory.id === storyOptionId) {
     return badRequest('cannot delete the workflow management story');
   }
+  const deleteChildTasks = body.deleteChildTasks !== false;
   const projectOwner = extractProjectOwner(project.url);
   if (projectOwner === null) {
     return badGateway('cannot determine project owner from project URL');
@@ -1329,12 +1347,17 @@ export const handleDeleteStory = async (
   const filteredStories = freshStories.filter((s) => s.id !== storyOptionId);
   await projectRepository.updateStoryList(project, filteredStories);
   context.invalidateProject?.(pjcode);
-  const backgroundTask = closeDeletedStoryItemsInBackground(
+  const projectWithStory = project as Project & {
+    story: NonNullable<Project['story']>;
+  };
+  const backgroundTask = handleDeletedStoryItemsInBackground(
     context,
     pjcode,
     storyOption,
+    projectWithStory,
     issueRepository,
     storyObjectMap,
+    deleteChildTasks,
   );
   backgroundTask.catch((e) =>
     console.error('Background delete story cleanup failed:', e),

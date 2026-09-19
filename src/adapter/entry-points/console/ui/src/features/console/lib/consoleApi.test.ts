@@ -468,15 +468,35 @@ describe('postConsoleAddStory', () => {
 });
 
 describe('postConsoleDeleteStory', () => {
-  it('posts the storyOptionId to the deletestory endpoint', async () => {
+  it('posts the storyOptionId and deleteChildTasks to the deletestory endpoint', async () => {
     const fetchMock = mockFetchOnce({ ok: true });
-    await postConsoleDeleteStory({ pjcode: 'acme', storyOptionId: 'opt_abc' });
+    await postConsoleDeleteStory({
+      pjcode: 'acme',
+      storyOptionId: 'opt_abc',
+      deleteChildTasks: true,
+    });
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(DELETE_STORY_OPERATION_PATH);
     expect(init).toMatchObject({ method: 'POST' });
     expect(JSON.parse((init as { body: string }).body)).toEqual({
       pjcode: 'acme',
       storyOptionId: 'opt_abc',
+      deleteChildTasks: true,
+    });
+  });
+
+  it('sends deleteChildTasks false when keeping child tasks', async () => {
+    const fetchMock = mockFetchOnce({ ok: true });
+    await postConsoleDeleteStory({
+      pjcode: 'acme',
+      storyOptionId: 'opt_abc',
+      deleteChildTasks: false,
+    });
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse((init as { body: string }).body)).toEqual({
+      pjcode: 'acme',
+      storyOptionId: 'opt_abc',
+      deleteChildTasks: false,
     });
   });
 
@@ -486,7 +506,11 @@ describe('postConsoleDeleteStory', () => {
       JSON.stringify({ error: 'storyOptionId is required' }),
     );
     await expect(
-      postConsoleDeleteStory({ pjcode: 'acme', storyOptionId: '' }),
+      postConsoleDeleteStory({
+        pjcode: 'acme',
+        storyOptionId: '',
+        deleteChildTasks: true,
+      }),
     ).rejects.toThrow('storyOptionId is required');
   });
 });

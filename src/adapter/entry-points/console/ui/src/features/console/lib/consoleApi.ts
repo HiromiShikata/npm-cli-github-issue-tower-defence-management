@@ -541,6 +541,7 @@ export const DELETE_STORY_OPERATION_PATH = '/api/deletestory';
 export type ConsoleDeleteStoryRequest = {
   pjcode: string;
   storyOptionId: string;
+  deleteChildTasks: boolean;
 };
 
 export const postConsoleDeleteStory = async (

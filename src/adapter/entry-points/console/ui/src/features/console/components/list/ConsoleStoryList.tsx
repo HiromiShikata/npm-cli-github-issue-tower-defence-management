@@ -217,7 +217,7 @@ type StoryDeleteConfirmDialogProps = {
   storyName: string;
   isDeleting: boolean;
   deleteError: string | null;
-  onConfirm: () => void;
+  onConfirm: (deleteChildTasks: boolean) => void;
   onCancel: () => void;
 };
 
@@ -236,7 +236,6 @@ const StoryDeleteConfirmDialog = ({
   >
     <p className="console-story-delete-confirm-message">
       Delete story option &quot;{storyName}&quot; from the GitHub custom field?
-      Tasks assigned to this story will not be deleted.
     </p>
     {deleteError !== null && (
       <p role="alert" className="console-list-error">
@@ -247,10 +246,18 @@ const StoryDeleteConfirmDialog = ({
       <button
         type="button"
         className="console-op-button console-op-button-danger"
-        onClick={onConfirm}
+        onClick={() => onConfirm(true)}
         disabled={isDeleting}
       >
-        {isDeleting ? 'Deleting…' : 'Delete'}
+        {isDeleting ? 'Deleting…' : 'Delete with child tasks'}
+      </button>
+      <button
+        type="button"
+        className="console-op-button console-op-button-danger"
+        onClick={() => onConfirm(false)}
+        disabled={isDeleting}
+      >
+        {isDeleting ? 'Deleting…' : 'Keep child tasks'}
       </button>
       <button
         type="button"
@@ -313,7 +320,7 @@ export type ConsoleStoryListProps = {
     storyOptionId: string,
     direction: 'up' | 'down',
   ) => Promise<void>;
-  onDeleteStory: (storyOptionId: string) => Promise<void>;
+  onDeleteStory: (storyOptionId: string, deleteChildTasks: boolean) => Promise<void>;
   onRenameStory: (storyOptionId: string, newName: string) => Promise<void>;
   onUpdateDescription: (
     storyOptionId: string,
@@ -440,13 +447,16 @@ export const ConsoleStoryList = ({
     setDeleteConfirmOptionId(storyOptionId);
   };
 
-  const handleDeleteConfirm = async (storyOptionId: string): Promise<void> => {
+  const handleDeleteConfirm = async (
+    storyOptionId: string,
+    deleteChildTasks: boolean,
+  ): Promise<void> => {
     setDeleteStates((prev) => ({
       ...prev,
       [storyOptionId]: { isDeleting: true, error: null },
     }));
     try {
-      await onDeleteStory(storyOptionId);
+      await onDeleteStory(storyOptionId, deleteChildTasks);
       setDeleteConfirmOptionId(null);
       setDeleteStates((prev) => ({
         ...prev,
@@ -670,8 +680,11 @@ export const ConsoleStoryList = ({
                     storyName={entry.storyName}
                     isDeleting={deleteState.isDeleting}
                     deleteError={deleteState.error}
-                    onConfirm={() =>
-                      void handleDeleteConfirm(entry.storyOptionId)
+                    onConfirm={(deleteChildTasks) =>
+                      void handleDeleteConfirm(
+                        entry.storyOptionId,
+                        deleteChildTasks,
+                      )
                     }
                     onCancel={handleDeleteCancel}
                   />
