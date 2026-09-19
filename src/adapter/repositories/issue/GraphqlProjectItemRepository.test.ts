@@ -2090,6 +2090,7 @@ describe('GraphqlProjectItemRepository', () => {
         repository.fetchProjectItemsByIds(['PVTI_1']),
       ).rejects.toThrow('GitHub GraphQL errors');
     });
+
   });
 
   describe('callWithRateLimitRetry', () => {
