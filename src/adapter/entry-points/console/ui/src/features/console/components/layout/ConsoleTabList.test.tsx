@@ -1,459 +1,459 @@
-import { fireEvent, render } from "@testing-library/react";
-import type { ConsoleTabName } from "../../logic/types";
-import { ConsoleTabList } from "./ConsoleTabList";
+import { fireEvent, render } from '@testing-library/react';
+import type { ConsoleTabName } from '../../logic/types';
+import { ConsoleTabList } from './ConsoleTabList';
 
 const counts: Record<ConsoleTabName, number> = {
-	"workflow-blocker": 4,
-	prs: 3,
-	"failed-preparation": 0,
-	"todo-by-human": 2,
-	"todo-by-agent": 3,
-	queued: 0,
-	stories: 0,
+  'workflow-blocker': 4,
+  prs: 3,
+  'failed-preparation': 0,
+  'todo-by-human': 2,
+  'todo-by-agent': 3,
+  queued: 0,
+  stories: 0,
 };
 
-const GENERATED_AT = "2026-06-19T08:42:11.000Z";
-const NOW_30S_LATER = Date.parse("2026-06-19T08:42:41.000Z");
+const GENERATED_AT = '2026-06-19T08:42:11.000Z';
+const NOW_30S_LATER = Date.parse('2026-06-19T08:42:41.000Z');
 
 const baseProps = {
-	pjcode: "acme",
-	pjcodes: ["acme", "beta", "gamma", "delta", "epsilon"],
-	generatedAt: GENERATED_AT,
-	fromCache: false,
-	tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
-	onSelectTab: () => {},
-	onSelectProject: () => {},
-	airplaneModeEnabled: true,
-	airplaneModeStatus: "off" as const,
-	airplaneModeProgress: null,
-	airplaneModeCapturedAt: null,
-	airplaneModeFailures: [],
-	onAirplaneModeStartSync: () => {},
-	onAirplaneModeTurnOff: () => {},
-	onAirplaneModeRetryFailed: () => {},
-	now: NOW_30S_LATER,
+  pjcode: 'acme',
+  pjcodes: ['acme', 'beta', 'gamma', 'delta', 'epsilon'],
+  generatedAt: GENERATED_AT,
+  fromCache: false,
+  tabHref: (tab: ConsoleTabName) => `/projects/acme/${tab}`,
+  onSelectTab: () => {},
+  onSelectProject: () => {},
+  airplaneModeEnabled: true,
+  airplaneModeStatus: 'off' as const,
+  airplaneModeProgress: null,
+  airplaneModeCapturedAt: null,
+  airplaneModeFailures: [],
+  onAirplaneModeStartSync: () => {},
+  onAirplaneModeTurnOff: () => {},
+  onAirplaneModeRetryFailed: () => {},
+  now: NOW_30S_LATER,
 };
 
-describe("ConsoleTabList", () => {
-	it("hides zero-count tabs while showing non-zero tabs", () => {
-		const { queryByText } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		expect(queryByText("Awaiting Owner")).not.toBeNull();
-		expect(queryByText("Todo by human")).not.toBeNull();
-		expect(queryByText("Todo by agent")).not.toBeNull();
-		expect(queryByText("Triage")).toBeNull();
-		expect(queryByText("Failed Preparation")).toBeNull();
-	});
+describe('ConsoleTabList', () => {
+  it('hides zero-count tabs while showing non-zero tabs', () => {
+    const { queryByText } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(queryByText('Awaiting Owner')).not.toBeNull();
+    expect(queryByText('Todo by human')).not.toBeNull();
+    expect(queryByText('Todo by agent')).not.toBeNull();
+    expect(queryByText('Triage')).toBeNull();
+    expect(queryByText('Failed Preparation')).toBeNull();
+  });
 
-	it("keeps the active tab visible even when its count is zero", () => {
-		const { getByText, queryByText } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="failed-preparation"
-				counts={counts}
-			/>,
-		);
-		const activeBadge = getByText("Failed Preparation")
-			.closest("a")
-			?.querySelector(".console-tab-badge");
-		expect(activeBadge).toHaveAttribute("data-zero", "true");
-		expect(activeBadge?.textContent).toBe("0");
-		expect(getByText("Failed Preparation").closest("a")).toHaveAttribute(
-			"aria-current",
-			"page",
-		);
-		expect(queryByText("Triage")).toBeNull();
-	});
+  it('keeps the active tab visible even when its count is zero', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="failed-preparation"
+        counts={counts}
+      />,
+    );
+    const activeBadge = getByText('Failed Preparation')
+      .closest('a')
+      ?.querySelector('.console-tab-badge');
+    expect(activeBadge).toHaveAttribute('data-zero', 'true');
+    expect(activeBadge?.textContent).toBe('0');
+    expect(getByText('Failed Preparation').closest('a')).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(queryByText('Triage')).toBeNull();
+  });
 
-	it("marks the active tab as the current page", () => {
-		const { getByText } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		expect(getByText("Awaiting Owner").closest("a")).toHaveAttribute(
-			"aria-current",
-			"page",
-		);
-	});
+  it('marks the active tab as the current page', () => {
+    const { getByText } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(getByText('Awaiting Owner').closest('a')).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
 
-	it("does not render an item-count sub-heading", () => {
-		const { container } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		expect(container.querySelector(".console-tab-count-heading")).toBeNull();
-	});
+  it('does not render an item-count sub-heading', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(container.querySelector('.console-tab-count-heading')).toBeNull();
+  });
 
-	it("renders the project switcher in the top row and tabs in the bottom row", () => {
-		const { container } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		const topRow = container.querySelector(".console-tabbar-top");
-		const bottomRow = container.querySelector(".console-tabbar-bottom");
-		expect(topRow?.querySelector(".console-tab-pjname")).not.toBeNull();
-		expect(topRow?.querySelector(".console-tab")).toBeNull();
-		expect(bottomRow?.querySelector(".console-tab")).not.toBeNull();
-		expect(bottomRow?.querySelector(".console-tab-pjname")).toBeNull();
-	});
+  it('renders the project switcher in the top row and tabs in the bottom row', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    const topRow = container.querySelector('.console-tabbar-top');
+    const bottomRow = container.querySelector('.console-tabbar-bottom');
+    expect(topRow?.querySelector('.console-tab-pjname')).not.toBeNull();
+    expect(topRow?.querySelector('.console-tab')).toBeNull();
+    expect(bottomRow?.querySelector('.console-tab')).not.toBeNull();
+    expect(bottomRow?.querySelector('.console-tab-pjname')).toBeNull();
+  });
 
-	it("renders the Workflow Blocker tab immediately right of Todo by human", () => {
-		const { getByText } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		const tabBar = getByText("Workflow Blocker").closest("nav");
-		const labels = Array.from(
-			tabBar?.querySelectorAll(".console-tab-label") ?? [],
-		).map((node) => node.textContent);
-		const blockerIndex = labels.indexOf("Workflow Blocker");
-		const todoByHumanIndex = labels.indexOf("Todo by human");
-		expect(blockerIndex).toBeGreaterThanOrEqual(0);
-		expect(todoByHumanIndex).toBe(blockerIndex - 1);
-	});
+  it('renders the Workflow Blocker tab immediately right of Todo by human', () => {
+    const { getByText } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    const tabBar = getByText('Workflow Blocker').closest('nav');
+    const labels = Array.from(
+      tabBar?.querySelectorAll('.console-tab-label') ?? [],
+    ).map((node) => node.textContent);
+    const blockerIndex = labels.indexOf('Workflow Blocker');
+    const todoByHumanIndex = labels.indexOf('Todo by human');
+    expect(blockerIndex).toBeGreaterThanOrEqual(0);
+    expect(todoByHumanIndex).toBe(blockerIndex - 1);
+  });
 
-	it("renders the project code and snapshot age as relative time", () => {
-		const { getByText } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		expect(getByText("acme")).toBeInTheDocument();
-		expect(getByText("snapshot: 30s ago")).toBeInTheDocument();
-	});
+  it('renders the project code and snapshot age as relative time', () => {
+    const { getByText } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(getByText('acme')).toBeInTheDocument();
+    expect(getByText('snapshot: 30s ago')).toBeInTheDocument();
+  });
 
-	it("exposes the absolute timestamp in the title attribute of the snapshot info", () => {
-		const { container } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		const genInfo = container.querySelector(".console-tab-geninfo");
-		expect(genInfo).toHaveAttribute("title", GENERATED_AT);
-	});
+  it('exposes the absolute timestamp in the title attribute of the snapshot info', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    const genInfo = container.querySelector('.console-tab-geninfo');
+    expect(genInfo).toHaveAttribute('title', GENERATED_AT);
+  });
 
-	it("uses the exact lowercase Todo by human label", () => {
-		const { getByText } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="todo-by-human"
-				counts={counts}
-			/>,
-		);
-		expect(getByText("Todo by human")).toBeInTheDocument();
-	});
+  it('uses the exact lowercase Todo by human label', () => {
+    const { getByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="todo-by-human"
+        counts={counts}
+      />,
+    );
+    expect(getByText('Todo by human')).toBeInTheDocument();
+  });
 
-	it("reports the selected tab", () => {
-		const onSelectTab = jest.fn();
-		const { getByText } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				onSelectTab={onSelectTab}
-			/>,
-		);
-		fireEvent.click(getByText("Todo by human"));
-		expect(onSelectTab).toHaveBeenCalledWith("todo-by-human");
-	});
+  it('reports the selected tab', () => {
+    const onSelectTab = jest.fn();
+    const { getByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        onSelectTab={onSelectTab}
+      />,
+    );
+    fireEvent.click(getByText('Todo by human'));
+    expect(onSelectTab).toHaveBeenCalledWith('todo-by-human');
+  });
 
-	it('prefixes the snapshot info with "(cached)" and sets data-from-cache when data is from cache', () => {
-		const { getByText } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				fromCache={true}
-			/>,
-		);
-		const genInfo = getByText("(cached) snapshot: 30s ago");
-		expect(genInfo).toBeInTheDocument();
-		expect(genInfo).toHaveAttribute("data-from-cache", "true");
-	});
+  it('prefixes the snapshot info with "(cached)" and sets data-from-cache when data is from cache', () => {
+    const { getByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        fromCache={true}
+      />,
+    );
+    const genInfo = getByText('(cached) snapshot: 30s ago');
+    expect(genInfo).toBeInTheDocument();
+    expect(genInfo).toHaveAttribute('data-from-cache', 'true');
+  });
 
-	it("omits the cache prefix and data-from-cache attribute when data is from the network", () => {
-		const { getByText, queryByText } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				fromCache={false}
-			/>,
-		);
-		expect(getByText("snapshot: 30s ago")).toBeInTheDocument();
-		expect(queryByText("(cached) snapshot: 30s ago")).toBeNull();
-		expect(document.querySelector("[data-from-cache]")).toBeNull();
-	});
+  it('omits the cache prefix and data-from-cache attribute when data is from the network', () => {
+    const { getByText, queryByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        fromCache={false}
+      />,
+    );
+    expect(getByText('snapshot: 30s ago')).toBeInTheDocument();
+    expect(queryByText('(cached) snapshot: 30s ago')).toBeNull();
+    expect(document.querySelector('[data-from-cache]')).toBeNull();
+  });
 
-	it("renders all multiple buttons within console-tab-settings span when multiple settingsButtons are provided", () => {
-		const { getByTestId, container } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				settingsButton={
-					<>
-						<button type="button" data-testid="settings-btn-1">
-							⏱
-						</button>
-						<button type="button" data-testid="settings-btn-2">
-							⚙
-						</button>
-						<button type="button" data-testid="settings-btn-3">
-							+
-						</button>
-					</>
-				}
-			/>,
-		);
-		const settingsSpan = container.querySelector(".console-tab-settings");
-		expect(settingsSpan).not.toBeNull();
-		expect(settingsSpan?.contains(getByTestId("settings-btn-1"))).toBe(true);
-		expect(settingsSpan?.contains(getByTestId("settings-btn-2"))).toBe(true);
-		expect(settingsSpan?.contains(getByTestId("settings-btn-3"))).toBe(true);
-	});
+  it('renders all multiple buttons within console-tab-settings span when multiple settingsButtons are provided', () => {
+    const { getByTestId, container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        settingsButton={
+          <>
+            <button type="button" data-testid="settings-btn-1">
+              ⏱
+            </button>
+            <button type="button" data-testid="settings-btn-2">
+              ⚙
+            </button>
+            <button type="button" data-testid="settings-btn-3">
+              +
+            </button>
+          </>
+        }
+      />,
+    );
+    const settingsSpan = container.querySelector('.console-tab-settings');
+    expect(settingsSpan).not.toBeNull();
+    expect(settingsSpan?.contains(getByTestId('settings-btn-1'))).toBe(true);
+    expect(settingsSpan?.contains(getByTestId('settings-btn-2'))).toBe(true);
+    expect(settingsSpan?.contains(getByTestId('settings-btn-3'))).toBe(true);
+  });
 
-	it("renders the settingsButton prop in the top row when provided", () => {
-		const { getByTestId } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				settingsButton={
-					<button type="button" data-testid="settings-btn">
-						⚙
-					</button>
-				}
-			/>,
-		);
-		const btn = getByTestId("settings-btn");
-		expect(btn).toBeInTheDocument();
-		expect(btn.closest(".console-tabbar-top")).not.toBeNull();
-	});
+  it('renders the settingsButton prop in the top row when provided', () => {
+    const { getByTestId } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        settingsButton={
+          <button type="button" data-testid="settings-btn">
+            ⚙
+          </button>
+        }
+      />,
+    );
+    const btn = getByTestId('settings-btn');
+    expect(btn).toBeInTheDocument();
+    expect(btn.closest('.console-tabbar-top')).not.toBeNull();
+  });
 
-	it("does not render a settings slot when settingsButton is not provided", () => {
-		const { container } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		expect(container.querySelector(".console-tab-settings")).toBeNull();
-	});
+  it('does not render a settings slot when settingsButton is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(container.querySelector('.console-tab-settings')).toBeNull();
+  });
 
-	it("opens the project dropdown when the pjcode button is clicked", () => {
-		const { getByRole, baseElement } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		expect(
-			baseElement.querySelector(".console-tab-pjname-dropdown"),
-		).toBeNull();
-		fireEvent.click(getByRole("button", { name: /acme/i }));
-		expect(
-			baseElement.querySelector(".console-tab-pjname-dropdown"),
-		).toBeInTheDocument();
-	});
+  it('opens the project dropdown when the pjcode button is clicked', () => {
+    const { getByRole, baseElement } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeNull();
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeInTheDocument();
+  });
 
-	it("lists all pjcodes in the dropdown", () => {
-		const { getByRole, baseElement } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		fireEvent.click(getByRole("button", { name: /acme/i }));
-		const options = Array.from(
-			baseElement.querySelectorAll(".console-tab-pjname-option"),
-		);
-		expect(options.map((o) => o.textContent)).toEqual([
-			"acme",
-			"beta",
-			"gamma",
-			"delta",
-			"epsilon",
-		]);
-	});
+  it('lists all pjcodes in the dropdown', () => {
+    const { getByRole, baseElement } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    const options = Array.from(
+      baseElement.querySelectorAll('.console-tab-pjname-option'),
+    );
+    expect(options.map((o) => o.textContent)).toEqual([
+      'acme',
+      'beta',
+      'gamma',
+      'delta',
+      'epsilon',
+    ]);
+  });
 
-	it("calls onSelectProject with the chosen pjcode when a dropdown option is clicked", () => {
-		const onSelectProject = jest.fn();
-		const { getByRole, getByText } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				onSelectProject={onSelectProject}
-			/>,
-		);
-		fireEvent.click(getByRole("button", { name: /acme/i }));
-		fireEvent.click(getByText("gamma"));
-		expect(onSelectProject).toHaveBeenCalledWith("gamma");
-	});
+  it('calls onSelectProject with the chosen pjcode when a dropdown option is clicked', () => {
+    const onSelectProject = jest.fn();
+    const { getByRole, getByText } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        onSelectProject={onSelectProject}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    fireEvent.click(getByText('gamma'));
+    expect(onSelectProject).toHaveBeenCalledWith('gamma');
+  });
 
-	it("closes the dropdown after a project option is selected", () => {
-		const { getByRole, getByText, baseElement } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		fireEvent.click(getByRole("button", { name: /acme/i }));
-		expect(
-			baseElement.querySelector(".console-tab-pjname-dropdown"),
-		).toBeInTheDocument();
-		fireEvent.click(getByText("gamma"));
-		expect(
-			baseElement.querySelector(".console-tab-pjname-dropdown"),
-		).toBeNull();
-	});
+  it('closes the dropdown after a project option is selected', () => {
+    const { getByRole, getByText, baseElement } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    fireEvent.click(getByRole('button', { name: /acme/i }));
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeInTheDocument();
+    fireEvent.click(getByText('gamma'));
+    expect(
+      baseElement.querySelector('.console-tab-pjname-dropdown'),
+    ).toBeNull();
+  });
 
-	it("does not render the airplane mode button when airplaneModeEnabled is false", () => {
-		const { baseElement } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				airplaneModeEnabled={false}
-			/>,
-		);
-		expect(baseElement.querySelector(".console-airplane-mode")).toBeNull();
-	});
+  it('does not render the airplane mode button when airplaneModeEnabled is false', () => {
+    const { baseElement } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        airplaneModeEnabled={false}
+      />,
+    );
+    expect(baseElement.querySelector('.console-airplane-mode')).toBeNull();
+  });
 
-	it("positions the dropdown left-anchored to the button when opened", () => {
-		const { getByRole, baseElement } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		const btn = getByRole("button", { name: /acme/i });
-		jest.spyOn(btn, "getBoundingClientRect").mockReturnValue({
-			left: 42,
-			right: 120,
-			bottom: 50,
-			top: 20,
-			width: 78,
-			height: 30,
-			x: 42,
-			y: 20,
-			toJSON: () => ({}),
-		} as DOMRect);
-		fireEvent.click(btn);
-		const dropdown = baseElement.querySelector(
-			".console-tab-pjname-dropdown",
-		) as HTMLElement;
-		expect(dropdown.style.left).toBe("42px");
-		expect(dropdown.style.right).toBe("");
-	});
+  it('positions the dropdown left-anchored to the button when opened', () => {
+    const { getByRole, baseElement } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    const btn = getByRole('button', { name: /acme/i });
+    jest.spyOn(btn, 'getBoundingClientRect').mockReturnValue({
+      left: 42,
+      right: 120,
+      bottom: 50,
+      top: 20,
+      width: 78,
+      height: 30,
+      x: 42,
+      y: 20,
+      toJSON: () => ({}),
+    } as DOMRect);
+    fireEvent.click(btn);
+    const dropdown = baseElement.querySelector(
+      '.console-tab-pjname-dropdown',
+    ) as HTMLElement;
+    expect(dropdown.style.left).toBe('42px');
+    expect(dropdown.style.right).toBe('');
+  });
 
-	it("renders a fleet task create button when onFleetTaskCreate is provided", () => {
-		const onFleetTaskCreate = jest.fn();
-		const { getByRole } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				onFleetTaskCreate={onFleetTaskCreate}
-			/>,
-		);
-		const button = getByRole("button", { name: /create fleet task/i });
-		expect(button).toBeInTheDocument();
-	});
+  it('renders a fleet task create button when onFleetTaskCreate is provided', () => {
+    const onFleetTaskCreate = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        onFleetTaskCreate={onFleetTaskCreate}
+      />,
+    );
+    const button = getByRole('button', { name: /create fleet task/i });
+    expect(button).toBeInTheDocument();
+  });
 
-	it("calls onFleetTaskCreate when the fleet task create button is clicked", () => {
-		const onFleetTaskCreate = jest.fn();
-		const { getByRole } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				onFleetTaskCreate={onFleetTaskCreate}
-			/>,
-		);
-		fireEvent.click(getByRole("button", { name: /create fleet task/i }));
-		expect(onFleetTaskCreate).toHaveBeenCalledTimes(1);
-	});
+  it('calls onFleetTaskCreate when the fleet task create button is clicked', () => {
+    const onFleetTaskCreate = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        onFleetTaskCreate={onFleetTaskCreate}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: /create fleet task/i }));
+    expect(onFleetTaskCreate).toHaveBeenCalledTimes(1);
+  });
 
-	it("renders the fleet task create button with the circled-plus icon to distinguish it from the project task create button", () => {
-		const { getByRole } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				onFleetTaskCreate={jest.fn()}
-			/>,
-		);
-		const button = getByRole("button", { name: /create fleet task/i });
-		expect(button.textContent).toBe("⊕");
-	});
+  it('renders the fleet task create button with the circled-plus icon to distinguish it from the project task create button', () => {
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        onFleetTaskCreate={jest.fn()}
+      />,
+    );
+    const button = getByRole('button', { name: /create fleet task/i });
+    expect(button.textContent).toBe('⊕');
+  });
 
-	it("does not render the fleet task create button when onFleetTaskCreate is null", () => {
-		const { container } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				onFleetTaskCreate={null}
-			/>,
-		);
-		expect(
-			container.querySelector(".console-tab-fleet-task-create-link"),
-		).toBeNull();
-	});
+  it('does not render the fleet task create button when onFleetTaskCreate is null', () => {
+    const { container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        onFleetTaskCreate={null}
+      />,
+    );
+    expect(
+      container.querySelector('.console-tab-fleet-task-create-link'),
+    ).toBeNull();
+  });
 
-	it("does not render the fleet task create button when onFleetTaskCreate is not provided", () => {
-		const { container } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		expect(
-			container.querySelector(".console-tab-fleet-task-create-link"),
-		).toBeNull();
-	});
+  it('does not render the fleet task create button when onFleetTaskCreate is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(
+      container.querySelector('.console-tab-fleet-task-create-link'),
+    ).toBeNull();
+  });
 
-	it("renders a project link that opens in a new tab when projectUrl is set", () => {
-		const url = "https://github.com/users/HiromiShikata/projects/48";
-		const { getByRole } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				projectUrl={url}
-			/>,
-		);
-		const link = getByRole("link", { name: /open github project/i });
-		expect(link).toHaveAttribute("href", url);
-		expect(link).toHaveAttribute("target", "_blank");
-		expect(link).toHaveAttribute("rel", "noreferrer");
-	});
+  it('renders a project link that opens in a new tab when projectUrl is set', () => {
+    const url = 'https://github.com/users/HiromiShikata/projects/48';
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        projectUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /open github project/i });
+    expect(link).toHaveAttribute('href', url);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noreferrer');
+  });
 
-	it("renders the project link at the top-bar level, outside the pjname container", () => {
-		const url = "https://github.com/users/HiromiShikata/projects/48";
-		const { getByRole, container } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				projectUrl={url}
-			/>,
-		);
-		const link = getByRole("link", { name: /open github project/i });
-		expect(link.closest(".console-tab-pjname")).toBeNull();
-		expect(container.querySelector(".console-tab-project-link")).toBe(link);
-	});
+  it('renders the project link at the top-bar level, outside the pjname container', () => {
+    const url = 'https://github.com/users/HiromiShikata/projects/48';
+    const { getByRole, container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        projectUrl={url}
+      />,
+    );
+    const link = getByRole('link', { name: /open github project/i });
+    expect(link.closest('.console-tab-pjname')).toBeNull();
+    expect(container.querySelector('.console-tab-project-link')).toBe(link);
+  });
 
-	it("does not render the project link when projectUrl is null", () => {
-		const { container } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				projectUrl={null}
-			/>,
-		);
-		expect(container.querySelector(".console-tab-project-link")).toBeNull();
-	});
+  it('does not render the project link when projectUrl is null', () => {
+    const { container } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        projectUrl={null}
+      />,
+    );
+    expect(container.querySelector('.console-tab-project-link')).toBeNull();
+  });
 
-	it("does not render the project link when projectUrl is not provided", () => {
-		const { container } = render(
-			<ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
-		);
-		expect(container.querySelector(".console-tab-project-link")).toBeNull();
-	});
+  it('does not render the project link when projectUrl is not provided', () => {
+    const { container } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(container.querySelector('.console-tab-project-link')).toBeNull();
+  });
 
-	it("calls onAirplaneModeRetryFailed when the retry-failed button is clicked", () => {
-		const onAirplaneModeRetryFailed = jest.fn();
-		const { getByRole } = render(
-			<ConsoleTabList
-				{...baseProps}
-				activeTab="prs"
-				counts={counts}
-				airplaneModeStatus="on"
-				airplaneModeCapturedAt="2026-01-01T00:00:00Z"
-				airplaneModeFailures={["https://github.com/o/r/issues/1"]}
-				onAirplaneModeRetryFailed={onAirplaneModeRetryFailed}
-			/>,
-		);
-		fireEvent.click(getByRole("button", { name: /retry failed/i }));
-		expect(onAirplaneModeRetryFailed).toHaveBeenCalledTimes(1);
-	});
+  it('calls onAirplaneModeRetryFailed when the retry-failed button is clicked', () => {
+    const onAirplaneModeRetryFailed = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        airplaneModeStatus="on"
+        airplaneModeCapturedAt="2026-01-01T00:00:00Z"
+        airplaneModeFailures={['https://github.com/o/r/issues/1']}
+        onAirplaneModeRetryFailed={onAirplaneModeRetryFailed}
+      />,
+    );
+    fireEvent.click(getByRole('button', { name: /retry failed/i }));
+    expect(onAirplaneModeRetryFailed).toHaveBeenCalledTimes(1);
+  });
 });
