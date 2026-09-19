@@ -1,3 +1,10 @@
+# [2.124.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.123.2...v2.124.0) (2026-09-19)
+
+
+### Features
+
+* **console:** auto-open first task when navigating to project in timer mode ([#2414](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2414)) ([41ac091](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/41ac091a608d6ebb9b57fd67f7b5b08b36a7f1ea)), closes [HiromiShikata/umino-corporait-operation#31935](https://github.com/HiromiShikata/umino-corporait-operation/issues/31935)
+
 ## [2.123.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.123.1...v2.123.2) (2026-09-19)
 
 
