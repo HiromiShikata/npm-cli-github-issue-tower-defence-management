@@ -95,6 +95,7 @@ type NotifyFinishedIssuePreparationParams = {
   developerAgentNames?: string[] | null;
   defaultAgentName?: string | null;
   deferPreparation?: boolean | null;
+  moveToFailedPreparation?: boolean | null;
   workflowIssueReporterSettings?: WorkflowIssueReporterSettings | null;
   tdpmReportingRepository?: string | null;
   projectName?: string | null;
@@ -219,6 +220,16 @@ export class NotifyFinishedIssuePreparationUseCase {
     if (!issue) {
       console.warn(
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} not found on project ${params.projectUrl}`,
+      );
+      return;
+    }
+
+    if (params.moveToFailedPreparation) {
+      await this.handleConsecutiveFailureMaxReached(
+        issue,
+        project,
+        failedPreparationStatusOption,
+        params.sessionErrorLine ?? null,
       );
       return;
     }
@@ -663,6 +674,26 @@ export class NotifyFinishedIssuePreparationUseCase {
     );
 
     await this.createCommentWithDedup(issue, rejectionStatusMessage);
+  };
+
+  private handleConsecutiveFailureMaxReached = async (
+    issue: Issue,
+    project: Project,
+    failedPreparationStatusOption: { id: string },
+    sessionErrorLine: string | null,
+  ): Promise<void> => {
+    issue.status = FAILED_PREPARATION_STATUS_NAME;
+    await this.issueRepository.update(issue, project);
+    await this.issueRepository.updateStatus(
+      project,
+      issue,
+      failedPreparationStatusOption.id,
+    );
+    await this.patchConsoleTab(issue);
+    await this.createCommentWithDedup(
+      issue,
+      `Preparation moved to Failed Preparation after reaching the consecutive failure threshold.\nSession stop reason: ${sessionErrorLine ?? '(not captured)'}`,
+    );
   };
 
   private handleTransientFailureDeferral = async (
