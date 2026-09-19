@@ -292,4 +292,27 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
     );
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
   });
+
+  it('navigates when pjcodes loads after snapshots (race condition)', () => {
+    const { rerender } = renderHook(
+      ({ pjcodes }: { pjcodes: string[] }) =>
+        useConsoleTimerProjectSkipNavigation(
+          true,
+          0,
+          0,
+          'beta',
+          pjcodes,
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+        ),
+      { initialProps: { pjcodes: [] as string[] } },
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+
+    rerender({ pjcodes: ['acme', 'beta'] });
+    expect(navigatePush).toHaveBeenCalledWith('/projects/acme');
+  });
 });

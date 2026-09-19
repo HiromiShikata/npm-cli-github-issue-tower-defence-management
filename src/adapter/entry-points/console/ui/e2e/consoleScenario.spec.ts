@@ -1665,9 +1665,8 @@ test('in timer mode, automatically navigates away from a project with zero prs a
     `${harness.baseUrl}/projects/${CONSOLE_E2E_SECOND_PJCODE}?k=${CONSOLE_E2E_TOKEN}`,
   );
 
-  await page.waitForURL(
-    (url) => url.pathname.includes(`/projects/${CONSOLE_E2E_PJCODE}`),
-    { timeout: 5000 },
+  await expect(page.locator('.console-tab-pjname-button')).toContainText(
+    CONSOLE_E2E_PJCODE,
   );
   expect(page.url()).toContain(`/projects/${CONSOLE_E2E_PJCODE}`);
 });

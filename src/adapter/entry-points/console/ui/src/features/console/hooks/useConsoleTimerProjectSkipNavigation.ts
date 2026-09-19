@@ -32,10 +32,14 @@ export const useConsoleTimerProjectSkipNavigation = (
     if (evaluatedPjcodeRef.current === pjcode) {
       return;
     }
-    evaluatedPjcodeRef.current = pjcode;
 
     if (prsCount > 0 || todoByHumanCount > 0) {
+      evaluatedPjcodeRef.current = pjcode;
       skipCountRef.current = 0;
+      return;
+    }
+
+    if (pjcodes.length === 0) {
       return;
     }
 
@@ -43,10 +47,12 @@ export const useConsoleTimerProjectSkipNavigation = (
       (code) => (projectMinutes[code] ?? 0) > 0,
     );
     if (skipCountRef.current >= pjcodesWithMinutes.length - 1) {
+      evaluatedPjcodeRef.current = pjcode;
       skipCountRef.current = 0;
       return;
     }
 
+    evaluatedPjcodeRef.current = pjcode;
     skipCountRef.current += 1;
     const nextPjcode = findNextPjcodeWithMinutes(
       pjcodes,
