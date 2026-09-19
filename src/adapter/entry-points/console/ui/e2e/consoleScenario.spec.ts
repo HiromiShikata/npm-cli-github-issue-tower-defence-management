@@ -502,12 +502,12 @@ test('opens a fullscreen-overlay modal when the console header new-task button i
   await expect(newTaskButton).toBeVisible();
   await newTaskButton.click();
 
-  const overlayPosition = await page.evaluate(() => {
-    const el = document.querySelector('.console-task-create-dialog-overlay');
+  const containerPosition = await page.evaluate(() => {
+    const el = document.querySelector('.console-task-create-dialog-container');
     if (el === null) return null;
     return window.getComputedStyle(el).position;
   });
-  expect(overlayPosition).toBe('fixed');
+  expect(containerPosition).toBe('fixed');
 
   await page
     .getByRole('textbox', { name: /title/i })
