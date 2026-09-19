@@ -11,6 +11,7 @@ export const IN_TMUX_STATUS_NAME = 'In Tmux by human';
 export const IN_TMUX_BY_AGENT_STATUS_NAME = 'In Tmux by agent';
 export const DONE_STATUS_NAME = 'Done';
 export const ICEBOX_STATUS_NAME = 'Icebox';
+export const DISABLED_STATUS_NAME = 'Disabled';
 
 export const LEGACY_TODO_STATUS_NAME = 'Todo';
 export const LEGACY_IN_TMUX_STATUS_NAME = 'In Tmux';
