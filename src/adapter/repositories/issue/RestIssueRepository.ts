@@ -268,7 +268,7 @@ export class RestIssueRepository
         try {
           bodyText = await e.response.clone().text();
         } catch {
-          if (!bodyText && e.data != null) {
+          if (e.data != null) {
             bodyText =
               typeof e.data === 'string' ? e.data : JSON.stringify(e.data);
           }
