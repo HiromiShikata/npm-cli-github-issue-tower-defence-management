@@ -340,6 +340,11 @@ export const ConsoleItemDetailContainer = ({
         }
       : undefined;
 
+  const commentAndClose = async (body: string): Promise<void> => {
+    handlers.onClose('close');
+    await addComment(body);
+  };
+
   const resolvedStoryName =
     storyName ?? (item.story.trim() !== '' ? item.story : null);
   const storyColorEnum: ConsoleColor | null =
@@ -407,6 +412,7 @@ export const ConsoleItemDetailContainer = ({
           currentAgentName={item.agent}
           handlers={handlers}
           storyNameForDeletion={storyNameForDeletion}
+          onCommentAndClose={commentAndClose}
         />
       }
     />
