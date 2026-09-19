@@ -626,9 +626,13 @@ export const ConsolePage = () => {
         quotedCommentBody: comment.body,
       }).catch((err: unknown) => {
         console.error('Failed to create workflow issue:', err);
+        actionQueue.showError(
+          'Failed to create workflow issue',
+          err instanceof Error ? err.message : String(err),
+        );
       });
     },
-    [fleetTaskCreateUrl, selectedItem],
+    [actionQueue, fleetTaskCreateUrl, selectedItem],
   );
 
   const handleCreateIssue = useCallback(

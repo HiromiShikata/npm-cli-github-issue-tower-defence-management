@@ -2663,7 +2663,10 @@ describe('ConsolePage workflow issue creation', () => {
     window.history.replaceState({}, '', '/projects/acme/prs?k=token');
   });
 
-  const installFetchWithFleetUrl = (fleetTaskCreateUrl: string | null) => {
+  const installFetchWithFleetUrl = (
+    fleetTaskCreateUrl: string | null,
+    createWorkflowIssueOk = true,
+  ) => {
     global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
       const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
       if (listMatch !== null) {
@@ -2706,6 +2709,13 @@ describe('ConsolePage workflow issue creation', () => {
         };
       }
       if (url.startsWith('/api/createworkflowissue')) {
+        if (!createWorkflowIssueOk) {
+          return {
+            ok: false,
+            status: 500,
+            text: async () => 'Internal Server Error',
+          };
+        }
         const requestBody =
           init?.body !== undefined && typeof init.body === 'string'
             ? (JSON.parse(init.body) as Record<string, unknown>)
@@ -2784,6 +2794,26 @@ describe('ConsolePage workflow issue creation', () => {
         (createIssueCalls[0][1] as RequestInit).body as string,
       ) as Record<string, unknown>;
       expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
+    });
+  });
+
+  it('shows an error toast when postConsoleCreateWorkflowIssue fails', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+      false,
+    );
+    const { getByText, getAllByTitle } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => {
+      expect(getAllByTitle('Create workflow improvement issue from this comment').length).toBeGreaterThan(0);
+    });
+    const createBtn = getAllByTitle('Create workflow improvement issue from this comment')[0];
+    fireEvent.click(createBtn);
+    await waitFor(() => {
+      expect(getByText('Failed to create workflow issue')).toBeInTheDocument();
     });
   });
 });
