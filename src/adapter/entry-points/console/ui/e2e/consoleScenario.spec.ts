@@ -1713,3 +1713,24 @@ test('renames the issue title when the user clicks Edit, types a new title, and 
   const titleText = page.locator('.console-detail-title-text');
   await expect(titleText).toContainText('Updated task title');
 });
+
+test('in timer mode, automatically opens the first pending item when navigating to a project', async ({
+  page,
+}) => {
+  const timerSettings = JSON.stringify({
+    timerMode: true,
+    projectMinutes: {
+      [CONSOLE_E2E_PJCODE]: 30,
+      [CONSOLE_E2E_SECOND_PJCODE]: 30,
+    },
+  });
+  await page.addInitScript((settings) => {
+    localStorage.setItem('tdpm-timer-settings', settings);
+  }, timerSettings);
+
+  await page.goto(
+    `${harness.baseUrl}/projects/${CONSOLE_E2E_PJCODE}/prs?k=${CONSOLE_E2E_TOKEN}`,
+  );
+
+  await expect(page.locator('.console-detail-title')).toBeVisible();
+});

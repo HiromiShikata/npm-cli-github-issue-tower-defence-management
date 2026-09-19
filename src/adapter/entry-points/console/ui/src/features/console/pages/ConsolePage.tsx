@@ -37,6 +37,7 @@ import { useConsolePrsTabSummaries } from '../hooks/useConsolePrsTabSummaries';
 import { useConsoleSwipeNavigation } from '../hooks/useConsoleSwipeNavigation';
 import { useConsoleTabData } from '../hooks/useConsoleTabData';
 import { useConsoleTabSelectHandler } from '../hooks/useConsoleTabSelectHandler';
+import { useConsoleTimerFirstItemAutoOpen } from '../hooks/useConsoleTimerFirstItemAutoOpen';
 import { useConsoleTimerProjectSkipNavigation } from '../hooks/useConsoleTimerProjectSkipNavigation';
 import { useConsoleTimerSettings } from '../hooks/useConsoleTimerSettings';
 import {
@@ -448,6 +449,14 @@ export const ConsolePage = () => {
     snapshots['todo-by-human'] !== null,
     snapshots.prs?.fromCache ?? false,
     snapshots['todo-by-human']?.fromCache ?? false,
+  );
+
+  useConsoleTimerFirstItemAutoOpen(
+    timerMode,
+    pjcode,
+    agentFilteredPendingItems,
+    selectedItemKey,
+    navigation.openItem,
   );
 
   const activeCount = counts[activeTab];
