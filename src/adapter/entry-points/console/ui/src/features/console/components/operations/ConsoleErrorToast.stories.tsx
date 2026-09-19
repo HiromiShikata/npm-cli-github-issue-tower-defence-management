@@ -57,3 +57,11 @@ export const LongMessage: Story = {
     onRetry: () => {},
   },
 };
+
+export const LongTitle: Story = {
+  args: {
+    title: 'Agent → agent-and-skill-definition-improver — #6597',
+    message: 'Operation failed: HTTP 422 Review cannot be requested',
+    onRetry: () => {},
+  },
+};
