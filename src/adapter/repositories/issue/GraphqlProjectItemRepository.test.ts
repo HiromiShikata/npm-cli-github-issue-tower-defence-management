@@ -1986,6 +1986,64 @@ describe('GraphqlProjectItemRepository', () => {
       expect(firstBatch?.ids).toHaveLength(100);
       expect(secondBatch?.ids).toHaveLength(50);
     });
+
+    it('returns items with empty closingIssueReferenceUrls when response has only FORBIDDEN closingIssuesReferences errors', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            nodes: [makeDetailNode('PVTI_1', 'https://github.com/o/r/issues/1', 'first')],
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 0, 'content', 'closingIssuesReferences', 'nodes', 0],
+              message:
+                '`meta-site` forbids access via a personal access token (classic).',
+            },
+          ],
+        }),
+      );
+      const consoleWarnSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
+      try {
+        const result = await repository.fetchProjectItemsByIds(['PVTI_1']);
+        expect(result).toHaveLength(1);
+        expect(result[0].closingIssueReferenceUrls).toEqual([]);
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('FORBIDDEN'),
+        );
+      } finally {
+        consoleWarnSpy.mockRestore();
+      }
+    });
+
+    it('throws when FORBIDDEN closingIssuesReferences errors are mixed with non-FORBIDDEN errors in fetchProjectItemsByIds', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: { nodes: [] },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 0, 'content', 'closingIssuesReferences', 'nodes', 0],
+              message: '`meta-site` forbids access.',
+            },
+            { message: 'Something else went wrong.' },
+          ],
+        }),
+      );
+      await expect(
+        repository.fetchProjectItemsByIds(['PVTI_1']),
+      ).rejects.toThrow('GitHub GraphQL errors:');
+    });
   });
 
   describe('callWithRateLimitRetry', () => {
