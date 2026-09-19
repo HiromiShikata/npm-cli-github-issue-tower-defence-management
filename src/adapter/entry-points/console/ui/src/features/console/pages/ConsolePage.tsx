@@ -618,7 +618,7 @@ export const ConsolePage = () => {
       if (fleetTaskCreateUrl === null || selectedItem === null) return;
       const nameWithOwner = fleetTaskCreateUrl
         .replace('https://github.com/', '')
-        .replace('/issues/new', '');
+        .replace(/\/issues\/new.*$/, '');
       postConsoleCreateWorkflowIssue({
         nameWithOwner,
         title: selectedItem.title,

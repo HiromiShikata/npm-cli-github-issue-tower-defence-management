@@ -2821,4 +2821,36 @@ describe('ConsolePage workflow issue creation', () => {
       expect(getByText('Failed to create workflow issue')).toBeInTheDocument();
     });
   });
+
+  it('strips query string from fleetTaskCreateUrl when extracting nameWithOwner', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/owner/repo/issues/new?projects=org/3',
+    );
+    const fetchSpy = global.fetch as jest.Mock;
+    const { getByText, getAllByTitle } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => {
+      expect(
+        getAllByTitle('Create workflow improvement issue from this comment')
+          .length,
+      ).toBeGreaterThan(0);
+    });
+    const createBtn = getAllByTitle(
+      'Create workflow improvement issue from this comment',
+    )[0];
+    fireEvent.click(createBtn);
+    await waitFor(() => {
+      const createIssueCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+      );
+      expect(createIssueCalls.length).toBeGreaterThan(0);
+      const requestBody = JSON.parse(
+        (createIssueCalls[0][1] as RequestInit).body as string,
+      ) as Record<string, unknown>;
+      expect(requestBody.nameWithOwner).toBe('owner/repo');
+    });
+  });
 });
