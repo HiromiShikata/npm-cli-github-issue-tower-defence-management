@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleProjectSettingsModalScreen';
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
+import { FleetTaskCreateModalDialog } from '../components/layout/FleetTaskCreateModalDialog';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
 import {
@@ -207,6 +208,8 @@ export const ConsolePage = () => {
   }, []);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFleetTaskCreateDialogOpen, setIsFleetTaskCreateDialogOpen] =
+    useState(false);
   const [dialogDraft, setDialogDraft] = useState<IssueCreateDraft>({
     title: '',
     body: null,
@@ -635,6 +638,22 @@ export const ConsolePage = () => {
     [actionQueue, fleetTaskCreateUrl, selectedItem],
   );
 
+  const handleFleetTaskCreateSubmit = useCallback(
+    async (title: string): Promise<void> => {
+      if (fleetTaskCreateUrl === null) return;
+      const nameWithOwner = fleetTaskCreateUrl
+        .replace('https://github.com/', '')
+        .replace(/\/issues\/new.*$/, '');
+      await postConsoleCreateWorkflowIssue({
+        nameWithOwner,
+        title,
+        sourceIssueTitle: '',
+        quotedCommentBody: '',
+      });
+    },
+    [fleetTaskCreateUrl],
+  );
+
   const handleCreateIssue = useCallback(
     async (storyName: string, title: string): Promise<void> => {
       if (pjcode === null) {
@@ -1035,9 +1054,19 @@ export const ConsolePage = () => {
         onAirplaneModeTurnOff={airplaneMode.turnOff}
         onAirplaneModeRetryFailed={airplaneMode.retryFailed}
         projectUrl={pjcode !== null ? (projectUrls?.[pjcode] ?? null) : null}
-        fleetTaskCreateUrl={fleetTaskCreateUrl}
+        onFleetTaskCreate={
+          fleetTaskCreateUrl !== null
+            ? () => setIsFleetTaskCreateDialogOpen(true)
+            : null
+        }
         now={now}
       />
+      {isFleetTaskCreateDialogOpen && (
+        <FleetTaskCreateModalDialog
+          onSubmit={handleFleetTaskCreateSubmit}
+          onClose={() => setIsFleetTaskCreateDialogOpen(false)}
+        />
+      )}
       <ConsoleProjectTimerBar
         timerEndsAt={activeSnapshot?.timerEndsAt ?? null}
         timerTotalSeconds={activeSnapshot?.timerTotalSeconds ?? null}

@@ -326,43 +326,54 @@ describe('ConsoleTabList', () => {
     expect(dropdown.style.right).toBe('');
   });
 
-  it('renders a fleet task create link that opens in a new tab when fleetTaskCreateUrl is set', () => {
-    const url = 'https://github.com/myorg/myrepo/issues/new';
+  it('renders a fleet task create button when onFleetTaskCreate is provided', () => {
+    const onFleetTaskCreate = jest.fn();
     const { getByRole } = render(
       <ConsoleTabList
         {...baseProps}
         activeTab="prs"
         counts={counts}
-        fleetTaskCreateUrl={url}
+        onFleetTaskCreate={onFleetTaskCreate}
       />,
     );
-    const link = getByRole('link', { name: /create fleet task/i });
-    expect(link).toHaveAttribute('href', url);
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noreferrer');
+    const button = getByRole('button', { name: /create fleet task/i });
+    expect(button).toBeInTheDocument();
   });
 
-  it('renders the fleet task create link with the circled-plus icon to distinguish it from the project task create button', () => {
-    const url = 'https://github.com/myorg/myrepo/issues/new';
+  it('calls onFleetTaskCreate when the fleet task create button is clicked', () => {
+    const onFleetTaskCreate = jest.fn();
     const { getByRole } = render(
       <ConsoleTabList
         {...baseProps}
         activeTab="prs"
         counts={counts}
-        fleetTaskCreateUrl={url}
+        onFleetTaskCreate={onFleetTaskCreate}
       />,
     );
-    const link = getByRole('link', { name: /create fleet task/i });
-    expect(link.textContent).toBe('⊕');
+    fireEvent.click(getByRole('button', { name: /create fleet task/i }));
+    expect(onFleetTaskCreate).toHaveBeenCalledTimes(1);
   });
 
-  it('does not render the fleet task create link when fleetTaskCreateUrl is null', () => {
+  it('renders the fleet task create button with the circled-plus icon to distinguish it from the project task create button', () => {
+    const { getByRole } = render(
+      <ConsoleTabList
+        {...baseProps}
+        activeTab="prs"
+        counts={counts}
+        onFleetTaskCreate={jest.fn()}
+      />,
+    );
+    const button = getByRole('button', { name: /create fleet task/i });
+    expect(button.textContent).toBe('⊕');
+  });
+
+  it('does not render the fleet task create button when onFleetTaskCreate is null', () => {
     const { container } = render(
       <ConsoleTabList
         {...baseProps}
         activeTab="prs"
         counts={counts}
-        fleetTaskCreateUrl={null}
+        onFleetTaskCreate={null}
       />,
     );
     expect(
@@ -370,7 +381,7 @@ describe('ConsoleTabList', () => {
     ).toBeNull();
   });
 
-  it('does not render the fleet task create link when fleetTaskCreateUrl is not provided', () => {
+  it('does not render the fleet task create button when onFleetTaskCreate is not provided', () => {
     const { container } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );

@@ -182,7 +182,7 @@ export const WithProjectSwitcherOpen: Story = {
   render: (args) => <DropdownOpen {...args} />,
 };
 
-export const WithFleetTaskCreateLink: Story = {
+export const WithFleetTaskCreateButton: Story = {
   args: {
     activeTab: 'prs',
     counts: {
@@ -195,8 +195,7 @@ export const WithFleetTaskCreateLink: Story = {
       stories: 0,
     },
     pjcodes: [],
-    fleetTaskCreateUrl:
-      'https://github.com/HiromiShikata/umino-corporait-operation/issues/new',
+    onFleetTaskCreate: () => {},
   },
 };
 
