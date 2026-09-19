@@ -359,13 +359,23 @@ describe('IssueCreateModalDialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('does not close when clicking the overlay outside the dialog', () => {
+  it('calls onClose when clicking the overlay outside the dialog', () => {
     const onClose = jest.fn();
     render(<IssueCreateModalDialog {...baseProps} onClose={onClose} />);
     const overlay = document.body.querySelector(
       '.console-task-create-dialog-overlay',
     ) as HTMLElement;
     fireEvent.click(overlay);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('does not call onClose when clicking inside the dialog', () => {
+    const onClose = jest.fn();
+    render(<IssueCreateModalDialog {...baseProps} onClose={onClose} />);
+    const dialog = document.body.querySelector(
+      '.console-task-create-dialog',
+    ) as HTMLElement;
+    fireEvent.click(dialog);
     expect(onClose).not.toHaveBeenCalled();
   });
 
