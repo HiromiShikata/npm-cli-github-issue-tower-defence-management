@@ -145,12 +145,16 @@ export const IssueCreateModalDialog = ({
   };
 
   return createPortal(
-    <div className="console-task-create-dialog-overlay">
+    <div
+      className="console-task-create-dialog-overlay"
+      onClick={submitting ? undefined : onClose}
+    >
       <div
         className="console-task-create-dialog"
         role="dialog"
         aria-modal="true"
         aria-label="Create new task"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="console-task-create-dialog-bar">
           <span className="console-task-create-dialog-title">
