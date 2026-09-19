@@ -15,7 +15,6 @@ import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
-import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import { isDuplicateWithinWindow } from '../services/commentDeduplication';
 import { AUTO_STATUS_CHECK_CONFLICT_MESSAGE } from './autoStatusCheckComments';
 
@@ -147,8 +146,6 @@ export class ConflictedIssueRevertUseCase {
             ),
         );
         if (nextStepAgent !== null) {
-          const isNoStory =
-            issue.story === null || issue.story.startsWith(NO_STORY_STORY_NAME);
           const repetition = resolveNextStepAgentDispatchRepetition({
             agentFieldValue: issue.agent,
             nextStepAgent,
@@ -162,7 +159,7 @@ export class ConflictedIssueRevertUseCase {
             thresholdForDispatchLoop:
               params.thresholdForDispatchLoop ??
               DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-            isNoStory,
+            isNoStory: false,
           });
           if (repetition.type === 'escalateSilentRedispatch') {
             await this.issueRepository.updateStatus(

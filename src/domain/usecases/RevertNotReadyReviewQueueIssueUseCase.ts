@@ -21,7 +21,6 @@ import {
   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
   resolveNextStepAgentDispatchRepetition,
 } from './resolveNextStepAgentDispatchRepetition';
-import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 
 // GitHub rejects field mutations against archived project items with
 // "The item is archived and cannot be updated". Such a failure is specific to
@@ -212,9 +211,6 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 ),
             );
             if (nextStepAgent !== null) {
-              const isNoStory =
-                issue.story === null ||
-                issue.story.startsWith(NO_STORY_STORY_NAME);
               const repetition = resolveNextStepAgentDispatchRepetition({
                 agentFieldValue: issue.agent,
                 nextStepAgent,
@@ -228,7 +224,7 @@ export class RevertNotReadyReviewQueueIssueUseCase {
                 thresholdForDispatchLoop:
                   params.thresholdForDispatchLoop ??
                   DEFAULT_THRESHOLD_FOR_DISPATCH_LOOP,
-                isNoStory,
+                isNoStory: false,
               });
               if (repetition.type === 'escalateSilentRedispatch') {
                 await this.issueRepository.updateStatus(
