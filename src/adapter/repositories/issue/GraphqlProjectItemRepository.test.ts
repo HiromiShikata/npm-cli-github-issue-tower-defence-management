@@ -2090,6 +2090,29 @@ describe('GraphqlProjectItemRepository', () => {
         repository.fetchProjectItemsByIds(['PVTI_1']),
       ).rejects.toThrow('GitHub GraphQL errors');
     });
+
+    it('still throws when a FORBIDDEN error path does not start with nodes[N].content in fetchProjectItemsByIds', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: { nodes: [] },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 0, 'id'],
+              message: 'FORBIDDEN',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItemsByIds(['PVTI_1']),
+      ).rejects.toThrow('GitHub GraphQL errors:');
+    });
   });
 
   describe('callWithRateLimitRetry', () => {
