@@ -46,6 +46,7 @@ import {
   postConsoleAttachment,
   postConsoleComment,
   postConsoleCreateIssue,
+  postConsoleCreateWorkflowIssue,
   postConsoleDeleteStory,
   postConsoleReorderStory,
   postConsoleStoryColor,
@@ -76,6 +77,7 @@ import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
 import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
 import type {
   ConsoleColor,
+  ConsoleComment,
   ConsoleFieldOption,
   ConsoleIssueState,
   ConsoleListItem,
@@ -611,6 +613,22 @@ export const ConsolePage = () => {
     return storyEntries.find((e) => e.storyName === selectedItem.story) ?? null;
   }, [selectedItem, storyEntries]);
 
+  const handleCreateWorkflowIssue = useCallback(
+    (comment: ConsoleComment): void => {
+      if (fleetTaskCreateUrl === null || selectedItem === null) return;
+      const nameWithOwner = fleetTaskCreateUrl
+        .replace('https://github.com/', '')
+        .replace('/issues/new', '');
+      void postConsoleCreateWorkflowIssue({
+        nameWithOwner,
+        title: selectedItem.title,
+        sourceIssueTitle: selectedItem.title,
+        quotedCommentBody: comment.body,
+      });
+    },
+    [fleetTaskCreateUrl, selectedItem],
+  );
+
   const handleCreateIssue = useCallback(
     async (storyName: string, title: string): Promise<void> => {
       if (pjcode === null) {
@@ -1121,6 +1139,11 @@ export const ConsolePage = () => {
                 : null
             }
             storyNameForDeletion={selectedItemStoryEntry?.storyName ?? null}
+            onCreateWorkflowIssue={
+              fleetTaskCreateUrl !== null
+                ? handleCreateWorkflowIssue
+                : undefined
+            }
           />
         </div>
       )}

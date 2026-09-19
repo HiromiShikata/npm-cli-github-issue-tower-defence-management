@@ -58,6 +58,7 @@ export type ConsoleCommentListProps = {
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
   persistenceKey?: string | null;
+  onCreateWorkflowIssue?: (comment: ConsoleComment) => void;
 };
 
 export const ConsoleCommentList = ({
@@ -69,6 +70,7 @@ export const ConsoleCommentList = ({
   renderReferenceLink,
   repoContext,
   persistenceKey = null,
+  onCreateWorkflowIssue,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
@@ -156,6 +158,19 @@ export const ConsoleCommentList = ({
                 </span>
               )}
             </button>
+            {onCreateWorkflowIssue !== undefined && (
+              <button
+                type="button"
+                className="console-comment-create-workflow-issue"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateWorkflowIssue(comment);
+                }}
+                title="Create workflow improvement issue from this comment"
+              >
+                +
+              </button>
+            )}
             {isExpanded && (
               <ConsoleCommentBodyExpanded
                 comment={comment}

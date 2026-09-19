@@ -79,6 +79,7 @@ export type ConsoleItemDetailProps = {
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   onAddInlineComment?: ConsoleAddInlineComment;
   onTitleRename?: ((newTitle: string) => Promise<void>) | null;
+  onCreateWorkflowIssue?: (comment: ConsoleComment) => void;
 };
 
 export const ConsoleItemDetail = ({
@@ -112,6 +113,7 @@ export const ConsoleItemDetail = ({
   renderReferenceLink,
   onAddInlineComment,
   onTitleRename,
+  onCreateWorkflowIssue,
 }: ConsoleItemDetailProps) => {
   const resolvedState = state?.state ?? 'open';
   const merged = state?.merged ?? false;
@@ -357,6 +359,7 @@ export const ConsoleItemDetail = ({
             renderReferenceLink={renderReferenceLink}
             repoContext={repoContext}
             persistenceKey={item.url}
+            onCreateWorkflowIssue={onCreateWorkflowIssue}
           />
         </ConsolePanel>
 
