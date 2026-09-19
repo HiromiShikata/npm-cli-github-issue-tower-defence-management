@@ -1066,6 +1066,9 @@ test('deletes a story option from the GitHub custom field when confirmed via the
 }) => {
   await page.goto(harness.appRootUrl);
 
+  const initialDeleteStoryCount = harness.deleteStoryCalls.length;
+  const initialCloseCount = harness.closeIssueCalls.length;
+
   await tabByLabel(page, 'Stories').click();
 
   const tdpmRow = page.locator('.console-story-list-row', {
@@ -1086,13 +1089,13 @@ test('deletes a story option from the GitHub custom field when confirmed via the
 
   await expect
     .poll(() => harness.deleteStoryCalls.length, { timeout: 10000 })
-    .toBe(1);
-  expect(harness.deleteStoryCalls[0].storyOptionId).toBe('1491051e');
+    .toBe(initialDeleteStoryCount + 1);
+  expect(harness.deleteStoryCalls.at(-1)?.storyOptionId).toBe('1491051e');
 
   await expect
     .poll(() => harness.closeIssueCalls.length, { timeout: 10000 })
-    .toBe(1);
-  expect(harness.closeIssueCalls[0]).toBe(
+    .toBe(initialCloseCount + 1);
+  expect(harness.closeIssueCalls.at(-1)).toBe(
     'https://github.com/example/example/issues/1491051e',
   );
 
