@@ -6,6 +6,7 @@ import { ConsoleTabsRepository } from './adapter-interfaces/ConsoleTabsRepositor
 import {
   AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
+  DISABLED_STATUS_NAME,
   DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   ICEBOX_STATUS_NAME,
@@ -255,6 +256,11 @@ export class NotifyFinishedIssuePreparationUseCase {
     } else if (issue.status === AWAITING_OWNER_STATUS_NAME) {
       console.log(
         `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is already Awaiting Owner`,
+      );
+      return;
+    } else if (issue.status === DISABLED_STATUS_NAME) {
+      console.log(
+        `notifyFinishedIssuePreparation skipped: issue ${params.issueUrl} is Disabled`,
       );
       return;
     } else if (
