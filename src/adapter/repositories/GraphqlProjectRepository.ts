@@ -17,6 +17,7 @@ import {
 import {
   ProjectLocation,
   RestProjectRepository,
+  isHttpStatusResponse,
   projectLocationFromUrl,
 } from './RestProjectRepository';
 
@@ -25,6 +26,8 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 const PROJECT_ID_DISK_CACHE_KEY_PREFIX = 'projectId';
 
 const PROJECT_LOCATION_DISK_CACHE_KEY_PREFIX = 'projectLocation';
+
+const RETRY_DELAY_AFTER_403_MS = 3_000;
 
 export class GraphqlProjectRepository
   extends BaseGitHubRepository
@@ -521,7 +524,20 @@ export class GraphqlProjectRepository
         `listFieldNames: project location is unknown for ${project.id}`,
       );
     }
-    return await this.restProjectRepository.listFieldNames(location);
+    try {
+      return await this.restProjectRepository.listFieldNames(location);
+    } catch (error) {
+      if (!isHttpStatusResponse(error, 403)) {
+        throw error;
+      }
+      console.warn(
+        `GraphqlProjectRepository: listFieldNames received 403 from the fields endpoint, retrying after ${RETRY_DELAY_AFTER_403_MS} ms. owner: ${location.owner}, projectNumber: ${location.projectNumber}, error: ${String(error)}`,
+      );
+      await new Promise((resolve) =>
+        setTimeout(resolve, RETRY_DELAY_AFTER_403_MS),
+      );
+      return await this.restProjectRepository.listFieldNames(location);
+    }
   };
   createField = async (
     project: Project,

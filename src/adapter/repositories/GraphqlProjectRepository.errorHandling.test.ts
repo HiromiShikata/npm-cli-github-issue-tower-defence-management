@@ -132,8 +132,14 @@ describe('GraphqlProjectRepository error handling', () => {
       { id: 1, node_id: 'PVTF_1', name: 'Status' },
       { id: 2, node_id: 'PVTF_2', name: 'Story' },
     ];
+    let consoleWarnSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
 
     afterEach(() => {
+      consoleWarnSpy.mockRestore();
       jest.useRealTimers();
     });
 
@@ -156,6 +162,10 @@ describe('GraphqlProjectRepository error handling', () => {
 
       expect(mockGet).toHaveBeenCalledTimes(2);
       expect(names).toEqual(['Status', 'Story']);
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('403'),
+      );
     });
 
     it('should rethrow when both the initial call and the retry receive a 403', async () => {
@@ -168,10 +178,17 @@ describe('GraphqlProjectRepository error handling', () => {
       });
 
       const promise = repository.listFieldNames(minimalProject);
-      await jest.advanceTimersByTimeAsync(3000);
+      await Promise.allSettled([
+        jest.advanceTimersByTimeAsync(3000),
+        promise,
+      ]);
 
       await expect(promise).rejects.toThrow('Forbidden');
       expect(mockGet).toHaveBeenCalledTimes(2);
+      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('403'),
+      );
     });
   });
 });
