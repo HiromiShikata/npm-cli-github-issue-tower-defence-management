@@ -1,3 +1,10 @@
+## [2.131.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.131.1...v2.131.2) (2026-09-19)
+
+
+### Bug Fixes
+
+* **console:** add missing CSS classes for ConsoleItemTitleEditor and all non-modal inline TSX components ([#2449](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2449)) ([5d7a6e3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5d7a6e3615865b3d43e71a7c2ec2d479c38b6de3)), closes [#2446](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2446)
+
 ## [2.131.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.131.0...v2.131.1) (2026-09-19)
 
 
