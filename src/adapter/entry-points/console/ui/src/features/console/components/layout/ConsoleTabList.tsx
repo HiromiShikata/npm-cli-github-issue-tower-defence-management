@@ -166,7 +166,7 @@ export const ConsoleTabList = ({
             className="console-tab-fleet-task-create-link"
             aria-label="Create fleet task"
           >
-            +
+            ⊕
           </a>
         )}
         {generatedAt !== null && airplaneModeStatus !== 'on' && (
