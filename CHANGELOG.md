@@ -1,3 +1,10 @@
+## [2.131.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.131.0...v2.131.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **ConsoleErrorToast:** title shrinks with ellipsis at narrow viewports to keep Dismiss button reachable ([#2448](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2448)) ([d2c95f3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/d2c95f3e18f09cc157e62cd4cce11e9b90422c08))
+
 # [2.131.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.130.0...v2.131.0) (2026-09-19)
 
 
