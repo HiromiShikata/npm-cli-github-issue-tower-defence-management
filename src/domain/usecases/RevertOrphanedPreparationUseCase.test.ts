@@ -453,7 +453,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('Dispatching it again (3/3)'),
+      expect.stringContaining('Dispatching again (3/3)'),
     );
   });
 
