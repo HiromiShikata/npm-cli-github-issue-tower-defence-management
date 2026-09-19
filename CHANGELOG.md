@@ -1,3 +1,10 @@
+## [2.123.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.123.0...v2.123.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **IssueCreateModalDialog:** close dialog when clicking overlay ([#2407](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2407)) ([c7f5e81](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c7f5e81f608683abdeac6a494bc26de7530effbc)), closes [HiromiShikata/umino-corporait-operation#31901](https://github.com/HiromiShikata/umino-corporait-operation/issues/31901)
+
 # [2.123.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.122.1...v2.123.0) (2026-09-19)
 
 
