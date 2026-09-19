@@ -86,7 +86,10 @@ describe('ConsoleCloseActions', () => {
   it('calls onCommentAndClose with the typed body and collapses the form on success', async () => {
     const onCommentAndClose = jest.fn(async () => {});
     const { getByText, getByPlaceholderText, queryByPlaceholderText } = render(
-      <ConsoleCloseActions onClose={() => {}} onCommentAndClose={onCommentAndClose} />,
+      <ConsoleCloseActions
+        onClose={() => {}}
+        onCommentAndClose={onCommentAndClose}
+      />,
     );
     fireEvent.click(getByText('Comment & Close'));
     fireEvent.change(getByPlaceholderText('Leave a comment…'), {

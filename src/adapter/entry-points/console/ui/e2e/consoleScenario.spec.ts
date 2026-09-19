@@ -829,10 +829,7 @@ test('posts a comment and closes the item when the Comment & Close button is use
 
   await expect
     .poll(
-      () =>
-        harness.commentCalls.some(
-          (c) => c.body === 'closing with comment',
-        ),
+      () => harness.commentCalls.some((c) => c.body === 'closing with comment'),
       { timeout: 10000 },
     )
     .toBe(true);
