@@ -738,4 +738,67 @@ describe('IssueCreateModalDialog', () => {
       document.body.querySelector('.console-task-create-dialog-new-issue-link'),
     ).toBeNull();
   });
+
+  it('truncates title to 256 chars and moves overflow to body when title exceeds 256 characters', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    const longTitle = `${'A'.repeat(256)}overflow text here`;
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: longTitle },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({
+          title: 'A'.repeat(256),
+          body: 'overflow text here',
+        }),
+      ),
+    );
+  });
+
+  it('prepends overflow to existing body when title exceeds 256 chars and body has content', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    const longTitle = `${'B'.repeat(256)}extra`;
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: longTitle },
+    });
+    fireEvent.change(getByRole('textbox', { name: /body/i }), {
+      target: { value: 'existing body' },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({
+          title: 'B'.repeat(256),
+          body: 'extra\nexisting body',
+        }),
+      ),
+    );
+  });
+
+  it('does not truncate title when it is exactly 256 characters', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    const { getByRole } = render(
+      <IssueCreateModalDialog {...baseProps} onSubmit={onSubmit} />,
+    );
+    const exactTitle = 'C'.repeat(256);
+    fireEvent.change(getByRole('textbox', { name: /title/i }), {
+      target: { value: exactTitle },
+    });
+    fireEvent.click(getByRole('button', { name: /^create$/i }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith<[IssueCreateParams]>(
+        expect.objectContaining({
+          title: exactTitle,
+          body: null,
+        }),
+      ),
+    );
+  });
 });
