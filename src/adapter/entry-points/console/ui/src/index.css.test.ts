@@ -29,11 +29,28 @@ function isModalOverlayComponent(content: string): boolean {
 }
 
 function extractConsoleClassNames(content: string): string[] {
-  return [
-    ...new Set(
-      [...content.matchAll(/console-[a-z][a-z0-9-]+/g)].map((m) => m[0]),
-    ),
-  ];
+  const names: string[] = [];
+  const consoleClassRe = /console-[a-z][a-z0-9-]+/g;
+
+  for (const m of content.matchAll(
+    /\bclassName\s*=\s*(?:"([^"]*?)"|'([^']*?)'|`([^`]*?)`|\{`([^`]*?)`\}|\{([^}]*)\})/g,
+  )) {
+    const val = m[1] ?? m[2] ?? m[3] ?? m[4] ?? m[5] ?? '';
+    for (const inner of val.matchAll(consoleClassRe)) {
+      names.push(inner[0]);
+    }
+  }
+
+  for (const m of content.matchAll(
+    /\.className\s*=\s*(?:"([^"]*?)"|'([^']*?)'|`([^`]*?)`)/g,
+  )) {
+    const val = m[1] ?? m[2] ?? m[3] ?? '';
+    for (const inner of val.matchAll(consoleClassRe)) {
+      names.push(inner[0]);
+    }
+  }
+
+  return [...new Set(names)];
 }
 
 function loadDefinedCssClasses(cssContent: string): Set<string> {
