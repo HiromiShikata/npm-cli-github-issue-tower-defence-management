@@ -1757,6 +1757,48 @@ test('renames the issue title when the user clicks Edit, types a new title, and 
   await expect(titleText).toContainText('Updated task title');
 });
 
+test('creates a workflow improvement issue from a comment when the + button is clicked', async ({
+  browser,
+}) => {
+  const fleetUrl =
+    'https://github.com/HiromiShikata/secretary/issues/new';
+  const localHarness = await startConsoleE2eHarness({
+    fleetTaskCreateUrl: fleetUrl,
+  });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(localHarness.appRootUrl);
+
+    await tabByLabel(page, 'Workflow Blocker').click();
+    await itemRowByText(
+      page,
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    ).click();
+
+    const createBtn = page.locator('.console-comment-create-workflow-issue').first();
+    await expect(createBtn).toBeVisible();
+
+    const initialCreateCount = localHarness.createIssueCalls.length;
+    await createBtn.click();
+
+    await expect
+      .poll(() => localHarness.createIssueCalls.length, { timeout: 10000 })
+      .toBe(initialCreateCount + 1);
+
+    const call = localHarness.createIssueCalls.at(-1);
+    expect(call?.org).toBe('HiromiShikata');
+    expect(call?.repo).toBe('secretary');
+    expect(call?.body).toContain(
+      'Resolve the shared GitHub token rate-limit exhaustion blocker',
+    );
+    expect(call?.body).toContain('> Console E2E fixture comment.');
+  } finally {
+    await ctx.close();
+    await localHarness.stop();
+  }
+});
+
 test('in timer mode, automatically opens the first pending item when navigating to a project', async ({
   page,
 }) => {

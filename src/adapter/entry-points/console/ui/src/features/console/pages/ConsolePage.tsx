@@ -619,11 +619,13 @@ export const ConsolePage = () => {
       const nameWithOwner = fleetTaskCreateUrl
         .replace('https://github.com/', '')
         .replace('/issues/new', '');
-      void postConsoleCreateWorkflowIssue({
+      postConsoleCreateWorkflowIssue({
         nameWithOwner,
         title: selectedItem.title,
         sourceIssueTitle: selectedItem.title,
         quotedCommentBody: comment.body,
+      }).catch((err: unknown) => {
+        console.error('Failed to create workflow issue:', err);
       });
     },
     [fleetTaskCreateUrl, selectedItem],
