@@ -122,14 +122,31 @@ export const IssueCreateModalDialog = ({
       return;
     }
     const trimmedBody = bodyValue.trim();
+    const MAX_TITLE_LENGTH = 256;
+    const finalTitle =
+      trimmedTitle.length > MAX_TITLE_LENGTH
+        ? trimmedTitle.slice(0, MAX_TITLE_LENGTH)
+        : trimmedTitle;
+    const titleOverflow =
+      trimmedTitle.length > MAX_TITLE_LENGTH
+        ? trimmedTitle.slice(MAX_TITLE_LENGTH)
+        : '';
+    const finalBody =
+      titleOverflow.length > 0
+        ? trimmedBody.length > 0
+          ? `${titleOverflow}\n${trimmedBody}`
+          : titleOverflow
+        : trimmedBody.length > 0
+          ? trimmedBody
+          : null;
     setSubmitting(true);
     setSubmitError(null);
     try {
       await onSubmit({
         storyName,
         agentOptionId: selectedAgentOptionId,
-        title: trimmedTitle,
-        body: trimmedBody.length > 0 ? trimmedBody : null,
+        title: finalTitle,
+        body: finalBody,
         files: selectedFiles,
       });
       onClose();
