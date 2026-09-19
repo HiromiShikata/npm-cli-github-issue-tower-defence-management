@@ -2066,6 +2066,30 @@ describe('GraphqlProjectItemRepository', () => {
         repository.fetchProjectItemsByIds(['PVTI_1']),
       ).rejects.toThrow('GitHub GraphQL errors');
     });
+
+    it('throws when FORBIDDEN errors are present but data is null in fetchProjectItemsByIds', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: null,
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: ['nodes', 0, 'content'],
+              message:
+                '`meta-site` forbids access via a personal access token (classic).',
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        repository.fetchProjectItemsByIds(['PVTI_1']),
+      ).rejects.toThrow('GitHub GraphQL errors');
+    });
   });
 
   describe('callWithRateLimitRetry', () => {
