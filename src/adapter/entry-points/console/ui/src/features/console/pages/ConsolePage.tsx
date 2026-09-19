@@ -794,11 +794,11 @@ export const ConsolePage = () => {
   );
 
   const handleStoryDelete = useCallback(
-    async (storyOptionId: string): Promise<void> => {
+    async (storyOptionId: string, deleteChildTasks: boolean): Promise<void> => {
       if (pjcode === null) {
         throw new Error('No project specified in the URL path.');
       }
-      await postConsoleDeleteStory({ pjcode, storyOptionId });
+      await postConsoleDeleteStory({ pjcode, storyOptionId, deleteChildTasks });
       setLocalStoryEntriesOverride({
         generatedAt: storiesSnapshot?.generatedAt,
         stories: storyEntries.filter((e) => e.storyOptionId !== storyOptionId),
@@ -1097,9 +1097,10 @@ export const ConsolePage = () => {
             onQueueAction={handleQueueAction}
             onDeleteStory={
               selectedItemStoryEntry !== null
-                ? async () => {
+                ? async (deleteChildTasks: boolean) => {
                     await handleStoryDelete(
                       selectedItemStoryEntry.storyOptionId,
+                      deleteChildTasks,
                     );
                     closeItem();
                   }

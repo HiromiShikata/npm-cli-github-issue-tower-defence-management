@@ -83,23 +83,9 @@ describe('ConsoleDangerousActions', () => {
       expect(
         getByText(/improve tdpm console and dashboard/),
       ).toBeInTheDocument();
-      expect(getByText('Delete')).toBeInTheDocument();
+      expect(getByText('Delete with child tasks')).toBeInTheDocument();
+      expect(getByText('Keep child tasks')).toBeInTheDocument();
       expect(getByText('Cancel')).toBeInTheDocument();
-    });
-
-    it('informs user that open tasks will be closed in the confirm dialog', () => {
-      const { getByText } = render(
-        <ConsoleDangerousActions
-          onDeleteAllComments={() => {}}
-          onDeleteStory={async () => {}}
-          storyNameForDeletion="my story"
-        />,
-      );
-      fireEvent.click(getByText('⚠'));
-      fireEvent.click(getByText('Delete Story'));
-      expect(
-        getByText(/Open tasks assigned to this story will be closed/),
-      ).toBeInTheDocument();
     });
 
     it('hides confirm dialog when Cancel is clicked', () => {
@@ -116,7 +102,7 @@ describe('ConsoleDangerousActions', () => {
       expect(queryByRole('dialog')).toBeNull();
     });
 
-    it('calls onDeleteStory when Delete is confirmed', async () => {
+    it('calls onDeleteStory with true when Delete with child tasks is confirmed', async () => {
       const onDeleteStory = jest.fn().mockResolvedValue(undefined);
       const { getByText } = render(
         <ConsoleDangerousActions
@@ -128,9 +114,28 @@ describe('ConsoleDangerousActions', () => {
       fireEvent.click(getByText('⚠'));
       fireEvent.click(getByText('Delete Story'));
       await act(async () => {
-        fireEvent.click(getByText('Delete'));
+        fireEvent.click(getByText('Delete with child tasks'));
       });
       expect(onDeleteStory).toHaveBeenCalledTimes(1);
+      expect(onDeleteStory).toHaveBeenCalledWith(true);
+    });
+
+    it('calls onDeleteStory with false when Keep child tasks is confirmed', async () => {
+      const onDeleteStory = jest.fn().mockResolvedValue(undefined);
+      const { getByText } = render(
+        <ConsoleDangerousActions
+          onDeleteAllComments={() => {}}
+          onDeleteStory={onDeleteStory}
+          storyNameForDeletion="improve tdpm console and dashboard"
+        />,
+      );
+      fireEvent.click(getByText('⚠'));
+      fireEvent.click(getByText('Delete Story'));
+      await act(async () => {
+        fireEvent.click(getByText('Keep child tasks'));
+      });
+      expect(onDeleteStory).toHaveBeenCalledTimes(1);
+      expect(onDeleteStory).toHaveBeenCalledWith(false);
     });
 
     it('shows loading state while deleting', async () => {
@@ -141,7 +146,7 @@ describe('ConsoleDangerousActions', () => {
             resolveDelete = resolve;
           }),
       );
-      const { getByText } = render(
+      const { getAllByText, getByText } = render(
         <ConsoleDangerousActions
           onDeleteAllComments={() => {}}
           onDeleteStory={onDeleteStory}
@@ -150,8 +155,8 @@ describe('ConsoleDangerousActions', () => {
       );
       fireEvent.click(getByText('⚠'));
       fireEvent.click(getByText('Delete Story'));
-      fireEvent.click(getByText('Delete'));
-      await waitFor(() => expect(getByText('Deleting…')).toBeInTheDocument());
+      fireEvent.click(getByText('Delete with child tasks'));
+      await waitFor(() => expect(getAllByText('Deleting…')).toHaveLength(2));
       await act(async () => {
         resolveDelete();
       });
@@ -171,7 +176,7 @@ describe('ConsoleDangerousActions', () => {
       fireEvent.click(getByText('⚠'));
       fireEvent.click(getByText('Delete Story'));
       await act(async () => {
-        fireEvent.click(getByText('Delete'));
+        fireEvent.click(getByText('Delete with child tasks'));
       });
       expect(getByText('Network error')).toBeInTheDocument();
     });

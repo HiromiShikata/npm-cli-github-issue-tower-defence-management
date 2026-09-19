@@ -848,7 +848,7 @@ describe('ConsoleStoryList', () => {
       expect(queryByRole('dialog')).toBeNull();
     });
 
-    it('calls onDeleteStory with the correct storyOptionId when Delete is confirmed', async () => {
+    it('calls onDeleteStory with storyOptionId and deleteChildTasks true when Delete with child tasks is confirmed', async () => {
       const onDeleteStory = jest.fn().mockResolvedValue(undefined);
       const { getAllByRole } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
@@ -857,11 +857,31 @@ describe('ConsoleStoryList', () => {
         name: 'Delete story',
       });
       fireEvent.click(firstDeleteButton);
-      const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
+      const confirmButton = getAllByRole('button', {
+        name: 'Delete with child tasks',
+      })[0];
       await act(async () => {
         fireEvent.click(confirmButton);
       });
-      expect(onDeleteStory).toHaveBeenCalledWith('1491051e');
+      expect(onDeleteStory).toHaveBeenCalledWith('1491051e', true);
+    });
+
+    it('calls onDeleteStory with storyOptionId and deleteChildTasks false when Keep child tasks is confirmed', async () => {
+      const onDeleteStory = jest.fn().mockResolvedValue(undefined);
+      const { getAllByRole } = render(
+        <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
+      );
+      const [firstDeleteButton] = getAllByRole('button', {
+        name: 'Delete story',
+      });
+      fireEvent.click(firstDeleteButton);
+      const confirmButton = getAllByRole('button', {
+        name: 'Keep child tasks',
+      })[0];
+      await act(async () => {
+        fireEvent.click(confirmButton);
+      });
+      expect(onDeleteStory).toHaveBeenCalledWith('1491051e', false);
     });
 
     it('closes the dialog after a successful delete', async () => {
@@ -873,7 +893,9 @@ describe('ConsoleStoryList', () => {
         name: 'Delete story',
       });
       fireEvent.click(firstDeleteButton);
-      const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
+      const confirmButton = getAllByRole('button', {
+        name: 'Delete with child tasks',
+      })[0];
       await act(async () => {
         fireEvent.click(confirmButton);
       });
@@ -891,7 +913,9 @@ describe('ConsoleStoryList', () => {
         name: 'Delete story',
       });
       fireEvent.click(firstDeleteButton);
-      const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
+      const confirmButton = getAllByRole('button', {
+        name: 'Delete with child tasks',
+      })[0];
       await act(async () => {
         fireEvent.click(confirmButton);
       });
@@ -899,22 +923,24 @@ describe('ConsoleStoryList', () => {
       expect(alert).toHaveTextContent('Delete failed');
     });
 
-    it('shows Deleting… text on the confirm button while deletion is in progress', async () => {
+    it('shows Deleting… text on the confirm buttons while deletion is in progress', async () => {
       let resolveDelete: () => void;
       const deletePromise = new Promise<void>((resolve) => {
         resolveDelete = resolve;
       });
       const onDeleteStory = jest.fn().mockReturnValue(deletePromise);
-      const { getAllByRole, getByText } = render(
+      const { getAllByRole, getAllByText } = render(
         <ConsoleStoryList {...defaultProps} onDeleteStory={onDeleteStory} />,
       );
       const [firstDeleteButton] = getAllByRole('button', {
         name: 'Delete story',
       });
       fireEvent.click(firstDeleteButton);
-      const confirmButton = getAllByRole('button', { name: 'Delete' })[0];
+      const confirmButton = getAllByRole('button', {
+        name: 'Delete with child tasks',
+      })[0];
       fireEvent.click(confirmButton);
-      await waitFor(() => expect(getByText('Deleting…')).toBeInTheDocument());
+      await waitFor(() => expect(getAllByText('Deleting…')).toHaveLength(2));
       await act(async () => {
         resolveDelete?.();
       });
