@@ -341,8 +341,8 @@ export const ConsoleItemDetailContainer = ({
       : undefined;
 
   const commentAndClose = async (body: string): Promise<void> => {
-    handlers.onClose('close');
     await addComment(body);
+    handlers.onClose('close');
   };
 
   const resolvedStoryName =
