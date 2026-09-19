@@ -4687,9 +4687,7 @@ describe('consoleOperationApi', () => {
         storyOptionId: 'opt_remove',
       });
 
-      // HTTP response returns immediately even while closeIssueByUrl is still pending
       expect(response.statusCode).toBe(200);
-      // backgroundTask is still pending (waiting for closeIssueByUrl to resolve)
       let backgroundTaskResolved = false;
       const backgroundTaskResult = response.backgroundTask?.then(() => {
         backgroundTaskResolved = true;

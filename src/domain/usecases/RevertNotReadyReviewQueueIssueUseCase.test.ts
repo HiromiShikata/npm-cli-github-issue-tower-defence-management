@@ -122,12 +122,6 @@ const createReadyPr = (
   reviewDecision: null,
 });
 
-// Builds the in-memory linkage the production code now relies on instead of the
-// per-issue findRelatedOpenPRs timeline query: each related pull request becomes
-// an open PR project item whose closingIssueReferenceUrls points at the AQC
-// issue, and getOpenPullRequest is routed by URL to return that PR's status.
-// This proves the review-readiness outcome is identical to the previous
-// findRelatedOpenPRs-based path while removing the per-issue timeline call.
 const linkRelatedOpenPrsToIssue = (
   mockIssueRepository: {
     getAllIssues: jest.Mock;
