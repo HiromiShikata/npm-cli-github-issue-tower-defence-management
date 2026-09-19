@@ -118,6 +118,16 @@ describe('console CSS class contract', () => {
     expect(verticalPx).toBeGreaterThanOrEqual(8);
   });
 
+  it('sets flex: 0 1 auto, min-width: 0, overflow: hidden, and text-overflow: ellipsis on console-error-toast-title so the title shrinks and clips when the viewport is narrow, keeping the Dismiss button reachable', () => {
+    const css = readFileSync(INDEX_CSS_PATH, 'utf-8');
+    const ruleBlock = extractCssRuleBlock(css, '.console-error-toast-title');
+    expect(ruleBlock).not.toBeNull();
+    expect(ruleBlock).toContain('flex: 0 1 auto');
+    expect(ruleBlock).toContain('min-width: 0');
+    expect(ruleBlock).toContain('overflow: hidden');
+    expect(ruleBlock).toContain('text-overflow: ellipsis');
+  });
+
   it('defines a CSS rule in index.css for every console-* class name used in portal overlay components', () => {
     const definedClasses = loadDefinedCssClasses(
       readFileSync(INDEX_CSS_PATH, 'utf-8'),
