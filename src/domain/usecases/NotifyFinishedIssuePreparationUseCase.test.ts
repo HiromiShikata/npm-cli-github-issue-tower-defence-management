@@ -7385,9 +7385,8 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
   describe('RepositoryArchivedError handling', () => {
     it('returns without throwing when issueRepository.update throws RepositoryArchivedError', async () => {
-      const { RepositoryArchivedError } = await import(
-        './NotifyFinishedIssuePreparationUseCase'
-      );
+      const { RepositoryArchivedError } =
+        await import('./NotifyFinishedIssuePreparationUseCase');
       const issue = createMockIssue({
         url: 'https://github.com/user/archived-repo/issues/1',
         status: 'Preparation',

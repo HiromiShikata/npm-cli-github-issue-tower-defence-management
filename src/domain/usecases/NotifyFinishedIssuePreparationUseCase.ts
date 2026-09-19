@@ -172,9 +172,7 @@ export class NotifyFinishedIssuePreparationUseCase {
       await this.runInternal(params);
     } catch (e) {
       if (e instanceof RepositoryArchivedError) {
-        console.warn(
-          `notifyFinishedIssuePreparation skipped: ${e.message}`,
-        );
+        console.warn(`notifyFinishedIssuePreparation skipped: ${e.message}`);
         return;
       }
       throw e;

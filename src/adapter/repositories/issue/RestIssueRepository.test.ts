@@ -838,15 +838,13 @@ describe('RestIssueRepository', () => {
           status: 403,
           headers: mockHeaders,
           clone: () => ({
-            text: async () =>
-              'Repository was archived so is read-only.',
+            text: async () => 'Repository was archived so is read-only.',
           }),
         }),
       );
 
-      const { RepositoryArchivedError } = await import(
-        '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase'
-      );
+      const { RepositoryArchivedError } =
+        await import('../../../domain/usecases/NotifyFinishedIssuePreparationUseCase');
       await expect(
         restIssueRepository.updateIssue(buildIssue()),
       ).rejects.toBeInstanceOf(RepositoryArchivedError);
