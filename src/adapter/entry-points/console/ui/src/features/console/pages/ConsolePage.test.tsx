@@ -2808,9 +2808,14 @@ describe('ConsolePage workflow issue creation', () => {
     });
     fireEvent.click(getByText('Add serveConsole subcommand'));
     await waitFor(() => {
-      expect(getAllByTitle('Create workflow improvement issue from this comment').length).toBeGreaterThan(0);
+      expect(
+        getAllByTitle('Create workflow improvement issue from this comment')
+          .length,
+      ).toBeGreaterThan(0);
     });
-    const createBtn = getAllByTitle('Create workflow improvement issue from this comment')[0];
+    const createBtn = getAllByTitle(
+      'Create workflow improvement issue from this comment',
+    )[0];
     fireEvent.click(createBtn);
     await waitFor(() => {
       expect(getByText('Failed to create workflow issue')).toBeInTheDocument();
