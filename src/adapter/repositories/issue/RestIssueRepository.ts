@@ -20,6 +20,7 @@ import {
   secondaryRateLimitStateFilePath,
   writeSecondaryRateLimitState,
 } from './githubSecondaryRateLimitBreaker';
+import { RepositoryArchivedError } from '../../../domain/usecases/NotifyFinishedIssuePreparationUseCase';
 
 type SearchIssuesResponseItem = {
   html_url: string;
@@ -274,6 +275,12 @@ export class RestIssueRepository
             `HTTP ${e.response.status} GitHub API rate limit exceeded`,
             computeRateLimitResetIso(e.response.headers),
           );
+        }
+        if (
+          e.response.status === 403 &&
+          bodyText.toLowerCase().includes('archived')
+        ) {
+          throw new RepositoryArchivedError(issue.org, issue.repo);
         }
       }
       throw e;

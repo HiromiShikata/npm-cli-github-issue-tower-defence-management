@@ -7382,4 +7382,37 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
   });
+
+  describe('RepositoryArchivedError handling', () => {
+    it('returns without throwing when issueRepository.update throws RepositoryArchivedError', async () => {
+      const { RepositoryArchivedError } =
+        await import('./NotifyFinishedIssuePreparationUseCase');
+      const issue = createMockIssue({
+        url: 'https://github.com/user/archived-repo/issues/1',
+        status: 'Preparation',
+      });
+
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.update.mockRejectedValue(
+        new RepositoryArchivedError('user', 'archived-repo'),
+      );
+
+      await expect(
+        useCase.run({
+          projectUrl: 'https://github.com/users/user/projects/1',
+          issueUrl: 'https://github.com/user/archived-repo/issues/1',
+          thresholdForAutoReject: 3,
+          workflowBlockerResolvedWebhookUrl: null,
+          allowedIssueAuthors: ['test-user'],
+        }),
+      ).resolves.toBeUndefined();
+    });
+  });
 });
