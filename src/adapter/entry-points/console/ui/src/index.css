@@ -1847,7 +1847,10 @@ body {
 
 .console-error-toast-title {
   font-weight: 700;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .console-file-row {
