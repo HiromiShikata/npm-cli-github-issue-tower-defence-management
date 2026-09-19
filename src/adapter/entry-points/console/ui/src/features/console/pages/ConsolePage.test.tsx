@@ -2656,3 +2656,201 @@ describe('ConsolePage story selection auto-reset', () => {
     }
   });
 });
+
+describe('ConsolePage workflow issue creation', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+  });
+
+  const installFetchWithFleetUrl = (
+    fleetTaskCreateUrl: string | null,
+    createWorkflowIssueOk = true,
+  ) => {
+    global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            fleetTaskCreateUrl !== null
+              ? { pjcodes: ['acme'], fleetTaskCreateUrl }
+              : { pjcodes: ['acme'] },
+        };
+      }
+      if (url.startsWith('/api/projectreadmeconfig')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ maximumPreparingIssuesCount: 3 }),
+        };
+      }
+      if (url.startsWith('/api/comments')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            comments: [
+              {
+                author: 'bot',
+                body: 'Workflow test comment body.',
+                createdAt: '2026-06-19T00:00:00.000Z',
+              },
+            ],
+          }),
+        };
+      }
+      if (url.startsWith('/api/createworkflowissue')) {
+        if (!createWorkflowIssueOk) {
+          return {
+            ok: false,
+            status: 500,
+            text: async () => 'Internal Server Error',
+          };
+        }
+        const requestBody =
+          init?.body !== undefined && typeof init.body === 'string'
+            ? (JSON.parse(init.body) as Record<string, unknown>)
+            : {};
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            issueUrl: 'https://github.com/HiromiShikata/secretary/issues/100',
+            ...requestBody,
+          }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+  };
+
+  it('does not render the create workflow issue button when fleetTaskCreateUrl is null', async () => {
+    installFetchWithFleetUrl(null);
+    const { getByText, queryAllByTitle } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => {
+      expect(getByText('Workflow test comment body.')).toBeInTheDocument();
+    });
+    expect(
+      queryAllByTitle('Create workflow improvement issue from this comment'),
+    ).toHaveLength(0);
+  });
+
+  it('renders the create workflow issue button on a comment when fleetTaskCreateUrl is non-null', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+    );
+    const { getByText, getAllByTitle } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => {
+      expect(
+        getAllByTitle('Create workflow improvement issue from this comment')
+          .length,
+      ).toBeGreaterThan(0);
+    });
+  });
+
+  it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner when the button is clicked', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+    );
+    const fetchSpy = global.fetch as jest.Mock;
+    const { getByText, getAllByTitle } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => {
+      expect(
+        getAllByTitle('Create workflow improvement issue from this comment')
+          .length,
+      ).toBeGreaterThan(0);
+    });
+    const createBtn = getAllByTitle(
+      'Create workflow improvement issue from this comment',
+    )[0];
+    fireEvent.click(createBtn);
+    await waitFor(() => {
+      const createIssueCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+      );
+      expect(createIssueCalls.length).toBeGreaterThan(0);
+      const requestBody = JSON.parse(
+        (createIssueCalls[0][1] as RequestInit).body as string,
+      ) as Record<string, unknown>;
+      expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
+    });
+  });
+
+  it('shows an error toast when postConsoleCreateWorkflowIssue fails', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/HiromiShikata/secretary/issues/new',
+      false,
+    );
+    const { getByText, getAllByTitle } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => {
+      expect(
+        getAllByTitle('Create workflow improvement issue from this comment')
+          .length,
+      ).toBeGreaterThan(0);
+    });
+    const createBtn = getAllByTitle(
+      'Create workflow improvement issue from this comment',
+    )[0];
+    fireEvent.click(createBtn);
+    await waitFor(() => {
+      expect(getByText('Failed to create workflow issue')).toBeInTheDocument();
+    });
+  });
+
+  it('strips query string from fleetTaskCreateUrl when extracting nameWithOwner', async () => {
+    installFetchWithFleetUrl(
+      'https://github.com/owner/repo/issues/new?projects=org/3',
+    );
+    const fetchSpy = global.fetch as jest.Mock;
+    const { getByText, getAllByTitle } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+    });
+    fireEvent.click(getByText('Add serveConsole subcommand'));
+    await waitFor(() => {
+      expect(
+        getAllByTitle('Create workflow improvement issue from this comment')
+          .length,
+      ).toBeGreaterThan(0);
+    });
+    const createBtn = getAllByTitle(
+      'Create workflow improvement issue from this comment',
+    )[0];
+    fireEvent.click(createBtn);
+    await waitFor(() => {
+      const createIssueCalls = fetchSpy.mock.calls.filter(
+        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
+      );
+      expect(createIssueCalls.length).toBeGreaterThan(0);
+      const requestBody = JSON.parse(
+        (createIssueCalls[0][1] as RequestInit).body as string,
+      ) as Record<string, unknown>;
+      expect(requestBody.nameWithOwner).toBe('owner/repo');
+    });
+  });
+});

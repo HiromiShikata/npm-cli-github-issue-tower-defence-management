@@ -46,6 +46,15 @@ export const WithMultilineComment: Story = {
   },
 };
 
+export const WithCreateWorkflowIssueAction: Story = {
+  args: {
+    comments: consoleCommentsFixture,
+    isLoading: false,
+    error: null,
+    onCreateWorkflowIssue: () => {},
+  },
+};
+
 export const WithImageComment: Story = {
   args: {
     comments: [

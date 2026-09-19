@@ -126,6 +126,7 @@ export type ConsoleItemDetailContainerProps = {
   onQueueAction: (input: ConsoleQueueActionInput) => void;
   onDeleteStory?: ((deleteChildTasks: boolean) => Promise<void>) | null;
   storyNameForDeletion?: string | null;
+  onCreateWorkflowIssue?: (comment: ConsoleComment) => void;
 };
 
 export const ConsoleItemDetailContainer = ({
@@ -146,6 +147,7 @@ export const ConsoleItemDetailContainer = ({
   onQueueAction,
   onDeleteStory,
   storyNameForDeletion,
+  onCreateWorkflowIssue,
 }: ConsoleItemDetailContainerProps) => {
   const detail = useConsoleItemDetailData(caches, item, tab);
   const resolveImageProxyUrl = useCallback(
@@ -382,6 +384,7 @@ export const ConsoleItemDetailContainer = ({
       renderReferenceLink={renderReferenceLink}
       onAddInlineComment={addInlineComment}
       onTitleRename={issueRename}
+      onCreateWorkflowIssue={onCreateWorkflowIssue}
       commentComposer={
         <ConsoleCommentComposer
           initiallyOpen
