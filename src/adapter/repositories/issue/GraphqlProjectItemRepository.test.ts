@@ -2044,6 +2044,74 @@ describe('GraphqlProjectItemRepository', () => {
       }
     });
 
+    it('returns item with empty closingIssueReferenceUrls when closingIssuesReferences is FORBIDDEN and content is non-null', async () => {
+      const repository = new GraphqlProjectItemRepository(
+        new LocalStorageRepository(),
+        'dummy-token',
+      );
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      mockPost.mockReturnValueOnce(
+        mockJsonResponse({
+          data: {
+            nodes: [
+              {
+                id: 'PVTI_meta',
+                fieldValues: { nodes: [] },
+                content: {
+                  repository: {
+                    nameWithOwner: 'owner/repo',
+                    isArchived: false,
+                  },
+                  number: 42,
+                  title: 'PR linked to meta-site issue',
+                  state: 'OPEN',
+                  url: 'https://github.com/owner/repo/pull/42',
+                  body: null,
+                  createdAt: '2026-09-01T00:00:00Z',
+                  updatedAt: '2026-09-19T00:00:00Z',
+                  author: { login: 'author' },
+                  labels: { nodes: [] },
+                  assignees: { nodes: [] },
+                  closingIssuesReferences: null,
+                },
+              },
+            ],
+          },
+          errors: [
+            {
+              type: 'FORBIDDEN',
+              path: [
+                'nodes',
+                0,
+                'content',
+                'closingIssuesReferences',
+                'nodes',
+                0,
+              ],
+              message:
+                '`meta-site` forbids access via a personal access token (classic). Please use a GitHub App, OAuth App, or a personal access token with fine-grained permissions.',
+            },
+          ],
+        }),
+      );
+
+      const result = await repository.fetchProjectItemsByIds(['PVTI_meta']);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(
+        expect.objectContaining({
+          id: 'PVTI_meta',
+          url: 'https://github.com/owner/repo/pull/42',
+          closingIssueReferenceUrls: [],
+        }),
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('FORBIDDEN'),
+      );
+      warnSpy.mockRestore();
+    });
+
     it('throws when a non-FORBIDDEN error appears in fetchProjectItemsByIds', async () => {
       const repository = new GraphqlProjectItemRepository(
         new LocalStorageRepository(),
