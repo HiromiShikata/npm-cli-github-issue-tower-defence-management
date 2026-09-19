@@ -355,7 +355,7 @@ describe('IssueCreateModalDialog', () => {
     const { getByRole } = render(
       <IssueCreateModalDialog {...baseProps} onClose={onClose} />,
     );
-    fireEvent.click(getByRole('button', { name: /close/i }));
+    fireEvent.click(getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalled();
   });
 

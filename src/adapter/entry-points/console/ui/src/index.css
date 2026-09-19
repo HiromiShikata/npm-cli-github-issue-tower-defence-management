@@ -2284,7 +2284,7 @@ body {
   cursor: not-allowed;
 }
 
-.console-task-create-dialog-overlay {
+.console-task-create-dialog-container {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -2292,10 +2292,20 @@ body {
   align-items: flex-start;
   justify-content: center;
   padding-top: 60px;
+}
+
+.console-task-create-dialog-overlay {
+  position: absolute;
+  inset: 0;
   background: rgba(1, 4, 9, 0.6);
+  border: none;
+  padding: 0;
+  cursor: default;
 }
 
 .console-task-create-dialog {
+  position: relative;
+  z-index: 1;
   background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 8px;
