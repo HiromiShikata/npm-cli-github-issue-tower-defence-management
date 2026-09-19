@@ -131,6 +131,7 @@ type NotifyFinishedOptions = {
   missingAgentName?: string;
   sessionErrorLine?: string;
   deferPreparation?: boolean;
+  moveToFailedPreparation?: boolean;
 };
 
 type CheckIssueReviewReadinessOptions = {
@@ -619,6 +620,10 @@ program
     'Defer the item via the Reactivation Trigger fields (sets nextActionDate to tomorrow) without creating any issue; use for transient upstream failures',
   )
   .option(
+    '--moveToFailedPreparation',
+    'Move the item to Failed Preparation status after reaching the consecutive failure threshold',
+  )
+  .option(
     '--fleetConfigFilePath <path>',
     'Path to fleet config YAML file (also read from TDPM_FLEET_CONFIG env var)',
   )
@@ -780,6 +785,7 @@ program
         developerAgentNames: config.developerAgentNames ?? null,
         defaultAgentName: config.defaultAgentName ?? null,
         deferPreparation: options.deferPreparation ?? null,
+        moveToFailedPreparation: options.moveToFailedPreparation ?? null,
         workflowIssueReporterSettings: loadWorkflowIssueReporterSettings(
           notifyFleetConfigFilePath,
         ),
