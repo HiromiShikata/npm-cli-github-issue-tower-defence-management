@@ -1,3 +1,10 @@
+## [2.132.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.3...v2.132.4) (2026-09-19)
+
+
+### Bug Fixes
+
+* **HandleScheduledEventUseCase:** catch transient API errors from setup use cases before scheduling loop ([#2465](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2465)) ([c2f8b6f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c2f8b6f2be89bbf49505fa61a36fe66ab32c1ba7))
+
 ## [2.132.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.2...v2.132.3) (2026-09-19)
 
 
