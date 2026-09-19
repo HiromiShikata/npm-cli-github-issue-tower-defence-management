@@ -127,8 +127,7 @@ const requestJson = async (
           return cached.json();
         }
       }
-    } catch {
-    }
+    } catch {}
     throw e;
   }
 };
