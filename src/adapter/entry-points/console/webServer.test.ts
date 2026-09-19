@@ -469,6 +469,34 @@ describe('webServer integration', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('serves favicon.svg without a token and returns image/svg+xml', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'console-server-'));
+    const uiDistDir = path.join(tmpDir, 'ui-dist');
+    fs.mkdirSync(uiDistDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(uiDistDir, 'favicon.svg'),
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#0f172a"/></svg>',
+    );
+    const server = await startWebServer({
+      accessToken: testToken,
+      uiDistDir,
+      consoleDataOutputDir: null,
+      inTmuxDataDir: null,
+      dashboardDir: null,
+      dashboardDataDir: null,
+      dashboardProjectNames: [],
+      port: 0,
+    });
+    try {
+      const response = await requestServer(server, '/favicon.svg');
+      expect(response.statusCode).toBe(200);
+      expect(response.contentType).toBe('image/svg+xml');
+    } finally {
+      await closeServer(server);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('webServer new routes integration', () => {
