@@ -1,3 +1,16 @@
+# [2.130.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.129.0...v2.130.0) (2026-09-19)
+
+
+### Bug Fixes
+
+* **deps:** update dependency googleapis to v180 ([#2412](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2412)) ([319def3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/319def3029fc7d71e36872264d843f04f855ea2e))
+* **RestIssueRepository:** lowercase state in updateIssue to fix HTTP 422 from GitHub REST API ([#2441](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2441)) ([6edf34c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/6edf34c100e62a5b1b4995cf498891a345f834da))
+
+
+### Features
+
+* **console:** add create workflow issue button to TDPM console comments ([#2438](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2438)) ([a187aac](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/a187aacdd220ed303455ded8b9802d5e778b1462)), closes [HiromiShikata/umino-corporait-operation#31957](https://github.com/HiromiShikata/umino-corporait-operation/issues/31957)
+
 # [2.129.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.128.0...v2.129.0) (2026-09-19)
 
 
