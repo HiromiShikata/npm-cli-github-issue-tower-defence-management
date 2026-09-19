@@ -1,3 +1,10 @@
+# [2.131.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.130.0...v2.131.0) (2026-09-19)
+
+
+### Features
+
+* **console:** refresh background project tabs in timer mode ([#2443](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2443)) ([b13533f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b13533f72511994872235ee73295f39bdf31c845)), closes [HiromiShikata/umino-corporait-operation#31963](https://github.com/HiromiShikata/umino-corporait-operation/issues/31963)
+
 # [2.130.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.129.0...v2.130.0) (2026-09-19)
 
 
