@@ -1,3 +1,10 @@
+## [2.122.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.122.0...v2.122.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **console-ui:** resolve Biome 2.5.12 noNonNullAssertion and noDescendingSpecificity violations ([#2413](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2413)) ([e83c9cd](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e83c9cd1aef826e68c2a01f70668bc4ee23e1754)), closes [#2410](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2410)
+
 # [2.122.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.121.2...v2.122.0) (2026-09-19)
 
 
