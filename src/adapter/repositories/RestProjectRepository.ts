@@ -34,7 +34,10 @@ type RestProjectFieldResponse = {
   }[];
 };
 
-const isHttpStatusResponse = (error: unknown, status: number): boolean => {
+export const isHttpStatusResponse = (
+  error: unknown,
+  status: number,
+): boolean => {
   if (typeof error !== 'object' || error === null || !('response' in error)) {
     return false;
   }
