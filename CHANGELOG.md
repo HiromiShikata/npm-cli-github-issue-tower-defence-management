@@ -1,3 +1,16 @@
+# [2.125.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.124.0...v2.125.0) (2026-09-19)
+
+
+### Bug Fixes
+
+* **consoleTimerProjectSkipNavigation:** prevent premature evaluated-mark when pjcodes not yet loaded ([#2419](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2419)) ([521df00](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/521df000acf0b4399ff68503c42dcfe003ef8de1))
+
+
+### Features
+
+* **console:** replace task-create button + text with SquarePen SVG icon ([#2426](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2426)) ([89285ae](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/89285ae5c85defff5ddedff6b5e80cdc2d517209)), closes [#2424](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2424)
+* **handleDeleteStory:** add option to keep or delete child tasks on story deletion ([#2418](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2418)) ([f1d9270](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f1d927099760acad1c88abbd0ed28e10aaa87ffb)), closes [HiromiShikata/secretary#6492](https://github.com/HiromiShikata/secretary/issues/6492)
+
 # [2.124.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.123.2...v2.124.0) (2026-09-19)
 
 
