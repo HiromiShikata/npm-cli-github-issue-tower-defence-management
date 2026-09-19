@@ -1645,6 +1645,7 @@ describe('HandleScheduledEventUseCase', () => {
 
       let warnSpy: jest.SpyInstance;
       beforeEach(() => {
+        mockSpreadsheetRepository.updateCell.mockResolvedValue(undefined);
         warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       });
       afterEach(() => {
@@ -1652,7 +1653,7 @@ describe('HandleScheduledEventUseCase', () => {
       });
 
       it('should skip field setup and continue the cycle when projectRequiredFieldCreateUseCase throws a transient 403 error', async () => {
-        mockProjectRequiredFieldCreateUseCase.run.mockRejectedValue(
+        mockProjectRequiredFieldCreateUseCase.run.mockRejectedValueOnce(
           new Error(
             'Request failed with status code 403: GET https://api.github.com/orgs/test-org/projectsV2/18/fields?per_page=100',
           ),
@@ -1674,7 +1675,7 @@ describe('HandleScheduledEventUseCase', () => {
       });
 
       it('should skip project setup and continue the cycle when setupTowerDefenceProjectUseCase throws a transient 403 error', async () => {
-        mockSetupTowerDefenceProjectUseCase.run.mockRejectedValue(
+        mockSetupTowerDefenceProjectUseCase.run.mockRejectedValueOnce(
           new Error(
             'Request failed with status code 403: GET https://api.github.com/orgs/test-org/projectsV2/18/fields?per_page=100',
           ),

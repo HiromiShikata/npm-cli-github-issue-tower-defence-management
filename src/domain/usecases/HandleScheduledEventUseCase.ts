@@ -205,14 +205,32 @@ export class HandleScheduledEventUseCase {
     if (input.disabled) {
       return null;
     }
-    await this.projectRequiredFieldCreateUseCase.run({
-      projectUrl: input.projectUrl,
-      agents: input.agents ?? null,
-      defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
-    });
-    await this.setupTowerDefenceProjectUseCase.run({
-      projectUrl: input.projectUrl,
-    });
+    try {
+      await this.projectRequiredFieldCreateUseCase.run({
+        projectUrl: input.projectUrl,
+        agents: input.agents ?? null,
+        defaultAgentName: input.startPreparation?.defaultAgentName ?? null,
+      });
+    } catch (e) {
+      if (!(e instanceof Error) || !isTransientApiError(e)) {
+        throw e;
+      }
+      console.warn(
+        `[HandleScheduledEvent] Transient API error in ProjectRequiredFieldCreateUseCase, skipping field setup for this cycle: ${e.name}: ${e.message}`,
+      );
+    }
+    try {
+      await this.setupTowerDefenceProjectUseCase.run({
+        projectUrl: input.projectUrl,
+      });
+    } catch (e) {
+      if (!(e instanceof Error) || !isTransientApiError(e)) {
+        throw e;
+      }
+      console.warn(
+        `[HandleScheduledEvent] Transient API error in SetupTowerDefenceProjectUseCase, skipping project setup for this cycle: ${e.name}: ${e.message}`,
+      );
+    }
     const projectId = await this.projectRepository.findProjectIdByUrl(
       input.projectUrl,
     );
