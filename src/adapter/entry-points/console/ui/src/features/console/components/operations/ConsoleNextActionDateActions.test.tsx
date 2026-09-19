@@ -9,26 +9,26 @@ describe('ConsoleNextActionDateActions', () => {
         onSetNextActionDate={() => {}}
       />,
     );
-    expect(getByText('+1 hour')).toBeInTheDocument();
-    expect(getByText('+3 hours')).toBeInTheDocument();
-    expect(getByText('+6 hours')).toBeInTheDocument();
-    expect(getByText('+1 day')).toBeInTheDocument();
-    expect(getByText('+2 days')).toBeInTheDocument();
-    expect(getByText('+3 days')).toBeInTheDocument();
-    expect(getByText('+5 days')).toBeInTheDocument();
-    expect(getByText('+1 week')).toBeInTheDocument();
-    expect(getByText('+1 month')).toBeInTheDocument();
-    expect(queryByText('+1 week and skip')).toBeNull();
+    expect(getByText('+1h')).toBeInTheDocument();
+    expect(getByText('+3h')).toBeInTheDocument();
+    expect(getByText('+6h')).toBeInTheDocument();
+    expect(getByText('+1d')).toBeInTheDocument();
+    expect(getByText('+2d')).toBeInTheDocument();
+    expect(getByText('+3d')).toBeInTheDocument();
+    expect(getByText('+5d')).toBeInTheDocument();
+    expect(getByText('+1w')).toBeInTheDocument();
+    expect(getByText('+1mo')).toBeInTheDocument();
+    expect(queryByText('+1w skip')).toBeNull();
   });
 
-  it('shows +1 week and skip on manual triage tabs', () => {
+  it('shows +1w skip on manual triage tabs', () => {
     const { getByText } = render(
       <ConsoleNextActionDateActions
         isManualTriage
         onSetNextActionDate={() => {}}
       />,
     );
-    expect(getByText('+1 week and skip')).toBeInTheDocument();
+    expect(getByText('+1w skip')).toBeInTheDocument();
   });
 
   it('reports all snooze actions', () => {
@@ -39,15 +39,15 @@ describe('ConsoleNextActionDateActions', () => {
         onSetNextActionDate={onSetNextActionDate}
       />,
     );
-    fireEvent.click(getByText('+1 hour'));
-    fireEvent.click(getByText('+3 hours'));
-    fireEvent.click(getByText('+6 hours'));
-    fireEvent.click(getByText('+1 day'));
-    fireEvent.click(getByText('+2 days'));
-    fireEvent.click(getByText('+3 days'));
-    fireEvent.click(getByText('+5 days'));
-    fireEvent.click(getByText('+1 week'));
-    fireEvent.click(getByText('+1 month'));
+    fireEvent.click(getByText('+1h'));
+    fireEvent.click(getByText('+3h'));
+    fireEvent.click(getByText('+6h'));
+    fireEvent.click(getByText('+1d'));
+    fireEvent.click(getByText('+2d'));
+    fireEvent.click(getByText('+3d'));
+    fireEvent.click(getByText('+5d'));
+    fireEvent.click(getByText('+1w'));
+    fireEvent.click(getByText('+1mo'));
     expect(onSetNextActionDate.mock.calls.map((call) => call[0])).toEqual([
       'snooze_1hour',
       'snooze_3hours',

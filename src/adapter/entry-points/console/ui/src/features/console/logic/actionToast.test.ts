@@ -52,12 +52,12 @@ describe('actionToastMessage', () => {
       type: 'next_action_date',
       action: 'snooze_1week',
     };
-    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +1 week');
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +1w');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
-      'Next Action Date +1 week and skip',
+      'Next Action Date +1w skip',
     );
     expect(actionToastMessage(kind, 'todo-by-agent')).toBe(
-      'Next Action Date +1 week and skip',
+      'Next Action Date +1w skip',
     );
   });
 
@@ -66,9 +66,9 @@ describe('actionToastMessage', () => {
       type: 'next_action_date',
       action: 'snooze_1day',
     };
-    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +1 day');
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +1d');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
-      'Next Action Date +1 day',
+      'Next Action Date +1d',
     );
   });
 
@@ -77,9 +77,9 @@ describe('actionToastMessage', () => {
       type: 'next_action_date',
       action: 'snooze_1hour',
     };
-    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Hour +1 hour');
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Hour +1h');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
-      'Next Action Hour +1 hour',
+      'Next Action Hour +1h',
     );
   });
 
@@ -88,9 +88,9 @@ describe('actionToastMessage', () => {
       type: 'next_action_date',
       action: 'snooze_3hours',
     };
-    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Hour +3 hours');
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Hour +3h');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
-      'Next Action Hour +3 hours',
+      'Next Action Hour +3h',
     );
   });
 
@@ -99,9 +99,9 @@ describe('actionToastMessage', () => {
       type: 'next_action_date',
       action: 'snooze_6hours',
     };
-    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Hour +6 hours');
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Hour +6h');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
-      'Next Action Hour +6 hours',
+      'Next Action Hour +6h',
     );
   });
 
@@ -110,9 +110,9 @@ describe('actionToastMessage', () => {
       type: 'next_action_date',
       action: 'snooze_2days',
     };
-    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +2 days');
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +2d');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
-      'Next Action Date +2 days',
+      'Next Action Date +2d',
     );
   });
 
@@ -121,9 +121,9 @@ describe('actionToastMessage', () => {
       type: 'next_action_date',
       action: 'snooze_3days',
     };
-    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +3 days');
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +3d');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
-      'Next Action Date +3 days',
+      'Next Action Date +3d',
     );
   });
 
@@ -132,9 +132,9 @@ describe('actionToastMessage', () => {
       type: 'next_action_date',
       action: 'snooze_5days',
     };
-    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +5 days');
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +5d');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
-      'Next Action Date +5 days',
+      'Next Action Date +5d',
     );
   });
 
@@ -143,9 +143,9 @@ describe('actionToastMessage', () => {
       type: 'next_action_date',
       action: 'snooze_1month',
     };
-    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +1 month');
+    expect(actionToastMessage(kind, 'prs')).toBe('Next Action Date +1mo');
     expect(actionToastMessage(kind, 'todo-by-human')).toBe(
-      'Next Action Date +1 month',
+      'Next Action Date +1mo',
     );
   });
 

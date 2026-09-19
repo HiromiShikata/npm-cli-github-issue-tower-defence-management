@@ -43,32 +43,32 @@ export const actionToastMessage = (
       return 'Marked unnecessary';
     case 'next_action_date':
       if (kind.action === 'snooze_1hour') {
-        return 'Next Action Hour +1 hour';
+        return 'Next Action Hour +1h';
       }
       if (kind.action === 'snooze_3hours') {
-        return 'Next Action Hour +3 hours';
+        return 'Next Action Hour +3h';
       }
       if (kind.action === 'snooze_6hours') {
-        return 'Next Action Hour +6 hours';
+        return 'Next Action Hour +6h';
       }
       if (kind.action === 'snooze_1day') {
-        return 'Next Action Date +1 day';
+        return 'Next Action Date +1d';
       }
       if (kind.action === 'snooze_2days') {
-        return 'Next Action Date +2 days';
+        return 'Next Action Date +2d';
       }
       if (kind.action === 'snooze_3days') {
-        return 'Next Action Date +3 days';
+        return 'Next Action Date +3d';
       }
       if (kind.action === 'snooze_5days') {
-        return 'Next Action Date +5 days';
+        return 'Next Action Date +5d';
       }
       if (kind.action === 'snooze_1month') {
-        return 'Next Action Date +1 month';
+        return 'Next Action Date +1mo';
       }
       return isManualTriageTab(tab)
-        ? 'Next Action Date +1 week and skip'
-        : 'Next Action Date +1 week';
+        ? 'Next Action Date +1w skip'
+        : 'Next Action Date +1w';
     case 'set_story':
       return `Story → ${kind.optionName}`;
     case 'set_agent':
