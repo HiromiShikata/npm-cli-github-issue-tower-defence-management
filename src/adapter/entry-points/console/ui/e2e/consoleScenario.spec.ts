@@ -1760,8 +1760,7 @@ test('renames the issue title when the user clicks Edit, types a new title, and 
 test('creates a workflow improvement issue from a comment when the + button is clicked', async ({
   browser,
 }) => {
-  const fleetUrl =
-    'https://github.com/HiromiShikata/secretary/issues/new';
+  const fleetUrl = 'https://github.com/HiromiShikata/secretary/issues/new';
   const localHarness = await startConsoleE2eHarness({
     fleetTaskCreateUrl: fleetUrl,
   });
@@ -1776,7 +1775,9 @@ test('creates a workflow improvement issue from a comment when the + button is c
       'Resolve the shared GitHub token rate-limit exhaustion blocker',
     ).click();
 
-    const createBtn = page.locator('.console-comment-create-workflow-issue').first();
+    const createBtn = page
+      .locator('.console-comment-create-workflow-issue')
+      .first();
     await expect(createBtn).toBeVisible();
 
     const initialCreateCount = localHarness.createIssueCalls.length;
