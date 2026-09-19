@@ -518,6 +518,31 @@ describe('ConsoleCommentList', () => {
     expect(onCreateWorkflowIssue).toHaveBeenCalledWith(comment);
   });
 
+  it('opens a confirmation dialog when the create workflow issue button is clicked instead of calling the callback directly', () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'Please split the token validation into its own tested function.',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const onCreateWorkflowIssue = jest.fn();
+    const { container, queryByRole } = render(
+      <ConsoleCommentList
+        comments={[comment]}
+        isLoading={false}
+        error={null}
+        now={now}
+        onCreateWorkflowIssue={onCreateWorkflowIssue}
+      />,
+    );
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    expect(onCreateWorkflowIssue).not.toHaveBeenCalled();
+    expect(queryByRole('dialog')).not.toBeNull();
+  });
+
   it('does not propagate click events from the expanded body to ancestor elements', () => {
     const comment = {
       author: 'agent',
