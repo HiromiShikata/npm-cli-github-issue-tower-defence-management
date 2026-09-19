@@ -940,9 +940,7 @@ describe('ConsoleStoryList', () => {
         name: 'Delete with child tasks',
       })[0];
       fireEvent.click(confirmButton);
-      await waitFor(() =>
-        expect(getAllByText('Deleting…')).toHaveLength(2),
-      );
+      await waitFor(() => expect(getAllByText('Deleting…')).toHaveLength(2));
       await act(async () => {
         resolveDelete?.();
       });

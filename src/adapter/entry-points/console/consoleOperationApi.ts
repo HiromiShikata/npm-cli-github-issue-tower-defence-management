@@ -1289,11 +1289,7 @@ const handleDeletedStoryItemsInBackground = async (
         }
       } else {
         try {
-          await issueRepository.clearProjectField(
-            project,
-            storyFieldId,
-            task,
-          );
+          await issueRepository.clearProjectField(project, storyFieldId, task);
         } catch (e) {
           console.error(
             `Failed to clear story field on task after story deletion: ${task.url}`,

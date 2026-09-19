@@ -156,9 +156,7 @@ describe('ConsoleDangerousActions', () => {
       fireEvent.click(getByText('⚠'));
       fireEvent.click(getByText('Delete Story'));
       fireEvent.click(getByText('Delete with child tasks'));
-      await waitFor(() =>
-        expect(getAllByText('Deleting…')).toHaveLength(2),
-      );
+      await waitFor(() => expect(getAllByText('Deleting…')).toHaveLength(2));
       await act(async () => {
         resolveDelete();
       });

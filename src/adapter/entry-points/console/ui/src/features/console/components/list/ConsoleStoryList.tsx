@@ -320,7 +320,10 @@ export type ConsoleStoryListProps = {
     storyOptionId: string,
     direction: 'up' | 'down',
   ) => Promise<void>;
-  onDeleteStory: (storyOptionId: string, deleteChildTasks: boolean) => Promise<void>;
+  onDeleteStory: (
+    storyOptionId: string,
+    deleteChildTasks: boolean,
+  ) => Promise<void>;
   onRenameStory: (storyOptionId: string, newName: string) => Promise<void>;
   onUpdateDescription: (
     storyOptionId: string,
