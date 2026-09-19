@@ -1,3 +1,10 @@
+# [2.129.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.128.0...v2.129.0) (2026-09-19)
+
+
+### Features
+
+* **console:** shorten snooze button labels to single-row abbreviated units ([#2439](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2439)) ([0d05a59](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0d05a593018589dab38bbc05bd84895cdef7283a)), closes [HiromiShikata/umino-corporait-operation#31959](https://github.com/HiromiShikata/umino-corporait-operation/issues/31959)
+
 # [2.128.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.127.0...v2.128.0) (2026-09-19)
 
 
