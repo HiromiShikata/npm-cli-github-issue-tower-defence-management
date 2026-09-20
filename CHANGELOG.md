@@ -1,3 +1,11 @@
+# [2.133.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.13...v2.133.0) (2026-09-20)
+
+
+### Features
+
+* **console:** change 1h/3h/5h close event count display to exponential moving average ([#2483](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2483)) ([838a75b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/838a75bf374d647bb9f3320739a0ea9cc0415d48)), closes [#2479](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2479)
+* **StartPreparationUseCase:** move authorNotAllowed Awaiting Workspace issues to Todo by human with comment ([#2477](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2477)) ([55fe5a1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/55fe5a152fc2185aca59fa387c65c83d68ba5cc1)), closes [HiromiShikata/umino-corporait-operation#32023](https://github.com/HiromiShikata/umino-corporait-operation/issues/32023)
+
 ## [2.132.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.12...v2.132.13) (2026-09-20)
 
 
