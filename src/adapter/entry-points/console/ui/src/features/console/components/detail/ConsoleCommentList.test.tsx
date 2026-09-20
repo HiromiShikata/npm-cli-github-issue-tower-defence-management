@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { ConsoleCommentList } from './ConsoleCommentList';
 
 const now = Date.parse('2026-06-19T12:00:00.000Z');
@@ -453,20 +453,20 @@ describe('ConsoleCommentList', () => {
     expect(localStorage.length).toBe(0);
   });
 
-  it('renders a create workflow issue button for each comment when onCreateWorkflowIssue is provided', () => {
+  it('renders a create workflow issue button for each comment when onRequestWorkflowIssueCreate is provided', () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onCreateWorkflowIssue = jest.fn();
+    const onRequestWorkflowIssueCreate = jest.fn();
     const { container } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
         error={null}
         now={now}
-        onCreateWorkflowIssue={onCreateWorkflowIssue}
+        onRequestWorkflowIssueCreate={onRequestWorkflowIssueCreate}
       />,
     );
     const btn = container.querySelector(
@@ -475,7 +475,7 @@ describe('ConsoleCommentList', () => {
     expect(btn).not.toBeNull();
   });
 
-  it('does not render a create workflow issue button when onCreateWorkflowIssue is not provided', () => {
+  it('does not render a create workflow issue button when onRequestWorkflowIssueCreate is not provided', () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
@@ -494,21 +494,20 @@ describe('ConsoleCommentList', () => {
     ).toBeNull();
   });
 
-  it('calls onCreateWorkflowIssue with title and body when the dialog Create button is clicked', async () => {
+  it('calls onRequestWorkflowIssueCreate with the comment when the create workflow issue button is clicked', () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onCreateWorkflowIssue = jest.fn().mockResolvedValue(undefined);
-    const { container, getByRole } = render(
+    const onRequestWorkflowIssueCreate = jest.fn();
+    const { container } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
         error={null}
         now={now}
-        issueTitle="Source issue title"
-        onCreateWorkflowIssue={onCreateWorkflowIssue}
+        onRequestWorkflowIssueCreate={onRequestWorkflowIssueCreate}
       />,
     );
     const btn = container.querySelector(
@@ -516,121 +515,23 @@ describe('ConsoleCommentList', () => {
     );
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
-    fireEvent.click(getByRole('button', { name: 'Create' }));
-    await waitFor(() => {
-      expect(onCreateWorkflowIssue).toHaveBeenCalledWith(
-        'Source issue title',
-        `> ${comment.body}`,
-      );
-    });
+    expect(onRequestWorkflowIssueCreate).toHaveBeenCalledWith(comment);
   });
 
-  it('pre-populates dialog title with issueTitle and body as blockquote of comment body', () => {
-    const comment = {
-      author: 'HiromiShikata',
-      body: 'First line\nSecond line',
-      createdAt: '2026-06-17T06:12:40.000Z',
-    };
-    const { container, getByRole } = render(
-      <ConsoleCommentList
-        comments={[comment]}
-        isLoading={false}
-        error={null}
-        now={now}
-        issueTitle="My issue title"
-        onCreateWorkflowIssue={jest.fn().mockResolvedValue(undefined)}
-      />,
-    );
-    const btn = container.querySelector(
-      '.console-comment-create-workflow-issue',
-    );
-    if (!btn) throw new Error('button not found');
-    fireEvent.click(btn);
-    const titleTextarea = getByRole('textbox', { name: 'Title' });
-    const bodyTextarea = getByRole('textbox', { name: 'Body' });
-    expect((titleTextarea as HTMLTextAreaElement).value).toBe('My issue title');
-    expect((bodyTextarea as HTMLTextAreaElement).value).toBe(
-      '> First line\n> Second line',
-    );
-  });
-
-  it('disables the dialog submit button while onCreateWorkflowIssue is in progress', async () => {
-    const comment = {
-      author: 'HiromiShikata',
-      body: 'A comment body',
-      createdAt: '2026-06-17T06:12:40.000Z',
-    };
-    let resolveSubmit!: () => void;
-    const onCreateWorkflowIssue = jest.fn().mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolveSubmit = resolve;
-      }),
-    );
-    const { container, getByRole } = render(
-      <ConsoleCommentList
-        comments={[comment]}
-        isLoading={false}
-        error={null}
-        now={now}
-        onCreateWorkflowIssue={onCreateWorkflowIssue}
-      />,
-    );
-    const btn = container.querySelector(
-      '.console-comment-create-workflow-issue',
-    );
-    if (!btn) throw new Error('button not found');
-    fireEvent.click(btn);
-    const createBtn = getByRole('button', { name: 'Create' });
-    fireEvent.click(createBtn);
-    await waitFor(() => {
-      expect(createBtn).toBeDisabled();
-    });
-    resolveSubmit();
-  });
-
-  it('shows error in the dialog when onCreateWorkflowIssue rejects', async () => {
-    const comment = {
-      author: 'HiromiShikata',
-      body: 'A comment body',
-      createdAt: '2026-06-17T06:12:40.000Z',
-    };
-    const onCreateWorkflowIssue = jest
-      .fn()
-      .mockRejectedValue(new Error('Server error'));
-    const { container, getByRole, getByText } = render(
-      <ConsoleCommentList
-        comments={[comment]}
-        isLoading={false}
-        error={null}
-        now={now}
-        onCreateWorkflowIssue={onCreateWorkflowIssue}
-      />,
-    );
-    const btn = container.querySelector(
-      '.console-comment-create-workflow-issue',
-    );
-    if (!btn) throw new Error('button not found');
-    fireEvent.click(btn);
-    fireEvent.click(getByRole('button', { name: 'Create' }));
-    await waitFor(() => {
-      expect(getByText('Server error')).toBeInTheDocument();
-    });
-  });
-
-  it('opens a confirmation dialog when the create workflow issue button is clicked instead of calling the callback directly', () => {
+  it('does not open an inline dialog when the create workflow issue button is clicked with onRequestWorkflowIssueCreate', () => {
     const comment = {
       author: 'HiromiShikata',
       body: 'Please split the token validation into its own tested function.',
       createdAt: '2026-06-17T06:12:40.000Z',
     };
-    const onCreateWorkflowIssue = jest.fn();
+    const onRequestWorkflowIssueCreate = jest.fn();
     const { container, queryByRole } = render(
       <ConsoleCommentList
         comments={[comment]}
         isLoading={false}
         error={null}
         now={now}
-        onCreateWorkflowIssue={onCreateWorkflowIssue}
+        onRequestWorkflowIssueCreate={onRequestWorkflowIssueCreate}
       />,
     );
     const btn = container.querySelector(
@@ -638,8 +539,11 @@ describe('ConsoleCommentList', () => {
     );
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
-    expect(onCreateWorkflowIssue).not.toHaveBeenCalled();
-    expect(queryByRole('dialog')).not.toBeNull();
+    expect(onRequestWorkflowIssueCreate).not.toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+    );
+    expect(queryByRole('dialog')).toBeNull();
   });
 
   it('does not propagate click events from the expanded body to ancestor elements', () => {

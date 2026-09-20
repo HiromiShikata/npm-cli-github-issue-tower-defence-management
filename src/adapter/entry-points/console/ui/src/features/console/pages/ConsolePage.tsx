@@ -666,7 +666,6 @@ export const ConsolePage = () => {
         .replace('https://github.com/', '')
         .replace(/\/issues\/new.*$/, '');
       const capturedNameWithOwner = nameWithOwner;
-      const capturedSourceIssueTitle = selectedItem.title;
       actionQueue.enqueue({
         message: `Task created — "${title}"`,
         color: 'blue',
@@ -674,8 +673,7 @@ export const ConsolePage = () => {
           await postConsoleCreateWorkflowIssue({
             nameWithOwner: capturedNameWithOwner,
             title,
-            sourceIssueTitle: capturedSourceIssueTitle,
-            quotedCommentBody: body,
+            body,
           });
         },
         advance: () => {},

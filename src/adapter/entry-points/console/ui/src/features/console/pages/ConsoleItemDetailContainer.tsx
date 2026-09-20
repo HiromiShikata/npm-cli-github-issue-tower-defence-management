@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from 'react';
 import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
 import type { ConsoleAddInlineComment } from '../components/detail/ConsoleFileDiff';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
+import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
+import { IssueCreateModalDialog } from '../components/layout/IssueCreateModalDialog';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import type { ConsoleOfflinePayload } from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
@@ -190,6 +192,28 @@ export const ConsoleItemDetailContainer = ({
       return comment;
     },
     [item, operations],
+  );
+  const [pendingWorkflowIssueComment, setPendingWorkflowIssueComment] =
+    useState<ConsoleComment | null>(null);
+  const handleRequestWorkflowIssueCreate = useCallback(
+    (comment: ConsoleComment) => {
+      setPendingWorkflowIssueComment(comment);
+    },
+    [],
+  );
+  const buildWorkflowIssueBody = (comment: ConsoleComment): string => {
+    const commentBlockquote = comment.body
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n');
+    return `${item.url}\n\n${item.title}\n\n\n\n\n\n${commentBlockquote}`;
+  };
+  const handleWorkflowIssueSubmit = useCallback(
+    async (params: IssueCreateParams): Promise<void> => {
+      if (onCreateWorkflowIssue === undefined) return;
+      await onCreateWorkflowIssue(params.title, params.body ?? '');
+    },
+    [onCreateWorkflowIssue],
   );
 
   const handlers: ConsoleOperationHandlers = {
@@ -383,70 +407,92 @@ export const ConsoleItemDetailContainer = ({
       : null;
 
   return (
-    <ConsoleItemDetail
-      item={item}
-      storyName={resolvedStoryName}
-      storyColorEnum={storyColorEnum}
-      overlayStatus={overlayStatus}
-      statusOptions={statusOptions}
-      state={detail.state}
-      stateError={detail.stateError}
-      body={detail.body}
-      bodyIsLoading={detail.bodyIsLoading}
-      bodyError={detail.bodyError}
-      comments={mergePostedComments(detail.comments, postedComments)}
-      commentsAreLoading={detail.commentsAreLoading}
-      commentsError={detail.commentsError}
-      files={detail.files}
-      filesAreLoading={detail.filesAreLoading}
-      filesError={detail.filesError}
-      commits={detail.commits}
-      commitsAreLoading={detail.commitsAreLoading}
-      commitsError={detail.commitsError}
-      pullRequestStatus={detail.pullRequestStatus}
-      pullRequestStatusError={detail.pullRequestStatusError}
-      relatedPullRequests={detail.relatedPullRequests}
-      relatedPullRequestsError={detail.relatedPullRequestsError}
-      now={now}
-      buildImageProxyUrl={resolveImageProxyUrl}
-      renderReferenceLink={renderReferenceLink}
-      onAddInlineComment={addInlineComment}
-      onTitleRename={issueRename}
-      onCreateWorkflowIssue={onCreateWorkflowIssue}
-      commentComposer={
-        <ConsoleCommentComposer
-          initiallyOpen
-          initialDraft={initialCommentDraft}
-          onSubmit={addComment}
-          onDraftChange={handleDraftChange}
-          onOkAndAwaitingWorkspace={
-            awaitingWorkspaceOption !== null
-              ? () => handlers.onOkAndAwaitingWorkspace(awaitingWorkspaceOption)
-              : undefined
-          }
-          onSubmitAndMoveToAwaitingWorkspace={
-            addCommentAndMoveToAwaitingWorkspace
-          }
-          onUploadFile={(file) => operations.uploadAttachment(item, file)}
-        />
-      }
-      operationBar={
-        <ConsoleOperationMenu
-          tab={tab}
-          item={item}
-          hasPullRequest={hasPullRequest}
-          rejectEnabled={pendingReviewComments.length > 0}
-          statusOptions={statusOptions}
-          storyOptions={storyOptions}
-          currentStoryName={resolvedStoryName}
-          agentOptions={agentOptions}
-          currentAgentName={item.agent}
-          handlers={handlers}
-          storyNameForDeletion={storyNameForDeletion}
-          onCommentAndClose={commentAndCloseWithDraft}
-          isDraftEmpty={isDraftEmpty}
-        />
-      }
-    />
+    <>
+      <ConsoleItemDetail
+        item={item}
+        storyName={resolvedStoryName}
+        storyColorEnum={storyColorEnum}
+        overlayStatus={overlayStatus}
+        statusOptions={statusOptions}
+        state={detail.state}
+        stateError={detail.stateError}
+        body={detail.body}
+        bodyIsLoading={detail.bodyIsLoading}
+        bodyError={detail.bodyError}
+        comments={mergePostedComments(detail.comments, postedComments)}
+        commentsAreLoading={detail.commentsAreLoading}
+        commentsError={detail.commentsError}
+        files={detail.files}
+        filesAreLoading={detail.filesAreLoading}
+        filesError={detail.filesError}
+        commits={detail.commits}
+        commitsAreLoading={detail.commitsAreLoading}
+        commitsError={detail.commitsError}
+        pullRequestStatus={detail.pullRequestStatus}
+        pullRequestStatusError={detail.pullRequestStatusError}
+        relatedPullRequests={detail.relatedPullRequests}
+        relatedPullRequestsError={detail.relatedPullRequestsError}
+        now={now}
+        buildImageProxyUrl={resolveImageProxyUrl}
+        renderReferenceLink={renderReferenceLink}
+        onAddInlineComment={addInlineComment}
+        onTitleRename={issueRename}
+        onRequestWorkflowIssueCreate={
+          onCreateWorkflowIssue !== undefined
+            ? handleRequestWorkflowIssueCreate
+            : undefined
+        }
+        commentComposer={
+          <ConsoleCommentComposer
+            initiallyOpen
+            initialDraft={initialCommentDraft}
+            onSubmit={addComment}
+            onDraftChange={handleDraftChange}
+            onOkAndAwaitingWorkspace={
+              awaitingWorkspaceOption !== null
+                ? () =>
+                    handlers.onOkAndAwaitingWorkspace(awaitingWorkspaceOption)
+                : undefined
+            }
+            onSubmitAndMoveToAwaitingWorkspace={
+              addCommentAndMoveToAwaitingWorkspace
+            }
+            onUploadFile={(file) => operations.uploadAttachment(item, file)}
+          />
+        }
+        operationBar={
+          <ConsoleOperationMenu
+            tab={tab}
+            item={item}
+            hasPullRequest={hasPullRequest}
+            rejectEnabled={pendingReviewComments.length > 0}
+            statusOptions={statusOptions}
+            storyOptions={storyOptions}
+            currentStoryName={resolvedStoryName}
+            agentOptions={agentOptions}
+            currentAgentName={item.agent}
+            handlers={handlers}
+            storyNameForDeletion={storyNameForDeletion}
+            onCommentAndClose={commentAndCloseWithDraft}
+            isDraftEmpty={isDraftEmpty}
+          />
+        }
+      />
+      {pendingWorkflowIssueComment !== null &&
+        onCreateWorkflowIssue !== undefined && (
+          <IssueCreateModalDialog
+            storyEntries={[]}
+            agentOptions={[]}
+            initialDraft={{
+              title: '',
+              body: buildWorkflowIssueBody(pendingWorkflowIssueComment),
+              storyName: null,
+              agentOptionId: null,
+            }}
+            onSubmit={handleWorkflowIssueSubmit}
+            onClose={() => setPendingWorkflowIssueComment(null)}
+          />
+        )}
+    </>
   );
 };

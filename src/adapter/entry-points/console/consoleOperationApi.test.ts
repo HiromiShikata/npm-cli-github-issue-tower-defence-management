@@ -5783,69 +5783,35 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('creates issue with title and quoted comment body separated by 5 blank lines when both sourceIssueTitle and quotedCommentBody are provided', async () => {
+    it('uses empty body when body field is absent', async () => {
+      await handleCreateWorkflowIssue(issueRepository, {
+        nameWithOwner: 'HiromiShikata/secretary',
+        title: 'Fix the workflow pipeline',
+      });
+      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
+        'HiromiShikata',
+        'secretary',
+        'Fix the workflow pipeline',
+        '',
+        [],
+        [],
+      );
+    });
+
+    it('creates issue with the body field directly when body is provided, without double-quoting', async () => {
+      const preFormattedBody =
+        'https://github.com/owner/repo/issues/1\n\nSource issue title\n\n\n\n\n\n> Line one of the comment.\n> Line two of the comment.';
       const response = await handleCreateWorkflowIssue(issueRepository, {
         nameWithOwner: 'HiromiShikata/secretary',
         title: 'Fix the workflow pipeline',
-        sourceIssueTitle: 'Original task title',
-        quotedCommentBody:
-          'Please split the token validation into its own tested function.',
+        body: preFormattedBody,
       });
       expect(response.statusCode).toBe(200);
       expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
         'HiromiShikata',
         'secretary',
         'Fix the workflow pipeline',
-        'Original task title\n\n\n\n\n\n> Please split the token validation into its own tested function.',
-        [],
-        [],
-      );
-    });
-
-    it('prefixes each line of a multi-line quotedCommentBody with "> "', async () => {
-      await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: 'Fix the workflow pipeline',
-        sourceIssueTitle: 'Original task title',
-        quotedCommentBody: 'Line one of the comment.\nLine two of the comment.',
-      });
-      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
-        'HiromiShikata',
-        'secretary',
-        'Fix the workflow pipeline',
-        'Original task title\n\n\n\n\n\n> Line one of the comment.\n> Line two of the comment.',
-        [],
-        [],
-      );
-    });
-
-    it('uses empty body when sourceIssueTitle is provided but quotedCommentBody is absent', async () => {
-      await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: 'Fix the workflow pipeline',
-        sourceIssueTitle: 'Original task title',
-      });
-      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
-        'HiromiShikata',
-        'secretary',
-        'Fix the workflow pipeline',
-        '',
-        [],
-        [],
-      );
-    });
-
-    it('uses empty body when quotedCommentBody is provided but sourceIssueTitle is absent', async () => {
-      await handleCreateWorkflowIssue(issueRepository, {
-        nameWithOwner: 'HiromiShikata/secretary',
-        title: 'Fix the workflow pipeline',
-        quotedCommentBody: 'Some comment text.',
-      });
-      expect(issueRepository.createNewIssue).toHaveBeenCalledWith(
-        'HiromiShikata',
-        'secretary',
-        'Fix the workflow pipeline',
-        '',
+        preFormattedBody,
         [],
         [],
       );
