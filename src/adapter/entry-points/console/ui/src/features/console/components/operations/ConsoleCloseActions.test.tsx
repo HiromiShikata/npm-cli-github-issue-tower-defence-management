@@ -78,7 +78,11 @@ describe('ConsoleCloseActions', () => {
     const { getByText } = render(
       <ConsoleCloseActions
         onClose={() => {}}
-        onCommentAndClose={() => new Promise<void>((r) => { resolve = r; })}
+        onCommentAndClose={() =>
+          new Promise<void>((r) => {
+            resolve = r;
+          })
+        }
       />,
     );
     fireEvent.click(getByText('Comment & Close'));

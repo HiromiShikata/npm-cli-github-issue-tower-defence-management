@@ -125,7 +125,10 @@ export const ConsoleCommentComposer = ({
     }
     setStatus({ kind: 'posting' });
     try {
-      if (action === 'move' && onSubmitAndMoveToAwaitingWorkspace !== undefined) {
+      if (
+        action === 'move' &&
+        onSubmitAndMoveToAwaitingWorkspace !== undefined
+      ) {
         await onSubmitAndMoveToAwaitingWorkspace(body);
       } else {
         await onSubmit(body);
