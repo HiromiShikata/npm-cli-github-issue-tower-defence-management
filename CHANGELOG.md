@@ -1,3 +1,10 @@
+## [2.132.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.11...v2.132.12) (2026-09-20)
+
+
+### Bug Fixes
+
+* **console:** skip done items in recordNewlyClosedItems to prevent double-counting ([#2481](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2481)) ([1d64f23](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/1d64f231401020378b94eb3670dcc6c4acb17482)), closes [#2480](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2480)
+
 ## [2.132.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.10...v2.132.11) (2026-09-20)
 
 
