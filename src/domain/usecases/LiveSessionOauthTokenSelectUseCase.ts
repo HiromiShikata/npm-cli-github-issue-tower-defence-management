@@ -35,14 +35,14 @@ export const liveSessionConcurrentLimitOf = (
     fiveHourFreeRatio / settings.fullSpeedFiveHourFreeRatio,
     1,
   );
-  const base = Math.max(
-    Math.floor(
-      settings.maxConcurrentSessionCount *
-        selectionWeight *
-        fiveHourThrottleFactor,
-    ),
-    1,
-  );
+  const unfloredScore =
+    settings.maxConcurrentSessionCount *
+    selectionWeight *
+    fiveHourThrottleFactor;
+  if (unfloredScore < 1) {
+    return 1;
+  }
+  const base = Math.max(Math.floor(unfloredScore), 1);
   if (sevenDayUrgencyBoost <= 1) {
     return base;
   }

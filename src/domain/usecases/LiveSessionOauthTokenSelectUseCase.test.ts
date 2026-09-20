@@ -825,6 +825,28 @@ describe('liveSessionConcurrentLimitOf', () => {
       MAX_CONCURRENT_SESSION_COUNT,
     );
   });
+
+  it('does not apply the urgency boost when the unflored throttle score is below one', () => {
+    expect(
+      liveSessionConcurrentLimitOf(
+        0.05,
+        1,
+        settingsWith({ fullSpeedFiveHourFreeRatio: 0.6 }),
+        3.5,
+      ),
+    ).toBe(1);
+  });
+
+  it('still applies the urgency boost when the unflored throttle score is at or above one', () => {
+    expect(
+      liveSessionConcurrentLimitOf(
+        0.15,
+        1,
+        settingsWith({ fullSpeedFiveHourFreeRatio: 0.6 }),
+        3.5,
+      ),
+    ).toBeGreaterThan(1);
+  });
 });
 
 describe('LiveSessionOauthTokenSelectUseCase seven day urgency boost integration', () => {
