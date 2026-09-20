@@ -1,3 +1,10 @@
+## [2.132.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.5...v2.132.6) (2026-09-20)
+
+
+### Bug Fixes
+
+* **extractNextStepAgent:** only read the last fenced json block for routing ([#2470](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2470)) ([44431a6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/44431a62ac8831e8c95cbe48bb5b913aa14ee520))
+
 ## [2.132.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.4...v2.132.5) (2026-09-19)
 
 
