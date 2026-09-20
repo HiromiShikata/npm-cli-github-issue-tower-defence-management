@@ -193,6 +193,8 @@ describe('ConsoleItemList', () => {
     const match = css.match(/\.console-list-row\s*\{([^}]+)\}/);
     const ruleBlock = match ? match[1] : null;
     expect(ruleBlock).not.toBeNull();
-    expect(ruleBlock?.trim().replace(/\s+/g, ' ')).toBe('border-bottom: 1px solid #21262d;');
+    expect(ruleBlock?.trim().replace(/\s+/g, ' ')).toBe(
+      'border-bottom: 1px solid #21262d;',
+    );
   });
 });
