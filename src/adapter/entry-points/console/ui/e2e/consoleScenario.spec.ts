@@ -105,7 +105,7 @@ test('processing tabs drives auto-advance and keeps emptied badges at zero', asy
   await expect(tabBadge(page, 'Failed Preparation')).toHaveText('1');
 });
 
-test('renders the Workflow Blocker tab immediately right of Todo by human and shows its detail operations', async ({
+test('renders the Todo by human tab as leftmost and shows Workflow Blocker detail operations', async ({
   page,
 }) => {
   await page.goto(harness.appRootUrl);
@@ -117,10 +117,8 @@ test('renders the Workflow Blocker tab immediately right of Todo by human and sh
 
   const labels = page.locator('.console-tab .console-tab-label');
   const labelsText = await labels.allTextContents();
-  const blockerIdx = labelsText.indexOf('Workflow Blocker');
   const todoByHumanIdx = labelsText.indexOf('Todo by human');
-  expect(blockerIdx).toBeGreaterThanOrEqual(0);
-  expect(todoByHumanIdx).toBe(blockerIdx - 1);
+  expect(todoByHumanIdx).toBe(0);
 
   await expect(page.locator('.console-tab-count-heading')).toHaveCount(0);
 
