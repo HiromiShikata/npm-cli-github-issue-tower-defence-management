@@ -272,6 +272,61 @@ describe('useConsoleNavigation URL tab fallback when count reaches zero', () => 
     expect(result.current.activeTab).toBe('prs');
   });
 
+  it('switches to first navigable tab when non-default url tab drops to zero and all tabs are empty but loaded', () => {
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const { result, rerender } = renderHook(
+      ({
+        tabCounts,
+        loadedTabs,
+      }: {
+        tabCounts: Record<ConsoleTabName, number>;
+        loadedTabs: Set<ConsoleTabName>;
+      }) => useConsoleNavigation('acme', tabCounts, loadedTabs),
+      {
+        initialProps: {
+          tabCounts: counts({ prs: 2 }),
+          loadedTabs: new Set<ConsoleTabName>(['prs', 'todo-by-human']),
+        },
+      },
+    );
+    expect(result.current.activeTab).toBe('prs');
+    rerender({
+      tabCounts: counts(),
+      loadedTabs: new Set<ConsoleTabName>(['prs', 'todo-by-human']),
+    });
+    expect(result.current.activeTab).toBe('todo-by-human');
+  });
+
+  it('restores url tab when positive count arrives after all-zeros transient state', () => {
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const { result, rerender } = renderHook(
+      ({
+        tabCounts,
+        loadedTabs,
+      }: {
+        tabCounts: Record<ConsoleTabName, number>;
+        loadedTabs: Set<ConsoleTabName>;
+      }) => useConsoleNavigation('acme', tabCounts, loadedTabs),
+      {
+        initialProps: {
+          tabCounts: counts({ prs: 2 }),
+          loadedTabs: new Set<ConsoleTabName>(['prs', 'todo-by-human']),
+        },
+      },
+    );
+    expect(result.current.activeTab).toBe('prs');
+    rerender({
+      tabCounts: counts(),
+      loadedTabs: new Set<ConsoleTabName>(['prs', 'todo-by-human']),
+    });
+    expect(result.current.activeTab).toBe('todo-by-human');
+    rerender({
+      tabCounts: counts({ prs: 1 }),
+      loadedTabs: new Set<ConsoleTabName>(['prs', 'todo-by-human']),
+    });
+    expect(result.current.activeTab).toBe('prs');
+  });
+
   it('switches to non-empty tab when non-default url tab count drops to zero', () => {
     window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     const { result, rerender } = renderHook(

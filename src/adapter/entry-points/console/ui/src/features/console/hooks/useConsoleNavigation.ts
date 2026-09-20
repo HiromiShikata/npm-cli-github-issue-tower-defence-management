@@ -85,14 +85,18 @@ export const useConsoleNavigation = (
     const urlTab = parseTabFromPath(window.location.pathname);
     const hasData = Object.values(counts).some((c) => c > 0);
     const rawCounts = snapshotCounts ?? counts;
-    if (
-      urlTab !== null &&
-      (counts[urlTab] > 0 ||
-        rawCounts[urlTab] > 0 ||
-        !loadedTabs.has(urlTab) ||
-        !hasData)
-    ) {
-      return;
+    if (urlTab !== null) {
+      if (counts[urlTab] > 0 || rawCounts[urlTab] > 0) {
+        setState((current) =>
+          current.activeTab === urlTab
+            ? current
+            : { ...current, activeTab: urlTab },
+        );
+        return;
+      }
+      if (!loadedTabs.has(urlTab)) {
+        return;
+      }
     }
     const fallbackTab = resolveDefaultActiveTab(counts);
     if (hasData && pjcodeRef.current !== null) {
