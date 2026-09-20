@@ -620,19 +620,30 @@ export const ConsolePage = () => {
   }, [selectedItem, storyEntries]);
 
   const handleCreateWorkflowIssue = useCallback(
-    async (title: string, body: string): Promise<void> => {
-      if (fleetTaskCreateUrl === null || selectedItem === null) return;
+    (title: string, body: string): Promise<void> => {
+      if (fleetTaskCreateUrl === null || selectedItem === null)
+        return Promise.resolve();
       const nameWithOwner = fleetTaskCreateUrl
         .replace('https://github.com/', '')
         .replace(/\/issues\/new.*$/, '');
-      await postConsoleCreateWorkflowIssue({
-        nameWithOwner,
-        title,
-        sourceIssueTitle: selectedItem.title,
-        quotedCommentBody: body,
+      const capturedNameWithOwner = nameWithOwner;
+      const capturedSourceIssueTitle = selectedItem.title;
+      actionQueue.enqueue({
+        message: `Task created — "${title}"`,
+        color: 'blue',
+        commit: async () => {
+          await postConsoleCreateWorkflowIssue({
+            nameWithOwner: capturedNameWithOwner,
+            title,
+            sourceIssueTitle: capturedSourceIssueTitle,
+            quotedCommentBody: body,
+          });
+        },
+        advance: () => {},
       });
+      return Promise.resolve();
     },
-    [fleetTaskCreateUrl, selectedItem],
+    [fleetTaskCreateUrl, selectedItem, actionQueue],
   );
 
   const handleCreateIssue = useCallback(
