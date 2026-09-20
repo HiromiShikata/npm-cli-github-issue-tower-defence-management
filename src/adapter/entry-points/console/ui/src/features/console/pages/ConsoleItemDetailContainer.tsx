@@ -32,6 +32,7 @@ import type {
   ConsoleComment,
   ConsoleFieldOption,
   ConsoleListItem,
+  ConsoleOverlayEntry,
   ConsoleOverlayStatus,
   ConsoleStoryColorSource,
   ConsoleTabName,
@@ -46,6 +47,7 @@ export type ConsoleQueueActionInput = {
   skipAdvance?: boolean;
   onAdvance?: () => void;
   revertAdvance?: () => void;
+  overlayPatch?: Partial<Omit<ConsoleOverlayEntry, 'ts' | 'mode'>>;
 };
 
 const itemOfflineBase = (item: ConsoleListItem) => ({
@@ -214,12 +216,7 @@ export const ConsoleItemDetailContainer = ({
                 reviewComments,
               )
             : undefined,
-        ...(action === 'approve_and_merge'
-          ? {
-              onAdvance: () => operations.patchItemOverlay(item, true),
-              revertAdvance: () => operations.patchItemOverlay(item, false),
-            }
-          : {}),
+        overlayPatch: { done: true },
       });
     },
     onSetNextActionDate: (action) => {
@@ -231,6 +228,7 @@ export const ConsoleItemDetailContainer = ({
           pjcode != null
             ? buildTriageOfflinePayload(pjcode, item, action)
             : undefined,
+        overlayPatch: { done: true },
       });
     },
     onSetStory: (option: ConsoleFieldOption) => {
@@ -244,6 +242,10 @@ export const ConsoleItemDetailContainer = ({
                 storyOptionId: option.id,
               })
             : undefined,
+        overlayPatch: {
+          done: true,
+          story: { name: option.name, color: option.color },
+        },
       });
     },
     onSetAgent: (option: ConsoleFieldOption) => {
@@ -257,6 +259,7 @@ export const ConsoleItemDetailContainer = ({
                 agentOptionId: option.id,
               })
             : undefined,
+        overlayPatch: { done: true },
       });
     },
     onSetStatus: (option: ConsoleFieldOption) => {
@@ -270,6 +273,10 @@ export const ConsoleItemDetailContainer = ({
                 statusName: option.name,
               })
             : undefined,
+        overlayPatch: {
+          done: true,
+          status: { name: option.name, color: option.color },
+        },
       });
     },
     onSetInTmuxByHuman: (option: ConsoleFieldOption) => {
@@ -279,6 +286,10 @@ export const ConsoleItemDetailContainer = ({
         commit: () => operations.setInTmuxByHuman(item, option),
         offline:
           pjcode != null ? buildIntmuxOfflinePayload(pjcode, item) : undefined,
+        overlayPatch: {
+          done: true,
+          status: { name: option.name, color: option.color },
+        },
       });
     },
     onClose: (action) => {
@@ -290,8 +301,7 @@ export const ConsoleItemDetailContainer = ({
           pjcode != null
             ? buildTriageOfflinePayload(pjcode, item, action)
             : undefined,
-        onAdvance: () => operations.patchItemOverlay(item, true),
-        revertAdvance: () => operations.patchItemOverlay(item, false),
+        overlayPatch: { done: true },
       });
     },
     onOkAndAwaitingWorkspace: (option: ConsoleFieldOption) => {
@@ -299,12 +309,10 @@ export const ConsoleItemDetailContainer = ({
         kind: { type: 'ok_and_awaiting_workspace' },
         item,
         commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
-        onAdvance: () =>
-          operations.patchItemOverlay(item, true, {
-            name: option.name,
-            color: option.color,
-          }),
-        revertAdvance: () => operations.patchItemOverlay(item, false),
+        overlayPatch: {
+          done: true,
+          status: { name: option.name, color: option.color },
+        },
       });
     },
     onDeleteAllComments: () => {

@@ -524,6 +524,43 @@ describe('useConsoleActionQueue', () => {
     expect(action.commit).not.toHaveBeenCalled();
   });
 
+  it('calls optimistic immediately on enqueue alongside advance', () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const optimistic = jest.fn();
+    const action = makeAction({ optimistic });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    expect(optimistic).toHaveBeenCalledTimes(1);
+    expect(action.advance).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls revertOptimistic when undo is called within the window', () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const revertOptimistic = jest.fn();
+    const action = makeAction({ revertOptimistic });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    act(() => {
+      result.current.undo();
+    });
+    expect(revertOptimistic).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call revertOptimistic when the timer commits the action', () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const revertOptimistic = jest.fn();
+    const action = makeAction({ revertOptimistic });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    act(() => {
+      jest.advanceTimersByTime(6000);
+    });
+    expect(revertOptimistic).not.toHaveBeenCalled();
+  });
+
   it('does not call revertAdvance when the timer commits the action', () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const revertAdvance = jest.fn();

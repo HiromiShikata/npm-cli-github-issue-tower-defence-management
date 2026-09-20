@@ -37,4 +37,25 @@ describe('useConsoleOverlay', () => {
     const { result } = renderHook(() => useConsoleOverlay('acme'));
     expect(result.current.overlay.bad).toBeUndefined();
   });
+
+  it('removes the named key from overlay state and storage when revertOverlayEntry is called', () => {
+    localStorage.setItem(
+      overlayStorageKey('acme'),
+      JSON.stringify({
+        PVTI_1: { ts: 100, mode: 'prs', done: true },
+        PVTI_2: { ts: 200, mode: 'prs', done: true },
+      }),
+    );
+    const { result } = renderHook(() => useConsoleOverlay('acme'));
+    act(() => {
+      result.current.revertOverlayEntry('PVTI_1');
+    });
+    expect(result.current.overlay.PVTI_1).toBeUndefined();
+    expect(result.current.overlay.PVTI_2?.done).toBe(true);
+    const stored = JSON.parse(
+      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
+    );
+    expect(stored.PVTI_1).toBeUndefined();
+    expect(stored.PVTI_2).toBeDefined();
+  });
 });
