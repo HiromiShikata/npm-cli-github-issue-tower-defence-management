@@ -7,6 +7,8 @@ import { isHumanComment } from './isHumanComment';
 export const SILENT_CRASH_ESCALATION_PHRASE =
   'The agent may have crashed or stopped silently';
 export const REPORTING_LOOP_ESCALATION_PHRASE =
+  'This task has been marked as Failed Preparation';
+const REPORTING_LOOP_ESCALATION_PHRASE_LEGACY =
   'Owner judgment is required to break the loop';
 export const DISPATCH_LOOP_ESCALATION_PHRASE =
   'the issue is escalated for a decision';
@@ -70,6 +72,7 @@ const isSilentRedispatchCommentForAgent = (
 
 const isEscalationDispatchComment = (content: string): boolean =>
   content.includes(REPORTING_LOOP_ESCALATION_PHRASE) ||
+  content.includes(REPORTING_LOOP_ESCALATION_PHRASE_LEGACY) ||
   content.includes(SILENT_CRASH_ESCALATION_PHRASE) ||
   content.includes(DISPATCH_LOOP_ESCALATION_PHRASE);
 
@@ -204,7 +207,7 @@ export const resolveNextStepAgentDispatchRepetition = <
       normalizeProjectFieldName(params.nextStepAgent);
   const silentRedispatches = countSilentRedispatches(params);
   if (params.isNoStory) {
-    if (silentRedispatches !== null) {
+    if (params.nextStepAgent !== null) {
       return {
         type: 'storyUnset',
         comment: `The story field is not set on this issue. The designated agent "${params.nextStepAgent}" cannot be started until a story is assigned; the default agent is being dispatched instead.`,
@@ -216,7 +219,7 @@ export const resolveNextStepAgentDispatchRepetition = <
     silentRedispatches !== null &&
     silentRedispatches.count >= params.thresholdForAutoReject
   ) {
-    if (silentRedispatches.hasReportsInCycle && !isSelfReference) {
+    if (silentRedispatches.hasReportsInCycle) {
       return {
         type: 'escalateReportingLoop',
         comment: `${DISPATCH_REPETITION_PREFIX}${REPORTING_LOOP_ESCALATED_KEYWORD} ${params.nextStepAgent}
@@ -252,19 +255,6 @@ ${dispatchLoopBody}`,
   }
   if (params.nextStepAgent === null) {
     return { type: 'notRepeated' };
-  }
-  if (
-    silentRedispatches !== null &&
-    silentRedispatches.count >= 3 &&
-    silentRedispatches.hasReportsInCycle &&
-    !isSelfReference
-  ) {
-    return {
-      type: 'escalateReportingLoop',
-      comment: `${DISPATCH_REPETITION_PREFIX}${REPORTING_LOOP_ESCALATED_KEYWORD} ${params.nextStepAgent}
-
-The agent has been reporting every cycle but cannot advance — it has been dispatched again after its report without resolving the underlying blocker. ${REPORTING_LOOP_ESCALATION_PHRASE}.`,
-    };
   }
   if (silentRedispatches !== null && silentRedispatches.count > 1) {
     return {

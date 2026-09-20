@@ -1310,7 +1310,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       createdAt: new Date(),
     });
 
-    it('dispatches again for self-reference when agent has been reporting every cycle but cannot advance', async () => {
+    it('escalates to Failed Preparation for self-reference when agent has been reporting every cycle and count reaches threshold', async () => {
       const issue = buildConflictedIssueWithLinkedPr(
         projectWithAllEscalationStatuses,
       );
@@ -1324,7 +1324,7 @@ describe('ConflictedIssueRevertUseCase', () => {
 
       // One silent-redispatch comment in cycle → count = 2 >= threshold = 2.
       // agentReport in cycle → hasReportsInCycle = true.
-      // Self-reference → dispatchAgain, not escalateReportingLoop.
+      // escalateReportingLoop triggers regardless of self-reference.
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         humanComment,
         silentRedispatchComment(1),
@@ -1341,7 +1341,7 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         projectWithAllEscalationStatuses,
         issue,
-        'awaiting-workspace-id',
+        'failed-preparation-id',
       );
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
         expect.anything(),
@@ -1351,11 +1351,13 @@ describe('ConflictedIssueRevertUseCase', () => {
       expect(mockIssueRepository.updateStatus).not.toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
-        'failed-preparation-id',
+        'awaiting-workspace-id',
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        AUTO_STATUS_CHECK_CONFLICT_MESSAGE,
+        expect.stringContaining(
+          'This task has been marked as Failed Preparation',
+        ),
       );
       expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         issue,
