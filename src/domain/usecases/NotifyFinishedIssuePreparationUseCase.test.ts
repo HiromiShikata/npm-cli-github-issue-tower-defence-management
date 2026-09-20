@@ -7777,7 +7777,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       );
     });
 
-    it('does not move to Awaiting Owner when the field is false', async () => {
+    it('does not create the needOwnerConfirmation comment when the field is false', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
       mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
       mockIssueRepository.get.mockResolvedValue(issue);
@@ -7799,16 +7799,31 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         allowedIssueAuthors: ['test-user'],
       });
 
-      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'Awaiting Owner' }),
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
+        'Owner confirmation or approval required',
       );
     });
 
-    it('logs an error and falls through to normal logic when project has no Awaiting Owner status', async () => {
+    it('logs an error and returns early when project has no Awaiting Owner status', async () => {
       const consoleError = jest.spyOn(console, 'error').mockImplementation();
+      const projectWithoutAwaitingOwner = createMockProject({
+        status: {
+          name: 'Status',
+          fieldId: 'field-1',
+          statuses: [
+            { id: 'preparation-id', name: 'Preparation', color: 'YELLOW', description: '' },
+            { id: 'awaiting-workspace-id', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
+            { id: 'failed-preparation-id', name: 'Failed Preparation', color: 'RED', description: '' },
+          ],
+        },
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL',
+          fieldId: 'depended-field-id',
+        },
+      });
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutAwaitingOwner);
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
