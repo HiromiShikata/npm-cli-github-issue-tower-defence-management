@@ -2849,6 +2849,9 @@ describe('ConsolePage workflow issue creation', () => {
       await waitFor(() => {
         expect(getByRole('dialog')).toBeInTheDocument();
       });
+      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
+        target: { value: 'Test workflow issue' },
+      });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       await waitFor(() => {
         expect(queryByText(/Task created/)).toBeInTheDocument();
@@ -2882,6 +2885,9 @@ describe('ConsolePage workflow issue creation', () => {
       fireEvent.click(createBtn);
       await waitFor(() => {
         expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
+        target: { value: 'Test workflow issue' },
       });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       await act(async () => {
@@ -2927,6 +2933,9 @@ describe('ConsolePage workflow issue creation', () => {
       await waitFor(() => {
         expect(getByRole('dialog')).toBeInTheDocument();
       });
+      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
+        target: { value: 'Test workflow issue' },
+      });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       await act(async () => {
         jest.advanceTimersByTime(5100);
@@ -2967,6 +2976,9 @@ describe('ConsolePage workflow issue creation', () => {
       fireEvent.click(createBtn);
       await waitFor(() => {
         expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
+        target: { value: 'Test workflow issue' },
       });
       fireEvent.click(getByRole('button', { name: 'Create' }));
       await act(async () => {

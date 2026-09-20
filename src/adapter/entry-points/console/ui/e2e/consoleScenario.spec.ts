@@ -1767,6 +1767,7 @@ test('creates a workflow improvement issue from a comment when the + button is c
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
+    await dialog.getByRole('textbox', { name: 'Title' }).fill('Test workflow issue');
     await dialog.getByRole('button', { name: 'Create' }).click();
 
     await expect
