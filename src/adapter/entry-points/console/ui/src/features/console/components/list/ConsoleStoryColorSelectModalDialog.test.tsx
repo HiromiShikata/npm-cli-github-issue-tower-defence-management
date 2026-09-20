@@ -42,7 +42,10 @@ describe('ConsoleStoryColorSelectModalDialog', () => {
   it('calls onClose after a color swatch is clicked', () => {
     const onClose = jest.fn();
     const { getByRole } = render(
-      <ConsoleStoryColorSelectModalDialog {...defaultProps} onClose={onClose} />,
+      <ConsoleStoryColorSelectModalDialog
+        {...defaultProps}
+        onClose={onClose}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'GREEN' }));
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -51,7 +54,10 @@ describe('ConsoleStoryColorSelectModalDialog', () => {
   it('calls onClose when Cancel is clicked', () => {
     const onClose = jest.fn();
     const { getByRole } = render(
-      <ConsoleStoryColorSelectModalDialog {...defaultProps} onClose={onClose} />,
+      <ConsoleStoryColorSelectModalDialog
+        {...defaultProps}
+        onClose={onClose}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Cancel' }));
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -60,7 +66,10 @@ describe('ConsoleStoryColorSelectModalDialog', () => {
   it('calls onClose when the backdrop is clicked', () => {
     const onClose = jest.fn();
     const { getByRole } = render(
-      <ConsoleStoryColorSelectModalDialog {...defaultProps} onClose={onClose} />,
+      <ConsoleStoryColorSelectModalDialog
+        {...defaultProps}
+        onClose={onClose}
+      />,
     );
     fireEvent.click(getByRole('button', { name: 'Close dialog' }));
     expect(onClose).toHaveBeenCalledTimes(1);

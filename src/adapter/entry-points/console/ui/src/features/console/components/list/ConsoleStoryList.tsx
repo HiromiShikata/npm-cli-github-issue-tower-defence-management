@@ -199,27 +199,31 @@ export const ConsoleStoryList = ({
 
   const taskCreateEntry =
     taskCreateDialogId !== null
-      ? stories.find((s) => s.storyOptionId === taskCreateDialogId) ?? null
+      ? (stories.find((s) => s.storyOptionId === taskCreateDialogId) ?? null)
       : null;
   const colorPickerEntry =
     colorPickerOptionId !== null
-      ? stories.find((s) => s.storyOptionId === colorPickerOptionId) ?? null
+      ? (stories.find((s) => s.storyOptionId === colorPickerOptionId) ?? null)
       : null;
   const deleteEntry =
     deleteConfirmOptionId !== null
-      ? stories.find((s) => s.storyOptionId === deleteConfirmOptionId) ?? null
+      ? (stories.find((s) => s.storyOptionId === deleteConfirmOptionId) ?? null)
       : null;
   const activeDeleteState =
     deleteConfirmOptionId !== null
-      ? (deleteStates[deleteConfirmOptionId] ?? { isDeleting: false, error: null })
+      ? (deleteStates[deleteConfirmOptionId] ?? {
+          isDeleting: false,
+          error: null,
+        })
       : { isDeleting: false, error: null };
   const renameEntry =
     renameOptionId !== null
-      ? stories.find((s) => s.storyOptionId === renameOptionId) ?? null
+      ? (stories.find((s) => s.storyOptionId === renameOptionId) ?? null)
       : null;
   const descriptionEntry =
     descriptionEditOptionId !== null
-      ? stories.find((s) => s.storyOptionId === descriptionEditOptionId) ?? null
+      ? (stories.find((s) => s.storyOptionId === descriptionEditOptionId) ??
+        null)
       : null;
 
   return (

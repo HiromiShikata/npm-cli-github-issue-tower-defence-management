@@ -32,9 +32,7 @@ describe('ConsoleStoryRenameModalDialog', () => {
       target: { value: 'Renamed story' },
     });
     fireEvent.click(getByRole('button', { name: 'Rename' }));
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith('Renamed story'),
-    );
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('Renamed story'));
   });
 
   it('calls onClose after a successful rename', async () => {

@@ -27,7 +27,10 @@ describe('ConsoleStoryTaskCreateModalDialog', () => {
   it('calls onSubmit with storyName and title when Create is clicked', async () => {
     const onSubmit = jest.fn().mockResolvedValue(undefined);
     const { getByPlaceholderText, getByRole } = render(
-      <ConsoleStoryTaskCreateModalDialog {...defaultProps} onSubmit={onSubmit} />,
+      <ConsoleStoryTaskCreateModalDialog
+        {...defaultProps}
+        onSubmit={onSubmit}
+      />,
     );
     fireEvent.change(getByPlaceholderText('Issue title'), {
       target: { value: 'New task' },
@@ -65,7 +68,10 @@ describe('ConsoleStoryTaskCreateModalDialog', () => {
   it('shows an API error when onSubmit rejects', async () => {
     const onSubmit = jest.fn().mockRejectedValue(new Error('API error'));
     const { getByPlaceholderText, getByRole, findByRole } = render(
-      <ConsoleStoryTaskCreateModalDialog {...defaultProps} onSubmit={onSubmit} />,
+      <ConsoleStoryTaskCreateModalDialog
+        {...defaultProps}
+        onSubmit={onSubmit}
+      />,
     );
     fireEvent.change(getByPlaceholderText('Issue title'), {
       target: { value: 'Bad task' },

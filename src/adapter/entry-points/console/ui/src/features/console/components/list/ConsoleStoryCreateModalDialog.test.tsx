@@ -30,9 +30,7 @@ describe('ConsoleStoryCreateModalDialog', () => {
       target: { value: 'My new story' },
     });
     fireEvent.click(getByRole('button', { name: 'Create' }));
-    await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith('My new story'),
-    );
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('My new story'));
   });
 
   it('calls onClose after a successful submit', async () => {

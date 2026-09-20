@@ -61,11 +61,7 @@ export const ConsoleStoryColorSelectModalDialog = ({
           })}
         </div>
         <div className="console-modal-actions">
-          <button
-            type="button"
-            className="console-op-button"
-            onClick={onClose}
-          >
+          <button type="button" className="console-op-button" onClick={onClose}>
             Cancel
           </button>
         </div>

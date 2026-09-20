@@ -27,6 +27,7 @@ export const Deleting: Story = {
 
 export const WithError: Story = {
   args: {
-    deleteError: 'Cannot delete story with 12 open tasks assigned to other stories.',
+    deleteError:
+      'Cannot delete story with 12 open tasks assigned to other stories.',
   },
 };

@@ -28,7 +28,8 @@ export const ConsoleStoryDeleteModalDialog = ({
     <div className="console-modal-inner">
       <h2 className="console-modal-title">Delete story</h2>
       <p className="console-story-delete-confirm-message">
-        Delete story option &quot;{storyName}&quot; from the GitHub custom field?
+        Delete story option &quot;{storyName}&quot; from the GitHub custom
+        field?
       </p>
       {deleteError !== null && (
         <p role="alert" className="console-list-error">
