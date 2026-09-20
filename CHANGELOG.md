@@ -1,3 +1,15 @@
+# [2.134.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.7...v2.134.0) (2026-09-20)
+
+
+### Bug Fixes
+
+* **console:** fix workflow issue dialog title pre-fill, add source URL and title to body ([#2504](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2504)) ([52ad758](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/52ad758c1f130bc353c20a76353904d63ad1e2c7)), closes [HiromiShikata/umino-corporait-operation#32059](https://github.com/HiromiShikata/umino-corporait-operation/issues/32059)
+
+
+### Features
+
+* **NotifyFinishedIssuePreparation:** route workflowError to Failed Preparation and needOwnerConfirmationOrApproval to Awaiting Owner ([#2502](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2502)) ([90eee1f](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/90eee1f8e183f95748878bb0abb9f352bfb73df5))
+
 ## [2.133.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.6...v2.133.7) (2026-09-20)
 
 
