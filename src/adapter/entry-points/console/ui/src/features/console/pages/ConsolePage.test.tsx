@@ -1951,7 +1951,9 @@ describe('ConsolePage auto-advance tab', () => {
         navigatePush: jest.Mock;
       }>('../lib/navigation');
       await waitFor(() => {
-        expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+        expect(navigatePush).toHaveBeenCalledWith(
+          '/projects/beta/todo-by-human',
+        );
       });
     } finally {
       jest.useRealTimers();
