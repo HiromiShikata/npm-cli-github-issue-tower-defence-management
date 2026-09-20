@@ -1,3 +1,10 @@
+## [2.132.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.6...v2.132.7) (2026-09-20)
+
+
+### Bug Fixes
+
+* reorder todo-by-human to leftmost tab in CONSOLE_TABS ([#2471](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2471)) ([0749579](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0749579927169dd868d9595a2eda631fa894dab8))
+
 ## [2.132.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.5...v2.132.6) (2026-09-20)
 
 
