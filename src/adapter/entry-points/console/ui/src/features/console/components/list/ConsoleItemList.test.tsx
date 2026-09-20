@@ -188,11 +188,11 @@ describe('ConsoleItemList', () => {
     expect(getAllByRole('button').length).toBe(consoleListItemsFixture.length);
   });
 
-  it('does not apply display:flex to console-list-row so that list items stack vertically rather than appearing side-by-side', () => {
+  it('declares only border-bottom on console-list-row so that list items stack vertically rather than appearing side-by-side', () => {
     const css = readFileSync(join(__dirname, '../../../../index.css'), 'utf-8');
     const match = css.match(/\.console-list-row\s*\{([^}]+)\}/);
     const ruleBlock = match ? match[1] : null;
     expect(ruleBlock).not.toBeNull();
-    expect(ruleBlock).not.toContain('display: flex');
+    expect(ruleBlock?.trim().replace(/\s+/g, ' ')).toBe('border-bottom: 1px solid #21262d;');
   });
 });
