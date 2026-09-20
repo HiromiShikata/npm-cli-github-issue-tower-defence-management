@@ -27,8 +27,10 @@ import {
 import { Issue } from '../entities/Issue';
 import { Project } from '../entities/Project';
 import { ensureAgentOptionAndGetId } from './ensureAgentOptionAndGetId';
+import { extractNeedOwnerConfirmationOrApproval } from './extractNeedOwnerConfirmationOrApproval';
 import { extractNextStepAgent } from './extractNextStepAgent';
 import { extractStory } from './extractStory';
+import { extractWorkflowError } from './extractWorkflowError';
 import { findLastAgentReport } from './findLastAgentReport';
 
 import {
@@ -628,6 +630,54 @@ export class NotifyFinishedIssuePreparationUseCase {
       ) {
         await this.createCommentWithDedup(issue, repetition.comment);
       }
+      return;
+    }
+
+    const workflowError = lastAgentReport
+      ? extractWorkflowError(lastAgentReport.content)
+      : null;
+    if (workflowError !== null) {
+      issue.status = FAILED_PREPARATION_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        failedPreparationStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.setDependedIssueUrlForAllOpenPRs(
+        issue,
+        params.issueUrl,
+        project,
+      );
+      await this.createCommentWithDedup(
+        issue,
+        `Workflow error: ${workflowError}`,
+      );
+      await this.sendWorkflowBlockerNotification(
+        params.issueUrl,
+        params.workflowBlockerResolvedWebhookUrl,
+        project,
+      );
+      return;
+    }
+
+    const needOwnerConfirmationOrApproval = lastAgentReport
+      ? extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
+      : false;
+    if (needOwnerConfirmationOrApproval) {
+      issue.status = AWAITING_OWNER_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingOwnerStatusOption.id,
+      );
+      await this.patchConsoleTab(issue);
+      await this.createCommentWithDedup(
+        issue,
+        'Owner confirmation or approval required',
+      );
       return;
     }
 
