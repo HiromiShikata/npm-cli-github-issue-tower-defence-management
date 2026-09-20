@@ -650,10 +650,7 @@ export class NotifyFinishedIssuePreparationUseCase {
         params.issueUrl,
         project,
       );
-      await this.issueCommentRepository.createComment(
-        issue,
-        `Workflow error: ${workflowError}`,
-      );
+      await this.createCommentWithDedup(issue, `Workflow error: ${workflowError}`);
       await this.sendWorkflowBlockerNotification(
         params.issueUrl,
         params.workflowBlockerResolvedWebhookUrl,
@@ -666,28 +663,16 @@ export class NotifyFinishedIssuePreparationUseCase {
       ? extractNeedOwnerConfirmationOrApproval(lastAgentReport.content)
       : false;
     if (needOwnerConfirmationOrApproval) {
-      const awaitingOwnerStatusOption = project.status.statuses.find(
-        (s) => s.name === AWAITING_OWNER_STATUS_NAME,
+      issue.status = AWAITING_OWNER_STATUS_NAME;
+      await this.issueRepository.update(issue, project);
+      await this.issueRepository.updateStatus(
+        project,
+        issue,
+        awaitingOwnerStatusOption.id,
       );
-      if (!awaitingOwnerStatusOption) {
-        console.error(
-          `Awaiting Owner status option '${AWAITING_OWNER_STATUS_NAME}' not found in project.`,
-        );
-      } else {
-        issue.status = AWAITING_OWNER_STATUS_NAME;
-        await this.issueRepository.update(issue, project);
-        await this.issueRepository.updateStatus(
-          project,
-          issue,
-          awaitingOwnerStatusOption.id,
-        );
-        await this.patchConsoleTab(issue);
-        await this.issueCommentRepository.createComment(
-          issue,
-          'Owner confirmation or approval required',
-        );
-        return;
-      }
+      await this.patchConsoleTab(issue);
+      await this.createCommentWithDedup(issue, 'Owner confirmation or approval required');
+      return;
     }
 
     if (rejections.length <= 0) {

@@ -1,18 +1,17 @@
 import { extractFencedJsonBlocks } from './extractFencedJsonBlocks';
 
 export const extractWorkflowError = (body: string): string | null => {
-  for (const block of extractFencedJsonBlocks(body, 'workflowError')) {
-    if (typeof block !== 'object' || block === null) {
-      continue;
-    }
-    if (!('workflowError' in block)) {
-      continue;
-    }
-    const value = Reflect.get(block, 'workflowError');
-    if (typeof value !== 'string' || value.trim() === '') {
-      continue;
-    }
-    return value.trim();
+  const blocks = extractFencedJsonBlocks(body, 'workflowError');
+  const lastBlock = blocks[blocks.length - 1];
+  if (typeof lastBlock !== 'object' || lastBlock === null) {
+    return null;
   }
-  return null;
+  if (!('workflowError' in lastBlock)) {
+    return null;
+  }
+  const value = Reflect.get(lastBlock, 'workflowError');
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+  return value.trim();
 };

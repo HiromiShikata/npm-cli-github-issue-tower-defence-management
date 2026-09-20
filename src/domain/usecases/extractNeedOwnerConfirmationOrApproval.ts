@@ -3,20 +3,17 @@ import { extractFencedJsonBlocks } from './extractFencedJsonBlocks';
 export const extractNeedOwnerConfirmationOrApproval = (
   body: string,
 ): boolean => {
-  for (const block of extractFencedJsonBlocks(
+  const blocks = extractFencedJsonBlocks(
     body,
     'needOwnerConfirmationOrApproval',
-  )) {
-    if (typeof block !== 'object' || block === null) {
-      continue;
-    }
-    if (!('needOwnerConfirmationOrApproval' in block)) {
-      continue;
-    }
-    const value = Reflect.get(block, 'needOwnerConfirmationOrApproval');
-    if (value === true) {
-      return true;
-    }
+  );
+  const lastBlock = blocks[blocks.length - 1];
+  if (typeof lastBlock !== 'object' || lastBlock === null) {
+    return false;
   }
-  return false;
+  if (!('needOwnerConfirmationOrApproval' in lastBlock)) {
+    return false;
+  }
+  const value = Reflect.get(lastBlock, 'needOwnerConfirmationOrApproval');
+  return value === true;
 };
