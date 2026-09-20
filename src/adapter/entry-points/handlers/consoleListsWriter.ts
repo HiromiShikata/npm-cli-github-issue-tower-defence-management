@@ -7,7 +7,11 @@ import {
   GenerateConsoleListsUseCase,
 } from '../../../domain/usecases/console/GenerateConsoleListsUseCase';
 import { appendCloseEventCount } from '../console/consoleCloseEventStore';
-import { resetDoneProjectItemIdsAcrossTabs } from '../console/consoleDoneStore';
+import {
+  CONSOLE_DONE_TAB_NAMES,
+  readDoneProjectItemIds,
+  resetDoneProjectItemIdsAcrossTabs,
+} from '../console/consoleDoneStore';
 import { CONSOLE_LIST_TAB_NAMES, isRecord } from '../console/consoleTabNames';
 
 export type ConsoleListsWriterParams = {
@@ -75,9 +79,19 @@ const recordNewlyClosedItems = (
       previouslyOpenItemIds.add(itemId);
     }
   }
+  const alreadyCountedItemIds = new Set<string>();
+  for (const tab of CONSOLE_DONE_TAB_NAMES) {
+    for (const itemId of readDoneProjectItemIds(
+      consoleDataOutputDir,
+      pjcode,
+      tab,
+    )) {
+      alreadyCountedItemIds.add(itemId);
+    }
+  }
   let newlyClosedCount = 0;
   for (const itemId of previouslyOpenItemIds) {
-    if (closedItemIds.has(itemId)) {
+    if (closedItemIds.has(itemId) && !alreadyCountedItemIds.has(itemId)) {
       newlyClosedCount++;
     }
   }

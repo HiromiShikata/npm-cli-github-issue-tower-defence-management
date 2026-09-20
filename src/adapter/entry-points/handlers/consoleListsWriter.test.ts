@@ -12,8 +12,12 @@ import {
   CONSOLE_DONE_TAB_NAMES,
   readDoneProjectItemIds,
   recordDoneProjectItemId,
+  recordDoneProjectItemIdAcrossTabs,
 } from '../console/consoleDoneStore';
-import { countCloseEvents } from '../console/consoleCloseEventStore';
+import {
+  appendCloseEvent,
+  countCloseEvents,
+} from '../console/consoleCloseEventStore';
 import {
   formatConsoleGeneratedAt,
   writeConsoleLists,
@@ -509,6 +513,45 @@ describe('writeConsoleLists', () => {
           }),
         ],
         workflowBlockerStoryName: 'regular / WORKFLOW BLOCKER',
+        generatedAt: '2026-06-14T07:22:34Z',
+        nowMs: nowMs + 60_000,
+      });
+
+      expect(countCloseEvents(outDir, 'demo', nowMs + 60_000).h1).toBe(1);
+    });
+
+    it('does not double-count a manually-closed item already recorded in .done.json', () => {
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:33Z',
+        nowMs,
+      });
+
+      appendCloseEvent(outDir, 'demo', nowMs + 30_000);
+      recordDoneProjectItemIdAcrossTabs(outDir, 'demo', 'item-1');
+
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+        ],
         generatedAt: '2026-06-14T07:22:34Z',
         nowMs: nowMs + 60_000,
       });
