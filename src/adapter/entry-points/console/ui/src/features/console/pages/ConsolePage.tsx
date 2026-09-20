@@ -227,11 +227,7 @@ export const ConsolePage = () => {
     () => refreshSingleTab('queued'),
     [refreshSingleTab],
   );
-  const operations = useConsoleOperations(
-    pjcode,
-    caches,
-    refreshQueuedTab,
-  );
+  const operations = useConsoleOperations(pjcode, caches, refreshQueuedTab);
   const actionQueue = useConsoleActionQueue();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {

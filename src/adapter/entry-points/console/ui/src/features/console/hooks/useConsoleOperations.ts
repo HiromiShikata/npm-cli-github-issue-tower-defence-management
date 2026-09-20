@@ -387,7 +387,6 @@ export const useConsoleOperations = (
     [pjcode],
   );
 
-
   const addInlineReviewComment = useCallback(
     async (
       prUrl: string,
