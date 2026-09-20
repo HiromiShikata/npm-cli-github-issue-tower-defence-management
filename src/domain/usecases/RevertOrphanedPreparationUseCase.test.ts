@@ -3050,4 +3050,114 @@ describe('RevertOrphanedPreparationUseCase', () => {
       );
     });
   });
+
+  describe('advanceToQualityCheck fallback when Awaiting Owner status is absent', () => {
+    const createProjectWithoutAwaitingOwner = (): Project => ({
+      ...createMockProject(),
+      status: {
+        name: 'Status',
+        fieldId: 'status-field-id',
+        statuses: [
+          {
+            id: '1',
+            name: 'Awaiting Workspace',
+            color: 'GRAY',
+            description: '',
+          },
+          { id: '2', name: 'Preparation', color: 'YELLOW', description: '' },
+          { id: '3', name: 'Done', color: 'GREEN', description: '' },
+          {
+            id: '5',
+            name: 'Failed Preparation',
+            color: 'RED',
+            description: '',
+          },
+        ],
+      },
+    });
+
+    it('should advance closed orphaned issue to Done when Awaiting Owner status is absent from the project', async () => {
+      const projectWithoutQualityCheck = createProjectWithoutAwaitingOwner();
+      mockProjectRepository.getProject.mockResolvedValue(
+        projectWithoutQualityCheck,
+      );
+      const closedIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        isClosed: true,
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithoutQualityCheck,
+        issues: [closedIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: 'https://github.com/user/repo/issues/10',
+          status: 'Preparation',
+        }),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('3');
+    });
+
+    it('should advance orphaned non-developer agent issue to Done when Awaiting Owner status is absent from the project', async () => {
+      const projectWithoutQualityCheck = createProjectWithoutAwaitingOwner();
+      mockProjectRepository.getProject.mockResolvedValue(
+        projectWithoutQualityCheck,
+      );
+      const stuckIssue = createMockIssue({
+        url: 'https://github.com/user/repo/issues/10',
+        status: 'Preparation',
+        labels: [],
+        agent: 'chore',
+      });
+      mockIssueRepository.getAllIssues.mockResolvedValue({
+        project: projectWithoutQualityCheck,
+        issues: [stuckIssue],
+        cacheUsed: false,
+      });
+      mockLocalCommandRunner.runCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+        exitCode: 1,
+      });
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        {
+          author: 'bot',
+          content:
+            'From: :robot: chore (model)\n\n```json\n{"nextStep": null}\n```',
+          createdAt: new Date(),
+        },
+      ]);
+      mockIssueRepository.get.mockResolvedValue(
+        createMockIssue({
+          url: 'https://github.com/user/repo/issues/10',
+          status: 'Preparation',
+        }),
+      );
+
+      await useCase.run({
+        projectUrl: 'https://github.com/user/repo',
+        preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+        thresholdForAutoReject: 3,
+      });
+
+      expect(mockIssueRepository.findRelatedOpenPRs.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+      expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('3');
+    });
+  });
 });
