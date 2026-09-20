@@ -1169,6 +1169,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       org: 'user',
       repo: 'repo',
       labels: [],
+      story: 'regular / some story',
     });
 
     mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
@@ -1411,7 +1412,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
   });
 
-  it('should dispatch again for self-reference when agent has been reporting but cannot advance', async () => {
+  it('should escalate to Failed Preparation when agent has been reporting but cannot advance past threshold', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1445,15 +1446,15 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
       expect.anything(),
-      'awaiting-workspace-id',
+      'failed-preparation-id',
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('Dispatching it again (3/3)'),
+      expect.stringContaining('This task has been marked as Failed Preparation'),
     );
   });
 
-  it('should escalate to Awaiting Owner when two agents keep naming each other and each one reports every round', async () => {
+  it('should escalate to Failed Preparation when two agents keep naming each other and each one reports every round', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
       status: 'Preparation',
@@ -1491,7 +1492,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
       mockProject,
       expect.anything(),
-      'awaiting-owner-id',
+      'failed-preparation-id',
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
@@ -7025,7 +7026,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
         mockProject,
         expect.anything(),
-        'awaiting-owner-id',
+        'failed-preparation-id',
       );
       expect(mockIssueRepository.searchIssue).not.toHaveBeenCalledWith(
         expect.objectContaining({ owner: 'workflow-owner' }),

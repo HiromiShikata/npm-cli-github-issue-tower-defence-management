@@ -211,11 +211,11 @@ export class RevertOrphanedPreparationUseCase {
         repetition.type === 'escalateReportingLoop' ||
         (repetition.type === 'escalateDispatchLoop' && nextStepAgent !== null)
       ) {
-        if (awaitingOwnerStatusOption) {
+        if (failedPreparationStatusOption) {
           await this.issueRepository.updateStatus(
             project,
             issue,
-            awaitingOwnerStatusOption.id,
+            failedPreparationStatusOption.id,
           );
         }
         await this.createCommentWithDedup(issue, repetition.comment);

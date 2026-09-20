@@ -553,12 +553,12 @@ export class NotifyFinishedIssuePreparationUseCase {
       repetition.type === 'escalateReportingLoop' ||
       (repetition.type === 'escalateDispatchLoop' && nextStepAgent !== null)
     ) {
-      issue.status = AWAITING_OWNER_STATUS_NAME;
+      issue.status = FAILED_PREPARATION_STATUS_NAME;
       await this.issueRepository.update(issue, project);
       await this.issueRepository.updateStatus(
         project,
         issue,
-        awaitingOwnerStatusOption.id,
+        failedPreparationStatusOption.id,
       );
       await this.patchConsoleTab(issue);
       await this.createCommentWithDedup(issue, repetition.comment);

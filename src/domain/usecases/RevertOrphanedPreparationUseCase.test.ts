@@ -391,7 +391,7 @@ describe('RevertOrphanedPreparationUseCase', () => {
     );
   });
 
-  it('should dispatch again for self-reference when agent has been reporting but cannot advance', async () => {
+  it('should escalate to Failed Preparation when agent has been reporting but cannot advance past threshold', async () => {
     mockProject.agent = {
       name: 'agent',
       fieldId: 'agent-field-id',
@@ -450,10 +450,62 @@ describe('RevertOrphanedPreparationUseCase', () => {
     });
 
     expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
-    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('1');
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('Dispatching it again (3/3)'),
+      expect.stringContaining('This task has been marked as Failed Preparation'),
+    );
+  });
+
+  it('should escalate to Failed Preparation when two agents keep naming each other and the dispatch loop threshold is reached', async () => {
+    const stuckIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/10',
+      status: 'Preparation',
+      agent: 'systems-analyst',
+    });
+    mockIssueRepository.getAllIssues.mockResolvedValue({
+      project: mockProject,
+      issues: [stuckIssue],
+      cacheUsed: false,
+    });
+    mockLocalCommandRunner.runCommand.mockResolvedValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 1,
+    });
+    const namesReviewer = {
+      author: 'bot',
+      content:
+        'From: :robot: systems-analyst\n```json\n{"nextStep":null,"nextStepAgent":"system-design-reviewer"}\n```',
+      createdAt: new Date('2024-01-02T00:00:00Z'),
+    };
+    const namesAnalyst = {
+      author: 'bot',
+      content:
+        'From: :robot: system-design-reviewer\n```json\n{"nextStep":null,"nextStepAgent":"systems-analyst"}\n```',
+      createdAt: new Date('2024-01-02T01:00:00Z'),
+    };
+    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+      namesReviewer,
+      namesAnalyst,
+      namesReviewer,
+      namesAnalyst,
+      namesReviewer,
+    ]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      preparationProcessCheckCommand: 'pgrep -fa "claude-agent.*{URL}"',
+      thresholdForAutoReject: 3,
+      thresholdForDispatchLoop: 3,
+      allowedIssueAuthors: ['bot'],
+    });
+
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
+    expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      stuckIssue,
+      expect.stringContaining('dispatched 3 times since the last human comment'),
     );
   });
 
