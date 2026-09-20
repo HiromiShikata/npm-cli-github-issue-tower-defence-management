@@ -37,7 +37,6 @@ export const useConsoleTimerProjectSkipNavigation = (
     }
 
     if (prsCount > 0 || todoByHumanCount > 0) {
-      evaluatedPjcodeRef.current = pjcode;
       skipCountRef.current = 0;
       return;
     }
