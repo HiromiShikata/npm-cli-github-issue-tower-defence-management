@@ -571,8 +571,7 @@ export const ConsolePage = () => {
         revertAdvance: input.revertAdvance,
         optimistic:
           overlayPatch !== undefined
-            ? () =>
-                overlayState.patchOverlay(actedKey, overlayPatch, activeTab)
+            ? () => overlayState.patchOverlay(actedKey, overlayPatch, activeTab)
             : undefined,
         revertOptimistic:
           overlayPatch !== undefined
