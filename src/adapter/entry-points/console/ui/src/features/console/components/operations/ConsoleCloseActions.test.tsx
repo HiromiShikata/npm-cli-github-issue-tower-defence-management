@@ -18,4 +18,31 @@ describe('ConsoleCloseActions', () => {
       'close_not_planned',
     ]);
   });
+
+  it('does not render Comment & Close button when onCommentAndClose is not provided', () => {
+    const { queryByText } = render(<ConsoleCloseActions onClose={() => {}} />);
+    expect(queryByText('Comment & Close')).toBeNull();
+  });
+
+  it('renders Comment & Close button to the right of Close when onCommentAndClose is provided', () => {
+    const { getByText } = render(
+      <ConsoleCloseActions
+        onClose={() => {}}
+        onCommentAndClose={async () => {}}
+      />,
+    );
+    expect(getByText('Comment & Close')).toBeInTheDocument();
+  });
+
+  it('calls onCommentAndClose when Comment & Close is clicked', () => {
+    const onCommentAndClose = jest.fn().mockResolvedValue(undefined);
+    const { getByText } = render(
+      <ConsoleCloseActions
+        onClose={() => {}}
+        onCommentAndClose={onCommentAndClose}
+      />,
+    );
+    fireEvent.click(getByText('Comment & Close'));
+    expect(onCommentAndClose).toHaveBeenCalledTimes(1);
+  });
 });
