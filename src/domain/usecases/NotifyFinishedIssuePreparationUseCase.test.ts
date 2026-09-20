@@ -7542,4 +7542,368 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
       ).resolves.toBeUndefined();
     });
   });
+
+  describe('workflowError routing', () => {
+    const projectWithAwaitingOwner = () =>
+      createMockProject({
+        status: {
+          name: 'Status',
+          fieldId: 'field-1',
+          statuses: [
+            { id: 'preparation-id', name: 'Preparation', color: 'YELLOW', description: '' },
+            { id: 'awaiting-workspace-id', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
+            { id: 'failed-preparation-id', name: 'Failed Preparation', color: 'RED', description: '' },
+            { id: 'awaiting-quality-check-id', name: 'Awaiting Quality Check', color: 'BLUE', description: '' },
+            { id: 'todo-by-human-id', name: 'Todo by human', color: 'GREEN', description: '' },
+            { id: 'awaiting-owner-id', name: 'Awaiting Owner', color: 'PINK', description: '' },
+          ],
+        },
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL',
+          fieldId: 'depended-field-id',
+        },
+      });
+
+    it('moves the issue to Failed Preparation when the last agent report has a non-empty workflowError', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"workflowError": "missing required configuration", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'failed-preparation-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        'Workflow error: missing required configuration',
+      );
+    });
+
+    it('calls setDependedIssueUrl for open PRs when workflowError routes to Failed Preparation', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"workflowError": "fatal", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        { url: 'https://github.com/user/repo/pull/2', isConflicted: false, isPassedAllCiJob: true, isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false, missingRequiredCheckNames: [] },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.setDependedIssueUrl).toHaveBeenCalledWith(
+        'https://github.com/user/repo/pull/2',
+        expect.anything(),
+        'https://github.com/user/repo/issues/1',
+      );
+    });
+
+    it('trims the workflowError value in the comment', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"workflowError": "  needs attention  ", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        'Workflow error: needs attention',
+      );
+    });
+
+    it('does not route to Failed Preparation when workflowError is an empty string', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"workflowError": "", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        { url: 'https://github.com/user/repo/pull/1', isConflicted: false, isPassedAllCiJob: true, isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false, missingRequiredCheckNames: [] },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        expect.anything(),
+      );
+    });
+
+    it('does not route to Failed Preparation via workflowError when nextStepAgent is also set (nextStepAgent takes priority)', async () => {
+      const project = createMockProject({
+        ...projectWithAwaitingOwner(),
+        agent: {
+          name: 'Agent',
+          fieldId: 'agent-field-id',
+          options: [{ id: 'opt-developer', name: 'developer', color: 'GRAY', description: '' }],
+        },
+      });
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "developer", "workflowError": "should be ignored", "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        expect.anything(),
+      );
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        expect.anything(),
+      );
+    });
+  });
+
+  describe('needOwnerConfirmationOrApproval routing', () => {
+    const projectWithAwaitingOwner = () =>
+      createMockProject({
+        status: {
+          name: 'Status',
+          fieldId: 'field-1',
+          statuses: [
+            { id: 'preparation-id', name: 'Preparation', color: 'YELLOW', description: '' },
+            { id: 'awaiting-workspace-id', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
+            { id: 'failed-preparation-id', name: 'Failed Preparation', color: 'RED', description: '' },
+            { id: 'awaiting-quality-check-id', name: 'Awaiting Quality Check', color: 'BLUE', description: '' },
+            { id: 'todo-by-human-id', name: 'Todo by human', color: 'GREEN', description: '' },
+            { id: 'awaiting-owner-id', name: 'Awaiting Owner', color: 'PINK', description: '' },
+          ],
+        },
+        dependedIssueUrlSeparatedByComma: {
+          name: 'Depended Issue URL',
+          fieldId: 'depended-field-id',
+        },
+      });
+
+    it('moves the issue to Awaiting Owner when the last agent report has needOwnerConfirmationOrApproval true', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.anything(),
+      );
+      expect(mockIssueRepository.updateStatus).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'awaiting-owner-id',
+      );
+      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+        expect.anything(),
+        'Owner confirmation or approval required',
+      );
+    });
+
+    it('does not move to Awaiting Owner when the field is false', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": false, "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        { url: 'https://github.com/user/repo/pull/1', isConflicted: false, isPassedAllCiJob: true, isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false, missingRequiredCheckNames: [] },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.anything(),
+      );
+    });
+
+    it('logs an error and falls through to normal logic when project has no Awaiting Owner status', async () => {
+      const consoleError = jest.spyOn(console, 'error').mockImplementation();
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
+        { url: 'https://github.com/user/repo/pull/1', isConflicted: false, isPassedAllCiJob: true, isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false, missingRequiredCheckNames: [] },
+      ]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(consoleError).toHaveBeenCalledWith(
+        expect.stringContaining('Awaiting Owner'),
+      );
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.anything(),
+      );
+      consoleError.mockRestore();
+    });
+
+    it('workflowError takes priority over needOwnerConfirmationOrApproval when both are set', async () => {
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: developer (model)\n```json\n{"workflowError": "blocking error", "needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Failed Preparation' }),
+        expect.anything(),
+      );
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.anything(),
+      );
+    });
+
+    it('does not route to Awaiting Owner via needOwnerConfirmationOrApproval when nextStepAgent is also set (nextStepAgent takes priority)', async () => {
+      const project = createMockProject({
+        ...projectWithAwaitingOwner(),
+        agent: {
+          name: 'Agent',
+          fieldId: 'agent-field-id',
+          options: [{ id: 'opt-developer', name: 'developer', color: 'GRAY', description: '' }],
+        },
+      });
+      const issue = createMockIssue({ status: 'Preparation' });
+      mockProjectRepository.getByUrl.mockResolvedValue(project);
+      mockIssueRepository.get.mockResolvedValue(issue);
+      mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
+        createMockComment({
+          content:
+            'From: :robot: agent (model)\n```json\n{"nextStepAgent": "developer", "needOwnerConfirmationOrApproval": true, "nextStep": null}\n```',
+        }),
+      ]);
+      mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([]);
+
+      await useCase.run({
+        projectUrl: 'https://github.com/users/user/projects/1',
+        issueUrl: 'https://github.com/user/repo/issues/1',
+        thresholdForAutoReject: 3,
+        workflowBlockerResolvedWebhookUrl: null,
+        allowedIssueAuthors: ['test-user'],
+      });
+
+      expect(mockIssueRepository.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Workspace' }),
+        expect.anything(),
+      );
+      expect(mockIssueRepository.update).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'Awaiting Owner' }),
+        expect.anything(),
+      );
+    });
+  });
 });
