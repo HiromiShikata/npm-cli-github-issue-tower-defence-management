@@ -666,6 +666,10 @@ body {
   gap: 8px;
   font-size: 0.8125rem;
   font-weight: 700;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 2px 8px 2px 4px;
+  white-space: nowrap;
 }
 
 .console-story-dot {
@@ -3285,4 +3289,185 @@ body {
   border-radius: 4px;
   border: 1px solid #f85149;
   color: #f85149;
+}
+
+.console-story-list-container {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.console-story-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.console-story-list-row {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.console-story-list-row-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.console-story-count {
+  min-width: 20px;
+  text-align: center;
+  border-radius: 20px;
+  background: #484f58;
+  color: #e6edf3;
+  padding: 1px 7px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.console-story-description {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #8b949e;
+  line-height: 1.4;
+}
+
+.console-add-story-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.console-inline-input-form {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.console-inline-input-form-input {
+  flex: 1;
+  min-width: 180px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 7px 10px;
+}
+
+.console-inline-input-form-input:focus {
+  outline: none;
+  border-color: #4493f8;
+}
+
+.console-inline-input-form-textarea {
+  flex: 1;
+  min-width: 240px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 7px 10px;
+  resize: vertical;
+}
+
+.console-inline-input-form-textarea:focus {
+  outline: none;
+  border-color: #4493f8;
+}
+
+.console-story-delete-confirm {
+  background: #1c1006;
+  border: 1px solid #a06800;
+  border-radius: 6px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.console-story-delete-confirm-message {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #ffd166;
+}
+
+.console-story-delete-confirm-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.console-story-task-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  border-top: 1px solid #21262d;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.console-story-task-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 4px;
+  border-bottom: 1px solid #21262d;
+  font-size: 0.7813rem;
+}
+
+.console-story-task-row:last-child {
+  border-bottom: none;
+}
+
+.console-story-task-title {
+  color: #4493f8;
+  text-decoration: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-story-task-title:hover {
+  text-decoration: underline;
+}
+
+.console-story-task-status,
+.console-story-task-agent,
+.console-story-task-next-action-date,
+.console-story-task-next-action-hour {
+  color: #8b949e;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.console-story-task-depended-urls {
+  color: #8b949e;
+  font-size: 0.6875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
 }
