@@ -352,14 +352,15 @@ export const loadFleetTaskCreateUrl = (
     return null;
   }
   const base = `https://github.com/${settings.owner}/${settings.repo}/issues/new`;
-  if (settings.projectUrl == null) {
-    return base;
+  const queryParts: string[] = [];
+  if (settings.projectUrl != null) {
+    const projectParam = extractGitHubProjectParam(settings.projectUrl);
+    if (projectParam !== null) {
+      queryParts.push(`projects=${projectParam}`);
+    }
   }
-  const projectParam = extractGitHubProjectParam(settings.projectUrl);
-  if (projectParam === null) {
-    return base;
-  }
-  return `${base}?projects=${projectParam}`;
+  queryParts.push(`assignees[]=${settings.owner}`);
+  return `${base}?${queryParts.join('&')}`;
 };
 
 export const ERROR_REPORTING_REPOSITORY_KEY = 'errorReportingRepository';
