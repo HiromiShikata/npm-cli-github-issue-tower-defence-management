@@ -888,7 +888,7 @@ describe('ConsoleItemDetailContainer', () => {
     expect(operations.patchItemOverlay).toHaveBeenCalledWith(issueItem, false);
   });
 
-  it('clicking Comment & Close in the composer calls addComment then queues a close action', async () => {
+  it('clicking Comment & Close in the operations bar calls addComment then queues a close action', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
     const { container, getByText } = render(
@@ -926,7 +926,7 @@ describe('ConsoleItemDetailContainer', () => {
     );
   });
 
-  it('does not queue the close action when addComment throws via Comment & Close in the composer', async () => {
+  it('does not queue the close action when addComment throws via Comment & Close in the operations bar', async () => {
     const operations = buildOperations();
     operations.addComment = jest.fn(async () => {
       throw new Error('network error');

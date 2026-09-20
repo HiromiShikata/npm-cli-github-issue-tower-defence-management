@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
 import type { ConsoleAddInlineComment } from '../components/detail/ConsoleFileDiff';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
@@ -342,9 +342,29 @@ export const ConsoleItemDetailContainer = ({
         }
       : undefined;
 
+  const commentDraftRef = useRef<string>('');
+  const [isDraftEmpty, setIsDraftEmpty] = useState<boolean>(
+    (initialCommentDraft ?? '').trim().length === 0,
+  );
+
+  const handleDraftChange = useCallback(
+    (draft: string) => {
+      commentDraftRef.current = draft;
+      setIsDraftEmpty(draft.trim().length === 0);
+      onCommentDraftChange?.(draft);
+    },
+    [onCommentDraftChange],
+  );
+
   const commentAndClose = async (body: string): Promise<void> => {
     await addComment(body);
     handlers.onClose('close');
+  };
+
+  const commentAndCloseWithDraft = async (): Promise<void> => {
+    const body = commentDraftRef.current.trim();
+    if (body.length === 0) return;
+    await commentAndClose(body);
   };
 
   const resolvedStoryName =
@@ -390,7 +410,7 @@ export const ConsoleItemDetailContainer = ({
           initiallyOpen
           initialDraft={initialCommentDraft}
           onSubmit={addComment}
-          onDraftChange={onCommentDraftChange}
+          onDraftChange={handleDraftChange}
           onOkAndAwaitingWorkspace={
             awaitingWorkspaceOption !== null
               ? () => handlers.onOkAndAwaitingWorkspace(awaitingWorkspaceOption)
@@ -399,7 +419,6 @@ export const ConsoleItemDetailContainer = ({
           onSubmitAndMoveToAwaitingWorkspace={
             addCommentAndMoveToAwaitingWorkspace
           }
-          onCommentAndClose={commentAndClose}
           onUploadFile={(file) => operations.uploadAttachment(item, file)}
         />
       }
@@ -416,6 +435,8 @@ export const ConsoleItemDetailContainer = ({
           currentAgentName={item.agent}
           handlers={handlers}
           storyNameForDeletion={storyNameForDeletion}
+          onCommentAndClose={commentAndCloseWithDraft}
+          isDraftEmpty={isDraftEmpty}
         />
       }
     />

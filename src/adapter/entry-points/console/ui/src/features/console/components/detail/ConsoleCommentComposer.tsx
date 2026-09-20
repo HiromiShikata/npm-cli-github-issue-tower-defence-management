@@ -10,7 +10,6 @@ export type ConsoleCommentComposerProps = {
     body: string,
   ) => Promise<ConsoleComment>;
   onOkAndAwaitingWorkspace?: () => void;
-  onCommentAndClose?: (body: string) => Promise<void>;
   onUploadFile?: (file: File) => Promise<string>;
 };
 
@@ -83,7 +82,6 @@ export const ConsoleCommentComposer = ({
   onDraftChange,
   onSubmitAndMoveToAwaitingWorkspace,
   onOkAndAwaitingWorkspace,
-  onCommentAndClose,
   onUploadFile,
 }: ConsoleCommentComposerProps) => {
   const [open, setOpen] = useState<boolean>(initiallyOpen);
@@ -120,9 +118,7 @@ export const ConsoleCommentComposer = ({
     }
   };
 
-  const submit = async (
-    action: 'comment' | 'move' | 'close',
-  ): Promise<void> => {
+  const submit = async (action: 'comment' | 'move'): Promise<void> => {
     const body = draft.trim();
     if (body.length === 0 || status.kind === 'posting') {
       return;
@@ -134,8 +130,6 @@ export const ConsoleCommentComposer = ({
         onSubmitAndMoveToAwaitingWorkspace !== undefined
       ) {
         await onSubmitAndMoveToAwaitingWorkspace(body);
-      } else if (action === 'close' && onCommentAndClose !== undefined) {
-        await onCommentAndClose(body);
       } else {
         await onSubmit(body);
       }
@@ -302,18 +296,6 @@ export const ConsoleCommentComposer = ({
                 }}
               >
                 Comment & Awaiting Workspace
-              </button>
-            )}
-            {onCommentAndClose !== undefined && (
-              <button
-                type="button"
-                className="console-composer-submit"
-                disabled={status.kind === 'posting' || isDraftEmpty}
-                onClick={() => {
-                  void submit('close');
-                }}
-              >
-                Comment &amp; Close
               </button>
             )}
           </div>

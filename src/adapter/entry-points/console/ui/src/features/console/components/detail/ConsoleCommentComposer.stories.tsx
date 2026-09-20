@@ -59,18 +59,10 @@ export const ComposerWithMoveToAwaitingWorkspace: Story = {
   },
 };
 
-export const ComposerWithCommentAndClose: Story = {
-  args: {
-    initiallyOpen: true,
-    onCommentAndClose: async () => {},
-  },
-};
-
 export const ComposerWithAllActionButtons: Story = {
   args: {
     initiallyOpen: true,
     onOkAndAwaitingWorkspace: () => {},
     onSubmitAndMoveToAwaitingWorkspace: acceptComment,
-    onCommentAndClose: async () => {},
   },
 };
