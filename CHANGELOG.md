@@ -1,3 +1,10 @@
+## [2.133.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.4...v2.133.5) (2026-09-20)
+
+
+### Bug Fixes
+
+* **console:** apply overlay patches immediately on enqueue instead of after 5-second commit delay ([#2496](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2496)) ([5405091](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/5405091b8b8184571c1a2fd7272a2530f7d032c3)), closes [HiromiShikata/umino-corporait-operation#32050](https://github.com/HiromiShikata/umino-corporait-operation/issues/32050)
+
 ## [2.133.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.3...v2.133.4) (2026-09-20)
 
 
