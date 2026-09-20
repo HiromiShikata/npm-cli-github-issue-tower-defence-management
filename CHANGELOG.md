@@ -1,3 +1,10 @@
+## [2.132.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.9...v2.132.10) (2026-09-20)
+
+
+### Bug Fixes
+
+* **console:** show undo toast when creating task from comment plus button ([#2473](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2473)) ([336981b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/336981bd0a79bcabac1d0216ec93c9634d27533f))
+
 ## [2.132.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.8...v2.132.9) (2026-09-20)
 
 
