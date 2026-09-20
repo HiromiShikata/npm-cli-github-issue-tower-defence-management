@@ -75,7 +75,10 @@ import {
 } from '../logic/overlay';
 import type { ConsoleSwipeDirection } from '../logic/swipe';
 import { findNextNonEmptyTabToRight } from '../logic/tabAdvance';
-import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
+import {
+  DEFAULT_TIMER_MINUTES,
+  findNextPjcodeWithMinutes,
+} from '../logic/timerSettings';
 import type {
   ConsoleColor,
   ConsoleFieldOption,
@@ -167,7 +170,32 @@ export const ConsolePage = () => {
     timerMode && airplaneSnapshot === null,
   );
 
-  const navigation = useConsoleNavigation(pjcode, counts);
+  const loadedTabs = useMemo(() => {
+    const result = new Set<ConsoleTabName>();
+    for (const tab of CONSOLE_TABS) {
+      if (snapshots[tab.name] !== null) {
+        result.add(tab.name);
+      }
+    }
+    return result;
+  }, [snapshots]);
+
+  const snapshotCounts = useMemo(() => {
+    const result = emptyCounts();
+    for (const tab of CONSOLE_TABS) {
+      const snapshot = snapshots[tab.name];
+      if (snapshot === null) {
+        continue;
+      }
+      result[tab.name] =
+        tab.name === 'stories'
+          ? snapshot.stories.filter((s) => s.color !== 'GRAY').length
+          : snapshot.items.length;
+    }
+    return result;
+  }, [snapshots]);
+
+  const navigation = useConsoleNavigation(pjcode, counts, loadedTabs, snapshotCounts);
   const { activeTab, selectedItemKey, openItem, closeItem } = navigation;
   const selectTab = useConsoleTabSelectHandler(navigation.selectTab);
   const navigateToProject = useCallback(
@@ -441,7 +469,7 @@ export const ConsolePage = () => {
         projectMinutes,
       );
       if (firstPjcode !== null) {
-        navigateReplaceState(`/projects/${firstPjcode}`);
+        navigateReplaceState(`/projects/${firstPjcode}/todo-by-human`);
       }
     }
   }, [pjcode, timerMode, pjcodes, projectMinutes]);
@@ -540,7 +568,7 @@ export const ConsolePage = () => {
           if (!input.skipAdvance && actionAdvances(input.kind, activeTab)) {
             if (
               timerMode &&
-              isTimerExpired(projectMinutes[pjcode ?? ''] ?? 0)
+              isTimerExpired(projectMinutes[pjcode ?? ''] ?? DEFAULT_TIMER_MINUTES)
             ) {
               const nextPjcode = findNextPjcodeWithMinutes(
                 pjcodes,
@@ -548,7 +576,7 @@ export const ConsolePage = () => {
                 projectMinutes,
               );
               if (nextPjcode !== null) {
-                navigatePush(`/projects/${nextPjcode}`);
+                navigatePush(`/projects/${nextPjcode}/todo-by-human`);
               }
             } else {
               advanceToNext(actedKey);

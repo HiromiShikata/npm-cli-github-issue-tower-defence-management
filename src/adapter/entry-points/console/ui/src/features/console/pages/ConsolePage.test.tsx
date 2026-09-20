@@ -1592,7 +1592,7 @@ describe('ConsolePage auto-advance tab', () => {
     navigateReplaceState.mockClear();
     render(<ConsolePage />);
     await waitFor(() => {
-      expect(navigateReplaceState).toHaveBeenCalledWith('/projects/acme');
+      expect(navigateReplaceState).toHaveBeenCalledWith('/projects/acme/todo-by-human');
     });
   });
 

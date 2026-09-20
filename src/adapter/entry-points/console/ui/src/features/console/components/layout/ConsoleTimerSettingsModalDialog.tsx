@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { DEFAULT_TIMER_MINUTES } from '../../logic/timerSettings';
 import { ConsoleToggleSwitch } from '../shared/ConsoleToggleSwitch';
 
 export type ConsoleTimerSettingsModalDialogProps = {
@@ -129,7 +130,7 @@ export const ConsoleTimerSettingsModalDialog = ({
                                   pjcode,
                                   Math.max(
                                     0,
-                                    (projectMinutes[pjcode] ?? 0) - 1,
+                                    (projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) - 1,
                                   ),
                                 )
                               }
@@ -142,9 +143,9 @@ export const ConsoleTimerSettingsModalDialog = ({
                               min={0}
                               max={999}
                               value={
-                                (projectMinutes[pjcode] ?? 0) === 0
+                                (projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) === 0
                                   ? ''
-                                  : projectMinutes[pjcode]
+                                  : (projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES)
                               }
                               onChange={(e) =>
                                 onChangeMinutes(
@@ -166,7 +167,7 @@ export const ConsoleTimerSettingsModalDialog = ({
                                   pjcode,
                                   Math.min(
                                     999,
-                                    (projectMinutes[pjcode] ?? 0) + 1,
+                                    (projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) + 1,
                                   ),
                                 )
                               }
@@ -175,7 +176,7 @@ export const ConsoleTimerSettingsModalDialog = ({
                             </button>
                           </div>
                           <span className="console-timer-settings-minutes-label">
-                            {(projectMinutes[pjcode] ?? 0) === 0
+                            {(projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) === 0
                               ? 'Skip'
                               : 'min'}
                           </span>

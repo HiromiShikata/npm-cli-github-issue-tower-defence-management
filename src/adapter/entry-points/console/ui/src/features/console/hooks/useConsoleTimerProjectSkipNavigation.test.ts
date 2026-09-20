@@ -275,7 +275,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
     expect(navigatePush).toHaveBeenCalledWith('/projects/acme');
   });
 
-  it('navigates to next project with minutes configured when current next has no minutes', () => {
+  it('navigates to next project including unconfigured ones that use DEFAULT_TIMER_MINUTES', () => {
     renderHook(() =>
       useConsoleTimerProjectSkipNavigation(
         true,
@@ -290,7 +290,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
       ),
     );
-    expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+    expect(navigatePush).toHaveBeenCalledWith('/projects/no-timer');
   });
 
   it('navigates when pjcodes loads after snapshots (race condition)', () => {

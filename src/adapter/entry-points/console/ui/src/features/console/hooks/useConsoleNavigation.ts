@@ -42,6 +42,8 @@ export type ConsoleNavigation = {
 export const useConsoleNavigation = (
   pjcode: string | null,
   counts: Record<ConsoleTabName, number>,
+  loadedTabs: Set<ConsoleTabName> = new Set(),
+  snapshotCounts?: Record<ConsoleTabName, number>,
 ): ConsoleNavigation => {
   const readState = useCallback((): {
     activeTab: ConsoleTabName;
@@ -80,11 +82,19 @@ export const useConsoleNavigation = (
     if (typeof window === 'undefined') {
       return;
     }
-    if (parseTabFromPath(window.location.pathname) !== null) {
+    const urlTab = parseTabFromPath(window.location.pathname);
+    const hasData = Object.values(counts).some((c) => c > 0);
+    const rawCounts = snapshotCounts ?? counts;
+    if (
+      urlTab !== null &&
+      (counts[urlTab] > 0 ||
+        rawCounts[urlTab] > 0 ||
+        !loadedTabs.has(urlTab) ||
+        !hasData)
+    ) {
       return;
     }
     const fallbackTab = resolveDefaultActiveTab(counts);
-    const hasData = Object.values(counts).some((c) => c > 0);
     if (hasData && pjcodeRef.current !== null) {
       window.history.replaceState(
         {},
@@ -97,7 +107,7 @@ export const useConsoleNavigation = (
         ? current
         : { ...current, activeTab: fallbackTab },
     );
-  }, [counts]);
+  }, [counts, loadedTabs, snapshotCounts]);
 
   const tabHref = useCallback(
     (tab: ConsoleTabName): string =>

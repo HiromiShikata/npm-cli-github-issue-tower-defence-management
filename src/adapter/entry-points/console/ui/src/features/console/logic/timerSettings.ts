@@ -4,6 +4,7 @@ export type TimerSettings = {
 };
 
 export const TIMER_SETTINGS_KEY = 'tdpm-timer-settings';
+export const DEFAULT_TIMER_MINUTES = 15;
 
 const defaultSettings = (): TimerSettings => ({
   timerMode: false,
@@ -69,7 +70,7 @@ export const findNextPjcodeWithMinutes = (
   for (let i = 0; i < count; i++) {
     const index = (startIndex + i) % pjcodes.length;
     const pjcode = pjcodes[index];
-    if ((projectMinutes[pjcode] ?? 0) > 0) {
+    if ((projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) > 0) {
       return pjcode;
     }
   }

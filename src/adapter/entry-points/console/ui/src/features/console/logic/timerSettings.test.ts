@@ -1,4 +1,7 @@
-import { findNextPjcodeWithMinutes } from './timerSettings';
+import {
+  DEFAULT_TIMER_MINUTES,
+  findNextPjcodeWithMinutes,
+} from './timerSettings';
 
 describe('findNextPjcodeWithMinutes', () => {
   const pjcodes = ['alpha', 'beta', 'gamma'];
@@ -43,8 +46,16 @@ describe('findNextPjcodeWithMinutes', () => {
     expect(findNextPjcodeWithMinutes(pjcodes, null, minutes)).toBe('alpha');
   });
 
-  it('treats missing projectMinutes entry as zero', () => {
-    expect(findNextPjcodeWithMinutes(pjcodes, 'alpha', {})).toBeNull();
+  it('treats missing projectMinutes entry as DEFAULT_TIMER_MINUTES', () => {
+    expect(DEFAULT_TIMER_MINUTES).toBe(15);
+    expect(findNextPjcodeWithMinutes(pjcodes, 'alpha', {})).toBe('beta');
+    expect(findNextPjcodeWithMinutes(pjcodes, null, {})).toBe('alpha');
+  });
+
+  it('skips only explicitly zero projects when some entries are missing', () => {
+    expect(findNextPjcodeWithMinutes(pjcodes, 'alpha', { beta: 0 })).toBe(
+      'gamma',
+    );
   });
 
   it('returns null for an empty pjcodes list', () => {
