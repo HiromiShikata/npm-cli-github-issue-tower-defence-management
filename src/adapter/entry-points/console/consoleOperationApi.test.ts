@@ -698,8 +698,8 @@ describe('consoleOperationApi', () => {
       expect(response.statusCode).toBe(200);
       expect(countCloseEvents(baseDir, 'acme', Date.now())).toEqual({
         h1: 1,
-        h3: 0,
-        h5: 0,
+        h3: 1,
+        h5: 1,
       });
       jest.useRealTimers();
     });

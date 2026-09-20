@@ -400,8 +400,8 @@ describe('writeConsoleLists', () => {
 
       expect(countCloseEvents(outDir, 'demo', nowMs + 60_000)).toEqual({
         h1: 2,
-        h3: 1,
-        h5: 0,
+        h3: 2,
+        h5: 2,
       });
     });
 

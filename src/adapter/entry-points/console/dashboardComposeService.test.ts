@@ -449,8 +449,8 @@ describe('buildComposeDashboardInput', () => {
       });
       expect(input.projects[0].closeEventCounts).toEqual({
         h1: 1,
-        h3: 0,
-        h5: 0,
+        h3: 1,
+        h5: 1,
       });
     } finally {
       fs.rmSync(dataDir, { recursive: true, force: true });
