@@ -1,3 +1,12 @@
+## [2.133.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.2...v2.133.3) (2026-09-20)
+
+
+### Bug Fixes
+
+* **console:** remove accidental display:flex from .console-list-row to restore card layout ([#2490](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2490)) ([8cea756](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/8cea756aa4a5fd9535fb5b5952d29976cb58ebdd)), closes [#2449](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2449) [#2488](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2488)
+* **console:** restore Comment & Close button to right of Close button ([#2489](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2489)) ([82aae16](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/82aae1678fbcda4cab54af900779e413f717d549)), closes [HiromiShikata/umino-corporait-operation#32038](https://github.com/HiromiShikata/umino-corporait-operation/issues/32038)
+* **console:** treat unconfigured projects as 15-min default, include tab in timer nav URLs, prevent premature tab switch on empty url tab ([#2485](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2485)) ([10cf5e0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/10cf5e0e601575ab5a92318653f35dd6dac9fc74)), closes [HiromiShikata/umino-corporait-operation#32027](https://github.com/HiromiShikata/umino-corporait-operation/issues/32027)
+
 ## [2.133.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.1...v2.133.2) (2026-09-20)
 
 
