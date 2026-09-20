@@ -559,6 +559,154 @@ describe('writeConsoleLists', () => {
       expect(countCloseEvents(outDir, 'demo', nowMs + 60_000).h1).toBe(1);
     });
   });
+
+  describe('concurrent write lock guard', () => {
+    const nowMs = 1_700_000_000_000;
+    const lockFilePath = (): string =>
+      path.join(outDir, 'demo', '.console-list-write.lock');
+
+    it('records close events exactly once when a concurrent call holds the lock', () => {
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:33Z',
+        nowMs,
+      });
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:34Z',
+        nowMs: nowMs + 100,
+      });
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:35Z',
+        nowMs: nowMs + 200,
+      });
+      fs.writeFileSync(lockFilePath(), '');
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:36Z',
+        nowMs: nowMs + 300,
+      });
+      fs.unlinkSync(lockFilePath());
+      expect(countCloseEvents(outDir, 'demo', nowMs + 400).h1).toBe(1);
+    });
+
+    it('writes list files even when the lock is already held', () => {
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:33Z',
+        nowMs,
+      });
+      fs.writeFileSync(lockFilePath(), '');
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:34Z',
+        nowMs: nowMs + 1000,
+      });
+      expect(
+        fs.existsSync(path.join(outDir, 'demo', 'todo-by-human', 'list.json')),
+      ).toBe(true);
+      expect(countCloseEvents(outDir, 'demo', nowMs + 2000).h1).toBe(0);
+      fs.unlinkSync(lockFilePath());
+    });
+
+    it('deletes a stale lock and retries acquisition', () => {
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:33Z',
+        nowMs,
+      });
+      fs.writeFileSync(lockFilePath(), '');
+      fs.utimesSync(lockFilePath(), new Date(0), new Date(0));
+      writeConsoleLists({
+        consoleDataOutputDir: outDir,
+        pjcode: 'demo',
+        assigneeLogin: ASSIGNEE,
+        project,
+        issues: [
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
+        ],
+        generatedAt: '2026-06-14T07:22:34Z',
+        nowMs: nowMs + 1000,
+      });
+      expect(countCloseEvents(outDir, 'demo', nowMs + 2000).h1).toBe(1);
+      expect(fs.existsSync(lockFilePath())).toBe(false);
+    });
+  });
 });
 
 describe('formatConsoleGeneratedAt', () => {

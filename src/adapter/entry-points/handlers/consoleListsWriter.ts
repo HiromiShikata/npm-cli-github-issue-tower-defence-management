@@ -14,6 +14,8 @@ import {
 } from '../console/consoleDoneStore';
 import { CONSOLE_LIST_TAB_NAMES, isRecord } from '../console/consoleTabNames';
 
+export const CONSOLE_WRITE_LOCK_STALE_TIMEOUT_MS = 30 * 1000;
+
 export type ConsoleListsWriterParams = {
   consoleDataOutputDir: string | null | undefined;
   pjcode: string | null | undefined;
@@ -29,6 +31,26 @@ export type ConsoleListsWriterParams = {
 
 export const formatConsoleGeneratedAt = (date: Date): string =>
   date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+const errorCode = (err: unknown): string | null => {
+  if (!isRecord(err)) return null;
+  const code = err.code;
+  return typeof code === 'string' ? code : null;
+};
+
+const tryCreateLock = (lockPath: string): boolean => {
+  try {
+    const fd = fs.openSync(
+      lockPath,
+      fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY,
+    );
+    fs.closeSync(fd);
+    return true;
+  } catch (err) {
+    if (errorCode(err) === 'EEXIST') return false;
+    throw err;
+  }
+};
 
 const writeJsonAtomic = (filePath: string, data: unknown): void => {
   const dir = path.dirname(filePath);
@@ -105,7 +127,34 @@ export const writeConsoleLists = (params: ConsoleListsWriterParams): void => {
   }
 
   const nowMs = params.nowMs ?? Date.now();
-  recordNewlyClosedItems(consoleDataOutputDir, pjcode, params.issues, nowMs);
+
+  const lockDir = path.join(consoleDataOutputDir, pjcode);
+  fs.mkdirSync(lockDir, { recursive: true });
+  const lockPath = path.join(lockDir, '.console-list-write.lock');
+
+  let lockAcquired = tryCreateLock(lockPath);
+  if (!lockAcquired) {
+    try {
+      const stat = fs.statSync(lockPath);
+      if (Date.now() - stat.mtimeMs >= CONSOLE_WRITE_LOCK_STALE_TIMEOUT_MS) {
+        fs.unlinkSync(lockPath);
+        lockAcquired = tryCreateLock(lockPath);
+      }
+    } catch {}
+  }
+
+  if (lockAcquired) {
+    try {
+      recordNewlyClosedItems(
+        consoleDataOutputDir,
+        pjcode,
+        params.issues,
+        nowMs,
+      );
+    } finally {
+      fs.unlinkSync(lockPath);
+    }
+  }
 
   const generatedAt =
     params.generatedAt ?? formatConsoleGeneratedAt(new Date());
