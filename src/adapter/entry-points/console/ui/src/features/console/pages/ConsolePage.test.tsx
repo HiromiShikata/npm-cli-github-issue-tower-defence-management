@@ -2765,6 +2765,40 @@ describe('ConsolePage workflow issue creation', () => {
     });
   });
 
+  it('shows an undo toast when workflow issue creation is triggered from a comment plus button', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const { getByText, getAllByTitle, getByRole, queryByText } = render(
+        <ConsolePage />,
+      );
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      await waitFor(() => {
+        expect(
+          getAllByTitle('Create workflow improvement issue from this comment')
+            .length,
+        ).toBeGreaterThan(0);
+      });
+      fireEvent.click(
+        getAllByTitle('Create workflow improvement issue from this comment')[0],
+      );
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create' }));
+      await waitFor(() => {
+        expect(queryByText(/Task created/)).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner when the dialog Create button is clicked', async () => {
     installFetchWithFleetUrl(
       'https://github.com/HiromiShikata/secretary/issues/new',
