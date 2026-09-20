@@ -212,7 +212,6 @@ export const ConsoleItemDetailContainer = ({
     async (params: IssueCreateParams): Promise<void> => {
       if (onCreateWorkflowIssue === undefined) return;
       await onCreateWorkflowIssue(params.title, params.body ?? '');
-      setPendingWorkflowIssueComment(null);
     },
     [onCreateWorkflowIssue],
   );
