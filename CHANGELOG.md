@@ -1,3 +1,10 @@
+## [2.132.13](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.12...v2.132.13) (2026-09-20)
+
+
+### Bug Fixes
+
+* **consoleListsWriter:** prevent N-fold duplicate close event recording under concurrent processes ([#2482](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2482)) ([f82437b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/f82437b31e8e22d98512f4692d9f8b71ea9af780))
+
 ## [2.132.12](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.11...v2.132.12) (2026-09-20)
 
 
