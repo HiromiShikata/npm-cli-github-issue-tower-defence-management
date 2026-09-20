@@ -1,157 +1,157 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { resolveDefaultActiveTab } from "../logic/tabAdvance";
-import { CONSOLE_TABS, type ConsoleTabName } from "../logic/types";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { resolveDefaultActiveTab } from '../logic/tabAdvance';
+import { CONSOLE_TABS, type ConsoleTabName } from '../logic/types';
 
 const TAB_NAMES = new Set<string>(CONSOLE_TABS.map((tab) => tab.name));
 
 export const parseTabFromPath = (pathname: string): ConsoleTabName | null => {
-	const segments = pathname.split("/").filter((segment) => segment.length > 0);
-	if (segments.length < 3 || segments[0] !== "projects") {
-		return null;
-	}
-	const candidate = segments[2];
-	return TAB_NAMES.has(candidate) ? (candidate as ConsoleTabName) : null;
+  const segments = pathname.split('/').filter((segment) => segment.length > 0);
+  if (segments.length < 3 || segments[0] !== 'projects') {
+    return null;
+  }
+  const candidate = segments[2];
+  return TAB_NAMES.has(candidate) ? (candidate as ConsoleTabName) : null;
 };
 
 export const parseItemKeyFromHash = (hash: string): string | null => {
-	const prefix = "#item/";
-	if (!hash.startsWith(prefix)) {
-		return null;
-	}
-	const encoded = hash.slice(prefix.length);
-	if (encoded.length === 0) {
-		return null;
-	}
-	return decodeURIComponent(encoded);
+  const prefix = '#item/';
+  if (!hash.startsWith(prefix)) {
+    return null;
+  }
+  const encoded = hash.slice(prefix.length);
+  if (encoded.length === 0) {
+    return null;
+  }
+  return decodeURIComponent(encoded);
 };
 
-export const SETTINGS_HASH = "#settings";
+export const SETTINGS_HASH = '#settings';
 
 export const parseSettingsFromHash = (hash: string): boolean =>
-	hash === SETTINGS_HASH;
+  hash === SETTINGS_HASH;
 
 export type ConsoleNavigation = {
-	activeTab: ConsoleTabName;
-	selectedItemKey: string | null;
-	tabHref: (tab: ConsoleTabName) => string;
-	selectTab: (tab: ConsoleTabName) => void;
-	openItem: (itemKey: string) => void;
-	closeItem: () => void;
+  activeTab: ConsoleTabName;
+  selectedItemKey: string | null;
+  tabHref: (tab: ConsoleTabName) => string;
+  selectTab: (tab: ConsoleTabName) => void;
+  openItem: (itemKey: string) => void;
+  closeItem: () => void;
 };
 
 export const useConsoleNavigation = (
-	pjcode: string | null,
-	counts: Record<ConsoleTabName, number>,
-	loadedTabs: Set<ConsoleTabName> = new Set(),
-	snapshotCounts?: Record<ConsoleTabName, number>,
+  pjcode: string | null,
+  counts: Record<ConsoleTabName, number>,
+  loadedTabs: Set<ConsoleTabName> = new Set(),
+  snapshotCounts?: Record<ConsoleTabName, number>,
 ): ConsoleNavigation => {
-	const readState = useCallback((): {
-		activeTab: ConsoleTabName;
-		selectedItemKey: string | null;
-	} => {
-		const fallbackTab = resolveDefaultActiveTab(counts);
-		if (typeof window === "undefined") {
-			return { activeTab: fallbackTab, selectedItemKey: null };
-		}
-		return {
-			activeTab: parseTabFromPath(window.location.pathname) ?? fallbackTab,
-			selectedItemKey: parseItemKeyFromHash(window.location.hash),
-		};
-	}, [counts]);
+  const readState = useCallback((): {
+    activeTab: ConsoleTabName;
+    selectedItemKey: string | null;
+  } => {
+    const fallbackTab = resolveDefaultActiveTab(counts);
+    if (typeof window === 'undefined') {
+      return { activeTab: fallbackTab, selectedItemKey: null };
+    }
+    return {
+      activeTab: parseTabFromPath(window.location.pathname) ?? fallbackTab,
+      selectedItemKey: parseItemKeyFromHash(window.location.hash),
+    };
+  }, [counts]);
 
-	const [state, setState] = useState(readState);
-	const pjcodeRef = useRef<string | null>(null);
-	pjcodeRef.current = pjcode;
+  const [state, setState] = useState(readState);
+  const pjcodeRef = useRef<string | null>(null);
+  pjcodeRef.current = pjcode;
 
-	useEffect(() => {
-		if (typeof window === "undefined") {
-			return;
-		}
-		const sync = (): void => {
-			setState(readState());
-		};
-		window.addEventListener("popstate", sync);
-		window.addEventListener("hashchange", sync);
-		return () => {
-			window.removeEventListener("popstate", sync);
-			window.removeEventListener("hashchange", sync);
-		};
-	}, [readState]);
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const sync = (): void => {
+      setState(readState());
+    };
+    window.addEventListener('popstate', sync);
+    window.addEventListener('hashchange', sync);
+    return () => {
+      window.removeEventListener('popstate', sync);
+      window.removeEventListener('hashchange', sync);
+    };
+  }, [readState]);
 
-	useEffect(() => {
-		if (typeof window === "undefined") {
-			return;
-		}
-		const urlTab = parseTabFromPath(window.location.pathname);
-		const hasData = Object.values(counts).some((c) => c > 0);
-		const rawCounts = snapshotCounts ?? counts;
-		if (urlTab !== null) {
-			if (counts[urlTab] > 0 || rawCounts[urlTab] > 0) {
-				setState((current) =>
-					current.activeTab === urlTab
-						? current
-						: { ...current, activeTab: urlTab },
-				);
-				return;
-			}
-			if (!loadedTabs.has(urlTab)) {
-				return;
-			}
-		}
-		const fallbackTab = resolveDefaultActiveTab(counts);
-		if (hasData && pjcodeRef.current !== null) {
-			window.history.replaceState(
-				{},
-				"",
-				`/projects/${pjcodeRef.current}/${fallbackTab}${window.location.search}`,
-			);
-		}
-		setState((current) =>
-			current.activeTab === fallbackTab
-				? current
-				: { ...current, activeTab: fallbackTab },
-		);
-	}, [counts, loadedTabs, snapshotCounts]);
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const urlTab = parseTabFromPath(window.location.pathname);
+    const hasData = Object.values(counts).some((c) => c > 0);
+    const rawCounts = snapshotCounts ?? counts;
+    if (urlTab !== null) {
+      if (counts[urlTab] > 0 || rawCounts[urlTab] > 0) {
+        setState((current) =>
+          current.activeTab === urlTab
+            ? current
+            : { ...current, activeTab: urlTab },
+        );
+        return;
+      }
+      if (!loadedTabs.has(urlTab)) {
+        return;
+      }
+    }
+    const fallbackTab = resolveDefaultActiveTab(counts);
+    if (hasData && pjcodeRef.current !== null) {
+      window.history.replaceState(
+        {},
+        '',
+        `/projects/${pjcodeRef.current}/${fallbackTab}${window.location.search}`,
+      );
+    }
+    setState((current) =>
+      current.activeTab === fallbackTab
+        ? current
+        : { ...current, activeTab: fallbackTab },
+    );
+  }, [counts, loadedTabs, snapshotCounts]);
 
-	const tabHref = useCallback(
-		(tab: ConsoleTabName): string =>
-			pjcode === null ? `#${tab}` : `/projects/${pjcode}/${tab}`,
-		[pjcode],
-	);
+  const tabHref = useCallback(
+    (tab: ConsoleTabName): string =>
+      pjcode === null ? `#${tab}` : `/projects/${pjcode}/${tab}`,
+    [pjcode],
+  );
 
-	const selectTab = useCallback(
-		(tab: ConsoleTabName): void => {
-			if (typeof window === "undefined") {
-				setState({ activeTab: tab, selectedItemKey: null });
-				return;
-			}
-			window.history.pushState({}, "", tabHref(tab));
-			setState({ activeTab: tab, selectedItemKey: null });
-		},
-		[tabHref],
-	);
+  const selectTab = useCallback(
+    (tab: ConsoleTabName): void => {
+      if (typeof window === 'undefined') {
+        setState({ activeTab: tab, selectedItemKey: null });
+        return;
+      }
+      window.history.pushState({}, '', tabHref(tab));
+      setState({ activeTab: tab, selectedItemKey: null });
+    },
+    [tabHref],
+  );
 
-	const openItem = useCallback((itemKey: string): void => {
-		if (typeof window !== "undefined") {
-			window.location.hash = `#item/${encodeURIComponent(itemKey)}`;
-		}
-		setState((current) => ({ ...current, selectedItemKey: itemKey }));
-	}, []);
+  const openItem = useCallback((itemKey: string): void => {
+    if (typeof window !== 'undefined') {
+      window.location.hash = `#item/${encodeURIComponent(itemKey)}`;
+    }
+    setState((current) => ({ ...current, selectedItemKey: itemKey }));
+  }, []);
 
-	const closeItem = useCallback((): void => {
-		if (typeof window !== "undefined" && window.location.hash !== "") {
-			const url = `${window.location.pathname}${window.location.search}`;
-			window.history.pushState({}, "", url);
-		}
-		setState((current) => ({ ...current, selectedItemKey: null }));
-	}, []);
+  const closeItem = useCallback((): void => {
+    if (typeof window !== 'undefined' && window.location.hash !== '') {
+      const url = `${window.location.pathname}${window.location.search}`;
+      window.history.pushState({}, '', url);
+    }
+    setState((current) => ({ ...current, selectedItemKey: null }));
+  }, []);
 
-	return {
-		activeTab: state.activeTab,
-		selectedItemKey: state.selectedItemKey,
-		tabHref,
-		selectTab,
-		openItem,
-		closeItem,
-	};
+  return {
+    activeTab: state.activeTab,
+    selectedItemKey: state.selectedItemKey,
+    tabHref,
+    selectTab,
+    openItem,
+    closeItem,
+  };
 };
