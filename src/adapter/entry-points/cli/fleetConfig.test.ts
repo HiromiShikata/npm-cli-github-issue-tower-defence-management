@@ -817,39 +817,39 @@ describe('loadFleetTaskCreateUrl', () => {
     expect(loadFleetTaskCreateUrl(null)).toBeNull();
   });
 
-  it('returns the GitHub new-issue URL derived from workflowIssueReporter owner and repo', () => {
+  it('returns the GitHub new-issue URL with assignees[]= derived from workflowIssueReporter owner and repo', () => {
     const fleetConfigFilePath = writeFleetConfig(
       'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n',
     );
     expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
-      'https://github.com/myorg/myrepo/issues/new',
+      'https://github.com/myorg/myrepo/issues/new?assignees[]=myorg',
     );
   });
 
-  it('appends ?projects= query param when projectUrl is an org project URL', () => {
+  it('appends ?projects= and &assignees[]= query params when projectUrl is an org project URL', () => {
     const fleetConfigFilePath = writeFleetConfig(
       'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n  projectUrl: https://github.com/orgs/myorg/projects/3\n',
     );
     expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
-      'https://github.com/myorg/myrepo/issues/new?projects=myorg/3',
+      'https://github.com/myorg/myrepo/issues/new?projects=myorg/3&assignees[]=myorg',
     );
   });
 
-  it('appends ?projects= query param when projectUrl is a user project URL', () => {
+  it('appends ?projects= and &assignees[]= query params when projectUrl is a user project URL', () => {
     const fleetConfigFilePath = writeFleetConfig(
       'workflowIssueReporter:\n  owner: myuser\n  repo: myrepo\n  projectUrl: https://github.com/users/myuser/projects/5\n',
     );
     expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
-      'https://github.com/myuser/myrepo/issues/new?projects=myuser/5',
+      'https://github.com/myuser/myrepo/issues/new?projects=myuser/5&assignees[]=myuser',
     );
   });
 
-  it('returns base URL without query param when projectUrl is not an org or user project URL', () => {
+  it('returns URL with only assignees[]= when projectUrl is not an org or user project URL', () => {
     const fleetConfigFilePath = writeFleetConfig(
       'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n  projectUrl: https://github.com/myorg/myrepo/projects/1\n',
     );
     expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
-      'https://github.com/myorg/myrepo/issues/new',
+      'https://github.com/myorg/myrepo/issues/new?assignees[]=myorg',
     );
   });
 
