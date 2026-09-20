@@ -98,9 +98,7 @@ export const ConsoleOperationMenu = ({
             storyNameForDeletion={storyNameForDeletion}
           />
         </div>
-        <ConsoleCloseActions
-          onClose={handlers.onClose}
-        />
+        <ConsoleCloseActions onClose={handlers.onClose} />
       </div>
     </div>
   );

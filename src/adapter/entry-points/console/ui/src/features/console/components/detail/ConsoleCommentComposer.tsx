@@ -120,14 +120,19 @@ export const ConsoleCommentComposer = ({
     }
   };
 
-  const submit = async (action: 'comment' | 'move' | 'close'): Promise<void> => {
+  const submit = async (
+    action: 'comment' | 'move' | 'close',
+  ): Promise<void> => {
     const body = draft.trim();
     if (body.length === 0 || status.kind === 'posting') {
       return;
     }
     setStatus({ kind: 'posting' });
     try {
-      if (action === 'move' && onSubmitAndMoveToAwaitingWorkspace !== undefined) {
+      if (
+        action === 'move' &&
+        onSubmitAndMoveToAwaitingWorkspace !== undefined
+      ) {
         await onSubmitAndMoveToAwaitingWorkspace(body);
       } else if (action === 'close' && onCommentAndClose !== undefined) {
         await onCommentAndClose(body);
