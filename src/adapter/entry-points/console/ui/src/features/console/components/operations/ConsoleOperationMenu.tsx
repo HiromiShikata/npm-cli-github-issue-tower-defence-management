@@ -29,7 +29,6 @@ export type ConsoleOperationBarProps = {
   currentAgentName: string | null;
   handlers: ConsoleOperationHandlers;
   storyNameForDeletion?: string | null;
-  onCommentAndClose?: (body: string) => Promise<void>;
 };
 
 export const ConsoleOperationMenu = ({
@@ -43,7 +42,6 @@ export const ConsoleOperationMenu = ({
   currentAgentName,
   handlers,
   storyNameForDeletion,
-  onCommentAndClose,
 }: ConsoleOperationBarProps) => {
   const [showFieldSelectors, setShowFieldSelectors] = useState(false);
   return (
@@ -100,10 +98,7 @@ export const ConsoleOperationMenu = ({
             storyNameForDeletion={storyNameForDeletion}
           />
         </div>
-        <ConsoleCloseActions
-          onClose={handlers.onClose}
-          onCommentAndClose={onCommentAndClose}
-        />
+        <ConsoleCloseActions onClose={handlers.onClose} />
       </div>
     </div>
   );

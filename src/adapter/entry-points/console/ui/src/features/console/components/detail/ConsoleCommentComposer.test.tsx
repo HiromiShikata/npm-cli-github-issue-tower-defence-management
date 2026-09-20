@@ -681,6 +681,77 @@ describe('ConsoleCommentComposer', () => {
     fireEvent.change(textarea, { target: { value: '' } });
     expect(getByText('Comment & Awaiting Workspace')).toBeDisabled();
   });
+
+  it('renders Comment & Close button when onCommentAndClose is provided', () => {
+    const { getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onCommentAndClose={async () => {}}
+      />,
+    );
+    expect(getByText('Comment & Close')).toBeInTheDocument();
+  });
+
+  it('does not render Comment & Close button when onCommentAndClose is not provided', () => {
+    const { queryByText } = render(
+      <ConsoleCommentComposer initiallyOpen onSubmit={stubSubmit} />,
+    );
+    expect(queryByText('Comment & Close')).toBeNull();
+  });
+
+  it('calls onCommentAndClose with draft body and clears the draft on success', async () => {
+    const onCommentAndClose = jest.fn().mockResolvedValue(undefined);
+    const { getByPlaceholderText, getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onCommentAndClose={onCommentAndClose}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'closing note' },
+    });
+    fireEvent.click(getByText('Comment & Close'));
+    await waitFor(() => {
+      expect(onCommentAndClose).toHaveBeenCalledWith('closing note');
+    });
+    expect(
+      (getByPlaceholderText('Leave a comment…') as HTMLTextAreaElement).value,
+    ).toBe('');
+  });
+
+  it('disables Comment & Close button while draft is empty', () => {
+    const { getByText } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onCommentAndClose={async () => {}}
+      />,
+    );
+    expect(getByText('Comment & Close')).toBeDisabled();
+  });
+
+  it('shows error and keeps draft when onCommentAndClose rejects', async () => {
+    const { getByPlaceholderText, getByText, findByRole } = render(
+      <ConsoleCommentComposer
+        initiallyOpen
+        onSubmit={stubSubmit}
+        onCommentAndClose={async () => {
+          throw new Error('close failed');
+        }}
+      />,
+    );
+    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
+      target: { value: 'closing note' },
+    });
+    fireEvent.click(getByText('Comment & Close'));
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toContain('close failed');
+    expect(
+      (getByPlaceholderText('Leave a comment…') as HTMLTextAreaElement).value,
+    ).toBe('closing note');
+  });
 });
 
 describe('insertUploadPlaceholder', () => {
