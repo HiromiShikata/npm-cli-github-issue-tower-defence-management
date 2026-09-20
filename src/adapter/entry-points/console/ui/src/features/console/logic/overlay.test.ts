@@ -6,6 +6,7 @@ import {
   overlayKeyForItem,
   overlayStatusSinceSnapshot,
   overlayStorageKey,
+  removeOverlayEntry,
   writeOverlayEntry,
 } from './overlay';
 import type {
@@ -222,6 +223,26 @@ describe('overlayEntriesActedSinceSnapshot', () => {
       PVTI_1: { ts: 500, mode: 'todo-by-human', done: true },
     };
     expect(overlayEntriesActedSinceSnapshot(overlay, '')).toEqual({});
+  });
+});
+
+describe('removeOverlayEntry', () => {
+  it('removes the named key from the overlay and leaves the rest intact', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: 100, mode: 'prs', done: true },
+      PVTI_2: { ts: 200, mode: 'prs', done: true },
+    };
+    const next = removeOverlayEntry(overlay, 'PVTI_1');
+    expect(next).toEqual({ PVTI_2: { ts: 200, mode: 'prs', done: true } });
+  });
+
+  it('returns the overlay unchanged when the key is absent', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_2: { ts: 200, mode: 'prs', done: true },
+    };
+    const next = removeOverlayEntry(overlay, 'PVTI_1');
+    expect(next).toEqual(overlay);
+    expect(next).not.toBe(overlay);
   });
 });
 

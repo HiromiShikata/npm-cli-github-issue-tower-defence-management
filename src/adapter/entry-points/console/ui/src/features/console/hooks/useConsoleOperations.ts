@@ -206,13 +206,6 @@ export const useConsoleOperations = (
     [caches],
   );
 
-  const markDone = useCallback(
-    (item: ConsoleListItem) => {
-      patchOverlay(overlayKeyForItem(item), { done: true }, mode);
-    },
-    [patchOverlay, mode],
-  );
-
   const reviewPullRequest = useCallback(
     async (
       item: ConsoleListItem,
@@ -227,10 +220,9 @@ export const useConsoleOperations = (
         REVIEW_OPERATION_PATH,
         reviewRequest(pjcode, item, prUrl, action, pendingReviewComments),
       );
-      markDone(item);
       invalidateItemContent(item);
     },
-    [pjcode, markDone, invalidateItemContent],
+    [pjcode, invalidateItemContent],
   );
 
   const setNextActionDate = useCallback(
@@ -244,11 +236,10 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      markDone(item);
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
-    [pjcode, markDone, invalidateItemContent],
+    [pjcode, invalidateItemContent],
   );
 
   const setAgent = useCallback(
@@ -263,11 +254,10 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         agentOptionId: option.id,
       };
-      patchOverlay(overlayKeyForItem(item), { done: true }, mode);
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
-    [pjcode, invalidateItemContent, patchOverlay, mode],
+    [pjcode, invalidateItemContent],
   );
 
   const setStory = useCallback(
@@ -282,15 +272,10 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         storyOptionId: option.id,
       };
-      patchOverlay(
-        overlayKeyForItem(item),
-        { done: true, story: { name: option.name, color: option.color } },
-        mode,
-      );
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
-    [pjcode, invalidateItemContent, patchOverlay, mode],
+    [pjcode, invalidateItemContent],
   );
 
   const setStatus = useCallback(
@@ -305,19 +290,14 @@ export const useConsoleOperations = (
         projectItemId: item.projectItemId,
         statusName: option.name,
       };
-      patchOverlay(
-        overlayKeyForItem(item),
-        { done: true, status: { name: option.name, color: option.color } },
-        mode,
-      );
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
-    [pjcode, invalidateItemContent, patchOverlay, mode],
+    [pjcode, invalidateItemContent],
   );
 
   const setInTmuxByHuman = useCallback(
-    async (item: ConsoleListItem, option: ConsoleFieldOption) => {
+    async (item: ConsoleListItem, _option: ConsoleFieldOption) => {
       if (pjcode === null) {
         throw missingPjcodeError();
       }
@@ -327,15 +307,10 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      patchOverlay(
-        overlayKeyForItem(item),
-        { done: true, status: { name: option.name, color: option.color } },
-        mode,
-      );
       await postConsoleOperation(INTMUX_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
-    [pjcode, invalidateItemContent, patchOverlay, mode],
+    [pjcode, invalidateItemContent],
   );
 
   const closeIssue = useCallback(
@@ -349,11 +324,10 @@ export const useConsoleOperations = (
         issueUrl: item.url,
         projectItemId: item.projectItemId,
       };
-      markDone(item);
       await postConsoleOperation(TRIAGE_OPERATION_PATH, request);
       invalidateItemContent(item);
     },
-    [pjcode, markDone, invalidateItemContent],
+    [pjcode, invalidateItemContent],
   );
 
   const okAndMoveToAwaitingWorkspace = useCallback(
@@ -361,11 +335,6 @@ export const useConsoleOperations = (
       if (pjcode === null) {
         throw missingPjcodeError();
       }
-      patchOverlay(
-        overlayKeyForItem(item),
-        { done: true, status: { name: option.name, color: option.color } },
-        mode,
-      );
       const commentResult = await postConsoleComment({
         pjcode,
         url: item.url,
@@ -391,13 +360,7 @@ export const useConsoleOperations = (
         );
       }
     },
-    [
-      pjcode,
-      invalidateItemContent,
-      patchOverlay,
-      mode,
-      onAfterMoveToAwaitingWorkspace,
-    ],
+    [pjcode, invalidateItemContent, onAfterMoveToAwaitingWorkspace],
   );
 
   const addComment = useCallback(

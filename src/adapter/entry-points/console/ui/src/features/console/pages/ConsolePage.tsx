@@ -562,12 +562,21 @@ export const ConsolePage = () => {
         return;
       }
       const actedKey = overlayKeyForItem(input.item);
+      const overlayPatch = input.overlayPatch;
       actionQueue.enqueue({
         message: formatActionToast(input.kind, input.item, activeTab),
         color: actionToastColor(input.kind),
         commit: input.commit,
         offline: input.offline,
         revertAdvance: input.revertAdvance,
+        optimistic:
+          overlayPatch !== undefined
+            ? () => overlayState.patchOverlay(actedKey, overlayPatch, activeTab)
+            : undefined,
+        revertOptimistic:
+          overlayPatch !== undefined
+            ? () => overlayState.revertOverlayEntry(actedKey)
+            : undefined,
         advance: () => {
           input.onAdvance?.();
           if (!input.skipAdvance && actionAdvances(input.kind, activeTab)) {
@@ -597,6 +606,7 @@ export const ConsolePage = () => {
       activeTab,
       advanceToNext,
       airplaneMode.status,
+      overlayState,
       timerMode,
       isTimerExpired,
       projectMinutes,
@@ -930,23 +940,13 @@ export const ConsolePage = () => {
         item,
         commit: () => operations.okAndMoveToAwaitingWorkspace(item, option),
         skipAdvance: true,
-        onAdvance: () => {
-          overlayState.patchOverlay(
-            overlayKeyForItem(item),
-            { done: true, status: { name: option.name, color: option.color } },
-            activeTab,
-          );
-        },
-        revertAdvance: () => {
-          overlayState.patchOverlay(
-            overlayKeyForItem(item),
-            { done: false },
-            activeTab,
-          );
+        overlayPatch: {
+          done: true,
+          status: { name: option.name, color: option.color },
         },
       });
     },
-    [handleQueueAction, operations, overlayState, activeTab],
+    [handleQueueAction, operations],
   );
 
   return (

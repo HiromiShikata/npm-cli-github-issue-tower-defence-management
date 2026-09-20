@@ -1,5 +1,9 @@
 import { useCallback, useState } from 'react';
-import { overlayStorageKey, writeOverlayEntry } from '../logic/overlay';
+import {
+  overlayStorageKey,
+  removeOverlayEntry,
+  writeOverlayEntry,
+} from '../logic/overlay';
 import type {
   ConsoleOverlay,
   ConsoleOverlayEntry,
@@ -45,6 +49,7 @@ export type ConsoleOverlayState = {
     patch: Partial<Omit<ConsoleOverlayEntry, 'ts' | 'mode'>>,
     mode: ConsoleTabName,
   ) => void;
+  revertOverlayEntry: (key: string) => void;
 };
 
 export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
@@ -67,5 +72,16 @@ export const useConsoleOverlay = (pjcode: string): ConsoleOverlayState => {
     [pjcode],
   );
 
-  return { overlay, patchOverlay };
+  const revertOverlayEntry = useCallback(
+    (key: string) => {
+      setOverlay((current) => {
+        const next = removeOverlayEntry(current, key);
+        persistOverlay(pjcode, next);
+        return next;
+      });
+    },
+    [pjcode],
+  );
+
+  return { overlay, patchOverlay, revertOverlayEntry };
 };

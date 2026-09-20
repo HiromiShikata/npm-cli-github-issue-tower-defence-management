@@ -92,3 +92,12 @@ export const writeOverlayEntry = (
   };
   return { ...overlay, [key]: next };
 };
+
+export const removeOverlayEntry = (
+  overlay: ConsoleOverlay,
+  key: string,
+): ConsoleOverlay => {
+  const next = { ...overlay };
+  delete next[key];
+  return next;
+};

@@ -105,7 +105,7 @@ describe('useConsoleOperations', () => {
     });
   });
 
-  it('posts an approve review and marks the item done in the overlay', async () => {
+  it('posts an approve review without writing the overlay entry (overlay is set at enqueue time)', async () => {
     captureFetch();
     const { result } = setup();
     await act(async () => {
@@ -118,7 +118,7 @@ describe('useConsoleOperations', () => {
     const stored = JSON.parse(
       localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );
-    expect(stored[prItem.projectItemId].done).toBe(true);
+    expect(stored[prItem.projectItemId]).toBeUndefined();
   });
 
   it('posts a not-planned close through the triage endpoint', async () => {
@@ -151,13 +151,9 @@ describe('useConsoleOperations', () => {
       issueUrl: prItem.url,
     });
     expect(prItem.url).toContain('/pull/');
-    const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
-    );
-    expect(stored[prItem.projectItemId].done).toBe(true);
   });
 
-  it('posts set_status and records the overlay status', async () => {
+  it('posts set_status without writing the overlay entry (overlay is set at enqueue time)', async () => {
     const fetchMock = captureFetch();
     const { result } = setup();
     const option = consoleStatusOptionsFixture[1];
@@ -171,7 +167,7 @@ describe('useConsoleOperations', () => {
     const stored = JSON.parse(
       localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );
-    expect(stored[issueItem.projectItemId].status.name).toBe(option.name);
+    expect(stored[issueItem.projectItemId]).toBeUndefined();
   });
 
   it('posts set_intmux through the intmux endpoint', async () => {
@@ -188,7 +184,7 @@ describe('useConsoleOperations', () => {
     });
   });
 
-  it('marks done on snooze outside the todo-by-human tab so the item disappears immediately', async () => {
+  it('posts set_next_action_date without writing the overlay entry (overlay is set at enqueue time)', async () => {
     captureFetch();
     const { result } = setup();
     await act(async () => {
@@ -200,28 +196,7 @@ describe('useConsoleOperations', () => {
     const stored = JSON.parse(
       localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
     );
-    expect(stored[issueItem.projectItemId].done).toBe(true);
-  });
-
-  it('marks done on snooze in the todo-by-human tab so the item is skipped', async () => {
-    captureFetch();
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
-    const { result } = renderHook(() => {
-      const overlay = useConsoleOverlay('acme');
-      const operations = useConsoleOperations('acme', 'todo-by-human', overlay);
-      return { overlay, operations };
-    });
-    await act(async () => {
-      await result.current.operations.setNextActionDate(
-        issueItem,
-        'snooze_1week',
-      );
-    });
-    const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
-    );
-    expect(stored[issueItem.projectItemId].done).toBe(true);
+    expect(stored[issueItem.projectItemId]).toBeUndefined();
   });
 
   it('posts a comment to the comment endpoint and returns the created comment', async () => {
@@ -562,176 +537,6 @@ describe('useConsoleOperations', () => {
     );
     expect(caughtMessage).toContain('Re-post: ok');
     expect(calledUrls).toContain('/api/triage');
-  });
-
-  it('marks setStatus overlay done before the API call resolves', async () => {
-    let resolveApi!: () => void;
-    global.fetch = jest.fn(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveApi = () =>
-            resolve({
-              ok: true,
-              status: 200,
-              json: async () => ({ ok: true }),
-            } as unknown as Response);
-        }),
-    ) as unknown as typeof fetch;
-    const { result } = setup();
-    const option = consoleStatusOptionsFixture[1];
-
-    act(() => {
-      void result.current.operations.setStatus(issueItem, option);
-    });
-
-    const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
-    );
-    expect(stored[issueItem.projectItemId]?.done).toBe(true);
-
-    await act(async () => {
-      resolveApi();
-      await Promise.resolve();
-    });
-  });
-
-  it('marks reviewPullRequest overlay done after the API call resolves', async () => {
-    let resolveApi!: () => void;
-    global.fetch = jest.fn(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveApi = () =>
-            resolve({
-              ok: true,
-              status: 200,
-              json: async () => ({ ok: true }),
-            } as unknown as Response);
-        }),
-    ) as unknown as typeof fetch;
-    const { result } = setup();
-
-    act(() => {
-      void result.current.operations.reviewPullRequest(
-        prItem,
-        prItem.url,
-        'approve_and_merge',
-      );
-    });
-
-    const storedBefore = JSON.parse(
-      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
-    );
-    expect(storedBefore[prItem.projectItemId]?.done).not.toBe(true);
-
-    await act(async () => {
-      resolveApi();
-      await Promise.resolve();
-    });
-
-    const storedAfter = JSON.parse(
-      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
-    );
-    expect(storedAfter[prItem.projectItemId]?.done).toBe(true);
-  });
-
-  it('does not mark reviewPullRequest overlay done when the API call fails', async () => {
-    global.fetch = jest.fn(async () => ({
-      ok: false,
-      status: 400,
-      text: async () =>
-        "Cannot merge: this pull request modifies workflow files and the configured token lacks 'workflow' scope. Please merge this pull request manually.",
-    })) as unknown as typeof fetch;
-    const { result } = setup();
-
-    await act(async () => {
-      await expect(
-        result.current.operations.reviewPullRequest(
-          prItem,
-          prItem.url,
-          'approve_and_merge',
-        ),
-      ).rejects.toThrow();
-    });
-
-    const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
-    );
-    expect(stored[prItem.projectItemId]?.done).not.toBe(true);
-  });
-
-  it('marks closeIssue overlay done before the API call resolves', async () => {
-    let resolveApi!: () => void;
-    global.fetch = jest.fn(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveApi = () =>
-            resolve({
-              ok: true,
-              status: 200,
-              json: async () => ({ ok: true }),
-            } as unknown as Response);
-        }),
-    ) as unknown as typeof fetch;
-    const { result } = setup();
-
-    act(() => {
-      void result.current.operations.closeIssue(issueItem, 'close_not_planned');
-    });
-
-    const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
-    );
-    expect(stored[issueItem.projectItemId]?.done).toBe(true);
-
-    await act(async () => {
-      resolveApi();
-      await Promise.resolve();
-    });
-  });
-
-  it('marks okAndMoveToAwaitingWorkspace overlay done before API calls resolve', async () => {
-    let resolveApi!: () => void;
-    global.fetch = jest.fn(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveApi = () =>
-            resolve({
-              ok: true,
-              status: 200,
-              json: async () => ({
-                ok: true,
-                comment: {
-                  author: 'bot',
-                  body: 'ok',
-                  createdAt: '2026-01-01T00:00:00Z',
-                },
-              }),
-            } as unknown as Response);
-        }),
-    ) as unknown as typeof fetch;
-    const { result } = setup();
-    const [option] = consoleStatusOptionsFixture.filter(
-      (o) => o.name.toLowerCase() === 'awaiting workspace',
-    );
-
-    act(() => {
-      void result.current.operations.okAndMoveToAwaitingWorkspace(
-        issueItem,
-        option,
-      );
-    });
-
-    const stored = JSON.parse(
-      localStorage.getItem(overlayStorageKey('acme')) ?? '{}',
-    );
-    expect(stored[issueItem.projectItemId]?.done).toBe(true);
-
-    await act(async () => {
-      resolveApi();
-      await Promise.resolve();
-      resolveApi();
-      await Promise.resolve();
-    });
   });
 
   it('calls onAfterMoveToAwaitingWorkspace after the triage API call completes', async () => {

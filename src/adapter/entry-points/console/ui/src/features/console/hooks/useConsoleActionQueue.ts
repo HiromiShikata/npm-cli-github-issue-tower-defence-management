@@ -29,6 +29,8 @@ export type ConsoleQueuedAction = {
   commit: () => Promise<void>;
   advance: () => void;
   revertAdvance?: () => void;
+  optimistic?: () => void;
+  revertOptimistic?: () => void;
   offline?: ConsoleOfflinePayload;
 };
 
@@ -198,6 +200,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
     committedRef.current = true;
     setPending(null);
     action?.revertAdvance?.();
+    action?.revertOptimistic?.();
   }, [clearTimer]);
 
   const dismissError = useCallback((): void => {
@@ -257,6 +260,7 @@ export const useConsoleActionQueue = (): ConsoleActionQueue => {
         progress: computeProgress(0),
       });
       action.advance();
+      action.optimistic?.();
       timerRef.current = setInterval(() => {
         const elapsed = Date.now() - startRef.current;
         if (elapsed >= ACTION_TOAST_DELAY_MS) {
