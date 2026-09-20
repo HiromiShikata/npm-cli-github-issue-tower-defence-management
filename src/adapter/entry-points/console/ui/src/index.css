@@ -3027,28 +3027,6 @@ body {
   font-size: 0.875rem;
 }
 
-.console-op-comment-and-close {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px;
-}
-
-.console-op-comment-and-close-input {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  color: #e6edf3;
-  font-size: 0.875rem;
-  padding: 6px 10px;
-  resize: vertical;
-  min-height: 60px;
-}
-
-.console-op-comment-and-close-error {
-  color: #f85149;
-  font-size: 0.875rem;
-}
 
 .console-markdown-view {
   font-size: 0.875rem;
