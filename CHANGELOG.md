@@ -1,3 +1,12 @@
+## [2.133.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.3...v2.133.4) (2026-09-20)
+
+
+### Bug Fixes
+
+* **console:** restore url tab when items arrive after all-zeros transient state ([#2492](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2492)) ([c686d2c](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/c686d2c062faba7155384eb07e98cfe5825c5d13))
+* remove dead code in escalateReportingLoop, route escalations to Failed Preparation, fix storyUnset scope ([#2495](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2495)) ([129db7d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/129db7d4e9feb3e1bf27fbf28a430e62d63c857c))
+* **revert-orphaned-preparation:** advance to Done when Awaiting Owner status is absent ([#2494](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2494)) ([e556406](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e556406f3c0343ee8bc451ec35756afd5d5b643b)), closes [HiromiShikata/secretary#6682](https://github.com/HiromiShikata/secretary/issues/6682)
+
 ## [2.133.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.2...v2.133.3) (2026-09-20)
 
 
