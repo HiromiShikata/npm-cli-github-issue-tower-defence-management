@@ -429,6 +429,30 @@ describe('resolveNextStepAgentDispatchRepetition', () => {
       );
     });
 
+    it('resets the count when a reporting-loop escalation comment uses the legacy phrase', () => {
+      const result = resolveNextStepAgentDispatchRepetition({
+        agentFieldValue: 'chore',
+        nextStepAgent: 'chore',
+        comments: [
+          repetitionComment('chore'),
+          {
+            author: 'bot',
+            content: `${AUTO_STATUS_CHECK_MESSAGE_HEAD} REPORTING_LOOP_ESCALATED chore\n\nOwner judgment is required to break the loop.`,
+          },
+          report('chore'),
+        ],
+        isTrustedAuthor: trustAll,
+        thresholdForAutoReject: 3,
+        thresholdForDispatchLoop: 6,
+        isNoStory: false,
+      });
+
+      expect(result.type).toBe('dispatchAgain');
+      expect(result.type === 'dispatchAgain' ? result.comment : '').toContain(
+        '(1/3)',
+      );
+    });
+
     it('escalates to escalateReportingLoop for self-reference after a previous escalation when count reaches threshold and reports follow re-dispatch', () => {
       const result = resolveNextStepAgentDispatchRepetition({
         agentFieldValue: 'chore',
