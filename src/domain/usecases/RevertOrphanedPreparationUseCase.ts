@@ -11,6 +11,7 @@ import { Comment } from '../entities/Comment';
 import {
   AWAITING_OWNER_STATUS_NAME,
   AWAITING_WORKSPACE_STATUS_NAME,
+  DONE_STATUS_NAME,
   FAILED_PREPARATION_STATUS_NAME,
   PREPARATION_STATUS_NAME,
   TODO_BY_AGENT_STATUS_NAME,
@@ -118,6 +119,10 @@ export class RevertOrphanedPreparationUseCase {
 
     const failedPreparationStatusOption = project.status.statuses.find(
       (s) => s.name === FAILED_PREPARATION_STATUS_NAME,
+    );
+
+    const doneStatusOption = project.status.statuses.find(
+      (s) => s.name === DONE_STATUS_NAME,
     );
 
     for (const issue of preparationIssues) {
@@ -305,6 +310,12 @@ export class RevertOrphanedPreparationUseCase {
             project,
             issue,
             awaitingOwnerStatusOption.id,
+          );
+        } else if (doneStatusOption) {
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            doneStatusOption.id,
           );
         } else {
           await this.issueRepository.updateStatus(
