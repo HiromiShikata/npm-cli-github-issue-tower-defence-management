@@ -88,7 +88,6 @@ const buildOperations = (): ConsoleOperationsApi => ({
   issueRename: jest.fn(async () => {}),
   deleteAllComments: jest.fn(async () => {}),
   setDependedIssueUrl: jest.fn(async () => {}),
-  patchItemOverlay: jest.fn(),
 });
 
 const findCommentsPanelToggle = (container: HTMLElement): HTMLElement => {

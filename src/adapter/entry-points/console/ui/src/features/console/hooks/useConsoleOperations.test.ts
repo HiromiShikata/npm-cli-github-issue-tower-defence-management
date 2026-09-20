@@ -47,7 +47,7 @@ const setup = () => {
   window.history.replaceState({}, '', '/projects/acme/prs?k=token');
   return renderHook(() => {
     const overlay = useConsoleOverlay('acme');
-    const operations = useConsoleOperations('acme', 'prs', overlay);
+    const operations = useConsoleOperations('acme');
     return { overlay, operations };
   });
 };
@@ -331,7 +331,7 @@ describe('useConsoleOperations', () => {
     const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
     const { result } = renderHook(() => {
       const overlay = useConsoleOverlay('acme');
-      const operations = useConsoleOperations('acme', 'prs', overlay, caches);
+      const operations = useConsoleOperations('acme', caches);
       return { overlay, operations };
     });
     await act(async () => {
@@ -362,7 +362,7 @@ describe('useConsoleOperations', () => {
     const commentsInvalidate = jest.spyOn(caches.comments, 'invalidate');
     const { result } = renderHook(() => {
       const overlay = useConsoleOverlay('acme');
-      const operations = useConsoleOperations('acme', 'prs', overlay, caches);
+      const operations = useConsoleOperations('acme', caches);
       return { overlay, operations };
     });
     await act(async () => {
@@ -379,7 +379,7 @@ describe('useConsoleOperations', () => {
     window.history.replaceState({}, '', '/?k=token');
     const { result } = renderHook(() => {
       const overlay = useConsoleOverlay('console');
-      const operations = useConsoleOperations(null, 'prs', overlay);
+      const operations = useConsoleOperations(null);
       return { overlay, operations };
     });
     await expect(
@@ -570,8 +570,6 @@ describe('useConsoleOperations', () => {
       const overlay = useConsoleOverlay('acme');
       const operations = useConsoleOperations(
         'acme',
-        'prs',
-        overlay,
         undefined,
         onAfterMoveToAwaitingWorkspace,
       );

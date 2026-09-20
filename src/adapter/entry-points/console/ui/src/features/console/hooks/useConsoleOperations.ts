@@ -23,16 +23,12 @@ import {
   TOTALLY_WRONG_COMMENT_BODY,
   UNNECESSARY_COMMENT_BODY,
 } from '../logic/operations';
-import { overlayKeyForItem } from '../logic/overlay';
 import type {
   ConsoleComment,
   ConsoleFieldOption,
   ConsoleListItem,
-  ConsoleOverlayStatus,
-  ConsoleTabName,
 } from '../logic/types';
 import type { ConsoleCaches } from './useConsoleCaches';
-import type { ConsoleOverlayState } from './useConsoleOverlay';
 
 export const REVIEW_OPERATION_PATH = '/api/review';
 export const TRIAGE_OPERATION_PATH = '/api/triage';
@@ -88,11 +84,6 @@ export type ConsoleOperationsApi = {
     item: ConsoleListItem,
     dependedIssueUrl: string,
   ) => Promise<void>;
-  patchItemOverlay: (
-    item: ConsoleListItem,
-    done: boolean,
-    status?: ConsoleOverlayStatus,
-  ) => void;
 };
 
 export const reviewRequest = (
@@ -187,13 +178,9 @@ const AWAITING_WORKSPACE_COMMENT_BODY = 'ok';
 
 export const useConsoleOperations = (
   pjcode: string | null,
-  mode: ConsoleTabName,
-  overlayState: ConsoleOverlayState,
   caches?: ConsoleCaches,
   onAfterMoveToAwaitingWorkspace?: () => Promise<void>,
 ): ConsoleOperationsApi => {
-  const { patchOverlay } = overlayState;
-
   const invalidateItemContent = useCallback(
     (item: ConsoleListItem) => {
       if (caches === undefined) {
@@ -400,21 +387,6 @@ export const useConsoleOperations = (
     [pjcode],
   );
 
-  const patchItemOverlay = useCallback(
-    (
-      item: ConsoleListItem,
-      done: boolean,
-      status?: ConsoleOverlayStatus,
-    ): void => {
-      patchOverlay(
-        overlayKeyForItem(item),
-        { done, ...(status !== undefined ? { status } : {}) },
-        mode,
-      );
-    },
-    [patchOverlay, mode],
-  );
-
   const addInlineReviewComment = useCallback(
     async (
       prUrl: string,
@@ -482,6 +454,5 @@ export const useConsoleOperations = (
     issueRename,
     deleteAllComments,
     setDependedIssueUrl,
-    patchItemOverlay,
   };
 };
