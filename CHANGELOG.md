@@ -1,3 +1,10 @@
+## [2.134.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.134.0...v2.134.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **liveSessionConcurrentLimitOf:** return 1 immediately when unflored throttle score is below one ([#2506](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2506)) ([20c93f5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/20c93f5c4a09da2f232011fe8e2ffb29f37b404b)), closes [#2505](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2505)
+
 # [2.134.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.7...v2.134.0) (2026-09-20)
 
 
