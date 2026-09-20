@@ -566,7 +566,9 @@ describe('useConsoleActionQueue', () => {
     const revertOptimistic = jest.fn();
     const action = makeAction({
       revertOptimistic,
-      commit: jest.fn<Promise<void>, []>().mockRejectedValue(new Error('HTTP 422')),
+      commit: jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValue(new Error('HTTP 422')),
     });
     act(() => {
       result.current.enqueue(action);
