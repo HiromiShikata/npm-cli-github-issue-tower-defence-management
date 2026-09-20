@@ -126,12 +126,17 @@ export const writeConsoleLists = (params: ConsoleListsWriterParams): void => {
         fs.unlinkSync(lockPath);
         lockAcquired = tryCreateLock(lockPath);
       }
-    } catch { }
+    } catch {}
   }
 
   if (lockAcquired) {
     try {
-      recordNewlyClosedItems(consoleDataOutputDir, pjcode, params.issues, nowMs);
+      recordNewlyClosedItems(
+        consoleDataOutputDir,
+        pjcode,
+        params.issues,
+        nowMs,
+      );
     } finally {
       fs.unlinkSync(lockPath);
     }

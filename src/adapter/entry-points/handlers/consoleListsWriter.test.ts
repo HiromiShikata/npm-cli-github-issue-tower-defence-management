@@ -529,7 +529,11 @@ describe('writeConsoleLists', () => {
         assigneeLogin: ASSIGNEE,
         project,
         issues: [
-          makeIssue({ itemId: 'item-1', status: 'Todo by human', isClosed: false }),
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
         ],
         generatedAt: '2026-06-14T07:22:33Z',
         nowMs,
@@ -540,7 +544,11 @@ describe('writeConsoleLists', () => {
         assigneeLogin: ASSIGNEE,
         project,
         issues: [
-          makeIssue({ itemId: 'item-1', status: 'Todo by human', isClosed: true }),
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
         ],
         generatedAt: '2026-06-14T07:22:34Z',
         nowMs: nowMs + 100,
@@ -551,7 +559,11 @@ describe('writeConsoleLists', () => {
         assigneeLogin: ASSIGNEE,
         project,
         issues: [
-          makeIssue({ itemId: 'item-1', status: 'Todo by human', isClosed: false }),
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
         ],
         generatedAt: '2026-06-14T07:22:35Z',
         nowMs: nowMs + 200,
@@ -563,7 +575,11 @@ describe('writeConsoleLists', () => {
         assigneeLogin: ASSIGNEE,
         project,
         issues: [
-          makeIssue({ itemId: 'item-1', status: 'Todo by human', isClosed: true }),
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
         ],
         generatedAt: '2026-06-14T07:22:36Z',
         nowMs: nowMs + 300,
@@ -579,7 +595,11 @@ describe('writeConsoleLists', () => {
         assigneeLogin: ASSIGNEE,
         project,
         issues: [
-          makeIssue({ itemId: 'item-1', status: 'Todo by human', isClosed: false }),
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
         ],
         generatedAt: '2026-06-14T07:22:33Z',
         nowMs,
@@ -591,7 +611,11 @@ describe('writeConsoleLists', () => {
         assigneeLogin: ASSIGNEE,
         project,
         issues: [
-          makeIssue({ itemId: 'item-1', status: 'Todo by human', isClosed: true }),
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
         ],
         generatedAt: '2026-06-14T07:22:34Z',
         nowMs: nowMs + 1000,
@@ -610,7 +634,11 @@ describe('writeConsoleLists', () => {
         assigneeLogin: ASSIGNEE,
         project,
         issues: [
-          makeIssue({ itemId: 'item-1', status: 'Todo by human', isClosed: false }),
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: false,
+          }),
         ],
         generatedAt: '2026-06-14T07:22:33Z',
         nowMs,
@@ -623,7 +651,11 @@ describe('writeConsoleLists', () => {
         assigneeLogin: ASSIGNEE,
         project,
         issues: [
-          makeIssue({ itemId: 'item-1', status: 'Todo by human', isClosed: true }),
+          makeIssue({
+            itemId: 'item-1',
+            status: 'Todo by human',
+            isClosed: true,
+          }),
         ],
         generatedAt: '2026-06-14T07:22:34Z',
         nowMs: nowMs + 1000,
