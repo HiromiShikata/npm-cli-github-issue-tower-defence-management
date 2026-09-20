@@ -247,15 +247,6 @@ describe('ClearPastNextActionDateHourUseCase', () => {
               nextActionDate: null,
             },
           ],
-          [
-            basicProject,
-            'dateFieldId',
-            {
-              ...openIssueWithHour,
-              nextActionHour: 10,
-              nextActionDate: null,
-            },
-          ],
         ],
       },
       {
@@ -331,15 +322,6 @@ describe('ClearPastNextActionDateHourUseCase', () => {
           [
             basicProject,
             'hourFieldId',
-            {
-              ...openIssueWithHour,
-              nextActionHour: 9,
-              nextActionDate: null,
-            },
-          ],
-          [
-            basicProject,
-            'dateFieldId',
             {
               ...openIssueWithHour,
               nextActionHour: 9,
