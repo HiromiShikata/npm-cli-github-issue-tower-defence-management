@@ -256,8 +256,7 @@ describe('useConsoleNavigation URL tab fallback when count reaches zero', () => 
       }: {
         tabCounts: Record<ConsoleTabName, number>;
         snapshotCounts: Record<ConsoleTabName, number>;
-      }) =>
-        useConsoleNavigation('acme', tabCounts, loadedTabs, snapshotCounts),
+      }) => useConsoleNavigation('acme', tabCounts, loadedTabs, snapshotCounts),
       {
         initialProps: {
           tabCounts: counts({ prs: 1, 'todo-by-human': 1 }),

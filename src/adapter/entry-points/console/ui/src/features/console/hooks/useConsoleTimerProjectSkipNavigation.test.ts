@@ -290,7 +290,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
       ),
     );
-    expect(navigatePush).toHaveBeenCalledWith('/projects/no-timer/todo-by-human');
+    expect(navigatePush).toHaveBeenCalledWith(
+      '/projects/no-timer/todo-by-human',
+    );
   });
 
   it('completes full skip cycle through unconfigured projects', () => {
@@ -310,7 +312,9 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         ),
       { initialProps: { pjcode: 'acme' } },
     );
-    expect(navigatePush).toHaveBeenCalledWith('/projects/no-timer/todo-by-human');
+    expect(navigatePush).toHaveBeenCalledWith(
+      '/projects/no-timer/todo-by-human',
+    );
     (navigatePush as jest.Mock).mockClear();
 
     rerender({ pjcode: 'no-timer' });
