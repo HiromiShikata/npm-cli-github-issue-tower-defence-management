@@ -276,10 +276,7 @@ describe('useConsoleNavigation project switch', () => {
   it('resets the active tab to default when navigatePush switches to a new project', () => {
     window.history.replaceState({}, '', '/projects/acme/prs');
     const { result } = renderHook(() =>
-      useConsoleNavigation(
-        'acme',
-        counts({ 'todo-by-human': 4, 'failed-preparation': 6, prs: 3 }),
-      ),
+      useConsoleNavigation('acme', counts({ 'failed-preparation': 6 })),
     );
     expect(result.current.activeTab).toBe('prs');
 
@@ -287,6 +284,6 @@ describe('useConsoleNavigation project switch', () => {
       navigatePush('/projects/beta');
     });
 
-    expect(result.current.activeTab).toBe('todo-by-human');
+    expect(result.current.activeTab).toBe('failed-preparation');
   });
 });
