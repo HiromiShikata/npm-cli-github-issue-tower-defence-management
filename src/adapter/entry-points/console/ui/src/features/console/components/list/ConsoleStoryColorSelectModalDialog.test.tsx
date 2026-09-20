@@ -85,7 +85,10 @@ describe('ConsoleStoryColorSelectModalDialog', () => {
   it('calls onClose when Escape is pressed', () => {
     const onClose = jest.fn();
     render(
-      <ConsoleStoryColorSelectModalDialog {...defaultProps} onClose={onClose} />,
+      <ConsoleStoryColorSelectModalDialog
+        {...defaultProps}
+        onClose={onClose}
+      />,
     );
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);

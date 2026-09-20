@@ -113,7 +113,10 @@ describe('ConsoleStoryDescriptionModalDialog', () => {
   it('calls onClose when Escape is pressed', () => {
     const onClose = jest.fn();
     render(
-      <ConsoleStoryDescriptionModalDialog {...defaultProps} onClose={onClose} />,
+      <ConsoleStoryDescriptionModalDialog
+        {...defaultProps}
+        onClose={onClose}
+      />,
     );
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
