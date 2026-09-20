@@ -78,7 +78,9 @@ describe('findNextNonEmptyTabToRight', () => {
 
 describe('resolveDefaultActiveTab', () => {
   it('does not navigate to Stories tab even when it is the only non-empty tab', () => {
-    expect(resolveDefaultActiveTab(counts({ stories: 5 }))).toBe('todo-by-human');
+    expect(resolveDefaultActiveTab(counts({ stories: 5 }))).toBe(
+      'todo-by-human',
+    );
   });
 
   it('returns the left-most tab when every tab is non-empty', () => {
