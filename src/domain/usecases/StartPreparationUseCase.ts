@@ -633,10 +633,7 @@ export class StartPreparationUseCase {
             now,
           )
         ) {
-          await this.issueRepository.createCommentByUrl(
-            issue.url,
-            commentBody,
-          );
+          await this.issueRepository.createCommentByUrl(issue.url, commentBody);
         }
         await this.issueRepository.updateStatus(
           project,
