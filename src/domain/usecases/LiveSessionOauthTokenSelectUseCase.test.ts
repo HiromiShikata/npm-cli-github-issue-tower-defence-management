@@ -827,6 +827,7 @@ describe('liveSessionConcurrentLimitOf', () => {
   });
 
   it('does not apply the urgency boost when the unflored throttle score is below one', () => {
+    // fullSpeedFiveHourFreeRatio 0.6 (not the 0.5 default) keeps unfloredScore at ≈0.833 so the guard fires
     expect(
       liveSessionConcurrentLimitOf(
         0.05,
