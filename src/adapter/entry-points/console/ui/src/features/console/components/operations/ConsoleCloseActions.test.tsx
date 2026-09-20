@@ -25,13 +25,18 @@ describe('ConsoleCloseActions', () => {
   });
 
   it('renders Comment & Close button to the right of Close when onCommentAndClose is provided', () => {
-    const { getByText } = render(
+    const { container } = render(
       <ConsoleCloseActions
         onClose={() => {}}
         onCommentAndClose={async () => {}}
       />,
     );
-    expect(getByText('Comment & Close')).toBeInTheDocument();
+    const buttons = Array.from(container.querySelectorAll('button'));
+    const closeIdx = buttons.findIndex((b) => b.textContent === 'Close');
+    const commentCloseIdx = buttons.findIndex(
+      (b) => b.textContent === 'Comment & Close',
+    );
+    expect(commentCloseIdx).toBeGreaterThan(closeIdx);
   });
 
   it('calls onCommentAndClose when Comment & Close is clicked', () => {
@@ -68,7 +73,20 @@ describe('ConsoleCloseActions', () => {
     expect(getByText('Comment & Close')).not.toBeDisabled();
   });
 
-  it('shows an error alert and disables the button while posting when onCommentAndClose rejects', async () => {
+  it('disables Comment & Close button while onCommentAndClose is in progress', () => {
+    let resolve!: () => void;
+    const { getByText } = render(
+      <ConsoleCloseActions
+        onClose={() => {}}
+        onCommentAndClose={() => new Promise<void>((r) => { resolve = r; })}
+      />,
+    );
+    fireEvent.click(getByText('Comment & Close'));
+    expect(getByText('Comment & Close')).toBeDisabled();
+    resolve();
+  });
+
+  it('shows an error alert when onCommentAndClose rejects', async () => {
     const { getByText, findByRole } = render(
       <ConsoleCloseActions
         onClose={() => {}}

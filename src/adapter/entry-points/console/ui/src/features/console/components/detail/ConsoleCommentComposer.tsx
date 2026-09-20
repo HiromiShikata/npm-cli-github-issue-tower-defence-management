@@ -118,14 +118,14 @@ export const ConsoleCommentComposer = ({
     }
   };
 
-  const submit = async (withMove: boolean): Promise<void> => {
+  const submit = async (action: 'comment' | 'move'): Promise<void> => {
     const body = draft.trim();
     if (body.length === 0 || status.kind === 'posting') {
       return;
     }
     setStatus({ kind: 'posting' });
     try {
-      if (withMove && onSubmitAndMoveToAwaitingWorkspace !== undefined) {
+      if (action === 'move' && onSubmitAndMoveToAwaitingWorkspace !== undefined) {
         await onSubmitAndMoveToAwaitingWorkspace(body);
       } else {
         await onSubmit(body);
@@ -268,7 +268,7 @@ export const ConsoleCommentComposer = ({
               className="console-composer-submit"
               disabled={status.kind === 'posting' || isDraftEmpty}
               onClick={() => {
-                void submit(false);
+                void submit('comment');
               }}
             >
               Comment
@@ -289,7 +289,7 @@ export const ConsoleCommentComposer = ({
                 className="console-composer-submit"
                 disabled={status.kind === 'posting' || isDraftEmpty}
                 onClick={() => {
-                  void submit(true);
+                  void submit('move');
                 }}
               >
                 Comment & Awaiting Workspace
