@@ -841,13 +841,14 @@ describe('liveSessionConcurrentLimitOf', () => {
   });
 
   it('still applies the urgency boost when the unflored throttle score is at or above one', () => {
-    const fullSpeedRatioThatPutsUnfloredScoreBelow1 = 0.6;
+    const fullSpeedRatioAboveActualFiveHourFreeRatio = 0.6;
     expect(
       liveSessionConcurrentLimitOf(
         0.15,
         1,
         settingsWith({
-          fullSpeedFiveHourFreeRatio: fullSpeedRatioThatPutsUnfloredScoreBelow1,
+          fullSpeedFiveHourFreeRatio:
+            fullSpeedRatioAboveActualFiveHourFreeRatio,
         }),
         3.5,
       ),
