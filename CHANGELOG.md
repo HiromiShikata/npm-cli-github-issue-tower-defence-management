@@ -1,3 +1,10 @@
+## [2.133.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.0...v2.133.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* **console:** move Comment & Close into ConsoleCommentComposer to eliminate extra step and UI breakage ([#2484](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2484)) ([3e76ae6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3e76ae6fdc7b05ca85aa46c737c2d4b94100c23b)), closes [HiromiShikata/umino-corporait-operation#32029](https://github.com/HiromiShikata/umino-corporait-operation/issues/32029)
+
 # [2.133.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.13...v2.133.0) (2026-09-20)
 
 
