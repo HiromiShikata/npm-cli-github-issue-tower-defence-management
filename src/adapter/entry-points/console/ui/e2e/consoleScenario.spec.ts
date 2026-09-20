@@ -467,14 +467,13 @@ test('creates an issue for a story when the add-task button and form are used', 
   });
   await tdpmRow.locator('.console-op-button', { hasText: 'Add task' }).click();
 
-  await page
-    .locator('.console-inline-input-form-input')
+  const addTaskDialog = page.getByRole('dialog', {
+    name: /Add task to TDPM Console port/,
+  });
+  await addTaskDialog
+    .locator('.console-modal-input')
     .fill('New task for TDPM Console port');
-  await page
-    .locator('.console-inline-input-form .console-op-button', {
-      hasText: 'Create',
-    })
-    .click();
+  await addTaskDialog.getByRole('button', { name: 'Create' }).click();
 
   await expect
     .poll(() => harness.createIssueCalls.length, { timeout: 10000 })
@@ -622,26 +621,16 @@ test('creates a new story when the add-story button and form are used', async ({
     })
     .click();
 
-  await page
-    .locator('.console-add-story-section .console-inline-input-form-input')
-    .fill('My new story');
-  await page
-    .locator(
-      '.console-add-story-section .console-inline-input-form .console-op-button',
-      {
-        hasText: 'Create',
-      },
-    )
-    .click();
+  const addStoryDialog = page.getByRole('dialog', { name: 'Add story' });
+  await addStoryDialog.locator('.console-modal-input').fill('My new story');
+  await addStoryDialog.getByRole('button', { name: 'Create' }).click();
 
   await expect
     .poll(() => harness.addStoryCalls.length, { timeout: 10000 })
     .toBe(1);
   expect(harness.addStoryCalls[0].storyName).toBe('My new story');
 
-  await expect(
-    page.locator('.console-add-story-section .console-inline-input-form'),
-  ).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Add story' })).toHaveCount(0);
 });
 
 test('changes the color of a story row via the color palette in the stories tab', async ({
@@ -663,7 +652,7 @@ test('changes the color of a story row via the color palette in the stories tab'
 
   await changeColorButton.click();
 
-  const palette = tdpmRow.locator('.console-story-color-palette');
+  const palette = page.locator('.console-story-color-palette');
   await expect(palette).toBeVisible();
 
   const swatches = palette.locator('.console-story-color-swatch');
@@ -681,7 +670,7 @@ test('changes the color of a story row via the color palette in the stories tab'
   expect(harness.storyColorCalls[0].storyOptionId).toBe('1491051e');
   expect(harness.storyColorCalls[0].newColor).toBe('GREEN');
 
-  await expect(palette).toHaveCount(0);
+  await expect(page.locator('.console-story-color-palette')).toHaveCount(0);
 });
 
 test('shows queued items grouped by story with colored status badges and navigates to detail on row click', async ({
@@ -1034,16 +1023,13 @@ test('renames a story option in the GitHub custom field via the rename form', as
 
   await tdpmRow.getByRole('button', { name: 'Rename story' }).click();
 
-  const input = page.locator('.console-inline-input-form-input');
+  const renameDialog = page.getByRole('dialog', { name: 'Rename story' });
+  const input = renameDialog.locator('.console-modal-input');
   await expect(input).toBeVisible();
   await expect(input).toHaveValue('TDPM Console port');
 
   await input.fill('TDPM Console port v2');
-  await page
-    .locator('.console-inline-input-form .console-op-button', {
-      hasText: 'Rename',
-    })
-    .click();
+  await renameDialog.getByRole('button', { name: 'Rename' }).click();
 
   await expect
     .poll(() => harness.renameStoryCalls.length, { timeout: 10000 })
@@ -1051,7 +1037,9 @@ test('renames a story option in the GitHub custom field via the rename form', as
   expect(harness.renameStoryCalls[0].storyOptionId).toBe('1491051e');
   expect(harness.renameStoryCalls[0].newName).toBe('TDPM Console port v2');
 
-  await expect(tdpmRow.locator('.console-inline-input-form')).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Rename story' })).toHaveCount(
+    0,
+  );
   await expect(
     page.locator('.console-story-list-row', {
       hasText: 'TDPM Console port v2',
