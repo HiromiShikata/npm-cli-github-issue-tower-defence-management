@@ -359,7 +359,7 @@ export const loadFleetTaskCreateUrl = (
       queryParts.push(`projects=${projectParam}`);
     }
   }
-  queryParts.push(`assignees[]=${settings.owner}`);
+  queryParts.push(`assignees=${settings.owner}`);
   return `${base}?${queryParts.join('&')}`;
 };
 
