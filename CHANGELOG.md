@@ -1,3 +1,10 @@
+## [2.132.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.8...v2.132.9) (2026-09-20)
+
+
+### Bug Fixes
+
+* **fleetConfig:** append assignees[]= owner to fleet task create URL ([#2476](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2476)) ([78820a8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/78820a875a05960e2a4b6a36beb5bab66b0c5eb9)), closes [HiromiShikata/umino-corporait-operation#32021](https://github.com/HiromiShikata/umino-corporait-operation/issues/32021)
+
 ## [2.132.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.7...v2.132.8) (2026-09-20)
 
 
