@@ -42,7 +42,7 @@ export const liveSessionConcurrentLimitOf = (
   if (unfloredScore < 1) {
     return 1;
   }
-  const base = Math.max(Math.floor(unfloredScore), 1);
+  const base = Math.floor(unfloredScore);
   if (sevenDayUrgencyBoost <= 1) {
     return base;
   }
