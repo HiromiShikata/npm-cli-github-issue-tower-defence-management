@@ -1,3 +1,10 @@
+## [2.133.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.6...v2.133.7) (2026-09-20)
+
+
+### Bug Fixes
+
+* **fleetConfig:** remove [] from assignees param in fleet task create URL ([#2503](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2503)) ([e3413d2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/e3413d299b6446b8244e274a875b9bfed0db4571))
+
 ## [2.133.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.5...v2.133.6) (2026-09-20)
 
 
