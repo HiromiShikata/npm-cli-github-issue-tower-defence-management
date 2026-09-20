@@ -1,3 +1,10 @@
+## [2.133.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.1...v2.133.2) (2026-09-20)
+
+
+### Bug Fixes
+
+* **ClearPastNextAction:** do not clear date field when nextActionDate is null ([#2486](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2486)) ([3c7af9a](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/3c7af9acfadc15ea1d1888af2a8456818ba8e899))
+
 ## [2.133.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.0...v2.133.1) (2026-09-20)
 
 
