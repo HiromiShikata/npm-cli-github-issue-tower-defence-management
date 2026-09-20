@@ -246,6 +246,33 @@ describe('useConsoleNavigation URL tab fallback when count reaches zero', () => 
     expect(result.current.activeTab).toBe('todo-by-human');
   });
 
+  it('stays on url tab when overlay reduces count to zero but snapshot still has items', () => {
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const loadedTabs = new Set<ConsoleTabName>(['prs', 'todo-by-human']);
+    const { result, rerender } = renderHook(
+      ({
+        tabCounts,
+        snapshotCounts,
+      }: {
+        tabCounts: Record<ConsoleTabName, number>;
+        snapshotCounts: Record<ConsoleTabName, number>;
+      }) =>
+        useConsoleNavigation('acme', tabCounts, loadedTabs, snapshotCounts),
+      {
+        initialProps: {
+          tabCounts: counts({ prs: 1, 'todo-by-human': 1 }),
+          snapshotCounts: counts({ prs: 1, 'todo-by-human': 1 }),
+        },
+      },
+    );
+    expect(result.current.activeTab).toBe('prs');
+    rerender({
+      tabCounts: counts({ prs: 0, 'todo-by-human': 1 }),
+      snapshotCounts: counts({ prs: 1, 'todo-by-human': 1 }),
+    });
+    expect(result.current.activeTab).toBe('prs');
+  });
+
   it('switches to non-empty tab when non-default url tab count drops to zero', () => {
     window.history.replaceState({}, '', '/projects/acme/prs?k=token');
     const { result, rerender } = renderHook(

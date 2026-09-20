@@ -1907,7 +1907,7 @@ describe('ConsolePage auto-advance tab', () => {
     navigatePush.mockClear();
     render(<ConsolePage />);
     await waitFor(() => {
-      expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
     });
   });
 
