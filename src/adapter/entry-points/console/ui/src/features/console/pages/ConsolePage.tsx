@@ -195,7 +195,12 @@ export const ConsolePage = () => {
     return result;
   }, [snapshots]);
 
-  const navigation = useConsoleNavigation(pjcode, counts, loadedTabs, snapshotCounts);
+  const navigation = useConsoleNavigation(
+    pjcode,
+    counts,
+    loadedTabs,
+    snapshotCounts,
+  );
   const { activeTab, selectedItemKey, openItem, closeItem } = navigation;
   const selectTab = useConsoleTabSelectHandler(navigation.selectTab);
   const navigateToProject = useCallback(
@@ -568,7 +573,9 @@ export const ConsolePage = () => {
           if (!input.skipAdvance && actionAdvances(input.kind, activeTab)) {
             if (
               timerMode &&
-              isTimerExpired(projectMinutes[pjcode ?? ''] ?? DEFAULT_TIMER_MINUTES)
+              isTimerExpired(
+                projectMinutes[pjcode ?? ''] ?? DEFAULT_TIMER_MINUTES,
+              )
             ) {
               const nextPjcode = findNextPjcodeWithMinutes(
                 pjcodes,

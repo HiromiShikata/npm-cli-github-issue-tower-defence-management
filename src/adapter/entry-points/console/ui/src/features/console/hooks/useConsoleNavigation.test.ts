@@ -183,11 +183,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
 
 describe('useConsoleNavigation URL tab fallback when count reaches zero', () => {
   it('stays on url tab when count is greater than zero', () => {
-    window.history.replaceState(
-      {},
-      '',
-      '/projects/acme/todo-by-human?k=token',
-    );
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
     const { result } = renderHook(() =>
       useConsoleNavigation('acme', counts({ 'todo-by-human': 5 })),
     );
@@ -195,11 +191,7 @@ describe('useConsoleNavigation URL tab fallback when count reaches zero', () => 
   });
 
   it('switches to left-most non-empty tab when url tab count drops to zero', () => {
-    window.history.replaceState(
-      {},
-      '',
-      '/projects/acme/todo-by-human?k=token',
-    );
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
     const { result, rerender } = renderHook(
       ({
         tabCounts,
@@ -230,11 +222,7 @@ describe('useConsoleNavigation URL tab fallback when count reaches zero', () => 
   });
 
   it('falls back to first navigable tab when url tab count drops to zero and all tabs are empty', () => {
-    window.history.replaceState(
-      {},
-      '',
-      '/projects/acme/todo-by-human?k=token',
-    );
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
     const { result, rerender } = renderHook(
       ({
         tabCounts,

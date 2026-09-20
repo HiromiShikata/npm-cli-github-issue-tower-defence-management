@@ -130,7 +130,8 @@ export const ConsoleTimerSettingsModalDialog = ({
                                   pjcode,
                                   Math.max(
                                     0,
-                                    (projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) - 1,
+                                    (projectMinutes[pjcode] ??
+                                      DEFAULT_TIMER_MINUTES) - 1,
                                   ),
                                 )
                               }
@@ -143,9 +144,11 @@ export const ConsoleTimerSettingsModalDialog = ({
                               min={0}
                               max={999}
                               value={
-                                (projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) === 0
+                                (projectMinutes[pjcode] ??
+                                  DEFAULT_TIMER_MINUTES) === 0
                                   ? ''
-                                  : (projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES)
+                                  : (projectMinutes[pjcode] ??
+                                    DEFAULT_TIMER_MINUTES)
                               }
                               onChange={(e) =>
                                 onChangeMinutes(
@@ -167,7 +170,8 @@ export const ConsoleTimerSettingsModalDialog = ({
                                   pjcode,
                                   Math.min(
                                     999,
-                                    (projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) + 1,
+                                    (projectMinutes[pjcode] ??
+                                      DEFAULT_TIMER_MINUTES) + 1,
                                   ),
                                 )
                               }
@@ -176,7 +180,8 @@ export const ConsoleTimerSettingsModalDialog = ({
                             </button>
                           </div>
                           <span className="console-timer-settings-minutes-label">
-                            {(projectMinutes[pjcode] ?? DEFAULT_TIMER_MINUTES) === 0
+                            {(projectMinutes[pjcode] ??
+                              DEFAULT_TIMER_MINUTES) === 0
                               ? 'Skip'
                               : 'min'}
                           </span>
