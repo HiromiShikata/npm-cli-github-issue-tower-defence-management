@@ -1450,7 +1450,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     );
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining('This task has been marked as Failed Preparation'),
+      expect.stringContaining(
+        'This task has been marked as Failed Preparation',
+      ),
     );
   });
 

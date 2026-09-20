@@ -2672,7 +2672,9 @@ describe('RevertNotReadyReviewQueueIssueUseCase', () => {
       );
       expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
         issue,
-        expect.stringContaining('This task has been marked as Failed Preparation'),
+        expect.stringContaining(
+          'This task has been marked as Failed Preparation',
+        ),
       );
     });
 

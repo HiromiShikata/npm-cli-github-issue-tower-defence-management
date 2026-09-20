@@ -453,7 +453,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('This task has been marked as Failed Preparation'),
+      expect.stringContaining(
+        'This task has been marked as Failed Preparation',
+      ),
     );
   });
 
@@ -505,7 +507,9 @@ describe('RevertOrphanedPreparationUseCase', () => {
     expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe('5');
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
       stuckIssue,
-      expect.stringContaining('dispatched 3 times since the last human comment'),
+      expect.stringContaining(
+        'dispatched 3 times since the last human comment',
+      ),
     );
   });
 
