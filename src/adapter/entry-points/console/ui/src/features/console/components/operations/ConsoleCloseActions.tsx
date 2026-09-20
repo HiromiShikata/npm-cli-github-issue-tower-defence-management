@@ -4,11 +4,13 @@ import type { ConsoleCloseAction } from '../../logic/operations';
 export type ConsoleCloseButtonGroupProps = {
   onClose: (action: ConsoleCloseAction) => void;
   onCommentAndClose?: () => Promise<void>;
+  isDraftEmpty?: boolean;
 };
 
 export const ConsoleCloseActions = ({
   onClose,
   onCommentAndClose,
+  isDraftEmpty,
 }: ConsoleCloseButtonGroupProps) => {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export const ConsoleCloseActions = ({
           <button
             type="button"
             className="console-op-button"
-            disabled={posting}
+            disabled={posting || isDraftEmpty === true}
             onClick={() => {
               void handleCommentAndClose();
             }}

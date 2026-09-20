@@ -343,10 +343,14 @@ export const ConsoleItemDetailContainer = ({
       : undefined;
 
   const commentDraftRef = useRef<string>('');
+  const [isDraftEmpty, setIsDraftEmpty] = useState<boolean>(
+    (initialCommentDraft ?? '').trim().length === 0,
+  );
 
   const handleDraftChange = useCallback(
     (draft: string) => {
       commentDraftRef.current = draft;
+      setIsDraftEmpty(draft.trim().length === 0);
       onCommentDraftChange?.(draft);
     },
     [onCommentDraftChange],
@@ -358,7 +362,9 @@ export const ConsoleItemDetailContainer = ({
   };
 
   const commentAndCloseWithDraft = async (): Promise<void> => {
-    await commentAndClose(commentDraftRef.current.trim());
+    const body = commentDraftRef.current.trim();
+    if (body.length === 0) return;
+    await commentAndClose(body);
   };
 
   const resolvedStoryName =
@@ -430,6 +436,7 @@ export const ConsoleItemDetailContainer = ({
           handlers={handlers}
           storyNameForDeletion={storyNameForDeletion}
           onCommentAndClose={commentAndCloseWithDraft}
+          isDraftEmpty={isDraftEmpty}
         />
       }
     />

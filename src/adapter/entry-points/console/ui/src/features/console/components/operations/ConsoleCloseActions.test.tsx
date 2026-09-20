@@ -46,6 +46,28 @@ describe('ConsoleCloseActions', () => {
     expect(onCommentAndClose).toHaveBeenCalledTimes(1);
   });
 
+  it('disables Comment & Close button when isDraftEmpty is true', () => {
+    const { getByText } = render(
+      <ConsoleCloseActions
+        onClose={() => {}}
+        onCommentAndClose={async () => {}}
+        isDraftEmpty={true}
+      />,
+    );
+    expect(getByText('Comment & Close')).toBeDisabled();
+  });
+
+  it('enables Comment & Close button when isDraftEmpty is false', () => {
+    const { getByText } = render(
+      <ConsoleCloseActions
+        onClose={() => {}}
+        onCommentAndClose={async () => {}}
+        isDraftEmpty={false}
+      />,
+    );
+    expect(getByText('Comment & Close')).not.toBeDisabled();
+  });
+
   it('shows an error alert and disables the button while posting when onCommentAndClose rejects', async () => {
     const { getByText, findByRole } = render(
       <ConsoleCloseActions
