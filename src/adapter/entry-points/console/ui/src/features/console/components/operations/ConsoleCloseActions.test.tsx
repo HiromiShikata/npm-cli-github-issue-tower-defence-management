@@ -45,4 +45,18 @@ describe('ConsoleCloseActions', () => {
     fireEvent.click(getByText('Comment & Close'));
     expect(onCommentAndClose).toHaveBeenCalledTimes(1);
   });
+
+  it('shows an error alert and disables the button while posting when onCommentAndClose rejects', async () => {
+    const { getByText, findByRole } = render(
+      <ConsoleCloseActions
+        onClose={() => {}}
+        onCommentAndClose={async () => {
+          throw new Error('network error');
+        }}
+      />,
+    );
+    fireEvent.click(getByText('Comment & Close'));
+    const alert = await findByRole('alert');
+    expect(alert.textContent).toContain('network error');
+  });
 });

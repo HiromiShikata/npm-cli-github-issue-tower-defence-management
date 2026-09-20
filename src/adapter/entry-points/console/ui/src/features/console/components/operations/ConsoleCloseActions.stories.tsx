@@ -12,3 +12,9 @@ export default meta;
 type Story = StoryObj<typeof ConsoleCloseActions>;
 
 export const Default: Story = {};
+
+export const WithCommentAndClose: Story = {
+  args: {
+    onCommentAndClose: async () => {},
+  },
+};

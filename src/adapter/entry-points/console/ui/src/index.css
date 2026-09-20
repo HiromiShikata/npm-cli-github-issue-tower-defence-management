@@ -1707,6 +1707,11 @@ body {
   cursor: not-allowed;
 }
 
+.console-op-comment-close-error {
+  color: #f85149;
+  font-size: 0.875rem;
+}
+
 .console-op-requirement {
   width: 100%;
   margin: 0;
