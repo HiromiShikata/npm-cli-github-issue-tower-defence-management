@@ -21,6 +21,14 @@ export const ConsoleStoryDescriptionModalDialog = ({
     textareaRef.current?.select();
   }, []);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   const handleSubmit = async (): Promise<void> => {
     setSubmitting(true);
     setSubmitError(null);

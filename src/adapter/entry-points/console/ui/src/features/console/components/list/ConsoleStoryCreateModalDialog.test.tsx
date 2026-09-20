@@ -87,4 +87,13 @@ describe('ConsoleStoryCreateModalDialog', () => {
     fireEvent.click(getByRole('button', { name: 'Close dialog' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('calls onClose when Escape is pressed', () => {
+    const onClose = jest.fn();
+    render(
+      <ConsoleStoryCreateModalDialog {...defaultProps} onClose={onClose} />,
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

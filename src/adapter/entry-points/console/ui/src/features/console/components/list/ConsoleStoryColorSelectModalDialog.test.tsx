@@ -81,4 +81,13 @@ describe('ConsoleStoryColorSelectModalDialog', () => {
     );
     expect(getByRole('button', { name: 'GREEN' })).toBeDisabled();
   });
+
+  it('calls onClose when Escape is pressed', () => {
+    const onClose = jest.fn();
+    render(
+      <ConsoleStoryColorSelectModalDialog {...defaultProps} onClose={onClose} />,
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

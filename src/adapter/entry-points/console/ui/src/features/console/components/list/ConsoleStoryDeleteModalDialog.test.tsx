@@ -83,4 +83,13 @@ describe('ConsoleStoryDeleteModalDialog', () => {
     );
     expect(getByRole('alert')).toHaveTextContent('Delete failed');
   });
+
+  it('calls onCancel when Escape is pressed', () => {
+    const onCancel = jest.fn();
+    render(
+      <ConsoleStoryDeleteModalDialog {...defaultProps} onCancel={onCancel} />,
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
 });

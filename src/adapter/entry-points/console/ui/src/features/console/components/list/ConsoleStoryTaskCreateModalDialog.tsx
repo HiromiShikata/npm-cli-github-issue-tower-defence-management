@@ -20,6 +20,14 @@ export const ConsoleStoryTaskCreateModalDialog = ({
     inputRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   const handleSubmit = async (): Promise<void> => {
     const trimmed = titleInput.trim();
     if (trimmed.length === 0) {

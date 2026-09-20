@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 export type ConsoleStoryDeleteModalDialogProps = {
   storyName: string;
   isDeleting: boolean;
@@ -12,8 +14,17 @@ export const ConsoleStoryDeleteModalDialog = ({
   deleteError,
   onConfirm,
   onCancel,
-}: ConsoleStoryDeleteModalDialogProps) => (
-  <div
+}: ConsoleStoryDeleteModalDialogProps) => {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onCancel]);
+
+  return (
+    <div
     className="console-modal-dialog"
     role="dialog"
     aria-modal="true"
@@ -64,4 +75,5 @@ export const ConsoleStoryDeleteModalDialog = ({
       </div>
     </div>
   </div>
-);
+  );
+};

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { CONSOLE_COLOR_PALETTE } from '../../logic/colors';
 import type { ConsoleColor } from '../../logic/types';
 
@@ -18,6 +19,14 @@ export const ConsoleStoryColorSelectModalDialog = ({
   onClose,
   disabled,
 }: ConsoleStoryColorSelectModalDialogProps) => {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   const handleSwatchClick = (color: ConsoleColor): void => {
     onSelectColor(storyOptionId, color);
     onClose();
