@@ -95,18 +95,16 @@ describe('ConsoleTabList', () => {
     expect(bottomRow?.querySelector('.console-tab-pjname')).toBeNull();
   });
 
-  it('renders the Workflow Blocker tab immediately right of Todo by human', () => {
+  it('renders the Todo by human tab as the leftmost visible tab', () => {
     const { getByText } = render(
       <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
     );
-    const tabBar = getByText('Workflow Blocker').closest('nav');
+    const tabBar = getByText('Todo by human').closest('nav');
     const labels = Array.from(
       tabBar?.querySelectorAll('.console-tab-label') ?? [],
     ).map((node) => node.textContent);
-    const blockerIndex = labels.indexOf('Workflow Blocker');
     const todoByHumanIndex = labels.indexOf('Todo by human');
-    expect(blockerIndex).toBeGreaterThanOrEqual(0);
-    expect(todoByHumanIndex).toBe(blockerIndex - 1);
+    expect(todoByHumanIndex).toBe(0);
   });
 
   it('renders the project code and snapshot age as relative time', () => {

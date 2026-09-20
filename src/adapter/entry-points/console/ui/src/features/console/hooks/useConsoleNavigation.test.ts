@@ -132,14 +132,14 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
         }),
       ),
     );
-    expect(result.current.activeTab).toBe('prs');
+    expect(result.current.activeTab).toBe('todo-by-human');
   });
 
   it('skips the empty left-most tab and lands on the next non-empty tab', () => {
     const { result } = renderHook(() =>
       useConsoleNavigation(
         'acme',
-        counts({ 'workflow-blocker': 0, prs: 0, 'failed-preparation': 8 }),
+        counts({ 'todo-by-human': 0, prs: 0, 'failed-preparation': 8 }),
       ),
     );
     expect(result.current.activeTab).toBe('failed-preparation');
@@ -147,7 +147,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
 
   it('falls back to the first tab when every tab is empty', () => {
     const { result } = renderHook(() => useConsoleNavigation('acme', counts()));
-    expect(result.current.activeTab).toBe('prs');
+    expect(result.current.activeTab).toBe('todo-by-human');
   });
 
   it('updates the default tab when counts arrive after the initial render', () => {
@@ -156,7 +156,7 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
         useConsoleNavigation('acme', tabCounts),
       { initialProps: { tabCounts: counts() } },
     );
-    expect(result.current.activeTab).toBe('prs');
+    expect(result.current.activeTab).toBe('todo-by-human');
     rerender({ tabCounts: counts({ 'failed-preparation': 6 }) });
     expect(result.current.activeTab).toBe('failed-preparation');
   });

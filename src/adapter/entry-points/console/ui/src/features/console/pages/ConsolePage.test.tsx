@@ -498,7 +498,12 @@ describe('ConsolePage', () => {
       fireEvent.click(getByText('ok & Awaiting Workspace'));
 
       await waitFor(() => {
-        expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
+        expect(
+          within(tabBar())
+            .getByText('Awaiting Owner')
+            .closest('a')
+            ?.querySelector('.console-tab-badge')?.textContent,
+        ).toBe('0');
       });
     } finally {
       jest.useRealTimers();
@@ -524,7 +529,12 @@ describe('ConsolePage', () => {
       fireEvent.click(getByText('Approve & Merge'));
 
       await waitFor(() => {
-        expect(within(tabBar()).queryByText('Awaiting Owner')).toBeNull();
+        expect(
+          within(tabBar())
+            .getByText('Awaiting Owner')
+            .closest('a')
+            ?.querySelector('.console-tab-badge')?.textContent,
+        ).toBe('0');
       });
     } finally {
       jest.useRealTimers();
@@ -551,12 +561,7 @@ describe('ConsolePage', () => {
       fireEvent.click(getByText('Close'));
 
       await waitFor(() => {
-        expect(
-          within(tabBar())
-            .getByText('Todo by human')
-            .closest('a')
-            ?.querySelector('.console-tab-badge')?.textContent,
-        ).toBe('0');
+        expect(within(tabBar()).queryByText('Todo by human')).toBeNull();
       });
     } finally {
       jest.useRealTimers();
@@ -1465,28 +1470,29 @@ describe('ConsolePage auto-advance tab', () => {
   });
 
   it('auto-advances to the next non-empty tab on the right after the active tab is driven to zero', async () => {
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
     jest.useFakeTimers();
     try {
       const { getByText, findByText } = render(<ConsolePage />);
       await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+        expect(
+          getByText('Notify finished issue preparation'),
+        ).toBeInTheDocument();
       });
 
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      fireEvent.click(await findByText('Approve & Merge'));
+      fireEvent.click(getByText('Notify finished issue preparation'));
+      fireEvent.click(await findByText('Close'));
 
       act(() => {
         jest.advanceTimersByTime(5100);
       });
 
       await waitFor(() => {
-        expect(
-          getByText('Notify finished issue preparation'),
-        ).toBeInTheDocument();
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
       });
       expect(
         within(tabBar())
-          .getByText('Todo by human')
+          .getByText('Awaiting Owner')
           .closest('a')
           ?.getAttribute('aria-current'),
       ).toBe('page');

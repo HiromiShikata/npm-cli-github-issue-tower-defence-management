@@ -162,9 +162,9 @@ export type ConsoleTab = {
 };
 
 export const CONSOLE_TABS: ConsoleTab[] = [
+  { name: 'todo-by-human', label: 'Todo by human' },
   { name: 'prs', label: 'Awaiting Owner' },
   { name: 'failed-preparation', label: 'Failed Preparation' },
-  { name: 'todo-by-human', label: 'Todo by human' },
   { name: 'workflow-blocker', label: 'Workflow Blocker' },
   { name: 'todo-by-agent', label: 'Todo by agent' },
   { name: 'queued', label: 'Queued' },

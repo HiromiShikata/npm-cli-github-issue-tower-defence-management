@@ -28,9 +28,9 @@ describe('findNextNonEmptyTabToRight', () => {
     expect(
       findNextNonEmptyTabToRight(
         'prs',
-        counts({ 'failed-preparation': 0, 'todo-by-human': 4 }),
+        counts({ 'failed-preparation': 0, 'workflow-blocker': 4 }),
       ),
-    ).toBe('todo-by-human');
+    ).toBe('workflow-blocker');
   });
 
   it('advances from todo-by-human to workflow-blocker when it has items', () => {
@@ -59,7 +59,7 @@ describe('findNextNonEmptyTabToRight', () => {
 
   it('returns null when no tab to the right has any items', () => {
     expect(
-      findNextNonEmptyTabToRight('todo-by-human', counts({ prs: 35 })),
+      findNextNonEmptyTabToRight('prs', counts({ 'todo-by-human': 35 })),
     ).toBeNull();
   });
 
@@ -78,7 +78,9 @@ describe('findNextNonEmptyTabToRight', () => {
 
 describe('resolveDefaultActiveTab', () => {
   it('does not navigate to Stories tab even when it is the only non-empty tab', () => {
-    expect(resolveDefaultActiveTab(counts({ stories: 5 }))).toBe('prs');
+    expect(resolveDefaultActiveTab(counts({ stories: 5 }))).toBe(
+      'todo-by-human',
+    );
   });
 
   it('returns the left-most tab when every tab is non-empty', () => {
@@ -91,18 +93,18 @@ describe('resolveDefaultActiveTab', () => {
           'todo-by-human': 4,
         }),
       ),
-    ).toBe('prs');
+    ).toBe('todo-by-human');
   });
 
   it('skips empty left-most tabs and returns the first non-empty tab', () => {
     expect(
       resolveDefaultActiveTab(
-        counts({ 'workflow-blocker': 0, prs: 0, 'failed-preparation': 8 }),
+        counts({ 'todo-by-human': 0, prs: 0, 'failed-preparation': 8 }),
       ),
     ).toBe('failed-preparation');
   });
 
   it('falls back to the first tab when every tab is empty', () => {
-    expect(resolveDefaultActiveTab(counts({}))).toBe('prs');
+    expect(resolveDefaultActiveTab(counts({}))).toBe('todo-by-human');
   });
 });
