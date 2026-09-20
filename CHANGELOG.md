@@ -1,3 +1,10 @@
+## [2.132.11](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.10...v2.132.11) (2026-09-20)
+
+
+### Bug Fixes
+
+* **console:** convert story list inline forms to modal dialogs ([#2475](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2475)) ([2576741](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2576741b111d9fec1cdabc1b71e66556a190aba6)), closes [HiromiShikata/umino-corporait-operation#32016](https://github.com/HiromiShikata/umino-corporait-operation/issues/32016)
+
 ## [2.132.10](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.9...v2.132.10) (2026-09-20)
 
 
