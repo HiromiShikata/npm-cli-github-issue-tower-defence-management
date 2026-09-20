@@ -610,7 +610,11 @@ export class StartPreparationUseCase {
       issueUrlsWithOpenPrs,
     );
 
-    if (todoByHumanStatusOption) {
+    if (
+      todoByHumanStatusOption &&
+      params.allowedIssueAuthors !== null &&
+      params.allowedIssueAuthors.length > 0
+    ) {
       for (const issue of awaitingWorkspaceIssues) {
         if (runningIssueUrls.has(issue.url)) continue;
         const exclusionReason = this.spawnCandidateExclusionReasonOf(

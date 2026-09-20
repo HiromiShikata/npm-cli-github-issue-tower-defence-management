@@ -7335,6 +7335,53 @@ describe('StartPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
+  it('should skip authorNotAllowed pre-loop when allowedIssueAuthors is null even if Todo by human status exists', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const awaitingIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'some-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([awaitingIssue]),
+    );
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: null,
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(0);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(0);
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
   it('should post a comment and move to Todo by human for authorNotAllowed issue even when preparation queue is at capacity', async () => {
     const projectWithTodoByHuman: Project = {
       ...createMockProject(),
