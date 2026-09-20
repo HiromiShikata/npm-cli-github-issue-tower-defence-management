@@ -347,4 +347,50 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
     rerender({ pjcodes: ['acme', 'beta'] });
     expect(navigatePush).toHaveBeenCalledWith('/projects/acme/todo-by-human');
   });
+
+  it('navigates to next project when counts drop to zero from non-zero while already on a project', () => {
+    const { rerender } = renderHook(
+      ({ prsCount }: { prsCount: number }) =>
+        useConsoleTimerProjectSkipNavigation(
+          true,
+          prsCount,
+          0,
+          'acme',
+          ['acme', 'beta'],
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+        ),
+      { initialProps: { prsCount: 1 } },
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+
+    rerender({ prsCount: 0 });
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
+
+  it('navigates to next project when todo-by-human count drops to zero from non-zero while already on a project', () => {
+    const { rerender } = renderHook(
+      ({ todoByHumanCount }: { todoByHumanCount: number }) =>
+        useConsoleTimerProjectSkipNavigation(
+          true,
+          0,
+          todoByHumanCount,
+          'acme',
+          ['acme', 'beta'],
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+        ),
+      { initialProps: { todoByHumanCount: 3 } },
+    );
+    expect(navigatePush).not.toHaveBeenCalled();
+
+    rerender({ todoByHumanCount: 0 });
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
 });
