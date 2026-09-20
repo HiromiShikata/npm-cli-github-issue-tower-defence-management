@@ -1,275 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
-import { CONSOLE_COLOR_PALETTE, colorFromEnum } from '../../logic/colors';
+import { useState } from 'react';
+import { colorFromEnum } from '../../logic/colors';
 import type {
   ConsoleColor,
   ConsoleListItem,
   ConsoleStoryEntry,
 } from '../../logic/types';
+import { ConsoleStoryColorSelectModalDialog } from './ConsoleStoryColorSelectModalDialog';
+import { ConsoleStoryCreateModalDialog } from './ConsoleStoryCreateModalDialog';
+import { ConsoleStoryDeleteModalDialog } from './ConsoleStoryDeleteModalDialog';
+import { ConsoleStoryDescriptionModalDialog } from './ConsoleStoryDescriptionModalDialog';
+import { ConsoleStoryRenameModalDialog } from './ConsoleStoryRenameModalDialog';
+import { ConsoleStoryTaskCreateModalDialog } from './ConsoleStoryTaskCreateModalDialog';
 
 type RowReorderState = {
   inProgress: boolean;
   error: string | null;
 };
-
-const ALL_COLORS = Object.keys(CONSOLE_COLOR_PALETTE) as ConsoleColor[];
-
-type InlineInputFormProps = {
-  placeholder: string;
-  emptyValueError: string;
-  onSubmit: (value: string) => Promise<void>;
-  onCancel: () => void;
-  initialValue?: string;
-  submitLabel?: string;
-  selectAllOnFocus?: boolean;
-  multiline?: boolean;
-};
-
-const InlineInputForm = ({
-  placeholder,
-  emptyValueError,
-  onSubmit,
-  onCancel,
-  initialValue = '',
-  submitLabel = 'Create',
-  selectAllOnFocus = false,
-  multiline = false,
-}: InlineInputFormProps) => {
-  const [valueInput, setValueInput] = useState(initialValue);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const selectAllOnFocusRef = useRef(selectAllOnFocus);
-
-  useEffect(() => {
-    if (multiline) {
-      textareaRef.current?.focus();
-      if (selectAllOnFocusRef.current) {
-        textareaRef.current?.select();
-      }
-    } else {
-      inputRef.current?.focus();
-      if (selectAllOnFocusRef.current) {
-        inputRef.current?.select();
-      }
-    }
-  }, [multiline]);
-
-  const handleSubmit = async (): Promise<void> => {
-    const trimmed = valueInput.trim();
-    if (trimmed.length === 0 && emptyValueError !== '') {
-      setSubmitError(emptyValueError);
-      return;
-    }
-    setSubmitting(true);
-    setSubmitError(null);
-    try {
-      await onSubmit(trimmed);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <form
-      className="console-inline-input-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void handleSubmit();
-      }}
-    >
-      {multiline ? (
-        <textarea
-          ref={textareaRef}
-          className="console-inline-input-form-textarea"
-          placeholder={placeholder}
-          value={valueInput}
-          onChange={(e) => setValueInput(e.target.value)}
-          disabled={submitting}
-          rows={3}
-        />
-      ) : (
-        <input
-          ref={inputRef}
-          type="text"
-          className="console-inline-input-form-input"
-          placeholder={placeholder}
-          value={valueInput}
-          onChange={(e) => setValueInput(e.target.value)}
-          disabled={submitting}
-        />
-      )}
-      <button type="submit" className="console-op-button" disabled={submitting}>
-        {submitting ? `${submitLabel.replace(/e$/, '')}ing…` : submitLabel}
-      </button>
-      <button
-        type="button"
-        className="console-op-button"
-        onClick={onCancel}
-        disabled={submitting}
-      >
-        Cancel
-      </button>
-      {submitError !== null && (
-        <p role="alert" className="console-list-error">
-          {submitError}
-        </p>
-      )}
-    </form>
-  );
-};
-
-type StoryCreateFormProps = {
-  storyName: string;
-  onSubmit: (storyName: string, title: string) => Promise<void>;
-  onCancel: () => void;
-};
-
-const StoryCreateForm = ({
-  storyName,
-  onSubmit,
-  onCancel,
-}: StoryCreateFormProps) => (
-  <InlineInputForm
-    placeholder="Issue title"
-    emptyValueError="Title is required"
-    onSubmit={(title) => onSubmit(storyName, title)}
-    onCancel={onCancel}
-  />
-);
-
-type StoryRenameFormProps = {
-  currentName: string;
-  onSubmit: (newName: string) => Promise<void>;
-  onCancel: () => void;
-};
-
-const StoryRenameForm = ({
-  currentName,
-  onSubmit,
-  onCancel,
-}: StoryRenameFormProps) => (
-  <InlineInputForm
-    placeholder="Story name"
-    emptyValueError="Story name is required"
-    initialValue={currentName}
-    submitLabel="Rename"
-    selectAllOnFocus={true}
-    onSubmit={onSubmit}
-    onCancel={onCancel}
-  />
-);
-
-type StoryDescriptionFormProps = {
-  currentDescription: string;
-  onSubmit: (newDescription: string) => Promise<void>;
-  onCancel: () => void;
-};
-
-const StoryDescriptionForm = ({
-  currentDescription,
-  onSubmit,
-  onCancel,
-}: StoryDescriptionFormProps) => (
-  <InlineInputForm
-    placeholder="Story description"
-    emptyValueError=""
-    initialValue={currentDescription}
-    submitLabel="Save"
-    selectAllOnFocus={true}
-    multiline={true}
-    onSubmit={onSubmit}
-    onCancel={onCancel}
-  />
-);
-
-type ColorPaletteProps = {
-  onSelectColor: (color: ConsoleColor) => void;
-  disabled: boolean;
-};
-
-const ColorPalette = ({ onSelectColor, disabled }: ColorPaletteProps) => (
-  <div className="console-story-color-palette">
-    {ALL_COLORS.map((color) => {
-      const palette = CONSOLE_COLOR_PALETTE[color];
-      return (
-        <button
-          key={color}
-          type="button"
-          className="console-story-color-swatch"
-          aria-label={color === 'GRAY' ? `${color} (disable)` : color}
-          style={{ backgroundColor: palette.dot }}
-          onClick={() => onSelectColor(color)}
-          disabled={disabled}
-        >
-          {color === 'GRAY' && (
-            <span className="console-story-color-swatch-label">disable</span>
-          )}
-        </button>
-      );
-    })}
-  </div>
-);
-
-type StoryDeleteConfirmDialogProps = {
-  storyName: string;
-  isDeleting: boolean;
-  deleteError: string | null;
-  onConfirm: (deleteChildTasks: boolean) => void;
-  onCancel: () => void;
-};
-
-const StoryDeleteConfirmDialog = ({
-  storyName,
-  isDeleting,
-  deleteError,
-  onConfirm,
-  onCancel,
-}: StoryDeleteConfirmDialogProps) => (
-  <div
-    className="console-story-delete-confirm"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Confirm story deletion"
-  >
-    <p className="console-story-delete-confirm-message">
-      Delete story option &quot;{storyName}&quot; from the GitHub custom field?
-    </p>
-    {deleteError !== null && (
-      <p role="alert" className="console-list-error">
-        {deleteError}
-      </p>
-    )}
-    <div className="console-story-delete-confirm-actions">
-      <button
-        type="button"
-        className="console-op-button console-op-button-danger"
-        onClick={() => onConfirm(true)}
-        disabled={isDeleting}
-      >
-        {isDeleting ? 'Deleting…' : 'Delete with child tasks'}
-      </button>
-      <button
-        type="button"
-        className="console-op-button console-op-button-danger"
-        onClick={() => onConfirm(false)}
-        disabled={isDeleting}
-      >
-        {isDeleting ? 'Deleting…' : 'Keep child tasks'}
-      </button>
-      <button
-        type="button"
-        className="console-op-button"
-        onClick={onCancel}
-        disabled={isDeleting}
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-);
 
 type StoryTaskListProps = {
   items: ConsoleListItem[];
@@ -356,17 +102,16 @@ export const ConsoleStoryList = ({
   colorChangeInFlight,
   colorErrors,
 }: ConsoleStoryListProps) => {
-  const [expandedOptionId, setExpandedOptionId] = useState<string | null>(null);
-  const [expandedTasksOptionId, setExpandedTasksOptionId] = useState<
-    string | null
-  >(null);
-  const [addStoryExpanded, setAddStoryExpanded] = useState(false);
+  const [taskCreateDialogId, setTaskCreateDialogId] = useState<string | null>(
+    null,
+  );
+  const [storyCreateDialogOpen, setStoryCreateDialogOpen] = useState(false);
   const [colorPickerOptionId, setColorPickerOptionId] = useState<string | null>(
     null,
   );
-  const [rowReorderStates, setRowReorderStates] = useState<
-    Record<string, RowReorderState>
-  >({});
+  const [expandedTasksOptionId, setExpandedTasksOptionId] = useState<
+    string | null
+  >(null);
   const [deleteConfirmOptionId, setDeleteConfirmOptionId] = useState<
     string | null
   >(null);
@@ -377,6 +122,9 @@ export const ConsoleStoryList = ({
   const [descriptionEditOptionId, setDescriptionEditOptionId] = useState<
     string | null
   >(null);
+  const [rowReorderStates, setRowReorderStates] = useState<
+    Record<string, RowReorderState>
+  >({});
 
   const getRowReorderState = (id: string): RowReorderState =>
     rowReorderStates[id] ?? { inProgress: false, error: null };
@@ -418,38 +166,6 @@ export const ConsoleStoryList = ({
     return <p className="console-list-message">Loading stories...</p>;
   }
 
-  const handleAddClick = (storyOptionId: string): void => {
-    setExpandedOptionId(
-      expandedOptionId === storyOptionId ? null : storyOptionId,
-    );
-  };
-
-  const handleSubmit = async (
-    storyName: string,
-    title: string,
-  ): Promise<void> => {
-    await onCreateIssue(storyName, title);
-    setExpandedOptionId(null);
-  };
-
-  const handleColorButtonClick = (storyOptionId: string): void => {
-    setColorPickerOptionId(
-      colorPickerOptionId === storyOptionId ? null : storyOptionId,
-    );
-  };
-
-  const handleSwatchClick = (
-    storyOptionId: string,
-    newColor: ConsoleColor,
-  ): void => {
-    setColorPickerOptionId(null);
-    onSelectColor(storyOptionId, newColor);
-  };
-
-  const handleDeleteClick = (storyOptionId: string): void => {
-    setDeleteConfirmOptionId(storyOptionId);
-  };
-
   const handleDeleteConfirm = async (
     storyOptionId: string,
     deleteChildTasks: boolean,
@@ -476,41 +192,35 @@ export const ConsoleStoryList = ({
     }
   };
 
-  const handleDeleteCancel = (): void => {
-    setDeleteConfirmOptionId(null);
-    setDeleteStates({});
-  };
-
-  const handleRenameClick = (storyOptionId: string): void => {
-    setRenameOptionId(renameOptionId === storyOptionId ? null : storyOptionId);
-  };
-
-  const handleRenameSubmit = async (
-    storyOptionId: string,
-    newName: string,
-  ): Promise<void> => {
-    await onRenameStory(storyOptionId, newName);
-    setRenameOptionId(null);
-  };
-
-  const handleDescriptionEditClick = (storyOptionId: string): void => {
-    setDescriptionEditOptionId(
-      descriptionEditOptionId === storyOptionId ? null : storyOptionId,
-    );
-  };
-
-  const handleDescriptionSubmit = async (
-    storyOptionId: string,
-    newDescription: string,
-  ): Promise<void> => {
-    await onUpdateDescription(storyOptionId, newDescription);
-    setDescriptionEditOptionId(null);
-  };
-
   const visibleStories = showGray
     ? stories
     : stories.filter((s) => s.color !== 'GRAY');
   const hasGrayStories = stories.some((s) => s.color === 'GRAY');
+
+  const taskCreateEntry =
+    taskCreateDialogId !== null
+      ? stories.find((s) => s.storyOptionId === taskCreateDialogId) ?? null
+      : null;
+  const colorPickerEntry =
+    colorPickerOptionId !== null
+      ? stories.find((s) => s.storyOptionId === colorPickerOptionId) ?? null
+      : null;
+  const deleteEntry =
+    deleteConfirmOptionId !== null
+      ? stories.find((s) => s.storyOptionId === deleteConfirmOptionId) ?? null
+      : null;
+  const activeDeleteState =
+    deleteConfirmOptionId !== null
+      ? (deleteStates[deleteConfirmOptionId] ?? { isDeleting: false, error: null })
+      : { isDeleting: false, error: null };
+  const renameEntry =
+    renameOptionId !== null
+      ? stories.find((s) => s.storyOptionId === renameOptionId) ?? null
+      : null;
+  const descriptionEntry =
+    descriptionEditOptionId !== null
+      ? stories.find((s) => s.storyOptionId === descriptionEditOptionId) ?? null
+      : null;
 
   return (
     <div className="console-story-list-container">
@@ -522,23 +232,12 @@ export const ConsoleStoryList = ({
             const displayColor: ConsoleColor =
               optimisticColors[entry.storyOptionId] ?? entry.color;
             const palette = colorFromEnum(displayColor);
-            const isExpanded = expandedOptionId === entry.storyOptionId;
-            const isPickerOpen = colorPickerOptionId === entry.storyOptionId;
             const isInFlight = colorChangeInFlight === entry.storyOptionId;
             const colorError = colorErrors[entry.storyOptionId] ?? null;
             const { inProgress: reorderInProgress, error: reorderError } =
               getRowReorderState(entry.storyOptionId);
             const isFirst = index === 0;
             const isLast = index === visibleStories.length - 1;
-            const isDeleteConfirmOpen =
-              deleteConfirmOptionId === entry.storyOptionId;
-            const deleteState = deleteStates[entry.storyOptionId] ?? {
-              isDeleting: false,
-              error: null,
-            };
-            const isRenameOpen = renameOptionId === entry.storyOptionId;
-            const isDescriptionEditOpen =
-              descriptionEditOptionId === entry.storyOptionId;
             const isTasksExpanded =
               expandedTasksOptionId === entry.storyOptionId;
             const description = entry.description ?? '';
@@ -577,14 +276,26 @@ export const ConsoleStoryList = ({
                   <button
                     type="button"
                     className="console-op-button"
-                    onClick={() => handleAddClick(entry.storyOptionId)}
+                    onClick={() =>
+                      setTaskCreateDialogId(
+                        taskCreateDialogId === entry.storyOptionId
+                          ? null
+                          : entry.storyOptionId,
+                      )
+                    }
                   >
                     Add task
                   </button>
                   <button
                     type="button"
                     className="console-op-button"
-                    onClick={() => handleColorButtonClick(entry.storyOptionId)}
+                    onClick={() =>
+                      setColorPickerOptionId(
+                        colorPickerOptionId === entry.storyOptionId
+                          ? null
+                          : entry.storyOptionId,
+                      )
+                    }
                     disabled={isInFlight}
                   >
                     Change color
@@ -615,7 +326,9 @@ export const ConsoleStoryList = ({
                     type="button"
                     className="console-op-button console-op-button-danger"
                     aria-label="Delete story"
-                    onClick={() => handleDeleteClick(entry.storyOptionId)}
+                    onClick={() =>
+                      setDeleteConfirmOptionId(entry.storyOptionId)
+                    }
                   >
                     Delete
                   </button>
@@ -623,7 +336,13 @@ export const ConsoleStoryList = ({
                     type="button"
                     className="console-op-button"
                     aria-label="Rename story"
-                    onClick={() => handleRenameClick(entry.storyOptionId)}
+                    onClick={() =>
+                      setRenameOptionId(
+                        renameOptionId === entry.storyOptionId
+                          ? null
+                          : entry.storyOptionId,
+                      )
+                    }
                   >
                     Rename
                   </button>
@@ -632,7 +351,11 @@ export const ConsoleStoryList = ({
                     className="console-op-button"
                     aria-label="Edit description"
                     onClick={() =>
-                      handleDescriptionEditClick(entry.storyOptionId)
+                      setDescriptionEditOptionId(
+                        descriptionEditOptionId === entry.storyOptionId
+                          ? null
+                          : entry.storyOptionId,
+                      )
                     }
                   >
                     Edit description
@@ -658,60 +381,10 @@ export const ConsoleStoryList = ({
                     {reorderError}
                   </p>
                 )}
-                {isPickerOpen && (
-                  <ColorPalette
-                    onSelectColor={(newColor) =>
-                      handleSwatchClick(entry.storyOptionId, newColor)
-                    }
-                    disabled={isInFlight}
-                  />
-                )}
                 {colorError !== null && (
                   <p role="alert" className="console-list-error">
                     {colorError}
                   </p>
-                )}
-                {isExpanded && (
-                  <StoryCreateForm
-                    storyName={entry.storyName}
-                    onSubmit={handleSubmit}
-                    onCancel={() => setExpandedOptionId(null)}
-                  />
-                )}
-                {isDeleteConfirmOpen && (
-                  <StoryDeleteConfirmDialog
-                    storyName={entry.storyName}
-                    isDeleting={deleteState.isDeleting}
-                    deleteError={deleteState.error}
-                    onConfirm={(deleteChildTasks) =>
-                      void handleDeleteConfirm(
-                        entry.storyOptionId,
-                        deleteChildTasks,
-                      )
-                    }
-                    onCancel={handleDeleteCancel}
-                  />
-                )}
-                {isRenameOpen && (
-                  <StoryRenameForm
-                    currentName={entry.storyName}
-                    onSubmit={(newName) =>
-                      handleRenameSubmit(entry.storyOptionId, newName)
-                    }
-                    onCancel={() => setRenameOptionId(null)}
-                  />
-                )}
-                {isDescriptionEditOpen && (
-                  <StoryDescriptionForm
-                    currentDescription={description}
-                    onSubmit={(newDescription) =>
-                      handleDescriptionSubmit(
-                        entry.storyOptionId,
-                        newDescription,
-                      )
-                    }
-                    onCancel={() => setDescriptionEditOptionId(null)}
-                  />
                 )}
               </li>
             );
@@ -731,22 +404,71 @@ export const ConsoleStoryList = ({
         <button
           type="button"
           className="console-op-button"
-          onClick={() => setAddStoryExpanded(!addStoryExpanded)}
+          onClick={() => setStoryCreateDialogOpen(!storyCreateDialogOpen)}
         >
           Add story
         </button>
-        {addStoryExpanded && (
-          <InlineInputForm
-            placeholder="Story name"
-            emptyValueError="Story name is required"
-            onSubmit={async (storyName) => {
-              await onAddStory(storyName);
-              setAddStoryExpanded(false);
-            }}
-            onCancel={() => setAddStoryExpanded(false)}
-          />
-        )}
       </div>
+      {taskCreateEntry !== null && (
+        <ConsoleStoryTaskCreateModalDialog
+          storyName={taskCreateEntry.storyName}
+          onSubmit={(storyName, title) => onCreateIssue(storyName, title)}
+          onClose={() => setTaskCreateDialogId(null)}
+        />
+      )}
+      {storyCreateDialogOpen && (
+        <ConsoleStoryCreateModalDialog
+          onSubmit={(storyName) => onAddStory(storyName)}
+          onClose={() => setStoryCreateDialogOpen(false)}
+        />
+      )}
+      {colorPickerEntry !== null && (
+        <ConsoleStoryColorSelectModalDialog
+          storyName={colorPickerEntry.storyName}
+          storyOptionId={colorPickerEntry.storyOptionId}
+          onSelectColor={(storyOptionId, color) => {
+            setColorPickerOptionId(null);
+            onSelectColor(storyOptionId, color);
+          }}
+          onClose={() => setColorPickerOptionId(null)}
+          disabled={colorChangeInFlight === colorPickerEntry.storyOptionId}
+        />
+      )}
+      {deleteEntry !== null && (
+        <ConsoleStoryDeleteModalDialog
+          storyName={deleteEntry.storyName}
+          isDeleting={activeDeleteState.isDeleting}
+          deleteError={activeDeleteState.error}
+          onConfirm={(deleteChildTasks) =>
+            void handleDeleteConfirm(
+              deleteEntry.storyOptionId,
+              deleteChildTasks,
+            )
+          }
+          onCancel={() => {
+            setDeleteConfirmOptionId(null);
+            setDeleteStates({});
+          }}
+        />
+      )}
+      {renameEntry !== null && (
+        <ConsoleStoryRenameModalDialog
+          currentName={renameEntry.storyName}
+          onSubmit={(newName) =>
+            onRenameStory(renameEntry.storyOptionId, newName)
+          }
+          onClose={() => setRenameOptionId(null)}
+        />
+      )}
+      {descriptionEntry !== null && (
+        <ConsoleStoryDescriptionModalDialog
+          currentDescription={descriptionEntry.description ?? ''}
+          onSubmit={(newDescription) =>
+            onUpdateDescription(descriptionEntry.storyOptionId, newDescription)
+          }
+          onClose={() => setDescriptionEditOptionId(null)}
+        />
+      )}
     </div>
   );
 };
