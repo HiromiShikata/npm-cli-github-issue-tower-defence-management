@@ -9,13 +9,6 @@ import { formatRelativeTime } from '../../logic/relativeTime';
 import type { ConsoleComment } from '../../logic/types';
 import type { ConsoleReferenceLinkRenderer } from '../content/ConsoleMarkdownContent';
 import { ConsoleMarkdownContent } from '../content/ConsoleMarkdownContent';
-import { ConsoleWorkflowIssueCreateModalDialog } from './ConsoleWorkflowIssueCreateModalDialog';
-
-const formatAsBlockquote = (body: string): string =>
-  body
-    .split('\n')
-    .map((line) => `> ${line}`)
-    .join('\n');
 
 const extractFirstLine = (body: string): string =>
   body.split('\n').find((line) => line.trim() !== '') ?? '';
@@ -65,8 +58,7 @@ export type ConsoleCommentListProps = {
   renderReferenceLink?: ConsoleReferenceLinkRenderer;
   repoContext?: ConsoleRepoContext;
   persistenceKey?: string | null;
-  issueTitle?: string;
-  onCreateWorkflowIssue?: (title: string, body: string) => Promise<void>;
+  onRequestWorkflowIssueCreate?: (comment: ConsoleComment) => void;
 };
 
 export const ConsoleCommentList = ({
@@ -78,13 +70,9 @@ export const ConsoleCommentList = ({
   renderReferenceLink,
   repoContext,
   persistenceKey = null,
-  issueTitle,
-  onCreateWorkflowIssue,
+  onRequestWorkflowIssueCreate,
 }: ConsoleCommentListProps) => {
   const [showAll, setShowAll] = useState<boolean>(false);
-  const [pendingComment, setPendingComment] = useState<ConsoleComment | null>(
-    null,
-  );
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() =>
     persistenceKey != null
       ? loadCommentExpandedKeys(persistenceKey)
@@ -170,13 +158,13 @@ export const ConsoleCommentList = ({
                 </span>
               )}
             </button>
-            {onCreateWorkflowIssue !== undefined && (
+            {onRequestWorkflowIssueCreate !== undefined && (
               <button
                 type="button"
                 className="console-comment-create-workflow-issue"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setPendingComment(comment);
+                  onRequestWorkflowIssueCreate(comment);
                 }}
                 title="Create workflow improvement issue from this comment"
               >
@@ -194,14 +182,6 @@ export const ConsoleCommentList = ({
           </article>
         );
       })}
-      {pendingComment !== null && onCreateWorkflowIssue !== undefined && (
-        <ConsoleWorkflowIssueCreateModalDialog
-          defaultTitle={issueTitle ?? ''}
-          defaultBody={formatAsBlockquote(pendingComment.body)}
-          onSubmit={onCreateWorkflowIssue}
-          onClose={() => setPendingComment(null)}
-        />
-      )}
     </div>
   );
 };

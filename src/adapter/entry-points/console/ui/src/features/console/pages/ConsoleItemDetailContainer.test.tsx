@@ -962,4 +962,93 @@ describe('ConsoleItemDetailContainer', () => {
       ),
     );
   });
+
+  it('opens IssueCreateModalDialog with empty title when onCreateWorkflowIssue is provided and a comment create-workflow-issue button is clicked', async () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'Please split the token validation into its own tested function.',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const commentCaches = buildCaches();
+    commentCaches.comments = new ResourceCache(async () => [comment]);
+    const onCreateWorkflowIssue = jest.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={commentCaches}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        onCreateWorkflowIssue={onCreateWorkflowIssue}
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        container.querySelector('.console-comment-create-workflow-issue'),
+      ).not.toBeNull();
+    });
+    const btn = container.querySelector('.console-comment-create-workflow-issue');
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
+    });
+    const titleTextarea = document.body.querySelector(
+      '[aria-label="Title"]',
+    ) as HTMLTextAreaElement | null;
+    expect(titleTextarea).not.toBeNull();
+    expect(titleTextarea?.value).toBe('');
+  });
+
+  it('opens IssueCreateModalDialog with body containing item URL, item title, and comment blockquote when a comment create-workflow-issue button is clicked', async () => {
+    const comment = {
+      author: 'HiromiShikata',
+      body: 'Please split the token validation into its own tested function.',
+      createdAt: '2026-06-17T06:12:40.000Z',
+    };
+    const commentCaches = buildCaches();
+    commentCaches.comments = new ResourceCache(async () => [comment]);
+    const onCreateWorkflowIssue = jest.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <ConsoleItemDetailContainer
+        tab="prs"
+        item={prItem}
+        caches={commentCaches}
+        operations={buildOperations()}
+        statusOptions={consoleStatusOptionsFixture}
+        storyOptions={[]}
+        agentOptions={[]}
+        storyColors={consoleStoryColorsFixture}
+        storyName="TDPM Console port"
+        overlayStatus={null}
+        now={Date.parse('2026-06-19T12:00:00.000Z')}
+        onQueueAction={jest.fn()}
+        onCreateWorkflowIssue={onCreateWorkflowIssue}
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        container.querySelector('.console-comment-create-workflow-issue'),
+      ).not.toBeNull();
+    });
+    const btn = container.querySelector('.console-comment-create-workflow-issue');
+    if (!btn) throw new Error('button not found');
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
+    });
+    const bodyTextarea = document.body.querySelector(
+      '[aria-label="Body"]',
+    ) as HTMLTextAreaElement | null;
+    expect(bodyTextarea).not.toBeNull();
+    const expectedBody = `${prItem.url}\n\n${prItem.title}\n\n\n\n\n\n> ${comment.body}`;
+    expect(bodyTextarea?.value).toBe(expectedBody);
+  });
 });

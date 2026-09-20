@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from 'react';
 import { ConsoleCommentComposer } from '../components/detail/ConsoleCommentComposer';
 import type { ConsoleAddInlineComment } from '../components/detail/ConsoleFileDiff';
 import { ConsoleItemDetail } from '../components/detail/ConsoleItemDetail';
+import type { IssueCreateParams } from '../components/layout/IssueCreateModalDialog';
+import { IssueCreateModalDialog } from '../components/layout/IssueCreateModalDialog';
 import { ConsoleOperationMenu } from '../components/operations/ConsoleOperationMenu';
 import type { ConsoleOfflinePayload } from '../hooks/useConsoleActionQueue';
 import type { ConsoleCaches } from '../hooks/useConsoleCaches';
@@ -190,6 +192,29 @@ export const ConsoleItemDetailContainer = ({
       return comment;
     },
     [item, operations],
+  );
+  const [pendingWorkflowIssueComment, setPendingWorkflowIssueComment] =
+    useState<ConsoleComment | null>(null);
+  const handleRequestWorkflowIssueCreate = useCallback(
+    (comment: ConsoleComment) => {
+      setPendingWorkflowIssueComment(comment);
+    },
+    [],
+  );
+  const buildWorkflowIssueBody = (comment: ConsoleComment): string => {
+    const commentBlockquote = comment.body
+      .split('\n')
+      .map((line) => `> ${line}`)
+      .join('\n');
+    return `${item.url}\n\n${item.title}\n\n\n\n\n\n${commentBlockquote}`;
+  };
+  const handleWorkflowIssueSubmit = useCallback(
+    async (params: IssueCreateParams): Promise<void> => {
+      if (onCreateWorkflowIssue === undefined) return;
+      await onCreateWorkflowIssue(params.title, params.body ?? '');
+      setPendingWorkflowIssueComment(null);
+    },
+    [onCreateWorkflowIssue],
   );
 
   const handlers: ConsoleOperationHandlers = {
@@ -383,6 +408,7 @@ export const ConsoleItemDetailContainer = ({
       : null;
 
   return (
+    <>
     <ConsoleItemDetail
       item={item}
       storyName={resolvedStoryName}
@@ -412,7 +438,11 @@ export const ConsoleItemDetailContainer = ({
       renderReferenceLink={renderReferenceLink}
       onAddInlineComment={addInlineComment}
       onTitleRename={issueRename}
-      onCreateWorkflowIssue={onCreateWorkflowIssue}
+      onRequestWorkflowIssueCreate={
+        onCreateWorkflowIssue !== undefined
+          ? handleRequestWorkflowIssueCreate
+          : undefined
+      }
       commentComposer={
         <ConsoleCommentComposer
           initiallyOpen
@@ -448,5 +478,21 @@ export const ConsoleItemDetailContainer = ({
         />
       }
     />
+    {pendingWorkflowIssueComment !== null &&
+      onCreateWorkflowIssue !== undefined && (
+        <IssueCreateModalDialog
+          storyEntries={[]}
+          agentOptions={[]}
+          initialDraft={{
+            title: '',
+            body: buildWorkflowIssueBody(pendingWorkflowIssueComment),
+            storyName: null,
+            agentOptionId: null,
+          }}
+          onSubmit={handleWorkflowIssueSubmit}
+          onClose={() => setPendingWorkflowIssueComment(null)}
+        />
+      )}
+    </>
   );
 };

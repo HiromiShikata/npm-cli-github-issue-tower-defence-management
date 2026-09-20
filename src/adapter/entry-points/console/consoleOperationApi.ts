@@ -950,15 +950,8 @@ export const handleCreateWorkflowIssue = async (
   }
   const org = nameWithOwner.slice(0, slashIndex);
   const repo = nameWithOwner.slice(slashIndex + 1);
-  const sourceIssueTitle = body.sourceIssueTitle;
-  const quotedCommentBody = body.quotedCommentBody;
-  const issueBody =
-    isNonEmptyString(sourceIssueTitle) && isNonEmptyString(quotedCommentBody)
-      ? `${sourceIssueTitle}\n\n\n\n\n\n${quotedCommentBody
-          .split('\n')
-          .map((line) => `> ${line}`)
-          .join('\n')}`
-      : '';
+  const issueBodyValue = body.body;
+  const issueBody = isNonEmptyString(issueBodyValue) ? issueBodyValue : '';
   const issueNumber = await issueRepository.createNewIssue(
     org,
     repo,

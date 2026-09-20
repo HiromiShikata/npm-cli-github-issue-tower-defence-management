@@ -499,8 +499,7 @@ export const CREATE_WORKFLOW_ISSUE_OPERATION_PATH = '/api/createworkflowissue';
 export type ConsoleCreateWorkflowIssueRequest = {
   nameWithOwner: string;
   title: string;
-  sourceIssueTitle: string;
-  quotedCommentBody: string;
+  body: string;
 };
 
 export const postConsoleCreateWorkflowIssue = async (
