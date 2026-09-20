@@ -13,6 +13,7 @@ import { DEFAULT_SELECTION_WEIGHT } from './OauthTokenSelectUseCase';
 import {
   AWAITING_WORKSPACE_STATUS_NAME,
   PREPARATION_STATUS_NAME,
+  TODO_STATUS_NAME,
 } from '../entities/WorkflowStatus';
 import { NO_STORY_STORY_NAME } from '../entities/RequiredProjectField';
 import { adoptIssueAgentDesignationLabel } from './AgentDesignationLabelAdoptUseCase';
@@ -519,6 +520,9 @@ export class StartPreparationUseCase {
     const awaitingWorkspaceStatusOption = project.status.statuses.find(
       (s) => s.name === AWAITING_WORKSPACE_STATUS_NAME,
     );
+    const todoByHumanStatusOption = project.status.statuses.find(
+      (s) => s.name === TODO_STATUS_NAME,
+    );
 
     const runningIssueUrls = new Set(
       this.takeOwnershipSpawnRepository.listRunningIssueUrls(),
@@ -638,6 +642,31 @@ export class StartPreparationUseCase {
       );
       if (exclusionReason !== null) {
         exclusionCounts[exclusionReason]++;
+        if (exclusionReason === 'authorNotAllowed' && todoByHumanStatusOption) {
+          const commentBody = `authorNotAllowed: 著者 ${issue.author} は allowedIssueAuthors に含まれていないため、自動スポーンできません。オーナーの確認が必要です。`;
+          const existingComments =
+            await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+          if (
+            !isDuplicateWithinWindow(
+              commentBody,
+              existingComments.map((c) => ({
+                text: c.body,
+                createdAt: c.createdAt,
+              })),
+              now,
+            )
+          ) {
+            await this.issueRepository.createCommentByUrl(
+              issue.url,
+              commentBody,
+            );
+          }
+          await this.issueRepository.updateStatus(
+            project,
+            issue,
+            todoByHumanStatusOption.id,
+          );
+        }
         continue;
       }
       const branchSource = branchSourceByIssueUrl.get(issue.url);
