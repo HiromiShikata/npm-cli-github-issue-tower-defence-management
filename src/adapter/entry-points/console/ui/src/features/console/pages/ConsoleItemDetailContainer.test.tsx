@@ -994,7 +994,9 @@ describe('ConsoleItemDetailContainer', () => {
         container.querySelector('.console-comment-create-workflow-issue'),
       ).not.toBeNull();
     });
-    const btn = container.querySelector('.console-comment-create-workflow-issue');
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
     await waitFor(() => {
@@ -1038,7 +1040,9 @@ describe('ConsoleItemDetailContainer', () => {
         container.querySelector('.console-comment-create-workflow-issue'),
       ).not.toBeNull();
     });
-    const btn = container.querySelector('.console-comment-create-workflow-issue');
+    const btn = container.querySelector(
+      '.console-comment-create-workflow-issue',
+    );
     if (!btn) throw new Error('button not found');
     fireEvent.click(btn);
     await waitFor(() => {
