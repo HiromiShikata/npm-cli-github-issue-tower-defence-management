@@ -247,12 +247,32 @@ describe('ClearPastNextActionDateHourUseCase', () => {
               nextActionDate: null,
             },
           ],
-          [
-            basicProject,
-            'dateFieldId',
+        ],
+      },
+      {
+        name: 'should not clear nextActionDate when nextActionDate is null and hour trigger fires',
+        input: {
+          targetDates: [
+            new Date('2026-09-20T04:00:00Z'),
+            new Date('2026-09-20T04:01:00Z'),
+          ],
+          project: basicProject,
+          issues: [
             {
               ...openIssueWithHour,
-              nextActionHour: 10,
+              nextActionHour: 1,
+              nextActionDate: null,
+            },
+          ],
+          cacheUsed: true,
+        },
+        expectedClearProjectFieldCalls: [
+          [
+            basicProject,
+            'hourFieldId',
+            {
+              ...openIssueWithHour,
+              nextActionHour: 1,
               nextActionDate: null,
             },
           ],
@@ -302,15 +322,6 @@ describe('ClearPastNextActionDateHourUseCase', () => {
           [
             basicProject,
             'hourFieldId',
-            {
-              ...openIssueWithHour,
-              nextActionHour: 9,
-              nextActionDate: null,
-            },
-          ],
-          [
-            basicProject,
-            'dateFieldId',
             {
               ...openIssueWithHour,
               nextActionHour: 9,

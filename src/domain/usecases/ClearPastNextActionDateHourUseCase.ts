@@ -44,7 +44,7 @@ export class ClearPastNextActionDateHourUseCase {
           issue,
         );
         await new Promise((resolve) => setTimeout(resolve, 5000));
-        if (!nextActionDateField) {
+        if (!nextActionDateField || issue.nextActionDate === null) {
           continue;
         }
         await this.issueRepository.clearProjectField(
