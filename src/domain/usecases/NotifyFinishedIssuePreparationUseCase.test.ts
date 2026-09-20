@@ -7550,12 +7550,42 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           name: 'Status',
           fieldId: 'field-1',
           statuses: [
-            { id: 'preparation-id', name: 'Preparation', color: 'YELLOW', description: '' },
-            { id: 'awaiting-workspace-id', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
-            { id: 'failed-preparation-id', name: 'Failed Preparation', color: 'RED', description: '' },
-            { id: 'awaiting-quality-check-id', name: 'Awaiting Quality Check', color: 'BLUE', description: '' },
-            { id: 'todo-by-human-id', name: 'Todo by human', color: 'GREEN', description: '' },
-            { id: 'awaiting-owner-id', name: 'Awaiting Owner', color: 'PINK', description: '' },
+            {
+              id: 'preparation-id',
+              name: 'Preparation',
+              color: 'YELLOW',
+              description: '',
+            },
+            {
+              id: 'awaiting-workspace-id',
+              name: 'Awaiting Workspace',
+              color: 'GRAY',
+              description: '',
+            },
+            {
+              id: 'failed-preparation-id',
+              name: 'Failed Preparation',
+              color: 'RED',
+              description: '',
+            },
+            {
+              id: 'awaiting-quality-check-id',
+              name: 'Awaiting Quality Check',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'todo-by-human-id',
+              name: 'Todo by human',
+              color: 'GREEN',
+              description: '',
+            },
+            {
+              id: 'awaiting-owner-id',
+              name: 'Awaiting Owner',
+              color: 'PINK',
+              description: '',
+            },
           ],
         },
         dependedIssueUrlSeparatedByComma: {
@@ -7566,7 +7596,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('moves the issue to Failed Preparation when the last agent report has a non-empty workflowError', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithAwaitingOwner(),
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -7601,7 +7633,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('calls setDependedIssueUrl for open PRs when workflowError routes to Failed Preparation', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithAwaitingOwner(),
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -7610,7 +7644,15 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        { url: 'https://github.com/user/repo/pull/2', isConflicted: false, isPassedAllCiJob: true, isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false, missingRequiredCheckNames: [] },
+        {
+          url: 'https://github.com/user/repo/pull/2',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
       ]);
 
       await useCase.run({
@@ -7630,7 +7672,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('trims the workflowError value in the comment', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithAwaitingOwner(),
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -7656,7 +7700,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('does not route to Failed Preparation when workflowError is an empty string', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithAwaitingOwner(),
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -7665,7 +7711,15 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        { url: 'https://github.com/user/repo/pull/1', isConflicted: false, isPassedAllCiJob: true, isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false, missingRequiredCheckNames: [] },
+        {
+          url: 'https://github.com/user/repo/pull/1',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
       ]);
 
       await useCase.run({
@@ -7688,7 +7742,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         agent: {
           name: 'Agent',
           fieldId: 'agent-field-id',
-          options: [{ id: 'opt-developer', name: 'developer', color: 'GRAY', description: '' }],
+          options: [
+            {
+              id: 'opt-developer',
+              name: 'developer',
+              color: 'GRAY',
+              description: '',
+            },
+          ],
         },
       });
       const issue = createMockIssue({ status: 'Preparation' });
@@ -7728,12 +7789,42 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           name: 'Status',
           fieldId: 'field-1',
           statuses: [
-            { id: 'preparation-id', name: 'Preparation', color: 'YELLOW', description: '' },
-            { id: 'awaiting-workspace-id', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
-            { id: 'failed-preparation-id', name: 'Failed Preparation', color: 'RED', description: '' },
-            { id: 'awaiting-quality-check-id', name: 'Awaiting Quality Check', color: 'BLUE', description: '' },
-            { id: 'todo-by-human-id', name: 'Todo by human', color: 'GREEN', description: '' },
-            { id: 'awaiting-owner-id', name: 'Awaiting Owner', color: 'PINK', description: '' },
+            {
+              id: 'preparation-id',
+              name: 'Preparation',
+              color: 'YELLOW',
+              description: '',
+            },
+            {
+              id: 'awaiting-workspace-id',
+              name: 'Awaiting Workspace',
+              color: 'GRAY',
+              description: '',
+            },
+            {
+              id: 'failed-preparation-id',
+              name: 'Failed Preparation',
+              color: 'RED',
+              description: '',
+            },
+            {
+              id: 'awaiting-quality-check-id',
+              name: 'Awaiting Quality Check',
+              color: 'BLUE',
+              description: '',
+            },
+            {
+              id: 'todo-by-human-id',
+              name: 'Todo by human',
+              color: 'GREEN',
+              description: '',
+            },
+            {
+              id: 'awaiting-owner-id',
+              name: 'Awaiting Owner',
+              color: 'PINK',
+              description: '',
+            },
           ],
         },
         dependedIssueUrlSeparatedByComma: {
@@ -7744,7 +7835,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('moves the issue to Awaiting Owner when the last agent report has needOwnerConfirmationOrApproval true', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithAwaitingOwner(),
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -7779,7 +7872,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('does not create the needOwnerConfirmation comment when the field is false', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithAwaitingOwner(),
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -7788,7 +7883,15 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        { url: 'https://github.com/user/repo/pull/1', isConflicted: false, isPassedAllCiJob: true, isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false, missingRequiredCheckNames: [] },
+        {
+          url: 'https://github.com/user/repo/pull/1',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
       ]);
 
       await useCase.run({
@@ -7812,9 +7915,24 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
           name: 'Status',
           fieldId: 'field-1',
           statuses: [
-            { id: 'preparation-id', name: 'Preparation', color: 'YELLOW', description: '' },
-            { id: 'awaiting-workspace-id', name: 'Awaiting Workspace', color: 'GRAY', description: '' },
-            { id: 'failed-preparation-id', name: 'Failed Preparation', color: 'RED', description: '' },
+            {
+              id: 'preparation-id',
+              name: 'Preparation',
+              color: 'YELLOW',
+              description: '',
+            },
+            {
+              id: 'awaiting-workspace-id',
+              name: 'Awaiting Workspace',
+              color: 'GRAY',
+              description: '',
+            },
+            {
+              id: 'failed-preparation-id',
+              name: 'Failed Preparation',
+              color: 'RED',
+              description: '',
+            },
           ],
         },
         dependedIssueUrlSeparatedByComma: {
@@ -7823,7 +7941,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         },
       });
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithoutAwaitingOwner);
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithoutAwaitingOwner,
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -7832,7 +7952,15 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         }),
       ]);
       mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-        { url: 'https://github.com/user/repo/pull/1', isConflicted: false, isPassedAllCiJob: true, isCiStateSuccess: true, isResolvedAllReviewComments: true, isBranchOutOfDate: false, missingRequiredCheckNames: [] },
+        {
+          url: 'https://github.com/user/repo/pull/1',
+          isConflicted: false,
+          isPassedAllCiJob: true,
+          isCiStateSuccess: true,
+          isResolvedAllReviewComments: true,
+          isBranchOutOfDate: false,
+          missingRequiredCheckNames: [],
+        },
       ]);
 
       await useCase.run({
@@ -7855,7 +7983,9 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
 
     it('workflowError takes priority over needOwnerConfirmationOrApproval when both are set', async () => {
       const issue = createMockIssue({ status: 'Preparation' });
-      mockProjectRepository.getByUrl.mockResolvedValue(projectWithAwaitingOwner());
+      mockProjectRepository.getByUrl.mockResolvedValue(
+        projectWithAwaitingOwner(),
+      );
       mockIssueRepository.get.mockResolvedValue(issue);
       mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
         createMockComment({
@@ -7889,7 +8019,14 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         agent: {
           name: 'Agent',
           fieldId: 'agent-field-id',
-          options: [{ id: 'opt-developer', name: 'developer', color: 'GRAY', description: '' }],
+          options: [
+            {
+              id: 'opt-developer',
+              name: 'developer',
+              color: 'GRAY',
+              description: '',
+            },
+          ],
         },
       });
       const issue = createMockIssue({ status: 'Preparation' });
