@@ -561,6 +561,23 @@ describe('useConsoleActionQueue', () => {
     expect(revertOptimistic).not.toHaveBeenCalled();
   });
 
+  it('does not call revertOptimistic when commit fails after the undo window', async () => {
+    const { result } = renderHook(() => useConsoleActionQueue());
+    const revertOptimistic = jest.fn();
+    const action = makeAction({
+      revertOptimistic,
+      commit: jest.fn<Promise<void>, []>().mockRejectedValue(new Error('HTTP 422')),
+    });
+    act(() => {
+      result.current.enqueue(action);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(6000);
+      await Promise.resolve();
+    });
+    expect(revertOptimistic).not.toHaveBeenCalled();
+  });
+
   it('does not call revertAdvance when the timer commits the action', () => {
     const { result } = renderHook(() => useConsoleActionQueue());
     const revertAdvance = jest.fn();

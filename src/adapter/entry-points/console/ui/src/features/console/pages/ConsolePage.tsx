@@ -229,8 +229,6 @@ export const ConsolePage = () => {
   );
   const operations = useConsoleOperations(
     pjcode,
-    activeTab,
-    overlayState,
     caches,
     refreshQueuedTab,
   );
