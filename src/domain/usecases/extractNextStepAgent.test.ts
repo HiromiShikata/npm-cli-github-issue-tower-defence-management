@@ -55,4 +55,12 @@ describe('extractNextStepAgent', () => {
     expect(consoleWarn).toHaveBeenCalled();
     consoleWarn.mockRestore();
   });
+
+  it('returns null when a non-last block contains nextStepAgent but the last block does not', () => {
+    expect(
+      extractNextStepAgent(
+        'From: :robot: agent (model)\n\nSample format:\n\n```json\n{ "nextStepAgent": "{agent name}" }\n```\n\n```json\n{ "nextStep": null }\n```\n',
+      ),
+    ).toBeNull();
+  });
 });
