@@ -7335,6 +7335,76 @@ describe('StartPreparationUseCase', () => {
     expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
   });
 
+  it('should post a comment and move to Todo by human for authorNotAllowed issue even when preparation queue is at capacity', async () => {
+    const projectWithTodoByHuman: Project = {
+      ...createMockProject(),
+      status: {
+        ...createMockProject().status,
+        statuses: [
+          ...createMockProject().status.statuses,
+          {
+            id: 'todo-by-human-id',
+            name: 'Todo by human',
+            color: 'PINK',
+            description: '',
+          },
+        ],
+      },
+    };
+    const preparationIssues = Array.from({ length: 6 }, (_, idx) =>
+      createMockIssue({
+        url: `https://github.com/user/repo/issues/${200 + idx}`,
+        number: 200 + idx,
+        status: 'Preparation',
+        author: 'testuser',
+      }),
+    );
+    const authorNotAllowedIssue = createMockIssue({
+      url: 'https://github.com/user/repo/issues/100',
+      title: 'Disallowed Author Issue',
+      status: 'Awaiting Workspace',
+      number: 100,
+      author: 'not-allowed-user',
+    });
+    mockProjectRepository.getByUrl.mockResolvedValue(projectWithTodoByHuman);
+    mockIssueRepository.getStoryObjectMap.mockResolvedValue(
+      createMockStoryObjectMap([...preparationIssues, authorNotAllowedIssue]),
+    );
+    mockIssueRepository.getIssueOrPullRequestComments.mockResolvedValue([]);
+
+    await useCase.run({
+      projectUrl: 'https://github.com/user/repo',
+      defaultAgentName: 'agent1',
+      defaultLlmModelName: 'claude-opus',
+      fallbackLlmModelName: null,
+      defaultLlmAgentName: null,
+      configFilePath: '/path/to/config.yml',
+      maximumPreparingIssuesCount: null,
+      utilizationPercentageThreshold: 90,
+      allowedIssueAuthors: ['testuser'],
+      manager: 'manager-user',
+      codexHomeCandidates: null,
+      labelsAsLlmAgentName: null,
+    });
+
+    expect(mockIssueRepository.createCommentByUrl.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.createCommentByUrl.mock.calls[0]).toEqual([
+      'https://github.com/user/repo/issues/100',
+      'authorNotAllowed: 著者 not-allowed-user は allowedIssueAuthors に含まれていないため、自動スポーンできません。オーナーの確認が必要です。',
+    ]);
+    expect(mockIssueRepository.updateStatus.mock.calls).toHaveLength(1);
+    expect(mockIssueRepository.updateStatus.mock.calls[0][0]).toBe(
+      projectWithTodoByHuman,
+    );
+    expect(mockIssueRepository.updateStatus.mock.calls[0][1]).toMatchObject({
+      url: 'https://github.com/user/repo/issues/100',
+    });
+    expect(mockIssueRepository.updateStatus.mock.calls[0][2]).toBe(
+      'todo-by-human-id',
+    );
+    expect(mockLocalCommandRunner.runCommand.mock.calls).toHaveLength(0);
+  });
+
   it('selects an issue whose body starts with the agent report prefix as a spawn candidate', () => {
     const agentBody =
       'From: :robot: some-agent (claude-sonnet-4-5)\nSome content.';

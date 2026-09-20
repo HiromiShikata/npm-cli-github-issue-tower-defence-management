@@ -610,6 +610,42 @@ export class StartPreparationUseCase {
       issueUrlsWithOpenPrs,
     );
 
+    if (todoByHumanStatusOption) {
+      for (const issue of awaitingWorkspaceIssues) {
+        if (runningIssueUrls.has(issue.url)) continue;
+        const exclusionReason = this.spawnCandidateExclusionReasonOf(
+          issue,
+          params.allowedIssueAuthors,
+          params.manager,
+          now,
+        );
+        if (exclusionReason !== 'authorNotAllowed') continue;
+        const commentBody = `authorNotAllowed: 著者 ${issue.author} は allowedIssueAuthors に含まれていないため、自動スポーンできません。オーナーの確認が必要です。`;
+        const existingComments =
+          await this.issueRepository.getIssueOrPullRequestComments(issue.url);
+        if (
+          !isDuplicateWithinWindow(
+            commentBody,
+            existingComments.map((c) => ({
+              text: c.body,
+              createdAt: c.createdAt,
+            })),
+            now,
+          )
+        ) {
+          await this.issueRepository.createCommentByUrl(
+            issue.url,
+            commentBody,
+          );
+        }
+        await this.issueRepository.updateStatus(
+          project,
+          issue,
+          todoByHumanStatusOption.id,
+        );
+      }
+    }
+
     for (
       let i = 0;
       i < awaitingWorkspaceIssues.length &&
@@ -642,31 +678,6 @@ export class StartPreparationUseCase {
       );
       if (exclusionReason !== null) {
         exclusionCounts[exclusionReason]++;
-        if (exclusionReason === 'authorNotAllowed' && todoByHumanStatusOption) {
-          const commentBody = `authorNotAllowed: 著者 ${issue.author} は allowedIssueAuthors に含まれていないため、自動スポーンできません。オーナーの確認が必要です。`;
-          const existingComments =
-            await this.issueRepository.getIssueOrPullRequestComments(issue.url);
-          if (
-            !isDuplicateWithinWindow(
-              commentBody,
-              existingComments.map((c) => ({
-                text: c.body,
-                createdAt: c.createdAt,
-              })),
-              now,
-            )
-          ) {
-            await this.issueRepository.createCommentByUrl(
-              issue.url,
-              commentBody,
-            );
-          }
-          await this.issueRepository.updateStatus(
-            project,
-            issue,
-            todoByHumanStatusOption.id,
-          );
-        }
         continue;
       }
       const branchSource = branchSourceByIssueUrl.get(issue.url);
