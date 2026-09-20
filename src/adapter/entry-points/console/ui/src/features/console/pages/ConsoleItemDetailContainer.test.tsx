@@ -888,7 +888,7 @@ describe('ConsoleItemDetailContainer', () => {
     expect(operations.patchItemOverlay).toHaveBeenCalledWith(issueItem, false);
   });
 
-  it('clicking Submit in the Comment & Close form calls addComment then queues a close action', async () => {
+  it('clicking Comment & Close in the composer calls addComment then queues a close action', async () => {
     const operations = buildOperations();
     const onQueueAction = jest.fn();
     const { container, getByText } = render(
@@ -907,12 +907,11 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={onQueueAction}
       />,
     );
-    fireEvent.click(getByText('Comment & Close'));
     const textarea = container.querySelector(
-      '.console-op-comment-and-close-input',
+      '.console-composer-input',
     ) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'closing comment' } });
-    fireEvent.click(getByText('Submit'));
+    fireEvent.click(getByText('Comment & Close'));
     await waitFor(() => {
       expect(operations.addComment).toHaveBeenCalledWith(
         issueItem,
@@ -927,7 +926,7 @@ describe('ConsoleItemDetailContainer', () => {
     );
   });
 
-  it('does not queue the close action when addComment throws in the Comment & Close form', async () => {
+  it('does not queue the close action when addComment throws via Comment & Close in the composer', async () => {
     const operations = buildOperations();
     operations.addComment = jest.fn(async () => {
       throw new Error('network error');
@@ -949,12 +948,11 @@ describe('ConsoleItemDetailContainer', () => {
         onQueueAction={onQueueAction}
       />,
     );
-    fireEvent.click(getByText('Comment & Close'));
     const textarea = container.querySelector(
-      '.console-op-comment-and-close-input',
+      '.console-composer-input',
     ) as HTMLTextAreaElement;
     fireEvent.change(textarea, { target: { value: 'closing comment' } });
-    fireEvent.click(getByText('Submit'));
+    fireEvent.click(getByText('Comment & Close'));
     await findByRole('alert');
     expect(onQueueAction).not.toHaveBeenCalledWith(
       expect.objectContaining({ kind: { type: 'close', action: 'close' } }),

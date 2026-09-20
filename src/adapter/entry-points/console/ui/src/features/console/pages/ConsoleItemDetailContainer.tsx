@@ -399,6 +399,7 @@ export const ConsoleItemDetailContainer = ({
           onSubmitAndMoveToAwaitingWorkspace={
             addCommentAndMoveToAwaitingWorkspace
           }
+          onCommentAndClose={commentAndClose}
           onUploadFile={(file) => operations.uploadAttachment(item, file)}
         />
       }
@@ -415,7 +416,6 @@ export const ConsoleItemDetailContainer = ({
           currentAgentName={item.agent}
           handlers={handlers}
           storyNameForDeletion={storyNameForDeletion}
-          onCommentAndClose={commentAndClose}
         />
       }
     />

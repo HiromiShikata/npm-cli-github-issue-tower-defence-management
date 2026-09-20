@@ -804,15 +804,11 @@ test('posts a comment and closes the item when the Comment & Close button is use
     'Resolve the shared GitHub token rate-limit exhaustion blocker',
   ).click();
 
+  await page.locator('.console-composer-input').fill('closing with comment');
+
   await page
     .getByRole('button', { name: 'Comment & Close', exact: true })
     .click();
-
-  await page
-    .locator('.console-op-comment-and-close-input')
-    .fill('closing with comment');
-
-  await page.getByRole('button', { name: 'Submit', exact: true }).click();
 
   await expect
     .poll(
