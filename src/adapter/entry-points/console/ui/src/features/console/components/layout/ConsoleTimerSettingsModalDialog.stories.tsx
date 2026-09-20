@@ -64,3 +64,12 @@ export const OpenWithUnconfiguredProject: Story = {
     projectMinutes: { acme: 25 },
   },
 };
+
+export const OpenWithNoStoredSettings: Story = {
+  args: {
+    isOpen: true,
+    timerMode: false,
+    pjcodes: ['acme', 'beta', 'gamma'],
+    projectMinutes: {},
+  },
+};

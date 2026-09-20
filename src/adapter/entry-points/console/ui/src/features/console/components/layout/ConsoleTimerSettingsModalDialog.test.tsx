@@ -350,6 +350,33 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     expect(queryByText('Skip')).toBeNull();
   });
 
+  it('renders DEFAULT_TIMER_MINUTES value for all projects when projectMinutes is completely empty', () => {
+    const { getByLabelText } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha', 'beta', 'gamma']}
+        projectMinutes={{}}
+      />,
+    );
+    expect(getByLabelText('alpha')).toHaveValue(DEFAULT_TIMER_MINUTES);
+    expect(getByLabelText('beta')).toHaveValue(DEFAULT_TIMER_MINUTES);
+    expect(getByLabelText('gamma')).toHaveValue(DEFAULT_TIMER_MINUTES);
+  });
+
+  it('shows min label for every project and no Skip when projectMinutes is completely empty', () => {
+    const { getAllByText, queryByText } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha', 'beta', 'gamma']}
+        projectMinutes={{}}
+      />,
+    );
+    expect(getAllByText('min')).toHaveLength(3);
+    expect(queryByText('Skip')).toBeNull();
+  });
+
   it('clamps dialog right position so dialog stays within viewport when button is near the left edge', async () => {
     const testViewportWidth = 500;
     const buttonRight = 35;
