@@ -1,3 +1,10 @@
+## [2.132.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.7...v2.132.8) (2026-09-20)
+
+
+### Bug Fixes
+
+* **console:** add missing CSS rules for story list rows to fix readability ([#2472](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2472)) ([0154c00](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/0154c00484fb17fa11b1fe527be70ea7ca2c10f8)), closes [HiromiShikata/umino-corporait-operation#32015](https://github.com/HiromiShikata/umino-corporait-operation/issues/32015)
+
 ## [2.132.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.132.6...v2.132.7) (2026-09-20)
 
 
