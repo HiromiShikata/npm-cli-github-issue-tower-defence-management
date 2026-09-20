@@ -39,7 +39,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         defaultArgs.todoByHumanSnapshotFromCache,
       ),
     );
-    expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
   });
 
   it('does not navigate when timer mode is off', () => {
@@ -240,7 +240,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         ),
       { initialProps: { pjcode: 'acme' } },
     );
-    expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
     (navigatePush as jest.Mock).mockClear();
 
     rerender({ pjcode: 'beta' });
@@ -264,7 +264,7 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         ),
       { initialProps: { pjcode: 'acme', prsCount: 0 } },
     );
-    expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
     (navigatePush as jest.Mock).mockClear();
 
     rerender({ pjcode: 'beta', prsCount: 1 });
@@ -272,10 +272,10 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
     (navigatePush as jest.Mock).mockClear();
 
     rerender({ pjcode: 'gamma', prsCount: 0 });
-    expect(navigatePush).toHaveBeenCalledWith('/projects/acme');
+    expect(navigatePush).toHaveBeenCalledWith('/projects/acme/todo-by-human');
   });
 
-  it('navigates to next project with minutes configured when current next has no minutes', () => {
+  it('navigates to next project including unconfigured ones that use DEFAULT_TIMER_MINUTES', () => {
     renderHook(() =>
       useConsoleTimerProjectSkipNavigation(
         true,
@@ -290,7 +290,39 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
         false,
       ),
     );
-    expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+    expect(navigatePush).toHaveBeenCalledWith(
+      '/projects/no-timer/todo-by-human',
+    );
+  });
+
+  it('completes full skip cycle through unconfigured projects', () => {
+    const { rerender } = renderHook(
+      ({ pjcode }: { pjcode: string }) =>
+        useConsoleTimerProjectSkipNavigation(
+          true,
+          0,
+          0,
+          pjcode,
+          ['acme', 'no-timer', 'beta'],
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+        ),
+      { initialProps: { pjcode: 'acme' } },
+    );
+    expect(navigatePush).toHaveBeenCalledWith(
+      '/projects/no-timer/todo-by-human',
+    );
+    (navigatePush as jest.Mock).mockClear();
+
+    rerender({ pjcode: 'no-timer' });
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+    (navigatePush as jest.Mock).mockClear();
+
+    rerender({ pjcode: 'beta' });
+    expect(navigatePush).not.toHaveBeenCalled();
   });
 
   it('navigates when pjcodes loads after snapshots (race condition)', () => {
@@ -313,6 +345,6 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
     expect(navigatePush).not.toHaveBeenCalled();
 
     rerender({ pjcodes: ['acme', 'beta'] });
-    expect(navigatePush).toHaveBeenCalledWith('/projects/acme');
+    expect(navigatePush).toHaveBeenCalledWith('/projects/acme/todo-by-human');
   });
 });

@@ -1,4 +1,5 @@
 import { act, fireEvent, render } from '@testing-library/react';
+import { DEFAULT_TIMER_MINUTES } from '../../logic/timerSettings';
 import { ConsoleTimerSettingsModalDialog } from './ConsoleTimerSettingsModalDialog';
 
 const baseProps = {
@@ -282,6 +283,71 @@ describe('ConsoleTimerSettingsModalDialog', () => {
     );
     fireEvent.click(getByRole('button', { name: 'Close settings' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders input with DEFAULT_TIMER_MINUTES value for a project absent from projectMinutes', () => {
+    const { getByLabelText } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{}}
+      />,
+    );
+    expect(getByLabelText('alpha')).toHaveValue(DEFAULT_TIMER_MINUTES);
+  });
+
+  it('calls onChangeMinutes with DEFAULT_TIMER_MINUTES minus 1 when decrease is clicked for unconfigured project', () => {
+    const onChangeMinutes = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{}}
+        onChangeMinutes={onChangeMinutes}
+      />,
+    );
+    fireEvent.click(
+      getByRole('button', { name: 'Decrease minutes for alpha' }),
+    );
+    expect(onChangeMinutes).toHaveBeenCalledWith(
+      'alpha',
+      DEFAULT_TIMER_MINUTES - 1,
+    );
+  });
+
+  it('calls onChangeMinutes with DEFAULT_TIMER_MINUTES plus 1 when increase is clicked for unconfigured project', () => {
+    const onChangeMinutes = jest.fn();
+    const { getByRole } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{}}
+        onChangeMinutes={onChangeMinutes}
+      />,
+    );
+    fireEvent.click(
+      getByRole('button', { name: 'Increase minutes for alpha' }),
+    );
+    expect(onChangeMinutes).toHaveBeenCalledWith(
+      'alpha',
+      DEFAULT_TIMER_MINUTES + 1,
+    );
+  });
+
+  it('shows min label for a project absent from projectMinutes', () => {
+    const { queryByText } = render(
+      <ConsoleTimerSettingsModalDialog
+        {...baseProps}
+        isOpen={true}
+        pjcodes={['alpha']}
+        projectMinutes={{}}
+      />,
+    );
+    expect(queryByText('min')).toBeInTheDocument();
+    expect(queryByText('Skip')).toBeNull();
   });
 
   it('clamps dialog right position so dialog stays within viewport when button is near the left edge', async () => {

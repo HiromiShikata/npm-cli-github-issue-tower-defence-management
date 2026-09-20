@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { navigatePush } from '../lib/navigation';
-import { findNextPjcodeWithMinutes } from '../logic/timerSettings';
+import {
+  DEFAULT_TIMER_MINUTES,
+  findNextPjcodeWithMinutes,
+} from '../logic/timerSettings';
 
 export const useConsoleTimerProjectSkipNavigation = (
   timerMode: boolean,
@@ -44,7 +47,7 @@ export const useConsoleTimerProjectSkipNavigation = (
     }
 
     const pjcodesWithMinutes = pjcodes.filter(
-      (code) => (projectMinutes[code] ?? 0) > 0,
+      (code) => (projectMinutes[code] ?? DEFAULT_TIMER_MINUTES) > 0,
     );
     if (skipCountRef.current >= pjcodesWithMinutes.length - 1) {
       evaluatedPjcodeRef.current = pjcode;
@@ -60,7 +63,7 @@ export const useConsoleTimerProjectSkipNavigation = (
       projectMinutes,
     );
     if (nextPjcode !== null) {
-      navigatePush(`/projects/${nextPjcode}`);
+      navigatePush(`/projects/${nextPjcode}/todo-by-human`);
     } else {
       skipCountRef.current = 0;
     }

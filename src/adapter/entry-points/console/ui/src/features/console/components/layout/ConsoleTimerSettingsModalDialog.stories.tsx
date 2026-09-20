@@ -55,3 +55,12 @@ export const OpenTimerOn: Story = {
     timerMode: true,
   },
 };
+
+export const OpenWithUnconfiguredProject: Story = {
+  args: {
+    isOpen: true,
+    timerMode: true,
+    pjcodes: ['acme', 'beta', 'gamma'],
+    projectMinutes: { acme: 25 },
+  },
+};

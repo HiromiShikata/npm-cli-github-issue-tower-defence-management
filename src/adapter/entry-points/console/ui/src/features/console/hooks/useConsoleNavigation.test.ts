@@ -181,6 +181,123 @@ describe('useConsoleNavigation default tab without a tab segment', () => {
   });
 });
 
+describe('useConsoleNavigation URL tab fallback when count reaches zero', () => {
+  it('stays on url tab when count is greater than zero', () => {
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
+    const { result } = renderHook(() =>
+      useConsoleNavigation('acme', counts({ 'todo-by-human': 5 })),
+    );
+    expect(result.current.activeTab).toBe('todo-by-human');
+  });
+
+  it('switches to left-most non-empty tab when url tab count drops to zero', () => {
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
+    const { result, rerender } = renderHook(
+      ({
+        tabCounts,
+        loadedTabs,
+      }: {
+        tabCounts: Record<ConsoleTabName, number>;
+        loadedTabs: Set<ConsoleTabName>;
+      }) => useConsoleNavigation('acme', tabCounts, loadedTabs),
+      {
+        initialProps: {
+          tabCounts: counts({ 'todo-by-human': 3, 'failed-preparation': 2 }),
+          loadedTabs: new Set<ConsoleTabName>([
+            'todo-by-human',
+            'failed-preparation',
+          ]),
+        },
+      },
+    );
+    expect(result.current.activeTab).toBe('todo-by-human');
+    rerender({
+      tabCounts: counts({ 'todo-by-human': 0, 'failed-preparation': 2 }),
+      loadedTabs: new Set<ConsoleTabName>([
+        'todo-by-human',
+        'failed-preparation',
+      ]),
+    });
+    expect(result.current.activeTab).toBe('failed-preparation');
+  });
+
+  it('falls back to first navigable tab when url tab count drops to zero and all tabs are empty', () => {
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
+    const { result, rerender } = renderHook(
+      ({
+        tabCounts,
+        loadedTabs,
+      }: {
+        tabCounts: Record<ConsoleTabName, number>;
+        loadedTabs: Set<ConsoleTabName>;
+      }) => useConsoleNavigation('acme', tabCounts, loadedTabs),
+      {
+        initialProps: {
+          tabCounts: counts({ 'todo-by-human': 3 }),
+          loadedTabs: new Set<ConsoleTabName>(['todo-by-human']),
+        },
+      },
+    );
+    expect(result.current.activeTab).toBe('todo-by-human');
+    rerender({
+      tabCounts: counts(),
+      loadedTabs: new Set<ConsoleTabName>(['todo-by-human']),
+    });
+    expect(result.current.activeTab).toBe('todo-by-human');
+  });
+
+  it('stays on url tab when overlay reduces count to zero but snapshot still has items', () => {
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const loadedTabs = new Set<ConsoleTabName>(['prs', 'todo-by-human']);
+    const { result, rerender } = renderHook(
+      ({
+        tabCounts,
+        snapshotCounts,
+      }: {
+        tabCounts: Record<ConsoleTabName, number>;
+        snapshotCounts: Record<ConsoleTabName, number>;
+      }) => useConsoleNavigation('acme', tabCounts, loadedTabs, snapshotCounts),
+      {
+        initialProps: {
+          tabCounts: counts({ prs: 1, 'todo-by-human': 1 }),
+          snapshotCounts: counts({ prs: 1, 'todo-by-human': 1 }),
+        },
+      },
+    );
+    expect(result.current.activeTab).toBe('prs');
+    rerender({
+      tabCounts: counts({ prs: 0, 'todo-by-human': 1 }),
+      snapshotCounts: counts({ prs: 1, 'todo-by-human': 1 }),
+    });
+    expect(result.current.activeTab).toBe('prs');
+  });
+
+  it('switches to non-empty tab when non-default url tab count drops to zero', () => {
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+    const { result, rerender } = renderHook(
+      ({
+        tabCounts,
+        loadedTabs,
+      }: {
+        tabCounts: Record<ConsoleTabName, number>;
+        loadedTabs: Set<ConsoleTabName>;
+      }) => useConsoleNavigation('acme', tabCounts, loadedTabs),
+      {
+        initialProps: {
+          tabCounts: counts({ prs: 2, 'workflow-blocker': 1 }),
+          loadedTabs: new Set<ConsoleTabName>(['prs', 'workflow-blocker']),
+        },
+      },
+    );
+    expect(result.current.activeTab).toBe('prs');
+    rerender({
+      tabCounts: counts({ prs: 0, 'workflow-blocker': 1 }),
+      loadedTabs: new Set<ConsoleTabName>(['prs', 'workflow-blocker']),
+    });
+    expect(result.current.activeTab).toBe('workflow-blocker');
+  });
+});
+
 describe('useConsoleNavigation project switch', () => {
   it('resets the active tab to default when navigatePush switches to a new project', () => {
     window.history.replaceState({}, '', '/projects/acme/prs');

@@ -1592,7 +1592,9 @@ describe('ConsolePage auto-advance tab', () => {
     navigateReplaceState.mockClear();
     render(<ConsolePage />);
     await waitFor(() => {
-      expect(navigateReplaceState).toHaveBeenCalledWith('/projects/acme');
+      expect(navigateReplaceState).toHaveBeenCalledWith(
+        '/projects/acme/todo-by-human',
+      );
     });
   });
 
@@ -1905,7 +1907,7 @@ describe('ConsolePage auto-advance tab', () => {
     navigatePush.mockClear();
     render(<ConsolePage />);
     await waitFor(() => {
-      expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
     });
   });
 
@@ -1949,7 +1951,58 @@ describe('ConsolePage auto-advance tab', () => {
         navigatePush: jest.Mock;
       }>('../lib/navigation');
       await waitFor(() => {
-        expect(navigatePush).toHaveBeenCalledWith('/projects/beta');
+        expect(navigatePush).toHaveBeenCalledWith(
+          '/projects/beta/todo-by-human',
+        );
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('navigates to the next project when a completing action fires after DEFAULT_TIMER_MINUTES elapses for an unconfigured project', async () => {
+    localStorage.setItem(
+      'tdpm-timer-settings',
+      JSON.stringify({ timerMode: true, projectMinutes: { beta: 5 } }),
+    );
+    global.fetch = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => listPayload(listMatch[1]),
+        };
+      }
+      if (url === '/api/projects') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ pjcodes: ['acme', 'beta'] }),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    }) as unknown as typeof fetch;
+    jest.useFakeTimers({ now: 0 });
+    try {
+      const { getByText, findByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
+      });
+      jest.setSystemTime(16 * 60 * 1000);
+      fireEvent.click(getByText('Add serveConsole subcommand'));
+      expect(await findByText('Approve & Merge')).toBeInTheDocument();
+      fireEvent.click(getByText('Approve & Merge'));
+      act(() => {
+        jest.advanceTimersByTime(5100);
+      });
+      const { navigatePush } = jest.requireMock<{
+        navigatePush: jest.Mock;
+      }>('../lib/navigation');
+      await waitFor(() => {
+        expect(navigatePush).toHaveBeenCalledWith(
+          '/projects/beta/todo-by-human',
+        );
       });
     } finally {
       jest.useRealTimers();
