@@ -1,18 +1,17 @@
 import { extractFencedJsonBlocks } from './extractFencedJsonBlocks';
 
 export const extractNextStepAgent = (body: string): string | null => {
-  for (const block of extractFencedJsonBlocks(body, 'nextStepAgent')) {
-    if (typeof block !== 'object' || block === null) {
-      continue;
-    }
-    if (!('nextStepAgent' in block)) {
-      continue;
-    }
-    const value = Reflect.get(block, 'nextStepAgent');
-    if (typeof value !== 'string' || value.trim() === '') {
-      continue;
-    }
-    return value.trim();
+  const blocks = extractFencedJsonBlocks(body, 'nextStepAgent');
+  const lastBlock = blocks[blocks.length - 1];
+  if (typeof lastBlock !== 'object' || lastBlock === null) {
+    return null;
   }
-  return null;
+  if (!('nextStepAgent' in lastBlock)) {
+    return null;
+  }
+  const value = Reflect.get(lastBlock, 'nextStepAgent');
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+  return value.trim();
 };
