@@ -1,3 +1,10 @@
+## [2.133.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.5...v2.133.6) (2026-09-20)
+
+
+### Bug Fixes
+
+* **timer-mode:** navigate to next project when counts drop to zero from non-zero ([#2501](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2501)) ([b32b09e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/b32b09eecf1b886332157e3deb0e180beeb2eb10))
+
 ## [2.133.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.133.4...v2.133.5) (2026-09-20)
 
 
