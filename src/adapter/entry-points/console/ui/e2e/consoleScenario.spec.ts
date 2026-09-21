@@ -255,7 +255,7 @@ test('collects an inline comment on a related pull request diff without hover on
   await touchContext.close();
 });
 
-test('keeps a todo-by-human item hidden even when the overlay entry predates the snapshot generatedAt', async ({
+test('restores a todo-by-human item when a stale done overlay entry predates the snapshot generatedAt and the item is still present (self-heal)', async ({
   page,
 }) => {
   await page.goto(harness.appRootUrl);
@@ -277,7 +277,7 @@ test('keeps a todo-by-human item hidden even when the overlay entry predates the
   await page.reload();
 
   await expect(tabByLabel(page, 'Todo by human')).toBeVisible();
-  await expect(tabBadge(page, 'Todo by human')).toHaveText('0');
+  await expect(tabBadge(page, 'Todo by human')).toHaveText('1');
 
   await tabByLabel(page, 'Todo by human').click();
   await expect(
@@ -285,7 +285,7 @@ test('keeps a todo-by-human item hidden even when the overlay entry predates the
       page,
       'Auto-advance to the next non-empty console tab when one empties',
     ),
-  ).not.toBeVisible();
+  ).toBeVisible();
 });
 
 test('opens the comment input with the item detail, keeps it on screen while the item body scrolls, and gives the height back when it is closed', async ({
