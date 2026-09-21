@@ -1,3 +1,10 @@
+## [2.135.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.4...v2.135.5) (2026-09-21)
+
+
+### Bug Fixes
+
+* **deps:** update dependency marked-emoji to v3 ([#2442](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2442)) ([df145db](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/df145db6b4e1db5079ed658d08e01f033b7d37b1))
+
 ## [2.135.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.3...v2.135.4) (2026-09-21)
 
 
