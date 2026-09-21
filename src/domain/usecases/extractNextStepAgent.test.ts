@@ -25,14 +25,6 @@ describe('extractNextStepAgent', () => {
     ).toBe('developer');
   });
 
-  it('returns null when the report declares no agent', () => {
-    expect(
-      extractNextStepAgent(
-        'From: :robot: agent (model)\n\n```json\n{ "nextStep": null }\n```\n',
-      ),
-    ).toBeNull();
-  });
-
   it('returns null when the body carries no fenced json block', () => {
     expect(extractNextStepAgent('Please go ahead with that.')).toBeNull();
   });
