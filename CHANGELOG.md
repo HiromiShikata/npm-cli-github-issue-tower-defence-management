@@ -1,3 +1,10 @@
+# [2.135.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.134.1...v2.135.0) (2026-09-21)
+
+
+### Features
+
+* **console:** show dialog instead of new tab for fleet task create button ([#2445](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2445)) ([2c2ba9e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/2c2ba9e953bada2117223bd87f4bb5ed2187b3ba)), closes [HiromiShikata/umino-corporait-operation#31964](https://github.com/HiromiShikata/umino-corporait-operation/issues/31964)
+
 ## [2.134.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.134.0...v2.134.1) (2026-09-20)
 
 
