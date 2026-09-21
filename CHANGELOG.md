@@ -1,3 +1,10 @@
+## [2.135.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.1...v2.135.2) (2026-09-21)
+
+
+### Bug Fixes
+
+* **NotifyFinishedIssuePreparation:** remove 'Owner confirmation or approval required' comment posting ([#2510](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2510)) ([42a9791](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/42a9791470846aba44229a21ba591aad283cca0a))
+
 ## [2.135.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.0...v2.135.1) (2026-09-21)
 
 
