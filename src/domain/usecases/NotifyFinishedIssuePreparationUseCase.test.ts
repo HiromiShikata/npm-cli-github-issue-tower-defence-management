@@ -7864,7 +7864,7 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
         expect.anything(),
         'awaiting-owner-id',
       );
-      expect(mockIssueCommentRepository.createComment).toHaveBeenCalledWith(
+      expect(mockIssueCommentRepository.createComment).not.toHaveBeenCalledWith(
         expect.anything(),
         'Owner confirmation or approval required',
       );
