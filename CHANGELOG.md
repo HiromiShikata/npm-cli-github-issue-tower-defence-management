@@ -1,3 +1,10 @@
+## [2.135.6](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.5...v2.135.6) (2026-09-21)
+
+
+### Bug Fixes
+
+* **useConsoleTimerProjectSkipNavigation:** reset evaluatedPjcodeRef when tasks exist to unblock re-navigation to previously-skipped project ([#2516](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2516)) ([698b422](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/698b4220b1f4cea3916c6ef3c83c28d1375e9b01))
+
 ## [2.135.5](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.4...v2.135.5) (2026-09-21)
 
 
