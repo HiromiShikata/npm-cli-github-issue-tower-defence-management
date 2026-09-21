@@ -3,6 +3,7 @@ import { ConsoleProjectSettingsModalScreen } from '../components/layout/ConsoleP
 import { ConsoleProjectTimerBar } from '../components/layout/ConsoleProjectTimerBar';
 import { ConsoleTabList } from '../components/layout/ConsoleTabList';
 import { ConsoleTimerSettingsModalDialog } from '../components/layout/ConsoleTimerSettingsModalDialog';
+import { FleetTaskCreateModalDialog } from '../components/layout/FleetTaskCreateModalDialog';
 import {
   type IssueCreateDraft,
   IssueCreateModalDialog,
@@ -104,6 +105,11 @@ const emptyCounts = (): Record<ConsoleTabName, number> => {
 };
 
 const OVERLAY_NAMESPACE_FALLBACK = 'console';
+
+const parseFleetNameWithOwner = (fleetTaskCreateUrl: string): string =>
+  fleetTaskCreateUrl
+    .replace('https://github.com/', '')
+    .replace(/\/issues\/new.*$/, '');
 
 export const ConsolePage = () => {
   const pjcode = useConsolePjcode();
@@ -240,6 +246,8 @@ export const ConsolePage = () => {
   }, []);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFleetTaskCreateDialogOpen, setIsFleetTaskCreateDialogOpen] =
+    useState(false);
   const [dialogDraft, setDialogDraft] = useState<IssueCreateDraft>({
     title: '',
     body: null,
@@ -662,9 +670,7 @@ export const ConsolePage = () => {
     (title: string, body: string): Promise<void> => {
       if (fleetTaskCreateUrl === null || selectedItem === null)
         return Promise.resolve();
-      const nameWithOwner = fleetTaskCreateUrl
-        .replace('https://github.com/', '')
-        .replace(/\/issues\/new.*$/, '');
+      const nameWithOwner = parseFleetNameWithOwner(fleetTaskCreateUrl);
       const capturedNameWithOwner = nameWithOwner;
       actionQueue.enqueue({
         message: `Task created — "${title}"`,
@@ -681,6 +687,19 @@ export const ConsolePage = () => {
       return Promise.resolve();
     },
     [fleetTaskCreateUrl, selectedItem, actionQueue],
+  );
+
+  const handleFleetTaskCreateSubmit = useCallback(
+    async (title: string): Promise<void> => {
+      if (fleetTaskCreateUrl === null) return;
+      const nameWithOwner = parseFleetNameWithOwner(fleetTaskCreateUrl);
+      await postConsoleCreateWorkflowIssue({
+        nameWithOwner,
+        title,
+        body: '',
+      });
+    },
+    [fleetTaskCreateUrl],
   );
 
   const handleCreateIssue = useCallback(
@@ -1073,9 +1092,19 @@ export const ConsolePage = () => {
         onAirplaneModeTurnOff={airplaneMode.turnOff}
         onAirplaneModeRetryFailed={airplaneMode.retryFailed}
         projectUrl={pjcode !== null ? (projectUrls?.[pjcode] ?? null) : null}
-        fleetTaskCreateUrl={fleetTaskCreateUrl}
+        onFleetTaskCreate={
+          fleetTaskCreateUrl !== null
+            ? () => setIsFleetTaskCreateDialogOpen(true)
+            : null
+        }
         now={now}
       />
+      {isFleetTaskCreateDialogOpen && (
+        <FleetTaskCreateModalDialog
+          onSubmit={handleFleetTaskCreateSubmit}
+          onClose={() => setIsFleetTaskCreateDialogOpen(false)}
+        />
+      )}
       <ConsoleProjectTimerBar
         timerEndsAt={activeSnapshot?.timerEndsAt ?? null}
         timerTotalSeconds={activeSnapshot?.timerTotalSeconds ?? null}

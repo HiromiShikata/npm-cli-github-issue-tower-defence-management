@@ -952,11 +952,10 @@ test('deletes all comments when the dangerous actions panel is opened and the de
   expect(harness.deleteAllCommentsCalls[0].issueUrl).toContain('/issues/720');
 });
 
-test('shows the fleet task create link when fleetTaskCreateUrl is configured', async ({
+test('shows fleet task create button and creates issue via dialog when title is submitted', async ({
   browser,
 }) => {
-  const fleetUrl =
-    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new';
+  const fleetUrl = 'https://github.com/HiromiShikata/secretary/issues/new';
   const localHarness = await startConsoleE2eHarness({
     fleetTaskCreateUrl: fleetUrl,
   });
@@ -964,11 +963,38 @@ test('shows the fleet task create link when fleetTaskCreateUrl is configured', a
   const page = await ctx.newPage();
   try {
     await page.goto(localHarness.appRootUrl);
-    const link = page.locator('.console-tab-fleet-task-create-link');
-    await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute('href', fleetUrl);
-    await expect(link).toHaveAttribute('target', '_blank');
-    await expect(link).toHaveAttribute('rel', 'noreferrer');
+    const button = page.locator('.console-tab-fleet-task-create-link');
+    await expect(button).toBeVisible();
+    await expect(button).toHaveAttribute('type', 'button');
+
+    await button.click();
+
+    const containerPosition = await page.evaluate(() => {
+      const el = document.querySelector(
+        '.console-fleet-task-create-dialog-container',
+      );
+      if (el === null) return null;
+      return window.getComputedStyle(el).position;
+    });
+    expect(containerPosition).toBe('fixed');
+
+    await page.getByRole('textbox', { name: /title/i }).fill('My fleet task');
+
+    const initialCount = localHarness.createIssueCalls.length;
+    await page.getByRole('button', { name: /^create$/i }).click();
+
+    await expect
+      .poll(() => localHarness.createIssueCalls.length, { timeout: 10000 })
+      .toBe(initialCount + 1);
+
+    const call = localHarness.createIssueCalls.at(-1);
+    expect(call?.org).toBe('HiromiShikata');
+    expect(call?.repo).toBe('secretary');
+    expect(call?.title).toBe('My fleet task');
+
+    await expect(
+      page.locator('.console-fleet-task-create-dialog-container'),
+    ).not.toBeVisible();
   } finally {
     await ctx.close();
     await localHarness.stop();
