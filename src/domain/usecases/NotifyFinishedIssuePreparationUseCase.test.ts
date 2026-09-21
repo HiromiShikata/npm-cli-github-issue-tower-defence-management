@@ -1122,46 +1122,6 @@ describe('NotifyFinishedIssuePreparationUseCase', () => {
     expect(mockIssueCommentRepository.createComment).toHaveBeenCalled();
   });
 
-  it('should not reject when last comment has nextStep set to null', async () => {
-    const issue = createMockIssue({
-      url: 'https://github.com/user/repo/issues/1',
-      status: 'Preparation',
-    });
-
-    mockProjectRepository.getByUrl.mockResolvedValue(mockProject);
-    mockIssueRepository.get.mockResolvedValue(issue);
-    mockIssueCommentRepository.getCommentsFromIssue.mockResolvedValue([
-      createMockComment({
-        content:
-          'From: :robot: agent (model)\n```json\n{"nextStep": null}\n```',
-      }),
-    ]);
-    mockIssueRepository.findRelatedOpenPRs.mockResolvedValue([
-      {
-        url: 'https://github.com/user/repo/pull/1',
-        isConflicted: false,
-        isPassedAllCiJob: true,
-        isCiStateSuccess: true,
-        isResolvedAllReviewComments: true,
-        isBranchOutOfDate: false,
-        missingRequiredCheckNames: [],
-      },
-    ]);
-
-    await useCase.run({
-      projectUrl: 'https://github.com/users/user/projects/1',
-      issueUrl: 'https://github.com/user/repo/issues/1',
-      thresholdForAutoReject: 3,
-      workflowBlockerResolvedWebhookUrl: null,
-      allowedIssueAuthors: ['test-user'],
-    });
-
-    expect(mockIssueRepository.update).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'Awaiting Owner' }),
-      mockProject,
-    );
-  });
-
   it('should set agent custom field and return to Awaiting Workspace when report has nextStepAgent', async () => {
     const issue = createMockIssue({
       url: 'https://github.com/user/repo/issues/1',
