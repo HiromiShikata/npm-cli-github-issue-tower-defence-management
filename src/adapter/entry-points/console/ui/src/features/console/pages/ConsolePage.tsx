@@ -70,7 +70,6 @@ import {
 import {
   countPendingItems,
   filterPendingItems,
-  overlayEntriesActedSinceSnapshot,
   overlayKeyForItem,
   overlayStatusSinceSnapshot,
 } from '../logic/overlay';
@@ -159,10 +158,7 @@ export const ConsolePage = () => {
       } else {
         result[tab.name] = countPendingItems(
           snapshot.items,
-          overlayEntriesActedSinceSnapshot(
-            overlayState.overlay,
-            snapshot.generatedAt,
-          ),
+          overlayState.overlay,
           tab.name,
         );
       }
@@ -375,10 +371,7 @@ export const ConsolePage = () => {
     }
     return filterPendingItems(
       activeSnapshot.items,
-      overlayEntriesActedSinceSnapshot(
-        overlayState.overlay,
-        activeSnapshot.generatedAt,
-      ),
+      overlayState.overlay,
       activeTab,
     );
   }, [activeSnapshot, overlayState.overlay, activeTab]);
