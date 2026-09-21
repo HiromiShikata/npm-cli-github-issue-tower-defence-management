@@ -1,4 +1,5 @@
 import {
+  computeEffectiveOverlay,
   countPendingItems,
   filterPendingItems,
   isOverlayEntryActed,
@@ -13,6 +14,7 @@ import type {
   ConsoleListItem,
   ConsoleOverlay,
   ConsoleOverlayStatus,
+  ConsoleTabName,
 } from './types';
 
 const item = (number: number): ConsoleListItem => ({
@@ -342,5 +344,122 @@ describe('overlayStatusSinceSnapshot', () => {
     expect(
       overlayStatusSinceSnapshot({}, item(1), snapshotGeneratedAt),
     ).toBeNull();
+  });
+});
+
+describe('computeEffectiveOverlay', () => {
+  const snapshotGeneratedAt = '2026-08-01T00:00:00.000Z';
+  const snapshotGeneratedAtMs = Date.parse(snapshotGeneratedAt);
+
+  const emptySnapshots = (): Record<
+    ConsoleTabName,
+    { items: ConsoleListItem[]; generatedAt: string } | null
+  > => ({
+    'workflow-blocker': null,
+    prs: null,
+    'failed-preparation': null,
+    'todo-by-human': null,
+    'todo-by-agent': null,
+    queued: null,
+    stories: null,
+  });
+
+  const snapshotWith = (
+    tab: ConsoleTabName,
+    items: ConsoleListItem[],
+  ): Record<
+    ConsoleTabName,
+    { items: ConsoleListItem[]; generatedAt: string } | null
+  > => ({
+    ...emptySnapshots(),
+    [tab]: { items, generatedAt: snapshotGeneratedAt },
+  });
+
+  const tsBeforeSnapshot = snapshotGeneratedAtMs - 1000;
+  const tsAfterSnapshot = snapshotGeneratedAtMs + 1000;
+
+  const testCases: {
+    name: string;
+    overlay: ConsoleOverlay;
+    snapshotsByTab: Record<
+      ConsoleTabName,
+      { items: ConsoleListItem[]; generatedAt: string } | null
+    >;
+    expected: ConsoleOverlay;
+  }[] = [
+    {
+      name: 'removes a done entry when the item still appears in the matching tab snapshot and the entry predates the snapshot',
+      overlay: { PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs', done: true } },
+      snapshotsByTab: snapshotWith('prs', [item(1)]),
+      expected: {},
+    },
+    {
+      name: 'keeps a done entry when the item no longer appears in the matching tab snapshot',
+      overlay: { PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs', done: true } },
+      snapshotsByTab: snapshotWith('prs', []),
+      expected: { PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs', done: true } },
+    },
+    {
+      name: 'keeps a done entry when the matching tab snapshot is null',
+      overlay: { PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs', done: true } },
+      snapshotsByTab: emptySnapshots(),
+      expected: { PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs', done: true } },
+    },
+    {
+      name: 'keeps an entry without a done flag even when the item appears in the matching tab snapshot',
+      overlay: { PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs' } },
+      snapshotsByTab: snapshotWith('prs', [item(1)]),
+      expected: { PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs' } },
+    },
+    {
+      name: 'keeps a done entry when the item appears in a different tab snapshot but not the matching one',
+      overlay: { PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs', done: true } },
+      snapshotsByTab: {
+        ...snapshotWith('prs', []),
+        'todo-by-human': { items: [item(1)], generatedAt: snapshotGeneratedAt },
+      },
+      expected: { PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs', done: true } },
+    },
+    {
+      name: 'removes only the failed-action entry and keeps the succeeded entry when items have mixed outcomes',
+      overlay: {
+        PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs', done: true },
+        PVTI_2: { ts: tsBeforeSnapshot, mode: 'prs', done: true },
+      },
+      snapshotsByTab: snapshotWith('prs', [item(1)]),
+      expected: { PVTI_2: { ts: tsBeforeSnapshot, mode: 'prs', done: true } },
+    },
+    {
+      name: 'removes a done entry for a non-prs tab when the item still appears in that tab snapshot and the entry predates the snapshot',
+      overlay: {
+        PVTI_1: { ts: tsBeforeSnapshot, mode: 'todo-by-human', done: true },
+      },
+      snapshotsByTab: snapshotWith('todo-by-human', [item(1)]),
+      expected: {},
+    },
+  ];
+
+  test.each(testCases)('$name', ({ overlay, snapshotsByTab, expected }) => {
+    expect(computeEffectiveOverlay(overlay, snapshotsByTab)).toEqual(expected);
+  });
+
+  it('keeps a done entry when the entry was set after the snapshot was generated (optimistic update)', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: tsAfterSnapshot, mode: 'prs', done: true },
+    };
+    expect(
+      computeEffectiveOverlay(overlay, snapshotWith('prs', [item(1)])),
+    ).toEqual(overlay);
+  });
+
+  it('keeps a done entry when the snapshot generatedAt cannot be parsed', () => {
+    const overlay: ConsoleOverlay = {
+      PVTI_1: { ts: tsBeforeSnapshot, mode: 'prs', done: true },
+    };
+    const snapshots = {
+      ...emptySnapshots(),
+      prs: { items: [item(1)], generatedAt: 'invalid' },
+    };
+    expect(computeEffectiveOverlay(overlay, snapshots)).toEqual(overlay);
   });
 });

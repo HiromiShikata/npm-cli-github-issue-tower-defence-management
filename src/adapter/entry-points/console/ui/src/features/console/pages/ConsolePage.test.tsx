@@ -742,7 +742,7 @@ describe('ConsolePage', () => {
     );
   });
 
-  it('keeps an item hidden when the overlay was applied before the current snapshot was generated', async () => {
+  it('restores an item when a stale done overlay entry predates the snapshot and the item is still present (self-heal)', async () => {
     const blockerItems = [
       {
         number: 701,
@@ -794,19 +794,13 @@ describe('ConsolePage', () => {
       '/projects/acme/workflow-blocker?k=token',
     );
 
-    const { queryByText } = render(<ConsolePage />);
+    const { getByText } = render(<ConsolePage />);
     await waitFor(() => {
-      const awaitingOwnerTab = within(tabBar())
-        .getByText('Awaiting Owner')
-        .closest('a');
-      expect(
-        awaitingOwnerTab?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('1');
+      expect(getByText('Blocked deployment task')).toBeInTheDocument();
     });
-    expect(queryByText('Blocked deployment task')).toBeNull();
   });
 
-  it('keeps a todo-by-human item hidden after a newer snapshot arrives while a done overlay entry is active', async () => {
+  it('restores a todo-by-human item when the snapshot was generated after the overlay entry and the item is still present (self-heal)', async () => {
     localStorage.setItem(
       'pv_overlay_acme',
       JSON.stringify({
@@ -819,6 +813,42 @@ describe('ConsolePage', () => {
     );
     window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
 
+    const { getByText } = render(<ConsolePage />);
+    await waitFor(() => {
+      expect(
+        getByText('Notify finished issue preparation'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('keeps a successfully-processed item hidden after a newer snapshot arrives when the item has left the snapshot', async () => {
+    localStorage.setItem(
+      'pv_overlay_acme',
+      JSON.stringify({
+        PVTI_1: {
+          ts: Date.parse('2026-06-18T23:00:00.000Z'),
+          mode: 'prs',
+          done: true,
+        },
+      }),
+    );
+    const fetchMock = jest.fn(async (url: string) => {
+      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+      if (listMatch !== null) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () =>
+            listMatch[1] === 'prs'
+              ? { ...listPayload('prs'), items: [] }
+              : listPayload(listMatch[1]),
+        };
+      }
+      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+
     const { queryByText } = render(<ConsolePage />);
     await waitFor(() => {
       const awaitingOwnerTab = within(tabBar())
@@ -826,9 +856,9 @@ describe('ConsolePage', () => {
         .closest('a');
       expect(
         awaitingOwnerTab?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('1');
+      ).toBe('0');
     });
-    expect(queryByText('Notify finished issue preparation')).toBeNull();
+    expect(queryByText('Add serveConsole subcommand')).toBeNull();
   });
 
   it('renders the failure toast in English without any Japanese characters', async () => {

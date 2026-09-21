@@ -68,6 +68,7 @@ import {
   previousPendingKeyBefore,
 } from '../logic/navigation';
 import {
+  computeEffectiveOverlay,
   countPendingItems,
   filterPendingItems,
   overlayKeyForItem,
@@ -144,6 +145,11 @@ export const ConsolePage = () => {
 
   const projectSettings = useConsoleProjectSettings(pjcodes);
 
+  const effectiveOverlay = useMemo(
+    () => computeEffectiveOverlay(overlayState.overlay, snapshots),
+    [overlayState.overlay, snapshots],
+  );
+
   const counts = useMemo(() => {
     const result = emptyCounts();
     for (const tab of CONSOLE_TABS) {
@@ -158,13 +164,13 @@ export const ConsolePage = () => {
       } else {
         result[tab.name] = countPendingItems(
           snapshot.items,
-          overlayState.overlay,
+          effectiveOverlay,
           tab.name,
         );
       }
     }
     return result;
-  }, [snapshots, overlayState.overlay]);
+  }, [snapshots, effectiveOverlay]);
 
   useConsoleBackgroundTabRefresh(
     pjcode,
@@ -371,10 +377,10 @@ export const ConsolePage = () => {
     }
     return filterPendingItems(
       activeSnapshot.items,
-      overlayState.overlay,
+      effectiveOverlay,
       activeTab,
     );
-  }, [activeSnapshot, overlayState.overlay, activeTab]);
+  }, [activeSnapshot, effectiveOverlay, activeTab]);
 
   const [prsAgentFilter, setPrsAgentFilter] = useState<string | null>(null);
 

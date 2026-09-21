@@ -101,3 +101,39 @@ export const removeOverlayEntry = (
   delete next[key];
   return next;
 };
+
+export const computeEffectiveOverlay = (
+  overlay: ConsoleOverlay,
+  snapshotsByTab: Record<
+    ConsoleTabName,
+    { items: ConsoleListItem[]; generatedAt: string } | null
+  >,
+): ConsoleOverlay => {
+  const effective: ConsoleOverlay = {};
+  for (const [key, entry] of Object.entries(overlay)) {
+    if (entry.done !== true) {
+      effective[key] = entry;
+      continue;
+    }
+    const snapshot = snapshotsByTab[entry.mode];
+    if (snapshot === null || snapshot === undefined) {
+      effective[key] = entry;
+      continue;
+    }
+    const snapshotGeneratedAtMs = Date.parse(snapshot.generatedAt);
+    if (
+      Number.isNaN(snapshotGeneratedAtMs) ||
+      entry.ts >= snapshotGeneratedAtMs
+    ) {
+      effective[key] = entry;
+      continue;
+    }
+    const isStillInSnapshot = snapshot.items.some(
+      (snapshotItem) => overlayKeyForItem(snapshotItem) === key,
+    );
+    if (!isStillInSnapshot) {
+      effective[key] = entry;
+    }
+  }
+  return effective;
+};
