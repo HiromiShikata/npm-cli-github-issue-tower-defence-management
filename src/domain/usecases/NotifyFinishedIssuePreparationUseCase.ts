@@ -674,10 +674,6 @@ export class NotifyFinishedIssuePreparationUseCase {
         awaitingOwnerStatusOption.id,
       );
       await this.patchConsoleTab(issue);
-      await this.createCommentWithDedup(
-        issue,
-        'Owner confirmation or approval required',
-      );
       return;
     }
 
