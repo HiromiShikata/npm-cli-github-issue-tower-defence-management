@@ -335,7 +335,7 @@ export const loadWorkflowImprovementIssueUrl = (
 
 const extractGitHubProjectParam = (projectUrl: string): string | null => {
   const match =
-    /^https:\/\/github\.com\/(?:orgs|users)\/([^/]+)\/projects\/(\d+)$/.exec(
+    /^https:\/\/github\.com\/(?:orgs|users)\/([^/]+)\/projects\/(\d+)/.exec(
       projectUrl,
     );
   if (match === null) {

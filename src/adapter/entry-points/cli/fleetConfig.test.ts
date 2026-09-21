@@ -882,4 +882,31 @@ describe('loadFleetTaskCreateUrl', () => {
       'workflowIssueReporter.repo',
     );
   });
+
+  it('appends projects= when projectUrl has a /views/N path suffix', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n  projectUrl: https://github.com/orgs/myorg/projects/3/views/1\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
+      'https://github.com/myorg/myrepo/issues/new?projects=myorg/3&assignees=myorg',
+    );
+  });
+
+  it('appends projects= when projectUrl has a ?fullscreen=true query parameter', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n  projectUrl: https://github.com/orgs/myorg/projects/3?fullscreen=true\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
+      'https://github.com/myorg/myrepo/issues/new?projects=myorg/3&assignees=myorg',
+    );
+  });
+
+  it('appends projects= when projectUrl has both a /views/N suffix and a ?fullscreen=true query parameter', () => {
+    const fleetConfigFilePath = writeFleetConfig(
+      'workflowIssueReporter:\n  owner: myorg\n  repo: myrepo\n  projectUrl: https://github.com/orgs/myorg/projects/3/views/1?fullscreen=true\n',
+    );
+    expect(loadFleetTaskCreateUrl(fleetConfigFilePath)).toBe(
+      'https://github.com/myorg/myrepo/issues/new?projects=myorg/3&assignees=myorg',
+    );
+  });
 });
