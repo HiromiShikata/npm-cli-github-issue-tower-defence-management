@@ -1,139 +1,139 @@
 import type {
-	ConsoleListItem,
-	ConsoleOverlay,
-	ConsoleOverlayEntry,
-	ConsoleOverlayStatus,
-	ConsoleTabName,
-} from "./types";
+  ConsoleListItem,
+  ConsoleOverlay,
+  ConsoleOverlayEntry,
+  ConsoleOverlayStatus,
+  ConsoleTabName,
+} from './types';
 
 export const overlayStorageKey = (pjcode: string): string =>
-	`pv_overlay_${pjcode}`;
+  `pv_overlay_${pjcode}`;
 
 export const overlayKeyForItem = (item: ConsoleListItem): string =>
-	item.projectItemId !== "" ? item.projectItemId : item.itemId;
+  item.projectItemId !== '' ? item.projectItemId : item.itemId;
 
 export const isOverlayEntryActed = (
-	entry: ConsoleOverlayEntry | undefined,
+  entry: ConsoleOverlayEntry | undefined,
 ): boolean => entry !== undefined && entry.done === true;
 
 const isActedInTab = (
-	entry: ConsoleOverlayEntry | undefined,
-	currentTab: ConsoleTabName,
+  entry: ConsoleOverlayEntry | undefined,
+  currentTab: ConsoleTabName,
 ): boolean =>
-	entry !== undefined && entry.done === true && entry.mode === currentTab;
+  entry !== undefined && entry.done === true && entry.mode === currentTab;
 
 export const countPendingItems = (
-	items: ConsoleListItem[],
-	overlay: ConsoleOverlay,
-	currentTab: ConsoleTabName,
+  items: ConsoleListItem[],
+  overlay: ConsoleOverlay,
+  currentTab: ConsoleTabName,
 ): number =>
-	items.filter(
-		(item) => !isActedInTab(overlay[overlayKeyForItem(item)], currentTab),
-	).length;
+  items.filter(
+    (item) => !isActedInTab(overlay[overlayKeyForItem(item)], currentTab),
+  ).length;
 
 export const filterPendingItems = (
-	items: ConsoleListItem[],
-	overlay: ConsoleOverlay,
-	currentTab: ConsoleTabName,
+  items: ConsoleListItem[],
+  overlay: ConsoleOverlay,
+  currentTab: ConsoleTabName,
 ): ConsoleListItem[] =>
-	items.filter(
-		(item) => !isActedInTab(overlay[overlayKeyForItem(item)], currentTab),
-	);
+  items.filter(
+    (item) => !isActedInTab(overlay[overlayKeyForItem(item)], currentTab),
+  );
 
 export const overlayEntriesActedSinceSnapshot = (
-	overlay: ConsoleOverlay,
-	snapshotGeneratedAt: string,
+  overlay: ConsoleOverlay,
+  snapshotGeneratedAt: string,
 ): ConsoleOverlay => {
-	const snapshotGeneratedAtMs = Date.parse(snapshotGeneratedAt);
-	if (Number.isNaN(snapshotGeneratedAtMs)) {
-		return {};
-	}
-	const acted: ConsoleOverlay = {};
-	for (const [key, entry] of Object.entries(overlay)) {
-		if (entry.ts >= snapshotGeneratedAtMs) {
-			acted[key] = entry;
-		}
-	}
-	return acted;
+  const snapshotGeneratedAtMs = Date.parse(snapshotGeneratedAt);
+  if (Number.isNaN(snapshotGeneratedAtMs)) {
+    return {};
+  }
+  const acted: ConsoleOverlay = {};
+  for (const [key, entry] of Object.entries(overlay)) {
+    if (entry.ts >= snapshotGeneratedAtMs) {
+      acted[key] = entry;
+    }
+  }
+  return acted;
 };
 
 export const overlayStatusSinceSnapshot = (
-	overlay: ConsoleOverlay,
-	item: ConsoleListItem,
-	snapshotGeneratedAt: string | null,
+  overlay: ConsoleOverlay,
+  item: ConsoleListItem,
+  snapshotGeneratedAt: string | null,
 ): ConsoleOverlayStatus | null => {
-	if (snapshotGeneratedAt === null) {
-		return null;
-	}
-	const snapshotGeneratedAtMs = Date.parse(snapshotGeneratedAt);
-	if (Number.isNaN(snapshotGeneratedAtMs)) {
-		return null;
-	}
-	const entry = overlay[overlayKeyForItem(item)];
-	if (entry === undefined || entry.ts < snapshotGeneratedAtMs) {
-		return null;
-	}
-	return entry.status ?? null;
+  if (snapshotGeneratedAt === null) {
+    return null;
+  }
+  const snapshotGeneratedAtMs = Date.parse(snapshotGeneratedAt);
+  if (Number.isNaN(snapshotGeneratedAtMs)) {
+    return null;
+  }
+  const entry = overlay[overlayKeyForItem(item)];
+  if (entry === undefined || entry.ts < snapshotGeneratedAtMs) {
+    return null;
+  }
+  return entry.status ?? null;
 };
 
 export const writeOverlayEntry = (
-	overlay: ConsoleOverlay,
-	key: string,
-	patch: Partial<Omit<ConsoleOverlayEntry, "ts" | "mode">>,
-	mode: ConsoleTabName,
-	now: number,
+  overlay: ConsoleOverlay,
+  key: string,
+  patch: Partial<Omit<ConsoleOverlayEntry, 'ts' | 'mode'>>,
+  mode: ConsoleTabName,
+  now: number,
 ): ConsoleOverlay => {
-	const existing = overlay[key];
-	const next: ConsoleOverlayEntry = {
-		...(existing ?? {}),
-		...patch,
-		ts: now,
-		mode,
-	};
-	return { ...overlay, [key]: next };
+  const existing = overlay[key];
+  const next: ConsoleOverlayEntry = {
+    ...(existing ?? {}),
+    ...patch,
+    ts: now,
+    mode,
+  };
+  return { ...overlay, [key]: next };
 };
 
 export const removeOverlayEntry = (
-	overlay: ConsoleOverlay,
-	key: string,
+  overlay: ConsoleOverlay,
+  key: string,
 ): ConsoleOverlay => {
-	const next = { ...overlay };
-	delete next[key];
-	return next;
+  const next = { ...overlay };
+  delete next[key];
+  return next;
 };
 
 export const computeEffectiveOverlay = (
-	overlay: ConsoleOverlay,
-	snapshotsByTab: Record<
-		ConsoleTabName,
-		{ items: ConsoleListItem[]; generatedAt: string } | null
-	>,
+  overlay: ConsoleOverlay,
+  snapshotsByTab: Record<
+    ConsoleTabName,
+    { items: ConsoleListItem[]; generatedAt: string } | null
+  >,
 ): ConsoleOverlay => {
-	const effective: ConsoleOverlay = {};
-	for (const [key, entry] of Object.entries(overlay)) {
-		if (entry.done !== true) {
-			effective[key] = entry;
-			continue;
-		}
-		const snapshot = snapshotsByTab[entry.mode];
-		if (snapshot === null || snapshot === undefined) {
-			effective[key] = entry;
-			continue;
-		}
-		const snapshotGeneratedAtMs = Date.parse(snapshot.generatedAt);
-		if (
-			Number.isNaN(snapshotGeneratedAtMs) ||
-			entry.ts >= snapshotGeneratedAtMs
-		) {
-			effective[key] = entry;
-			continue;
-		}
-		const isStillInSnapshot = snapshot.items.some(
-			(snapshotItem) => overlayKeyForItem(snapshotItem) === key,
-		);
-		if (!isStillInSnapshot) {
-			effective[key] = entry;
-		}
-	}
-	return effective;
+  const effective: ConsoleOverlay = {};
+  for (const [key, entry] of Object.entries(overlay)) {
+    if (entry.done !== true) {
+      effective[key] = entry;
+      continue;
+    }
+    const snapshot = snapshotsByTab[entry.mode];
+    if (snapshot === null || snapshot === undefined) {
+      effective[key] = entry;
+      continue;
+    }
+    const snapshotGeneratedAtMs = Date.parse(snapshot.generatedAt);
+    if (
+      Number.isNaN(snapshotGeneratedAtMs) ||
+      entry.ts >= snapshotGeneratedAtMs
+    ) {
+      effective[key] = entry;
+      continue;
+    }
+    const isStillInSnapshot = snapshot.items.some(
+      (snapshotItem) => overlayKeyForItem(snapshotItem) === key,
+    );
+    if (!isStillInSnapshot) {
+      effective[key] = entry;
+    }
+  }
+  return effective;
 };
