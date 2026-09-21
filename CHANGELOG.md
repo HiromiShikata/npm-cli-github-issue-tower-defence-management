@@ -1,3 +1,10 @@
+## [2.135.4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.3...v2.135.4) (2026-09-21)
+
+
+### Bug Fixes
+
+* **ConsolePage:** route fleet task creation through action queue for undo support ([#2512](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2512)) ([7b6f2a4](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7b6f2a4789d2463a968da7aec43a2eae31d3dab8))
+
 ## [2.135.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.2...v2.135.3) (2026-09-21)
 
 
