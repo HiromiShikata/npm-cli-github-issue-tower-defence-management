@@ -952,28 +952,7 @@ test('deletes all comments when the dangerous actions panel is opened and the de
   expect(harness.deleteAllCommentsCalls[0].issueUrl).toContain('/issues/720');
 });
 
-test('shows the fleet task create button when fleetTaskCreateUrl is configured', async ({
-  browser,
-}) => {
-  const fleetUrl =
-    'https://github.com/HiromiShikata/umino-corporait-operation/issues/new';
-  const localHarness = await startConsoleE2eHarness({
-    fleetTaskCreateUrl: fleetUrl,
-  });
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
-  try {
-    await page.goto(localHarness.appRootUrl);
-    const button = page.locator('.console-tab-fleet-task-create-link');
-    await expect(button).toBeVisible();
-    await expect(button).toHaveAttribute('type', 'button');
-  } finally {
-    await ctx.close();
-    await localHarness.stop();
-  }
-});
-
-test('creates a fleet task issue via the tab bar dialog when title is submitted', async ({
+test('shows fleet task create button and creates issue via dialog when title is submitted', async ({
   browser,
 }) => {
   const fleetUrl = 'https://github.com/HiromiShikata/secretary/issues/new';
@@ -984,7 +963,11 @@ test('creates a fleet task issue via the tab bar dialog when title is submitted'
   const page = await ctx.newPage();
   try {
     await page.goto(localHarness.appRootUrl);
-    await page.locator('.console-tab-fleet-task-create-link').click();
+    const button = page.locator('.console-tab-fleet-task-create-link');
+    await expect(button).toBeVisible();
+    await expect(button).toHaveAttribute('type', 'button');
+
+    await button.click();
 
     const containerPosition = await page.evaluate(() => {
       const el = document.querySelector(
