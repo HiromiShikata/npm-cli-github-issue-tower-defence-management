@@ -1,3 +1,10 @@
+## [2.135.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.7...v2.135.8) (2026-09-21)
+
+
+### Bug Fixes
+
+* **console:** restore self-healing overlay behavior for failed server actions ([#2518](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2518)) ([671ed45](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/671ed450a448725ea716a109d4583da3b9b6ae2b)), closes [#2514](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2514)
+
 ## [2.135.7](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.6...v2.135.7) (2026-09-21)
 
 
