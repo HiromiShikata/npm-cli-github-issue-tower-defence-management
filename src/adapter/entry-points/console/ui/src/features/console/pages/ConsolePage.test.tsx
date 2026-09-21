@@ -742,7 +742,7 @@ describe('ConsolePage', () => {
     );
   });
 
-  it('lists an item again when the overlay marked it done before the served snapshot was generated', async () => {
+  it('keeps an item hidden when the overlay was applied before the current snapshot was generated', async () => {
     const blockerItems = [
       {
         number: 701,
@@ -794,16 +794,14 @@ describe('ConsolePage', () => {
       '/projects/acme/workflow-blocker?k=token',
     );
 
-    const { getByText } = render(<ConsolePage />);
+    const { queryByText } = render(<ConsolePage />);
     await waitFor(() => {
-      expect(getByText('Blocked deployment task')).toBeInTheDocument();
+      const awaitingOwnerTab = within(tabBar())
+        .getByText('Awaiting Owner')
+        .closest('a');
+      expect(awaitingOwnerTab?.querySelector('.console-tab-badge')?.textContent).toBe('1');
     });
-    const blockerTab = within(tabBar())
-      .getByText('Workflow Blocker')
-      .closest('a');
-    expect(blockerTab?.querySelector('.console-tab-badge')?.textContent).toBe(
-      '1',
-    );
+    expect(queryByText('Blocked deployment task')).toBeNull();
   });
 
   it('keeps a todo-by-human item hidden after a newer snapshot arrives while a done overlay entry is active', async () => {
