@@ -799,7 +799,9 @@ describe('ConsolePage', () => {
       const awaitingOwnerTab = within(tabBar())
         .getByText('Awaiting Owner')
         .closest('a');
-      expect(awaitingOwnerTab?.querySelector('.console-tab-badge')?.textContent).toBe('1');
+      expect(
+        awaitingOwnerTab?.querySelector('.console-tab-badge')?.textContent,
+      ).toBe('1');
     });
     expect(queryByText('Blocked deployment task')).toBeNull();
   });
@@ -815,18 +817,16 @@ describe('ConsolePage', () => {
         },
       }),
     );
-    window.history.replaceState(
-      {},
-      '',
-      '/projects/acme/todo-by-human?k=token',
-    );
+    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
 
     const { queryByText } = render(<ConsolePage />);
     await waitFor(() => {
       const awaitingOwnerTab = within(tabBar())
         .getByText('Awaiting Owner')
         .closest('a');
-      expect(awaitingOwnerTab?.querySelector('.console-tab-badge')?.textContent).toBe('1');
+      expect(
+        awaitingOwnerTab?.querySelector('.console-tab-badge')?.textContent,
+      ).toBe('1');
     });
     expect(queryByText('Notify finished issue preparation')).toBeNull();
   });
