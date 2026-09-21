@@ -393,4 +393,32 @@ describe('useConsoleTimerProjectSkipNavigation', () => {
     rerender({ todoByHumanCount: 0 });
     expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
   });
+
+  it('navigates from a previously-skipped project when returning after visiting a project with tasks', () => {
+    const { rerender } = renderHook(
+      ({ pjcode, prsCount }: { pjcode: string; prsCount: number }) =>
+        useConsoleTimerProjectSkipNavigation(
+          true,
+          prsCount,
+          0,
+          pjcode,
+          ['acme', 'beta'],
+          { acme: 30, beta: 30 },
+          true,
+          true,
+          false,
+          false,
+        ),
+      { initialProps: { pjcode: 'acme', prsCount: 0 } },
+    );
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+    (navigatePush as jest.Mock).mockClear();
+
+    rerender({ pjcode: 'beta', prsCount: 1 });
+    expect(navigatePush).not.toHaveBeenCalled();
+    (navigatePush as jest.Mock).mockClear();
+
+    rerender({ pjcode: 'acme', prsCount: 0 });
+    expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
+  });
 });
