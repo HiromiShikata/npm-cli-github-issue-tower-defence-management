@@ -683,16 +683,24 @@ export const ConsolePage = () => {
   );
 
   const handleFleetTaskCreateSubmit = useCallback(
-    async (title: string): Promise<void> => {
-      if (fleetTaskCreateUrl === null) return;
+    (title: string): Promise<void> => {
+      if (fleetTaskCreateUrl === null) return Promise.resolve();
       const nameWithOwner = parseFleetNameWithOwner(fleetTaskCreateUrl);
-      await postConsoleCreateWorkflowIssue({
-        nameWithOwner,
-        title,
-        body: '',
+      actionQueue.enqueue({
+        message: `Task created — "${title}"`,
+        color: 'blue',
+        commit: async () => {
+          await postConsoleCreateWorkflowIssue({
+            nameWithOwner,
+            title,
+            body: '',
+          });
+        },
+        advance: () => {},
       });
+      return Promise.resolve();
     },
-    [fleetTaskCreateUrl],
+    [fleetTaskCreateUrl, actionQueue],
   );
 
   const handleCreateIssue = useCallback(

@@ -3024,28 +3024,60 @@ describe('ConsolePage workflow issue creation', () => {
     }
   });
 
-  it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner and title when fleet task dialog is submitted', async () => {
-    installFetchWithFleetUrl(
-      'https://github.com/HiromiShikata/secretary/issues/new',
-    );
-    const fetchSpy = global.fetch as jest.Mock;
-    const { getByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(
-        getByRole('button', { name: 'Create fleet task' }),
-      ).toBeInTheDocument();
-    });
-    fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
-    await waitFor(() => {
-      expect(getByRole('dialog')).toBeInTheDocument();
-    });
-    fireEvent.change(getByRole('textbox', { name: /title/i }), {
-      target: { value: 'My fleet task' },
-    });
-    await act(async () => {
+  it('shows an undo toast after fleet task dialog is submitted', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const { getByRole, queryByText } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'My fleet task' },
+      });
       fireEvent.click(getByRole('button', { name: /^create$/i }));
-    });
-    await waitFor(() => {
+      await waitFor(() => {
+        expect(queryByText(/Task created/)).toBeInTheDocument();
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner and title when fleet task dialog is submitted', async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/HiromiShikata/secretary/issues/new',
+      );
+      const fetchSpy = global.fetch as jest.Mock;
+      const { getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'My fleet task' },
+      });
+      fireEvent.click(getByRole('button', { name: /^create$/i }));
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       const createIssueCalls = fetchSpy.mock.calls.filter(
         ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
       );
@@ -3056,31 +3088,37 @@ describe('ConsolePage workflow issue creation', () => {
       expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
       expect(requestBody.title).toBe('My fleet task');
       expect(requestBody.body).toBe('');
-    });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('strips query string from fleetTaskCreateUrl when extracting nameWithOwner for fleet task dialog', async () => {
-    installFetchWithFleetUrl(
-      'https://github.com/owner/repo/issues/new?projects=org/3',
-    );
-    const fetchSpy = global.fetch as jest.Mock;
-    const { getByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(
-        getByRole('button', { name: 'Create fleet task' }),
-      ).toBeInTheDocument();
-    });
-    fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
-    await waitFor(() => {
-      expect(getByRole('dialog')).toBeInTheDocument();
-    });
-    fireEvent.change(getByRole('textbox', { name: /title/i }), {
-      target: { value: 'Task with query string url' },
-    });
-    await act(async () => {
+    jest.useFakeTimers();
+    try {
+      installFetchWithFleetUrl(
+        'https://github.com/owner/repo/issues/new?projects=org/3',
+      );
+      const fetchSpy = global.fetch as jest.Mock;
+      const { getByRole } = render(<ConsolePage />);
+      await waitFor(() => {
+        expect(
+          getByRole('button', { name: 'Create fleet task' }),
+        ).toBeInTheDocument();
+      });
+      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
+      await waitFor(() => {
+        expect(getByRole('dialog')).toBeInTheDocument();
+      });
+      fireEvent.change(getByRole('textbox', { name: /title/i }), {
+        target: { value: 'Task with query string url' },
+      });
       fireEvent.click(getByRole('button', { name: /^create$/i }));
-    });
-    await waitFor(() => {
+      await act(async () => {
+        jest.advanceTimersByTime(5100);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
       const createIssueCalls = fetchSpy.mock.calls.filter(
         ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
       );
@@ -3089,6 +3127,8 @@ describe('ConsolePage workflow issue creation', () => {
         (createIssueCalls[0][1] as RequestInit).body as string,
       ) as Record<string, unknown>;
       expect(requestBody.nameWithOwner).toBe('owner/repo');
-    });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
