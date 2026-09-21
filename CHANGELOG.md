@@ -1,3 +1,10 @@
+## [2.135.1](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.0...v2.135.1) (2026-09-21)
+
+
+### Bug Fixes
+
+* **fleetConfig:** accept project URLs with view paths or query parameters in extractGitHubProjectParam ([#2509](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2509)) ([7108d9b](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/7108d9bff38ff47d153a71f5785af7ccc5524e68))
+
 # [2.135.0](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.134.1...v2.135.0) (2026-09-21)
 
 
