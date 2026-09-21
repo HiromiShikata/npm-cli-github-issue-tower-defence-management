@@ -1,3 +1,10 @@
+## [2.135.3](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.2...v2.135.3) (2026-09-21)
+
+
+### Bug Fixes
+
+* **ConsolePage:** keep overlay-hidden items hidden after snapshot refresh ([#2511](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2511)) ([fdedb1d](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/fdedb1d713ea5317355f5403e43bc112dd7c6d33)), closes [HiromiShikata/umino-corporait-operation#32083](https://github.com/HiromiShikata/umino-corporait-operation/issues/32083)
+
 ## [2.135.2](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.1...v2.135.2) (2026-09-21)
 
 
