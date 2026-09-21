@@ -1,3134 +1,3164 @@
 import {
-  act,
-  fireEvent,
-  render,
-  waitFor,
-  within,
-} from '@testing-library/react';
-import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from '../hooks/useConsoleTabData';
-import { ConsolePage } from './ConsolePage';
+	act,
+	fireEvent,
+	render,
+	waitFor,
+	within,
+} from "@testing-library/react";
+import { CONSOLE_TAB_REFRESH_INTERVAL_MS } from "../hooks/useConsoleTabData";
+import { ConsolePage } from "./ConsolePage";
 
 const tabBar = (): HTMLElement => {
-  const nav = document.querySelector('nav.console-tabbar');
-  if (nav === null) {
-    throw new Error('console tab bar not found');
-  }
-  return nav as HTMLElement;
+	const nav = document.querySelector("nav.console-tabbar");
+	if (nav === null) {
+		throw new Error("console tab bar not found");
+	}
+	return nav as HTMLElement;
 };
 
-jest.mock('../lib/mermaidLoader', () => ({
-  renderMermaidToSvg: jest.fn(async () => '<svg></svg>'),
+jest.mock("../lib/mermaidLoader", () => ({
+	renderMermaidToSvg: jest.fn(async () => "<svg></svg>"),
 }));
 
-jest.mock('../lib/navigation', () => ({
-  navigateReplace: jest.fn(),
-  navigateAssign: jest.fn(),
-  navigatePush: jest.fn(),
-  navigateReplaceState: jest.fn(),
+jest.mock("../lib/navigation", () => ({
+	navigateReplace: jest.fn(),
+	navigateAssign: jest.fn(),
+	navigatePush: jest.fn(),
+	navigateReplaceState: jest.fn(),
 }));
 
 const listPayload = (tab: string) => ({
-  pjcode: 'acme',
-  generatedAt: '2026-06-19T00:00:00.000Z',
-  statusOptions: [{ id: 's1', name: 'Awaiting Workspace', color: 'BLUE' }],
-  agentOptions:
-    tab === 'prs'
-      ? [
-          { id: 'ag1', name: 'developer', color: 'GRAY' },
-          { id: 'ag2', name: 'pr-reviewer', color: 'GRAY' },
-        ]
-      : [],
-  storyOptions: [{ id: 'st1', name: 'TDPM Console port', color: 'BLUE' }],
-  storyColors: { 'TDPM Console port': { color: 'BLUE' } },
-  stories: [
-    {
-      storyName: 'TDPM Console port',
-      storyOptionId: 'st1',
-      color: 'BLUE',
-      openItemCount: 1,
-      storyViewUrl: null,
-    },
-  ],
-  items:
-    tab === 'prs'
-      ? [
-          {
-            number: 851,
-            title: 'Add serveConsole subcommand',
-            url: 'https://github.com/o/r/pull/851',
-            repo: 'o/r',
-            nameWithOwner: 'o/r',
-            projectItemId: 'PVTI_1',
-            itemId: 'PVTI_1',
-            isPr: true,
-            relatedOpenPullRequestUrls: [],
-            story: 'TDPM Console port',
-            status: 'Awaiting Owner',
-            agent: 'developer',
-            nextActionDate: null,
-            nextActionHour: null,
-            dependedIssueUrls: [],
-            labels: [],
-            createdAt: '2026-06-17T00:00:00.000Z',
-          },
-        ]
-      : tab === 'todo-by-human'
-        ? [
-            {
-              number: 866,
-              title: 'Notify finished issue preparation',
-              url: 'https://github.com/o/r/issues/866',
-              repo: 'o/r',
-              nameWithOwner: 'o/r',
-              projectItemId: 'PVTI_2',
-              itemId: 'PVTI_2',
-              isPr: false,
-              relatedOpenPullRequestUrls: [],
-              story: 'TDPM Console port',
-              status: 'Todo by human',
-              nextActionDate: null,
-              nextActionHour: null,
-              dependedIssueUrls: [],
-              labels: [],
-              createdAt: '2026-06-18T00:00:00.000Z',
-            },
-          ]
-        : [],
+	pjcode: "acme",
+	generatedAt: "2026-06-19T00:00:00.000Z",
+	statusOptions: [{ id: "s1", name: "Awaiting Workspace", color: "BLUE" }],
+	agentOptions:
+		tab === "prs"
+			? [
+					{ id: "ag1", name: "developer", color: "GRAY" },
+					{ id: "ag2", name: "pr-reviewer", color: "GRAY" },
+				]
+			: [],
+	storyOptions: [{ id: "st1", name: "TDPM Console port", color: "BLUE" }],
+	storyColors: { "TDPM Console port": { color: "BLUE" } },
+	stories: [
+		{
+			storyName: "TDPM Console port",
+			storyOptionId: "st1",
+			color: "BLUE",
+			openItemCount: 1,
+			storyViewUrl: null,
+		},
+	],
+	items:
+		tab === "prs"
+			? [
+					{
+						number: 851,
+						title: "Add serveConsole subcommand",
+						url: "https://github.com/o/r/pull/851",
+						repo: "o/r",
+						nameWithOwner: "o/r",
+						projectItemId: "PVTI_1",
+						itemId: "PVTI_1",
+						isPr: true,
+						relatedOpenPullRequestUrls: [],
+						story: "TDPM Console port",
+						status: "Awaiting Owner",
+						agent: "developer",
+						nextActionDate: null,
+						nextActionHour: null,
+						dependedIssueUrls: [],
+						labels: [],
+						createdAt: "2026-06-17T00:00:00.000Z",
+					},
+				]
+			: tab === "todo-by-human"
+				? [
+						{
+							number: 866,
+							title: "Notify finished issue preparation",
+							url: "https://github.com/o/r/issues/866",
+							repo: "o/r",
+							nameWithOwner: "o/r",
+							projectItemId: "PVTI_2",
+							itemId: "PVTI_2",
+							isPr: false,
+							relatedOpenPullRequestUrls: [],
+							story: "TDPM Console port",
+							status: "Todo by human",
+							nextActionDate: null,
+							nextActionHour: null,
+							dependedIssueUrls: [],
+							labels: [],
+							createdAt: "2026-06-18T00:00:00.000Z",
+						},
+					]
+				: [],
 });
 
 const installFetch = (): void => {
-  const fetchMock = jest.fn(async (url: string) => {
-    const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-    if (listMatch !== null) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => listPayload(listMatch[1]),
-      };
-    }
-    if (url === '/api/projects') {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ pjcodes: ['acme'] }),
-      };
-    }
-    if (url.startsWith('/api/projectreadmeconfig')) {
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ maximumPreparingIssuesCount: 3 }),
-      };
-    }
-    return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-  });
-  global.fetch = fetchMock as unknown as typeof fetch;
+	const fetchMock = jest.fn(async (url: string) => {
+		const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+		if (listMatch !== null) {
+			return {
+				ok: true,
+				status: 200,
+				json: async () => listPayload(listMatch[1]),
+			};
+		}
+		if (url === "/api/projects") {
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({ pjcodes: ["acme"] }),
+			};
+		}
+		if (url.startsWith("/api/projectreadmeconfig")) {
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({ maximumPreparingIssuesCount: 3 }),
+			};
+		}
+		return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+	});
+	global.fetch = fetchMock as unknown as typeof fetch;
 };
 
-describe('ConsolePage', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-    installFetch();
-  });
+describe("ConsolePage", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+		installFetch();
+	});
 
-  it('renders the tab bar with the active tab and the story-grouped list', async () => {
-    const { getByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    expect(within(tabBar()).getByText('Awaiting Owner')).toBeInTheDocument();
-    expect(
-      document.querySelector('.console-group-header')?.textContent,
-    ).toContain('TDPM Console port');
-  });
+	it("renders the tab bar with the active tab and the story-grouped list", async () => {
+		const { getByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		expect(within(tabBar()).getByText("Awaiting Owner")).toBeInTheDocument();
+		expect(
+			document.querySelector(".console-group-header")?.textContent,
+		).toContain("TDPM Console port");
+	});
 
-  it('shows the agent filter select on the prs tab when agentOptions are present', async () => {
-    const { getByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(
-        getByRole('combobox', { name: 'Filter by agent' }),
-      ).toBeInTheDocument();
-    });
-  });
+	it("shows the agent filter select on the prs tab when agentOptions are present", async () => {
+		const { getByRole } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(
+				getByRole("combobox", { name: "Filter by agent" }),
+			).toBeInTheDocument();
+		});
+	});
 
-  it('hides agents with zero tasks from the selector and shows the count for agents with tasks', async () => {
-    const { getByRole, getAllByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(
-        getByRole('combobox', { name: 'Filter by agent' }),
-      ).toBeInTheDocument();
-    });
-    const options = getAllByRole('option');
-    const nonAllOptions = options.filter((o) => o.getAttribute('value') !== '');
-    expect(nonAllOptions.length).toBe(1);
-    expect(nonAllOptions[0]).toHaveValue('developer');
-    expect(nonAllOptions[0]).toHaveTextContent('developer (1)');
-    const prReviewerOption = options.find(
-      (o) => o.getAttribute('value') === 'pr-reviewer',
-    );
-    expect(prReviewerOption).toBeUndefined();
-  });
+	it("hides agents with zero tasks from the selector and shows the count for agents with tasks", async () => {
+		const { getByRole, getAllByRole } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(
+				getByRole("combobox", { name: "Filter by agent" }),
+			).toBeInTheDocument();
+		});
+		const options = getAllByRole("option");
+		const nonAllOptions = options.filter((o) => o.getAttribute("value") !== "");
+		expect(nonAllOptions.length).toBe(1);
+		expect(nonAllOptions[0]).toHaveValue("developer");
+		expect(nonAllOptions[0]).toHaveTextContent("developer (1)");
+		const prReviewerOption = options.find(
+			(o) => o.getAttribute("value") === "pr-reviewer",
+		);
+		expect(prReviewerOption).toBeUndefined();
+	});
 
-  describe('prs agent filter', () => {
-    const installFetchWithTwoPrsItems = (): void => {
-      const fetchMock = jest.fn(async (url: string) => {
-        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-        if (listMatch !== null) {
-          const tab = listMatch[1];
-          const payload =
-            tab === 'prs'
-              ? {
-                  ...listPayload('prs'),
-                  items: [
-                    ...listPayload('prs').items,
-                    {
-                      number: 852,
-                      title: 'Review PR for agent filter feature',
-                      url: 'https://github.com/o/r/pull/852',
-                      repo: 'o/r',
-                      nameWithOwner: 'o/r',
-                      projectItemId: 'PVTI_3',
-                      itemId: 'PVTI_3',
-                      isPr: true,
-                      relatedOpenPullRequestUrls: [],
-                      story: 'TDPM Console port',
-                      status: 'Awaiting Owner',
-                      agent: 'pr-reviewer',
-                      nextActionDate: null,
-                      nextActionHour: null,
-                      dependedIssueUrls: [],
-                      labels: [],
-                      createdAt: '2026-06-18T00:00:00.000Z',
-                    },
-                  ],
-                }
-              : listPayload(tab);
-          return { ok: true, status: 200, json: async () => payload };
-        }
-        if (url === '/api/projects') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ pjcodes: ['acme'] }),
-          };
-        }
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ body: '# body' }),
-        };
-      });
-      global.fetch = fetchMock as unknown as typeof fetch;
-    };
+	describe("prs agent filter", () => {
+		const installFetchWithTwoPrsItems = (): void => {
+			const fetchMock = jest.fn(async (url: string) => {
+				const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+				if (listMatch !== null) {
+					const tab = listMatch[1];
+					const payload =
+						tab === "prs"
+							? {
+									...listPayload("prs"),
+									items: [
+										...listPayload("prs").items,
+										{
+											number: 852,
+											title: "Review PR for agent filter feature",
+											url: "https://github.com/o/r/pull/852",
+											repo: "o/r",
+											nameWithOwner: "o/r",
+											projectItemId: "PVTI_3",
+											itemId: "PVTI_3",
+											isPr: true,
+											relatedOpenPullRequestUrls: [],
+											story: "TDPM Console port",
+											status: "Awaiting Owner",
+											agent: "pr-reviewer",
+											nextActionDate: null,
+											nextActionHour: null,
+											dependedIssueUrls: [],
+											labels: [],
+											createdAt: "2026-06-18T00:00:00.000Z",
+										},
+									],
+								}
+							: listPayload(tab);
+					return { ok: true, status: 200, json: async () => payload };
+				}
+				if (url === "/api/projects") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({ pjcodes: ["acme"] }),
+					};
+				}
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ body: "# body" }),
+				};
+			});
+			global.fetch = fetchMock as unknown as typeof fetch;
+		};
 
-    beforeEach(() => {
-      installFetchWithTwoPrsItems();
-    });
+		beforeEach(() => {
+			installFetchWithTwoPrsItems();
+		});
 
-    it('filters prs items to the selected agent when an agent is chosen', async () => {
-      const { getByRole, getByText, queryByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getByText('Review PR for agent filter feature'),
-        ).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('combobox', { name: 'Filter by agent' }), {
-        target: { value: 'developer' },
-      });
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      expect(queryByText('Review PR for agent filter feature')).toBeNull();
-    });
+		it("filters prs items to the selected agent when an agent is chosen", async () => {
+			const { getByRole, getByText, queryByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getByText("Review PR for agent filter feature"),
+				).toBeInTheDocument();
+			});
+			fireEvent.change(getByRole("combobox", { name: "Filter by agent" }), {
+				target: { value: "developer" },
+			});
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			expect(queryByText("Review PR for agent filter feature")).toBeNull();
+		});
 
-    it('shows all prs items again when the agent filter is cleared', async () => {
-      const { getByRole, getByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getByText('Review PR for agent filter feature'),
-        ).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('combobox', { name: 'Filter by agent' }), {
-        target: { value: 'developer' },
-      });
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      fireEvent.change(getByRole('combobox', { name: 'Filter by agent' }), {
-        target: { value: '' },
-      });
-      expect(
-        getByText('Review PR for agent filter feature'),
-      ).toBeInTheDocument();
-    });
+		it("shows all prs items again when the agent filter is cleared", async () => {
+			const { getByRole, getByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getByText("Review PR for agent filter feature"),
+				).toBeInTheDocument();
+			});
+			fireEvent.change(getByRole("combobox", { name: "Filter by agent" }), {
+				target: { value: "developer" },
+			});
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			fireEvent.change(getByRole("combobox", { name: "Filter by agent" }), {
+				target: { value: "" },
+			});
+			expect(
+				getByText("Review PR for agent filter feature"),
+			).toBeInTheDocument();
+		});
 
-    it('shows task counts next to each agent name in the selector options', async () => {
-      const { getByRole, getAllByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getByRole('combobox', { name: 'Filter by agent' }),
-        ).toBeInTheDocument();
-      });
-      const options = getAllByRole('option');
-      const developerOption = options.find(
-        (o) => o.getAttribute('value') === 'developer',
-      );
-      expect(developerOption).toHaveTextContent('developer (1)');
-      const prReviewerOption = options.find(
-        (o) => o.getAttribute('value') === 'pr-reviewer',
-      );
-      expect(prReviewerOption).toHaveTextContent('pr-reviewer (1)');
-    });
+		it("shows task counts next to each agent name in the selector options", async () => {
+			const { getByRole, getAllByRole } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getByRole("combobox", { name: "Filter by agent" }),
+				).toBeInTheDocument();
+			});
+			const options = getAllByRole("option");
+			const developerOption = options.find(
+				(o) => o.getAttribute("value") === "developer",
+			);
+			expect(developerOption).toHaveTextContent("developer (1)");
+			const prReviewerOption = options.find(
+				(o) => o.getAttribute("value") === "pr-reviewer",
+			);
+			expect(prReviewerOption).toHaveTextContent("pr-reviewer (1)");
+		});
 
-    it('resets prs agent filter when the selected agent no longer has tasks after a data refresh', async () => {
-      jest.useFakeTimers();
-      try {
-        let includeDeveloper = true;
-        const fetchMock = jest.fn(async (url: string) => {
-          const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-          if (listMatch !== null) {
-            const tab = listMatch[1];
-            if (tab === 'prs') {
-              const prsItems = [
-                ...(includeDeveloper
-                  ? [
-                      {
-                        number: 851,
-                        title: 'Add serveConsole subcommand',
-                        url: 'https://github.com/o/r/pull/851',
-                        repo: 'o/r',
-                        nameWithOwner: 'o/r',
-                        projectItemId: 'PVTI_1',
-                        itemId: 'PVTI_1',
-                        isPr: true,
-                        relatedOpenPullRequestUrls: [],
-                        story: 'TDPM Console port',
-                        status: 'Awaiting Owner',
-                        agent: 'developer',
-                        nextActionDate: null,
-                        nextActionHour: null,
-                        dependedIssueUrls: [],
-                        labels: [],
-                        createdAt: '2026-06-17T00:00:00.000Z',
-                      },
-                    ]
-                  : []),
-                {
-                  number: 852,
-                  title: 'Review PR for agent filter feature',
-                  url: 'https://github.com/o/r/pull/852',
-                  repo: 'o/r',
-                  nameWithOwner: 'o/r',
-                  projectItemId: 'PVTI_3',
-                  itemId: 'PVTI_3',
-                  isPr: true,
-                  relatedOpenPullRequestUrls: [],
-                  story: 'TDPM Console port',
-                  status: 'Awaiting Owner',
-                  agent: 'pr-reviewer',
-                  nextActionDate: null,
-                  nextActionHour: null,
-                  dependedIssueUrls: [],
-                  labels: [],
-                  createdAt: '2026-06-18T00:00:00.000Z',
-                },
-              ];
-              return {
-                ok: true,
-                status: 200,
-                json: async () => ({ ...listPayload('prs'), items: prsItems }),
-              };
-            }
-            return {
-              ok: true,
-              status: 200,
-              json: async () => listPayload(tab),
-            };
-          }
-          if (url === '/api/projects') {
-            return {
-              ok: true,
-              status: 200,
-              json: async () => ({ pjcodes: ['acme'] }),
-            };
-          }
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ body: '# body' }),
-          };
-        });
-        global.fetch = fetchMock as unknown as typeof fetch;
+		it("resets prs agent filter when the selected agent no longer has tasks after a data refresh", async () => {
+			jest.useFakeTimers();
+			try {
+				let includeDeveloper = true;
+				const fetchMock = jest.fn(async (url: string) => {
+					const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+					if (listMatch !== null) {
+						const tab = listMatch[1];
+						if (tab === "prs") {
+							const prsItems = [
+								...(includeDeveloper
+									? [
+											{
+												number: 851,
+												title: "Add serveConsole subcommand",
+												url: "https://github.com/o/r/pull/851",
+												repo: "o/r",
+												nameWithOwner: "o/r",
+												projectItemId: "PVTI_1",
+												itemId: "PVTI_1",
+												isPr: true,
+												relatedOpenPullRequestUrls: [],
+												story: "TDPM Console port",
+												status: "Awaiting Owner",
+												agent: "developer",
+												nextActionDate: null,
+												nextActionHour: null,
+												dependedIssueUrls: [],
+												labels: [],
+												createdAt: "2026-06-17T00:00:00.000Z",
+											},
+										]
+									: []),
+								{
+									number: 852,
+									title: "Review PR for agent filter feature",
+									url: "https://github.com/o/r/pull/852",
+									repo: "o/r",
+									nameWithOwner: "o/r",
+									projectItemId: "PVTI_3",
+									itemId: "PVTI_3",
+									isPr: true,
+									relatedOpenPullRequestUrls: [],
+									story: "TDPM Console port",
+									status: "Awaiting Owner",
+									agent: "pr-reviewer",
+									nextActionDate: null,
+									nextActionHour: null,
+									dependedIssueUrls: [],
+									labels: [],
+									createdAt: "2026-06-18T00:00:00.000Z",
+								},
+							];
+							return {
+								ok: true,
+								status: 200,
+								json: async () => ({ ...listPayload("prs"), items: prsItems }),
+							};
+						}
+						return {
+							ok: true,
+							status: 200,
+							json: async () => listPayload(tab),
+						};
+					}
+					if (url === "/api/projects") {
+						return {
+							ok: true,
+							status: 200,
+							json: async () => ({ pjcodes: ["acme"] }),
+						};
+					}
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({ body: "# body" }),
+					};
+				});
+				global.fetch = fetchMock as unknown as typeof fetch;
 
-        const { getByRole, queryByText } = render(<ConsolePage />);
-        await waitFor(() => {
-          expect(
-            queryByText('Review PR for agent filter feature'),
-          ).toBeInTheDocument();
-        });
+				const { getByRole, queryByText } = render(<ConsolePage />);
+				await waitFor(() => {
+					expect(
+						queryByText("Review PR for agent filter feature"),
+					).toBeInTheDocument();
+				});
 
-        fireEvent.change(getByRole('combobox', { name: 'Filter by agent' }), {
-          target: { value: 'developer' },
-        });
-        expect(queryByText('Add serveConsole subcommand')).toBeInTheDocument();
-        expect(queryByText('Review PR for agent filter feature')).toBeNull();
+				fireEvent.change(getByRole("combobox", { name: "Filter by agent" }), {
+					target: { value: "developer" },
+				});
+				expect(queryByText("Add serveConsole subcommand")).toBeInTheDocument();
+				expect(queryByText("Review PR for agent filter feature")).toBeNull();
 
-        includeDeveloper = false;
-        await act(async () => {
-          jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
-        });
+				includeDeveloper = false;
+				await act(async () => {
+					jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+				});
 
-        await waitFor(() => {
-          expect(
-            queryByText('Review PR for agent filter feature'),
-          ).toBeInTheDocument();
-        });
-      } finally {
-        jest.useRealTimers();
-      }
-    });
-  });
+				await waitFor(() => {
+					expect(
+						queryByText("Review PR for agent filter feature"),
+					).toBeInTheDocument();
+				});
+			} finally {
+				jest.useRealTimers();
+			}
+		});
+	});
 
-  it('keeps a stale overlay status out of the detail header and shows the snapshot status instead', async () => {
-    localStorage.setItem(
-      'pv_overlay_acme',
-      JSON.stringify({
-        PVTI_1: {
-          status: { name: 'In Tmux by human', color: 'RED' },
-          ts: Date.parse('2026-06-18T00:00:00.000Z'),
-          mode: 'prs',
-        },
-      }),
-    );
-    const { getByText, findByText, queryByText, container } = render(
-      <ConsolePage />,
-    );
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
-    expect(queryByText('In Tmux by human')).toBeNull();
-    const chip = container.querySelector('.console-detail-status-chip');
-    expect(chip?.textContent).toBe('Awaiting Owner');
-  });
+	it("keeps a stale overlay status out of the detail header and shows the snapshot status instead", async () => {
+		localStorage.setItem(
+			"pv_overlay_acme",
+			JSON.stringify({
+				PVTI_1: {
+					status: { name: "In Tmux by human", color: "RED" },
+					ts: Date.parse("2026-06-18T00:00:00.000Z"),
+					mode: "prs",
+				},
+			}),
+		);
+		const { getByText, findByText, queryByText, container } = render(
+			<ConsolePage />,
+		);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
+		expect(queryByText("In Tmux by human")).toBeNull();
+		const chip = container.querySelector(".console-detail-status-chip");
+		expect(chip?.textContent).toBe("Awaiting Owner");
+	});
 
-  it('shows a status the owner set after the snapshot was generated in the detail header', async () => {
-    localStorage.setItem(
-      'pv_overlay_acme',
-      JSON.stringify({
-        PVTI_1: {
-          status: { name: 'In Tmux by human', color: 'RED' },
-          ts: Date.parse('2026-06-19T00:10:00.000Z'),
-          mode: 'prs',
-        },
-      }),
-    );
-    const { getByText, findByText, container } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
-    expect(
-      container.querySelector('.console-detail-status-chip')?.textContent,
-    ).toBe('In Tmux by human');
-  });
+	it("shows a status the owner set after the snapshot was generated in the detail header", async () => {
+		localStorage.setItem(
+			"pv_overlay_acme",
+			JSON.stringify({
+				PVTI_1: {
+					status: { name: "In Tmux by human", color: "RED" },
+					ts: Date.parse("2026-06-19T00:10:00.000Z"),
+					mode: "prs",
+				},
+			}),
+		);
+		const { getByText, findByText, container } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
+		expect(
+			container.querySelector(".console-detail-status-chip")?.textContent,
+		).toBe("In Tmux by human");
+	});
 
-  it('opens the detail view when an item is selected', async () => {
-    const { getByText, findByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
-    expect(window.location.hash).toBe('#item/PVTI_1');
-  });
+	it("opens the detail view when an item is selected", async () => {
+		const { getByText, findByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
+		expect(window.location.hash).toBe("#item/PVTI_1");
+	});
 
-  it('renders the snapshot time without an item-count sub-heading', async () => {
-    const { getByText, container } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    expect(container.querySelector('.console-tab-count-heading')).toBeNull();
-    const genInfo = container.querySelector('.console-tab-geninfo');
-    expect(genInfo).toBeInTheDocument();
-    expect(genInfo?.getAttribute('title')).toBe('2026-06-19T00:00:00.000Z');
-    expect(genInfo?.textContent).toMatch(/^snapshot: \d+[smhd] ago$/);
-  });
+	it("renders the snapshot time without an item-count sub-heading", async () => {
+		const { getByText, container } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		expect(container.querySelector(".console-tab-count-heading")).toBeNull();
+		const genInfo = container.querySelector(".console-tab-geninfo");
+		expect(genInfo).toBeInTheDocument();
+		expect(genInfo?.getAttribute("title")).toBe("2026-06-19T00:00:00.000Z");
+		expect(genInfo?.textContent).toMatch(/^snapshot: \d+[smhd] ago$/);
+	});
 
-  it('shows a cancellable toast when Approve & Merge is clicked', async () => {
-    jest.useFakeTimers();
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      expect(
-        within(tabBar())
-          .getByText('Awaiting Owner')
-          .closest('a')
-          ?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('1');
+	it("shows a cancellable toast when Approve & Merge is clicked", async () => {
+		jest.useFakeTimers();
+		try {
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			expect(
+				within(tabBar())
+					.getByText("Awaiting Owner")
+					.closest("a")
+					?.querySelector(".console-tab-badge")?.textContent,
+			).toBe("1");
 
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve & Merge')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve & Merge'));
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			expect(await findByText("Approve & Merge")).toBeInTheDocument();
+			fireEvent.click(getByText("Approve & Merge"));
 
-      expect(getByText('Approved & Merged — PR #851')).toBeInTheDocument();
-      expect(getByText('Undo')).toBeInTheDocument();
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			expect(getByText("Approved & Merged — PR #851")).toBeInTheDocument();
+			expect(getByText("Undo")).toBeInTheDocument();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('hides a processed item from the list immediately when ok & Awaiting Workspace is clicked, without waiting for the 5-second commit', async () => {
-    jest.useFakeTimers();
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      expect(
-        within(tabBar())
-          .getByText('Awaiting Owner')
-          .closest('a')
-          ?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('1');
+	it("hides a processed item from the list immediately when ok & Awaiting Workspace is clicked, without waiting for the 5-second commit", async () => {
+		jest.useFakeTimers();
+		try {
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			expect(
+				within(tabBar())
+					.getByText("Awaiting Owner")
+					.closest("a")
+					?.querySelector(".console-tab-badge")?.textContent,
+			).toBe("1");
 
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('ok & Awaiting Workspace')).toBeInTheDocument();
-      fireEvent.click(getByText('ok & Awaiting Workspace'));
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			expect(await findByText("ok & Awaiting Workspace")).toBeInTheDocument();
+			fireEvent.click(getByText("ok & Awaiting Workspace"));
 
-      await waitFor(() => {
-        expect(
-          within(tabBar())
-            .getByText('Awaiting Owner')
-            .closest('a')
-            ?.querySelector('.console-tab-badge')?.textContent,
-        ).toBe('0');
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(
+					within(tabBar())
+						.getByText("Awaiting Owner")
+						.closest("a")
+						?.querySelector(".console-tab-badge")?.textContent,
+				).toBe("0");
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('hides a processed item from the prs list immediately when Approve & Merge is clicked, without waiting for the 5-second commit', async () => {
-    jest.useFakeTimers();
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      expect(
-        within(tabBar())
-          .getByText('Awaiting Owner')
-          .closest('a')
-          ?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('1');
+	it("hides a processed item from the prs list immediately when Approve & Merge is clicked, without waiting for the 5-second commit", async () => {
+		jest.useFakeTimers();
+		try {
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			expect(
+				within(tabBar())
+					.getByText("Awaiting Owner")
+					.closest("a")
+					?.querySelector(".console-tab-badge")?.textContent,
+			).toBe("1");
 
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve & Merge')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve & Merge'));
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			expect(await findByText("Approve & Merge")).toBeInTheDocument();
+			fireEvent.click(getByText("Approve & Merge"));
 
-      await waitFor(() => {
-        expect(
-          within(tabBar())
-            .getByText('Awaiting Owner')
-            .closest('a')
-            ?.querySelector('.console-tab-badge')?.textContent,
-        ).toBe('0');
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(
+					within(tabBar())
+						.getByText("Awaiting Owner")
+						.closest("a")
+						?.querySelector(".console-tab-badge")?.textContent,
+				).toBe("0");
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('hides a processed item from the todo-by-human list immediately when Close is clicked, without waiting for the 5-second commit', async () => {
-    jest.useFakeTimers();
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
+	it("hides a processed item from the todo-by-human list immediately when Close is clicked, without waiting for the 5-second commit", async () => {
+		jest.useFakeTimers();
+		try {
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
 
-      fireEvent.click(getByText('Todo by human'));
-      await waitFor(() => {
-        expect(
-          getByText('Notify finished issue preparation'),
-        ).toBeInTheDocument();
-      });
+			fireEvent.click(getByText("Todo by human"));
+			await waitFor(() => {
+				expect(
+					getByText("Notify finished issue preparation"),
+				).toBeInTheDocument();
+			});
 
-      fireEvent.click(getByText('Notify finished issue preparation'));
-      expect(await findByText('Close')).toBeInTheDocument();
-      fireEvent.click(getByText('Close'));
+			fireEvent.click(getByText("Notify finished issue preparation"));
+			expect(await findByText("Close")).toBeInTheDocument();
+			fireEvent.click(getByText("Close"));
 
-      await waitFor(() => {
-        expect(within(tabBar()).queryByText('Todo by human')).toBeNull();
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(within(tabBar()).queryByText("Todo by human")).toBeNull();
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('cancels the command and keeps the item pending when Undo is clicked', async () => {
-    jest.useFakeTimers();
-    try {
-      const fetchMock = jest.fn(
-        async (_url: string, init?: { method?: string }) => {
-          const listMatch = _url.match(
-            /\/projects\/[^/]+\/([^/]+)\/list\.json/,
-          );
-          if (listMatch !== null) {
-            return {
-              ok: true,
-              status: 200,
-              json: async () => listPayload(listMatch[1]),
-            };
-          }
-          void init;
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ body: '# body' }),
-          };
-        },
-      );
-      global.fetch = fetchMock as unknown as typeof fetch;
+	it("cancels the command and keeps the item pending when Undo is clicked", async () => {
+		jest.useFakeTimers();
+		try {
+			const fetchMock = jest.fn(
+				async (_url: string, init?: { method?: string }) => {
+					const listMatch = _url.match(
+						/\/projects\/[^/]+\/([^/]+)\/list\.json/,
+					);
+					if (listMatch !== null) {
+						return {
+							ok: true,
+							status: 200,
+							json: async () => listPayload(listMatch[1]),
+						};
+					}
+					void init;
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({ body: "# body" }),
+					};
+				},
+			);
+			global.fetch = fetchMock as unknown as typeof fetch;
 
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve & Merge')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve & Merge'));
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			expect(await findByText("Approve & Merge")).toBeInTheDocument();
+			fireEvent.click(getByText("Approve & Merge"));
 
-      fireEvent.click(getByText('Undo'));
-      act(() => {
-        jest.advanceTimersByTime(6000);
-      });
+			fireEvent.click(getByText("Undo"));
+			act(() => {
+				jest.advanceTimersByTime(6000);
+			});
 
-      const postCalls = fetchMock.mock.calls.filter(
-        (call) => call[1]?.method === 'POST',
-      );
-      expect(postCalls.length).toBe(0);
-      expect(
-        within(tabBar())
-          .getByText('Awaiting Owner')
-          .closest('a')
-          ?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('1');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			const postCalls = fetchMock.mock.calls.filter(
+				(call) => call[1]?.method === "POST",
+			);
+			expect(postCalls.length).toBe(0);
+			expect(
+				within(tabBar())
+					.getByText("Awaiting Owner")
+					.closest("a")
+					?.querySelector(".console-tab-badge")?.textContent,
+			).toBe("1");
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('does not revive a zeroed tab badge after switching tabs', async () => {
-    const { getByText, queryByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
+	it("does not revive a zeroed tab badge after switching tabs", async () => {
+		const { getByText, queryByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
 
-    fireEvent.click(getByText('Todo by human'));
-    await waitFor(() => {
-      expect(
-        getByText('Notify finished issue preparation'),
-      ).toBeInTheDocument();
-    });
+		fireEvent.click(getByText("Todo by human"));
+		await waitFor(() => {
+			expect(
+				getByText("Notify finished issue preparation"),
+			).toBeInTheDocument();
+		});
 
-    expect(queryByText('Triage')).toBeNull();
-  });
+		expect(queryByText("Triage")).toBeNull();
+	});
 
-  it('hides zero-count tabs but keeps non-zero tabs', async () => {
-    const { getByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    const tabs = within(tabBar());
-    expect(tabs.queryByText('Awaiting Owner')).not.toBeNull();
-    expect(tabs.queryByText('Todo by human')).not.toBeNull();
-    expect(tabs.queryByText('Triage')).toBeNull();
-    expect(tabs.queryByText('Failed Preparation')).toBeNull();
-  });
+	it("hides zero-count tabs but keeps non-zero tabs", async () => {
+		const { getByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		const tabs = within(tabBar());
+		expect(tabs.queryByText("Awaiting Owner")).not.toBeNull();
+		expect(tabs.queryByText("Todo by human")).not.toBeNull();
+		expect(tabs.queryByText("Triage")).toBeNull();
+		expect(tabs.queryByText("Failed Preparation")).toBeNull();
+	});
 
-  it('does not render the project header bar above the tab bar', async () => {
-    const { getByText, queryByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    expect(queryByText('TDPM Console')).toBeNull();
-    expect(queryByText('project: acme')).toBeNull();
-  });
+	it("does not render the project header bar above the tab bar", async () => {
+		const { getByText, queryByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		expect(queryByText("TDPM Console")).toBeNull();
+		expect(queryByText("project: acme")).toBeNull();
+	});
 
-  it('removes a processed workflow-blocker item from the list and decrements its tab badge, like every other tab', async () => {
-    const blockerItems = [
-      {
-        number: 701,
-        title: 'Blocked deployment task',
-        url: 'https://github.com/o/r/issues/701',
-        repo: 'o/r',
-        nameWithOwner: 'o/r',
-        projectItemId: 'PVTI_B1',
-        itemId: 'PVTI_B1',
-        isPr: false,
-        relatedOpenPullRequestUrls: [],
-        story: 'TDPM Console port',
-        status: 'In Progress',
-        nextActionDate: null,
-        nextActionHour: null,
-        dependedIssueUrls: [],
-        labels: [],
-        createdAt: '2026-06-17T00:00:00.000Z',
-      },
-      {
-        number: 702,
-        title: 'Blocked rollout task',
-        url: 'https://github.com/o/r/issues/702',
-        repo: 'o/r',
-        nameWithOwner: 'o/r',
-        projectItemId: 'PVTI_B2',
-        itemId: 'PVTI_B2',
-        isPr: false,
-        relatedOpenPullRequestUrls: [],
-        story: 'TDPM Console port',
-        status: 'In Progress',
-        nextActionDate: null,
-        nextActionHour: null,
-        dependedIssueUrls: [],
-        labels: [],
-        createdAt: '2026-06-17T01:00:00.000Z',
-      },
-    ];
-    const fetchMock = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            listMatch[1] === 'workflow-blocker'
-              ? { ...listPayload('workflow-blocker'), items: blockerItems }
-              : listPayload(listMatch[1]),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-    localStorage.setItem(
-      'pv_overlay_acme',
-      JSON.stringify({
-        PVTI_B1: {
-          ts: Date.parse('2026-06-19T00:05:00.000Z'),
-          mode: 'workflow-blocker',
-          done: true,
-        },
-      }),
-    );
-    window.history.replaceState(
-      {},
-      '',
-      '/projects/acme/workflow-blocker?k=token',
-    );
+	it("removes a processed workflow-blocker item from the list and decrements its tab badge, like every other tab", async () => {
+		const blockerItems = [
+			{
+				number: 701,
+				title: "Blocked deployment task",
+				url: "https://github.com/o/r/issues/701",
+				repo: "o/r",
+				nameWithOwner: "o/r",
+				projectItemId: "PVTI_B1",
+				itemId: "PVTI_B1",
+				isPr: false,
+				relatedOpenPullRequestUrls: [],
+				story: "TDPM Console port",
+				status: "In Progress",
+				nextActionDate: null,
+				nextActionHour: null,
+				dependedIssueUrls: [],
+				labels: [],
+				createdAt: "2026-06-17T00:00:00.000Z",
+			},
+			{
+				number: 702,
+				title: "Blocked rollout task",
+				url: "https://github.com/o/r/issues/702",
+				repo: "o/r",
+				nameWithOwner: "o/r",
+				projectItemId: "PVTI_B2",
+				itemId: "PVTI_B2",
+				isPr: false,
+				relatedOpenPullRequestUrls: [],
+				story: "TDPM Console port",
+				status: "In Progress",
+				nextActionDate: null,
+				nextActionHour: null,
+				dependedIssueUrls: [],
+				labels: [],
+				createdAt: "2026-06-17T01:00:00.000Z",
+			},
+		];
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						listMatch[1] === "workflow-blocker"
+							? { ...listPayload("workflow-blocker"), items: blockerItems }
+							: listPayload(listMatch[1]),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+		localStorage.setItem(
+			"pv_overlay_acme",
+			JSON.stringify({
+				PVTI_B1: {
+					ts: Date.parse("2026-06-19T00:05:00.000Z"),
+					mode: "workflow-blocker",
+					done: true,
+				},
+			}),
+		);
+		window.history.replaceState(
+			{},
+			"",
+			"/projects/acme/workflow-blocker?k=token",
+		);
 
-    const { getByText, queryByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Blocked rollout task')).toBeInTheDocument();
-    });
-    expect(queryByText('Blocked deployment task')).toBeNull();
-    const blockerTab = within(tabBar())
-      .getByText('Workflow Blocker')
-      .closest('a');
-    expect(blockerTab).not.toBeNull();
-    expect(blockerTab?.querySelector('.console-tab-badge')?.textContent).toBe(
-      '1',
-    );
-  });
+		const { getByText, queryByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Blocked rollout task")).toBeInTheDocument();
+		});
+		expect(queryByText("Blocked deployment task")).toBeNull();
+		const blockerTab = within(tabBar())
+			.getByText("Workflow Blocker")
+			.closest("a");
+		expect(blockerTab).not.toBeNull();
+		expect(blockerTab?.querySelector(".console-tab-badge")?.textContent).toBe(
+			"1",
+		);
+	});
 
-  it('keeps an item hidden when the overlay was applied before the current snapshot was generated', async () => {
-    const blockerItems = [
-      {
-        number: 701,
-        title: 'Blocked deployment task',
-        url: 'https://github.com/o/r/issues/701',
-        repo: 'o/r',
-        nameWithOwner: 'o/r',
-        projectItemId: 'PVTI_B1',
-        itemId: 'PVTI_B1',
-        isPr: false,
-        relatedOpenPullRequestUrls: [],
-        story: 'TDPM Console port',
-        status: 'In Progress',
-        nextActionDate: null,
-        nextActionHour: null,
-        dependedIssueUrls: [],
-        labels: [],
-        createdAt: '2026-06-17T00:00:00.000Z',
-      },
-    ];
-    const fetchMock = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            listMatch[1] === 'workflow-blocker'
-              ? { ...listPayload('workflow-blocker'), items: blockerItems }
-              : listPayload(listMatch[1]),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-    localStorage.setItem(
-      'pv_overlay_acme',
-      JSON.stringify({
-        PVTI_B1: {
-          ts: Date.parse('2026-06-18T23:00:00.000Z'),
-          mode: 'workflow-blocker',
-          done: true,
-        },
-      }),
-    );
-    window.history.replaceState(
-      {},
-      '',
-      '/projects/acme/workflow-blocker?k=token',
-    );
+	it("restores an item when a stale done overlay entry predates the snapshot and the item is still present (self-heal)", async () => {
+		const blockerItems = [
+			{
+				number: 701,
+				title: "Blocked deployment task",
+				url: "https://github.com/o/r/issues/701",
+				repo: "o/r",
+				nameWithOwner: "o/r",
+				projectItemId: "PVTI_B1",
+				itemId: "PVTI_B1",
+				isPr: false,
+				relatedOpenPullRequestUrls: [],
+				story: "TDPM Console port",
+				status: "In Progress",
+				nextActionDate: null,
+				nextActionHour: null,
+				dependedIssueUrls: [],
+				labels: [],
+				createdAt: "2026-06-17T00:00:00.000Z",
+			},
+		];
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						listMatch[1] === "workflow-blocker"
+							? { ...listPayload("workflow-blocker"), items: blockerItems }
+							: listPayload(listMatch[1]),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+		localStorage.setItem(
+			"pv_overlay_acme",
+			JSON.stringify({
+				PVTI_B1: {
+					ts: Date.parse("2026-06-18T23:00:00.000Z"),
+					mode: "workflow-blocker",
+					done: true,
+				},
+			}),
+		);
+		window.history.replaceState(
+			{},
+			"",
+			"/projects/acme/workflow-blocker?k=token",
+		);
 
-    const { queryByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      const awaitingOwnerTab = within(tabBar())
-        .getByText('Awaiting Owner')
-        .closest('a');
-      expect(
-        awaitingOwnerTab?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('1');
-    });
-    expect(queryByText('Blocked deployment task')).toBeNull();
-  });
+		const { getByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Blocked deployment task")).toBeInTheDocument();
+		});
+	});
 
-  it('keeps a todo-by-human item hidden after a newer snapshot arrives while a done overlay entry is active', async () => {
-    localStorage.setItem(
-      'pv_overlay_acme',
-      JSON.stringify({
-        PVTI_2: {
-          ts: Date.parse('2026-06-18T00:00:00.000Z'),
-          mode: 'todo-by-human',
-          done: true,
-        },
-      }),
-    );
-    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
+	it("restores a todo-by-human item when the snapshot was generated after the overlay entry and the item is still present (self-heal)", async () => {
+		localStorage.setItem(
+			"pv_overlay_acme",
+			JSON.stringify({
+				PVTI_2: {
+					ts: Date.parse("2026-06-18T00:00:00.000Z"),
+					mode: "todo-by-human",
+					done: true,
+				},
+			}),
+		);
+		window.history.replaceState({}, "", "/projects/acme/todo-by-human?k=token");
 
-    const { queryByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      const awaitingOwnerTab = within(tabBar())
-        .getByText('Awaiting Owner')
-        .closest('a');
-      expect(
-        awaitingOwnerTab?.querySelector('.console-tab-badge')?.textContent,
-      ).toBe('1');
-    });
-    expect(queryByText('Notify finished issue preparation')).toBeNull();
-  });
+		const { getByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(
+				getByText("Notify finished issue preparation"),
+			).toBeInTheDocument();
+		});
+	});
 
-  it('renders the failure toast in English without any Japanese characters', async () => {
-    const fetchMock = jest.fn(
-      async (url: string, init?: { method?: string }) => {
-        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-        if (listMatch !== null) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => listPayload(listMatch[1]),
-          };
-        }
-        if (init?.method === 'POST') {
-          return {
-            ok: false,
-            status: 422,
-            text: async () =>
-              JSON.stringify({ error: 'HTTP 422 Review cannot be requested' }),
-          };
-        }
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ body: '# body' }),
-        };
-      },
-    );
-    global.fetch = fetchMock as unknown as typeof fetch;
+	it("keeps a successfully-processed item hidden after a newer snapshot arrives when the item has left the snapshot", async () => {
+		localStorage.setItem(
+			"pv_overlay_acme",
+			JSON.stringify({
+				PVTI_1: {
+					ts: Date.parse("2026-06-18T23:00:00.000Z"),
+					mode: "prs",
+					done: true,
+				},
+			}),
+		);
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						listMatch[1] === "prs"
+							? { ...listPayload("prs"), items: [] }
+							: listPayload(listMatch[1]),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
 
-    jest.useFakeTimers();
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      fireEvent.click(await findByText('Approve & Merge'));
+		const { queryByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			const awaitingOwnerTab = within(tabBar())
+				.getByText("Awaiting Owner")
+				.closest("a");
+			expect(
+				awaitingOwnerTab?.querySelector(".console-tab-badge")?.textContent,
+			).toBe("0");
+		});
+		expect(queryByText("Add serveConsole subcommand")).toBeNull();
+	});
 
-      await act(async () => {
-        jest.advanceTimersByTime(5100);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
+	it("renders the failure toast in English without any Japanese characters", async () => {
+		const fetchMock = jest.fn(
+			async (url: string, init?: { method?: string }) => {
+				const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+				if (listMatch !== null) {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => listPayload(listMatch[1]),
+					};
+				}
+				if (init?.method === "POST") {
+					return {
+						ok: false,
+						status: 422,
+						text: async () =>
+							JSON.stringify({ error: "HTTP 422 Review cannot be requested" }),
+					};
+				}
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ body: "# body" }),
+				};
+			},
+		);
+		global.fetch = fetchMock as unknown as typeof fetch;
 
-      const toast = getByText(/^Operation failed:/);
-      expect(toast.textContent).toBe(
-        'Operation failed: HTTP 422 Review cannot be requested',
-      );
-      expect(toast.textContent).not.toMatch(
-        /[\u{3040}-\u{309F}\u{30A0}-\u{30FF}\u{4E00}-\u{9FFF}]/u,
-      );
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+		jest.useFakeTimers();
+		try {
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			fireEvent.click(await findByText("Approve & Merge"));
 
-  it('shows a retry button in the error toast that re-attempts the failed action', async () => {
-    let postCallCount = 0;
-    const fetchMock = jest.fn(
-      async (url: string, init?: { method?: string }) => {
-        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-        if (listMatch !== null) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => listPayload(listMatch[1]),
-          };
-        }
-        if (init?.method === 'POST') {
-          postCallCount++;
-          if (postCallCount === 1) {
-            return {
-              ok: false,
-              status: 500,
-              text: async () => JSON.stringify({ error: 'merge failed' }),
-            };
-          }
-          return { ok: true, status: 200, json: async () => ({}) };
-        }
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ body: '# body' }),
-        };
-      },
-    );
-    global.fetch = fetchMock as unknown as typeof fetch;
+			await act(async () => {
+				jest.advanceTimersByTime(5100);
+				await Promise.resolve();
+				await Promise.resolve();
+			});
 
-    jest.useFakeTimers();
-    try {
-      const { getByText, findByText, container } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      fireEvent.click(await findByText('Approve & Merge'));
+			const toast = getByText(/^Operation failed:/);
+			expect(toast.textContent).toBe(
+				"Operation failed: HTTP 422 Review cannot be requested",
+			);
+			expect(toast.textContent).not.toMatch(
+				/[\u{3040}-\u{309F}\u{30A0}-\u{30FF}\u{4E00}-\u{9FFF}]/u,
+			);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-      await act(async () => {
-        jest.advanceTimersByTime(5100);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
+	it("shows a retry button in the error toast that re-attempts the failed action", async () => {
+		let postCallCount = 0;
+		const fetchMock = jest.fn(
+			async (url: string, init?: { method?: string }) => {
+				const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+				if (listMatch !== null) {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => listPayload(listMatch[1]),
+					};
+				}
+				if (init?.method === "POST") {
+					postCallCount++;
+					if (postCallCount === 1) {
+						return {
+							ok: false,
+							status: 500,
+							text: async () => JSON.stringify({ error: "merge failed" }),
+						};
+					}
+					return { ok: true, status: 200, json: async () => ({}) };
+				}
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ body: "# body" }),
+				};
+			},
+		);
+		global.fetch = fetchMock as unknown as typeof fetch;
 
-      expect(getByText(/^Operation failed:/)).toBeInTheDocument();
+		jest.useFakeTimers();
+		try {
+			const { getByText, findByText, container } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			fireEvent.click(await findByText("Approve & Merge"));
 
-      const retryButton = container.querySelector('.console-error-toast-retry');
-      expect(retryButton).not.toBeNull();
-      if (retryButton === null)
-        throw new Error('retryButton should not be null');
+			await act(async () => {
+				jest.advanceTimersByTime(5100);
+				await Promise.resolve();
+				await Promise.resolve();
+			});
 
-      fireEvent.click(retryButton);
+			expect(getByText(/^Operation failed:/)).toBeInTheDocument();
 
-      await waitFor(() => {
-        expect(container.querySelector('.console-error-toast')).toBeNull();
-      });
-      expect(postCallCount).toBe(2);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			const retryButton = container.querySelector(".console-error-toast-retry");
+			expect(retryButton).not.toBeNull();
+			if (retryButton === null)
+				throw new Error("retryButton should not be null");
 
-  it('renders reorder buttons in the Stories tab', async () => {
-    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
-    const { getAllByRole, container } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(
-        container.querySelector(
-          '.console-tab-geninfo[title="2026-06-19T00:00:00.000Z"]',
-        ),
-      ).not.toBeNull();
-    });
-    expect(getAllByRole('button', { name: 'Move up' }).length).toBeGreaterThan(
-      0,
-    );
-  });
+			fireEvent.click(retryButton);
 
-  it('does not render reorder buttons in the Triage tab', async () => {
-    window.history.replaceState({}, '', '/projects/acme/triage?k=token');
-    const { queryAllByRole, container } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(
-        container.querySelector(
-          '.console-tab-geninfo[title="2026-06-19T00:00:00.000Z"]',
-        ),
-      ).not.toBeNull();
-    });
-    expect(queryAllByRole('button', { name: 'Move up' })).toHaveLength(0);
-  });
+			await waitFor(() => {
+				expect(container.querySelector(".console-error-toast")).toBeNull();
+			});
+			expect(postCallCount).toBe(2);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
+
+	it("renders reorder buttons in the Stories tab", async () => {
+		window.history.replaceState({}, "", "/projects/acme/stories?k=token");
+		const { getAllByRole, container } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(
+				container.querySelector(
+					'.console-tab-geninfo[title="2026-06-19T00:00:00.000Z"]',
+				),
+			).not.toBeNull();
+		});
+		expect(getAllByRole("button", { name: "Move up" }).length).toBeGreaterThan(
+			0,
+		);
+	});
+
+	it("does not render reorder buttons in the Triage tab", async () => {
+		window.history.replaceState({}, "", "/projects/acme/triage?k=token");
+		const { queryAllByRole, container } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(
+				container.querySelector(
+					'.console-tab-geninfo[title="2026-06-19T00:00:00.000Z"]',
+				),
+			).not.toBeNull();
+		});
+		expect(queryAllByRole("button", { name: "Move up" })).toHaveLength(0);
+	});
 });
 
 const twoItemPrPayload = () => ({
-  pjcode: 'acme',
-  generatedAt: '2026-06-19T00:00:00.000Z',
-  statusOptions: [{ id: 's1', name: 'Awaiting Workspace', color: 'BLUE' }],
-  storyOptions: [{ id: 'st1', name: 'TDPM Console port', color: 'BLUE' }],
-  storyColors: { 'TDPM Console port': { color: 'BLUE' } },
-  items: [
-    {
-      number: 851,
-      title: 'Add serveConsole subcommand',
-      url: 'https://github.com/o/r/pull/851',
-      repo: 'o/r',
-      nameWithOwner: 'o/r',
-      projectItemId: 'PVTI_1',
-      itemId: 'PVTI_1',
-      isPr: true,
-      relatedOpenPullRequestUrls: [],
-      story: 'TDPM Console port',
-      status: 'Awaiting Owner',
-      nextActionDate: null,
-      nextActionHour: null,
-      dependedIssueUrls: [],
-      labels: [],
-      createdAt: '2026-06-17T00:00:00.000Z',
-    },
-    {
-      number: 852,
-      title: 'Add server-side console API handlers',
-      url: 'https://github.com/o/r/pull/852',
-      repo: 'o/r',
-      nameWithOwner: 'o/r',
-      projectItemId: 'PVTI_2',
-      itemId: 'PVTI_2',
-      isPr: true,
-      relatedOpenPullRequestUrls: [],
-      story: 'TDPM Console port',
-      status: 'Awaiting Owner',
-      nextActionDate: null,
-      nextActionHour: null,
-      dependedIssueUrls: [],
-      labels: [],
-      createdAt: '2026-06-17T01:00:00.000Z',
-    },
-  ],
+	pjcode: "acme",
+	generatedAt: "2026-06-19T00:00:00.000Z",
+	statusOptions: [{ id: "s1", name: "Awaiting Workspace", color: "BLUE" }],
+	storyOptions: [{ id: "st1", name: "TDPM Console port", color: "BLUE" }],
+	storyColors: { "TDPM Console port": { color: "BLUE" } },
+	items: [
+		{
+			number: 851,
+			title: "Add serveConsole subcommand",
+			url: "https://github.com/o/r/pull/851",
+			repo: "o/r",
+			nameWithOwner: "o/r",
+			projectItemId: "PVTI_1",
+			itemId: "PVTI_1",
+			isPr: true,
+			relatedOpenPullRequestUrls: [],
+			story: "TDPM Console port",
+			status: "Awaiting Owner",
+			nextActionDate: null,
+			nextActionHour: null,
+			dependedIssueUrls: [],
+			labels: [],
+			createdAt: "2026-06-17T00:00:00.000Z",
+		},
+		{
+			number: 852,
+			title: "Add server-side console API handlers",
+			url: "https://github.com/o/r/pull/852",
+			repo: "o/r",
+			nameWithOwner: "o/r",
+			projectItemId: "PVTI_2",
+			itemId: "PVTI_2",
+			isPr: true,
+			relatedOpenPullRequestUrls: [],
+			story: "TDPM Console port",
+			status: "Awaiting Owner",
+			nextActionDate: null,
+			nextActionHour: null,
+			dependedIssueUrls: [],
+			labels: [],
+			createdAt: "2026-06-17T01:00:00.000Z",
+		},
+	],
 });
 
 const touchEvent = (
-  type: string,
-  point: { clientX: number; clientY: number },
-  property: 'touches' | 'changedTouches',
+	type: string,
+	point: { clientX: number; clientY: number },
+	property: "touches" | "changedTouches",
 ): TouchEvent => {
-  const event = new Event(type, { bubbles: true }) as TouchEvent;
-  Object.defineProperty(event, property, {
-    value: [point],
-    configurable: true,
-  });
-  return event;
+	const event = new Event(type, { bubbles: true }) as TouchEvent;
+	Object.defineProperty(event, property, {
+		value: [point],
+		configurable: true,
+	});
+	return event;
 };
 
 const swipeDetailScreen = (
-  element: HTMLElement,
-  from: { clientX: number; clientY: number },
-  to: { clientX: number; clientY: number },
+	element: HTMLElement,
+	from: { clientX: number; clientY: number },
+	to: { clientX: number; clientY: number },
 ): void => {
-  element.dispatchEvent(touchEvent('touchstart', from, 'touches'));
-  element.dispatchEvent(touchEvent('touchmove', to, 'touches'));
-  element.dispatchEvent(touchEvent('touchend', to, 'changedTouches'));
+	element.dispatchEvent(touchEvent("touchstart", from, "touches"));
+	element.dispatchEvent(touchEvent("touchmove", to, "touches"));
+	element.dispatchEvent(touchEvent("touchend", to, "changedTouches"));
 };
 
-describe('ConsolePage swipe navigation', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-    const fetchMock = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            listMatch[1] === 'prs'
-              ? twoItemPrPayload()
-              : { ...twoItemPrPayload(), items: [] },
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-  });
+describe("ConsolePage swipe navigation", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						listMatch[1] === "prs"
+							? twoItemPrPayload()
+							: { ...twoItemPrPayload(), items: [] },
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+	});
 
-  it('navigates to the next item on a left swipe of the opened detail screen', async () => {
-    const { container, getByText, findByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
-    expect(window.location.hash).toBe('#item/PVTI_1');
+	it("navigates to the next item on a left swipe of the opened detail screen", async () => {
+		const { container, getByText, findByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
+		expect(window.location.hash).toBe("#item/PVTI_1");
 
-    const detailScreen = container.querySelector('.console-detail-screen');
-    expect(detailScreen).not.toBeNull();
-    swipeDetailScreen(
-      detailScreen as HTMLElement,
-      { clientX: 240, clientY: 100 },
-      { clientX: 40, clientY: 110 },
-    );
+		const detailScreen = container.querySelector(".console-detail-screen");
+		expect(detailScreen).not.toBeNull();
+		swipeDetailScreen(
+			detailScreen as HTMLElement,
+			{ clientX: 240, clientY: 100 },
+			{ clientX: 40, clientY: 110 },
+		);
 
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#item/PVTI_2');
-    });
-  });
+		await waitFor(() => {
+			expect(window.location.hash).toBe("#item/PVTI_2");
+		});
+	});
 
-  it('navigates to the previous item on a right swipe of the opened detail screen', async () => {
-    const { container, getByText, findByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(
-        getByText('Add server-side console API handlers'),
-      ).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('Add server-side console API handlers'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
-    expect(window.location.hash).toBe('#item/PVTI_2');
+	it("navigates to the previous item on a right swipe of the opened detail screen", async () => {
+		const { container, getByText, findByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(
+				getByText("Add server-side console API handlers"),
+			).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("Add server-side console API handlers"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
+		expect(window.location.hash).toBe("#item/PVTI_2");
 
-    const detailScreen = container.querySelector('.console-detail-screen');
-    expect(detailScreen).not.toBeNull();
-    swipeDetailScreen(
-      detailScreen as HTMLElement,
-      { clientX: 40, clientY: 100 },
-      { clientX: 240, clientY: 110 },
-    );
+		const detailScreen = container.querySelector(".console-detail-screen");
+		expect(detailScreen).not.toBeNull();
+		swipeDetailScreen(
+			detailScreen as HTMLElement,
+			{ clientX: 40, clientY: 100 },
+			{ clientX: 240, clientY: 110 },
+		);
 
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#item/PVTI_1');
-    });
-  });
+		await waitFor(() => {
+			expect(window.location.hash).toBe("#item/PVTI_1");
+		});
+	});
 });
 
-describe('ConsolePage auto-advance', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-    const fetchMock = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            listMatch[1] === 'prs'
-              ? twoItemPrPayload()
-              : { ...twoItemPrPayload(), items: [] },
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-  });
+describe("ConsolePage auto-advance", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						listMatch[1] === "prs"
+							? twoItemPrPayload()
+							: { ...twoItemPrPayload(), items: [] },
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+	});
 
-  it('advances the detail view to the next pending item after an action', async () => {
-    jest.useFakeTimers();
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve & Merge')).toBeInTheDocument();
-      expect(window.location.hash).toBe('#item/PVTI_1');
+	it("advances the detail view to the next pending item after an action", async () => {
+		jest.useFakeTimers();
+		try {
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			expect(await findByText("Approve & Merge")).toBeInTheDocument();
+			expect(window.location.hash).toBe("#item/PVTI_1");
 
-      fireEvent.click(getByText('Approve & Merge'));
+			fireEvent.click(getByText("Approve & Merge"));
 
-      await waitFor(() => {
-        expect(window.location.hash).toBe('#item/PVTI_2');
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(window.location.hash).toBe("#item/PVTI_2");
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('stays on the list when ok & Awaiting Workspace is clicked from the list', async () => {
-    jest.useFakeTimers();
-    try {
-      const { getAllByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
-        ).toHaveLength(2);
-      });
-      expect(window.location.hash).toBe('');
+	it("stays on the list when ok & Awaiting Workspace is clicked from the list", async () => {
+		jest.useFakeTimers();
+		try {
+			const { getAllByRole } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getAllByRole("button", { name: "ok & Awaiting Workspace" }),
+				).toHaveLength(2);
+			});
+			expect(window.location.hash).toBe("");
 
-      fireEvent.click(
-        getAllByRole('button', { name: 'ok & Awaiting Workspace' })[0],
-      );
+			fireEvent.click(
+				getAllByRole("button", { name: "ok & Awaiting Workspace" })[0],
+			);
 
-      act(() => {
-        jest.advanceTimersByTime(5100);
-      });
+			act(() => {
+				jest.advanceTimersByTime(5100);
+			});
 
-      await waitFor(() => {
-        expect(window.location.hash).toBe('');
-      });
-      expect(document.querySelector('.console-detail-screen')).toBeNull();
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(window.location.hash).toBe("");
+			});
+			expect(document.querySelector(".console-detail-screen")).toBeNull();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('removes the acted item from the list immediately when ok & Awaiting Workspace is clicked from the list', async () => {
-    jest.useFakeTimers();
-    try {
-      const { getAllByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
-        ).toHaveLength(2);
-      });
+	it("removes the acted item from the list immediately when ok & Awaiting Workspace is clicked from the list", async () => {
+		jest.useFakeTimers();
+		try {
+			const { getAllByRole } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getAllByRole("button", { name: "ok & Awaiting Workspace" }),
+				).toHaveLength(2);
+			});
 
-      fireEvent.click(
-        getAllByRole('button', { name: 'ok & Awaiting Workspace' })[0],
-      );
+			fireEvent.click(
+				getAllByRole("button", { name: "ok & Awaiting Workspace" })[0],
+			);
 
-      await waitFor(() => {
-        expect(
-          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
-        ).toHaveLength(1);
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(
+					getAllByRole("button", { name: "ok & Awaiting Workspace" }),
+				).toHaveLength(1);
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('restores the item when Undo is clicked after ok & Awaiting Workspace from the list', async () => {
-    jest.useFakeTimers();
-    try {
-      const { getAllByRole, getByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
-        ).toHaveLength(2);
-      });
+	it("restores the item when Undo is clicked after ok & Awaiting Workspace from the list", async () => {
+		jest.useFakeTimers();
+		try {
+			const { getAllByRole, getByRole } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getAllByRole("button", { name: "ok & Awaiting Workspace" }),
+				).toHaveLength(2);
+			});
 
-      fireEvent.click(
-        getAllByRole('button', { name: 'ok & Awaiting Workspace' })[0],
-      );
+			fireEvent.click(
+				getAllByRole("button", { name: "ok & Awaiting Workspace" })[0],
+			);
 
-      await waitFor(() => {
-        expect(
-          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
-        ).toHaveLength(1);
-      });
+			await waitFor(() => {
+				expect(
+					getAllByRole("button", { name: "ok & Awaiting Workspace" }),
+				).toHaveLength(1);
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Undo' }));
+			fireEvent.click(getByRole("button", { name: "Undo" }));
 
-      await waitFor(() => {
-        expect(
-          getAllByRole('button', { name: 'ok & Awaiting Workspace' }),
-        ).toHaveLength(2);
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(
+					getAllByRole("button", { name: "ok & Awaiting Workspace" }),
+				).toHaveLength(2);
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 });
 
-describe('ConsolePage scroll reset', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-    const fetchMock = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            listMatch[1] === 'prs'
-              ? twoItemPrPayload()
-              : { ...twoItemPrPayload(), items: [] },
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-  });
+describe("ConsolePage scroll reset", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						listMatch[1] === "prs"
+							? twoItemPrPayload()
+							: { ...twoItemPrPayload(), items: [] },
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+	});
 
-  it('resets the window scroll position to the top when an item is opened', async () => {
-    const scrollTo = jest.fn();
-    window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
-    const { getByText, findByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
+	it("resets the window scroll position to the top when an item is opened", async () => {
+		const scrollTo = jest.fn();
+		window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
+		const { getByText, findByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
 
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
 
-    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
-  });
+		expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+	});
 
-  it('resets the window scroll position to the top on each item switch', async () => {
-    const scrollTo = jest.fn();
-    window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
-    const { container, getByText, findByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
+	it("resets the window scroll position to the top on each item switch", async () => {
+		const scrollTo = jest.fn();
+		window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
+		const { container, getByText, findByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
 
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
-    scrollTo.mockClear();
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
+		scrollTo.mockClear();
 
-    const detailScreen = container.querySelector('.console-detail-screen');
-    expect(detailScreen).not.toBeNull();
-    swipeDetailScreen(
-      detailScreen as HTMLElement,
-      { clientX: 240, clientY: 100 },
-      { clientX: 40, clientY: 110 },
-    );
+		const detailScreen = container.querySelector(".console-detail-screen");
+		expect(detailScreen).not.toBeNull();
+		swipeDetailScreen(
+			detailScreen as HTMLElement,
+			{ clientX: 240, clientY: 100 },
+			{ clientX: 40, clientY: 110 },
+		);
 
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#item/PVTI_2');
-    });
-    expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
-  });
+		await waitFor(() => {
+			expect(window.location.hash).toBe("#item/PVTI_2");
+		});
+		expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+	});
 
-  it('updates the timer bar remaining time every second when an active timer is present', async () => {
-    jest.useFakeTimers();
-    const endsAt = new Date(Date.now() + 900 * 1000).toISOString();
-    const fetchMock = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            ...listPayload(listMatch[1]),
-            timerEndsAt: endsAt,
-            timerTotalSeconds: 1800,
-          }),
-        };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-    try {
-      const { getByRole } = render(<ConsolePage />);
-      await waitFor(() => expect(getByRole('progressbar')).toBeInTheDocument());
-      const bar = getByRole('progressbar');
-      const initialValueNow = bar.getAttribute('aria-valuenow');
-      act(() => {
-        jest.advanceTimersByTime(1001);
-      });
-      await waitFor(() => {
-        expect(bar.getAttribute('aria-valuenow')).not.toBe(initialValueNow);
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("updates the timer bar remaining time every second when an active timer is present", async () => {
+		jest.useFakeTimers();
+		const endsAt = new Date(Date.now() + 900 * 1000).toISOString();
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({
+						...listPayload(listMatch[1]),
+						timerEndsAt: endsAt,
+						timerTotalSeconds: 1800,
+					}),
+				};
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+		try {
+			const { getByRole } = render(<ConsolePage />);
+			await waitFor(() => expect(getByRole("progressbar")).toBeInTheDocument());
+			const bar = getByRole("progressbar");
+			const initialValueNow = bar.getAttribute("aria-valuenow");
+			act(() => {
+				jest.advanceTimersByTime(1001);
+			});
+			await waitFor(() => {
+				expect(bar.getAttribute("aria-valuenow")).not.toBe(initialValueNow);
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 });
 
-describe('ConsolePage comment composer isolation', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-    const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            listMatch[1] === 'prs'
-              ? twoItemPrPayload()
-              : { ...twoItemPrPayload(), items: [] },
-        };
-      }
-      if (url.includes('/api/comment')) {
-        const requestBody =
-          typeof init?.body === 'string'
-            ? (JSON.parse(init.body) as { body: string })
-            : { body: '' };
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            comment: {
-              author: 'you',
-              body: requestBody.body,
-              createdAt: '2026-06-19T02:00:00.000Z',
-            },
-          }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-  });
+describe("ConsolePage comment composer isolation", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+		const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						listMatch[1] === "prs"
+							? twoItemPrPayload()
+							: { ...twoItemPrPayload(), items: [] },
+				};
+			}
+			if (url.includes("/api/comment")) {
+				const requestBody =
+					typeof init?.body === "string"
+						? (JSON.parse(init.body) as { body: string })
+						: { body: "" };
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({
+						comment: {
+							author: "you",
+							body: requestBody.body,
+							createdAt: "2026-06-19T02:00:00.000Z",
+						},
+					}),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+	});
 
-  it('does not show a comment posted on one item under the next item', async () => {
-    const {
-      container,
-      getByText,
-      findByText,
-      getByPlaceholderText,
-      queryByText,
-    } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
+	it("does not show a comment posted on one item under the next item", async () => {
+		const {
+			container,
+			getByText,
+			findByText,
+			getByPlaceholderText,
+			queryByText,
+		} = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
 
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
 
-    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
-      target: { value: 'first item only comment' },
-    });
-    fireEvent.click(getByText('Comment'));
+		fireEvent.change(getByPlaceholderText("Leave a comment…"), {
+			target: { value: "first item only comment" },
+		});
+		fireEvent.click(getByText("Comment"));
 
-    await waitFor(() => {
-      expect(getByText('first item only comment')).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(getByText("first item only comment")).toBeInTheDocument();
+		});
 
-    const detailScreen = container.querySelector('.console-detail-screen');
-    expect(detailScreen).not.toBeNull();
-    swipeDetailScreen(
-      detailScreen as HTMLElement,
-      { clientX: 240, clientY: 100 },
-      { clientX: 40, clientY: 110 },
-    );
+		const detailScreen = container.querySelector(".console-detail-screen");
+		expect(detailScreen).not.toBeNull();
+		swipeDetailScreen(
+			detailScreen as HTMLElement,
+			{ clientX: 240, clientY: 100 },
+			{ clientX: 40, clientY: 110 },
+		);
 
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#item/PVTI_2');
-    });
-    expect(queryByText('first item only comment')).toBeNull();
-  });
+		await waitFor(() => {
+			expect(window.location.hash).toBe("#item/PVTI_2");
+		});
+		expect(queryByText("first item only comment")).toBeNull();
+	});
 });
 
-describe('ConsolePage draft preservation', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-    const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            listMatch[1] === 'prs'
-              ? twoItemPrPayload()
-              : { ...twoItemPrPayload(), items: [] },
-        };
-      }
-      void init;
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-  });
+describe("ConsolePage draft preservation", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+		const fetchMock = jest.fn(async (url: string, init?: RequestInit) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						listMatch[1] === "prs"
+							? twoItemPrPayload()
+							: { ...twoItemPrPayload(), items: [] },
+				};
+			}
+			void init;
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+	});
 
-  it('restores the typed text when returning to a task after navigating away', async () => {
-    const { container, getByText, findByText, getByPlaceholderText } = render(
-      <ConsolePage />,
-    );
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
+	it("restores the typed text when returning to a task after navigating away", async () => {
+		const { container, getByText, findByText, getByPlaceholderText } = render(
+			<ConsolePage />,
+		);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
 
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
 
-    fireEvent.change(getByPlaceholderText('Leave a comment…'), {
-      target: { value: 'work in progress' },
-    });
+		fireEvent.change(getByPlaceholderText("Leave a comment…"), {
+			target: { value: "work in progress" },
+		});
 
-    const detailScreen = container.querySelector('.console-detail-screen');
-    expect(detailScreen).not.toBeNull();
+		const detailScreen = container.querySelector(".console-detail-screen");
+		expect(detailScreen).not.toBeNull();
 
-    swipeDetailScreen(
-      detailScreen as HTMLElement,
-      { clientX: 240, clientY: 100 },
-      { clientX: 40, clientY: 110 },
-    );
-    await waitFor(() => {
-      expect(window.location.hash).toBe('#item/PVTI_2');
-    });
+		swipeDetailScreen(
+			detailScreen as HTMLElement,
+			{ clientX: 240, clientY: 100 },
+			{ clientX: 40, clientY: 110 },
+		);
+		await waitFor(() => {
+			expect(window.location.hash).toBe("#item/PVTI_2");
+		});
 
-    swipeDetailScreen(
-      detailScreen as HTMLElement,
-      { clientX: 40, clientY: 100 },
-      { clientX: 240, clientY: 110 },
-    );
-    await waitFor(() => {
-      expect(getByPlaceholderText('Leave a comment…')).toHaveValue(
-        'work in progress',
-      );
-    });
-  });
+		swipeDetailScreen(
+			detailScreen as HTMLElement,
+			{ clientX: 40, clientY: 100 },
+			{ clientX: 240, clientY: 110 },
+		);
+		await waitFor(() => {
+			expect(getByPlaceholderText("Leave a comment…")).toHaveValue(
+				"work in progress",
+			);
+		});
+	});
 });
 
-describe('ConsolePage auto-advance tab', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-    installFetch();
-  });
+describe("ConsolePage auto-advance tab", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+		installFetch();
+	});
 
-  it('auto-advances to the next non-empty tab on the right after the active tab is driven to zero', async () => {
-    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
-    jest.useFakeTimers();
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getByText('Notify finished issue preparation'),
-        ).toBeInTheDocument();
-      });
+	it("auto-advances to the next non-empty tab on the right after the active tab is driven to zero", async () => {
+		window.history.replaceState({}, "", "/projects/acme/todo-by-human?k=token");
+		jest.useFakeTimers();
+		try {
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getByText("Notify finished issue preparation"),
+				).toBeInTheDocument();
+			});
 
-      fireEvent.click(getByText('Notify finished issue preparation'));
-      fireEvent.click(await findByText('Close'));
+			fireEvent.click(getByText("Notify finished issue preparation"));
+			fireEvent.click(await findByText("Close"));
 
-      act(() => {
-        jest.advanceTimersByTime(5100);
-      });
+			act(() => {
+				jest.advanceTimersByTime(5100);
+			});
 
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      expect(
-        within(tabBar())
-          .getByText('Awaiting Owner')
-          .closest('a')
-          ?.getAttribute('aria-current'),
-      ).toBe('page');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			expect(
+				within(tabBar())
+					.getByText("Awaiting Owner")
+					.closest("a")
+					?.getAttribute("aria-current"),
+			).toBe("page");
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('renders the gear button in the tab bar', async () => {
-    const { getByText, getByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    const gearBtn = getByRole('button', { name: 'Settings' });
-    expect(gearBtn).toBeInTheDocument();
-    expect(gearBtn.closest('nav.console-tabbar')).not.toBeNull();
-  });
+	it("renders the gear button in the tab bar", async () => {
+		const { getByText, getByRole } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		const gearBtn = getByRole("button", { name: "Settings" });
+		expect(gearBtn).toBeInTheDocument();
+		expect(gearBtn.closest("nav.console-tabbar")).not.toBeNull();
+	});
 
-  it('opens the settings dialog when the gear button is clicked', async () => {
-    const { getByText, getByRole, queryByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    expect(queryByRole('dialog')).toBeNull();
-    fireEvent.click(getByRole('button', { name: 'Settings' }));
-    expect(getByRole('dialog')).toBeInTheDocument();
-    expect(getByRole('dialog')).toHaveAttribute('aria-label', 'Settings');
-  });
+	it("opens the settings dialog when the gear button is clicked", async () => {
+		const { getByText, getByRole, queryByRole } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		expect(queryByRole("dialog")).toBeNull();
+		fireEvent.click(getByRole("button", { name: "Settings" }));
+		expect(getByRole("dialog")).toBeInTheDocument();
+		expect(getByRole("dialog")).toHaveAttribute("aria-label", "Settings");
+	});
 
-  it('renders the max settings button in the tab bar', async () => {
-    const { getByText, getByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    const maxBtn = getByRole('button', { name: 'Open max settings' });
-    expect(maxBtn).toBeInTheDocument();
-    expect(maxBtn.closest('nav.console-tabbar')).not.toBeNull();
-  });
+	it("renders the max settings button in the tab bar", async () => {
+		const { getByText, getByRole } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		const maxBtn = getByRole("button", { name: "Open max settings" });
+		expect(maxBtn).toBeInTheDocument();
+		expect(maxBtn.closest("nav.console-tabbar")).not.toBeNull();
+	});
 
-  it('renders the max settings button with the gear icon', async () => {
-    const { getByText, getByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    const maxBtn = getByRole('button', { name: 'Open max settings' });
-    expect(maxBtn.textContent?.trim()).toBe('⚙');
-  });
+	it("renders the max settings button with the gear icon", async () => {
+		const { getByText, getByRole } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		const maxBtn = getByRole("button", { name: "Open max settings" });
+		expect(maxBtn.textContent?.trim()).toBe("⚙");
+	});
 
-  it('shows the max settings button even when no project is selected', async () => {
-    window.history.replaceState({}, '', '/');
-    const { getByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(
-        getByRole('button', { name: 'Open max settings' }),
-      ).toBeInTheDocument();
-    });
-  });
+	it("shows the max settings button even when no project is selected", async () => {
+		window.history.replaceState({}, "", "/");
+		const { getByRole } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(
+				getByRole("button", { name: "Open max settings" }),
+			).toBeInTheDocument();
+		});
+	});
 
-  it('opens the max settings dialog when the max settings button is clicked', async () => {
-    const { getByText, getByRole, queryByRole } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    expect(queryByRole('dialog', { name: 'Max settings' })).toBeNull();
-    fireEvent.click(getByRole('button', { name: 'Open max settings' }));
-    await waitFor(() => {
-      expect(getByRole('dialog', { name: 'Max settings' })).toBeInTheDocument();
-    });
-  });
+	it("opens the max settings dialog when the max settings button is clicked", async () => {
+		const { getByText, getByRole, queryByRole } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		expect(queryByRole("dialog", { name: "Max settings" })).toBeNull();
+		fireEvent.click(getByRole("button", { name: "Open max settings" }));
+		await waitFor(() => {
+			expect(getByRole("dialog", { name: "Max settings" })).toBeInTheDocument();
+		});
+	});
 
-  it('saves timer settings to localStorage and closes the dialog when Save and Close is clicked', async () => {
-    const { getByText, getByRole, queryByRole, getByLabelText } = render(
-      <ConsolePage />,
-    );
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    fireEvent.click(getByRole('button', { name: 'Settings' }));
-    fireEvent.click(getByLabelText('Timer Mode'));
-    fireEvent.click(getByText('Save and Close'));
-    expect(queryByRole('dialog')).toBeNull();
-    const stored = localStorage.getItem('tdpm-timer-settings');
-    expect(stored).not.toBeNull();
-    const parsed: unknown = JSON.parse(stored as string);
-    expect(parsed).toMatchObject({ timerMode: true });
-  });
+	it("saves timer settings to localStorage and closes the dialog when Save and Close is clicked", async () => {
+		const { getByText, getByRole, queryByRole, getByLabelText } = render(
+			<ConsolePage />,
+		);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		fireEvent.click(getByRole("button", { name: "Settings" }));
+		fireEvent.click(getByLabelText("Timer Mode"));
+		fireEvent.click(getByText("Save and Close"));
+		expect(queryByRole("dialog")).toBeNull();
+		const stored = localStorage.getItem("tdpm-timer-settings");
+		expect(stored).not.toBeNull();
+		const parsed: unknown = JSON.parse(stored as string);
+		expect(parsed).toMatchObject({ timerMode: true });
+	});
 
-  it('redirects to the first project with minutes > 0 when timer mode is on and pjcode is null', async () => {
-    localStorage.setItem(
-      'tdpm-timer-settings',
-      JSON.stringify({ timerMode: true, projectMinutes: { acme: 30 } }),
-    );
-    window.history.replaceState({}, '', '/');
-    const { navigateReplaceState } = jest.requireMock<{
-      navigateReplaceState: jest.Mock;
-    }>('../lib/navigation');
-    navigateReplaceState.mockClear();
-    render(<ConsolePage />);
-    await waitFor(() => {
-      expect(navigateReplaceState).toHaveBeenCalledWith(
-        '/projects/acme/todo-by-human',
-      );
-    });
-  });
+	it("redirects to the first project with minutes > 0 when timer mode is on and pjcode is null", async () => {
+		localStorage.setItem(
+			"tdpm-timer-settings",
+			JSON.stringify({ timerMode: true, projectMinutes: { acme: 30 } }),
+		);
+		window.history.replaceState({}, "", "/");
+		const { navigateReplaceState } = jest.requireMock<{
+			navigateReplaceState: jest.Mock;
+		}>("../lib/navigation");
+		navigateReplaceState.mockClear();
+		render(<ConsolePage />);
+		await waitFor(() => {
+			expect(navigateReplaceState).toHaveBeenCalledWith(
+				"/projects/acme/todo-by-human",
+			);
+		});
+	});
 
-  it('shows the stories tab badge count as the number of non-GRAY stories', async () => {
-    global.fetch = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        const tab = listMatch[1];
-        if (tab === 'stories') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              generatedAt: '2026-06-19T00:00:00.000Z',
-              stories: [
-                {
-                  storyName: 'TDPM Console port',
-                  storyOptionId: 'st1',
-                  color: 'BLUE',
-                  openItemCount: 3,
-                  storyViewUrl: null,
-                },
-                {
-                  storyName: 'regular / workflow improvement',
-                  storyOptionId: 'st2',
-                  color: 'GRAY',
-                  openItemCount: 2,
-                  storyViewUrl: null,
-                },
-              ],
-              defaultNameWithOwner: null,
-              storyOrder: [],
-            }),
-          };
-        }
-        return { ok: true, status: 200, json: async () => listPayload(tab) };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
+	it("shows the stories tab badge count as the number of non-GRAY stories", async () => {
+		global.fetch = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				const tab = listMatch[1];
+				if (tab === "stories") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({
+							generatedAt: "2026-06-19T00:00:00.000Z",
+							stories: [
+								{
+									storyName: "TDPM Console port",
+									storyOptionId: "st1",
+									color: "BLUE",
+									openItemCount: 3,
+									storyViewUrl: null,
+								},
+								{
+									storyName: "regular / workflow improvement",
+									storyOptionId: "st2",
+									color: "GRAY",
+									openItemCount: 2,
+									storyViewUrl: null,
+								},
+							],
+							defaultNameWithOwner: null,
+							storyOrder: [],
+						}),
+					};
+				}
+				return { ok: true, status: 200, json: async () => listPayload(tab) };
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
 
-    const { container } = render(<ConsolePage />);
+		const { container } = render(<ConsolePage />);
 
-    await waitFor(() => {
-      const tabs = [...container.querySelectorAll('.console-tab')];
-      const storiesTab = tabs.find((el) => el.textContent?.includes('Stories'));
-      expect(storiesTab).toBeTruthy();
-      expect(storiesTab?.querySelector('.console-tab-badge')?.textContent).toBe(
-        '1',
-      );
-    });
-  });
+		await waitFor(() => {
+			const tabs = [...container.querySelectorAll(".console-tab")];
+			const storiesTab = tabs.find((el) => el.textContent?.includes("Stories"));
+			expect(storiesTab).toBeTruthy();
+			expect(storiesTab?.querySelector(".console-tab-badge")?.textContent).toBe(
+				"1",
+			);
+		});
+	});
 
-  it('shows the queued tab badge count when queued items are present', async () => {
-    const queuedItem = {
-      number: 900,
-      title: 'Queued task waiting',
-      url: 'https://github.com/o/r/issues/900',
-      repo: 'o/r',
-      nameWithOwner: 'o/r',
-      projectItemId: 'PVTI_900',
-      itemId: 'PVTI_900',
-      isPr: false,
-      relatedOpenPullRequestUrls: [],
-      story: 'TDPM Console port',
-      status: 'Awaiting Workspace',
-      nextActionDate: null,
-      nextActionHour: null,
-      dependedIssueUrls: [],
-      labels: [],
-      createdAt: '2026-06-17T00:00:00.000Z',
-    };
-    global.fetch = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        const tab = listMatch[1];
-        if (tab === 'queued') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              ...listPayload(''),
-              agentOptions: [],
-              items: [queuedItem],
-            }),
-          };
-        }
-        return { ok: true, status: 200, json: async () => listPayload(tab) };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
+	it("shows the queued tab badge count when queued items are present", async () => {
+		const queuedItem = {
+			number: 900,
+			title: "Queued task waiting",
+			url: "https://github.com/o/r/issues/900",
+			repo: "o/r",
+			nameWithOwner: "o/r",
+			projectItemId: "PVTI_900",
+			itemId: "PVTI_900",
+			isPr: false,
+			relatedOpenPullRequestUrls: [],
+			story: "TDPM Console port",
+			status: "Awaiting Workspace",
+			nextActionDate: null,
+			nextActionHour: null,
+			dependedIssueUrls: [],
+			labels: [],
+			createdAt: "2026-06-17T00:00:00.000Z",
+		};
+		global.fetch = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				const tab = listMatch[1];
+				if (tab === "queued") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({
+							...listPayload(""),
+							agentOptions: [],
+							items: [queuedItem],
+						}),
+					};
+				}
+				return { ok: true, status: 200, json: async () => listPayload(tab) };
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
 
-    const { container } = render(<ConsolePage />);
+		const { container } = render(<ConsolePage />);
 
-    await waitFor(() => {
-      const tabs = [...container.querySelectorAll('.console-tab')];
-      const queuedTab = tabs.find((el) => el.textContent?.includes('Queued'));
-      expect(queuedTab).toBeTruthy();
-      expect(queuedTab?.querySelector('.console-tab-badge')?.textContent).toBe(
-        '1',
-      );
-    });
-  });
+		await waitFor(() => {
+			const tabs = [...container.querySelectorAll(".console-tab")];
+			const queuedTab = tabs.find((el) => el.textContent?.includes("Queued"));
+			expect(queuedTab).toBeTruthy();
+			expect(queuedTab?.querySelector(".console-tab-badge")?.textContent).toBe(
+				"1",
+			);
+		});
+	});
 
-  it('reads console-story-show-gray from localStorage and shows gray stories when true', async () => {
-    localStorage.setItem('console-story-show-gray', 'true');
-    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
-    global.fetch = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        const tab = listMatch[1];
-        if (tab === 'stories') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              generatedAt: '2026-06-19T00:00:00.000Z',
-              stories: [
-                {
-                  storyName: 'TDPM Console port',
-                  storyOptionId: 'st1',
-                  color: 'BLUE',
-                  openItemCount: 3,
-                  storyViewUrl: null,
-                },
-                {
-                  storyName: 'regular / workflow improvement',
-                  storyOptionId: 'st2',
-                  color: 'GRAY',
-                  openItemCount: 2,
-                  storyViewUrl: null,
-                },
-              ],
-              defaultNameWithOwner: null,
-              storyOrder: [],
-            }),
-          };
-        }
-        return { ok: true, status: 200, json: async () => listPayload(tab) };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
+	it("reads console-story-show-gray from localStorage and shows gray stories when true", async () => {
+		localStorage.setItem("console-story-show-gray", "true");
+		window.history.replaceState({}, "", "/projects/acme/stories?k=token");
+		global.fetch = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				const tab = listMatch[1];
+				if (tab === "stories") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({
+							generatedAt: "2026-06-19T00:00:00.000Z",
+							stories: [
+								{
+									storyName: "TDPM Console port",
+									storyOptionId: "st1",
+									color: "BLUE",
+									openItemCount: 3,
+									storyViewUrl: null,
+								},
+								{
+									storyName: "regular / workflow improvement",
+									storyOptionId: "st2",
+									color: "GRAY",
+									openItemCount: 2,
+									storyViewUrl: null,
+								},
+							],
+							defaultNameWithOwner: null,
+							storyOrder: [],
+						}),
+					};
+				}
+				return { ok: true, status: 200, json: async () => listPayload(tab) };
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
 
-    const { findByText } = render(<ConsolePage />);
-    expect(
-      await findByText('regular / workflow improvement'),
-    ).toBeInTheDocument();
-  });
+		const { findByText } = render(<ConsolePage />);
+		expect(
+			await findByText("regular / workflow improvement"),
+		).toBeInTheDocument();
+	});
 
-  it('writes true to console-story-show-gray in localStorage when the toggle button is clicked', async () => {
-    window.history.replaceState({}, '', '/projects/acme/stories?k=token');
-    global.fetch = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        const tab = listMatch[1];
-        if (tab === 'stories') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              generatedAt: '2026-06-19T00:00:00.000Z',
-              stories: [
-                {
-                  storyName: 'TDPM Console port',
-                  storyOptionId: 'st1',
-                  color: 'BLUE',
-                  openItemCount: 3,
-                  storyViewUrl: null,
-                },
-                {
-                  storyName: 'regular / workflow improvement',
-                  storyOptionId: 'st2',
-                  color: 'GRAY',
-                  openItemCount: 2,
-                  storyViewUrl: null,
-                },
-              ],
-              defaultNameWithOwner: null,
-              storyOrder: [],
-            }),
-          };
-        }
-        return { ok: true, status: 200, json: async () => listPayload(tab) };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
+	it("writes true to console-story-show-gray in localStorage when the toggle button is clicked", async () => {
+		window.history.replaceState({}, "", "/projects/acme/stories?k=token");
+		global.fetch = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				const tab = listMatch[1];
+				if (tab === "stories") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({
+							generatedAt: "2026-06-19T00:00:00.000Z",
+							stories: [
+								{
+									storyName: "TDPM Console port",
+									storyOptionId: "st1",
+									color: "BLUE",
+									openItemCount: 3,
+									storyViewUrl: null,
+								},
+								{
+									storyName: "regular / workflow improvement",
+									storyOptionId: "st2",
+									color: "GRAY",
+									openItemCount: 2,
+									storyViewUrl: null,
+								},
+							],
+							defaultNameWithOwner: null,
+							storyOrder: [],
+						}),
+					};
+				}
+				return { ok: true, status: 200, json: async () => listPayload(tab) };
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
 
-    const { findByRole } = render(<ConsolePage />);
-    const toggleBtn = await findByRole('button', { name: 'Show archived' });
-    fireEvent.click(toggleBtn);
-    expect(localStorage.getItem('console-story-show-gray')).toBe('true');
-  });
+		const { findByRole } = render(<ConsolePage />);
+		const toggleBtn = await findByRole("button", { name: "Show archived" });
+		fireEvent.click(toggleBtn);
+		expect(localStorage.getItem("console-story-show-gray")).toBe("true");
+	});
 
-  it('does not navigate to the next project automatically when prs count drops to zero on data refresh in timer mode', async () => {
-    localStorage.setItem(
-      'tdpm-timer-settings',
-      JSON.stringify({
-        timerMode: true,
-        projectMinutes: { acme: 30, beta: 30 },
-      }),
-    );
-    let prsCallCount = 0;
-    global.fetch = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        const tab = listMatch[1];
-        if (tab === 'prs') {
-          prsCallCount += 1;
-          return {
-            ok: true,
-            status: 200,
-            json: async () =>
-              prsCallCount === 1
-                ? listPayload('prs')
-                : { ...listPayload('prs'), items: [] },
-          };
-        }
-        return { ok: true, status: 200, json: async () => listPayload(tab) };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
-    const { navigatePush } = jest.requireMock<{
-      navigatePush: jest.Mock;
-    }>('../lib/navigation');
-    navigatePush.mockClear();
-    jest.useFakeTimers();
-    try {
-      const { getByText, queryByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      await act(async () => {
-        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
-      });
-      await waitFor(() => {
-        expect(
-          queryByText('Add serveConsole subcommand'),
-        ).not.toBeInTheDocument();
-      });
-      expect(navigatePush).not.toHaveBeenCalledWith('/projects/beta');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("does not navigate to the next project automatically when prs count drops to zero on data refresh in timer mode", async () => {
+		localStorage.setItem(
+			"tdpm-timer-settings",
+			JSON.stringify({
+				timerMode: true,
+				projectMinutes: { acme: 30, beta: 30 },
+			}),
+		);
+		let prsCallCount = 0;
+		global.fetch = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				const tab = listMatch[1];
+				if (tab === "prs") {
+					prsCallCount += 1;
+					return {
+						ok: true,
+						status: 200,
+						json: async () =>
+							prsCallCount === 1
+								? listPayload("prs")
+								: { ...listPayload("prs"), items: [] },
+					};
+				}
+				return { ok: true, status: 200, json: async () => listPayload(tab) };
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme", "beta"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
+		const { navigatePush } = jest.requireMock<{
+			navigatePush: jest.Mock;
+		}>("../lib/navigation");
+		navigatePush.mockClear();
+		jest.useFakeTimers();
+		try {
+			const { getByText, queryByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			await act(async () => {
+				jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+			});
+			await waitFor(() => {
+				expect(
+					queryByText("Add serveConsole subcommand"),
+				).not.toBeInTheDocument();
+			});
+			expect(navigatePush).not.toHaveBeenCalledWith("/projects/beta");
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('automatically navigates to the next project when the initial load shows no prs or todo items in timer mode', async () => {
-    localStorage.setItem(
-      'tdpm-timer-settings',
-      JSON.stringify({
-        timerMode: true,
-        projectMinutes: { acme: 30, beta: 30 },
-      }),
-    );
-    global.fetch = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        const tab = listMatch[1];
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ ...listPayload(tab), items: [] }),
-        };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
-    const { navigatePush } = jest.requireMock<{
-      navigatePush: jest.Mock;
-    }>('../lib/navigation');
-    navigatePush.mockClear();
-    render(<ConsolePage />);
-    await waitFor(() => {
-      expect(navigatePush).toHaveBeenCalledWith('/projects/beta/todo-by-human');
-    });
-  });
+	it("automatically navigates to the next project when the initial load shows no prs or todo items in timer mode", async () => {
+		localStorage.setItem(
+			"tdpm-timer-settings",
+			JSON.stringify({
+				timerMode: true,
+				projectMinutes: { acme: 30, beta: 30 },
+			}),
+		);
+		global.fetch = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				const tab = listMatch[1];
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ ...listPayload(tab), items: [] }),
+				};
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme", "beta"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
+		const { navigatePush } = jest.requireMock<{
+			navigatePush: jest.Mock;
+		}>("../lib/navigation");
+		navigatePush.mockClear();
+		render(<ConsolePage />);
+		await waitFor(() => {
+			expect(navigatePush).toHaveBeenCalledWith("/projects/beta/todo-by-human");
+		});
+	});
 
-  it('navigates to the next project when a completing action fires after the project timer elapses', async () => {
-    localStorage.setItem(
-      'tdpm-timer-settings',
-      JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
-    );
-    global.fetch = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => listPayload(listMatch[1]),
-        };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
-    jest.useFakeTimers({ now: 0 });
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      jest.setSystemTime(61 * 1000);
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve & Merge')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve & Merge'));
-      act(() => {
-        jest.advanceTimersByTime(5100);
-      });
-      const { navigatePush } = jest.requireMock<{
-        navigatePush: jest.Mock;
-      }>('../lib/navigation');
-      await waitFor(() => {
-        expect(navigatePush).toHaveBeenCalledWith(
-          '/projects/beta/todo-by-human',
-        );
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("navigates to the next project when a completing action fires after the project timer elapses", async () => {
+		localStorage.setItem(
+			"tdpm-timer-settings",
+			JSON.stringify({ timerMode: true, projectMinutes: { acme: 1, beta: 5 } }),
+		);
+		global.fetch = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => listPayload(listMatch[1]),
+				};
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme", "beta"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
+		jest.useFakeTimers({ now: 0 });
+		try {
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			jest.setSystemTime(61 * 1000);
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			expect(await findByText("Approve & Merge")).toBeInTheDocument();
+			fireEvent.click(getByText("Approve & Merge"));
+			act(() => {
+				jest.advanceTimersByTime(5100);
+			});
+			const { navigatePush } = jest.requireMock<{
+				navigatePush: jest.Mock;
+			}>("../lib/navigation");
+			await waitFor(() => {
+				expect(navigatePush).toHaveBeenCalledWith(
+					"/projects/beta/todo-by-human",
+				);
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('navigates to the next project when a completing action fires after DEFAULT_TIMER_MINUTES elapses for an unconfigured project', async () => {
-    localStorage.setItem(
-      'tdpm-timer-settings',
-      JSON.stringify({ timerMode: true, projectMinutes: { beta: 5 } }),
-    );
-    global.fetch = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => listPayload(listMatch[1]),
-        };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme', 'beta'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
-    jest.useFakeTimers({ now: 0 });
-    try {
-      const { getByText, findByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      jest.setSystemTime(16 * 60 * 1000);
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      expect(await findByText('Approve & Merge')).toBeInTheDocument();
-      fireEvent.click(getByText('Approve & Merge'));
-      act(() => {
-        jest.advanceTimersByTime(5100);
-      });
-      const { navigatePush } = jest.requireMock<{
-        navigatePush: jest.Mock;
-      }>('../lib/navigation');
-      await waitFor(() => {
-        expect(navigatePush).toHaveBeenCalledWith(
-          '/projects/beta/todo-by-human',
-        );
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("navigates to the next project when a completing action fires after DEFAULT_TIMER_MINUTES elapses for an unconfigured project", async () => {
+		localStorage.setItem(
+			"tdpm-timer-settings",
+			JSON.stringify({ timerMode: true, projectMinutes: { beta: 5 } }),
+		);
+		global.fetch = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => listPayload(listMatch[1]),
+				};
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme", "beta"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
+		jest.useFakeTimers({ now: 0 });
+		try {
+			const { getByText, findByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			jest.setSystemTime(16 * 60 * 1000);
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			expect(await findByText("Approve & Merge")).toBeInTheDocument();
+			fireEvent.click(getByText("Approve & Merge"));
+			act(() => {
+				jest.advanceTimersByTime(5100);
+			});
+			const { navigatePush } = jest.requireMock<{
+				navigatePush: jest.Mock;
+			}>("../lib/navigation");
+			await waitFor(() => {
+				expect(navigatePush).toHaveBeenCalledWith(
+					"/projects/beta/todo-by-human",
+				);
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 });
 
-describe('ConsolePage airplane mode write guard', () => {
-  const prItem = {
-    number: 851,
-    title: 'Add serveConsole subcommand',
-    url: 'https://github.com/o/r/pull/851',
-    repo: 'o/r',
-    nameWithOwner: 'o/r',
-    projectItemId: 'PVTI_1',
-    itemId: 'PVTI_1',
-    isPr: true,
-    relatedOpenPullRequestUrls: [],
-    story: 'TDPM Console port',
-    status: 'Awaiting Owner',
-    nextActionDate: null,
-    nextActionHour: null,
-    dependedIssueUrls: [],
-    labels: [],
-    createdAt: '2026-06-17T00:00:00.000Z',
-    agent: null,
-  };
+describe("ConsolePage airplane mode write guard", () => {
+	const prItem = {
+		number: 851,
+		title: "Add serveConsole subcommand",
+		url: "https://github.com/o/r/pull/851",
+		repo: "o/r",
+		nameWithOwner: "o/r",
+		projectItemId: "PVTI_1",
+		itemId: "PVTI_1",
+		isPr: true,
+		relatedOpenPullRequestUrls: [],
+		story: "TDPM Console port",
+		status: "Awaiting Owner",
+		nextActionDate: null,
+		nextActionHour: null,
+		dependedIssueUrls: [],
+		labels: [],
+		createdAt: "2026-06-17T00:00:00.000Z",
+		agent: null,
+	};
 
-  const airplaneSnapshot = {
-    capturedAt: '2026-06-19T00:00:00.000Z',
-    tabs: {
-      acme: {
-        prs: {
-          items: [prItem],
-          generatedAt: '2026-06-19T00:00:00.000Z',
-          statusOptions: [
-            { id: 's1', name: 'Awaiting Workspace', color: 'BLUE' },
-          ],
-          storyOptions: [
-            { id: 'st1', name: 'TDPM Console port', color: 'BLUE' },
-          ],
-          storyColors: { 'TDPM Console port': { color: 'BLUE' } },
-          stories: [],
-          defaultNameWithOwner: 'o/r',
-          fromCache: false,
-          storyOrder: [],
-        },
-        'workflow-blocker': {
-          items: [],
-          generatedAt: '',
-          statusOptions: [],
-          storyOptions: [],
-          storyColors: {},
-          stories: [],
-          defaultNameWithOwner: null,
-          fromCache: false,
-          storyOrder: [],
-        },
-        'failed-preparation': {
-          items: [],
-          generatedAt: '',
-          statusOptions: [],
-          storyOptions: [],
-          storyColors: {},
-          stories: [],
-          defaultNameWithOwner: null,
-          fromCache: false,
-          storyOrder: [],
-        },
-        'todo-by-human': {
-          items: [],
-          generatedAt: '',
-          statusOptions: [],
-          storyOptions: [],
-          storyColors: {},
-          stories: [],
-          defaultNameWithOwner: null,
-          fromCache: false,
-          storyOrder: [],
-        },
-        'todo-by-agent': {
-          items: [],
-          generatedAt: '',
-          statusOptions: [],
-          storyOptions: [],
-          storyColors: {},
-          stories: [],
-          defaultNameWithOwner: null,
-          fromCache: false,
-          storyOrder: [],
-        },
-        stories: {
-          items: [],
-          generatedAt: '',
-          statusOptions: [],
-          storyOptions: [],
-          storyColors: {},
-          stories: [],
-          defaultNameWithOwner: null,
-          fromCache: false,
-          storyOrder: [],
-        },
-      },
-    },
-    items: {},
-    failures: [],
-  };
+	const airplaneSnapshot = {
+		capturedAt: "2026-06-19T00:00:00.000Z",
+		tabs: {
+			acme: {
+				prs: {
+					items: [prItem],
+					generatedAt: "2026-06-19T00:00:00.000Z",
+					statusOptions: [
+						{ id: "s1", name: "Awaiting Workspace", color: "BLUE" },
+					],
+					storyOptions: [
+						{ id: "st1", name: "TDPM Console port", color: "BLUE" },
+					],
+					storyColors: { "TDPM Console port": { color: "BLUE" } },
+					stories: [],
+					defaultNameWithOwner: "o/r",
+					fromCache: false,
+					storyOrder: [],
+				},
+				"workflow-blocker": {
+					items: [],
+					generatedAt: "",
+					statusOptions: [],
+					storyOptions: [],
+					storyColors: {},
+					stories: [],
+					defaultNameWithOwner: null,
+					fromCache: false,
+					storyOrder: [],
+				},
+				"failed-preparation": {
+					items: [],
+					generatedAt: "",
+					statusOptions: [],
+					storyOptions: [],
+					storyColors: {},
+					stories: [],
+					defaultNameWithOwner: null,
+					fromCache: false,
+					storyOrder: [],
+				},
+				"todo-by-human": {
+					items: [],
+					generatedAt: "",
+					statusOptions: [],
+					storyOptions: [],
+					storyColors: {},
+					stories: [],
+					defaultNameWithOwner: null,
+					fromCache: false,
+					storyOrder: [],
+				},
+				"todo-by-agent": {
+					items: [],
+					generatedAt: "",
+					statusOptions: [],
+					storyOptions: [],
+					storyColors: {},
+					stories: [],
+					defaultNameWithOwner: null,
+					fromCache: false,
+					storyOrder: [],
+				},
+				stories: {
+					items: [],
+					generatedAt: "",
+					statusOptions: [],
+					storyOptions: [],
+					storyColors: {},
+					stories: [],
+					defaultNameWithOwner: null,
+					fromCache: false,
+					storyOrder: [],
+				},
+			},
+		},
+		items: {},
+		failures: [],
+	};
 
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
 
-    localStorage.setItem('tdpm_airplane_mode_on', '1');
+		localStorage.setItem("tdpm_airplane_mode_on", "1");
 
-    const snapshotJson = JSON.stringify(airplaneSnapshot);
-    const mockCache = {
-      put: jest.fn(),
-      match: jest.fn().mockResolvedValue(
-        new Response(snapshotJson, {
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
-      delete: jest.fn(),
-    };
-    Object.defineProperty(global, 'caches', {
-      writable: true,
-      configurable: true,
-      value: {
-        open: jest.fn().mockResolvedValue(mockCache),
-        delete: jest.fn().mockResolvedValue(true),
-      },
-    });
+		const snapshotJson = JSON.stringify(airplaneSnapshot);
+		const mockCache = {
+			put: jest.fn(),
+			match: jest.fn().mockResolvedValue(
+				new Response(snapshotJson, {
+					headers: { "Content-Type": "application/json" },
+				}),
+			),
+			delete: jest.fn(),
+		};
+		Object.defineProperty(global, "caches", {
+			writable: true,
+			configurable: true,
+			value: {
+				open: jest.fn().mockResolvedValue(mockCache),
+				delete: jest.fn().mockResolvedValue(true),
+			},
+		});
 
-    global.fetch = jest.fn(async (url: string) => {
-      if (url === '/api/features') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ airplaneMode: true }),
-        };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
-  });
+		global.fetch = jest.fn(async (url: string) => {
+			if (url === "/api/features") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ airplaneMode: true }),
+				};
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
+	});
 
-  afterEach(() => {
-    Object.defineProperty(global, 'caches', {
-      writable: true,
-      configurable: true,
-      value: undefined,
-    });
-  });
+	afterEach(() => {
+		Object.defineProperty(global, "caches", {
+			writable: true,
+			configurable: true,
+			value: undefined,
+		});
+	});
 
-  it('shows an airplane mode error toast instead of enqueuing when airplane mode is on', async () => {
-    const { getByText, findByText } = render(<ConsolePage />);
+	it("shows an airplane mode error toast instead of enqueuing when airplane mode is on", async () => {
+		const { getByText, findByText } = render(<ConsolePage />);
 
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
 
-    await waitFor(() => {
-      expect(getByText('Turn off')).toBeInTheDocument();
-    });
+		await waitFor(() => {
+			expect(getByText("Turn off")).toBeInTheDocument();
+		});
 
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    expect(await findByText('Approve & Merge')).toBeInTheDocument();
-    fireEvent.click(getByText('Approve & Merge'));
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		expect(await findByText("Approve & Merge")).toBeInTheDocument();
+		fireEvent.click(getByText("Approve & Merge"));
 
-    await waitFor(() => {
-      expect(getByText('Airplane mode')).toBeInTheDocument();
-    });
-    expect(getByText(/network connection/i)).toBeInTheDocument();
-    expect(document.querySelector('.console-undo-toast')).toBeNull();
-  });
+		await waitFor(() => {
+			expect(getByText("Airplane mode")).toBeInTheDocument();
+		});
+		expect(getByText(/network connection/i)).toBeInTheDocument();
+		expect(document.querySelector(".console-undo-toast")).toBeNull();
+	});
 });
 
-describe('ConsolePage story-labeled item Delete Story button', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/todo-by-human?k=token');
-    const fetchMock = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        const tab = listMatch[1];
-        const base = listPayload(tab);
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            tab === 'todo-by-human'
-              ? {
-                  ...base,
-                  items: [
-                    {
-                      number: 999,
-                      title: 'TDPM Console port story issue',
-                      url: 'https://github.com/o/r/issues/999',
-                      repo: 'o/r',
-                      nameWithOwner: 'o/r',
-                      projectItemId: 'PVTI_ST1',
-                      itemId: 'PVTI_ST1',
-                      isPr: false,
-                      relatedOpenPullRequestUrls: [],
-                      story: 'TDPM Console port',
-                      status: 'Todo by human',
-                      nextActionDate: null,
-                      nextActionHour: null,
-                      dependedIssueUrls: [],
-                      labels: ['story'],
-                      createdAt: '2026-06-18T00:00:00.000Z',
-                    },
-                  ],
-                }
-              : base,
-        };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-  });
+describe("ConsolePage story-labeled item Delete Story button", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/todo-by-human?k=token");
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				const tab = listMatch[1];
+				const base = listPayload(tab);
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						tab === "todo-by-human"
+							? {
+									...base,
+									items: [
+										{
+											number: 999,
+											title: "TDPM Console port story issue",
+											url: "https://github.com/o/r/issues/999",
+											repo: "o/r",
+											nameWithOwner: "o/r",
+											projectItemId: "PVTI_ST1",
+											itemId: "PVTI_ST1",
+											isPr: false,
+											relatedOpenPullRequestUrls: [],
+											story: "TDPM Console port",
+											status: "Todo by human",
+											nextActionDate: null,
+											nextActionHour: null,
+											dependedIssueUrls: [],
+											labels: ["story"],
+											createdAt: "2026-06-18T00:00:00.000Z",
+										},
+									],
+								}
+							: base,
+				};
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+	});
 
-  it('shows Delete Story in the danger zone when a story-labeled item matching a story entry is selected', async () => {
-    const { getByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('TDPM Console port story issue')).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('TDPM Console port story issue'));
-    await waitFor(() => {
-      expect(getByText('⚠')).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('⚠'));
-    await waitFor(() => {
-      expect(getByText('Delete Story')).toBeInTheDocument();
-    });
-  });
+	it("shows Delete Story in the danger zone when a story-labeled item matching a story entry is selected", async () => {
+		const { getByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("TDPM Console port story issue")).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("TDPM Console port story issue"));
+		await waitFor(() => {
+			expect(getByText("⚠")).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("⚠"));
+		await waitFor(() => {
+			expect(getByText("Delete Story")).toBeInTheDocument();
+		});
+	});
 
-  it('does not show Delete Story in the danger zone when the selected item has no story label', async () => {
-    const fetchMock = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => listPayload(listMatch[1]),
-        };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme'] }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
+	it("does not show Delete Story in the danger zone when the selected item has no story label", async () => {
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => listPayload(listMatch[1]),
+				};
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme"] }),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
 
-    const { getByText, queryByText } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(
-        getByText('Notify finished issue preparation'),
-      ).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('Notify finished issue preparation'));
-    await waitFor(() => {
-      expect(getByText('⚠')).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('⚠'));
-    expect(queryByText('Delete Story')).toBeNull();
-  });
+		const { getByText, queryByText } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(
+				getByText("Notify finished issue preparation"),
+			).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("Notify finished issue preparation"));
+		await waitFor(() => {
+			expect(getByText("⚠")).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("⚠"));
+		expect(queryByText("Delete Story")).toBeNull();
+	});
 });
 
-describe('ConsolePage task creation action queue', () => {
-  const storiesTabPayload = () => ({
-    ...listPayload('stories'),
-    defaultNameWithOwner: 'o/r',
-  });
+describe("ConsolePage task creation action queue", () => {
+	const storiesTabPayload = () => ({
+		...listPayload("stories"),
+		defaultNameWithOwner: "o/r",
+	});
 
-  const installFetchWithBlockingCreate = (): jest.Mock => {
-    const fetchMock = jest.fn(async (url: string) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        const tab = listMatch[1];
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            tab === 'stories' ? storiesTabPayload() : listPayload(tab),
-        };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ pjcodes: ['acme'] }),
-        };
-      }
-      if (url === '/api/createissue') {
-        return new Promise<never>(() => {});
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    });
-    global.fetch = fetchMock as unknown as typeof fetch;
-    return fetchMock;
-  };
+	const installFetchWithBlockingCreate = (): jest.Mock => {
+		const fetchMock = jest.fn(async (url: string) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				const tab = listMatch[1];
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						tab === "stories" ? storiesTabPayload() : listPayload(tab),
+				};
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ pjcodes: ["acme"] }),
+				};
+			}
+			if (url === "/api/createissue") {
+				return new Promise<never>(() => {});
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		});
+		global.fetch = fetchMock as unknown as typeof fetch;
+		return fetchMock;
+	};
 
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-  });
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+	});
 
-  it('closes the create-task dialog immediately when Create is pressed, before postConsoleCreateIssue resolves', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithBlockingCreate();
-      const { queryByRole, getByRole, getByLabelText } = render(
-        <ConsolePage />,
-      );
+	it("closes the create-task dialog immediately when Create is pressed, before postConsoleCreateIssue resolves", async () => {
+		jest.useFakeTimers();
+		try {
+			installFetchWithBlockingCreate();
+			const { queryByRole, getByRole, getByLabelText } = render(
+				<ConsolePage />,
+			);
 
-      await waitFor(() => {
-        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
-      });
+			await waitFor(() => {
+				expect(getByRole("button", { name: "Create new task" })).toBeEnabled();
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+			fireEvent.click(getByRole("button", { name: "Create new task" }));
 
-      await waitFor(() => {
-        expect(
-          getByRole('dialog', { name: 'Create new task' }),
-        ).toBeInTheDocument();
-      });
+			await waitFor(() => {
+				expect(
+					getByRole("dialog", { name: "Create new task" }),
+				).toBeInTheDocument();
+			});
 
-      fireEvent.change(getByLabelText('Title'), {
-        target: { value: 'My new task' },
-      });
+			fireEvent.change(getByLabelText("Title"), {
+				target: { value: "My new task" },
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create' }));
+			fireEvent.click(getByRole("button", { name: "Create" }));
 
-      await waitFor(() => {
-        expect(queryByRole('dialog', { name: 'Create new task' })).toBeNull();
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(queryByRole("dialog", { name: "Create new task" })).toBeNull();
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('shows a task-created undo toast immediately after Create is pressed', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithBlockingCreate();
-      const { queryByText, getByRole, getByLabelText } = render(
-        <ConsolePage />,
-      );
+	it("shows a task-created undo toast immediately after Create is pressed", async () => {
+		jest.useFakeTimers();
+		try {
+			installFetchWithBlockingCreate();
+			const { queryByText, getByRole, getByLabelText } = render(
+				<ConsolePage />,
+			);
 
-      await waitFor(() => {
-        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
-      });
+			await waitFor(() => {
+				expect(getByRole("button", { name: "Create new task" })).toBeEnabled();
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+			fireEvent.click(getByRole("button", { name: "Create new task" }));
 
-      await waitFor(() => {
-        expect(
-          getByRole('dialog', { name: 'Create new task' }),
-        ).toBeInTheDocument();
-      });
+			await waitFor(() => {
+				expect(
+					getByRole("dialog", { name: "Create new task" }),
+				).toBeInTheDocument();
+			});
 
-      fireEvent.change(getByLabelText('Title'), {
-        target: { value: 'My new task' },
-      });
+			fireEvent.change(getByLabelText("Title"), {
+				target: { value: "My new task" },
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create' }));
+			fireEvent.click(getByRole("button", { name: "Create" }));
 
-      await waitFor(() => {
-        expect(queryByText(/Task created — "My new task"/)).toBeInTheDocument();
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(queryByText(/Task created — "My new task"/)).toBeInTheDocument();
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('does not call postConsoleCreateIssue when Undo is clicked within 5 seconds', async () => {
-    jest.useFakeTimers();
-    try {
-      const fetchMock = installFetchWithBlockingCreate();
-      const { getByRole, getByLabelText } = render(<ConsolePage />);
+	it("does not call postConsoleCreateIssue when Undo is clicked within 5 seconds", async () => {
+		jest.useFakeTimers();
+		try {
+			const fetchMock = installFetchWithBlockingCreate();
+			const { getByRole, getByLabelText } = render(<ConsolePage />);
 
-      await waitFor(() => {
-        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
-      });
+			await waitFor(() => {
+				expect(getByRole("button", { name: "Create new task" })).toBeEnabled();
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+			fireEvent.click(getByRole("button", { name: "Create new task" }));
 
-      await waitFor(() => {
-        expect(
-          getByRole('dialog', { name: 'Create new task' }),
-        ).toBeInTheDocument();
-      });
+			await waitFor(() => {
+				expect(
+					getByRole("dialog", { name: "Create new task" }),
+				).toBeInTheDocument();
+			});
 
-      fireEvent.change(getByLabelText('Title'), {
-        target: { value: 'My new task' },
-      });
+			fireEvent.change(getByLabelText("Title"), {
+				target: { value: "My new task" },
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create' }));
+			fireEvent.click(getByRole("button", { name: "Create" }));
 
-      await waitFor(() => {
-        expect(getByRole('button', { name: 'Undo' })).toBeInTheDocument();
-      });
+			await waitFor(() => {
+				expect(getByRole("button", { name: "Undo" })).toBeInTheDocument();
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Undo' }));
+			fireEvent.click(getByRole("button", { name: "Undo" }));
 
-      act(() => {
-        jest.advanceTimersByTime(6000);
-      });
+			act(() => {
+				jest.advanceTimersByTime(6000);
+			});
 
-      const createIssueCalls = fetchMock.mock.calls.filter(
-        ([url]: [string]) => url === '/api/createissue',
-      );
-      expect(createIssueCalls.length).toBe(0);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			const createIssueCalls = fetchMock.mock.calls.filter(
+				([url]: [string]) => url === "/api/createissue",
+			);
+			expect(createIssueCalls.length).toBe(0);
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('calls postConsoleCreateIssue once after 5 seconds elapse without Undo', async () => {
-    jest.useFakeTimers();
-    try {
-      const fetchMock = jest.fn(async (url: string) => {
-        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-        if (listMatch !== null) {
-          const tab = listMatch[1];
-          return {
-            ok: true,
-            status: 200,
-            json: async () =>
-              tab === 'stories' ? storiesTabPayload() : listPayload(tab),
-          };
-        }
-        if (url === '/api/projects') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ pjcodes: ['acme'] }),
-          };
-        }
-        if (url === '/api/createissue') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              issueUrl: 'https://github.com/o/r/issues/100',
-            }),
-          };
-        }
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ body: '# body' }),
-        };
-      });
-      global.fetch = fetchMock as unknown as typeof fetch;
+	it("calls postConsoleCreateIssue once after 5 seconds elapse without Undo", async () => {
+		jest.useFakeTimers();
+		try {
+			const fetchMock = jest.fn(async (url: string) => {
+				const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+				if (listMatch !== null) {
+					const tab = listMatch[1];
+					return {
+						ok: true,
+						status: 200,
+						json: async () =>
+							tab === "stories" ? storiesTabPayload() : listPayload(tab),
+					};
+				}
+				if (url === "/api/projects") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({ pjcodes: ["acme"] }),
+					};
+				}
+				if (url === "/api/createissue") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({
+							issueUrl: "https://github.com/o/r/issues/100",
+						}),
+					};
+				}
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ body: "# body" }),
+				};
+			});
+			global.fetch = fetchMock as unknown as typeof fetch;
 
-      const { getByRole, getByLabelText } = render(<ConsolePage />);
+			const { getByRole, getByLabelText } = render(<ConsolePage />);
 
-      await waitFor(() => {
-        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
-      });
+			await waitFor(() => {
+				expect(getByRole("button", { name: "Create new task" })).toBeEnabled();
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+			fireEvent.click(getByRole("button", { name: "Create new task" }));
 
-      await waitFor(() => {
-        expect(
-          getByRole('dialog', { name: 'Create new task' }),
-        ).toBeInTheDocument();
-      });
+			await waitFor(() => {
+				expect(
+					getByRole("dialog", { name: "Create new task" }),
+				).toBeInTheDocument();
+			});
 
-      fireEvent.change(getByLabelText('Title'), {
-        target: { value: 'My new task' },
-      });
+			fireEvent.change(getByLabelText("Title"), {
+				target: { value: "My new task" },
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create' }));
+			fireEvent.click(getByRole("button", { name: "Create" }));
 
-      act(() => {
-        jest.advanceTimersByTime(4900);
-      });
+			act(() => {
+				jest.advanceTimersByTime(4900);
+			});
 
-      const createCallsBefore = fetchMock.mock.calls.filter(
-        ([url]: [string]) => url === '/api/createissue',
-      );
-      expect(createCallsBefore.length).toBe(0);
+			const createCallsBefore = fetchMock.mock.calls.filter(
+				([url]: [string]) => url === "/api/createissue",
+			);
+			expect(createCallsBefore.length).toBe(0);
 
-      await act(async () => {
-        jest.advanceTimersByTime(200);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
+			await act(async () => {
+				jest.advanceTimersByTime(200);
+				await Promise.resolve();
+				await Promise.resolve();
+			});
 
-      const createCallsAfter = fetchMock.mock.calls.filter(
-        ([url]: [string]) => url === '/api/createissue',
-      );
-      expect(createCallsAfter.length).toBe(1);
-      const createBody = JSON.parse(
-        (createCallsAfter[0] as unknown as [string, RequestInit])[1]
-          .body as string,
-      ) as { storyName: string; body: string | null };
-      expect(createBody.storyName).toBe('TDPM Console port');
-      expect(createBody.body).toBeNull();
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			const createCallsAfter = fetchMock.mock.calls.filter(
+				([url]: [string]) => url === "/api/createissue",
+			);
+			expect(createCallsAfter.length).toBe(1);
+			const createBody = JSON.parse(
+				(createCallsAfter[0] as unknown as [string, RequestInit])[1]
+					.body as string,
+			) as { storyName: string; body: string | null };
+			expect(createBody.storyName).toBe("TDPM Console port");
+			expect(createBody.body).toBeNull();
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('passes body from dialog to postConsoleCreateIssue when body is filled in', async () => {
-    jest.useFakeTimers();
-    try {
-      const fetchMock = jest.fn(async (url: string) => {
-        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-        if (listMatch !== null) {
-          const tab = listMatch[1];
-          return {
-            ok: true,
-            status: 200,
-            json: async () =>
-              tab === 'stories' ? storiesTabPayload() : listPayload(tab),
-          };
-        }
-        if (url === '/api/projects') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ pjcodes: ['acme'] }),
-          };
-        }
-        if (url === '/api/createissue') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              issueUrl: 'https://github.com/o/r/issues/100',
-            }),
-          };
-        }
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ body: '# body' }),
-        };
-      });
-      global.fetch = fetchMock as unknown as typeof fetch;
+	it("passes body from dialog to postConsoleCreateIssue when body is filled in", async () => {
+		jest.useFakeTimers();
+		try {
+			const fetchMock = jest.fn(async (url: string) => {
+				const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+				if (listMatch !== null) {
+					const tab = listMatch[1];
+					return {
+						ok: true,
+						status: 200,
+						json: async () =>
+							tab === "stories" ? storiesTabPayload() : listPayload(tab),
+					};
+				}
+				if (url === "/api/projects") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({ pjcodes: ["acme"] }),
+					};
+				}
+				if (url === "/api/createissue") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({
+							issueUrl: "https://github.com/o/r/issues/100",
+						}),
+					};
+				}
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ body: "# body" }),
+				};
+			});
+			global.fetch = fetchMock as unknown as typeof fetch;
 
-      const { getByRole, getByLabelText } = render(<ConsolePage />);
+			const { getByRole, getByLabelText } = render(<ConsolePage />);
 
-      await waitFor(() => {
-        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
-      });
+			await waitFor(() => {
+				expect(getByRole("button", { name: "Create new task" })).toBeEnabled();
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+			fireEvent.click(getByRole("button", { name: "Create new task" }));
 
-      await waitFor(() => {
-        expect(
-          getByRole('dialog', { name: 'Create new task' }),
-        ).toBeInTheDocument();
-      });
+			await waitFor(() => {
+				expect(
+					getByRole("dialog", { name: "Create new task" }),
+				).toBeInTheDocument();
+			});
 
-      fireEvent.change(getByLabelText('Title'), {
-        target: { value: 'Task with body text' },
-      });
-      fireEvent.change(getByLabelText('Body'), {
-        target: { value: 'This is the task body' },
-      });
+			fireEvent.change(getByLabelText("Title"), {
+				target: { value: "Task with body text" },
+			});
+			fireEvent.change(getByLabelText("Body"), {
+				target: { value: "This is the task body" },
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create' }));
+			fireEvent.click(getByRole("button", { name: "Create" }));
 
-      await act(async () => {
-        jest.advanceTimersByTime(5100);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
+			await act(async () => {
+				jest.advanceTimersByTime(5100);
+				await Promise.resolve();
+				await Promise.resolve();
+			});
 
-      const createCallsAfter = fetchMock.mock.calls.filter(
-        ([url]: [string]) => url === '/api/createissue',
-      );
-      expect(createCallsAfter.length).toBe(1);
-      const createBody = JSON.parse(
-        (createCallsAfter[0] as unknown as [string, RequestInit])[1]
-          .body as string,
-      ) as { storyName: string; body: string | null };
-      expect(createBody.storyName).toBe('TDPM Console port');
-      expect(createBody.body).toBe('This is the task body');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			const createCallsAfter = fetchMock.mock.calls.filter(
+				([url]: [string]) => url === "/api/createissue",
+			);
+			expect(createCallsAfter.length).toBe(1);
+			const createBody = JSON.parse(
+				(createCallsAfter[0] as unknown as [string, RequestInit])[1]
+					.body as string,
+			) as { storyName: string; body: string | null };
+			expect(createBody.storyName).toBe("TDPM Console port");
+			expect(createBody.body).toBe("This is the task body");
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('renders an SVG icon inside the Create new task button', async () => {
-    installFetchWithBlockingCreate();
-    const { getByRole } = render(<ConsolePage />);
+	it("renders an SVG icon inside the Create new task button", async () => {
+		installFetchWithBlockingCreate();
+		const { getByRole } = render(<ConsolePage />);
 
-    await waitFor(() => {
-      expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
-    });
+		await waitFor(() => {
+			expect(getByRole("button", { name: "Create new task" })).toBeEnabled();
+		});
 
-    const button = getByRole('button', { name: 'Create new task' });
-    expect(button.querySelector('svg')).toBeInTheDocument();
-  });
+		const button = getByRole("button", { name: "Create new task" });
+		expect(button.querySelector("svg")).toBeInTheDocument();
+	});
 });
 
-describe('ConsolePage story selection auto-reset', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-  });
+describe("ConsolePage story selection auto-reset", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+	});
 
-  it('resets the story selection in the create-task dialog to the first story when the story list changes', async () => {
-    jest.useFakeTimers();
-    try {
-      let currentStoryOptionId = 'st1';
-      let currentStoryName = 'TDPM Console port';
-      const fetchMock = jest.fn(async (url: string) => {
-        const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-        if (listMatch !== null) {
-          const tab = listMatch[1];
-          if (tab === 'stories') {
-            return {
-              ok: true,
-              status: 200,
-              json: async () => ({
-                ...listPayload('stories'),
-                defaultNameWithOwner: 'o/r',
-                stories: [
-                  {
-                    storyName: currentStoryName,
-                    storyOptionId: currentStoryOptionId,
-                    color: 'BLUE',
-                    openItemCount: 1,
-                    storyViewUrl: null,
-                  },
-                ],
-              }),
-            };
-          }
-          return { ok: true, status: 200, json: async () => listPayload(tab) };
-        }
-        if (url === '/api/projects') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ pjcodes: ['acme'] }),
-          };
-        }
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ body: '# body' }),
-        };
-      });
-      global.fetch = fetchMock as unknown as typeof fetch;
+	it("resets the story selection in the create-task dialog to the first story when the story list changes", async () => {
+		jest.useFakeTimers();
+		try {
+			let currentStoryOptionId = "st1";
+			let currentStoryName = "TDPM Console port";
+			const fetchMock = jest.fn(async (url: string) => {
+				const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+				if (listMatch !== null) {
+					const tab = listMatch[1];
+					if (tab === "stories") {
+						return {
+							ok: true,
+							status: 200,
+							json: async () => ({
+								...listPayload("stories"),
+								defaultNameWithOwner: "o/r",
+								stories: [
+									{
+										storyName: currentStoryName,
+										storyOptionId: currentStoryOptionId,
+										color: "BLUE",
+										openItemCount: 1,
+										storyViewUrl: null,
+									},
+								],
+							}),
+						};
+					}
+					return { ok: true, status: 200, json: async () => listPayload(tab) };
+				}
+				if (url === "/api/projects") {
+					return {
+						ok: true,
+						status: 200,
+						json: async () => ({ pjcodes: ["acme"] }),
+					};
+				}
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ body: "# body" }),
+				};
+			});
+			global.fetch = fetchMock as unknown as typeof fetch;
 
-      const { getByRole } = render(<ConsolePage />);
+			const { getByRole } = render(<ConsolePage />);
 
-      await waitFor(() => {
-        expect(getByRole('button', { name: 'Create new task' })).toBeEnabled();
-      });
+			await waitFor(() => {
+				expect(getByRole("button", { name: "Create new task" })).toBeEnabled();
+			});
 
-      fireEvent.click(getByRole('button', { name: 'Create new task' }));
+			fireEvent.click(getByRole("button", { name: "Create new task" }));
 
-      await waitFor(() => {
-        expect(
-          getByRole('dialog', { name: 'Create new task' }),
-        ).toBeInTheDocument();
-      });
+			await waitFor(() => {
+				expect(
+					getByRole("dialog", { name: "Create new task" }),
+				).toBeInTheDocument();
+			});
 
-      const dialog = getByRole('dialog', { name: 'Create new task' });
-      expect(
-        within(dialog)
-          .getByText('TDPM Console port')
-          .closest('button')
-          ?.getAttribute('aria-pressed'),
-      ).toBe('true');
+			const dialog = getByRole("dialog", { name: "Create new task" });
+			expect(
+				within(dialog)
+					.getByText("TDPM Console port")
+					.closest("button")
+					?.getAttribute("aria-pressed"),
+			).toBe("true");
 
-      currentStoryOptionId = 'st2';
-      currentStoryName = 'New project story';
+			currentStoryOptionId = "st2";
+			currentStoryName = "New project story";
 
-      await act(async () => {
-        jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
-      });
+			await act(async () => {
+				jest.advanceTimersByTime(CONSOLE_TAB_REFRESH_INTERVAL_MS);
+			});
 
-      await waitFor(() => {
-        expect(
-          within(getByRole('dialog', { name: 'Create new task' }))
-            .getByText('New project story')
-            .closest('button')
-            ?.getAttribute('aria-pressed'),
-        ).toBe('true');
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+			await waitFor(() => {
+				expect(
+					within(getByRole("dialog", { name: "Create new task" }))
+						.getByText("New project story")
+						.closest("button")
+						?.getAttribute("aria-pressed"),
+				).toBe("true");
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 });
 
-describe('ConsolePage workflow issue creation', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/projects/acme/prs?k=token');
-  });
+describe("ConsolePage workflow issue creation", () => {
+	beforeEach(() => {
+		localStorage.clear();
+		window.history.replaceState({}, "", "/projects/acme/prs?k=token");
+	});
 
-  const installFetchWithFleetUrl = (
-    fleetTaskCreateUrl: string | null,
-    createWorkflowIssueOk = true,
-  ) => {
-    global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
-      const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
-      if (listMatch !== null) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => listPayload(listMatch[1]),
-        };
-      }
-      if (url === '/api/projects') {
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            fleetTaskCreateUrl !== null
-              ? { pjcodes: ['acme'], fleetTaskCreateUrl }
-              : { pjcodes: ['acme'] },
-        };
-      }
-      if (url.startsWith('/api/projectreadmeconfig')) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({ maximumPreparingIssuesCount: 3 }),
-        };
-      }
-      if (url.startsWith('/api/comments')) {
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            comments: [
-              {
-                author: 'bot',
-                body: 'Workflow test comment body.',
-                createdAt: '2026-06-19T00:00:00.000Z',
-              },
-            ],
-          }),
-        };
-      }
-      if (url.startsWith('/api/createworkflowissue')) {
-        if (!createWorkflowIssueOk) {
-          return {
-            ok: false,
-            status: 500,
-            text: async () => 'Internal Server Error',
-          };
-        }
-        const requestBody =
-          init?.body !== undefined && typeof init.body === 'string'
-            ? (JSON.parse(init.body) as Record<string, unknown>)
-            : {};
-        return {
-          ok: true,
-          status: 200,
-          json: async () => ({
-            issueUrl: 'https://github.com/HiromiShikata/secretary/issues/100',
-            ...requestBody,
-          }),
-        };
-      }
-      return { ok: true, status: 200, json: async () => ({ body: '# body' }) };
-    }) as unknown as typeof fetch;
-  };
+	const installFetchWithFleetUrl = (
+		fleetTaskCreateUrl: string | null,
+		createWorkflowIssueOk = true,
+	) => {
+		global.fetch = jest.fn(async (url: string, init?: RequestInit) => {
+			const listMatch = url.match(/\/projects\/[^/]+\/([^/]+)\/list\.json/);
+			if (listMatch !== null) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => listPayload(listMatch[1]),
+				};
+			}
+			if (url === "/api/projects") {
+				return {
+					ok: true,
+					status: 200,
+					json: async () =>
+						fleetTaskCreateUrl !== null
+							? { pjcodes: ["acme"], fleetTaskCreateUrl }
+							: { pjcodes: ["acme"] },
+				};
+			}
+			if (url.startsWith("/api/projectreadmeconfig")) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ maximumPreparingIssuesCount: 3 }),
+				};
+			}
+			if (url.startsWith("/api/comments")) {
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({
+						comments: [
+							{
+								author: "bot",
+								body: "Workflow test comment body.",
+								createdAt: "2026-06-19T00:00:00.000Z",
+							},
+						],
+					}),
+				};
+			}
+			if (url.startsWith("/api/createworkflowissue")) {
+				if (!createWorkflowIssueOk) {
+					return {
+						ok: false,
+						status: 500,
+						text: async () => "Internal Server Error",
+					};
+				}
+				const requestBody =
+					init?.body !== undefined && typeof init.body === "string"
+						? (JSON.parse(init.body) as Record<string, unknown>)
+						: {};
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({
+						issueUrl: "https://github.com/HiromiShikata/secretary/issues/100",
+						...requestBody,
+					}),
+				};
+			}
+			return { ok: true, status: 200, json: async () => ({ body: "# body" }) };
+		}) as unknown as typeof fetch;
+	};
 
-  it('does not render the create workflow issue button when fleetTaskCreateUrl is null', async () => {
-    installFetchWithFleetUrl(null);
-    const { getByText, queryAllByTitle } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    await waitFor(() => {
-      expect(getByText('Workflow test comment body.')).toBeInTheDocument();
-    });
-    expect(
-      queryAllByTitle('Create workflow improvement issue from this comment'),
-    ).toHaveLength(0);
-  });
+	it("does not render the create workflow issue button when fleetTaskCreateUrl is null", async () => {
+		installFetchWithFleetUrl(null);
+		const { getByText, queryAllByTitle } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		await waitFor(() => {
+			expect(getByText("Workflow test comment body.")).toBeInTheDocument();
+		});
+		expect(
+			queryAllByTitle("Create workflow improvement issue from this comment"),
+		).toHaveLength(0);
+	});
 
-  it('renders the create workflow issue button on a comment when fleetTaskCreateUrl is non-null', async () => {
-    installFetchWithFleetUrl(
-      'https://github.com/HiromiShikata/secretary/issues/new',
-    );
-    const { getByText, getAllByTitle } = render(<ConsolePage />);
-    await waitFor(() => {
-      expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-    });
-    fireEvent.click(getByText('Add serveConsole subcommand'));
-    await waitFor(() => {
-      expect(
-        getAllByTitle('Create workflow improvement issue from this comment')
-          .length,
-      ).toBeGreaterThan(0);
-    });
-  });
+	it("renders the create workflow issue button on a comment when fleetTaskCreateUrl is non-null", async () => {
+		installFetchWithFleetUrl(
+			"https://github.com/HiromiShikata/secretary/issues/new",
+		);
+		const { getByText, getAllByTitle } = render(<ConsolePage />);
+		await waitFor(() => {
+			expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+		});
+		fireEvent.click(getByText("Add serveConsole subcommand"));
+		await waitFor(() => {
+			expect(
+				getAllByTitle("Create workflow improvement issue from this comment")
+					.length,
+			).toBeGreaterThan(0);
+		});
+	});
 
-  it('shows an undo toast when workflow issue creation is triggered from a comment plus button', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithFleetUrl(
-        'https://github.com/HiromiShikata/secretary/issues/new',
-      );
-      const { getByText, getAllByTitle, getByRole, queryByText } = render(
-        <ConsolePage />,
-      );
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      await waitFor(() => {
-        expect(
-          getAllByTitle('Create workflow improvement issue from this comment')
-            .length,
-        ).toBeGreaterThan(0);
-      });
-      fireEvent.click(
-        getAllByTitle('Create workflow improvement issue from this comment')[0],
-      );
-      await waitFor(() => {
-        expect(getByRole('dialog')).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
-        target: { value: 'Test workflow issue' },
-      });
-      fireEvent.click(getByRole('button', { name: 'Create' }));
-      await waitFor(() => {
-        expect(queryByText(/Task created/)).toBeInTheDocument();
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("shows an undo toast when workflow issue creation is triggered from a comment plus button", async () => {
+		jest.useFakeTimers();
+		try {
+			installFetchWithFleetUrl(
+				"https://github.com/HiromiShikata/secretary/issues/new",
+			);
+			const { getByText, getAllByTitle, getByRole, queryByText } = render(
+				<ConsolePage />,
+			);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			await waitFor(() => {
+				expect(
+					getAllByTitle("Create workflow improvement issue from this comment")
+						.length,
+				).toBeGreaterThan(0);
+			});
+			fireEvent.click(
+				getAllByTitle("Create workflow improvement issue from this comment")[0],
+			);
+			await waitFor(() => {
+				expect(getByRole("dialog")).toBeInTheDocument();
+			});
+			fireEvent.change(getByRole("textbox", { name: "Title" }), {
+				target: { value: "Test workflow issue" },
+			});
+			fireEvent.click(getByRole("button", { name: "Create" }));
+			await waitFor(() => {
+				expect(queryByText(/Task created/)).toBeInTheDocument();
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner after the undo window elapses', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithFleetUrl(
-        'https://github.com/HiromiShikata/secretary/issues/new',
-      );
-      const fetchSpy = global.fetch as jest.Mock;
-      const { getByText, getAllByTitle, getByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      await waitFor(() => {
-        expect(
-          getAllByTitle('Create workflow improvement issue from this comment')
-            .length,
-        ).toBeGreaterThan(0);
-      });
-      const createBtn = getAllByTitle(
-        'Create workflow improvement issue from this comment',
-      )[0];
-      fireEvent.click(createBtn);
-      await waitFor(() => {
-        expect(getByRole('dialog')).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
-        target: { value: 'Test workflow issue' },
-      });
-      fireEvent.click(getByRole('button', { name: 'Create' }));
-      await act(async () => {
-        jest.advanceTimersByTime(5100);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
-      const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
-      );
-      expect(createIssueCalls.length).toBeGreaterThan(0);
-      const requestBody = JSON.parse(
-        (createIssueCalls[0][1] as RequestInit).body as string,
-      ) as Record<string, unknown>;
-      expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("calls postConsoleCreateWorkflowIssue with correct nameWithOwner after the undo window elapses", async () => {
+		jest.useFakeTimers();
+		try {
+			installFetchWithFleetUrl(
+				"https://github.com/HiromiShikata/secretary/issues/new",
+			);
+			const fetchSpy = global.fetch as jest.Mock;
+			const { getByText, getAllByTitle, getByRole } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			await waitFor(() => {
+				expect(
+					getAllByTitle("Create workflow improvement issue from this comment")
+						.length,
+				).toBeGreaterThan(0);
+			});
+			const createBtn = getAllByTitle(
+				"Create workflow improvement issue from this comment",
+			)[0];
+			fireEvent.click(createBtn);
+			await waitFor(() => {
+				expect(getByRole("dialog")).toBeInTheDocument();
+			});
+			fireEvent.change(getByRole("textbox", { name: "Title" }), {
+				target: { value: "Test workflow issue" },
+			});
+			fireEvent.click(getByRole("button", { name: "Create" }));
+			await act(async () => {
+				jest.advanceTimersByTime(5100);
+				await Promise.resolve();
+				await Promise.resolve();
+			});
+			const createIssueCalls = fetchSpy.mock.calls.filter(
+				([callUrl]: [string]) => callUrl === "/api/createworkflowissue",
+			);
+			expect(createIssueCalls.length).toBeGreaterThan(0);
+			const requestBody = JSON.parse(
+				(createIssueCalls[0][1] as RequestInit).body as string,
+			) as Record<string, unknown>;
+			expect(requestBody.nameWithOwner).toBe("HiromiShikata/secretary");
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('shows an error toast when postConsoleCreateWorkflowIssue fails after the undo window elapses', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithFleetUrl(
-        'https://github.com/HiromiShikata/secretary/issues/new',
-        false,
-      );
-      const { getByText, getAllByTitle, getByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      await waitFor(() => {
-        expect(
-          getAllByTitle('Create workflow improvement issue from this comment')
-            .length,
-        ).toBeGreaterThan(0);
-      });
-      const createBtn = getAllByTitle(
-        'Create workflow improvement issue from this comment',
-      )[0];
-      fireEvent.click(createBtn);
-      await waitFor(() => {
-        expect(getByRole('dialog')).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
-        target: { value: 'Test workflow issue' },
-      });
-      fireEvent.click(getByRole('button', { name: 'Create' }));
-      await act(async () => {
-        jest.advanceTimersByTime(5100);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
-      await waitFor(() => {
-        expect(
-          getByText('Operation failed: Internal Server Error'),
-        ).toBeInTheDocument();
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("shows an error toast when postConsoleCreateWorkflowIssue fails after the undo window elapses", async () => {
+		jest.useFakeTimers();
+		try {
+			installFetchWithFleetUrl(
+				"https://github.com/HiromiShikata/secretary/issues/new",
+				false,
+			);
+			const { getByText, getAllByTitle, getByRole } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			await waitFor(() => {
+				expect(
+					getAllByTitle("Create workflow improvement issue from this comment")
+						.length,
+				).toBeGreaterThan(0);
+			});
+			const createBtn = getAllByTitle(
+				"Create workflow improvement issue from this comment",
+			)[0];
+			fireEvent.click(createBtn);
+			await waitFor(() => {
+				expect(getByRole("dialog")).toBeInTheDocument();
+			});
+			fireEvent.change(getByRole("textbox", { name: "Title" }), {
+				target: { value: "Test workflow issue" },
+			});
+			fireEvent.click(getByRole("button", { name: "Create" }));
+			await act(async () => {
+				jest.advanceTimersByTime(5100);
+				await Promise.resolve();
+				await Promise.resolve();
+			});
+			await waitFor(() => {
+				expect(
+					getByText("Operation failed: Internal Server Error"),
+				).toBeInTheDocument();
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('strips query string from fleetTaskCreateUrl when extracting nameWithOwner', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithFleetUrl(
-        'https://github.com/owner/repo/issues/new?projects=org/3',
-      );
-      const fetchSpy = global.fetch as jest.Mock;
-      const { getByText, getAllByTitle, getByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(getByText('Add serveConsole subcommand')).toBeInTheDocument();
-      });
-      fireEvent.click(getByText('Add serveConsole subcommand'));
-      await waitFor(() => {
-        expect(
-          getAllByTitle('Create workflow improvement issue from this comment')
-            .length,
-        ).toBeGreaterThan(0);
-      });
-      const createBtn = getAllByTitle(
-        'Create workflow improvement issue from this comment',
-      )[0];
-      fireEvent.click(createBtn);
-      await waitFor(() => {
-        expect(getByRole('dialog')).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('textbox', { name: 'Title' }), {
-        target: { value: 'Test workflow issue' },
-      });
-      fireEvent.click(getByRole('button', { name: 'Create' }));
-      await act(async () => {
-        jest.advanceTimersByTime(5100);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
-      const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
-      );
-      expect(createIssueCalls.length).toBeGreaterThan(0);
-      const requestBody = JSON.parse(
-        (createIssueCalls[0][1] as RequestInit).body as string,
-      ) as Record<string, unknown>;
-      expect(requestBody.nameWithOwner).toBe('owner/repo');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("strips query string from fleetTaskCreateUrl when extracting nameWithOwner", async () => {
+		jest.useFakeTimers();
+		try {
+			installFetchWithFleetUrl(
+				"https://github.com/owner/repo/issues/new?projects=org/3",
+			);
+			const fetchSpy = global.fetch as jest.Mock;
+			const { getByText, getAllByTitle, getByRole } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(getByText("Add serveConsole subcommand")).toBeInTheDocument();
+			});
+			fireEvent.click(getByText("Add serveConsole subcommand"));
+			await waitFor(() => {
+				expect(
+					getAllByTitle("Create workflow improvement issue from this comment")
+						.length,
+				).toBeGreaterThan(0);
+			});
+			const createBtn = getAllByTitle(
+				"Create workflow improvement issue from this comment",
+			)[0];
+			fireEvent.click(createBtn);
+			await waitFor(() => {
+				expect(getByRole("dialog")).toBeInTheDocument();
+			});
+			fireEvent.change(getByRole("textbox", { name: "Title" }), {
+				target: { value: "Test workflow issue" },
+			});
+			fireEvent.click(getByRole("button", { name: "Create" }));
+			await act(async () => {
+				jest.advanceTimersByTime(5100);
+				await Promise.resolve();
+				await Promise.resolve();
+			});
+			const createIssueCalls = fetchSpy.mock.calls.filter(
+				([callUrl]: [string]) => callUrl === "/api/createworkflowissue",
+			);
+			expect(createIssueCalls.length).toBeGreaterThan(0);
+			const requestBody = JSON.parse(
+				(createIssueCalls[0][1] as RequestInit).body as string,
+			) as Record<string, unknown>;
+			expect(requestBody.nameWithOwner).toBe("owner/repo");
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('shows an undo toast after fleet task dialog is submitted', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithFleetUrl(
-        'https://github.com/HiromiShikata/secretary/issues/new',
-      );
-      const { getByRole, queryByText } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getByRole('button', { name: 'Create fleet task' }),
-        ).toBeInTheDocument();
-      });
-      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
-      await waitFor(() => {
-        expect(getByRole('dialog')).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('textbox', { name: /title/i }), {
-        target: { value: 'My fleet task' },
-      });
-      fireEvent.click(getByRole('button', { name: /^create$/i }));
-      await waitFor(() => {
-        expect(queryByText(/Task created/)).toBeInTheDocument();
-      });
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("shows an undo toast after fleet task dialog is submitted", async () => {
+		jest.useFakeTimers();
+		try {
+			installFetchWithFleetUrl(
+				"https://github.com/HiromiShikata/secretary/issues/new",
+			);
+			const { getByRole, queryByText } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getByRole("button", { name: "Create fleet task" }),
+				).toBeInTheDocument();
+			});
+			fireEvent.click(getByRole("button", { name: "Create fleet task" }));
+			await waitFor(() => {
+				expect(getByRole("dialog")).toBeInTheDocument();
+			});
+			fireEvent.change(getByRole("textbox", { name: /title/i }), {
+				target: { value: "My fleet task" },
+			});
+			fireEvent.click(getByRole("button", { name: /^create$/i }));
+			await waitFor(() => {
+				expect(queryByText(/Task created/)).toBeInTheDocument();
+			});
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('calls postConsoleCreateWorkflowIssue with correct nameWithOwner and title when fleet task dialog is submitted', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithFleetUrl(
-        'https://github.com/HiromiShikata/secretary/issues/new',
-      );
-      const fetchSpy = global.fetch as jest.Mock;
-      const { getByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getByRole('button', { name: 'Create fleet task' }),
-        ).toBeInTheDocument();
-      });
-      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
-      await waitFor(() => {
-        expect(getByRole('dialog')).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('textbox', { name: /title/i }), {
-        target: { value: 'My fleet task' },
-      });
-      fireEvent.click(getByRole('button', { name: /^create$/i }));
-      await act(async () => {
-        jest.advanceTimersByTime(5100);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
-      const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
-      );
-      expect(createIssueCalls.length).toBeGreaterThan(0);
-      const requestBody = JSON.parse(
-        (createIssueCalls[0][1] as RequestInit).body as string,
-      ) as Record<string, unknown>;
-      expect(requestBody.nameWithOwner).toBe('HiromiShikata/secretary');
-      expect(requestBody.title).toBe('My fleet task');
-      expect(requestBody.body).toBe('');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("calls postConsoleCreateWorkflowIssue with correct nameWithOwner and title when fleet task dialog is submitted", async () => {
+		jest.useFakeTimers();
+		try {
+			installFetchWithFleetUrl(
+				"https://github.com/HiromiShikata/secretary/issues/new",
+			);
+			const fetchSpy = global.fetch as jest.Mock;
+			const { getByRole } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getByRole("button", { name: "Create fleet task" }),
+				).toBeInTheDocument();
+			});
+			fireEvent.click(getByRole("button", { name: "Create fleet task" }));
+			await waitFor(() => {
+				expect(getByRole("dialog")).toBeInTheDocument();
+			});
+			fireEvent.change(getByRole("textbox", { name: /title/i }), {
+				target: { value: "My fleet task" },
+			});
+			fireEvent.click(getByRole("button", { name: /^create$/i }));
+			await act(async () => {
+				jest.advanceTimersByTime(5100);
+				await Promise.resolve();
+				await Promise.resolve();
+			});
+			const createIssueCalls = fetchSpy.mock.calls.filter(
+				([callUrl]: [string]) => callUrl === "/api/createworkflowissue",
+			);
+			expect(createIssueCalls.length).toBeGreaterThan(0);
+			const requestBody = JSON.parse(
+				(createIssueCalls[0][1] as RequestInit).body as string,
+			) as Record<string, unknown>;
+			expect(requestBody.nameWithOwner).toBe("HiromiShikata/secretary");
+			expect(requestBody.title).toBe("My fleet task");
+			expect(requestBody.body).toBe("");
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 
-  it('strips query string from fleetTaskCreateUrl when extracting nameWithOwner for fleet task dialog', async () => {
-    jest.useFakeTimers();
-    try {
-      installFetchWithFleetUrl(
-        'https://github.com/owner/repo/issues/new?projects=org/3',
-      );
-      const fetchSpy = global.fetch as jest.Mock;
-      const { getByRole } = render(<ConsolePage />);
-      await waitFor(() => {
-        expect(
-          getByRole('button', { name: 'Create fleet task' }),
-        ).toBeInTheDocument();
-      });
-      fireEvent.click(getByRole('button', { name: 'Create fleet task' }));
-      await waitFor(() => {
-        expect(getByRole('dialog')).toBeInTheDocument();
-      });
-      fireEvent.change(getByRole('textbox', { name: /title/i }), {
-        target: { value: 'Task with query string url' },
-      });
-      fireEvent.click(getByRole('button', { name: /^create$/i }));
-      await act(async () => {
-        jest.advanceTimersByTime(5100);
-        await Promise.resolve();
-        await Promise.resolve();
-      });
-      const createIssueCalls = fetchSpy.mock.calls.filter(
-        ([callUrl]: [string]) => callUrl === '/api/createworkflowissue',
-      );
-      expect(createIssueCalls.length).toBeGreaterThan(0);
-      const requestBody = JSON.parse(
-        (createIssueCalls[0][1] as RequestInit).body as string,
-      ) as Record<string, unknown>;
-      expect(requestBody.nameWithOwner).toBe('owner/repo');
-    } finally {
-      jest.useRealTimers();
-    }
-  });
+	it("strips query string from fleetTaskCreateUrl when extracting nameWithOwner for fleet task dialog", async () => {
+		jest.useFakeTimers();
+		try {
+			installFetchWithFleetUrl(
+				"https://github.com/owner/repo/issues/new?projects=org/3",
+			);
+			const fetchSpy = global.fetch as jest.Mock;
+			const { getByRole } = render(<ConsolePage />);
+			await waitFor(() => {
+				expect(
+					getByRole("button", { name: "Create fleet task" }),
+				).toBeInTheDocument();
+			});
+			fireEvent.click(getByRole("button", { name: "Create fleet task" }));
+			await waitFor(() => {
+				expect(getByRole("dialog")).toBeInTheDocument();
+			});
+			fireEvent.change(getByRole("textbox", { name: /title/i }), {
+				target: { value: "Task with query string url" },
+			});
+			fireEvent.click(getByRole("button", { name: /^create$/i }));
+			await act(async () => {
+				jest.advanceTimersByTime(5100);
+				await Promise.resolve();
+				await Promise.resolve();
+			});
+			const createIssueCalls = fetchSpy.mock.calls.filter(
+				([callUrl]: [string]) => callUrl === "/api/createworkflowissue",
+			);
+			expect(createIssueCalls.length).toBeGreaterThan(0);
+			const requestBody = JSON.parse(
+				(createIssueCalls[0][1] as RequestInit).body as string,
+			) as Record<string, unknown>;
+			expect(requestBody.nameWithOwner).toBe("owner/repo");
+		} finally {
+			jest.useRealTimers();
+		}
+	});
 });
