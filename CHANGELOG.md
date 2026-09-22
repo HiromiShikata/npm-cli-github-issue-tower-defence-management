@@ -1,3 +1,10 @@
+## [2.135.9](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.8...v2.135.9) (2026-09-22)
+
+
+### Bug Fixes
+
+* **console-tab:** add background highlight to active tab for clear selection indicator ([#2520](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/2520)) ([4fe1c04](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/commit/4fe1c04b6d2fa7cbba94df5fbf1481b19947207f)), closes [#8b949e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/8b949e) [#8b949e](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/issues/8b949e)
+
 ## [2.135.8](https://github.com/HiromiShikata/npm-cli-github-issue-tower-defence-management/compare/v2.135.7...v2.135.8) (2026-09-21)
 
 
