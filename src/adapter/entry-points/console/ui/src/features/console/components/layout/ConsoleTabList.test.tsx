@@ -438,6 +438,25 @@ describe('ConsoleTabList', () => {
     expect(container.querySelector('.console-tab-project-link')).toBeNull();
   });
 
+  it('sets data-active only on the active tab and not on other visible tabs', () => {
+    const { getByText } = render(
+      <ConsoleTabList {...baseProps} activeTab="prs" counts={counts} />,
+    );
+    expect(getByText('Awaiting Owner').closest('a')).toHaveAttribute(
+      'data-active',
+      'true',
+    );
+    expect(getByText('Workflow Blocker').closest('a')).not.toHaveAttribute(
+      'data-active',
+    );
+    expect(getByText('Todo by human').closest('a')).not.toHaveAttribute(
+      'data-active',
+    );
+    expect(getByText('Todo by agent').closest('a')).not.toHaveAttribute(
+      'data-active',
+    );
+  });
+
   it('calls onAirplaneModeRetryFailed when the retry-failed button is clicked', () => {
     const onAirplaneModeRetryFailed = jest.fn();
     const { getByRole } = render(
