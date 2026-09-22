@@ -1820,11 +1820,13 @@ test('active tab label inherits white color and has blue background from active-
   const activeTab = page.locator('.console-tab[data-active="true"]');
   await expect(activeTab).toBeVisible();
 
-  await expect(page.locator('.console-tab[data-active="true"] .console-tab-label')).toHaveCSS(
-    'color',
-    'rgb(230, 237, 243)',
+  await expect(
+    page.locator('.console-tab[data-active="true"] .console-tab-label'),
+  ).toHaveCSS('color', 'rgb(230, 237, 243)');
+  await expect(activeTab).toHaveCSS(
+    'background-color',
+    'rgba(47, 129, 247, 0.15)',
   );
-  await expect(activeTab).toHaveCSS('background-color', 'rgba(47, 129, 247, 0.15)');
 });
 
 test('in timer mode, automatically opens the first pending item when navigating to a project', async ({
