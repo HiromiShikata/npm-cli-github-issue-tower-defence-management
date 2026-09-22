@@ -110,6 +110,7 @@ body {
   color: #e6edf3;
   font-weight: 700;
   border-bottom-color: #2f81f7;
+  background: rgba(47, 129, 247, 0.15);
 }
 
 .console-tab-badge {
@@ -2950,7 +2951,6 @@ body {
 
 .console-tab-label {
   font-size: 0.8125rem;
-  color: #8b949e;
 }
 
 .console-tab-fleet-task-create-link {
