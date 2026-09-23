@@ -3702,7 +3702,7 @@ describe('consoleOperationApi', () => {
         storyName: 'Brand new story',
       });
       expect(response.statusCode).toBe(200);
-      expect(response.body).toEqual({ ok: true });
+      expect(response.body).toEqual({ ok: true, stories: [] });
       expect(updateStoryList).toHaveBeenCalledWith(p, [
         {
           id: 'opt_first',
@@ -3918,6 +3918,44 @@ describe('consoleOperationApi', () => {
           expect.objectContaining({ name: 'New story' }),
         ]),
       );
+    });
+
+    it('includes the FieldOption[] returned by updateStoryList in the response body as stories', async () => {
+      const savedStories = [
+        {
+          id: 'opt_first',
+          name: 'First story',
+          color: 'BLUE' as const,
+          description: '',
+        },
+        {
+          id: 'opt_new',
+          name: 'Brand new story',
+          color: 'RED' as const,
+          description: '',
+        },
+        {
+          id: 'opt_second',
+          name: 'Second story',
+          color: 'GREEN' as const,
+          description: '',
+        },
+      ];
+      const p = buildProjectWithStories();
+      const localUpdateStoryList = jest.fn().mockResolvedValue(savedStories);
+      const ctx: ConsoleOperationContext = {
+        ...addStoryContext(p),
+        resolveProjectRepository: () => ({
+          updateStoryList: localUpdateStoryList,
+          getProject: jest.fn().mockResolvedValue(p),
+        }),
+      };
+      const response = await handleStoryAdd(ctx, {
+        pjcode: 'acme',
+        storyName: 'Brand new story',
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toEqual({ ok: true, stories: savedStories });
     });
   });
 

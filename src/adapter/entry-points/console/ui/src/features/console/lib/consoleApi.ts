@@ -414,7 +414,7 @@ export type ConsoleAddStoryRequest = {
 
 export const postConsoleAddStory = async (
   request: ConsoleAddStoryRequest,
-): Promise<void> => {
+): Promise<{ id: string; name: string; color: string }[]> => {
   const response = await fetch(ADD_STORY_OPERATION_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -423,6 +423,15 @@ export const postConsoleAddStory = async (
   if (!response.ok) {
     throw new Error(await readOperationErrorReason(response));
   }
+  const payload: unknown = await response.json();
+  if (!isRecord(payload) || !Array.isArray(payload.stories)) {
+    return [];
+  }
+  return payload.stories.filter(isRecord).map((s) => ({
+    id: getString(s.id),
+    name: getString(s.name),
+    color: getString(s.color),
+  }));
 };
 
 export const REVIEW_COMMENT_OPERATION_PATH = '/api/reviewcomment';
