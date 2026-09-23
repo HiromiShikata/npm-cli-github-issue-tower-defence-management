@@ -3692,10 +3692,6 @@ describe('webServer sendDataResponse gzip compression', () => {
     const consoleSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => {});
-    // jest.spyOn cannot redefine the non-configurable getter that __importStar
-    // creates on the namespace object.  Object.defineProperty on the underlying
-    // mock object bypasses the getter — the production code reads through to the
-    // same object and picks up the replacement.
     const zlibMock = jest.requireMock<typeof import('zlib')>('zlib');
     const originalDescriptor = Object.getOwnPropertyDescriptor(
       zlibMock,
